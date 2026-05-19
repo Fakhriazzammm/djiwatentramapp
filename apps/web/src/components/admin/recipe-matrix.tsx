@@ -186,12 +186,6 @@ export function RecipeMatrixPage() {
 	const [editingBaseId, setEditingBaseId] = useState<string | null>(null);
 	const [deletingBaseId, setDeletingBaseId] = useState<string | null>(null);
 	const [applyingAlaCarteSync, setApplyingAlaCarteSync] = useState(false);
-	const [recipeCardFilter, setRecipeCardFilter] = useState<"all" | "base" | "product">("all");
-	const [searchRecipe, setSearchRecipe] = useState("");
-	// Inline editing for recipe table
-	const [editingRecipeField, setEditingRecipeField] = useState<string | null>(null);
-	const [editingRecipeDraft, setEditingRecipeDraft] = useState<string>("");
-	const [savingRecipeField, setSavingRecipeField] = useState<string | null>(null);
 	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
 		name: "",
 		description: "",
@@ -270,46 +264,7 @@ export function RecipeMatrixPage() {
 			);
 	}, [products, search, categoryById]);
 
-	const baseRecipeCards = useMemo(
-		() =>
-			[...(baseRecipes ?? [])].sort((a: any, b: any) =>
-				String(a?.name ?? "").localeCompare(String(b?.name ?? ""), "id")
-			),
-		[baseRecipes]
-	);
-
-	const productRecipeCards = useMemo(
-		() =>
-			productRows
-				.filter((product) => recipeByProduct.has(String(product._id)))
-				.sort((a, b) =>
-					String(a?.name ?? "").localeCompare(String(b?.name ?? ""), "id")
-				),
-		[productRows, recipeByProduct]
-	);
-
-	const recipeKeyword = searchRecipe.trim().toLowerCase();
-	const filteredBaseRecipeCards = useMemo(() => {
-		if (!recipeKeyword) return baseRecipeCards;
-		return baseRecipeCards.filter((br: any) => {
-			return (
-				String(br?.name ?? "").toLowerCase().includes(recipeKeyword) ||
-				String(br?.category ?? "").toLowerCase().includes(recipeKeyword) ||
-				String(br?.description ?? "").toLowerCase().includes(recipeKeyword)
-			);
-		});
-	}, [baseRecipeCards, recipeKeyword]);
-
-	const filteredProductRecipeCards = useMemo(() => {
-		if (!recipeKeyword) return productRecipeCards;
-		return productRecipeCards.filter((product: any) => {
-			const cat = categoryById.get(String(product.categoryId)) ?? "";
-			return (
-				String(product?.name ?? "").toLowerCase().includes(recipeKeyword) ||
-				String(cat).toLowerCase().includes(recipeKeyword)
-			);
-		});
-	}, [productRecipeCards, recipeKeyword, categoryById]);
+	// ── Get amount (local override > recipe) ──
 
 	const getAmount = useCallback(
 		(productId: string, inventoryId: string): number | null => {
@@ -572,31 +527,6 @@ export function RecipeMatrixPage() {
 			toast.error(err?.message ?? "Gagal menghapus base recipe");
 		} finally {
 			setDeletingBaseId(null);
-		}
-	};
-
-	// ── Inline save handler ──
-
-	const handleInlineSave = async (fieldKey: string) => {
-		const [type, id, field] = fieldKey.split(":");
-		if (!type || !id || !field) return;
-		setSavingRecipeField(fieldKey);
-		try {
-			const br = baseRecipes?.find((r: any) => String(r._id) === id);
-			if (!br) return;
-			const value = editingRecipeDraft;
-			const payload: Record<string, any> = {};
-			if (field === "name") payload.name = value;
-			else if (field === "category") payload.category = value;
-			else if (field === "targetQuantity") payload.targetQuantity = Number(value);
-			else if (field === "targetUnit") payload.targetUnit = value;
-			await updateBaseRecipe({ id: id as any, ...payload });
-			toast.success("Tersimpan");
-			setEditingRecipeField(null);
-		} catch (err: any) {
-			toast.error(err?.message ?? "Gagal menyimpan");
-		} finally {
-			setSavingRecipeField(null);
 		}
 	};
 
@@ -914,194 +844,6 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 					<Calculator className="h-3 w-3" />
 					Klik produk → HPP detail
 				</span>
-			</div>
-
-			{/* ── Semua Recipe ── (table) */}
-			<div className="border-t-2 border-primary/20 bg-muted/10 shrink-0">
-				<div className="px-4 py-2 flex items-center gap-2 flex-wrap border-b border-border/20">
-					<Settings2 className="h-3.5 w-3.5 text-primary" />
-					<p className="text-[11px] font-bold text-muted-foreground">Semua Recipe</p>
-					<Badge variant="outline" className="text-[9px] h-4 px-1">
-						{filteredBaseRecipeCards.length + filteredProductRecipeCards.length} recipe
-					</Badge>
-					<div className="ml-auto flex items-center gap-1">
-						<Button variant={recipeCardFilter==="all"?"default":"outline"} size="sm" className="h-6 text-[10px] px-2" onClick={()=>setRecipeCardFilter("all")}>Semua ({filteredBaseRecipeCards.length + filteredProductRecipeCards.length})</Button>
-						<Button variant={recipeCardFilter==="base"?"default":"outline"} size="sm" className="h-6 text-[10px] px-2" onClick={()=>setRecipeCardFilter("base")}>Base ({filteredBaseRecipeCards.length})</Button>
-						<Button variant={recipeCardFilter==="product"?"default":"outline"} size="sm" className="h-6 text-[10px] px-2" onClick={()=>setRecipeCardFilter("product")}>Produk ({filteredProductRecipeCards.length})</Button>
-					</div>
-				</div>
-				<div className="px-4 py-1.5 flex items-center gap-2 flex-wrap border-b border-border/20">
-					<div className="relative w-full max-w-[200px]">
-						<Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/60" />
-						<Input value={searchRecipe} onChange={(e) => setSearchRecipe(e.target.value)} placeholder="Cari recipe..." className="h-7 pl-7 text-[10px]" />
-					</div>
-					<Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={handleOpenCreateBase}>
-						<Plus className="h-3 w-3 mr-1" /> Tambah Base
-					</Button>
-					{ALA_CARTE_BASE_PRESETS.map((preset) => (
-						<Button key={preset.name} variant="secondary" size="sm" className="h-6 text-[10px] px-2" onClick={() => handleOpenPresetBase(preset)}>{preset.name}</Button>
-					))}
-				</div>
-				<div className="overflow-x-auto max-h-[260px] overflow-y-auto">
-					<table className="border-collapse w-full text-[10px]">
-						<thead>
-							<tr className="bg-muted/40 sticky top-0 z-10">
-								<th className="border-b border-r border-border/30 px-2 py-1.5 text-left font-semibold text-muted-foreground w-16">Tipe</th>
-								<th className="border-b border-r border-border/30 px-2 py-1.5 text-left font-semibold text-muted-foreground min-w-[140px]">Nama</th>
-								<th className="border-b border-r border-border/30 px-2 py-1.5 text-left font-semibold text-muted-foreground w-24">Kategori</th>
-								<th className="border-b border-r border-border/30 px-2 py-1.5 text-center font-semibold text-muted-foreground w-24">Target</th>
-								<th className="border-b border-r border-border/30 px-2 py-1.5 text-center font-semibold text-muted-foreground w-12">Bhn</th>
-								<th className="border-b border-border/30 px-2 py-1.5 text-center font-semibold text-muted-foreground w-20">Aksi</th>
-							</tr>
-						</thead>
-						<tbody>
-							{(recipeCardFilter==="all"||recipeCardFilter==="base") && filteredBaseRecipeCards.length===0 && (
-								<tr><td colSpan={6} className="px-3 py-6 text-center text-[10px] text-muted-foreground border-b border-border/20">Belum ada Base Recipe.</td></tr>
-							)}
-							{(recipeCardFilter==="all"||recipeCardFilter==="product") && filteredProductRecipeCards.length===0 && (
-								<tr><td colSpan={6} className="px-3 py-6 text-center text-[10px] text-muted-foreground border-b border-border/20">Belum ada Recipe Produk.</td></tr>
-							)}
-							{(recipeCardFilter==="all"||recipeCardFilter==="base") && filteredBaseRecipeCards.map((br: any) => {
-								const fieldKey = `base:${br._id}`;
-								return (
-									<tr key={br._id} className="border-b border-border/20 hover:bg-primary/[0.02] group">
-										<td className="border-r border-border/20 px-2 py-1.5"><Badge variant="secondary" className="text-[8px] h-3.5 px-1">Base</Badge></td>
-										{/* Nama — inline editable */}
-										<td className="border-r border-border/20 px-2 py-1.5">
-											{editingRecipeField === `${fieldKey}:name` ? (
-												<div className="flex items-center gap-1">
-													<Input
-														autoFocus
-														value={editingRecipeDraft}
-														onChange={(e) => setEditingRecipeDraft(e.target.value)}
-														onBlur={() => handleInlineSave(`${fieldKey}:name`)}
-														onKeyDown={(e) => { if (e.key==="Enter") handleInlineSave(`${fieldKey}:name`); if (e.key==="Escape") setEditingRecipeField(null); }}
-														className="h-6 text-[10px] px-1 py-0"
-													/>
-													{savingRecipeField === `${fieldKey}:name` && <Loader2 className="h-2.5 w-2.5 animate-spin shrink-0" />}
-												</div>
-											) : (
-												<button
-													className="text-left font-medium text-foreground truncate max-w-[200px] hover:bg-primary/[0.06] rounded px-1 -ml-1 py-0.5 transition-colors cursor-text w-full text-[10px]"
-													onClick={() => { setEditingRecipeDraft(br.name ?? ""); setEditingRecipeField(`${fieldKey}:name`); }}
-													title="Klik untuk edit"
-												>
-													{br.name}
-												</button>
-											)}
-										</td>
-										{/* Kategori — inline select */}
-										<td className="border-r border-border/20 px-2 py-1.5">
-											{editingRecipeField === `${fieldKey}:category` ? (
-												<select
-													autoFocus
-													value={editingRecipeDraft}
-													onChange={(e) => setEditingRecipeDraft(e.target.value)}
-													onBlur={() => handleInlineSave(`${fieldKey}:category`)}
-													className="h-6 text-[10px] px-1 rounded border border-input bg-background"
-												>
-													<option value="Lainnya">Lainnya</option>
-													<option value="Base Susu">Base Susu</option>
-													<option value="Base Sauce">Base Sauce</option>
-													<option value="Base Sirup">Base Sirup</option>
-													<option value="Base Teh">Base Teh</option>
-													<option value="Kopi">Kopi</option>
-													<option value="Dessert">Dessert</option>
-												</select>
-											) : (
-												<button
-													className="hover:bg-primary/[0.06] rounded px-1 -ml-1 py-0.5 transition-colors cursor-text text-[10px]"
-													onClick={() => { setEditingRecipeDraft(br.category ?? "Lainnya"); setEditingRecipeField(`${fieldKey}:category`); }}
-												>
-													{br.category || "—"}
-												</button>
-											)}
-										</td>
-										{/* Target — inline edit qty + unit */}
-										<td className="border-r border-border/20 px-2 py-1.5 text-center">
-											<div className="flex items-center justify-center gap-0.5">
-												{editingRecipeField === `${fieldKey}:targetQuantity` ? (
-													<Input
-														autoFocus
-														type="number" min="1"
-														value={editingRecipeDraft}
-														onChange={(e) => setEditingRecipeDraft(e.target.value)}
-														onBlur={() => handleInlineSave(`${fieldKey}:targetQuantity`)}
-														onKeyDown={(e) => { if (e.key==="Enter") handleInlineSave(`${fieldKey}:targetQuantity`); if (e.key==="Escape") setEditingRecipeField(null); }}
-														className="h-5 w-12 text-[9px] px-1 py-0 text-center"
-													/>
-												) : (
-													<button
-														className="hover:bg-primary/[0.06] rounded px-0.5 transition-colors cursor-text"
-														onClick={() => { setEditingRecipeDraft(String(br.targetQuantity ?? "")); setEditingRecipeField(`${fieldKey}:targetQuantity`); }}
-													>
-														<span className="tabular-nums">{br.targetQuantity}</span>
-													</button>
-												)}
-												{editingRecipeField === `${fieldKey}:targetUnit` ? (
-													<Input
-														autoFocus
-														value={editingRecipeDraft}
-														onChange={(e) => setEditingRecipeDraft(e.target.value)}
-														onBlur={() => handleInlineSave(`${fieldKey}:targetUnit`)}
-														onKeyDown={(e) => { if (e.key==="Enter") handleInlineSave(`${fieldKey}:targetUnit`); if (e.key==="Escape") setEditingRecipeField(null); }}
-														className="h-5 w-16 text-[9px] px-1 py-0 text-left"
-													/>
-												) : (
-													<button
-														className="text-muted-foreground hover:bg-primary/[0.06] rounded px-0.5 transition-colors cursor-text"
-														onClick={() => { setEditingRecipeDraft(br.targetUnit ?? ""); setEditingRecipeField(`${fieldKey}:targetUnit`); }}
-													>
-														{br.targetUnit}
-													</button>
-												)}
-											</div>
-										</td>
-										<td className="border-r border-border/20 px-2 py-1.5 text-center tabular-nums text-muted-foreground">{br.ingredients?.length ?? 0}</td>
-										<td className="px-2 py-1.5 text-center">
-											<div className="flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-												<button
-													onClick={() => handleOpenEditBase(br)}
-													className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors"
-													title="Edit bahan"
-												>
-													<Edit className="h-3 w-3" />
-												</button>
-												<button
-													onClick={() => handleDeleteBase(br._id)}
-													disabled={deletingBaseId === br._id}
-													className="rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
-													title="Hapus"
-												>
-													{deletingBaseId === br._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-												</button>
-											</div>
-										</td>
-									</tr>
-								);
-							})}
-							{(recipeCardFilter==="all"||recipeCardFilter==="product") && filteredProductRecipeCards.map((product) => {
-								const recipe = [...(recipes ?? [])].find(
-									(r) => !r.variantName && String(r.productId) === String(product._id)
-								);
-								if (!recipe) return null;
-								const cat = categoryById.get(String(product.categoryId)) ?? "";
-								return (
-									<tr key={`prod-${product._id}`} className="border-b border-border/20 hover:bg-primary/[0.02]">
-										<td className="border-r border-border/20 px-2 py-1.5"><Badge variant="outline" className="text-[8px] h-3.5 px-1">Produk</Badge></td>
-										<td className="border-r border-border/20 px-2 py-1.5 font-medium truncate max-w-[200px]">{product.name}</td>
-										<td className="border-r border-border/20 px-2 py-1.5 text-muted-foreground">{cat || "—"}</td>
-										<td className="border-r border-border/20 px-2 py-1.5 text-center text-muted-foreground">—</td>
-										<td className="border-r border-border/20 px-2 py-1.5 text-center tabular-nums text-muted-foreground">{recipe.ingredients?.length ?? 0}</td>
-										<td className="px-2 py-1.5 text-center">
-											<span className="text-[8px] text-muted-foreground">di matrix</span>
-										</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
-				</div>
 			</div>
 
 			{/* ── Base Recipe Modal ── */}
