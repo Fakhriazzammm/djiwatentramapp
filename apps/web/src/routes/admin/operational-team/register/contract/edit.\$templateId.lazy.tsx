@@ -1,23 +1,13 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, FileSignature, Download, GripVertical, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileSignature, Download, GripVertical, Loader2, Plus, Save, Sparkles, Trash2, Upload, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
 import { useHybridSiteSettings, useHybridStaffRoles, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateSiteSettings } from "@/hooks/use-hybrid-write-actions";
@@ -66,6 +56,14 @@ function contractToDraft(contract: EmployeeContractDraft, aiPrompt = ""): Contra
 	};
 }
 
+function templateToString(t: string | ContractTemplateValue | null | undefined): string {
+	if (typeof t === "string") return t;
+	if (t && typeof t === "object" && "title" in t) {
+		return t.title + "\n" + (t as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || t.title;
+	}
+	return "";
+}
+
 function parseTemplateText(text: string): ContractDraft {
 	const lines = normalizeLineBreaks(text).split("\n");
 	const title = lines.shift()?.trim() || "Perjanjian Kerja";
@@ -93,29 +91,15 @@ function parseTemplateText(text: string): ContractDraft {
 	};
 }
 
-function templateToString(t: string | ContractTemplateValue | null | undefined): string {
-	if (typeof t === "string") return t;
-	if (t && typeof t === "object" && "title" in t) {
-		return t.title + "\n" + (t as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || t.title;
-	}
-	return "";
-}
-
 function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryName?: string) {
 	const salaryDefaults = role ? getRoleSalaryDefaults(role) : { monthlySalary: 0, dailyAllowance: 0, shiftRate: 0, bonusTargetConfig: null, customAllowances: [] };
 	return buildEmployeeContractTemplate(
 		{ fullName: "[Nama Karyawan]", phone: "" },
 		{
-			roleId: "",
-			roleName,
-			startDate: "[Tanggal Mulai]",
-			employmentType: "probation",
-			location: "Djiwa Tentram",
-			monthlySalary: salaryDefaults.monthlySalary ?? 0,
-			dailyAllowance: salaryDefaults.dailyAllowance ?? 0,
-			shiftRate: salaryDefaults.shiftRate ?? 0,
-			username: "",
-			slug: "",
+			roleId: "", roleName, startDate: "[Tanggal Mulai]", employmentType: "probation",
+			location: "Djiwa Tentram", monthlySalary: salaryDefaults.monthlySalary ?? 0,
+			dailyAllowance: salaryDefaults.dailyAllowance ?? 0, shiftRate: salaryDefaults.shiftRate ?? 0,
+			username: "", slug: "",
 		},
 		signatoryName,
 		(salaryDefaults as any).bonusTargetConfig ?? undefined,
@@ -144,20 +128,28 @@ function BonusSummaryBadge({ config }: { config?: { basis?: string; tiers?: { th
 	);
 }
 
-export default function AdminContractPage() {
+function extractNameFromKey(key: string, roles: any[]): string {
+	if (key === "__default__") return "Semua Jabatan (Default)";
+	if (key.startsWith("custom_")) return key.slice(7).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+	const role = roles.find((r: any) => String(r?._id) === key);
+	return role?.name || key;
+}
+
+function ContractEditPage() {
+	const { templateId } = useParams({ from: "/admin/operational-team/register/contract/edit/$templateId" as any });
+	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
 	const roles = useHybridStaffRoles() ?? [];
 	const updateSiteSettings = useHybridUpdateSiteSettings();
+
+	const isNewTemplate = templateId === "new";
+	const templateName = isNewTemplate ? "" : extractNameFromKey(templateId, roles);
 
 	const onboardingSettings = useMemo(
 		() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding),
 		[siteSettings?.employeeOnboarding]
 	);
 
-	const [selectedTemplateKey, setSelectedTemplateKey] = useState(DEFAULT_TEMPLATE_KEY);
-	const [localTemplates, setLocalTemplates] = useState<Record<string, string | ContractTemplateValue>>({});
-	const [isGenerating, setIsGenerating] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
 	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.signatoryName)));
 	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
 	const [signatoryPersonNameLocal, setSignatoryPersonNameLocal] = useState(onboardingSettings.signatoryPersonName || "");
@@ -173,54 +165,28 @@ export default function AdminContractPage() {
 	const [testPreviewNIK, setTestPreviewNIK] = useState("");
 	const [testPreviewAddress, setTestPreviewAddress] = useState("");
 	const [selectedEmploymentType, setSelectedEmploymentType] = useState("full_time");
+	const [isGenerating, setIsGenerating] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
+	const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
-	useEffect(() => {
-		setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
-	}, [onboardingSettings.signatoryName]);
+	// Create new template dialog state
+	const [showNewDialog, setShowNewDialog] = useState(isNewTemplate);
+	const [newTemplateName, setNewTemplateName] = useState("");
+	const [duplicateFrom, setDuplicateFrom] = useState("__default__");
 
-	useEffect(() => {
-		setSignatoryPersonNameLocal(onboardingSettings.signatoryPersonName || "");
-	}, [onboardingSettings.signatoryPersonName]);
-
-	useEffect(() => {
-		setSignatorySigUrlLocal(onboardingSettings.signatorySignatureUrl || "");
-	}, [onboardingSettings.signatorySignatureUrl]);
-
-	useEffect(() => {
-		setCompanyAddressLocal(onboardingSettings.signatoryCompanyAddress || "");
-	}, [onboardingSettings.signatoryCompanyAddress]);
-
-	useEffect(() => {
-		setCompanyNIBLocal(onboardingSettings.signatoryCompanyNIB || "");
-	}, [onboardingSettings.signatoryCompanyNIB]);
-
-	useEffect(() => {
-		setPersonTitleLocal(onboardingSettings.signatoryPersonTitle || "");
-	}, [onboardingSettings.signatoryPersonTitle]);
-
-	useEffect(() => {
-		setSignatoryLocationLocal(onboardingSettings.signatoryLocation || "");
-	}, [onboardingSettings.signatoryLocation]);
-
+	const contractTemplatesByRoleId = onboardingSettings.contractTemplatesByRoleId || {};
 	const selectedRole = useMemo(
-		() => roles.find((role: any) => String(role?._id) === selectedTemplateKey),
-		[roles, selectedTemplateKey]
+		() => roles.find((role: any) => String(role?._id) === templateId),
+		[roles, templateId]
 	);
-	const selectedRoleName = selectedTemplateKey === DEFAULT_TEMPLATE_KEY
-		? "Semua Jabatan"
-		: (selectedRole?.name || "[Jabatan]");
+	const selectedRoleName = templateName;
 
 	const effectiveTemplates = useMemo(
-		() => ({ ...onboardingSettings.contractTemplatesByRoleId, ...localTemplates }),
-		[localTemplates, onboardingSettings.contractTemplatesByRoleId]
+		() => ({ ...contractTemplatesByRoleId }),
+		[contractTemplatesByRoleId]
 	);
-	const persistedTemplate = templateToString(effectiveTemplates[selectedTemplateKey]);
-	const savedTemplate = persistedTemplate;
+	const persistedTemplate = templateToString(templateId && !isNewTemplate ? contractTemplatesByRoleId[templateId] : null);
 	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryNameLocal || "Djiwa Tentram").trim();
-
-	useEffect(() => {
-		setLocalTemplates(onboardingSettings.contractTemplatesByRoleId);
-	}, [onboardingSettings.contractTemplatesByRoleId]);
 
 	const contractPreview: EmployeeContractDraft = useMemo(() => ({
 		mode: "custom",
@@ -233,31 +199,20 @@ export default function AdminContractPage() {
 		clauses: draft.clauses,
 	}), [draft]);
 	const currentTemplateText = contractPreview.plainText;
+	const isDirty = isNewTemplate || normalizeLineBreaks(currentTemplateText) !== normalizeLineBreaks(persistedTemplate);
 
-	/* ── Test data preview ── */
 	const testPreviewText = useMemo(() => {
 		if (!testPreviewName.trim()) return null;
 		const ctx = buildContractVariableContext(
+			{ fullName: testPreviewName, phone: "", identityNumber: testPreviewNIK || undefined, address: testPreviewAddress || undefined, birthDate: undefined, placeOfBirth: undefined },
 			{
-				fullName: testPreviewName,
-				phone: "",
-				identityNumber: testPreviewNIK || undefined,
-				address: testPreviewAddress || undefined,
-				birthDate: undefined,
-				placeOfBirth: undefined,
-			},
-			{
-				roleId: selectedRole?._id || "",
-				roleName: selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
-				startDate: new Date().toISOString().slice(0, 10),
-				employmentType: selectedEmploymentType as any,
+				roleId: selectedRole?._id || "", roleName: selectedRoleName === "Semua Jabatan (Default)" ? "[Jabatan]" : selectedRoleName,
+				startDate: new Date().toISOString().slice(0, 10), employmentType: selectedEmploymentType as any,
 				location: onboardingSettings.defaultLocation || "Djiwa Tentram",
 				monthlySalary: selectedRole ? getRoleSalaryDefaults(selectedRole).monthlySalary : 0,
 				dailyAllowance: selectedRole ? getRoleSalaryDefaults(selectedRole).dailyAllowance : 0,
 				shiftRate: selectedRole ? getRoleSalaryDefaults(selectedRole).shiftRate : 0,
-				username: "",
-				slug: "",
-				contractDuration: 12,
+				username: "", slug: "", contractDuration: 12,
 			},
 			companyDisplayName,
 			signatoryPersonNameLocal || companyDisplayName,
@@ -268,8 +223,37 @@ export default function AdminContractPage() {
 		);
 		return replaceContractVariables(currentTemplateText, ctx);
 	}, [testPreviewName, testPreviewNIK, testPreviewAddress, currentTemplateText, selectedRole, selectedRoleName, selectedEmploymentType, companyDisplayName, signatoryPersonNameLocal, onboardingSettings]);
-	const isDirty = normalizeLineBreaks(currentTemplateText) !== normalizeLineBreaks(persistedTemplate);
 
+	// Load template on mount
+	const hasLoaded = useRef(false);
+	useEffect(() => {
+		if (hasLoaded.current) return;
+		if (isNewTemplate) { hasLoaded.current = true; return; }
+		if (!templateId) return;
+		const saved = contractTemplatesByRoleId[templateId];
+		if (saved) {
+			setDraft(parseTemplateText(templateToString(saved)));
+		} else {
+			const role = roles.find((item: any) => String(item?._id) === templateId);
+			setDraft(contractToDraft(buildPlaceholderContract(
+				templateId === "__default__" ? "[Jabatan]" : (role?.name || "[Jabatan]"),
+				role,
+				signatoryNameLocal
+			)));
+		}
+		hasLoaded.current = true;
+	}, [templateId, isNewTemplate, contractTemplatesByRoleId, roles, signatoryNameLocal]);
+
+	// Sync onboardingSettings to local state
+	useEffect(() => { setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto"); }, [onboardingSettings.signatoryName]);
+	useEffect(() => { setSignatoryPersonNameLocal(onboardingSettings.signatoryPersonName || ""); }, [onboardingSettings.signatoryPersonName]);
+	useEffect(() => { setSignatorySigUrlLocal(onboardingSettings.signatorySignatureUrl || ""); }, [onboardingSettings.signatorySignatureUrl]);
+	useEffect(() => { setCompanyAddressLocal(onboardingSettings.signatoryCompanyAddress || ""); }, [onboardingSettings.signatoryCompanyAddress]);
+	useEffect(() => { setCompanyNIBLocal(onboardingSettings.signatoryCompanyNIB || ""); }, [onboardingSettings.signatoryCompanyNIB]);
+	useEffect(() => { setPersonTitleLocal(onboardingSettings.signatoryPersonTitle || ""); }, [onboardingSettings.signatoryPersonTitle]);
+	useEffect(() => { setSignatoryLocationLocal(onboardingSettings.signatoryLocation || ""); }, [onboardingSettings.signatoryLocation]);
+
+	// Beforeunload for dirty state
 	useEffect(() => {
 		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
 			if (!isDirty) return;
@@ -280,52 +264,146 @@ export default function AdminContractPage() {
 		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
 	}, [isDirty]);
 
-	const lastLoadedRef = useRef<string | null>(null);
+	const addClause = useCallback(() => {
+		setDraft((p) => ({ ...p, clauses: [...p.clauses, { title: "Klausul Baru", body: "" }] }));
+	}, []);
 
-	const loadTemplate = useCallback((templateKey: string, settings: EmployeeOnboardingSettings) => {
-		const templateText = { ...settings.contractTemplatesByRoleId, ...localTemplates }[templateKey];
-		if (templateText) {
-			setDraft(parseTemplateText(templateToString(templateText)));
-			lastLoadedRef.current = templateKey;
+	const updateClause = useCallback((idx: number, key: keyof EmployeeContractClause, value: string) => {
+		setDraft((p) => {
+			const clauses = [...p.clauses];
+			clauses[idx] = { ...clauses[idx], [key]: value };
+			return { ...p, clauses };
+		});
+	}, []);
+
+	const removeClause = useCallback((idx: number) => {
+		setDraft((p) => ({ ...p, clauses: p.clauses.filter((_, i) => i !== idx) }));
+	}, []);
+
+	const moveClause = useCallback((fromIdx: number, toIdx: number) => {
+		if (fromIdx === toIdx) return;
+		setDraft((p) => {
+			const clauses = [...p.clauses];
+			const [moved] = clauses.splice(fromIdx, 1);
+			clauses.splice(toIdx, 0, moved);
+			return { ...p, clauses };
+		});
+		setTimeout(() => { saveTemplate(); }, 100);
+	}, []);
+
+	// Handle create new template
+	function handleCreateNew() {
+		if (!newTemplateName.trim()) { toast.error("Nama template wajib diisi"); return; }
+		const slug = newTemplateName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+		const newId = "custom_" + slug;
+
+		if (contractTemplatesByRoleId[newId]) {
+			toast.error("Template dengan nama tersebut sudah ada");
 			return;
 		}
-		const role = roles.find((item: any) => String(item?._id) === templateKey);
-		setDraft(contractToDraft(buildPlaceholderContract(
-			templateKey === DEFAULT_TEMPLATE_KEY ? "[Jabatan]" : (role?.name || "[Jabatan]"),
-			role,
-			signatoryNameLocal
-		)));
-		lastLoadedRef.current = templateKey;
-	}, [localTemplates, roles, signatoryNameLocal]);
 
-	useEffect(() => {
-		if (lastLoadedRef.current !== selectedTemplateKey) {
-			loadTemplate(selectedTemplateKey, onboardingSettings);
+		// Duplicate from existing
+		const sourceTemplate = contractTemplatesByRoleId[duplicateFrom];
+		if (sourceTemplate && duplicateFrom !== "__none__") {
+			const parsed = parseTemplateText(templateToString(sourceTemplate));
+			setDraft({ ...parsed, title: `Perjanjian Kerja ${newTemplateName.trim()}` });
+		} else {
+			setDraft(contractToDraft(buildPlaceholderContract(newTemplateName.trim(), undefined, signatoryNameLocal)));
 		}
-	}, [loadTemplate, onboardingSettings, selectedTemplateKey]);
+		setShowNewDialog(false);
+		// Replace URL with the new template ID
+		window.history.replaceState(null, "", `/admin/operational-team/register/contract/edit/${newId}`);
+		toast.success(`Template "${newTemplateName.trim()}" siap diedit`);
+	}
 
-	const resetToDefault = useCallback(() => {
+	async function saveTemplate() {
+		if (!contractPreview.plainText.trim()) {
+			toast.error("Isi kontrak tidak boleh kosong");
+			return;
+		}
+		setIsSaving(true);
+		try {
+			const actualTemplateId = templateId === "new" ? "" : templateId;
+			if (!actualTemplateId) { toast.error("Template ID tidak valid"); setIsSaving(false); return; }
+
+			const templateValue: ContractTemplateValue = {
+				version: 2,
+				title: draft.title,
+				clauses: draft.clauses.map((c, i) => ({ ...c, order: i })),
+				metadata: { createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: "admin" },
+				salaryFieldMappings: ["monthlyFixedSalary", "dailyAllowance", "baseShiftRate"],
+			};
+			const nextTemplates = {
+				...contractTemplatesByRoleId,
+				[actualTemplateId]: templateToString(templateValue),
+			};
+			const nextSettings = normalizeEmployeeOnboardingSettings({
+				...onboardingSettings,
+				contractTemplatesByRoleId: nextTemplates,
+				signatoryName: signatoryNameLocal,
+				signatoryPersonName: signatoryPersonNameLocal,
+				signatorySignatureUrl: signatorySigUrlLocal,
+				signatoryCompanyAddress: companyAddressLocal,
+				signatoryCompanyNIB: companyNIBLocal,
+				signatoryPersonTitle: personTitleLocal,
+				signatoryLocation: signatoryLocationLocal,
+			});
+			await updateSiteSettings({ employeeOnboarding: nextSettings });
+			triggerHybridRefresh();
+			toast.success(`Template ${selectedRoleName || actualTemplateId} disimpan`);
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menyimpan template");
+		} finally {
+			setIsSaving(false);
+		}
+	}
+
+	async function deleteTemplate() {
+		if (templateId === "__default__") { toast.error("Template default tidak dapat dihapus"); return; }
+		if (!window.confirm(`Hapus template ${selectedRoleName || templateId}?`)) return;
+		setIsSaving(true);
+		try {
+			const nextTemplates = { ...contractTemplatesByRoleId };
+			delete nextTemplates[templateId];
+			const nextSettings = normalizeEmployeeOnboardingSettings({
+				...onboardingSettings,
+				contractTemplatesByRoleId: nextTemplates,
+				signatoryName: signatoryNameLocal,
+				signatoryPersonName: signatoryPersonNameLocal,
+				signatorySignatureUrl: signatorySigUrlLocal,
+				signatoryCompanyAddress: companyAddressLocal,
+				signatoryCompanyNIB: companyNIBLocal,
+				signatoryPersonTitle: personTitleLocal,
+				signatoryLocation: signatoryLocationLocal,
+			});
+			await updateSiteSettings({ employeeOnboarding: nextSettings });
+			triggerHybridRefresh();
+			toast.success("Template dihapus");
+			navigate({ to: "/admin/operational-team/register/contract" });
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menghapus template");
+		} finally {
+			setIsSaving(false);
+		}
+	}
+
+	async function resetToDefault() {
 		setDraft((prev) => ({
 			...contractToDraft(buildPlaceholderContract(
-				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
-				selectedRole,
-				signatoryNameLocal
+				selectedRoleName === "Semua Jabatan (Default)" ? "[Jabatan]" : selectedRoleName,
+				selectedRole, signatoryNameLocal
 			)),
 			aiPrompt: prev.aiPrompt,
 		}));
 		toast.success("Direset ke template dasar");
-	}, [selectedRoleName, selectedRole, signatoryNameLocal]);
+	}
 
-	const handleGenerateAi = useCallback(async () => {
-		if (!draft.aiPrompt.trim()) {
-			toast.error("Tulis instruksi untuk AI terlebih dahulu");
-			return;
-		}
+	async function handleGenerateAi() {
+		if (!draft.aiPrompt.trim()) { toast.error("Tulis instruksi untuk AI terlebih dahulu"); return; }
 		setIsGenerating(true);
 		try {
-			const roleName = selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName;
+			const roleName = selectedRoleName || "[Jabatan]";
 			const companyName = signatoryNameLocal || "Djiwa Tentram Cafe & Resto";
-
 			const systemPrompt = `Kamu adalah asisten HR yang membantu membuat kontrak kerja perusahaan F&B.
 Buat kontrak kerja dalam bahasa Indonesia yang profesional dan lengkap.
 Format response HARUS JSON saja, tanpa markdown, tanpa teks lain di luar JSON:
@@ -342,20 +420,10 @@ Format response HARUS JSON saja, tanpa markdown, tanpa teks lain di luar JSON:
 }
 Setiap body pasal harus berupa paragraf lengkap 2-3 kalimat dalam bahasa Indonesia formal.
 Pastikan body pasal 1 menyebut "${companyName} sebagai perwakilan perusahaan".`;
-
-			const userMessage = `Buat kontrak kerja untuk jabatan: ${roleName}.
-Perusahaan: ${companyName}.
-Instruksi tambahan: ${draft.aiPrompt}.`;
+			const userMessage = `Buat kontrak kerja untuk jabatan: ${roleName}.\nPerusahaan: ${companyName}.\nInstruksi tambahan: ${draft.aiPrompt}.`;
 
 			const { data, error } = await createClient().functions.invoke("yumi-ai", {
-				body: {
-					action: "yumiChat",
-					messages: [
-						{ role: "system", content: systemPrompt },
-						{ role: "user", content: userMessage },
-					],
-					chat_id: `generate-contract-${Date.now()}`,
-				},
+				body: { action: "yumiChat", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userMessage }], chat_id: `generate-contract-${Date.now()}` },
 			});
 			if (error) throw new Error(error.message);
 			if (data?.error) throw new Error(data.error);
@@ -368,211 +436,23 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			const clauses = Array.isArray(parsed.clauses) ? parsed.clauses : [];
 			if (clauses.length === 0) throw new Error("AI tidak menghasilkan pasal kontrak");
 
-			setDraft({
-				title: parsed.title || `Perjanjian Kerja ${roleName}`,
-				clauses,
-				aiPrompt: draft.aiPrompt,
-			});
+			setDraft({ title: parsed.title || `Perjanjian Kerja ${roleName}`, clauses, aiPrompt: draft.aiPrompt });
 			toast.success("Kontrak berhasil dibuat oleh AI");
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal membuat kontrak");
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [draft.aiPrompt, selectedRoleName, signatoryNameLocal]);
-
-	const addClause = useCallback(() => {
-		setDraft((p) => ({
-			...p,
-			clauses: [...p.clauses, { title: "Klausul Baru", body: "" }],
-		}));
-	}, []);
-
-	const updateClause = useCallback((idx: number, key: keyof EmployeeContractClause, value: string) => {
-		setDraft((p) => {
-			const clauses = [...p.clauses];
-			clauses[idx] = { ...clauses[idx], [key]: value };
-			return { ...p, clauses };
-		});
-	}, []);
-
-	const removeClause = useCallback((idx: number) => {
-		setDraft((p) => ({
-			...p,
-			clauses: p.clauses.filter((_, i) => i !== idx),
-		}));
-	}, []);
-
-	const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-
-	const moveClause = useCallback((fromIdx: number, toIdx: number) => {
-		if (fromIdx === toIdx) return;
-		setDraft((p) => {
-			const clauses = [...p.clauses];
-			const [moved] = clauses.splice(fromIdx, 1);
-			clauses.splice(toIdx, 0, moved);
-			return { ...p, clauses };
-		});
-		// Auto-save setelah reorder
-		setTimeout(() => { saveTemplate(); }, 100);
-	}, []);
-
-	/* ── Clause Library ── */
-	const CLAUSE_LIBRARY: { title: string; body: string }[] = [
-		{
-			title: "Pasal Kerahasiaan (Non-Disclosure)",
-			body: "Pihak Kedua wajib menjaga kerahasiaan seluruh data perusahaan, termasuk namun tidak terbatas pada resep, SOP, daftar pelanggan, strategi bisnis, dan informasi keuangan. Pelanggaran terhadap ketentuan ini dapat dikenakan sanksi sesuai peraturan perusahaan dan/atau tuntutan hukum yang berlaku.",
-		},
-		{
-			title: "Pasal Non-Compete",
-			body: "Pihak Kedua tidak diperkenankan bekerja atau terlibat dengan usaha sejenis yang berada dalam radius kompetitif yang ditetapkan perusahaan selama masa kerja dan 3 (tiga) bulan setelah berakhirnya hubungan kerja.",
-		},
-		{
-			title: "Pasal Lembur (Overtime)",
-			body: "Pihak Kedua diwajibkan bekerja lembur apabila diperlukan untuk memenuhi kebutuhan operasional. Lembur dihitung dan dikompensasikan sesuai dengan ketentuan yang berlaku di perusahaan dan peraturan perundang-undangan ketenagakerjaan.",
-		},
-		{
-			title: "Pasal Disiplin & Sanksi",
-			body: "Pelanggaran terhadap tata tertib dan SOP perusahaan akan dikenakan sanksi bertahap mulai dari surat peringatan (SP1, SP2, SP3) hingga pemutusan hubungan kerja untuk pelanggaran berat. Keputusan sanksi bersifat final dan mengikat.",
-		},
-		{
-			title: "Pasal Masa Percobaan (Probation)",
-			body: "Pihak Kedua menjalani masa percobaan selama 3 (tiga) bulan terhitung sejak tanggal mulai kerja. Selama masa percobaan, kedua pihak berhak mengakhiri hubungan kerja tanpa pemberitahuan terlebih dahulu. Setelah masa percobaan berakhir dan dinyatakan lulus, Pihak Kedua akan diangkat menjadi karyawan tetap.",
-		},
-		{
-			title: "Pasal Cuti & Izin",
-			body: "Pihak Kedua berhak atas cuti tahunan sebanyak 12 (dua belas) hari kerja setelah bekerja selama 12 (dua belas) bulan berturut-turut. Izin tidak masuk kerja karena alasan darurat dapat diberikan dengan pemberitahuan minimal 1 (satu) jam sebelum jam kerja dimulai.",
-		},
-	];
-
-
-	async function saveTemplate() {
-		if (!contractPreview.plainText.trim()) {
-			toast.error("Isi kontrak tidak boleh kosong");
-			return;
-		}
-		setIsSaving(true);
-		try {
-			// Save as structured JSON (serialized to plain text for DB compatibility)
-			const templateValue: ContractTemplateValue = {
-				version: 2,
-				title: draft.title,
-				clauses: draft.clauses.map((c, i) => ({ ...c, order: i })),
-				metadata: {
-					createdAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					updatedBy: "admin",
-				},
-				salaryFieldMappings: ["monthlyFixedSalary", "dailyAllowance", "baseShiftRate"],
-			};
-			const nextTemplates = {
-				...effectiveTemplates,
-				[selectedTemplateKey]: templateToString(templateValue),
-			};
-			const nextSettings = normalizeEmployeeOnboardingSettings({
-				...onboardingSettings,
-				contractTemplatesByRoleId: nextTemplates,
-				signatoryName: signatoryNameLocal,
-				signatoryPersonName: signatoryPersonNameLocal,
-				signatorySignatureUrl: signatorySigUrlLocal,
-				signatoryCompanyAddress: companyAddressLocal,
-				signatoryCompanyNIB: companyNIBLocal,
-				signatoryPersonTitle: personTitleLocal,
-				signatoryLocation: signatoryLocationLocal,
-			});
-			await updateSiteSettings({ employeeOnboarding: nextSettings });
-			setLocalTemplates(nextTemplates);
-			triggerHybridRefresh();
-			toast.success(`Template untuk ${selectedRoleName} disimpan`);
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal menyimpan template");
-		} finally {
-			setIsSaving(false);
-		}
 	}
 
-	async function deleteTemplate() {
-		if (!savedTemplate) return;
-		if (!window.confirm(`Hapus template kontrak untuk ${selectedRoleName}?`)) return;
-		setIsSaving(true);
-		try {
-			const nextTemplates = { ...effectiveTemplates };
-			delete nextTemplates[selectedTemplateKey];
-			const nextSettings = normalizeEmployeeOnboardingSettings({
-				...onboardingSettings,
-				contractTemplatesByRoleId: nextTemplates,
-				signatoryName: signatoryNameLocal,
-				signatoryPersonName: signatoryPersonNameLocal,
-				signatorySignatureUrl: signatorySigUrlLocal,
-				signatoryCompanyAddress: companyAddressLocal,
-				signatoryCompanyNIB: companyNIBLocal,
-				signatoryPersonTitle: personTitleLocal,
-				signatoryLocation: signatoryLocationLocal,
-			});
-			await updateSiteSettings({ employeeOnboarding: nextSettings });
-			setLocalTemplates(nextTemplates);
-			setDraft(contractToDraft(buildPlaceholderContract(
-				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
-				selectedRole,
-				signatoryNameLocal
-			)));
-			triggerHybridRefresh();
-			toast.success("Template dihapus");
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal menghapus template");
-		} finally {
-			setIsSaving(false);
-		}
-	}
-
-	async function saveSignatoryName(name: string) {
-		setSignatoryNameLocal(name);
-		await saveSignatorySettings({ signatoryName: name });
-	}
-
-	async function saveSignatoryPersonName(name: string) {
-		setSignatoryPersonNameLocal(name);
-		await saveSignatorySettings({ signatoryPersonName: name });
-	}
-
-	async function saveSignatorySettings(updates: {
-		signatoryName?: string; signatoryPersonName?: string; signatorySignatureUrl?: string;
-		signatoryCompanyAddress?: string; signatoryCompanyNIB?: string;
-		signatoryPersonTitle?: string; signatoryLocation?: string;
-	}) {
-		try {
-			const nextSettings = normalizeEmployeeOnboardingSettings({
-				...onboardingSettings,
-				signatoryName: signatoryNameLocal,
-				signatoryPersonName: signatoryPersonNameLocal,
-				signatorySignatureUrl: signatorySigUrlLocal,
-				signatoryCompanyAddress: companyAddressLocal,
-				signatoryCompanyNIB: companyNIBLocal,
-				signatoryPersonTitle: personTitleLocal,
-				signatoryLocation: signatoryLocationLocal,
-				...updates,
-			});
-			await updateSiteSettings({ employeeOnboarding: nextSettings });
-			triggerHybridRefresh();
-			toast.success("Pengaturan perusahaan disimpan");
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal menyimpan pengaturan");
-		}
-	}
-
+	// Signature upload
 	const signatorySigRef = useRef<HTMLInputElement>(null);
 	const [isUploadingSig, setIsUploadingSig] = useState(false);
 	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
 	async function uploadSignatorySignature(file: File) {
-		if (!file.type.startsWith("image/")) {
-			toast.error("Hanya file gambar yang diperbolehkan");
-			return;
-		}
-		if (isOversized(file)) {
-			toast.error("Ukuran file terlalu besar (max 5MB)");
-			return;
-		}
+		if (!file.type.startsWith("image/")) { toast.error("Hanya file gambar yang diperbolehkan"); return; }
+		if (isOversized(file)) { toast.error("Ukuran file terlalu besar (max 5MB)"); return; }
 		setIsUploadingSig(true);
 		try {
 			const compressedDataUrl = await compressFileToLimit(file);
@@ -585,12 +465,22 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			setSignatorySigUrlLocal(urlData.publicUrl);
 			await saveSignatorySettings({ signatorySignatureUrl: urlData.publicUrl });
 			return urlData.publicUrl;
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal mengunggah tanda tangan");
-			throw e;
-		} finally {
-			setIsUploadingSig(false);
-		}
+		} catch (e: any) { toast.error(e?.message || "Gagal mengunggah tanda tangan"); throw e; }
+		finally { setIsUploadingSig(false); }
+	}
+
+	async function saveSignatorySettings(updates: Record<string, string | undefined>) {
+		try {
+			const nextSettings = normalizeEmployeeOnboardingSettings({
+				...onboardingSettings, signatoryName: signatoryNameLocal, signatoryPersonName: signatoryPersonNameLocal,
+				signatorySignatureUrl: signatorySigUrlLocal, signatoryCompanyAddress: companyAddressLocal,
+				signatoryCompanyNIB: companyNIBLocal, signatoryPersonTitle: personTitleLocal,
+				signatoryLocation: signatoryLocationLocal, ...updates,
+			});
+			await updateSiteSettings({ employeeOnboarding: nextSettings });
+			triggerHybridRefresh();
+			toast.success("Pengaturan perusahaan disimpan");
+		} catch (e: any) { toast.error(e?.message || "Gagal menyimpan pengaturan"); }
 	}
 
 	async function downloadContractPdf() {
@@ -613,7 +503,6 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 				}
 			}
 
-			// Gunakan testPreviewText jika tersedia (sudah di-replace variablenya)
 			const pdfBodyText = testPreviewText || contractPreview.plainText ||
 				contractPreview.clauses.map((c) => `${c.title}\n${c.body}`).join("\n\n");
 			const pdfEmployeeName = testPreviewName || "[Nama Karyawan]";
@@ -654,19 +543,78 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
 		finally { setIsDownloadingPdf(false); }
 	}
+
+	const CLAUSE_LIBRARY: { title: string; body: string }[] = [
+		{ title: "Pasal Kerahasiaan (Non-Disclosure)", body: "Pihak Kedua wajib menjaga kerahasiaan seluruh data perusahaan, termasuk namun tidak terbatas pada resep, SOP, daftar pelanggan, strategi bisnis, dan informasi keuangan. Pelanggaran terhadap ketentuan ini dapat dikenakan sanksi sesuai peraturan perusahaan dan/atau tuntutan hukum yang berlaku." },
+		{ title: "Pasal Non-Compete", body: "Pihak Kedua tidak diperkenankan bekerja atau terlibat dengan usaha sejenis yang berada dalam radius kompetitif yang ditetapkan perusahaan selama masa kerja dan 3 (tiga) bulan setelah berakhirnya hubungan kerja." },
+		{ title: "Pasal Lembur (Overtime)", body: "Pihak Kedua diwajibkan bekerja lembur apabila diperlukan untuk memenuhi kebutuhan operasional. Lembur dihitung dan dikompensasikan sesuai dengan ketentuan yang berlaku di perusahaan dan peraturan perundang-undangan ketenagakerjaan." },
+		{ title: "Pasal Disiplin & Sanksi", body: "Pelanggaran terhadap tata tertib dan SOP perusahaan akan dikenakan sanksi bertahap mulai dari surat peringatan (SP1, SP2, SP3) hingga pemutusan hubungan kerja untuk pelanggaran berat. Keputusan sanksi bersifat final dan mengikat." },
+		{ title: "Pasal Masa Percobaan (Probation)", body: "Pihak Kedua menjalani masa percobaan selama 3 (tiga) bulan terhitung sejak tanggal mulai kerja. Selama masa percobaan, kedua pihak berhak mengakhiri hubungan kerja tanpa pemberitahuan terlebih dahulu. Setelah masa percobaan berakhir dan dinyatakan lulus, Pihak Kedua akan diangkat menjadi karyawan tetap." },
+		{ title: "Pasal Cuti & Izin", body: "Pihak Kedua berhak atas cuti tahunan sebanyak 12 (dua belas) hari kerja setelah bekerja selama 12 (dua belas) bulan berturut-turut. Izin tidak masuk kerja karena alasan darurat dapat diberikan dengan pemberitahuan minimal 1 (satu) jam sebelum jam kerja dimulai." },
+	];
+
+	// Create new template dialog
+	if (showNewDialog) {
+		const availableTemplates = Object.entries(contractTemplatesByRoleId).map(([key]) => ({
+			key,
+			name: extractNameFromKey(key, roles),
+		}));
+
+		return (
+			<div className="mx-auto max-w-lg px-4 py-12">
+				<div className="rounded-xl border bg-card p-6 shadow-sm">
+					<div className="mb-6 flex items-center justify-between">
+						<h2 className="text-lg font-semibold">Buat Template Baru</h2>
+						<Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => navigate({ to: "/admin/operational-team/register/contract" })}>
+							<X className="h-4 w-4" />
+						</Button>
+					</div>
+					<div className="space-y-4">
+						<div>
+							<Label className="text-xs font-medium">Nama Template</Label>
+							<Input value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} placeholder="Contoh: Barista Senior, Head Chef..." className="mt-1 h-9 text-sm" autoFocus />
+						</div>
+						<div>
+							<Label className="text-xs font-medium">Duplikasi dari (opsional)</Label>
+							<Select value={duplicateFrom} onValueChange={setDuplicateFrom}>
+								<SelectTrigger className="mt-1 h-9 text-sm">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__none__">Mulai dari kosong</SelectItem>
+									{availableTemplates.map((t) => (
+										<SelectItem key={t.key} value={t.key}>{t.name}</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex gap-2 pt-2">
+							<Button variant="outline" className="flex-1" onClick={() => navigate({ to: "/admin/operational-team/register/contract" })}>Batal</Button>
+							<Button className="flex-1" onClick={handleCreateNew} disabled={!newTemplateName.trim()}>Buat Template</Button>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="mx-auto w-full max-w-7xl">
+			{/* Header */}
 			<div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center gap-3 flex-wrap">
+					<Button size="sm" variant="ghost" onClick={() => navigate({ to: "/admin/operational-team/register/contract" })} className="h-8 w-8 p-0">
+						<ArrowLeft className="h-4 w-4" />
+					</Button>
 					<Badge variant="secondary" className="gap-1 shrink-0">
 						<FileSignature className="h-3 w-3" />
-						Kontrak Kerja
+						{selectedRoleName || "Template Baru"}
 					</Badge>
 					{isDirty ? (
 						<Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700">
 							<AlertCircle className="h-3 w-3" /> Ada perubahan
 						</Badge>
-					) : savedTemplate ? (
+					) : persistedTemplate ? (
 						<Badge variant="default" className="gap-1">
 							<CheckCircle2 className="h-3 w-3" /> Tersimpan
 						</Badge>
@@ -678,39 +626,30 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 					)}
 				</div>
 				<div className="flex items-center gap-2 flex-wrap">
-					<Select value={selectedTemplateKey} onValueChange={(nextKey) => {
-						if (isDirty && !window.confirm("Template belum disimpan. Pindah dan buang perubahan?")) return;
-						setSelectedTemplateKey(nextKey || DEFAULT_TEMPLATE_KEY);
-					}}>
-						<SelectTrigger className="h-8 w-44 text-xs">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value={DEFAULT_TEMPLATE_KEY}>Semua Jabatan (default)</SelectItem>
-							{roles.map((role: any) => (
-								<SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
 					<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-8 gap-1.5 text-xs">
 						{isDownloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
 						PDF
 					</Button>
-					<Button size="sm" variant="outline" onClick={resetToDefault} disabled={isSaving || isGenerating} className="h-8 text-xs">
-						Reset
-					</Button>
-					<Button size="sm" variant="outline" onClick={deleteTemplate} disabled={isSaving || !savedTemplate} className="h-8 text-xs">
-						<Trash2 className="mr-1 h-3 w-3" />
-						Hapus
-					</Button>
-					<Button size="sm" onClick={saveTemplate} disabled={isSaving} className="h-8 text-xs">
+					{persistedTemplate && (
+						<Button size="sm" variant="outline" onClick={resetToDefault} disabled={isSaving || isGenerating} className="h-8 text-xs">
+							Reset
+						</Button>
+					)}
+					{templateId !== "__default__" && persistedTemplate && (
+						<Button size="sm" variant="outline" onClick={deleteTemplate} disabled={isSaving} className="h-8 text-xs">
+							<Trash2 className="mr-1 h-3 w-3" /> Hapus
+						</Button>
+					)}
+					<Button size="sm" onClick={saveTemplate} disabled={isSaving || isNewTemplate} className="h-8 text-xs">
 						{isSaving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
 						{isSaving ? "Menyimpan..." : "Simpan"}
 					</Button>
 				</div>
 			</div>
 
+			{/* Main Content */}
 			<div className="flex flex-col gap-4 lg:flex-row">
+				{/* Left: Preview */}
 				<div className="flex-1 min-w-0 space-y-3 lg:w-[60%]">
 					<div className="rounded-lg border bg-card p-2.5">
 						<div className="flex items-center justify-between mb-2">
@@ -735,9 +674,9 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						<div className="p-3 max-h-[70vh] overflow-y-auto">
 							<ContractPreview
 								contract={testPreviewText ? (() => {
-	const paragraphs = testPreviewText.split("\n").map((l: string) => l.trim()).filter(Boolean).map((para: string) => `<p>${para}</p>`).join("\n");
-	return { ...contractPreview, plainText: testPreviewText, html: `<article>${paragraphs}</article>` };
-})() : contractPreview}
+									const paragraphs = testPreviewText.split("\n").map((l: string) => l.trim()).filter(Boolean).map((para: string) => `<p>${para}</p>`).join("\n");
+									return { ...contractPreview, plainText: testPreviewText, html: `<article>${paragraphs}</article>` };
+								})() : contractPreview}
 								employeeName={testPreviewName || "[Nama Karyawan]"}
 								companyName={companyDisplayName}
 								signatoryName={signatoryPersonNameLocal || companyDisplayName}
@@ -746,7 +685,10 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						</div>
 					</div>
 				</div>
+
+				{/* Right: Editor */}
 				<div className="flex flex-col gap-3 lg:w-[40%] lg:max-w-md">
+					{/* Employment Type */}
 					<div className="rounded-lg border bg-card p-2.5 flex items-center gap-2">
 						<span className="text-[11px] font-medium text-muted-foreground shrink-0">Tipe:</span>
 						<Select value={selectedEmploymentType} onValueChange={(v) => { if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return; setSelectedEmploymentType(v || "probation"); }}>
@@ -761,13 +703,15 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							</SelectContent>
 						</Select>
 					</div>
+
+					{/* Company Info */}
 					<details className="rounded-lg border bg-card" open={showCompanyInfo} onToggle={(e) => setShowCompanyInfo(e.currentTarget.open)}>
 						<summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
 							Informasi Perusahaan
 						</summary>
 						<div className="space-y-2 px-3 pb-3">
-							<input value={signatoryNameLocal} onChange={(e) => setSignatoryNameLocal(e.target.value)} onBlur={() => { if (signatoryNameLocal !== onboardingSettings.signatoryName) saveSignatoryName(signatoryNameLocal); }} placeholder="Nama perusahaan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
-							<input value={signatoryPersonNameLocal} onChange={(e) => setSignatoryPersonNameLocal(e.target.value)} onBlur={() => { if (signatoryPersonNameLocal !== onboardingSettings.signatoryPersonName) saveSignatoryPersonName(signatoryPersonNameLocal); }} placeholder="Nama penandatangan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
+							<input value={signatoryNameLocal} onChange={(e) => setSignatoryNameLocal(e.target.value)} onBlur={() => { if (signatoryNameLocal !== onboardingSettings.signatoryName) saveSignatorySettings({ signatoryName: signatoryNameLocal }); }} placeholder="Nama perusahaan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
+							<input value={signatoryPersonNameLocal} onChange={(e) => setSignatoryPersonNameLocal(e.target.value)} onBlur={() => { if (signatoryPersonNameLocal !== onboardingSettings.signatoryPersonName) saveSignatorySettings({ signatoryPersonName: signatoryPersonNameLocal }); }} placeholder="Nama penandatangan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
 							<input value={companyAddressLocal} onChange={(e) => setCompanyAddressLocal(e.target.value)} onBlur={() => { if (companyAddressLocal !== onboardingSettings.signatoryCompanyAddress) saveSignatorySettings({ signatoryCompanyAddress: companyAddressLocal }); }} placeholder="Alamat perusahaan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
 							<div className="flex gap-2">
 								<input value={companyNIBLocal} onChange={(e) => setCompanyNIBLocal(e.target.value)} onBlur={() => { if (companyNIBLocal !== onboardingSettings.signatoryCompanyNIB) saveSignatorySettings({ signatoryCompanyNIB: companyNIBLocal }); }} placeholder="NIB" className="h-7 flex-1 rounded-md border bg-background px-2 text-xs" />
@@ -791,6 +735,8 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							</div>
 						</div>
 					</details>
+
+					{/* Clauses */}
 					<div className="rounded-lg border bg-card p-3 space-y-2">
 						<div className="flex items-center justify-between">
 							<Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -831,6 +777,8 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							))}
 						</div>
 					</div>
+
+					{/* AI Assistant */}
 					<details className="rounded-lg border bg-card">
 						<summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
 							<Sparkles className="h-3 w-3" /> AI Assistant
@@ -843,7 +791,9 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							</Button>
 						</div>
 					</details>
-					<details className="rounded-lg border bg-card">
+
+					{/* Clause Library */}
+					<details className="rounded-lg border bg-card" open={showClauseLibrary} onToggle={(e) => setShowClauseLibrary(e.currentTarget.open)}>
 						<summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
 							Klausul Siap Pakai
 						</summary>
@@ -862,7 +812,6 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 	);
 }
 
-
-export const Route = createLazyFileRoute("/admin/operational-team/register/contract" as any)({
-	component: AdminContractPage,
+export const Route = createLazyFileRoute("/admin/operational-team/register/contract/edit/$templateId" as any)({
+	component: ContractEditPage,
 });

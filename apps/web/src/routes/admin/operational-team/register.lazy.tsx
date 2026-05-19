@@ -10,7 +10,7 @@ import { createClient } from "@/lib/client";
 function OperationalTeamRegisterPage() {
 	const location = useLocation();
 	const isNestedRoute =
-		location.pathname.endsWith("/register/contract") ||
+		location.pathname.includes("/register/contract") ||
 		location.pathname.endsWith("/register/onboarding") ||
 		location.pathname.endsWith("/register/riwayat") ||
 		location.pathname.includes("/register/application/");

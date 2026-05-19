@@ -264,6 +264,29 @@ export function RecipeMatrixPage() {
 			);
 	}, [products, search, categoryById]);
 
+	// ── Base Recipe lookup ──
+
+	const baseIngredientMap = useMemo(() => {
+		const map = new Map<string, Map<string, number>>();
+		for (const br of baseRecipes ?? []) {
+			const ingMap = new Map<string, number>();
+			for (const ing of br.ingredients ?? []) {
+				ingMap.set(String(ing.inventoryId), ing.amount);
+			}
+			map.set(String(br._id), ingMap);
+		}
+		return map;
+	}, [baseRecipes]);
+
+	const getBaseAmount = useCallback(
+		(baseId: string, inventoryId: string): number | null => {
+			const ingMap = baseIngredientMap.get(baseId);
+			const val = ingMap?.get(inventoryId);
+			return val != null ? val : null;
+		},
+		[baseIngredientMap]
+	);
+
 	// ── Get amount (local override > recipe) ──
 
 	const getAmount = useCallback(
@@ -330,6 +353,36 @@ export function RecipeMatrixPage() {
 			}
 		},
 		[recipeByProduct, saveRecipe, upsertHppFromRecipe]
+	);
+
+	// ── Save base recipe cell ──
+
+	const handleBaseCellSave = useCallback(
+		async (baseId: string, inventoryId: string, amount: number) => {
+			const existingMap = baseIngredientMap.get(baseId);
+			const ingredients: { inventoryId: string; amount: number }[] = [];
+
+			if (existingMap) {
+				for (const [invId, amt] of existingMap) {
+					if (String(invId) === String(inventoryId)) {
+						if (amount > 0) ingredients.push({ inventoryId: invId, amount });
+					} else {
+						ingredients.push({ inventoryId: invId, amount: amt });
+					}
+				}
+			}
+			if (amount > 0 && !existingMap?.has(inventoryId)) {
+				ingredients.push({ inventoryId, amount });
+			}
+
+			try {
+				await updateBaseRecipe({ id: baseId as any, ingredients } as any);
+				toast.success("Tersimpan");
+			} catch (err: any) {
+				toast.error(err?.message ?? "Gagal menyimpan");
+			}
+		},
+		[baseIngredientMap, updateBaseRecipe]
 	);
 
 	// ── Delete recipe ──
@@ -801,6 +854,75 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 								</tr>
 							);
 						})}
+						{/* ── Base Recipe Rows ── */}
+						{(baseRecipes ?? []).map((br: any) => (
+							<tr key={`base-${br._id}`} className="border-b border-border/20 hover:bg-primary/[0.02] group">
+								{/* Base name */}
+								<td className="sticky left-0 z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-3 py-1.5">
+									<div className="flex items-center gap-1.5">
+										<Badge variant="secondary" className="h-4 px-1 text-[8px] shrink-0">Base</Badge>
+										<span className="text-xs font-medium text-foreground truncate">{br.name}</span>
+									</div>
+								</td>
+								{/* Category */}
+								<td className="sticky left-[130px] z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-1 py-1.5 text-center text-[9px] text-muted-foreground tabular-nums">
+									{br.category ? br.category.slice(0, 3).toUpperCase() : "—"}
+								</td>
+								{/* HPP (not applicable) */}
+								<td className="border-r border-border/40 px-2 py-1.5 text-right text-[10px] tabular-nums">
+									<span className="text-muted-foreground/30 text-[10px]">—</span>
+								</td>
+								{/* Ingredient cells */}
+								{ingredientColumns.map((ing) => {
+									const invId = String(ing._id);
+									const baseId = String(br._id);
+									const amount = getBaseAmount(baseId, invId);
+									const key = `base:${baseId}:${invId}`;
+									const isEditing = editingCell === key;
+									const cellUnitInfo = getSmallestUnitInfo(ing);
+									const displayAmount = amount != null ? amount * (cellUnitInfo?.factor ?? 1) : null;
+
+									if (isEditing) {
+										return (
+											<td key={invId} className="border-r border-border/40 px-1 py-0.5 bg-primary/[0.04]">
+												<CellEditor
+													value={displayAmount != null ? String(displayAmount) : ""}
+													unit={(getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit || "")}
+													onSave={(val) => { const f = cellUnitInfo?.factor ?? 1; handleBaseCellSave(baseId, invId, Number(val) / f); setEditingCell(null); }}
+													onCancel={handleCellCancel}
+												/>
+											</td>
+										);
+									}
+
+									return (
+										<td
+											key={invId}
+											className={cn(
+												"border-r border-border/40 px-2 py-1.5 text-center text-[10px] tabular-nums cursor-pointer transition-colors select-none",
+												amount != null && amount > 0
+													? "bg-primary/[0.04] hover:bg-primary/[0.08] font-medium text-foreground"
+													: "text-muted-foreground/20 hover:bg-muted/30"
+											)}
+											onClick={() => { setEditingCell(key); }}
+											title={
+												displayAmount != null
+													? `${displayAmount} ${getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit}`
+													: "Klik untuk isi"
+											}
+										>
+											{displayAmount != null ? (
+												displayAmount
+											) : (
+												<span className="text-[8px] opacity-40">·</span>
+											)}
+										</td>
+									);
+								})}
+								{/* Empty cell for add-ingredient column */}
+								<td className="border-r border-border/20 px-1 py-1.5" />
+							</tr>
+						))}
 						{productRows.length === 0 && (
 							<tr>
 								<td

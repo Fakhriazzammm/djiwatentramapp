@@ -772,6 +772,25 @@ async def _check_new_orders(app):
         items = row.get("items") or []
         total = row.get("totalAmount") or 0
 
+        # ── DEBUG: log raw items ──
+        item_pids = [i.get("productId", "NO_PID") for i in items] if items else []
+        item_names = [i.get("productName", "NO_NAME").strip() for i in items] if items else []
+        logger.info("DEBUG items for %s: count=%s pids=%s names=%s",
+                     order_no, len(items) if items else 0, item_pids, item_names)
+        if items:
+            for idx, it in enumerate(items):
+                pid = it.get("productId", "")
+                logger.info("DEBUG item[%d]: pid=%s in_FOOD=%s in_BEV=%s",
+                            idx, pid,
+                            pid in _FOOD_PRODUCT_IDS if pid else False,
+                            pid in _BEVERAGE_PRODUCT_IDS if pid else False)
+
+        # 🛡 Skip order with empty/incomplete items (JSONB race condition)
+        # Order akan di-retry di poll berikutnya (10 menit lookback window)
+        if not items or not any(i.get("productId") for i in items):
+            logger.warning("Order %s skipped — items empty/incomplete (will retry in next poll)", order_no)
+            continue
+
         daily_no = row.get("daily_receipt_no")
         receipt_kind = row.get("receipt_kind")
         receipt_kind_labels = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}
@@ -795,6 +814,8 @@ async def _check_new_orders(app):
         # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
         bev_items = await _get_beverage_items(items)
+        logger.info("DEBUG classification for %s: food=%d bev=%d (of %d total items)",
+                     order_no, len(food_items), len(bev_items), len(items) if items else 0)
 
         # Kirim kitchen + barista paralel per order
         tasks = []
