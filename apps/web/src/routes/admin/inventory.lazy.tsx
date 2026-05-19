@@ -5881,7 +5881,7 @@ function InventoryTable({
 											/>
 											<span className="text-[9px] font-mono tabular-nums text-muted-foreground/40">/</span>
 											<input
-												className="ml-0.5 w-[6ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[9px] font-semibold text-muted-foreground/60 outline-none focus:border-border focus:bg-background"
+												className="ml-0.5 w-[8ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[9px] font-semibold text-muted-foreground/60 outline-none focus:border-border focus:bg-background"
 												list="inventory-unit-options-table"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
