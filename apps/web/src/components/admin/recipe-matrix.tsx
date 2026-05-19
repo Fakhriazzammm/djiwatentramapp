@@ -284,6 +284,29 @@ export function RecipeMatrixPage() {
 		[productRows, recipeByProduct]
 	);
 
+	const recipeKeyword = searchRecipe.trim().toLowerCase();
+	const filteredBaseRecipeCards = useMemo(() => {
+		if (!recipeKeyword) return baseRecipeCards;
+		return baseRecipeCards.filter((br: any) => {
+			return (
+				String(br?.name ?? "").toLowerCase().includes(recipeKeyword) ||
+				String(br?.category ?? "").toLowerCase().includes(recipeKeyword) ||
+				String(br?.description ?? "").toLowerCase().includes(recipeKeyword)
+			);
+		});
+	}, [baseRecipeCards, recipeKeyword]);
+
+	const filteredProductRecipeCards = useMemo(() => {
+		if (!recipeKeyword) return productRecipeCards;
+		return productRecipeCards.filter((product: any) => {
+			const cat = categoryById.get(String(product.categoryId)) ?? "";
+			return (
+				String(product?.name ?? "").toLowerCase().includes(recipeKeyword) ||
+				String(cat).toLowerCase().includes(recipeKeyword)
+			);
+		});
+	}, [productRecipeCards, recipeKeyword, categoryById]);
+
 	const getAmount = useCallback(
 		(productId: string, inventoryId: string): number | null => {
 			const key = `${productId}:${inventoryId}`;
@@ -872,7 +895,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				<Settings2 className="h-3.5 w-3.5 text-primary" />
 				<p className="text-[11px] font-bold text-muted-foreground">Semua Recipe</p>
 				<Badge variant="outline" className="text-[9px] h-4 px-1">
-					{baseRecipeCards.length + productRecipeCards.length} recipe
+					{filteredBaseRecipeCards.length + filteredProductRecipeCards.length} recipe
 				</Badge>
 				<div className="ml-auto flex items-center gap-1">
 					<Button
@@ -881,7 +904,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						className="h-6 text-[10px] px-2"
 						onClick={() => setRecipeCardFilter("all")}
 					>
-						Semua ({baseRecipeCards.length + productRecipeCards.length})
+						Semua ({filteredBaseRecipeCards.length + filteredProductRecipeCards.length})
 					</Button>
 					<Button
 						variant={recipeCardFilter === "base" ? "default" : "outline"}
@@ -889,7 +912,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						className="h-6 text-[10px] px-2"
 						onClick={() => setRecipeCardFilter("base")}
 					>
-						Base ({baseRecipeCards.length})
+						Base ({filteredBaseRecipeCards.length})
 					</Button>
 					<Button
 						variant={recipeCardFilter === "product" ? "default" : "outline"}
