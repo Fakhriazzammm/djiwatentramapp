@@ -66,6 +66,7 @@ from orchestrator import FinanceOrchestrator, OrchestratorResult
 from categories import auto_categorize, categorize_item, categorize_item_with_memory, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category, ai_categorize_item, auto_create_category_in_db
 from sumopod_client import SumoPodClient
 from memory import MemoryManager, normalize_name
+from item_normalization import expand_item_alias, normalize_unit, load_aliases_from_db
 from analyzer import TransactionAnalyzer
 # (no supplier import needed — moved to Yumi Purchasing)
 
@@ -349,6 +350,8 @@ def _normalize_ocr_items(items: list[dict]) -> list[dict]:
             continue
 
         clean_name, net_weight_value, net_weight_unit, pack_type = _extract_pack_meta(name_raw)
+        alias_name, alias_from = expand_item_alias(clean_name)
+        clean_name = alias_name or clean_name
 
         try:
             qty = float(it.get("qty") or 1)
@@ -365,9 +368,9 @@ def _normalize_ocr_items(items: list[dict]) -> list[dict]:
         if subtotal <= 0 and qty > 0 and price > 0:
             subtotal = qty * price
 
-        unit = str(it.get("unit") or "").strip().lower()
+        unit = normalize_unit(str(it.get("unit") or ""))
         if not unit:
-            unit = _extract_unit(name_raw) or ("pack" if pack_type else "pcs")
+            unit = normalize_unit(_extract_unit(name_raw)) or ("pack" if pack_type else "pcs")
 
         item_obj = {
             "name": clean_name[:80],
@@ -383,6 +386,8 @@ def _normalize_ocr_items(items: list[dict]) -> list[dict]:
             item_obj["net_weight_unit"] = net_weight_unit
         if pack_type:
             item_obj["pack_type"] = pack_type
+        if alias_from:
+            item_obj["alias_resolved_from"] = alias_from[:120]
 
         normalized.append(item_obj)
     return normalized[:80]
@@ -1434,6 +1439,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                 {
                     "name": it.get("name", ""),
                     "rawName": it.get("raw_name", ""),
+                    "aliasResolvedFrom": it.get("alias_resolved_from", ""),
                     "quantity": it.get("qty", 1),
                     "unit": it.get("unit", ""),
                     "price": it.get("price", 0),
@@ -1531,9 +1537,9 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
 
 def _extract_unit(name: str) -> str:
     """Extract unit dari nama item."""
-    m = re.search(r'(\d+(?:\.\d+)?)\s*(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol)\b', name, re.IGNORECASE)
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|ctn|dus|karton)\b', name, re.IGNORECASE)
     if m:
-        return m.group(2).lower()
+        return normalize_unit(m.group(2))
     return ""
 
 
@@ -2271,6 +2277,9 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "subtotal": qty * price,
                         "unit": it.get("unit", ""),
                     })
+
+            # Apply same normalization pipeline as OCR (alias + unit canonicalization)
+            items = _normalize_ocr_items(items)
 
             # Simpan ke pending receipt — reuses existing _handle_receipt_callback
             ref_id = f"rcpt_{len(_receipt_pending)}"
@@ -3105,9 +3114,15 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     "scanItems": [
                         {
                             "name": it.get("name", ""),
+                            "rawName": it.get("raw_name", ""),
+                            "aliasResolvedFrom": it.get("alias_resolved_from", ""),
                             "quantity": it.get("qty", 1),
+                            "unit": it.get("unit", ""),
                             "price": it.get("price", 0),
-                            "total": (it.get("qty", 1) or 1) * (it.get("price", 0) or 0),
+                            "total": (it.get("subtotal", 0) or ((it.get("qty", 1) or 1) * (it.get("price", 0) or 0))),
+                            "netWeightValue": it.get("net_weight_value"),
+                            "netWeightUnit": it.get("net_weight_unit", ""),
+                            "packType": it.get("pack_type", ""),
                         }
                         for it in ri.get("items", [])
                     ],
@@ -3402,9 +3417,15 @@ async def _handle_bulkitem_callback(update: Update, context: ContextTypes.DEFAUL
                 "scanItems": [
                     {
                         "name": it.get("name", ""),
+                        "rawName": it.get("raw_name", ""),
+                        "aliasResolvedFrom": it.get("alias_resolved_from", ""),
                         "quantity": it.get("qty", 1),
+                        "unit": it.get("unit", ""),
                         "price": it.get("price", 0),
-                        "total": (it.get("qty", 1) or 1) * (it.get("price", 0) or 0),
+                        "total": (it.get("subtotal", 0) or ((it.get("qty", 1) or 1) * (it.get("price", 0) or 0))),
+                        "netWeightValue": it.get("net_weight_value"),
+                        "netWeightUnit": it.get("net_weight_unit", ""),
+                        "packType": it.get("pack_type", ""),
                     }
                     for it in ri.get("items", [])
                 ],
@@ -3912,6 +3933,15 @@ async def _start_http_server(bot_app, port=ANALYZER_PORT):
         logger.warning("Order sync failed to start: %s", e)
 
 
+async def _load_inventory_aliases():
+    """Load inventory aliases from DB into item_normalization cache."""
+    try:
+        aliases_data = await inventory.get_all_inventory_aliases()
+        load_aliases_from_db(aliases_data)
+    except Exception as e:
+        logger.warning("Failed to load inventory aliases (non-fatal): %s", e)
+
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN belum di-set")
@@ -3926,6 +3956,12 @@ def main():
             loop.run_until_complete(memory.load_all())
     except Exception as e:
         logger.warning("Memory load failed (non-fatal): %s", e)
+
+    # ── Load inventory aliases ───────────────────────────────────
+    try:
+        _asyncio.ensure_future(_load_inventory_aliases())
+    except Exception as e:
+        logger.warning("Alias load failed (non-fatal): %s", e)
 
     # ── Load pending sessions ───────────────────────────────────
     _load_pending()

@@ -1,5 +1,5 @@
 {
-  "version": 196,
+  "version": 198,
   "entries": [
     {
       "id": "42cd65b0-dc43-409d-9aa9-46f5ba4a2d29",
@@ -4814,9 +4814,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 90.0,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-18T14:08:12.482398+00:00",
-      "updatedAt": "2026-05-18T14:08:12.482398+00:00"
+      "updatedAt": "2026-05-19T07:38:44.847532+00:00"
     },
     {
       "id": "d4695376-324b-4a08-8170-6c5c1319f00c",
@@ -4838,7 +4838,49 @@
       "usageCount": 1,
       "createdAt": "2026-05-19T06:45:18.011771+00:00",
       "updatedAt": "2026-05-19T06:45:18.011771+00:00"
+    },
+    {
+      "id": "e6e6263a-4369-45f9-b49e-8da60a58cbe9",
+      "type": "expense_match",
+      "userInput": "JJ Apple (qty:2, price:29800)",
+      "parsedName": "JJ Apple (qty:2, price:29800)",
+      "matchedInventoryId": "kd7e3k2x2qyxajfdzyeqvn135d841pxk",
+      "matchedIngredientName": "Sirup Green Apple",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 90.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-19T07:38:47.382839+00:00",
+      "updatedAt": "2026-05-19T07:38:47.382839+00:00"
+    },
+    {
+      "id": "4edcedb7-d036-43c5-9c52-da8011d7908e",
+      "type": "expense_match",
+      "userInput": "Ubi Cilembu (qty:2, price:25000)",
+      "parsedName": "Ubi Cilembu (qty:2, price:25000)",
+      "matchedInventoryId": "kd775fn5sd3fhf1w8c9fc52205841wdr",
+      "matchedIngredientName": "Ubi Cilembu",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 100.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-19T07:41:20.682481+00:00",
+      "updatedAt": "2026-05-19T07:41:20.682481+00:00"
     }
   ],
-  "last_updated": "2026-05-19T06:45:18.012584+00:00"
+  "last_updated": "2026-05-19T07:41:20.686730+00:00"
 }

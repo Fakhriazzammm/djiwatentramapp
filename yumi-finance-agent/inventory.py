@@ -195,6 +195,28 @@ class InventoryManager:
             "select=_id,ingredientName,quantity,lowStockThreshold,unit,lastPurchasePrice,preferredStoreId,preferredPurchaseUnit,preferredPurchaseQuantity,conversionFactor,displayUnit",
         )
 
+    async def get_all_inventory_aliases(self) -> list[dict]:
+        """Ambil inventory aliases dari DB untuk alias resolution cache.
+        
+        Memakai snake_case inventory (Accept-Profile: pos) karena
+        pos_inventory view (public) tidak punya kolom aliases.
+        """
+        url = f"{self.supabase_url}/rest/v1/inventory?select=ingredient_name,aliases"
+        headers = {
+            "apikey": self.supabase_key,
+            "Authorization": f"Bearer {self.service_role_key}",
+            "Accept-Profile": "pos",
+        }
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            result = resp.json()
+            # Map snake_case back to camelCase for consistency
+            return [
+                {"ingredient_name": r.get("ingredient_name", ""), "aliases": r.get("aliases") or []}
+                for r in result
+            ]
+
     async def fuzzy_match_item(
         self, receipt_name: str, inventory_list: list[dict] | None = None
     ) -> tuple[dict | None, int]:

@@ -34,6 +34,78 @@ function cn(...classes: (string | false | null | undefined)[]) {
 	return classes.filter(Boolean).join(" ");
 }
 
+
+const ALA_CARTE_PROCESS_CONFIGS = {
+	"nasi ayam mentega": {
+		baseKeywords: ["mentega sauce", "based ayam mentega sauce", "based paha ayam mentega"],
+		garnishKeywords: ["bawang goreng", "biji wijen", "selada", "timun"],
+	},
+	"nasi ayam rempah kemangi": {
+		baseKeywords: ["rempah kemangi sauce", "kemangi sauce", "based kemangi sauce", "based paha ayam mentega"],
+		garnishKeywords: ["bawang goreng", "biji wijen", "selada", "timun", "kemangi"],
+	},
+} as const;
+
+function formatIngredientAmount(ing: any, item: any, productName: string) {
+	const ingredientName = (item?.ingredientName ?? "").toLowerCase();
+	const menuName = (productName ?? "").toLowerCase();
+	const isAlaCarteTarget =
+		menuName.includes("nasi ayam mentega") || menuName.includes("nasi ayam rempah kemangi");
+	const isChicken = ingredientName.includes("ayam");
+
+	if (isAlaCarteTarget && isChicken) {
+		return "1 paha utuh";
+	}
+
+	const unit = item ? getSmallestUnitLabel(item) : "";
+	const normalizedUnit = unit.toLowerCase() === "gram" ? "gr" : unit;
+	return `${ing.amount} ${normalizedUnit}`.trim();
+}
+
+function buildProcessBuckets({
+	productName,
+	recipe,
+	inventoryMap,
+	baseRecipes,
+}: {
+	productName: string;
+	recipe: any;
+	inventoryMap: Map<string, any>;
+	baseRecipes: any[];
+}) {
+	const menu = (productName ?? "").toLowerCase();
+	const config = Object.entries(ALA_CARTE_PROCESS_CONFIGS).find(([key]) => menu.includes(key))?.[1];
+
+	const baseItems: any[] = [];
+	const garnishItems: any[] = [];
+	const directItems: any[] = [];
+
+	for (const ing of recipe.ingredients ?? []) {
+		const item = inventoryMap.get(String(ing.inventoryId));
+		const name = (item?.ingredientName ?? "").toLowerCase();
+		const matchedBase = (baseRecipes ?? []).find((br: any) => {
+			const brName = br.name?.toLowerCase() ?? "";
+			return name.includes(brName) || brName.includes(name);
+		});
+
+		const isBaseByConfig = !!config?.baseKeywords?.some((kw: string) => name.includes(kw));
+		const isGarnishByConfig = !!config?.garnishKeywords?.some((kw: string) => name.includes(kw));
+
+		if (matchedBase || isBaseByConfig) {
+			baseItems.push(ing);
+			continue;
+		}
+		if (isGarnishByConfig) {
+			garnishItems.push(ing);
+			continue;
+		}
+		directItems.push(ing);
+	}
+
+	return { baseItems, garnishItems, directItems };
+}
+
+
 export function RecipeViewPage() {
 	const products = useHybridAllProducts();
 	const categories = useHybridCategories();
@@ -328,27 +400,17 @@ function ProductRecipeDetail({
 }) {
 	const { product, recipe, categoryName } = row;
 
-	// Identify which ingredients are base recipes vs inventory items
 	const splitIngredients = useMemo(() => {
-		const baseItems: any[] = [];
-		const directItems: any[] = [];
-
-		for (const ing of recipe.ingredients ?? []) {
-			const invItem = inventoryMap.get(String(ing.inventoryId));
-			const isBase = invItem && (baseRecipes ?? []).some((br: any) => {
-				const brName = br.name?.toLowerCase() ?? "";
-				return invItem.ingredientName?.toLowerCase().includes(brName);
-			});
-			if (isBase) {
-				baseItems.push(ing);
-			} else {
-				directItems.push(ing);
-			}
-		}
-		return { baseItems, directItems };
-	}, [recipe, baseRecipes, inventoryMap]);
+		return buildProcessBuckets({
+			productName: product.name ?? "",
+			recipe,
+			inventoryMap,
+			baseRecipes,
+		});
+	}, [product.name, recipe, baseRecipes, inventoryMap]);
 
 	const hasBaseItems = splitIngredients.baseItems.length > 0;
+	const hasGarnishItems = splitIngredients.garnishItems.length > 0;
 
 	return (
 		<Card className="border-primary/20">
@@ -377,7 +439,7 @@ function ProductRecipeDetail({
 						</div>
 						<div className="rounded-lg border border-border bg-card p-3">
 							<h3 className="font-semibold text-xs">Siapkan Bahan Baku</h3>
-							<p className="mb-2 text-[10px] text-muted-foreground">Ambil bahan-bahan berikut dari inventory:</p>
+							<p className="mb-2 text-[10px] text-muted-foreground">Siapkan komponen utama ala carte:</p>
 							<div className="space-y-1">
 								{splitIngredients.directItems.map((ing: any, index: number) => {
 									const item = inventoryMap.get(String(ing.inventoryId));
@@ -386,7 +448,7 @@ function ProductRecipeDetail({
 											<CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" />
 											<span className="flex-1">{item?.ingredientName || "Bahan"}</span>
 											<span className="shrink-0 font-semibold tabular-nums">
-												{ing.amount} {item ? getSmallestUnitLabel(item) : ""}
+												{formatIngredientAmount(ing, item, product.name ?? "")}
 											</span>
 										</div>
 									);
@@ -426,8 +488,33 @@ function ProductRecipeDetail({
 													)}
 												</span>
 												<span className="shrink-0 font-semibold tabular-nums">
-													{ing.amount} {item ? getSmallestUnitLabel(item) : ""}
+													{formatIngredientAmount(ing, item, product.name ?? "")}
 												</span>
+											</div>
+										);
+									})}
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Step 3: Garnish (optional) */}
+					{hasGarnishItems && (
+						<div className="relative pl-10 pb-4">
+							<div className="absolute left-2 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500 text-[11px] font-bold text-white z-10">
+								{hasBaseItems ? 3 : 2}
+							</div>
+							<div className="rounded-lg border border-indigo-200/50 bg-indigo-50/50 p-3">
+								<h3 className="font-semibold text-xs">Finishing & Garnish</h3>
+								<p className="mb-2 text-[10px] text-muted-foreground">Tambahkan garnish sebelum sajikan:</p>
+								<div className="space-y-1">
+									{splitIngredients.garnishItems.map((ing: any, index: number) => {
+										const item = inventoryMap.get(String(ing.inventoryId));
+										return (
+											<div key={index} className="flex items-center gap-2 text-xs">
+												<CheckCircle2 className="h-3 w-3 shrink-0 text-indigo-600" />
+												<span className="flex-1">{item?.ingredientName || "Bahan"}</span>
+												<span className="shrink-0 font-semibold tabular-nums">{formatIngredientAmount(ing, item, product.name ?? "")}</span>
 											</div>
 										);
 									})}
@@ -439,7 +526,7 @@ function ProductRecipeDetail({
 					{/* Final Step: Sajikan */}
 					<div className="relative pl-10">
 						<div className="absolute left-2 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white z-10">
-							{hasBaseItems ? 3 : 2}
+							{hasGarnishItems ? (hasBaseItems ? 4 : 3) : (hasBaseItems ? 3 : 2)}
 						</div>
 						<div className="rounded-lg border border-emerald-200/50 bg-emerald-50/50 p-3">
 							<h3 className="font-semibold text-xs">Sajikan</h3>

@@ -102,6 +102,58 @@ function CellEditor({
 	);
 }
 
+
+const ALA_CARTE_BASE_PRESETS: Array<{ name: string; category: string; targetUnit: string; targetQuantity: string; description: string }> = [
+	{
+		name: "Based Ayam Mentega Sauce",
+		category: "Base Sauce",
+		targetUnit: "gr",
+		targetQuantity: "1000",
+		description: "Base sauce untuk menu ala carte Ayam Mentega.",
+	},
+	{
+		name: "Based Kemangi Sauce",
+		category: "Base Sauce",
+		targetUnit: "gr",
+		targetQuantity: "1000",
+		description: "Base sauce untuk menu ala carte Ayam Rempah Kemangi.",
+	},
+	{
+		name: "Based Paha Ayam Mentega",
+		category: "Lainnya",
+		targetUnit: "paha utuh",
+		targetQuantity: "1",
+		description: "Base persiapan paha ayam utuh untuk menu ala carte.",
+	},
+];
+
+const ALA_CARTE_PRODUCT_TEMPLATES = [
+	{
+		productKeywords: ["ayam mentega"],
+		ingredients: [
+			{ keywords: ["paha ayam"], amount: 1, unit: "text" as const },
+			{ keywords: ["based ayam mentega sauce", "mentega sauce"], amount: 120, unit: "gr" as const },
+			{ keywords: ["based paha ayam mentega"], amount: 1, unit: "pcs" as const },
+			{ keywords: ["bawang goreng"], amount: 10, unit: "gr" as const },
+			{ keywords: ["biji wijen"], amount: 3, unit: "gr" as const },
+			{ keywords: ["selada"], amount: 20, unit: "pcs" as const },
+			{ keywords: ["timun"], amount: 20, unit: "gr" as const },
+		],
+	},
+	{
+		productKeywords: ["ayam rempah kemangi"],
+		ingredients: [
+			{ keywords: ["paha ayam"], amount: 1, unit: "text" as const },
+			{ keywords: ["based kemangi sauce", "kemangi sauce"], amount: 120, unit: "gr" as const },
+			{ keywords: ["based paha ayam mentega"], amount: 1, unit: "pcs" as const },
+			{ keywords: ["bawang goreng"], amount: 10, unit: "gr" as const },
+			{ keywords: ["biji wijen"], amount: 3, unit: "gr" as const },
+			{ keywords: ["selada"], amount: 20, unit: "pcs" as const },
+			{ keywords: ["timun"], amount: 20, unit: "gr" as const },
+		],
+	},
+];
+
 // ─── Main Component ──────────────────────────────────────────
 
 export function RecipeMatrixPage() {
@@ -134,6 +186,7 @@ export function RecipeMatrixPage() {
 	const [baseModalOpen, setBaseModalOpen] = useState(false);
 	const [editingBaseId, setEditingBaseId] = useState<string | null>(null);
 	const [deletingBaseId, setDeletingBaseId] = useState<string | null>(null);
+	const [applyingAlaCarteSync, setApplyingAlaCarteSync] = useState(false);
 	const [searchRecipe, setSearchRecipe] = useState("");
 	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
 		name: "",
@@ -300,6 +353,84 @@ export function RecipeMatrixPage() {
 		}
 	}, [recipes, deleteRecipe]);
 
+	const handleApplyAlaCarteSync = useCallback(async () => {
+		if (!products || !inventory || applyingAlaCarteSync) return;
+
+		setApplyingAlaCarteSync(true);
+		try {
+			const normalizedInventory = (inventory ?? []).map((item) => ({
+				...item,
+				_normName: String(item.ingredientName ?? "").toLowerCase(),
+			}));
+
+			const findInventoryByKeywords = (keywords: string[]) => {
+				const lower = keywords.map((k) => k.toLowerCase());
+				return normalizedInventory.find((item) => lower.some((kw) => item._normName.includes(kw)));
+			};
+
+			let successCount = 0;
+			const warnings: string[] = [];
+
+			for (const template of ALA_CARTE_PRODUCT_TEMPLATES) {
+				const product = (products ?? []).find((p) => {
+					const name = String(p.name ?? "").toLowerCase();
+					return template.productKeywords.every((kw) => name.includes(kw));
+				});
+
+				if (!product) {
+					warnings.push(`Produk tidak ditemukan: ${template.productKeywords.join(" ")}`);
+					continue;
+				}
+
+				const ingredients: { inventoryId: Id<"inventory">; amount: number }[] = [];
+				const missing: string[] = [];
+
+				for (const row of template.ingredients) {
+					const inv = findInventoryByKeywords(row.keywords);
+					if (!inv) {
+						missing.push(row.keywords[0]);
+						continue;
+					}
+
+					let amountInSmallest = row.amount;
+					if (row.unit !== "text") {
+						amountInSmallest = convertToSmallestUnit(inv as any, row.amount);
+					}
+
+					ingredients.push({
+						inventoryId: String(inv._id) as Id<"inventory">,
+						amount: amountInSmallest,
+					});
+				}
+
+				if (missing.length > 0) {
+					warnings.push(`Bahan belum lengkap untuk ${product.name}: ${missing.join(", ")}`);
+					continue;
+				}
+
+				await saveRecipe({
+					productId: String(product._id) as Id<"products">,
+					ingredients,
+				});
+
+				upsertHppFromRecipe({
+					productId: String(product._id) as Id<"products">,
+					overheadCosts: [],
+				}).catch(() => {});
+
+				successCount += 1;
+			}
+
+			if (successCount > 0) toast.success(`Sinkron ala carte selesai (${successCount} produk).`);
+			if (warnings.length > 0) toast.warning(warnings.join(" | "));
+			if (successCount === 0 && warnings.length === 0) toast.info("Tidak ada perubahan resep ala carte.");
+		} catch (error: any) {
+			toast.error(error?.message ?? "Gagal sinkron resep ala carte.");
+		} finally {
+			setApplyingAlaCarteSync(false);
+		}
+	}, [products, inventory, applyingAlaCarteSync, saveRecipe, upsertHppFromRecipe]);
+
 	// ── Cell interaction ──
 
 	const handleCellClick = (productId: string, inventoryId: string) => {
@@ -326,6 +457,19 @@ export function RecipeMatrixPage() {
 			category: "Lainnya",
 			targetUnit: "ml",
 			targetQuantity: "1000",
+			ingredients: [],
+		});
+		setBaseModalOpen(true);
+	};
+
+	const handleOpenPresetBase = (preset: (typeof ALA_CARTE_BASE_PRESETS)[number]) => {
+		setEditingBaseId(null);
+		setBaseForm({
+			name: preset.name,
+			description: preset.description,
+			category: preset.category,
+			targetUnit: preset.targetUnit,
+			targetQuantity: preset.targetQuantity,
 			ingredients: [],
 		});
 		setBaseModalOpen(true);
@@ -463,6 +607,16 @@ export function RecipeMatrixPage() {
 						onClick={() => setShowAllIngredients(!showAllIngredients)}
 					>
 						{showAllIngredients ? "Bahan dipakai" : "Semua bahan"}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-6 text-[10px] px-2"
+						onClick={handleApplyAlaCarteSync}
+						disabled={applyingAlaCarteSync}
+					>
+						{applyingAlaCarteSync ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+						Sync Ala Carte
 					</Button>
 					<Button
 						variant="ghost"
@@ -716,16 +870,27 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						</Badge>
 					</div>
 					<div className="flex flex-wrap gap-2">
-						<div className="flex items-center gap-2 mb-2">
+						<div className="flex items-center gap-2 mb-2 flex-wrap">
 						<Button
 							variant="outline"
 							size="sm"
-							className="h-6 text-[10px] px-2 ml-auto"
+							className="h-6 text-[10px] px-2"
 							onClick={handleOpenCreateBase}
 						>
 							<Plus className="h-3 w-3 mr-1" />
 							Tambah Base Recipe
 						</Button>
+						{ALA_CARTE_BASE_PRESETS.map((preset) => (
+							<Button
+								key={preset.name}
+								variant="secondary"
+								size="sm"
+								className="h-6 text-[10px] px-2"
+								onClick={() => handleOpenPresetBase(preset)}
+							>
+								{preset.name}
+							</Button>
+						))}
 					</div>
 					{(baseRecipes ?? []).length === 0 ? (
 							<p className="text-[10px] text-muted-foreground/60">

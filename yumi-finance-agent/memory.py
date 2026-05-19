@@ -10,18 +10,28 @@ import re
 import httpx
 from datetime import datetime, timezone, timedelta
 
+from item_normalization import expand_item_alias, normalize_unit
+
 logger = logging.getLogger(__name__)
 WIB = timezone(timedelta(hours=7))
 
 
 def normalize_name(name: str) -> str:
-    """Normalize item name for consistent matching: lowercase, remove qty patterns, trim."""
-    name = name.lower().strip()
+    """Normalize item name for consistent matching: expand alias, strip qty/unit, lowercase."""
+    original = (name or "").strip()
+    expanded, _ = expand_item_alias(original)
+    name = (expanded or original).lower().strip()
+
     # Remove quantity/unit suffixes: "1kg", "500ml", "2 pcs", etc.
     name = re.sub(
-        r'\d+(?:[,.]\d+)?\s*(?:kg|gram|gr|g|ml|liter|lt|l|pcs|pack|sachet|ikat|bungkus|botol|gelas|bal|dus|karton|renceng|toros)\b',
+        r'\d+(?:[,.]\d+)?\s*(?:kg|gram|gr|g|ml|liter|lt|l|pcs|pack|sachet|ikat|bungkus|botol|gelas|bal|dus|karton|renceng|toros|ctn)\b',
         '', name,
     )
+
+    # Normalize remaining standalone unit tokens
+    tokens = [normalize_unit(tok) or tok for tok in re.split(r'\s+', name) if tok]
+    name = " ".join(tokens)
+
     # Remove extra spaces
     name = re.sub(r'\s+', ' ', name).strip()
     return name
