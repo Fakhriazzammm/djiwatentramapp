@@ -720,7 +720,7 @@ export function RecipeMatrixPage() {
 				</div>
 				<div className="flex items-center gap-2 ml-auto">
 					<Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-						{productRows.length} produk
+						{filteredProductRows.length} produk
 					</Badge>
 					<Badge variant="outline" className="text-[10px] h-5 px-1.5">
 						{hasRecipeCount} resep
@@ -1139,13 +1139,32 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 										<>{filterType === "semua" ? "Tidak ada produk" : filterType === "ala-carte" ? "Tidak ada produk ala carte" : filterType === "base" ? "Tidak ada base recipe" : "Tidak ada produk"} "{search}"</>
 									) : (
 										<div className="space-y-1">
-											<p>Belum ada produk</p>
-											<Link
-												to="/admin/products"
-												className="text-primary hover:underline text-[11px]"
-											>
-												Tambah produk →
-											</Link>
+											<p>{filterType === "base" ? "Belum ada base recipe" : "Belum ada produk"}</p>
+											{filterType === "base" ? (
+												<button
+													onClick={handleOpenCreateBase}
+													className="text-primary hover:underline text-[11px] inline-flex items-center gap-1"
+												>
+													<Plus className="h-3 w-3" />
+													Tambah Base Recipe
+												</button>
+											) : filterType === "ala-carte" ? (
+												<button
+													onClick={handleApplyAlaCarteSync}
+													disabled={applyingAlaCarteSync}
+													className="text-primary hover:underline text-[11px] inline-flex items-center gap-1"
+												>
+													{applyingAlaCarteSync ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+													Sync Ala Carte
+												</button>
+											) : (
+												<Link
+													to="/admin/products"
+													className="text-primary hover:underline text-[11px]"
+												>
+													Tambah produk →
+												</Link>
+											)}
 										</div>
 									)}
 								</td>
