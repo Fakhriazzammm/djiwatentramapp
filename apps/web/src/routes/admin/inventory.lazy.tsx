@@ -5164,7 +5164,7 @@ function InventoryTable({
 						<col className="w-[8ch]" /> {/* Min */}
 						<col className="w-[8ch]" /> {/* Beli */}
 						<col className="w-[10ch]" /> {/* Satuan */}
-						<col className="w-[14ch]" /> {/* Konversi */}
+						<col className="w-[16ch]" /> {/* Konversi */}
 						<col className="w-[18ch]" /> {/* Harga */}
 						<col className="w-[11ch]" /> {/* Harga/Unit */}
 						<col className="w-[7%]" /> {/* Status */}
@@ -5703,7 +5703,7 @@ function InventoryTable({
 									<td className="px-2 py-1.5 align-middle text-center">
 										<div className="flex items-center gap-0.5 justify-center">
 											<input
-												className="w-[8ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
+												className="w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "conversionFactor", e.target.value)
