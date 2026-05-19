@@ -294,8 +294,20 @@ function ApplicationDetailPage() {
 						</div>
 						<h1 className="text-xl font-bold sm:text-2xl">{app.full_name}</h1>
 						<p className="text-xs text-muted-foreground">
-							{app.employment?.roleName || "-"} &middot; {registrationNumber}
+							{app.employment?.roleName || "-"}
 						</p>
+						<div className="flex flex-wrap items-center gap-1.5 mt-1">
+							{app.registration_number && (
+								<span className="inline-flex items-center rounded-md border bg-muted/50 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground">
+									{app.registration_number}
+								</span>
+							)}
+							{app.employee_nip && (
+								<span className="inline-flex items-center rounded-md border bg-emerald-50 px-1.5 py-0.5 text-[10px] font-mono font-medium text-emerald-700">
+									NIP {app.employee_nip}
+								</span>
+							)}
+						</div>
 					</div>
 				</div>
 			</div>

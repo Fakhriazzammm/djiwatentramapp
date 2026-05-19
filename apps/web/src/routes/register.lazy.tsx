@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
+import { createClient } from "@/lib/client";
 import {
 	useHybridGenerateEmployeeContract,
 	useHybridGenerateEmployeeOnboardingUploadUrl,
@@ -251,10 +252,14 @@ function RegisterPage() {
 
 		setIsSubmitting(true);
 		try {
-			// Generate appKey — fallback untuk environment tanpa crypto.randomUUID
-			const appKey = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
-				? crypto.randomUUID()
-				: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
+			// Generate sequential registration number REG-YYYY-NNNN
+			const supabase = createClient();
+			const { data: regNum, error: regErr } = await supabase.rpc("next_registration_number", {
+				p_category: "registration",
+				p_prefix: "REG",
+			});
+			if (regErr || !regNum) throw new Error(regErr?.message || "Gagal generate nomor pendaftaran");
+			const appKey = String(regNum);
 
 			// Upload CV jika ada
 			let cvUrl: string | null = cvUploadedUrl ?? null;
@@ -268,7 +273,7 @@ function RegisterPage() {
 			// Build payload fase 1 — tanpa contract & signature
 			const payload = buildEmployeeOnboardingPayload(
 				{ ...draft, contract: { mode: "template", title: "", plainText: "", clauses: [] }, signatureDataUrl: "", agreements: { dataIsTrue: true, contractApproved: false } },
-				{ cvUrl },
+				{ cvUrl, registrationNumber: appKey },
 			);
 			payload.raw = {
 				...payload.raw,

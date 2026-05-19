@@ -78,7 +78,8 @@ export type EmployeeOnboardingApplicationPayload = {
 	signature_url: string | null;
 	contract_pdf_url: string | null;
 	cv_url: string | null;
-	attachments: Record<string, unknown>;
+	registration_number: string | null;
+\tattachments: Record<string, unknown>;
 	raw: Record<string, unknown>;
 };
 
@@ -141,7 +142,7 @@ export function validateEmployeeOnboardingDraft(draft: EmployeeOnboardingDraft):
 
 export function buildEmployeeOnboardingPayload(
 	draft: EmployeeOnboardingDraft,
-	files?: { signatureUrl?: string | null; contractPdfUrl?: string | null; cvUrl?: string | null }
+	files?: { signatureUrl?: string | null; contractPdfUrl?: string | null; cvUrl?: string | null; registrationNumber?: string | null }
 ): EmployeeOnboardingApplicationPayload {
 	const personal = draft.personal;
 	const employment = draft.employment;
@@ -174,6 +175,7 @@ export function buildEmployeeOnboardingPayload(
 		signature_url: files?.signatureUrl ?? null,
 		contract_pdf_url: files?.contractPdfUrl ?? null,
 		cv_url: files?.cvUrl ?? null,
+		registration_number: files?.registrationNumber ?? null,
 		attachments: {},
 		raw: {
 			source: "public_register",

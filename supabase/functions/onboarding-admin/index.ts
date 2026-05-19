@@ -31,6 +31,21 @@ const CORS_HEADERS = {
   "Access-Control-Max-Age": "86400",
 };
 
+// ── Role prefix for employee NIP ────────────────────────────
+function getRolePrefix(roleName: string): string {
+  const prefixMap: Record<string, string> = {
+    BARISTA: "BRT",
+    KASIR: "KSR",
+    WAITRESS: "WTR",
+    CHEF: "CHF",
+    KITCHEN: "KTC",
+    MANAGER: "MGR",
+    SUPERVISOR: "SPV",
+    ADMIN: "ADM",
+  };
+  return prefixMap[String(roleName).toUpperCase().trim()] || "EMP";
+}
+
 function corsResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -234,6 +249,41 @@ async function handleApprove(
     return corsResponse({ error: `Gagal buat user: ${insertErrBody}` }, 500);
   }
 
+  // ── Generate employee NIP ──
+  const roleName = String((payload.employment as any)?.roleName ?? "");
+  const rolePrefix = getRolePrefix(roleName);
+  let employeeNip = "";
+  try {
+    const nipRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/next_registration_number`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ p_category: rolePrefix, p_prefix: rolePrefix }),
+    });
+    if (nipRes.ok) {
+      employeeNip = await nipRes.text();
+      employeeNip = employeeNip.replace(/^"|"$/g, ""); // strip JSON quotes
+      // Update yumi_users with the NIP
+      await fetch(`${SUPABASE_URL}/rest/v1/yumi_users?source_id=eq.${encodeURIComponent(sourceId)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_SERVICE_ROLE_KEY,
+          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ employee_nip: employeeNip }),
+      });
+      console.log("[onboarding-admin] Generated employee NIP:", employeeNip);
+    } else {
+      console.warn("[onboarding-admin] Failed to generate NIP:", await nipRes.text());
+    }
+  } catch (_e) {
+    console.warn("[onboarding-admin] NIP generation error:", _e);
+  }
+
   const now = "2026-05-14T00:00:00Z";
 
   // Update employment startDate to today
@@ -247,6 +297,7 @@ async function handleApprove(
   const updatePayload = {
     status: "approved",
     approved_user_source_id: sourceId,
+    employee_nip: employeeNip || null,
     employment,
     review_notes: reviewNotes ? String(reviewNotes) : null,
     reviewed_by: payload.reviewed_by ? String(payload.reviewed_by) : "admin",

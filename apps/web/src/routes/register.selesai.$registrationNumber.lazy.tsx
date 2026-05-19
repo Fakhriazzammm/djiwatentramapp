@@ -180,11 +180,25 @@ function RegisterCompletePage() {
   // ── Fetch application data ──
   const fetchApp = useCallback(async () => {
     const supabase = createClient();
-    const { data, error } = await supabase
+    // Try new registration_number column first, then fallback to raw->>registrationNumber
+    let { data, error } = await supabase
       .from("employee_onboarding_applications")
       .select("*")
-      .filter("raw->>registrationNumber", "eq", registrationNumber)
+      .eq("registration_number", registrationNumber)
       .maybeSingle();
+
+    if (error && !data) {
+      console.error("[Selesai] Column query error:", error);
+    }
+    if (!data) {
+      const fallback = await supabase
+        .from("employee_onboarding_applications")
+        .select("*")
+        .filter("raw->>registrationNumber", "eq", registrationNumber)
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) {
       console.error("[Selesai] Query error:", error);
@@ -500,6 +514,18 @@ function RegisterCompletePage() {
               ? `${app.employment.roleName} · ${companyDisplayName}`
               : "Pendaftaran karyawan baru"}
           </p>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+            {app?.registration_number && (
+              <span className="inline-flex items-center rounded-md border bg-muted/50 px-2 py-0.5 text-xs font-mono font-medium text-muted-foreground">
+                {app.registration_number}
+              </span>
+            )}
+            {app?.employee_nip && (
+              <span className="inline-flex items-center rounded-md border bg-emerald-50 px-2 py-0.5 text-xs font-mono font-medium text-emerald-700">
+                NIP {app.employee_nip}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ── Status Card ── */}
