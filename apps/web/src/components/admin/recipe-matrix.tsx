@@ -180,13 +180,13 @@ export function RecipeMatrixPage() {
 	const [savingCells, setSavingCells] = useState<Set<string>>(new Set());
 	const [localAmounts, setLocalAmounts] = useState<Record<string, number>>({});
 	const [showAllIngredients, setShowAllIngredients] = useState(true);
-	const [baseSectionOpen, setBaseSectionOpen] = useState(false);
 	const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 	const [readMode, setReadMode] = useState(false);
 	const [baseModalOpen, setBaseModalOpen] = useState(false);
 	const [editingBaseId, setEditingBaseId] = useState<string | null>(null);
 	const [deletingBaseId, setDeletingBaseId] = useState<string | null>(null);
 	const [applyingAlaCarteSync, setApplyingAlaCarteSync] = useState(false);
+	const [recipeCardFilter, setRecipeCardFilter] = useState<"all" | "base" | "product">("all");
 	const [searchRecipe, setSearchRecipe] = useState("");
 	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
 		name: "",
@@ -261,10 +261,28 @@ export function RecipeMatrixPage() {
 					cat.toLowerCase().includes(keyword)
 				);
 			})
-			.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "id"));
-	}, [products, categoryById, search]);
+			.sort((a, b) =>
+				(a.name ?? "").localeCompare(b.name ?? "", "id")
+			);
+	}, [products, search, categoryById]);
 
-	// ── Get amount (local override > recipe) ──
+	const baseRecipeCards = useMemo(
+		() =>
+			[...(baseRecipes ?? [])].sort((a: any, b: any) =>
+				String(a?.name ?? "").localeCompare(String(b?.name ?? ""), "id")
+			),
+		[baseRecipes]
+	);
+
+	const productRecipeCards = useMemo(
+		() =>
+			productRows
+				.filter((product) => recipeByProduct.has(String(product._id)))
+				.sort((a, b) =>
+					String(a?.name ?? "").localeCompare(String(b?.name ?? ""), "id")
+				),
+		[productRows, recipeByProduct]
+	);
 
 	const getAmount = useCallback(
 		(productId: string, inventoryId: string): number | null => {
@@ -618,15 +636,6 @@ export function RecipeMatrixPage() {
 						{applyingAlaCarteSync ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
 						Sync Ala Carte
 					</Button>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="h-6 text-[10px] px-2 ml-auto"
-						onClick={() => setBaseSectionOpen(!baseSectionOpen)}
-					>
-						<Settings2 className="h-3 w-3 mr-1" />
-						Base Recipe
-					</Button>
 				</>
 			</div>
 
@@ -857,74 +866,132 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				</span>
 			</div>
 
-			{/* ── Base Recipe Section ── */}
-			{baseSectionOpen && (
-				<div className="border-t-2 border-primary/20 bg-muted/10 px-4 py-3 shrink-0">
-					<div className="flex items-center gap-2 mb-2">
-						<Settings2 className="h-3.5 w-3.5 text-primary" />
-						<p className="text-[11px] font-bold text-muted-foreground">
-							Base Recipe
-						</p>
-						<Badge variant="outline" className="text-[9px] h-4 px-1">
-							{baseRecipes?.length ?? 0} formula
-						</Badge>
-					</div>
-					<div className="flex flex-wrap gap-2">
-						<div className="flex items-center gap-2 mb-2 flex-wrap">
+			{/* ── Semua Recipe (Base + Produk) ── */}
+			<div className="border-t-2 border-primary/20 bg-muted/10 px-4 py-3 shrink-0">
+			<div className="mb-2 flex items-center gap-2 flex-wrap">
+				<Settings2 className="h-3.5 w-3.5 text-primary" />
+				<p className="text-[11px] font-bold text-muted-foreground">Semua Recipe</p>
+				<Badge variant="outline" className="text-[9px] h-4 px-1">
+					{baseRecipeCards.length + productRecipeCards.length} recipe
+				</Badge>
+				<div className="ml-auto flex items-center gap-1">
+					<Button
+						variant={recipeCardFilter === "all" ? "default" : "outline"}
+						size="sm"
+						className="h-6 text-[10px] px-2"
+						onClick={() => setRecipeCardFilter("all")}
+					>
+						Semua ({baseRecipeCards.length + productRecipeCards.length})
+					</Button>
+					<Button
+						variant={recipeCardFilter === "base" ? "default" : "outline"}
+						size="sm"
+						className="h-6 text-[10px] px-2"
+						onClick={() => setRecipeCardFilter("base")}
+					>
+						Base ({baseRecipeCards.length})
+					</Button>
+					<Button
+						variant={recipeCardFilter === "product" ? "default" : "outline"}
+						size="sm"
+						className="h-6 text-[10px] px-2"
+						onClick={() => setRecipeCardFilter("product")}
+					>
+						Produk ({productRecipeCards.length})
+					</Button>
+				</div>
+			</div>
+
+				<div className="mb-2 flex items-center gap-2 flex-wrap">
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-6 text-[10px] px-2"
+						onClick={handleOpenCreateBase}
+					>
+						<Plus className="h-3 w-3 mr-1" />
+						Tambah Recipe Base
+					</Button>
+					{ALA_CARTE_BASE_PRESETS.map((preset) => (
 						<Button
-							variant="outline"
+							key={preset.name}
+							variant="secondary"
 							size="sm"
 							className="h-6 text-[10px] px-2"
-							onClick={handleOpenCreateBase}
+							onClick={() => handleOpenPresetBase(preset)}
 						>
-							<Plus className="h-3 w-3 mr-1" />
-							Tambah Base Recipe
+							{preset.name}
 						</Button>
-						{ALA_CARTE_BASE_PRESETS.map((preset) => (
-							<Button
-								key={preset.name}
-								variant="secondary"
-								size="sm"
-								className="h-6 text-[10px] px-2"
-								onClick={() => handleOpenPresetBase(preset)}
-							>
-								{preset.name}
-							</Button>
-						))}
-					</div>
-					{(baseRecipes ?? []).length === 0 ? (
-							<p className="text-[10px] text-muted-foreground/60">
-								Belum ada base recipe. Klik Tambah untuk membuat formula baru.
-							</p>
-						) : (
-							(baseRecipes ?? []).map((br: any) => (
-								<div
-									key={br._id}
-									className="rounded-lg border border-border/40 bg-card px-3 py-2 text-[10px] min-w-[180px] flex-1 max-w-[240px] group/card relative"
-								>
-									<div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
-										<button onClick={() => handleOpenEditBase(br)} className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors" title="Edit">
-											<Edit className="h-3 w-3" />
-										</button>
-										<button onClick={() => handleDeleteBase(br._id)} disabled={deletingBaseId === br._id} className="rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors" title="Hapus">
-											{deletingBaseId === br._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-										</button>
-									</div>
-									<div className="font-semibold text-foreground truncate pr-10">{br.name}</div>
-									<div className="mt-0.5 text-muted-foreground/60">
-										Target: {br.targetQuantity} {br.targetUnit} &mdash; {br.ingredients?.length ?? 0} bahan
-									</div>
-									{br.category && (
-										<Badge variant="secondary" className="mt-1 text-[8px] h-3.5 px-1">
-											{br.category}
-										</Badge>
-									)}
-								</div>
-							))
-						)}
-					</div>
+					))}
 				</div>
-			)}
+
+				<div className="flex flex-wrap gap-2">
+					{(recipeCardFilter === "all" || recipeCardFilter === "base") &&
+						baseRecipeCards.map((br: any) => (
+						<div
+							key={br._id}
+							className="rounded-lg border border-border/40 bg-card px-3 py-2 text-[10px] min-w-[200px] flex-1 max-w-[260px] group/card relative"
+						>
+							<div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
+								<button onClick={() => handleOpenEditBase(br)} className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors" title="Edit">
+									<Edit className="h-3 w-3" />
+								</button>
+								<button onClick={() => handleDeleteBase(br._id)} disabled={deletingBaseId === br._id} className="rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors" title="Hapus">
+									{deletingBaseId === br._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+								</button>
+							</div>
+							<div className="mb-1 flex items-center gap-1.5 pr-10">
+								<Badge variant="secondary" className="h-4 px-1 text-[8px]">Base Recipe</Badge>
+								{br.category && <Badge variant="outline" className="h-4 px-1 text-[8px]">{br.category}</Badge>}
+							</div>
+							<div className="font-semibold text-foreground truncate pr-10">{br.name}</div>
+							<div className="mt-0.5 text-muted-foreground/60">
+								Target: {br.targetQuantity} {br.targetUnit} &mdash; {br.ingredients?.length ?? 0} bahan
+							</div>
+						</div>
+					))}
+
+					{(recipeCardFilter === "all" || recipeCardFilter === "product") &&
+						productRecipeCards.map((product) => {
+							const recipe = [...(recipes ?? [])].find(
+								(r) => !r.variantName && String(r.productId) === String(product._id)
+							);
+							if (!recipe) return null;
+							const cat = categoryById.get(String(product.categoryId)) ?? "";
+							return (
+								<div
+									key={`prod-${product._id}`}
+									className="rounded-lg border border-border/40 bg-card px-3 py-2 text-[10px] min-w-[200px] flex-1 max-w-[260px]"
+								>
+									<div className="mb-1 flex items-center gap-1.5">
+										<Badge variant="outline" className="h-4 px-1 text-[8px]">Recipe Produk</Badge>
+										{cat && <Badge variant="secondary" className="h-4 px-1 text-[8px]">{cat}</Badge>}
+									</div>
+									<div className="font-semibold text-foreground truncate">{product.name}</div>
+									<div className="mt-0.5 text-muted-foreground/60">
+										{recipe.ingredients?.length ?? 0} bahan
+									</div>
+								</div>
+							);
+						})}
+
+					{recipeCardFilter === "base" && baseRecipeCards.length === 0 && (
+						<div className="w-full rounded-lg border border-dashed border-border/60 bg-background/40 px-3 py-4 text-center text-[10px] text-muted-foreground">
+							Belum ada Base Recipe.
+						</div>
+					)}
+					{recipeCardFilter === "product" && productRecipeCards.length === 0 && (
+						<div className="w-full rounded-lg border border-dashed border-border/60 bg-background/40 px-3 py-4 text-center text-[10px] text-muted-foreground">
+							Belum ada Recipe Produk.
+						</div>
+					)}
+					{recipeCardFilter === "all" && baseRecipeCards.length + productRecipeCards.length === 0 && (
+						<div className="w-full rounded-lg border border-dashed border-border/60 bg-background/40 px-3 py-4 text-center text-[10px] text-muted-foreground">
+							Belum ada recipe.
+						</div>
+					)}
+				</div>
+			</div>
 
 			{/* ── Base Recipe Modal ── */}
 			{baseModalOpen && (

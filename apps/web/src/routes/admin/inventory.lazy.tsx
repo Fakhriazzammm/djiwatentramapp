@@ -968,7 +968,7 @@ function InventoryPage() {
 	const [advancedFilter, setAdvancedFilter] = useState<
 		"all" | "priceUp" | "missingConversion"
 	>("all");
-	const [tableMode, setTableMode] = useState<"simple" | "detail">("simple");
+
 	const [dataIssueDismissed, setDataIssueDismissed] = useState(false);
 	const dataIssueCounts = useMemo(() => {
 		if (!workspace?.rows?.length) return { suspiciousBeli: 0, missingConvFactor: 0, total: 0 };
@@ -1538,10 +1538,8 @@ function InventoryPage() {
 				onFilterActiveOnlyChange={setFilterActiveOnly}
 				onFilterLowStockChange={setFilterLowStock}
 				onSearchQueryChange={setSearchQuery}
-				onTableModeChange={setTableMode}
 				onViewPresetChange={setViewPreset}
 				searchQuery={searchQuery}
-				tableMode={tableMode}
 				viewPreset={viewPreset}
 				/>
 					</div>
@@ -1632,7 +1630,6 @@ function InventoryPage() {
 				onSelectedItemChange={setSelectedItem}
 				onSort={handleSort}
 				sortConfig={sortConfig}
-				tableMode={tableMode}
 				unitOptions={unitOptions}
 				viewPreset={viewPreset}
 			/>
@@ -3941,7 +3938,6 @@ function InventoryTable({
 	filteredRows,
 	onSort,
 	sortConfig,
-	tableMode,
 	onSelectedItemChange,
 	onDetailItemChange,
 	onActionTypeChange,
@@ -3974,7 +3970,6 @@ function InventoryTable({
 			| "lastPurchasePrice";
 		direction: "asc" | "desc";
 	};
-	tableMode: "simple" | "detail";
 	onSelectedItemChange: (item: Doc<"inventory">) => void;
 	onDetailItemChange: (item: Doc<"inventory">) => void;
 	onActionTypeChange: (
@@ -5147,9 +5142,7 @@ function InventoryTable({
 				</datalist>
 				<div className="overflow-x-auto">
 				<table
-					className={`min-w-[1680px] w-full table-fixed text-left ${
-						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]"
-					}`}
+				className="min-w-[1680px] w-full table-fixed text-left text-[8px] md:text-[9px]"
 				>
 					<colgroup>
 						<col className="w-[2.2rem]" />
@@ -5559,9 +5552,7 @@ function InventoryTable({
 									</td>
 									<td className="sticky left-[3.5rem] z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input
-												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background ${
-													tableMode === "simple" ? "text-[10px]" : "text-[11px]"
-												}`}
+						className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background text-[10px]"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "ingredientName", e.target.value)
@@ -6129,8 +6120,6 @@ function InventoryHeader({
 	onFilterLowStockChange,
 	searchQuery,
 	onSearchQueryChange,
-	onTableModeChange,
-	tableMode,
 	viewPreset,
 	onViewPresetChange,
 }: {
@@ -6142,8 +6131,6 @@ function InventoryHeader({
 	onFilterLowStockChange: (val: boolean) => void;
 	searchQuery: string;
 	onSearchQueryChange: (val: string) => void;
-	onTableModeChange: (mode: "simple" | "detail") => void;
-	tableMode: "simple" | "detail";
 	viewPreset: InventoryViewPreset;
 	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
@@ -6217,14 +6204,6 @@ function InventoryHeader({
 							<option value="all">Semua</option>
 							<option value="priceUp">Harga Naik</option>
 							<option value="missingConversion">Belum takaran</option>
-						</select>
-						<select
-							className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground outline-none"
-							onChange={(e) => onTableModeChange(e.target.value as "simple" | "detail")}
-							value={tableMode}
-						>
-							<option value="simple">Simple</option>
-							<option value="detail">Detail</option>
 						</select>
 					</>
 				)}
