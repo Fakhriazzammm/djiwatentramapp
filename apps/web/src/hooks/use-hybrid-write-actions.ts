@@ -2564,6 +2564,7 @@ export function useHybridCreateOrder() {
 						amount: Number(args?.totalAmount ?? 0),
 						category: "Penjualan",
 						description: `Penjualan Pesanan #${orderNumber}`,
+						merchant: args?.customerName ?? null,
 						tx_date: orderCreatedAt,
 						payment_method: args?.paymentMethod ?? null,
 						status: "completed",
