@@ -5879,9 +5879,23 @@ function InventoryTable({
 												step="any"
 												value={inline.contentToBaseFactor}
 											/>
-											<span className="ml-0.5 text-[9px] font-mono tabular-nums text-muted-foreground/60 whitespace-nowrap">
-												/ {inline.unit || row.unit || "—"}
-											</span>
+											<span className="text-[9px] font-mono tabular-nums text-muted-foreground/40">/</span>
+											<input
+												className="ml-0.5 w-[6ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[9px] font-semibold text-muted-foreground/60 outline-none focus:border-border focus:bg-background"
+												list="inventory-unit-options-table"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "unit", normalizeUnitOption(e.target.value))
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder="unit"
+												value={inline.unit || row.unit || ""}
+											/>
 										</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
