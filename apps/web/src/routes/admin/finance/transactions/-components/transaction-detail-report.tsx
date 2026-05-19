@@ -1215,7 +1215,9 @@ export function TransactionDetailReport({
 
 								const orderDisplay = t.metadata?.orderNumber || t.orderId || t.metadata?.sourceRef || t._id;
 								const receiptNo = t.metadata?.dailyReceiptNo || t.metadata?.receiptNumber || t.metadata?.receiptDetails?.receiptNumber;
-								const customerName = t.merchant || t.metadata?.customerName || "";
+								const entityName = isIncome
+									? (t.merchant || t.metadata?.customerName || "")
+									: (t.merchant || t.metadata?.merchant || t.metadata?.merchantName || t.metadata?.supplier || "");
 
 									const toggleExpand = () => {
 										if (editingItemRowKey === rowKey) return;
@@ -1326,11 +1328,11 @@ export function TransactionDetailReport({
 							)}
 						</td>
 
-						{/* Pelanggan */}
+						{/* Pelanggan / Supplier */}
 						<td className="whitespace-nowrap px-1 py-1">
-							{customerName ? (
-								<span className="block max-w-[70px] truncate text-[10px] text-slate-700" title={customerName}>
-									{customerName}
+							{entityName ? (
+								<span className="block max-w-[70px] truncate text-[10px] text-slate-700" title={entityName}>
+									{entityName}
 								</span>
 							) : (
 								<span className="text-[9px] text-slate-300">—</span>
