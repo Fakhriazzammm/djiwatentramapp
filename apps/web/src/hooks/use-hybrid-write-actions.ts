@@ -2889,8 +2889,8 @@ export function useHybridUpdateOrderPaymentGateway() {
 				const pos = supabase.schema("pos");
 				const { data: order, error: getError } = await pos
 					.from("orders")
-					.select(
-						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind"
+\t\t\t\t\t.select(
+						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, daily_receipt_no"
 					)
 					.eq("source_id", id)
 					.maybeSingle();
@@ -2920,6 +2920,11 @@ export function useHybridUpdateOrderPaymentGateway() {
 							status: "completed",
 							order_source_id: id,
 							creation_time: Date.now(),
+							metadata: {
+								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
+								orderNumber: order.order_number ?? undefined,
+								source: "pos",
+							},
 							raw: {
 								kind: "order_gateway_paid",
 								orderId: id,

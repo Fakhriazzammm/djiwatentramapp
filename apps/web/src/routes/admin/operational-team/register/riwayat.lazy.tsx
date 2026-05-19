@@ -121,12 +121,12 @@ function ContractHistoryPage() {
 	};
 
 	function getAdminSecret() {
-		return (import.meta as any).env.VITE_ADMIN_SECRET || "";
+		return import.meta.env.VITE_ADMIN_SECRET || "";
 	}
 
 	async function cascadeDelete(ids: string[]) {
 		if (ids.length === 0) return;
-		const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || "";
+		const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 		const funcUrl = supabaseUrl + "/functions/v1/delete-employee-cascade";
 		const res = await fetch(funcUrl, {
 			method: "POST",
