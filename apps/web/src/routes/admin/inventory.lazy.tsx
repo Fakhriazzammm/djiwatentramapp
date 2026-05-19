@@ -4087,6 +4087,9 @@ function InventoryTable({
 				imagePath: string;
 				unitConversionsText: string;
 				category: string;
+				packNetQuantity: string;
+				packNetUnit: string;
+				contentToBaseFactor: string;
 			}
 		>
 	>({});
@@ -5800,27 +5803,9 @@ function InventoryTable({
 												step="any"
 												value={inline.conversionFactor}
 											/>
-											<input
-												className="w-[8ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center text-[10px] font-mono tabular-nums text-muted-foreground outline-none focus:border-border focus:bg-background"
-												list="inventory-unit-options-table"
-												onBlur={() => void saveMeta(row)}
-												onChange={(e) =>
-													setInlineField(row, "displayUnit", normalizeUnitOption(e.target.value))
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(row);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												placeholder={inline.unit}
-												value={inline.displayUnit}
-											/>
-											{inline.conversionFactor && inline.displayUnit && inline.unit && inline.displayUnit.toLowerCase() !== inline.unit.toLowerCase() && (
-												<span className="text-[9px] text-muted-foreground/40 font-mono whitespace-nowrap">
-													=
-												</span>
-											)}
+											<span className="ml-0.5 text-[9px] font-mono tabular-nums text-muted-foreground/60 whitespace-nowrap">
+												{inline.packNetUnit || row.packNetUnit || "?"} / {inline.unit || row.unit || "?"}
+											</span>
 										</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
@@ -5851,25 +5836,7 @@ function InventoryTable({
 								value={getPriceDraft(row)}
 							/>
 						</div>
-						<div className="flex items-center gap-1 self-end">
-							<span className="text-[8px] text-muted-foreground/30">/</span>
-							<input
-									className="w-[8ch] rounded-lg border border-transparent bg-transparent px-0.5 py-0.5 text-[9px] text-muted-foreground text-center outline-none focus:border-border focus:bg-background"
-									list="inventory-unit-options-table"
-									onBlur={() => void saveMeta(row)}
-									onChange={(e) =>
-										setInlineField(row, "preferredPurchaseUnit", normalizeUnitOption(e.target.value))
-									}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void saveMeta(row);
-											(e.target as HTMLInputElement).blur();
-										}
-									}}
-									placeholder="unit"
-									value={inline.preferredPurchaseUnit}
-								/>
-							</div>
+
 						</div>
 					</td>
 									<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground/60">
