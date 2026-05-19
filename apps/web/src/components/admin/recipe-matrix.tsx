@@ -154,6 +154,10 @@ const ALA_CARTE_PRODUCT_TEMPLATES = [
 	},
 ];
 
+// ─── Ala Carte Keywords untuk filter & badge ──────────────────
+
+const ALA_CARTE_KEYWORDS: string[] = ["ayam mentega", "ayam rempah kemangi"];
+
 // ─── Main Component ──────────────────────────────────────────
 
 export function RecipeMatrixPage() {
@@ -189,6 +193,7 @@ export function RecipeMatrixPage() {
 	const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
 	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 	const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
+	const [filterType, setFilterType] = useState<"semua" | "ala-carte" | "base" | "produk">("semua");
 	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
 		name: "",
 		description: "",
@@ -266,6 +271,33 @@ export function RecipeMatrixPage() {
 				(a.name ?? "").localeCompare(b.name ?? "", "id")
 			);
 	}, [products, search, categoryById]);
+
+	// ── Determines if a product is ala carte based on name ──
+
+	const isAlaCarteProduct = useMemo(() => {
+		const set = new Set<string>();
+		for (const p of products ?? []) {
+			const name = (p.name ?? "").toLowerCase();
+			for (const kw of ALA_CARTE_KEYWORDS) {
+				if (name.includes(kw)) {
+					set.add(String(p._id));
+					break;
+				}
+			}
+		}
+		return set;
+	}, [products]);
+
+	// ── Filter products by type ──
+
+	const filteredProductRows = useMemo(() => {
+		if (filterType === "base") return [];
+		return productRows.filter((p) => {
+			if (filterType === "semua" || filterType === "produk") return true;
+			if (filterType === "ala-carte") return isAlaCarteProduct.has(String(p._id));
+			return true;
+		});
+	}, [productRows, filterType, isAlaCarteProduct]);
 
 	// ── Base Recipe lookup ──
 
@@ -721,6 +753,37 @@ export function RecipeMatrixPage() {
 							className="h-7 pl-7 text-[11px]"
 						/>
 					</div>
+					<div className="flex items-center gap-1 shrink-0">
+						{(["semua", "ala-carte", "base", "produk"] as const).map((ft) => {
+							const counts: Record<string, number> = {
+								semua: productRows.length + (baseRecipes?.length ?? 0),
+								"ala-carte": productRows.filter((p) => isAlaCarteProduct.has(String(p._id))).length,
+								base: baseRecipes?.length ?? 0,
+								produk: productRows.length - productRows.filter((p) => isAlaCarteProduct.has(String(p._id))).length,
+							};
+							const labels: Record<string, string> = {
+								semua: "Semua",
+								"ala-carte": "Ala Carte",
+								base: "Base",
+								produk: "Produk",
+							};
+							return (
+								<button
+									key={ft}
+									onClick={() => setFilterType(ft)}
+									className={cn(
+										"h-6 px-2 rounded text-[10px] font-medium transition-colors shrink-0",
+										filterType === ft
+											? "bg-primary text-primary-foreground shadow-sm"
+											: "bg-muted/50 text-muted-foreground hover:bg-muted"
+									)}
+								>
+									{labels[ft]}
+									<span className="ml-1 text-[8px] opacity-70">({counts[ft]})</span>
+								</button>
+							);
+						})}
+					</div>
 					<div className="relative flex-1 max-w-[220px]">
 						<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
 						<Input
@@ -815,7 +878,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						</tr>
 					</thead>
 					<tbody>
-						{productRows.map((product) => {
+						{filteredProductRows.map((product) => {
 							const hasRecipe = recipeByProduct.has(String(product._id));
 							const hpp = hppMap?.[String(product._id)];
 							const cat = categoryById.get(String(product.categoryId)) ?? "";
@@ -853,6 +916,9 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 												<span className="truncate">{product.name}</span>
 												<Calculator className="h-3 w-3 shrink-0 text-muted-foreground/30 group-hover:text-primary/50" />
 											</Link>
+											{isAlaCarteProduct.has(String(product._id)) && (
+												<Badge variant="secondary" className="h-4 px-1 text-[7px] leading-none shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">Ala Carte</Badge>
+											)}
 											{hasRecipe && (
 												<button
 													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
@@ -956,6 +1022,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						})}
 						{/* ── Base Recipe Rows ── */}
 						{(() => {
+							if (filterType === "produk") return null;
 							const pendingBaseIds = [...pendingDeleteIds]
 								.filter((id) => id.startsWith("base:"))
 								.map((id) => id.replace("base:", ""));
@@ -983,6 +1050,24 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 										/>
 										<Badge variant="secondary" className="h-4 px-1 text-[8px] shrink-0">Base</Badge>
 										<span className="text-xs font-medium text-foreground truncate">{br.name}</span>
+										{!br._stale && (
+											<>
+												<button
+													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-all ml-auto"
+													onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenEditBase(br); }}
+													title="Edit base recipe"
+												>
+													<Settings2 className="h-3 w-3" />
+												</button>
+												<button
+													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+													onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteBase(br._id); }}
+													title="Hapus base recipe"
+												>
+													<Trash2 className="h-3 w-3" />
+												</button>
+											</>
+										)}
 									</div>
 								</td>
 								{/* Category */}
@@ -1044,14 +1129,14 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 								<td className="border-r border-border/20 px-1 py-1.5" />
 							</tr>
 						)})})()}
-						{productRows.length === 0 && (
+						{filteredProductRows.length === 0 && (filterType !== "base" || (baseRecipes?.length ?? 0) === 0) && (
 							<tr>
 								<td
 									colSpan={4 + ingredientColumns.length}
 									className="px-4 py-16 text-center text-xs text-muted-foreground"
 								>
 									{search ? (
-										<>Tidak ada produk "{search}"</>
+										<>{filterType === "semua" ? "Tidak ada produk" : filterType === "ala-carte" ? "Tidak ada produk ala carte" : filterType === "base" ? "Tidak ada base recipe" : "Tidak ada produk"} "{search}"</>
 									) : (
 										<div className="space-y-1">
 											<p>Belum ada produk</p>
