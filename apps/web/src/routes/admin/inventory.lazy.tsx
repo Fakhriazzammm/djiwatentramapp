@@ -5866,7 +5866,7 @@ function InventoryTable({
 												className="w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
-													setInlineField(row, "conversionFactor", e.target.value)
+													setInlineField(row, "contentToBaseFactor", e.target.value)
 												}
 												onKeyDown={(e) => {
 													if (e.key === "Enter") {
@@ -5877,7 +5877,7 @@ function InventoryTable({
 												type="number"
 												placeholder="1"
 												step="any"
-												value={inline.conversionFactor}
+												value={inline.contentToBaseFactor}
 											/>
 											<span className="ml-0.5 text-[9px] font-mono tabular-nums text-muted-foreground/60 whitespace-nowrap">
 												/ {inline.unit || row.unit || "—"}
