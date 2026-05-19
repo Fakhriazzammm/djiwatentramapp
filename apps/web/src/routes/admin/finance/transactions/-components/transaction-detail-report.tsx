@@ -1320,26 +1320,33 @@ export function TransactionDetailReport({
 								</td>
 
 						{/* Pembayaran */}
-						<td className="whitespace-nowrap px-2 py-1">
+						<td className="whitespace-nowrap px-1 py-1">
 							{t.paymentMethod ? (
-								<span className="inline-flex items-center gap-1 text-[10px] text-slate-600">
-									<span>{getPaymentIcon(t.paymentMethod)}</span>
-									<span className="capitalize">{t.paymentMethod.toLowerCase().replace(/_/g, " ")}</span>
+								<span className="inline-flex items-center gap-0.5 text-[9px] text-slate-600">
+									{getPaymentIcon(t.paymentMethod)}
 								</span>
 							) : (
 								<span className="text-[9px] text-slate-300">—</span>
 							)}
-							</td>
+						</td>
 
-							{/* Deskripsi */}
-							<td className="px-2 py-1">
-								<div className="flex flex-col gap-0.5">
-									<span className="block max-w-xs truncate text-[10px] font-medium text-slate-800"
-										title={t.displaySummary || t.description || "-"}>
-										{t.displaySummary || t.description || "-"}
-									</span>
-								</div>
-							</td>
+						{/* Pelanggan */}
+						<td className="whitespace-nowrap px-1 py-1">
+							{customerName ? (
+								<span className="block max-w-[70px] truncate text-[10px] text-slate-700" title={customerName}>
+									{customerName}
+								</span>
+							) : (
+								<span className="text-[9px] text-slate-300">—</span>
+							)}
+						</td>
+
+						{/* Deskripsi — singkat sesuai kategori */}
+						<td className="px-1 py-1">
+							<span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${isIncome ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+								{shortDesc}
+							</span>
+						</td>
 
 							{/* Nominal */}
 							<td className="whitespace-nowrap border-l border-slate-100 bg-white px-2 py-1 text-right group-hover:bg-slate-50">
