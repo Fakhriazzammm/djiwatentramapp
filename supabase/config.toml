@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.yumi-ai]
 verify_jwt = false
 
+[functions.onboarding-admin]
+verify_jwt = false
+
 [functions.record-financial-transaction]
 enabled = true
 verify_jwt = true
