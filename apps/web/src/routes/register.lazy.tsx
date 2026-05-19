@@ -222,7 +222,10 @@ function RegisterPage() {
 
 		setIsSubmitting(true);
 		try {
-			const appKey = crypto.randomUUID();
+			// Generate appKey — fallback untuk environment tanpa crypto.randomUUID
+			const appKey = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+				? crypto.randomUUID()
+				: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
 
 			// Upload CV jika ada
 			let cvUrl: string | null = cvUploadedUrl ?? null;
@@ -247,15 +250,19 @@ function RegisterPage() {
 				registrationNumber: appKey,
 			};
 			const id = await submitApplication({ payload });
-			setApplicationId(String(id ?? appKey));
+			console.log("[RegisterPage] submit success, db id:", id, "appKey:", appKey);
 			localStorage.removeItem(DRAFT_KEY);
 			toast.success("Pendaftaran berhasil dikirim");
 
 			// Redirect ke halaman tracking status — gunakan appKey (registrationNumber di raw)
-			window.location.href = `/register/selesai/${appKey}`;
+			const dest = `/register/selesai/${appKey}`;
+			console.log("[RegisterPage] redirecting to:", dest);
+			window.location.replace(dest);
 		} catch (e: any) {
+			console.error("[RegisterPage] submit error:", e);
 			toast.error(e?.message || "Gagal submit pendaftaran");
-		} finally { setIsSubmitting(false); }
+			setIsSubmitting(false);
+		}
 	}
 
 	/* -------- validation -------- */
