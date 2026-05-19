@@ -1316,6 +1316,101 @@ export function RecipeHppPage() {
 		}
 	}, [search?.productId, search?.type, products]);
 
+	useEffect(() => {
+		if (!selectedProductId || !products || !inventory || !recipes) return;
+		if (form.productId === selectedProductId && form.ingredients.length > 0 && form.ingredients[0].inventoryId) return;
+
+		if (hppType === "base_recipe" && baseRecipes) {
+			const baseRecipe = (baseRecipes as any[]).find((br: any) => br._id === selectedProductId);
+			if (!baseRecipe) return;
+
+			const ingredients: IngredientRow[] = (baseRecipe.ingredients ?? []).map((ing: any) => {
+				const invItem = (inventory ?? []).find((i) => i._id === ing.inventoryId);
+				const costInfo = inventoryCosts?.[ing.inventoryId];
+				const price = costInfo?.latestCostPerUnit ?? 0;
+				const source: PriceSource = costInfo?.latestCostPerUnit ? "inventory" : "manual";
+				const unitPair = findUnitPair(
+					invItem?.unit ?? "liter",
+					invItem?.displayUnit ?? "ml"
+				);
+
+				return {
+					id: generateId(),
+					inventoryId: ing.inventoryId,
+					ingredientName: invItem?.ingredientName ?? "",
+					purchasePrice: price * (unitPair.factor),
+					purchaseQuantity: 1,
+					purchaseUnit: invItem?.unit ?? unitPair.purchase,
+					usagePerServing: ing.amount,
+					usageUnit: invItem?.displayUnit ?? unitPair.usage,
+					conversionFactor: unitPair.factor,
+					costSource: source,
+				};
+			});
+
+			const targetQty = parseInt(baseRecipe.targetQuantity) || 1;
+			setForm({
+				name: `HPP ${baseRecipe.name}`,
+				description: `Perhitungan biaya base recipe ${baseRecipe.name} (${baseRecipe.category ?? ""})`,
+				ingredients: ingredients.length > 0 ? ingredients : [createEmptyIngredient()],
+				overheadCosts: [],
+				servingsPerBatch: targetQty,
+				sellingPrice: 0,
+				happyHourPrice: 0,
+				productId: selectedProductId,
+				sourceType: "recipe_based",
+			});
+			setSelectedRows(new Set());
+			setEditingId(null);
+			return;
+		}
+
+		const product = products?.find((p) => p._id === selectedProductId);
+		if (!product) return;
+
+		const allRecipes = (recipes ?? []) as RecipeData[];
+		const recipe = allRecipes.find((r) => r.productId === selectedProductId && !r.variantName);
+
+		setForm({
+			name: `HPP ${product.name}`,
+			description: recipe ? `Perhitungan biaya dari resep ${product.name}` : "",
+			ingredients: recipe && recipe.ingredients?.length > 0
+				? recipe.ingredients.map((ing) => {
+					const invItem = (inventory ?? []).find((i) => i._id === ing.inventoryId);
+					const costInfo = inventoryCosts?.[ing.inventoryId];
+					const price = costInfo?.latestCostPerUnit ?? 0;
+					const source: PriceSource = costInfo?.latestCostPerUnit ? "inventory" : "manual";
+
+					const unitPair = findUnitPair(
+						invItem?.unit ?? "liter",
+						invItem?.displayUnit ?? "ml"
+					);
+
+					return {
+						id: generateId(),
+						inventoryId: ing.inventoryId,
+						ingredientName: invItem?.ingredientName ?? "",
+						purchasePrice: price * (unitPair.factor),
+						purchaseQuantity: 1,
+						purchaseUnit: invItem?.unit ?? unitPair.purchase,
+						usagePerServing: ing.amount,
+						usageUnit: invItem?.displayUnit ?? unitPair.usage,
+						conversionFactor: unitPair.factor,
+						costSource: source,
+					};
+				})
+				: [createEmptyIngredient()],
+			overheadCosts: [],
+			servingsPerBatch: 1,
+			sellingPrice: product.promoPrice ?? product.price,
+			happyHourPrice: product.promoPrice ? Math.round(product.promoPrice * 0.85) : Math.round(product.price * 0.85),
+			productId: selectedProductId,
+			sourceType: recipe ? "recipe_based" : "manual",
+		});
+		setSelectedRows(new Set());
+		setEditingId(null);
+	}, [selectedProductId, products, inventory, recipes, inventoryCosts, hppType, baseRecipes]);
+
 	const createHpp = useHybridCreateHppCalculation();
 	const updateHpp = useHybridUpdateHppCalculation();
 	const deleteHpp = useHybridDeleteHppCalculation();
