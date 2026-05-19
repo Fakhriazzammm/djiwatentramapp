@@ -251,9 +251,8 @@ function RegisterPage() {
 			localStorage.removeItem(DRAFT_KEY);
 			toast.success("Pendaftaran berhasil dikirim");
 
-			// Redirect ke halaman tracking status
-			const regNumber = String(id ?? appKey);
-			window.location.href = `/register/selesai/${regNumber}`;
+			// Redirect ke halaman tracking status — gunakan appKey (registrationNumber di raw)
+			window.location.href = `/register/selesai/${appKey}`;
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal submit pendaftaran");
 		} finally { setIsSubmitting(false); }
