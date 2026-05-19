@@ -79,7 +79,7 @@ export type EmployeeOnboardingApplicationPayload = {
 	contract_pdf_url: string | null;
 	cv_url: string | null;
 	registration_number: string | null;
-\tattachments: Record<string, unknown>;
+	attachments: Record<string, unknown>;
 	raw: Record<string, unknown>;
 };
 
