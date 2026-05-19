@@ -5870,7 +5870,7 @@ function InventoryTable({
 												value={inline.conversionFactor}
 											/>
 											<span className="ml-0.5 text-[9px] font-mono tabular-nums text-muted-foreground/60 whitespace-nowrap">
-												{inline.packNetUnit || row.packNetUnit || "?"} / {inline.unit || row.unit || "?"}
+												{inline.packNetUnit || row.packNetUnit || "—"} / {inline.unit || row.unit || "—"}
 											</span>
 										</div>
 									</td>
