@@ -112,7 +112,7 @@ function ApplicationDetailPage() {
 			const rawContractText = app.contract?.plainText ||
 				(app.contract?.clauses ?? []).map((c: any) => `${c.title}\n${c.body}`).join("\n\n");
 			const ctx = buildContractVariableContext(
-				{ fullName: app.full_name, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, email: app.email, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone },
+				{ fullName: app.full_name, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, placeOfBirth: app.birth_place, email: app.email, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone },
 				app.employment || {},
 				companyDisplayName,
 				signatoryPersonName,
@@ -374,6 +374,7 @@ function ApplicationDetailPage() {
 							<InfoRow label="Email" value={app.email || "-"} />
 							<InfoRow label="NIK" value={app.identity_number || "-"} />
 							<InfoRow label="Tgl Lahir" value={app.birth_date ? new Date(app.birth_date).toLocaleDateString("id-ID") : "-"} />
+							<InfoRow label="Tempat Lahir" value={app.birth_place || "-"} />
 							<div className="col-span-2">
 								<InfoRow label="Alamat" value={app.address || "-"} />
 							</div>

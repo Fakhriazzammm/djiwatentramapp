@@ -44,6 +44,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 		identityNumber: "",
 		address: "",
 		birthDate: "",
+		placeOfBirth: "",
 		emergencyContactName: "",
 		emergencyContactPhone: "",
 	},
@@ -396,6 +397,7 @@ function RegisterPage() {
 								<Field label="Email"><Input value={draft.personal.email} onChange={(e) => updatePersonal("email", e.target.value)} placeholder="nama@email.com" /></Field>
 								<Field label="NIK / No Identitas"><Input value={draft.personal.identityNumber} onChange={(e) => updatePersonal("identityNumber", e.target.value)} /></Field>
 								<Field label="Tanggal lahir"><Input type="date" value={draft.personal.birthDate} onChange={(e) => updatePersonal("birthDate", e.target.value)} /></Field>
+								<Field label="Tempat lahir"><Input value={draft.personal.placeOfBirth} onChange={(e) => updatePersonal("placeOfBirth", e.target.value)} placeholder="Contoh: Jakarta" /></Field>
 								<Field label="Kontak darurat"><Input value={draft.personal.emergencyContactName} onChange={(e) => updatePersonal("emergencyContactName", e.target.value)} placeholder="Nama kontak darurat" /></Field>
 								<Field label="No kontak darurat"><Input value={draft.personal.emergencyContactPhone} onChange={(e) => updatePersonal("emergencyContactPhone", e.target.value)} /></Field>
 								<Field className="md:col-span-2" label="Alamat"><Textarea value={draft.personal.address} onChange={(e) => updatePersonal("address", e.target.value)} /></Field>

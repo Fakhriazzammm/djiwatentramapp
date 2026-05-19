@@ -63,6 +63,7 @@ export type EmployeeOnboardingApplicationPayload = {
 	identity_number: string | null;
 	address: string | null;
 	birth_date: string | null;
+	birth_place: string | null;
 	emergency_contact: {
 		name: string | null;
 		phone: string | null;
@@ -154,6 +155,7 @@ export function buildEmployeeOnboardingPayload(
 		identity_number: cleanOptional(personal.identityNumber),
 		address: cleanOptional(personal.address),
 		birth_date: cleanOptional(personal.birthDate),
+		birth_place: cleanOptional(personal.placeOfBirth),
 		emergency_contact: {
 			name: cleanOptional(personal.emergencyContactName),
 			phone: cleanOptional(personal.emergencyContactPhone),
