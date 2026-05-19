@@ -161,7 +161,7 @@ function ContractLandingPage() {
 						{savedCount} tersimpan
 					</span>
 				</div>
-				<Button size="sm" onClick={() => navigate({ to: "/admin/operational-team/register/contract/edit/new" })} className="gap-1.5 text-xs">
+				<Button size="sm" onClick={() => window.location.href = "/admin/operational-team/register/contract/edit/new"} className="gap-1.5 text-xs">
 					<Plus className="h-3.5 w-3.5" />
 					Buat Template Baru
 				</Button>
@@ -189,7 +189,7 @@ function ContractLandingPage() {
 					<FileText className="mb-3 h-10 w-10 text-muted-foreground/40" />
 					<p className="text-sm font-medium text-muted-foreground">Belum ada template kontrak.</p>
 					<p className="mb-4 text-xs text-muted-foreground/60">Buat template baru untuk setiap role.</p>
-					<Button size="sm" onClick={() => navigate({ to: "/admin/operational-team/register/contract/edit/new" })} className="gap-1.5 text-xs">
+					<Button size="sm" onClick={() => window.location.href = "/admin/operational-team/register/contract/edit/new"} className="gap-1.5 text-xs">
 						<Plus className="h-3.5 w-3.5" />
 						Buat Template Baru
 					</Button>
@@ -251,7 +251,7 @@ function ContractLandingPage() {
 										size="sm"
 										variant="outline"
 										className="h-7 flex-1 text-[11px] gap-1"
-										onClick={() => navigate({ to: "/admin/operational-team/register/contract/edit/" + tmpl.id })}
+										onClick={() => window.location.href = "/admin/operational-team/register/contract/edit/" + tmpl.id}
 									>
 										<Edit className="h-3 w-3" />
 										Edit
@@ -261,7 +261,7 @@ function ContractLandingPage() {
 											size="sm"
 											variant="outline"
 											className="h-7 flex-1 text-[11px] gap-1"
-											onClick={() => navigate({ to: "/admin/operational-team/register/contract/" + tmpl.id + "/preview" })}
+											onClick={() => window.location.href = "/admin/operational-team/register/contract/" + tmpl.id + "/preview"}
 										>
 											<Eye className="h-3 w-3" />
 											Preview
@@ -290,7 +290,7 @@ function ContractLandingPage() {
 					{/* Create new card */}
 					<button
 						type="button"
-						onClick={() => navigate({ to: "/admin/operational-team/register/contract/edit/new" })}
+						onClick={() => window.location.href = "/admin/operational-team/register/contract/edit/new"}
 						className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-card/50 p-6 text-sm text-muted-foreground transition-all hover:border-primary/50 hover:text-primary active:scale-[0.98]"
 					>
 						<Plus className="h-5 w-5" />

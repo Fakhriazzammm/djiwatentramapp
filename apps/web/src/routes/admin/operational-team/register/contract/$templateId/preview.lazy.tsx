@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import { normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 import {
+	getRoleSalaryDefaults,
+} from "@/lib/employee-onboarding-settings";
+import {
 	buildContractVariableContext,
 	replaceContractVariables,
 	buildEmployeeContractTemplate,
@@ -64,7 +67,7 @@ function ContractPreviewPage() {
 		if (!testName.trim()) return rawTemplateText;
 		const selectedRole = roles.find((r: any) => String(r?._id) === templateId);
 		const roleDefaults = selectedRole
-			? { monthlySalary: selectedRole.monthlyFixedSalary || 0, dailyAllowance: selectedRole.dailyAllowance || 0, shiftRate: selectedRole.baseShiftRate || 0 }
+			? (() => { const d = getRoleSalaryDefaults(selectedRole); return { monthlySalary: d.monthlySalary, dailyAllowance: d.dailyAllowance, shiftRate: d.shiftRate }; })()
 			: { monthlySalary: 0, dailyAllowance: 0, shiftRate: 0 };
 		const ctx = buildContractVariableContext(
 			{ fullName: testName, phone: "", identityNumber: testNIK || undefined, address: testAddress || undefined, birthDate: undefined, placeOfBirth: undefined },

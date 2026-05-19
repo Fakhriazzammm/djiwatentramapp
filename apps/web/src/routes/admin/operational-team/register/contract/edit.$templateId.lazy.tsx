@@ -576,7 +576,7 @@ Pastikan body pasal 1 menyebut "${companyName} sebagai perwakilan perusahaan".`;
 						</div>
 						<div>
 							<Label className="text-xs font-medium">Duplikasi dari (opsional)</Label>
-							<Select value={duplicateFrom} onValueChange={setDuplicateFrom}>
+							<Select value={duplicateFrom} onValueChange={(v: any) => setDuplicateFrom(String(v || "__none__"))}>
 								<SelectTrigger className="mt-1 h-9 text-sm">
 									<SelectValue />
 								</SelectTrigger>
@@ -691,7 +691,7 @@ Pastikan body pasal 1 menyebut "${companyName} sebagai perwakilan perusahaan".`;
 					{/* Employment Type */}
 					<div className="rounded-lg border bg-card p-2.5 flex items-center gap-2">
 						<span className="text-[11px] font-medium text-muted-foreground shrink-0">Tipe:</span>
-						<Select value={selectedEmploymentType} onValueChange={(v) => { if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return; setSelectedEmploymentType(v || "probation"); }}>
+						<Select value={selectedEmploymentType} onValueChange={(v: any) => { if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return; setSelectedEmploymentType(String(v || "probation")); }}>
 							<SelectTrigger className="h-7 text-xs flex-1">
 								<SelectValue />
 							</SelectTrigger>
