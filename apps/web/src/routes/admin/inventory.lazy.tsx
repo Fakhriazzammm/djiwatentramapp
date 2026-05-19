@@ -5161,14 +5161,14 @@ function InventoryTable({
 						<col className="w-[12%]" />
 						<col className="w-[9%]" />
 						<col className="w-[9ch]" /> {/* Stok */}
-						<col className="w-[6ch]" /> {/* Min */}
-						<col className="w-[6ch]" /> {/* Beli */}
-						<col className="w-[8ch]" /> {/* Satuan */}
-						<col className="w-[12ch]" /> {/* Konversi */}
-						<col className="w-[16ch]" /> {/* Harga */}
-						<col className="w-[8ch]" /> {/* Harga/Unit */}
+						<col className="w-[8ch]" /> {/* Min */}
+						<col className="w-[8ch]" /> {/* Beli */}
+						<col className="w-[10ch]" /> {/* Satuan */}
+						<col className="w-[14ch]" /> {/* Konversi */}
+						<col className="w-[18ch]" /> {/* Harga */}
+						<col className="w-[11ch]" /> {/* Harga/Unit */}
 						<col className="w-[7%]" /> {/* Status */}
-						<col className="w-[12ch]" /> {/* Nilai Stok */}
+						<col className="w-[14ch]" /> {/* Nilai Stok */}
 						<col className="w-[8rem]" /> {/* Aksi */}
 					</colgroup>
 					<thead className="bg-card">
@@ -5363,7 +5363,7 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
-									className="w-[7ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
+									className="w-[8ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -5382,7 +5382,7 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
-									className="w-[7ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
+									className="w-[8ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -5401,7 +5401,7 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
-									className={`mx-auto w-[8ch] rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${
+									className={`mx-auto w-[10ch] rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${
 										getSuggestionHighlightClass(
 											quickAdd.unit.trim() !== "" &&
 												unitOptionSet.has(normalizeUnitOption(quickAdd.unit))
@@ -5646,7 +5646,7 @@ function InventoryTable({
 									</td>
 									<td className="px-1.5 py-1 align-middle text-center">
 										<input
-											className="mx-auto w-[6ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											className="mx-auto w-[8ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 											onBlur={() => void saveMeta(row)}
 											onChange={(e) =>
 												setInlineField(row, "lowStockThreshold", e.target.value)
@@ -5663,7 +5663,7 @@ function InventoryTable({
 									</td>
 									<td className="px-1.5 py-1 align-middle text-center">
 										<input
-											className="mx-auto w-[6ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											className="mx-auto w-[8ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 											onBlur={() => void saveMeta(row)}
 											onChange={(e) =>
 												setInlineField(row, "preferredPurchaseQuantity", e.target.value)
@@ -5680,7 +5680,7 @@ function InventoryTable({
 									</td>
 									<td className="px-1.5 py-1 align-middle text-center group relative">
 										<input
-											className={`mx-auto w-[8ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+											className={`mx-auto w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
 												inline.unit.trim() !== "" &&
 													unitOptionSet.has(normalizeUnitOption(inline.unit))
 											)}`}
@@ -5703,7 +5703,7 @@ function InventoryTable({
 									<td className="px-2 py-1.5 align-middle text-center">
 										<div className="flex items-center gap-0.5 justify-center">
 											<input
-												className="w-[7ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
+												className="w-[8ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "conversionFactor", e.target.value)
@@ -5720,7 +5720,7 @@ function InventoryTable({
 												value={inline.conversionFactor}
 											/>
 											<input
-												className="w-[6ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center text-[10px] font-mono tabular-nums text-muted-foreground outline-none focus:border-border focus:bg-background"
+												className="w-[8ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center text-[10px] font-mono tabular-nums text-muted-foreground outline-none focus:border-border focus:bg-background"
 												list="inventory-unit-options-table"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
@@ -5773,7 +5773,7 @@ function InventoryTable({
 						<div className="flex items-center gap-1 self-end">
 							<span className="text-[8px] text-muted-foreground/30">/</span>
 							<input
-									className="w-10 rounded-lg border border-transparent bg-transparent px-0.5 py-0.5 text-[9px] text-muted-foreground text-center outline-none focus:border-border focus:bg-background"
+									className="w-[8ch] rounded-lg border border-transparent bg-transparent px-0.5 py-0.5 text-[9px] text-muted-foreground text-center outline-none focus:border-border focus:bg-background"
 									list="inventory-unit-options-table"
 									onBlur={() => void saveMeta(row)}
 									onChange={(e) =>
@@ -5832,7 +5832,7 @@ function InventoryTable({
 												</span>
 											</div>
 										</td>
-									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
+									<td className="px-2 py-1.5 align-middle text-right whitespace-nowrap text-[11px] font-semibold text-foreground/80 font-mono">
 										{saveStateByRow[row.inventoryId] === "saving" ? (
 											<Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground/50" />
 										) : (
