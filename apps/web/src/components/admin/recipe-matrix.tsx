@@ -188,6 +188,7 @@ export function RecipeMatrixPage() {
 	const [applyingAlaCarteSync, setApplyingAlaCarteSync] = useState(false);
 	const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
 	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+	const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
 	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
 		name: "",
 		description: "",
@@ -397,14 +398,21 @@ export function RecipeMatrixPage() {
 			toast.error("Resep tidak ditemukan");
 			return;
 		}
+		setPendingDeleteIds((prev) => new Set(prev).add(`product:${productId}`));
 		setDeletingProductId(productId);
 		try {
 			await deleteRecipe({ id: recipe._id as Id<"recipes"> });
+			await new Promise((r) => setTimeout(r, 400));
 			toast.success("Resep dihapus");
 		} catch (err: any) {
 			toast.error(err?.message ?? "Gagal menghapus resep");
 		} finally {
 			setDeletingProductId(null);
+			setPendingDeleteIds((prev) => {
+				const next = new Set(prev);
+				next.delete(`product:${productId}`);
+				return next;
+			});
 		}
 	}, [recipes, deleteRecipe]);
 
@@ -574,14 +582,21 @@ export function RecipeMatrixPage() {
 	};
 
 	const handleDeleteBase = async (id: string) => {
+		setPendingDeleteIds((prev) => new Set(prev).add(`base:${id}`));
 		setDeletingBaseId(id);
 		try {
 			await deleteBaseRecipe({ id: id as any });
+			await new Promise((r) => setTimeout(r, 400));
 			toast.success("Base recipe dihapus");
 		} catch (err: any) {
 			toast.error(err?.message ?? "Gagal menghapus base recipe");
 		} finally {
 			setDeletingBaseId(null);
+			setPendingDeleteIds((prev) => {
+				const next = new Set(prev);
+				next.delete(`base:${id}`);
+				return next;
+			});
 		}
 	};
 
@@ -610,6 +625,11 @@ export function RecipeMatrixPage() {
 		const ids = [...selectedRowIds];
 		if (ids.length === 0) return;
 		setIsBulkDeleting(true);
+		setPendingDeleteIds((prev) => {
+			const next = new Set(prev);
+			for (const id of ids) next.add(id);
+			return next;
+		});
 		let deletedCount = 0;
 		let errorCount = 0;
 		for (const id of ids) {
@@ -631,8 +651,10 @@ export function RecipeMatrixPage() {
 				errorCount++;
 			}
 		}
+		await new Promise((r) => setTimeout(r, 400));
 		setSelectedRowIds(new Set());
 		setIsBulkDeleting(false);
+		setPendingDeleteIds(new Set());
 		if (errorCount === 0) {
 			toast.success(`${deletedCount} resep berhasil dihapus`);
 		} else {
@@ -797,12 +819,14 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 							const hasRecipe = recipeByProduct.has(String(product._id));
 							const hpp = hppMap?.[String(product._id)];
 							const cat = categoryById.get(String(product.categoryId)) ?? "";
+							const isDeleting = pendingDeleteIds.has(`product:${product._id}`);
 
 							return (
 								<tr
 									key={product._id}
 									className={cn(
 										"border-b border-border/20 transition-colors group",
+										isDeleting && "opacity-40 pointer-events-none",
 										hasRecipe
 											? "hover:bg-primary/[0.03]"
 											: "bg-amber-50/20 hover:bg-amber-50/40"
@@ -931,10 +955,21 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 							);
 						})}
 						{/* ── Base Recipe Rows ── */}
-						{(baseRecipes ?? []).map((br: any) => (
-							<tr key={`base-${br._id}`} className="border-b border-border/20 hover:bg-primary/[0.02] group">
-								{/* Base name */}
-								<td className={cn(
+						{(() => {
+							const pendingBaseIds = [...pendingDeleteIds]
+								.filter((id) => id.startsWith("base:"))
+								.map((id) => id.replace("base:", ""));
+							const extantBaseRecipes = baseRecipes ?? [];
+							const extantBaseIds = new Set(extantBaseRecipes.map((br: any) => String(br._id)));
+							const staleBases = pendingBaseIds
+								.filter((bid) => !extantBaseIds.has(bid))
+								.map((bid) => ({ _id: bid, name: "", category: "", targetUnit: "", targetQuantity: "", ingredients: [], _stale: true }));
+							return [...extantBaseRecipes, ...staleBases].map((br: any) => {
+								const isDeleting = pendingDeleteIds.has(`base:${br._id}`);
+								return (
+									<tr key={`base-${br._id}`} className={cn("border-b border-border/20 group", isDeleting && "opacity-40 pointer-events-none", !isDeleting && "hover:bg-primary/[0.02]")}>
+									{/* Base name */}
+									<td className={cn(
 									"sticky left-0 z-10 border-r border-border/40 px-2 py-1.5",
 									selectedRowIds.has(`base:${br._id}`) ? "bg-primary/[0.06]" : "bg-card group-hover:bg-primary/[0.03]"
 								)}>
@@ -1008,7 +1043,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 								{/* Empty cell for add-ingredient column */}
 								<td className="border-r border-border/20 px-1 py-1.5" />
 							</tr>
-						))}
+						)})})()}
 						{productRows.length === 0 && (
 							<tr>
 								<td

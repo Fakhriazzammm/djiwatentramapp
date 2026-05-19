@@ -701,7 +701,7 @@ export function TransactionDetailReport({
 		);
 	};
 
-	const columnCount = showRunningBalance ? 10 : 9;
+	const columnCount = showRunningBalance ? 12 : 11;
 	const accData = useHybridAccountingReport(
 		accountingMode && range ? { startDate: range.startDate, endDate: range.endDate } : undefined
 	);
@@ -1057,10 +1057,12 @@ export function TransactionDetailReport({
 						<col style={{ width: "30px" }} />
 						<col style={{ width: "32px" }} />
 						<col style={{ width: "80px" }} />
-						<col style={{ width: "98px" }} />
+						<col style={{ width: "48px" }} />
+						<col style={{ width: "130px" }} />
 						<col style={{ width: "90px" }} />
 						<col style={{ width: "80px" }} />
-						<col />
+						<col style={{ width: "70px" }} />
+						<col style={{ width: "64px" }} />
 						<col style={{ width: "120px" }} />
 						{showRunningBalance && <col style={{ width: "100px" }} />}
 						<col style={{ width: "72px" }} />
@@ -1076,9 +1078,11 @@ export function TransactionDetailReport({
 								</th>
 								<th className="border-r border-b border-slate-200 bg-slate-50 px-1 py-1 text-center">No</th>
 								<th className="border-b border-slate-200 px-2 py-1">Tanggal</th>
+							<th className="border-b border-slate-200 px-1 py-1 text-center">Struk</th>
 							<th className="border-b border-slate-200 px-2 py-1">ID</th>
 							<th className="border-b border-slate-200 px-2 py-1">Sumber</th>
-							<th className="border-b border-slate-200 px-2 py-1">Pembayaran</th>
+							<th className="border-b border-slate-200 px-2 py-1">Bayar</th>
+							<th className="border-b border-slate-200 px-2 py-1">Pelanggan</th>
 							<th className="border-b border-slate-200 px-2 py-1">Deskripsi</th>
 								<th className="border-l border-b border-slate-200 bg-slate-50 px-2 py-1 text-right">
 									{showRunningBalance ? "Nominal" : "Nominal"}
@@ -1204,12 +1208,18 @@ export function TransactionDetailReport({
 										);
 										if (shift) shiftName = shift.shiftName || "Shift Aktif";
 									}
-									const isIncome = t.type === "income";
-									const isDuplicate = duplicateRowKeys.has(rowKey);
-									const runningBal = runningBalances.get(rowKey);
-									const isExpanded = expandedRows.has(rowKey);
-									const hasScanItems = t.metadata?.scanItems && t.metadata.scanItems.length > 0;
-									const hasReceiptMeta = t.metadata?.receiptDetails || t.metadata?.ocr;
+								const isIncome = t.type === "income";
+								const isDuplicate = duplicateRowKeys.has(rowKey);
+								const runningBal = runningBalances.get(rowKey);
+								const isExpanded = expandedRows.has(rowKey);
+								const hasScanItems = t.metadata?.scanItems && t.metadata.scanItems.length > 0;
+								const hasReceiptMeta = t.metadata?.receiptDetails || t.metadata?.ocr;
+
+								const orderDisplay = t.metadata?.orderNumber || t.orderId || t.metadata?.sourceRef || t._id;
+								const receiptNo = t.metadata?.dailyReceiptNo || t.metadata?.receiptNumber || t.metadata?.receiptDetails?.receiptNumber;
+								const customerName = t.merchant || t.metadata?.customerName || t.metadata?.cashier || "";
+								const catLower = String(t.category || "").toLowerCase();
+								const shortDesc = catLower === "penjualan" ? "Penjualan" : catLower === "pemasukan" ? "Pemasukan" : catLower === "belanja" ? "Belanja" : catLower === "pesanan" ? "Pesanan" : "Lainnya";
 
 									const toggleExpand = () => {
 										if (editingItemRowKey === rowKey) return;
@@ -1267,10 +1277,21 @@ export function TransactionDetailReport({
 							</div>
 						</td>
 
-						{/* ID */}
+						{/* Struk */}
+						<td className="whitespace-nowrap px-1 py-1 text-center">
+							{receiptNo ? (
+								<span className="font-mono text-[9px] text-slate-500" title={`Struk #${receiptNo}`}>
+									#{receiptNo}
+								</span>
+							) : (
+								<span className="text-[9px] text-slate-300">—</span>
+							)}
+						</td>
+
+						{/* ID — tampilkan nama order / nomor order */}
 						<td className="whitespace-nowrap px-2 py-1">
 							<span className="font-mono text-[9px] text-slate-500" title={t._id}>
-								{t.orderId ? `#${String(t.orderId).slice(-8)}` : t.metadata?.sourceRef ? String(t.metadata.sourceRef).slice(-12) : String(t._id).slice(-8)}
+								{orderDisplay}
 							</span>
 						</td>
 
