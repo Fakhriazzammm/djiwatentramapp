@@ -143,10 +143,10 @@ async function handleApprove(
     );
   }
 
-  // Check if already approved
+  // Check if already approved & fetch raw data (needed to preserve registrationNumber etc.)
   const { data: app, error: appError } = await supabase
     .from("employee_onboarding_applications")
-    .select("id, status, approved_user_source_id")
+    .select("id, status, approved_user_source_id, raw")
     .eq("id", String(applicationId))
     .maybeSingle();
 
@@ -551,4 +551,20 @@ async function handleBulkDelete(
   }
 
   return corsResponse({ success: true, message: `${ids.length} pendaftaran dihapus` });
+}
+
+// ── 7. Fix corrupted raw data ─────────────────────────────────
+async function handleFixRaw(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>
+) {
+  const { id, raw } = payload as { id: string; raw: Record<string, unknown> };
+  if (!id) return corsResponse({ error: "id wajib diisi" }, 400);
+  if (!raw) return corsResponse({ error: "raw wajib diisi" }, 400);
+  const { error } = await supabase
+    .from("employee_onboarding_applications")
+    .update({ raw })
+    .eq("id", String(id));
+  if (error) return corsResponse({ error: error.message }, 500);
+  return corsResponse({ success: true, message: "raw diperbaiki" });
 }

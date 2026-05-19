@@ -5201,11 +5201,11 @@ function InventoryTable({
 						<col className="w-[9%]" />
 						<col className="w-[9ch]" /> {/* Stok */}
 						<col className="w-[8ch]" /> {/* Min */}
+						<col className="w-[8ch]" /> {/* Unit Dasar */}
 						<col className="w-[8ch]" /> {/* Beli */}
 						<col className="w-[10ch]" /> {/* Satuan Beli */}
 						<col className="w-[10ch]" /> {/* Isi Bersih */}
 						<col className="w-[9ch]" /> {/* Satuan Isi */}
-						<col className="w-[8ch]" /> {/* Unit Dasar */}
 						<col className="w-[20ch]" /> {/* Konversi */}
 						<col className="w-[18ch]" /> {/* Harga */}
 						<col className="w-[11ch]" /> {/* Harga/Unit */}
@@ -5252,11 +5252,11 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Min</th>
+							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Unit Dasar</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Beli</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Satuan Beli</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Isi Bersih</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Satuan Isi</th>
-							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Unit Dasar</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px] cursor-help group relative">Konversi<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">1 unit isi = berapa unit stok dasar.</span></th>
 							<th
 								className="whitespace-nowrap cursor-pointer px-1.5 py-1 font-semibold transition-colors hover:text-foreground"
@@ -5427,6 +5427,24 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
+									className={`mx-auto w-[10ch] rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${
+										getSuggestionHighlightClass(
+											quickAdd.unit.trim() !== "" &&
+												unitOptionSet.has(normalizeUnitOption(quickAdd.unit))
+										)}`}
+									list="inventory-unit-options-table"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											unit: normalizeUnitOption(e.target.value),
+										}))
+									}
+									placeholder="satuan"
+									value={quickAdd.unit}
+								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
 									className="w-[8ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
@@ -5492,24 +5510,6 @@ function InventoryTable({
 									value={quickAdd.packNetUnit}
 								/>
 							</td>
-							<td className="px-2 py-1.5 text-center">
-								<input
-									className={`mx-auto w-[10ch] rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${
-										getSuggestionHighlightClass(
-											quickAdd.unit.trim() !== "" &&
-												unitOptionSet.has(normalizeUnitOption(quickAdd.unit))
-										)}`}
-									list="inventory-unit-options-table"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({
-											...prev,
-											unit: normalizeUnitOption(e.target.value),
-										}))
-									}
-									placeholder="satuan"
-									value={quickAdd.unit}
-								/>
-							</td>
 							<td className="px-1.5 py-1"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-1.5 py-1 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-1.5 py-1 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
@@ -5559,6 +5559,9 @@ function InventoryTable({
 									</td>
 									<td className="p-2">
 										<Skeleton className="mx-auto h-6 w-12" />
+									</td>
+									<td className="p-2">
+										<Skeleton className="mx-auto h-4 w-8" />
 									</td>
 									<td className="p-2">
 										<Skeleton className="mx-auto h-4 w-8" />
@@ -5754,6 +5757,28 @@ function InventoryTable({
 											value={inline.lowStockThreshold}
 										/>
 									</td>
+									<td className="px-1.5 py-1 align-middle text-center group relative">
+										<input
+											className={`mx-auto w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+												inline.unit.trim() !== "" &&
+													unitOptionSet.has(normalizeUnitOption(inline.unit))
+											)}`}
+											list="inventory-unit-options-table"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(
+													row,
+													"unit",
+													normalizeUnitOption(e.target.value)
+												)
+											}
+											placeholder="unit"
+											value={inline.unit}
+										/>
+										{row.preferredPurchaseUnit && row.preferredPurchaseUnit !== inline.unit && (
+											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok: {inline.unit}</span>
+										)}
+										</td>
 									<td className="px-1.5 py-1 align-middle text-center">
 										<input
 											className="mx-auto w-[8ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
@@ -5825,28 +5850,6 @@ function InventoryTable({
 											value={inline.packNetUnit}
 										/>
 									</td>
-									<td className="px-1.5 py-1 align-middle text-center group relative">
-										<input
-											className={`mx-auto w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
-												inline.unit.trim() !== "" &&
-													unitOptionSet.has(normalizeUnitOption(inline.unit))
-											)}`}
-											list="inventory-unit-options-table"
-											onBlur={() => void saveMeta(row)}
-											onChange={(e) =>
-												setInlineField(
-													row,
-													"unit",
-													normalizeUnitOption(e.target.value)
-												)
-											}
-											placeholder="unit"
-											value={inline.unit}
-										/>
-										{row.preferredPurchaseUnit && row.preferredPurchaseUnit !== inline.unit && (
-											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok: {inline.unit}</span>
-										)}
-										</td>
 									<td className="px-2 py-1.5 align-middle text-center">
 										<div className="flex items-center gap-0.5 justify-center">
 											<input
