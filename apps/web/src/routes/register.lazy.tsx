@@ -1,17 +1,14 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileSignature, Loader2, Sparkles, UserPlus, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
-import { SignaturePad } from "@/components/employee-onboarding/signature-pad";
 import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridGenerateEmployeeContract,
@@ -25,7 +22,6 @@ import {
 	createEmployeeSlug,
 	type EmployeeContractClause,
 	type EmployeeOnboardingDraft,
-	validateEmployeeOnboardingDraft,
 } from "@/lib/employee-onboarding-schema";
 import {
 	DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS,
@@ -33,9 +29,7 @@ import {
 	type EmployeeOnboardingFieldKey,
 	type EmployeeOnboardingStepSetting,
 	applyOnboardingDefaultsToDraft,
-	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
-	validateDraftForSettings,
 	getProbationEndDate,
 } from "@/lib/employee-onboarding-settings";
 
@@ -66,8 +60,9 @@ const initialDraft: EmployeeOnboardingDraft = {
 		slug: "",
 		homePin: "",
 	},
-	contract: { mode: "template", title: "Perjanjian Kerja", plainText: "", clauses: [] },
+	contract: { mode: "template", title: "", plainText: "", clauses: [] },
 	signatureDataUrl: "",
+	cvUrl: "",
 	agreements: { dataIsTrue: false, contractApproved: false },
 };
 
@@ -97,18 +92,19 @@ function moneyValue(v?: number) {
 	return v ? String(v) : "";
 }
 
-/** Build active step labels — hardcoded sesuai rendering publik: Data Diri, Data Kerja, Kontrak & Tanda Tangan, Selesai */
+/** Build active step labels — fase 1: Data Diri + Data Kerja & CV */
 function getActiveSteps(_settings: EmployeeOnboardingSettings): string[] {
-	return ["Data Diri", "Data Kerja", "Kontrak & Tanda Tangan", "Selesai"];
+	return ["Data Diri", "Data Kerja & CV"];
 }
 
-/** Compute submission UI — submit happens at step 2 (Kontrak & Tanda Tangan) */
+/** Submit after step 1 — redirect ke /register/selesai/:id, bukan step success di sini */
 function getSubmitStepIndex(_settings: EmployeeOnboardingSettings): number {
-	return 3; // step 0,1,2 are form steps, step 3 is success screen
+	return 2; // step 0,1 are form steps
 }
 
 /* -------- page component -------- */
 function RegisterPage() {
+	const navigate = useNavigate();
 	const roles = useHybridStaffRoles() ?? [];
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
@@ -128,6 +124,9 @@ function RegisterPage() {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [applicationId, setApplicationId] = useState<string | null>(null);
+	const [cvFile, setCvFile] = useState<File | null>(null);
+	const [isUploadingCv, setIsUploadingCv] = useState(false);
+	const [cvUploadedUrl, setCvUploadedUrl] = useState<string | null>(null);
 
 	/* persist draft */
 	useEffect(() => { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }, [draft]);
@@ -208,39 +207,53 @@ function RegisterPage() {
 	}
 
 	async function handleSubmit() {
-		const validation = validateEmployeeOnboardingDraft({ ...draft, contract: contractPreview });
-		const settingErrors = validateDraftForSettings({ ...draft, contract: contractPreview }, onboardingSettings);
-		if (!validation.success || settingErrors.length) {
-			[...validation.errors, ...settingErrors].forEach((e) => toast.error(e));
+		// Phase 1 validation — hanya personal + employment data
+		const personal = draft.personal;
+		const employment = draft.employment;
+		const errors: string[] = [];
+		if (!personal.fullName.trim()) errors.push("Nama lengkap wajib diisi");
+		if (!personal.phone.trim()) errors.push("No HP / WhatsApp wajib diisi");
+		if (!employment.roleId) errors.push("Jabatan / role wajib dipilih");
+		if (!employment.username.trim()) errors.push("Username wajib diisi");
+		if (!employment.homePin || employment.homePin.length < 6) errors.push("PIN login harus 6 digit");
+		if (errors.length) {
+			errors.forEach((e) => toast.error(e));
 			return;
 		}
+
 		setIsSubmitting(true);
 		try {
 			const appKey = crypto.randomUUID();
-			let signatureUrl: string | undefined;
-			if (draft.signatureDataUrl) {
-				const sigBlob = await dataUrlToBlob(draft.signatureDataUrl);
-				signatureUrl = await uploadFile({ file: sigBlob, contentType: "image/png", fileName: `${appKey}-signature.png`, folder: "employee-contracts/signatures" });
+
+			// Upload CV jika ada
+			let cvUrl: string | null = cvUploadedUrl ?? null;
+			if (cvFile && !cvUploadedUrl) {
+				setIsUploadingCv(true);
+				cvUrl = await uploadFile({ file: cvFile, contentType: cvFile.type || "application/pdf", fileName: `${appKey}-cv.${cvFile.name.split(".").pop() || "pdf"}`, folder: "employee-contracts/cvs" });
+				setCvUploadedUrl(cvUrl);
+				setIsUploadingCv(false);
 			}
-			let contractPdfUrl: string | null = null;
-			try {
-				const pdfBlob = await generateContractPdfBlob({ ...draft, contract: contractPreview }, document.getElementById("employee-contract-preview"));
-				contractPdfUrl = await uploadFile({ file: pdfBlob, contentType: "application/pdf", fileName: `${appKey}-contract.pdf`, folder: "employee-contracts/contracts" });
-			} catch (e) { console.warn("PDF gen failed", e); }
-			const payload = buildEmployeeOnboardingPayload({ ...draft, contract: contractPreview }, { signatureUrl, contractPdfUrl });
+
+			// Build payload fase 1 — tanpa contract & signature
+			const payload = buildEmployeeOnboardingPayload(
+				{ ...draft, contract: { mode: "template", title: "", plainText: "", clauses: [] }, signatureDataUrl: "", agreements: { dataIsTrue: true, contractApproved: false } },
+				{ cvUrl },
+			);
 			payload.raw = {
 				...payload.raw,
 				registrationMode: onboardingSettings.registrationMode,
 				pipelineStatus: onboardingSettings.pipeline.defaultStatus,
 				documentChecklist: onboardingSettings.documentChecklist,
 				salaryPreview: onboardingSettings.salaryPreview,
+				registrationNumber: appKey,
 			};
 			const id = await submitApplication({ payload });
 			setApplicationId(String(id ?? appKey));
 			localStorage.removeItem(DRAFT_KEY);
-			const submitIdx = getSubmitStepIndex(onboardingSettings);
-			setStep(submitIdx);
 			toast.success("Pendaftaran berhasil dikirim");
+
+			// Redirect ke halaman tracking status
+			navigate({ to: "/register/selesai/$registrationNumber" as any, params: { registrationNumber: String(id ?? appKey) } });
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal submit pendaftaran");
 		} finally { setIsSubmitting(false); }
@@ -262,11 +275,6 @@ function RegisterPage() {
 				if (!e.roleId) errors.push("Jabatan / role wajib dipilih");
 				if (!e.homePin || e.homePin.length < 6) errors.push("PIN login harus 6 digit");
 				if (!e.username.trim()) errors.push("Username wajib diisi");
-				break;
-			}
-			case 2:
-			case 3: {
-				// contract & signature are managed by settings — validation happens in handleSubmit
 				break;
 			}
 		}
@@ -337,9 +345,9 @@ function RegisterPage() {
 							<UserPlus className="mr-1 h-3 w-3" /> Register Karyawan
 						</Badge>
 						<h1 className="text-xl font-bold sm:text-3xl">Pendaftaran Karyawan Baru</h1>
-						<p className="mt-1 text-muted-foreground text-xs sm:mt-2 sm:text-sm">
-							Isi data diri dan data kerja, lalu tunggu approval admin.
-						</p>
+					<p className="mt-1 text-muted-foreground text-xs sm:mt-2 sm:text-sm">
+						Isi data diri dan data kerja + upload CV, lalu tunggu approval admin untuk lanjut ke kontrak.
+					</p>
 					</div>
 
 					{/* step pills — scrollable on mobile */}
@@ -441,70 +449,54 @@ function RegisterPage() {
 								<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
 								<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
 								<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
+								{/* Upload CV */}
+								<div className="space-y-1.5 sm:space-y-2 md:col-span-2">
+									<Label className="text-xs sm:text-sm">Upload CV (opsional)</Label>
+									<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+										<label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+											<FileUp className="h-4 w-4" />
+											<span>{cvFile ? cvFile.name : "Pilih file CV"}</span>
+											<input
+												type="file"
+												accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+												className="hidden"
+												onChange={(e) => {
+													const file = e.target.files?.[0];
+													if (file) {
+														setCvFile(file);
+														setCvUploadedUrl(null);
+													}
+												}}
+											/>
+										</label>
+										{cvFile && (
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="text-xs text-destructive h-8"
+												onClick={() => { setCvFile(null); setCvUploadedUrl(null); }}
+											>
+												Hapus
+											</Button>
+										)}
+									</div>
+									{cvFile && !cvUploadedUrl && (
+										<p className="text-xs text-amber-600">CV akan diupload saat pendaftaran dikirim</p>
+									)}
+									{cvUploadedUrl && (
+										<p className="text-xs text-emerald-600 flex items-center gap-1">
+											<CheckCircle2 className="h-3 w-3" /> CV siap
+										</p>
+									)}
+									<p className="text-xs text-muted-foreground">Format: PDF, DOC, JPG, PNG. Maksimal 5 MB.</p>
+								</div>
 							</CardContent>
 						</Card>
 						</motion.div>
 					)}
 
-					{/* ---- step 2: kontrak & tanda tangan ---- */}
-					{step === 2 && (
-						<motion.div
-							key="step-2"
-							initial={{ opacity: 0, y: 12 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -12 }}
-							transition={{ duration: 0.2, ease: "easeOut" }}
-						>
-							<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-								<Card className="flex-1 border sm:rounded-xl">
-									<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Kontrak &amp; Tanda Tangan</CardTitle></CardHeader>
-									<CardContent className="space-y-4">
-										<SignaturePad value={draft.signatureDataUrl} onChange={(v) => setDraft((p) => ({ ...p, signatureDataUrl: v }))} />
-										<label className="flex items-start gap-3 text-sm">
-											<Checkbox
-												checked={draft.agreements.dataIsTrue}
-												onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, dataIsTrue: Boolean(v) } }))}
-											/>
-											<span>Saya menyatakan data yang saya isi benar.</span>
-										</label>
-										<label className="flex items-start gap-3 text-sm">
-											<Checkbox
-												checked={draft.agreements.contractApproved}
-												onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, contractApproved: Boolean(v) } }))}
-											/>
-											<span>Saya menyetujui isi kontrak kerja.</span>
-										</label>
-									</CardContent>
-								</Card>
-								<div className="flex-1">
-									<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} />
-								</div>
-							</div>
-						</motion.div>
-					)}
-
-					{/* ---- step 3: selesai ---- */}
-					{step === 3 && (
-						<motion.div
-							key="step-3"
-							initial={{ opacity: 0, y: 12 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -12 }}
-							transition={{ duration: 0.2, ease: "easeOut" }}
-						>
-							<Card className="mx-auto max-w-md text-center sm:max-w-xl">
-								<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
-									<CheckCircle2 className="mx-auto h-12 w-12 text-green-500 sm:h-16 sm:w-16" />
-									<h2 className="text-lg font-bold sm:text-2xl">Pendaftaran berhasil dikirim</h2>
-									<p className="text-muted-foreground text-sm">
-										Status saat ini: <b>menunggu approval admin</b>.<br />
-										Nomor pendaftaran: <b className="break-all">{applicationId}</b>
-									</p>
-									<Button onClick={() => { window.location.href = "/login"; }}>Kembali ke Login</Button>
-								</CardContent>
-							</Card>
-						</motion.div>
-					)}
+					{/* ---- step 2 (removed — kontrak & tanda tangan pindah ke selesai page setelah approval admin) ---- */}
 				</AnimatePresence>
 
 				{/* ---- navigation ---- */}
@@ -530,19 +522,18 @@ function RegisterPage() {
 
 						{step === maxFormIdx ? (
 							<Button
-								disabled={isSubmitting}
+								disabled={isSubmitting || isUploadingCv}
 								onClick={handleSubmit}
 								size="sm"
 								className="sm:h-10 sm:px-4 sm:text-sm"
 							>
-								{isSubmitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-								Kirim Pendaftaran
+								{(isSubmitting || isUploadingCv) && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+								{isUploadingCv ? "Mengupload CV..." : "Kirim Pendaftaran"}
 							</Button>
 						) : (
 							<Button
 								onClick={() => {
 									if (!validateStep(step)) return;
-									if (step === 1 && !draft.contract.plainText) applyTemplate();
 									setStep((s) => Math.min(maxFormIdx, s + 1));
 								}}
 								size="sm"

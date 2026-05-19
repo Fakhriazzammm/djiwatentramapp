@@ -24,6 +24,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5182004468"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
+TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-5044633519"))
 
 WIB = timezone(timedelta(hours=7))
 logger = logging.getLogger(__name__)
@@ -670,6 +671,67 @@ _last_order_check_ms, _reported_order_nos = _load_supervisor_cursor()
 # Nilai 10 menit = kompromi: cukup untuk delay bayar biasa, tanpa re-scan terlalu luas.
 _LOOKBACK_MS = 600_000  # 10 menit
 
+# ── Helper: find shift at timestamp (for transaction notification) ──
+
+async def _find_shift_at_time(timestamp_ms: int) -> dict:
+    """Find active shift at a given timestamp. Returns {cashier_name, team_members} or empty."""
+    try:
+        shifts = await _fetch(
+            "pos_shift_reports",
+            "select=cashier_name,team_members,shift_name,start_time,end_time"
+            f"&start_time=lte.{timestamp_ms}"
+            "&order=start_time.desc&limit=3",
+        )
+        for s in shifts:
+            s_start = int(s.get("start_time") or 0)
+            s_end = s.get("end_time")
+            if s_end is not None and timestamp_ms > int(s_end):
+                continue
+            return {
+                "cashier_name": s.get("cashier_name") or "",
+                "team_members": s.get("team_members") or "",
+            }
+    except Exception as e:
+        logger.warning("find_shift_at_time failed: %s", e)
+    return {}
+
+# ── Transaction notification to group ──
+
+async def _send_transaction_notification(app, order_no: str, customer: str, totalAmount: float,
+                                          payment_method: str, ts_ms: int, struk_line: str | None,
+                                          items: list[dict]):
+    shift = await _find_shift_at_time(ts_ms)
+    cashier = shift.get("cashier_name", "?")
+    team = shift.get("team_members", "")
+
+    lines = []
+    if struk_line:
+        lines.append(f"📍 {struk_line}")
+    lines.extend([
+        f"🧾 Pesanan Baru — {_format_time_hm(ts_ms)}",
+        "────────────",
+        f"🆔 {order_no}",
+        f"💰 Rp{totalAmount:,.0f} — {payment_method.upper() if payment_method else '-'}",
+        f"👤 {customer}",
+        f"👥 Kasir: {cashier}",
+    ])
+    if team:
+        lines.append(f"📋 Tim: {team}")
+    lines.append("")
+    lines.append("Items:")
+    for i in items:
+        pn = i.get("productName", "?").strip()
+        q = int(float(i.get("quantity", 1)))
+        lines.append(f"  • {pn} x{q}")
+
+    text = "\n".join(lines)
+
+    try:
+        await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, text)
+        logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
+    except Exception as e:
+        logger.error("send_transaction_notification failed for %s: %s", order_no, e)
+
 async def _check_new_orders(app):
     global _last_order_check_ms, _reported_order_nos
     now_ms = int(_now_wib().timestamp() * 1000)
@@ -745,6 +807,10 @@ async def _check_new_orders(app):
             await asyncio.gather(*tasks)
             await asyncio.sleep(0.3)  # small gap between orders
 
+        # ── Transaction notification ──
+        payment = row.get("paymentMethod") or "-"
+        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items)
+
         _reported_order_nos.add(order_no)
 
     _last_order_check_ms = max_creation_time
@@ -761,6 +827,7 @@ async def _post_init(app):
     logger.info("Bot: @%s", me.username)
     logger.info("Barista group: %s", BARISTA_GROUP_ID)
     logger.info("Kitchen group: %s", KITCHEN_GROUP_ID)
+    logger.info("Transaction group: %s", TRANSACTION_GROUP_ID)
 
     await _build_beverage_lookup()
     await _build_food_lookup()

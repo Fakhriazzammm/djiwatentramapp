@@ -1,4 +1,6 @@
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 function runCommand(rootDir, cmd, fallback = "") {
 	try {
@@ -24,6 +26,15 @@ function getEnvCommitHash() {
 	);
 }
 
+function getBaseVersion(rootDir) {
+	let baseVersion = "0.1.0";
+	try {
+		const pkg = JSON.parse(readFileSync(resolve(rootDir, "package.json"), "utf-8"));
+		baseVersion = pkg.version || baseVersion;
+	} catch {}
+	return baseVersion;
+}
+
 export function getBuildMetadata(rootDir) {
 	const envCommitHash = getEnvCommitHash();
 	const gitCommitHash = normalizeCommit(runCommand(rootDir, "git rev-parse --short HEAD", ""));
@@ -31,12 +42,17 @@ export function getBuildMetadata(rootDir) {
 	const buildDate = new Date().toISOString().split("T")[0];
 	const commitCount = runCommand(rootDir, "git rev-list --count HEAD", "0");
 	const commitCountNum = parseInt(commitCount) || 0;
+	const [baseMajor, baseMinor] = getBaseVersion(rootDir).split(".").map(Number);
 
 	// Auto-derive major.minor dari commit count.
 	// Setiap 500 commit → minor naik 1.
 	// Dengan 1140 commit → minor = 2 → 0.2.xxx
-	const major = "0";
-	const minor = String(Math.floor(commitCountNum / 500));
+	//
+	// Fallback untuk Vercel shallow clone (commitCount < 500):
+	// pakai base version dari root package.json
+	const useAuto = commitCountNum >= 500;
+	const major = useAuto ? "0" : String(baseMajor);
+	const minor = useAuto ? String(Math.floor(commitCountNum / 500)) : String(baseMinor);
 
 	const version = `${major}.${minor}.${commitCount}-${commitHash}`;
 
