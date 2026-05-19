@@ -3810,6 +3810,23 @@ async def _sync_pos_orders() -> int:
         if order_no in _synced_order_nos:
             continue
         
+        # Skip jika sudah ada transaksi keuangan untuk order ini (dari POS langsung)
+        order_id = row.get("_id", "")
+        if order_id:
+            try:
+                dup_url = f"{SUPABASE_URL}/rest/v1/financial_transactions?select=source_id&order_source_id=eq.{order_id}&limit=1"
+                async with httpx.AsyncClient(timeout=10) as dup_client:
+                    dup_resp = await dup_client.get(
+                        dup_url,
+                        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Accept-Profile": "pos"},
+                    )
+                if dup_resp.is_success and dup_resp.json():
+                    logger.info("order_sync: skip %s — financial transaction already exists", order_no)
+                    _synced_order_nos.add(order_no)
+                    continue
+            except Exception:
+                pass  # Jika check gagal, lanjutkan saja agar tidak blocking
+        
         total = float(row.get("totalAmount") or 0)
         if total <= 0:
             _synced_order_nos.add(order_no)
