@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, FileSignature, Download, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileSignature, Download, GripVertical, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { Badge } from "@/components/ui/badge";
@@ -402,6 +402,20 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		}));
 	}, []);
 
+	const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+	const moveClause = useCallback((fromIdx: number, toIdx: number) => {
+		if (fromIdx === toIdx) return;
+		setDraft((p) => {
+			const clauses = [...p.clauses];
+			const [moved] = clauses.splice(fromIdx, 1);
+			clauses.splice(toIdx, 0, moved);
+			return { ...p, clauses };
+		});
+		// Auto-save setelah reorder
+		setTimeout(() => { saveTemplate(); }, 100);
+	}, []);
+
 	/* ── Clause Library ── */
 	const CLAUSE_LIBRARY: { title: string; body: string }[] = [
 		{
@@ -787,8 +801,24 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						</div>
 						<div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
 							{draft.clauses.map((clause, idx) => (
-								<div key={idx} className="rounded-md border bg-background p-2 space-y-1.5">
+								<div
+									key={idx}
+									draggable
+									onDragStart={(e) => { e.dataTransfer.setData("text/plain", String(idx)); }}
+									onDragOver={(e) => { e.preventDefault(); setDragOverIdx(idx); }}
+									onDragLeave={() => setDragOverIdx(null)}
+									onDrop={(e) => {
+										e.preventDefault();
+										const fromIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+										setDragOverIdx(null);
+										moveClause(fromIdx, idx);
+									}}
+									className={`rounded-md border bg-background p-2 space-y-1.5 transition-colors ${dragOverIdx === idx ? "border-primary ring-1 ring-primary" : ""}`}
+								>
 									<div className="flex items-center gap-1.5">
+										<button type="button" className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+											<GripVertical className="h-3.5 w-3.5" />
+										</button>
 										<Badge variant="outline" className="shrink-0 text-[9px] tabular-nums h-5 w-5 flex items-center justify-center p-0">{idx + 1}</Badge>
 										<input className="h-7 flex-1 rounded border-0 bg-transparent px-1 text-xs font-medium outline-none focus:ring-1 focus:ring-border" value={clause.title} onChange={(e) => updateClause(idx, "title", e.target.value)} placeholder={"Pasal " + (idx + 1)} />
 										<Button size="icon" variant="ghost" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeClause(idx)}>
