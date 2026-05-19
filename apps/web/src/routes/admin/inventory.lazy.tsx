@@ -5550,12 +5550,12 @@ function InventoryTable({
 																className="h-6 w-6 rounded-full object-cover border border-border"
 																onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.add("photo-broken"); }}
 														/>
-\t\t\t\t\t\t\t\t\t\t\t\t\t) : (
-									<div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center text-muted-foreground/30 hover:border-muted-foreground/50 hover:text-muted-foreground/60 transition-colors">
-										<Image className="h-3 w-3" />
-									</div>
-													)}
-												</div>
+														) : (
+															<div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center text-muted-foreground/30 hover:border-muted-foreground/50 hover:text-muted-foreground/60 transition-colors">
+																<Image className="h-3 w-3" />
+															</div>
+														)
+														)
 											);
 										})()}
 									</td>
