@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileSignature, Trash2 } from "lucide-react";
+import { Eye, FileSignature, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ export function AdminOnboardingPage() {
 
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 	const stats = useMemo(
 		() => ({
 			pending: applications.filter((a: any) => a.status === "pending").length,
@@ -50,16 +51,34 @@ export function AdminOnboardingPage() {
 	);
 
 	/* ---- actions ---- */
+	function getAdminSecret() {
+		return (import.meta as any).env.VITE_ADMIN_SECRET || "";
+	}
+
+	async function cascadeDelete(ids: string[]) {
+		if (ids.length === 0) return;
+		const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || "";
+		const funcUrl = supabaseUrl + "/functions/v1/delete-employee-cascade";
+		const res = await fetch(funcUrl, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-admin-secret": getAdminSecret(),
+			},
+			body: JSON.stringify({ ids }),
+		});
+		const result = await res.json();
+		if (!res.ok) throw new Error(result?.error || "Gagal menghapus");
+		return result;
+	}
+
 	async function handleDeleteApplication(id: string) {
-		if (!window.confirm("Hapus pendaftaran ini? Data tidak bisa dikembalikan.")) return;
+		if (!window.confirm("Hapus pendaftaran ini? Data akan dihapus permanen dari onboarding dan daftar karyawan (jika sudah di-approve).")) return;
 		setDeletingIds((prev) => new Set(prev).add(id));
 		try {
-			const { error } = await createClient()
-				.from("employee_onboarding_applications")
-				.delete()
-				.eq("id", id);
-			if (error) throw error;
+			await cascadeDelete([id]);
 			setApplications((prev) => prev.filter((a: any) => a.id !== id));
+			setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
 			toast.success("Pendaftaran dihapus");
 		} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
 		finally { setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; }); }
@@ -67,18 +86,16 @@ export function AdminOnboardingPage() {
 
 	async function handleBulkDelete() {
 		if (selectedIds.size === 0) return;
-		if (!window.confirm("Hapus " + selectedIds.size + " pendaftaran? Data tidak bisa dikembalikan.")) return;
+		if (!window.confirm("Hapus " + selectedIds.size + " pendaftaran? Data akan dihapus permanen dari onboarding dan daftar karyawan (jika sudah di-approve).")) return;
+		setIsBulkDeleting(true);
 		try {
 			const ids = Array.from(selectedIds);
-			const { error } = await createClient()
-				.from("employee_onboarding_applications")
-				.delete()
-				.in("id", ids);
-			if (error) throw error;
+			await cascadeDelete(ids);
 			setApplications((prev) => prev.filter((a: any) => !ids.includes(a.id)));
 			setSelectedIds(new Set());
 			toast.success(ids.length + " pendaftaran dihapus");
 		} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
+		finally { setIsBulkDeleting(false); }
 	}
 
 	const toggleSelect = (id: string) => {
@@ -134,7 +151,10 @@ export function AdminOnboardingPage() {
 							{selectedIds.size > 0 && (
 								<div className="flex items-center gap-2 mb-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
 									<span className="text-xs font-medium text-muted-foreground">{selectedIds.size} dipilih</span>
-									<Button variant="destructive" size="sm" onClick={handleBulkDelete} className="text-xs h-8 ml-auto"><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Hapus {selectedIds.size}</Button>
+									<Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={isBulkDeleting} className="text-xs h-8 ml-auto">
+										{isBulkDeleting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+										Hapus {selectedIds.size}
+									</Button>
 								</div>
 							)}
 							{/* ---- desktop table ---- */}

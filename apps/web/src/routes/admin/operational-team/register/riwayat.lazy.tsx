@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Search, Clock, CheckCircle2, XCircle, Download, Loader2, RefreshCw, Calendar } from "lucide-react";
+import { FileText, Search, Download, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,10 @@ function ContractHistoryPage() {
 	const [statusFilter, setStatusFilter] = useState<string>("");
 	const [extendDialog, setExtendDialog] = useState<{ app: any; months: number } | null>(null);
 	const [extending, setExtending] = useState(false);
+
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
 	const handleExtend = async () => {
 		if (!extendDialog) return;
@@ -116,6 +120,72 @@ function ContractHistoryPage() {
 		}
 	};
 
+	function getAdminSecret() {
+		return (import.meta as any).env.VITE_ADMIN_SECRET || "";
+	}
+
+	async function cascadeDelete(ids: string[]) {
+		if (ids.length === 0) return;
+		const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || "";
+		const funcUrl = supabaseUrl + "/functions/v1/delete-employee-cascade";
+		const res = await fetch(funcUrl, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-admin-secret": getAdminSecret(),
+			},
+			body: JSON.stringify({ ids }),
+		});
+		const result = await res.json();
+		if (!res.ok) throw new Error(result?.error || "Gagal menghapus");
+		return result;
+	}
+
+	async function handleSingleDelete(id: string) {
+		if (!window.confirm("Hapus karyawan ini? Data akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.")) return;
+		setDeletingIds((prev) => new Set(prev).add(id));
+		try {
+			await cascadeDelete([id]);
+			setApplications((prev) => prev.filter((a) => a.id !== id));
+			setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+			toast.success("Karyawan dihapus");
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menghapus");
+		} finally {
+			setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+		}
+	}
+
+	async function handleBulkDelete() {
+		if (selectedIds.size === 0) return;
+		if (!window.confirm(`Hapus ${selectedIds.size} karyawan? Data akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.`)) return;
+		setIsBulkDeleting(true);
+		try {
+			const ids = Array.from(selectedIds);
+			await cascadeDelete(ids);
+			setApplications((prev) => prev.filter((a) => !ids.includes(a.id)));
+			setSelectedIds(new Set());
+			toast.success(`${ids.length} karyawan dihapus`);
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menghapus");
+		} finally {
+			setIsBulkDeleting(false);
+		}
+	}
+
+	const toggleSelect = (id: string) => {
+		setSelectedIds((prev) => {
+			const n = new Set(prev);
+			if (n.has(id)) n.delete(id); else n.add(id);
+			return n;
+		});
+	};
+
+	const toggleSelectAll = () => {
+		if (selectedIds.size === filtered.length) { setSelectedIds(new Set()); }
+		else { setSelectedIds(new Set(filtered.map((a) => a.id))); }
+	};
+
 	return (
 		<div className="mx-auto w-full max-w-7xl space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -172,70 +242,123 @@ function ContractHistoryPage() {
 					</CardContent>
 				</Card>
 			) : (
-				<div className="overflow-x-auto rounded-xl border">
-					<table className="w-full text-sm">
-						<thead>
-							<tr className="border-b bg-muted/50">
-								<th className="px-4 py-3 text-left font-medium">Karyawan</th>
-								<th className="px-4 py-3 text-left font-medium">Jabatan</th>
-								<th className="px-4 py-3 text-left font-medium">Tipe</th>
-								<th className="px-4 py-3 text-left font-medium">Mulai</th>
-								<th className="px-4 py-3 text-left font-medium">Status</th>
-								<th className="px-4 py-3 text-right font-medium">Aksi</th>
-								<th className="px-4 py-3 text-right font-medium">Perpanjang</th>
-							</tr>
-						</thead>
-						<tbody>
-							{filtered.map((app) => {
-								const empName = app.full_name || "-";
-								const roleName = app.employment?.roleName || "-";
-								const empType = app.employment?.employmentType || "-";
-								const startDate = app.employment?.startDate || "-";
-								const status = app.status === "approved"
-	? (app.raw?.contractStatus || (app.raw?.pipelineStep === "contract_signed" ? "active" : "waiting_sign"))
-	: app.status;
-								const pdfUrl = app.contract_pdf_url;
-								return (
-									<tr key={app.id} className="border-b last:border-0 hover:bg-muted/30">
-										<td className="px-4 py-3 font-medium">{empName}</td>
-										<td className="px-4 py-3 text-muted-foreground">{roleName}</td>
-										<td className="px-4 py-3">
-											<Badge variant="outline" className="text-[10px]">{empType}</Badge>
-										</td>
-										<td className="px-4 py-3 text-xs text-muted-foreground">{startDate}</td>
-										<td className="px-4 py-3">
-											<Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[status] || ""}`}>
-												{STATUS_LABELS[status] || status}
-											</Badge>
-											{app.raw?.pipelineStep === "contract_signed" && (
-												<Badge variant="default" className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">✓ TTD</Badge>
-											)}
-										</td>
-										<td className="px-4 py-3 text-right">
-											{pdfUrl ? (
-												<Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => downloadPdf(pdfUrl, empName)}>
-													<Download className="h-3 w-3" /> PDF
+				<>
+					{selectedIds.size > 0 && (
+						<div className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
+							<span className="text-xs font-medium text-muted-foreground">{selectedIds.size} dipilih</span>
+							<Button
+								variant="destructive"
+								size="sm"
+								onClick={handleBulkDelete}
+								disabled={isBulkDeleting}
+								className="text-xs h-8 ml-auto"
+							>
+								{isBulkDeleting ? (
+									<Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+								) : (
+									<Trash2 className="h-3.5 w-3.5 mr-1.5" />
+								)}
+								Hapus {selectedIds.size}
+							</Button>
+						</div>
+					)}
+					<div className="overflow-x-auto rounded-xl border">
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="border-b bg-muted/50">
+									<th className="px-4 py-3 text-left font-medium w-10">
+										<input
+											type="checkbox"
+											className="h-3.5 w-3.5 rounded"
+											checked={filtered.length > 0 && selectedIds.size === filtered.length}
+											onChange={toggleSelectAll}
+										/>
+									</th>
+									<th className="px-4 py-3 text-left font-medium">Karyawan</th>
+									<th className="px-4 py-3 text-left font-medium">Jabatan</th>
+									<th className="px-4 py-3 text-left font-medium">Tipe</th>
+									<th className="px-4 py-3 text-left font-medium">Mulai</th>
+									<th className="px-4 py-3 text-left font-medium">Status</th>
+									<th className="px-4 py-3 text-right font-medium">Aksi</th>
+									<th className="px-4 py-3 text-right font-medium">Perpanjang</th>
+									<th className="px-4 py-3 text-right font-medium"></th>
+								</tr>
+							</thead>
+							<tbody>
+								{filtered.map((app) => {
+									const empName = app.full_name || "-";
+									const roleName = app.employment?.roleName || "-";
+									const empType = app.employment?.employmentType || "-";
+									const startDate = app.employment?.startDate || "-";
+									const status = app.status === "approved"
+										? (app.raw?.contractStatus || (app.raw?.pipelineStep === "contract_signed" ? "active" : "waiting_sign"))
+										: app.status;
+									const pdfUrl = app.contract_pdf_url;
+									return (
+										<tr key={app.id} className="border-b last:border-0 hover:bg-muted/30">
+											<td className="px-4 py-3">
+												<input
+													type="checkbox"
+													className="h-3.5 w-3.5 rounded"
+													checked={selectedIds.has(app.id)}
+													onChange={() => toggleSelect(app.id)}
+												/>
+											</td>
+											<td className="px-4 py-3 font-medium">{empName}</td>
+											<td className="px-4 py-3 text-muted-foreground">{roleName}</td>
+											<td className="px-4 py-3">
+												<Badge variant="outline" className="text-[10px]">{empType}</Badge>
+											</td>
+											<td className="px-4 py-3 text-xs text-muted-foreground">{startDate}</td>
+											<td className="px-4 py-3">
+												<Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[status] || ""}`}>
+													{STATUS_LABELS[status] || status}
+												</Badge>
+												{app.raw?.pipelineStep === "contract_signed" && (
+													<Badge variant="default" className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">✓ TTD</Badge>
+												)}
+											</td>
+											<td className="px-4 py-3 text-right">
+												{pdfUrl ? (
+													<Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => downloadPdf(pdfUrl, empName)}>
+														<Download className="h-3 w-3" /> PDF
+													</Button>
+												) : (
+													<span className="text-[10px] text-muted-foreground">-</span>
+												)}
+											</td>
+											<td className="px-4 py-3 text-right">
+												<Button
+													size="sm"
+													variant="outline"
+													className="h-7 gap-1 text-xs"
+													onClick={() => setExtendDialog({ app, months: 6 })}
+												>
+													<RefreshCw className="h-3 w-3" /> Perpanjang
 												</Button>
-											) : (
-												<span className="text-[10px] text-muted-foreground">-</span>
-											)}
-										</td>
-										<td className="px-4 py-3 text-right">
-											<Button
-												size="sm"
-												variant="outline"
-												className="h-7 gap-1 text-xs"
-												onClick={() => setExtendDialog({ app, months: 6 })}
-											>
-												<RefreshCw className="h-3 w-3" /> Perpanjang
-											</Button>
-										</td>
-									</tr>
-								);
-							})}
-						</tbody>
-					</table>
-				</div>
+											</td>
+											<td className="px-4 py-3 text-right">
+												<Button
+													size="sm"
+													variant="ghost"
+													onClick={() => handleSingleDelete(app.id)}
+													disabled={deletingIds.has(app.id)}
+													className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+												>
+													{deletingIds.has(app.id) ? (
+														<Loader2 className="h-3.5 w-3.5 animate-spin" />
+													) : (
+														<Trash2 className="h-3.5 w-3.5" />
+													)}
+												</Button>
+											</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
+				</>
 			)}
 
 			{/* ── Extension Dialog ── */}
