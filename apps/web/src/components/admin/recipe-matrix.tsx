@@ -186,6 +186,8 @@ export function RecipeMatrixPage() {
 	const [editingBaseId, setEditingBaseId] = useState<string | null>(null);
 	const [deletingBaseId, setDeletingBaseId] = useState<string | null>(null);
 	const [applyingAlaCarteSync, setApplyingAlaCarteSync] = useState(false);
+	const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
 		name: "",
 		description: "",
@@ -583,6 +585,61 @@ export function RecipeMatrixPage() {
 		}
 	};
 
+	// ── Selection & Bulk Delete ──
+
+	const toggleRowSelection = useCallback((id: string) => {
+		setSelectedRowIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}, []);
+
+	const toggleSelectAll = useCallback(() => {
+		setSelectedRowIds((prev) => {
+			if (prev.size > 0) return new Set();
+			const all = new Set<string>();
+			for (const p of productRows) all.add(`product:${p._id}`);
+			for (const br of baseRecipes ?? []) all.add(`base:${br._id}`);
+			return all;
+		});
+	}, [productRows, baseRecipes]);
+
+	const handleBulkDelete = useCallback(async () => {
+		const ids = [...selectedRowIds];
+		if (ids.length === 0) return;
+		setIsBulkDeleting(true);
+		let deletedCount = 0;
+		let errorCount = 0;
+		for (const id of ids) {
+			const [type, rawId] = id.split(":");
+			try {
+				if (type === "product") {
+					const recipe = [...(recipes ?? [])].find(
+						(r) => !r.variantName && String(r.productId) === rawId
+					);
+					if (recipe) {
+						await deleteRecipe({ id: recipe._id as Id<"recipes"> });
+						upsertHppFromRecipe({ productId: rawId, overheadCosts: [] }).catch(() => {});
+					}
+				} else if (type === "base") {
+					await deleteBaseRecipe({ id: rawId as any });
+				}
+				deletedCount++;
+			} catch {
+				errorCount++;
+			}
+		}
+		setSelectedRowIds(new Set());
+		setIsBulkDeleting(false);
+		if (errorCount === 0) {
+			toast.success(`${deletedCount} resep berhasil dihapus`);
+		} else {
+			toast.warning(`${deletedCount} berhasil, ${errorCount} gagal`);
+		}
+	}, [selectedRowIds, recipes, deleteRecipe, deleteBaseRecipe, upsertHppFromRecipe]);
+
 	const hasRecipeCount = productRows.filter((p) => recipeByProduct.has(String(p._id))).length;
 	const totalIngredients = usedIngredientIds.size;
 
@@ -678,8 +735,17 @@ export function RecipeMatrixPage() {
 					<thead>
 						<tr>
 							{/* Fixed columns */}
-							<th className="sticky top-0 left-0 z-20 bg-muted/60 border-b border-r border-border/60 px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[130px] backdrop-blur-sm">
-								Produk
+							<th className="sticky top-0 left-0 z-20 bg-muted/60 border-b border-r border-border/60 px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[130px] backdrop-blur-sm">
+								<div className="flex items-center gap-1">
+									<input
+										type="checkbox"
+										checked={selectedRowIds.size > 0 && selectedRowIds.size === productRows.length + (baseRecipes?.length ?? 0)}
+										ref={(el) => { if (el) el.indeterminate = selectedRowIds.size > 0 && selectedRowIds.size < productRows.length + (baseRecipes?.length ?? 0); }}
+										onChange={toggleSelectAll}
+										className="h-3 w-3 shrink-0 accent-primary"
+									/>
+									<span>Produk</span>
+								</div>
 							</th>
 							<th className="sticky top-0 left-[130px] z-20 bg-muted/60 border-b border-r border-border/60 px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-14 backdrop-blur-sm">
 								Kat
@@ -743,8 +809,18 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 									)}
 								>
 									{/* Product name */}
-									<td className="sticky left-0 z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-3 py-1.5">
-										<div className="flex items-center gap-1">
+									<td className={cn(
+										"sticky left-0 z-10 border-r border-border/40 px-2 py-1.5",
+										selectedRowIds.has(`product:${product._id}`) ? "bg-primary/[0.06]" : "bg-card group-hover:bg-primary/[0.03]"
+									)}>
+										<div className="flex items-center gap-1.5">
+											<input
+												type="checkbox"
+												checked={selectedRowIds.has(`product:${product._id}`)}
+												onChange={() => toggleRowSelection(`product:${product._id}`)}
+												onClick={(e) => e.stopPropagation()}
+												className="h-3 w-3 shrink-0 accent-primary"
+											/>
 											<Link
 												to="/admin/recipe/hpp"
 												search={{ productId: String(product._id) }}
@@ -858,8 +934,18 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						{(baseRecipes ?? []).map((br: any) => (
 							<tr key={`base-${br._id}`} className="border-b border-border/20 hover:bg-primary/[0.02] group">
 								{/* Base name */}
-								<td className="sticky left-0 z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-3 py-1.5">
+								<td className={cn(
+									"sticky left-0 z-10 border-r border-border/40 px-2 py-1.5",
+									selectedRowIds.has(`base:${br._id}`) ? "bg-primary/[0.06]" : "bg-card group-hover:bg-primary/[0.03]"
+								)}>
 									<div className="flex items-center gap-1.5">
+										<input
+											type="checkbox"
+											checked={selectedRowIds.has(`base:${br._id}`)}
+											onChange={() => toggleRowSelection(`base:${br._id}`)}
+											onClick={(e) => e.stopPropagation()}
+											className="h-3 w-3 shrink-0 accent-primary"
+										/>
 										<Badge variant="secondary" className="h-4 px-1 text-[8px] shrink-0">Base</Badge>
 										<span className="text-xs font-medium text-foreground truncate">{br.name}</span>
 									</div>
@@ -968,7 +1054,34 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				</span>
 			</div>
 
-			{/* ── Base Recipe Modal ── */}
+			{/* ── Bulk Action Bar ── */}
+			{selectedRowIds.size > 0 && (
+				<div className="flex items-center gap-3 px-4 py-2 border-t border-primary/30 bg-primary/[0.06] shrink-0">
+					<span className="text-[10px] font-medium text-primary">
+						{selectedRowIds.size} dipilih
+					</span>
+					<Button
+						variant="destructive"
+						size="sm"
+						className="h-6 text-[10px] px-2"
+						onClick={handleBulkDelete}
+						disabled={isBulkDeleting}
+					>
+						{isBulkDeleting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+						Hapus ({selectedRowIds.size})
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-6 text-[10px] px-2 ml-auto"
+						onClick={() => setSelectedRowIds(new Set())}
+					>
+						Batal
+					</Button>
+				</div>
+			)}
+
+		{/* ── Base Recipe Modal ── */}
 			{baseModalOpen && (
 				<ModalScaffold
 					onClose={() => setBaseModalOpen(false)}

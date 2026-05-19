@@ -75,6 +75,10 @@ async function fetchFinancialTransactions(args?: {
 	const orderTxIds = mapped
 		.filter((tx: any) => tx.type === "income" && tx.orderId)
 		.map((tx: any) => tx.orderId);
+	// ── Juga cari transaksi yang punya metadata.orderNumber ──
+	const orderNumTxIds = mapped
+		.filter((tx: any) => tx.type === "income" && !tx.orderId && tx.metadata?.orderNumber)
+		.map((tx: any) => tx.metadata.orderNumber);
 	if (orderTxIds.length > 0) {
 		// items ada di view public.pos_orders (kolom JSONB `items`)
 		const { data: orders, error: oError } = await supabase
@@ -96,6 +100,34 @@ async function fetchFinancialTransactions(args?: {
 			for (const tx of mapped) {
 				if (tx.type === "income" && tx.orderId) {
 					const items = itemsByOrder.get(String(tx.orderId));
+					if (items && items.length > 0) {
+						tx.metadata = { ...tx.metadata, scanItems: items };
+					}
+				}
+			}
+		}
+	}
+	// ── Fallback: cari pos_orders by orderNumber untuk transaksi tanpa orderId ──
+	if (orderNumTxIds.length > 0) {
+		const { data: ordersByNum, error: onError } = await supabase
+			.from("pos_orders")
+			.select("_id, items, orderNumber")
+			.in("orderNumber", orderNumTxIds);
+		if (!onError && ordersByNum) {
+			const itemsByOrderNum = new Map<string, any[]>();
+			for (const order of ordersByNum) {
+				const orderItems = Array.isArray(order.items) ? order.items : [];
+				const mapped = orderItems.map((item: any, idx: number) => ({
+					name: item.productName ?? `Item ${idx + 1}`,
+					quantity: safeNum(item.quantity) || 1,
+					price: safeNum(item.price) || 0,
+					total: (safeNum(item.quantity) || 1) * (safeNum(item.price) || 0),
+				}));
+				itemsByOrderNum.set(String(order.orderNumber), mapped);
+			}
+			for (const tx of mapped) {
+				if (tx.type === "income" && !tx.orderId && tx.metadata?.orderNumber) {
+					const items = itemsByOrderNum.get(String(tx.metadata.orderNumber));
 					if (items && items.length > 0) {
 						tx.metadata = { ...tx.metadata, scanItems: items };
 					}

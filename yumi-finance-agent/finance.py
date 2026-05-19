@@ -72,6 +72,7 @@ class FinanceManager:
         payment_method: str = "cash",
         metadata: dict | None = None,
         receipt_date_str: str | None = None,
+        order_source_id: str | None = None,
     ) -> dict:
         """Catat pemasukan atau pengeluaran.
 
@@ -133,6 +134,7 @@ class FinanceManager:
             "status": "completed",
             "sourceFingerprint": source_fingerprint,
             "source_fingerprint": source_fingerprint,
+            "order_source_id": order_source_id,
             "metadata": metadata or {"source": "yumi_finance_agent", "group_id": -4995568785},
         }
 

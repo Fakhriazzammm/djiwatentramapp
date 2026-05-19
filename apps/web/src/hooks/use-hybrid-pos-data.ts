@@ -869,6 +869,15 @@ async function fetchInventory() {
 		lastPurchaseStoreId: row.lastPurchaseStoreId ?? row.last_purchase_store_source_id ?? undefined,
 		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
 		category: row.category ?? "kitchen",
+		packNetQuantity:
+			(row.packNetQuantity ?? row.pack_net_quantity) === null || (row.packNetQuantity ?? row.pack_net_quantity) === undefined
+				? undefined
+				: Number(row.packNetQuantity ?? row.pack_net_quantity),
+		packNetUnit: row.packNetUnit ?? row.pack_net_unit ?? undefined,
+		contentToBaseFactor:
+			(row.contentToBaseFactor ?? row.content_to_base_factor) === null || (row.contentToBaseFactor ?? row.content_to_base_factor) === undefined
+				? undefined
+				: Number(row.contentToBaseFactor ?? row.content_to_base_factor),
 	})) as InventoryRecord[];
 }
 

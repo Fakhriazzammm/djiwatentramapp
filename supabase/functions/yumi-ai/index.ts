@@ -289,6 +289,7 @@ async function recordTransaction(
 	const creationTime = Number(payload.creation_time ?? Date.now());
 
 	const sourceFingerprint = String(payload.source_fingerprint ?? payload.sourceFingerprint ?? "").trim();
+	const orderSourceId = payload.order_source_id ?? payload.orderSourceId ?? null;
 
 	// ── Dedup by source_fingerprint (strong match) ─────────────
 	if (sourceFingerprint) {
@@ -362,6 +363,7 @@ async function recordTransaction(
 			metadata,
 			raw,
 			source_fingerprint: sourceFingerprint || null,
+			order_source_id: orderSourceId,
 			creation_time: creationTime,
 		});
 

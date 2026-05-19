@@ -3774,7 +3774,7 @@ async def _sync_pos_orders() -> int:
     # Query public view — no Accept-Profile needed, uses camelCase columns
     orders_url = f"{SUPABASE_URL}/rest/v1/pos_orders"
     orders_query = (
-        "select=orderNumber,totalAmount,paymentMethod,_creationTime,customerName,orderType,daily_receipt_no,receipt_kind"
+        "select=_id,orderNumber,totalAmount,paymentMethod,_creationTime,customerName,orderType,daily_receipt_no,receipt_kind"
         "&status=in.(completed,paid)"
         f"&_creationTime=gt.{query_start}"
         f"&_creationTime=lte.{now_ms}"
@@ -3861,6 +3861,7 @@ async def _sync_pos_orders() -> int:
             merchant=customer if customer != "Pelanggan" else "",
             payment_method=payment,
             metadata=metadata,
+            order_source_id=row.get("_id", ""),
         )
         
         if result.get("ok"):

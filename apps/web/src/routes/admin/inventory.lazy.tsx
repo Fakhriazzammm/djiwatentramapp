@@ -124,6 +124,9 @@ type InventoryWorkspaceRow = {
 		sourceFingerprint?: string | null;
 	} | null;
 	netWeight?: string | null;
+	packNetQuantity?: number;
+	packNetUnit?: string;
+	contentToBaseFactor?: number;
 };
 
 type InventoryWorkspaceData = {
@@ -4474,7 +4477,10 @@ function InventoryTable({
 			| "conversionFactor"
 			| "imagePath"
 			| "unitConversionsText"
-			| "category",
+			| "category"
+			| "packNetQuantity"
+			| "packNetUnit"
+			| "contentToBaseFactor",
 		value: string
 	) => {
 		setInlineValues((prev) => {
@@ -4507,6 +4513,15 @@ function InventoryTable({
 					row.conversionFactor
 				),
 				category: (inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen",
+				packNetQuantity:
+					typeof row.packNetQuantity === "number" && row.packNetQuantity > 0
+						? String(row.packNetQuantity)
+						: "",
+				packNetUnit: row.packNetUnit ?? "",
+				contentToBaseFactor:
+					typeof row.contentToBaseFactor === "number" && row.contentToBaseFactor > 0
+						? String(row.contentToBaseFactor)
+						: "",
 			};
 			return {
 				...prev,
@@ -4660,7 +4675,10 @@ function InventoryTable({
 					row.displayUnit,
 					row.conversionFactor
 				) &&
-				current.category.trim() === ((inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen")
+				current.category.trim() === ((inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen") &&
+			(current.packNetQuantity ? Number(current.packNetQuantity) : undefined) === row.packNetQuantity &&
+			normalizeUnitOption(current.packNetUnit) === normalizeUnitOption(row.packNetUnit) &&
+			(current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined) === row.contentToBaseFactor
 		) {
 			return;
 		}
@@ -4699,6 +4717,9 @@ function InventoryTable({
 				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
 				category: current.category.trim(),
 				imagePath: current.imagePath.trim() || undefined,
+				packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : undefined,
+				packNetUnit: normalizeUnitOption(current.packNetUnit) || undefined,
+				contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined,
 			});
 			saveLearnedProfile(ingredientName, {
 				unit: normalizedUnit,
@@ -5163,8 +5184,11 @@ function InventoryTable({
 						<col className="w-[9ch]" /> {/* Stok */}
 						<col className="w-[8ch]" /> {/* Min */}
 						<col className="w-[8ch]" /> {/* Beli */}
-						<col className="w-[10ch]" /> {/* Satuan */}
-						<col className="w-[16ch]" /> {/* Konversi */}
+						<col className="w-[10ch]" /> {/* Satuan Beli */}
+						<col className="w-[10ch]" /> {/* Isi Bersih */}
+						<col className="w-[9ch]" /> {/* Satuan Isi */}
+						<col className="w-[8ch]" /> {/* Unit Dasar */}
+						<col className="w-[20ch]" /> {/* Konversi */}
 						<col className="w-[18ch]" /> {/* Harga */}
 						<col className="w-[11ch]" /> {/* Harga/Unit */}
 						<col className="w-[7%]" /> {/* Status */}
@@ -5211,8 +5235,11 @@ function InventoryTable({
 							</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Min</th>
 							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Beli</th>
-							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold group relative cursor-help text-[9px]">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok utama.</span></th>
-							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px] cursor-help group relative">Konversi<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">1 satuan beli = berapa satuan stok.</span></th>
+							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Satuan Beli</th>
+							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Isi Bersih</th>
+							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Satuan Isi</th>
+							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Unit Dasar</th>
+							<th className="whitespace-nowrap px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px] cursor-help group relative">Konversi<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">1 unit isi = berapa unit stok dasar.</span></th>
 							<th
 								className="whitespace-nowrap cursor-pointer px-1.5 py-1 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lastPurchasePrice")}
@@ -5676,6 +5703,60 @@ function InventoryTable({
 											}}
 											type="number"
 											value={inline.preferredPurchaseQuantity}
+										/>
+									</td>
+									<td className="px-1.5 py-1 align-middle text-center">
+										<input
+											className="mx-auto w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											list="inventory-unit-options-table"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(row, "preferredPurchaseUnit", normalizeUnitOption(e.target.value))
+											}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													void saveMeta(row);
+													(e.target as HTMLInputElement).blur();
+												}
+											}}
+											placeholder="unit"
+											value={inline.preferredPurchaseUnit}
+										/>
+									</td>
+									<td className="px-1.5 py-1 align-middle text-center">
+										<input
+											className="mx-auto w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(row, "packNetQuantity", e.target.value)
+											}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													void saveMeta(row);
+													(e.target as HTMLInputElement).blur();
+												}
+											}}
+											type="number"
+											placeholder="1"
+											value={inline.packNetQuantity}
+										/>
+									</td>
+									<td className="px-1.5 py-1 align-middle text-center">
+										<input
+											className="mx-auto w-[9ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											list="inventory-unit-options-table"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(row, "packNetUnit", normalizeUnitOption(e.target.value))
+											}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													void saveMeta(row);
+													(e.target as HTMLInputElement).blur();
+												}
+											}}
+											placeholder="satuan"
+											value={inline.packNetUnit}
 										/>
 									</td>
 									<td className="px-1.5 py-1 align-middle text-center group relative">
