@@ -1526,8 +1526,8 @@ function InventoryPage() {
 	};
 
 	return (
-		<div className="space-y-4">
-			<div className="bg-background pb-3">
+		<div className="space-y-2">
+			<div className="bg-background">
 				<div className="flex items-center gap-2">
 					<div className="flex-1">
 						<InventoryHeader
@@ -1544,11 +1544,11 @@ function InventoryPage() {
 				/>
 					</div>
 					<button
-						className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+						className="shrink-0 rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
 						onClick={handleExportCSV}
 						type="button"
 					>
-						<Download className="mr-1.5 inline-block h-3.5 w-3.5" />
+						<Download className="mr-1.5 inline-block h-3 w-3" />
 						Export CSV
 					</button>
 				</div>
@@ -1561,23 +1561,23 @@ function InventoryPage() {
 			)}
 
 			{menuProductsWithoutRecipe.length > 0 && !recipeWarningDismissed && (
-				<div className="relative rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 pr-10 text-amber-900">
+				<div className="relative rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 pr-9 text-amber-900">
 					<button
 						aria-label="Tutup peringatan"
-						className="absolute top-2 right-2 rounded-md p-1 text-amber-600 transition-colors hover:bg-amber-200 hover:text-amber-800"
+						className="absolute top-1.5 right-1.5 rounded-md p-1 text-amber-600 transition-colors hover:bg-amber-200 hover:text-amber-800"
 						onClick={dismissRecipeWarning}
 						type="button"
 					>
 						<X className="h-3.5 w-3.5" />
 					</button>
-					<p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+					<p className="text-[10px] font-semibold uppercase tracking-[0.14em]">
 						⚠️ {menuProductsWithoutRecipe.length} menu aktif belum punya recipe — stok tidak akan terpotong otomatis
 					</p>
-					<p className="mt-1 text-sm">
+					<p className="mt-0.5 text-xs">
 						Lengkapi recipe menu agar stok bahan baku otomatis berkurang tiap penjualan.
 					</p>
 					<Link
-						className="mt-2 inline-flex rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+						className="mt-1.5 inline-flex rounded-md bg-amber-600 px-2.5 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-amber-700"
 						to="/admin/recipe"
 					>
 						Buka Admin Recipe
@@ -1586,19 +1586,19 @@ function InventoryPage() {
 			)}
 
 			{dataIssueCounts.total > 0 && !dataIssueDismissed && (
-				<div className="relative rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 pr-10 text-orange-900">
+				<div className="relative rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 pr-9 text-orange-900">
 					<button
 						aria-label="Tutup peringatan"
-						className="absolute top-2 right-2 rounded-md p-1 text-orange-600 transition-colors hover:bg-orange-200 hover:text-orange-800"
+						className="absolute top-1.5 right-1.5 rounded-md p-1 text-orange-600 transition-colors hover:bg-orange-200 hover:text-orange-800"
 						onClick={() => setDataIssueDismissed(true)}
 						type="button"
 					>
 						<X className="h-3.5 w-3.5" />
 					</button>
-					<p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+					<p className="text-[10px] font-semibold uppercase tracking-[0.14em]">
 						⚠️ {dataIssueCounts.total} item butuh perbaikan data
 					</p>
-					<p className="mt-1 text-sm">
+					<p className="mt-0.5 text-xs">
 						{dataIssueCounts.suspiciousBeli > 0 && `${dataIssueCounts.suspiciousBeli} item kolom Beli masih besar (default), `}
 						{dataIssueCounts.missingConvFactor > 0 && `${dataIssueCounts.missingConvFactor} item belum punya konversi satuan. `}
 						Buka filter "Konversi" di atas untuk detailnya.
@@ -6135,9 +6135,9 @@ function InventoryHeader({
 	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
 	return (
-		<div className="rounded-xl border border-border bg-background px-3 py-3">
+		<div className="rounded-lg border border-border bg-background px-2.5 py-2">
 			{/* Row 1: View tabs + filters */}
-			<div className="flex flex-wrap items-center gap-1.5">
+			<div className="flex flex-wrap items-center gap-1">
 				{([
 					{ value: "operational" as const, label: "Operasional" },
 					{ value: "priceMonitor" as const, label: "Harga" },
@@ -6145,7 +6145,7 @@ function InventoryHeader({
 				]).map((tab) => (
 					<button
 						key={tab.value}
-						className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+						className={`rounded-full px-2.5 py-1 text-[10px] font-semibold transition-all ${
 							viewPreset === tab.value
 								? "bg-foreground text-background shadow-sm"
 								: "border border-border bg-background text-muted-foreground hover:text-foreground"
@@ -6158,9 +6158,9 @@ function InventoryHeader({
 				))}
 				{viewPreset === "operational" && (
 					<>
-						<span className="mx-0.5 h-4 w-px bg-border" />
+						<span className="mx-0.5 h-3.5 w-px bg-border" />
 						<button
-							className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+							className={`rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
 								filterLowStock
 									? "border border-destructive/20 bg-destructive/10 text-destructive"
 									: "border border-border bg-background text-muted-foreground hover:text-foreground"
@@ -6171,7 +6171,7 @@ function InventoryHeader({
 							Kritis
 						</button>
 						<label
-							className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold select-none cursor-pointer transition-colors ${
+							className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold select-none cursor-pointer transition-colors ${
 								filterActiveOnly
 									? "border border-emerald-400/30 bg-emerald-50 text-emerald-700"
 									: "border border-border bg-background text-muted-foreground hover:text-foreground"
@@ -6184,20 +6184,20 @@ function InventoryHeader({
 								type="checkbox"
 							/>
 							<span
-								className={`relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors ${
+								className={`relative inline-flex h-3 w-5 shrink-0 items-center rounded-full transition-colors ${
 									filterActiveOnly ? "bg-emerald-500" : "bg-muted-foreground/30"
 								}`}
 							>
 								<span
-									className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition-transform ${
-										filterActiveOnly ? "translate-x-3" : "translate-x-0.5"
+									className={`inline-block h-2 w-2 transform rounded-full bg-white shadow-sm transition-transform ${
+										filterActiveOnly ? "translate-x-2.5" : "translate-x-0.5"
 									}`}
 								/>
 							</span>
 							Menu
 						</label>
 						<select
-							className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground outline-none"
+							className="rounded-lg border border-border bg-background px-2.5 py-1 text-[10px] font-semibold text-foreground outline-none"
 							onChange={(e) => onAdvancedFilterChange(e.target.value as "all" | "priceUp" | "missingConversion")}
 							value={advancedFilter}
 						>
@@ -6209,11 +6209,11 @@ function InventoryHeader({
 				)}
 			</div>
 			{/* Row 2: Search bar full width */}
-			<div className="relative mt-3">
-				<Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+			<div className="relative mt-2">
+				<Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 				<input
 					id="inventory-search-input"
-					className="w-full rounded-xl border border-border bg-background py-2.5 pr-10 pl-10 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
+					className="w-full rounded-xl border border-border bg-background py-2 pr-9 pl-9 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
 					onChange={(e) => onSearchQueryChange(e.target.value)}
 					placeholder={
 						viewPreset === "priceMonitor"
