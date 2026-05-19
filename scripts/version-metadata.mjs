@@ -41,11 +41,14 @@ export function getBuildMetadata(rootDir) {
 	const commitHash = envCommitHash || gitCommitHash || "local";
 	const buildDate = new Date().toISOString().split("T")[0];
 	const commitCount = runCommand(rootDir, "git rev-list --count HEAD", "0");
-	const [major, minor] = getBaseVersion(rootDir).split(".");
+	const commitCountNum = parseInt(commitCount) || 0;
 
-	// Vercel often uses a shallow clone, so `git rev-list --count HEAD` can stay at
-	// 10 across different deploys. Include the commit hash in the displayed version
-	// so current/latest labels never look identical when the build actually changed.
+	// Auto-derive major.minor dari commit count.
+	// Setiap 500 commit → minor naik 1.
+	// Dengan 1140 commit → minor = 2 → 0.2.xxx
+	const major = "0";
+	const minor = String(Math.floor(commitCountNum / 500));
+
 	const version = `${major}.${minor}.${commitCount}-${commitHash}`;
 
 	return {
