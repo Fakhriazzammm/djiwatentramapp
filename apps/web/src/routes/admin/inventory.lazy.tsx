@@ -5160,7 +5160,7 @@ function InventoryTable({
 						<col className="w-[7%]" />
 						<col className="w-[12%]" />
 						<col className="w-[9%]" />
-						<col className="w-[6.5ch]" /> {/* Stok */}
+						<col className="w-[9ch]" /> {/* Stok */}
 						<col className="w-[6ch]" /> {/* Min */}
 						<col className="w-[6ch]" /> {/* Beli */}
 						<col className="w-[8ch]" /> {/* Satuan */}
@@ -5348,7 +5348,7 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 									<input
-										className="w-[7ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
+										className="w-[9ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
 										onChange={(e) =>
 											setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
 										}
@@ -5629,7 +5629,7 @@ function InventoryTable({
 										<td className="px-1.5 py-1 align-middle text-[9px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
 									<td className="px-1.5 py-1 align-middle text-center">
 											<input
-												className="mx-auto w-[7ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono tabular-nums text-[11px] font-bold outline-none focus:border-border focus:bg-background"
+												className="mx-auto w-[9ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono tabular-nums text-[11px] font-bold outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveQuantity(row)}
 												onChange={(e) =>
 													setInlineField(row, "quantity", e.target.value)
