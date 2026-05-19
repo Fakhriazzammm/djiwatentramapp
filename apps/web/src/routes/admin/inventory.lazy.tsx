@@ -41,7 +41,7 @@ import {
 	X,
 	Loader2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
@@ -4005,7 +4005,16 @@ function InventoryTable({
 	const imagePopoverRef = useRef<HTMLDivElement | null>(null);
 	const [imageUrlInput, setImageUrlInput] = useState("");
 	const [imagePopoverTab, setImagePopoverTab] = useState<"upload" | "url">("upload");
-		const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
+	const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
+	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const debouncedRefresh = useCallback(() => {
+		if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+		refreshTimerRef.current = setTimeout(() => {
+			triggerHybridRefresh();
+			setLastRefreshedAt(new Date());
+			refreshTimerRef.current = null;
+		}, 600);
+	}, []);
 
 	// Click outside to close dropdown
 	useEffect(() => {
@@ -4700,7 +4709,7 @@ function InventoryTable({
 				unitConversionsText: (current.unitConversionsText || "").trim(),
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
-			triggerHybridRefresh();
+			debouncedRefresh();
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Gagal menyimpan perubahan";
@@ -4737,7 +4746,7 @@ function InventoryTable({
 				notes: "Quick inline update",
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
-			triggerHybridRefresh();
+			debouncedRefresh();
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Gagal menyimpan stok";
@@ -5164,14 +5173,14 @@ function InventoryTable({
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
-							<th className="w-[2.2rem] px-1 py-2 text-center font-semibold text-muted-foreground/60" title="Insight AI">
-								<Sparkles className="mx-auto h-3 w-3" />
+							<th className="w-[2.2rem] px-1 py-1.5 text-center font-semibold text-muted-foreground/60" title="Insight AI">
+								<Sparkles className="mx-auto h-2.5 w-2.5" />
 							</th>
-							<th className="sticky left-0 z-20 bg-card w-[3.5rem] px-1 py-2 text-center font-semibold text-muted-foreground/60 border-r border-border/70" title="Foto bahan baku">
-								<Image className="mx-auto h-3.5 w-3.5" />
+							<th className="sticky left-0 z-20 bg-card w-[3.5rem] px-1 py-1.5 text-center font-semibold text-muted-foreground/60 border-r border-border/70" title="Foto bahan baku">
+								<Image className="mx-auto h-3 w-3" />
 							</th>
 							<th
-								className="sticky left-[3.5rem] z-20 cursor-pointer border-border/70 border-r bg-card px-2.5 py-2 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
+								className="sticky left-[3.5rem] z-20 cursor-pointer border-border/70 border-r bg-card px-2 py-1.5 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
 							>
 								<div className="flex items-center gap-1">
@@ -5184,11 +5193,11 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="px-2 py-1.5 font-semibold text-center">Kategori</th>
-							<th className="px-2 py-1.5 font-semibold text-center">Menu</th>
-							<th className="px-2 py-1.5 font-semibold">Supplier</th>
+							<th className="px-1.5 py-1 font-semibold text-center text-[10px]">Kategori</th>
+							<th className="px-1.5 py-1 font-semibold text-center text-[10px]">Menu</th>
+							<th className="px-1.5 py-1 font-semibold text-[10px]">Supplier</th>
 							<th
-								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
+								className="cursor-pointer px-1.5 py-1 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("currentStock")}
 							>
 								<div className="flex items-center justify-center gap-1">
@@ -5201,12 +5210,12 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Min</th>
-							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Beli</th>
-							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok utama.</span></th>
-							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px] cursor-help group relative">Konversi<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">1 satuan beli = berapa satuan stok.</span></th>
+							<th className="px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Min</th>
+							<th className="px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">Beli</th>
+							<th className="px-1.5 py-1 text-center font-semibold group relative cursor-help text-[9px]">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok utama.</span></th>
+							<th className="px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px] cursor-help group relative">Konversi<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">1 satuan beli = berapa satuan stok.</span></th>
 							<th
-								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
+								className="cursor-pointer px-1.5 py-1 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lastPurchasePrice")}
 							>
 								<div className="flex items-center gap-1">
@@ -5227,7 +5236,7 @@ function InventoryTable({
 									</button>
 								</div>
 							</th>
-							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">
+							<th className="px-1.5 py-1 text-center font-semibold text-muted-foreground/70 text-[9px]">
 								<div className="flex items-center justify-center gap-1">
 									Harga/Unit
 									<button
@@ -5240,8 +5249,8 @@ function InventoryTable({
 									</button>
 								</div>
 							</th>
-							<th className="px-2 py-1.5 font-semibold">Status</th>
-							<th className="px-2 py-1.5 text-right">
+							<th className="px-1.5 py-1 font-semibold text-[9px]">Status</th>
+							<th className="px-1.5 py-1 text-right text-[9px]">
 								<div className="flex items-center justify-end gap-1">
 									Nilai Stok
 									<button
@@ -5254,7 +5263,7 @@ function InventoryTable({
 									</button>
 								</div>
 							</th>
-							<th className="px-2 py-1.5 text-right font-semibold">
+							<th className="px-1.5 py-1 text-right font-semibold text-[9px]">
 								<div className="flex flex-col items-end">
 									<div className="flex items-center gap-0.5">
 										<button
@@ -5278,10 +5287,10 @@ function InventoryTable({
 						<tr className="bg-primary/[0.04]">
 							<td className="px-1 py-1.5 text-center align-middle" />
 							<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle"><div className="mx-auto h-7 w-7 rounded-full border-2 border-dashed border-muted-foreground/20" /></td>
-							<td className="sticky left-[3.5rem] z-10 bg-card border-r border-border/60 px-2.5 py-1.5">
+							<td className="sticky left-[3.5rem] z-10 bg-card border-r border-border/60 px-2 py-1">
 								<input
 									ref={quickAddNameRef}
-									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
+									className="w-full rounded-lg border border-border bg-background px-2 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
 									list="inventory-name-suggestions"
 									onBlur={(e) =>
 										applySuggestionFromExisting(e.target.value, { silent: true })
@@ -5301,7 +5310,7 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
-							<td className="px-2 py-1.5 text-center">
+							<td className="px-1.5 py-1 text-center">
 								<select
 									className="w-full rounded-lg border border-border bg-background px-1.5 py-1 text-center text-[10px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
@@ -5322,7 +5331,7 @@ function InventoryTable({
 							<td className="px-2 py-1.5 text-center"><div className="text-[9px] text-muted-foreground/40 italic">—</div></td>
 							<td className="px-2 py-1.5">
 								<input
-									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
+									className="w-full rounded-lg border border-border bg-background px-2 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -5409,14 +5418,14 @@ function InventoryTable({
 									value={quickAdd.unit}
 								/>
 							</td>
-							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-							<td className="px-2 py-1.5 text-right">
+							<td className="px-1.5 py-1"><div className="text-[10px] text-muted-foreground">-</div></td>
+							<td className="px-1.5 py-1 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-1.5 py-1 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-1.5 py-1 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-1.5 py-1 text-right">
 								<div className="flex items-center justify-end gap-1.5">
 									<button
-										className="rounded-lg border border-border bg-background px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
+										className="rounded-lg border border-border bg-background px-1.5 py-0.5 text-[9px] font-semibold text-foreground hover:bg-muted"
 										disabled={savingKey === "quick-ai"}
 										onClick={() => void quickAutofillFromAI()}
 										type="button"
@@ -5424,7 +5433,7 @@ function InventoryTable({
 										{savingKey === "quick-ai" ? "AI mencari..." : "Autofill AI"}
 									</button>
 									<button
-										className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground hover:brightness-110"
+										className="rounded-lg bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground hover:brightness-110"
 										disabled={savingKey === "quick-add"}
 										onClick={() => void quickCreate()}
 										type="button"
@@ -5435,53 +5444,53 @@ function InventoryTable({
 							</td>
 						</tr>
 						{inventoryMap.size === 0 &&
-							Array.from({ length: 8 }).map((_, i) => (
+							Array.from({ length: 3 }).map((_, i) => (
 								
 									<tr key={i}>
-									<td className="p-4">
+									<td className="p-2">
 										<Skeleton className="mx-auto h-3 w-3" />
 									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-7 w-7 rounded-full" />
+									<td className="p-2">
+										<Skeleton className="mx-auto h-6 w-6 rounded-full" />
 									</td>
-									<td className="p-4">
-										<Skeleton className="h-4 w-32" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-5 w-16" />
-									</td>
-									<td className="p-4">
+									<td className="p-2">
 										<Skeleton className="h-4 w-24" />
 									</td>
-									<td className="p-4">
-										<Skeleton className="h-6 w-24" />
+									<td className="p-2">
+										<Skeleton className="mx-auto h-4 w-12" />
 									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-8 w-16" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-10" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-10" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-16" />
-									</td>
-									<td className="p-4">
+									<td className="p-2">
 										<Skeleton className="h-4 w-20" />
 									</td>
-									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
+									<td className="p-2">
+										<Skeleton className="h-4 w-20" />
+									</td>
+									<td className="p-2">
+										<Skeleton className="mx-auto h-6 w-12" />
+									</td>
+									<td className="p-2">
+										<Skeleton className="mx-auto h-4 w-8" />
+									</td>
+									<td className="p-2">
+										<Skeleton className="mx-auto h-4 w-8" />
+									</td>
+									<td className="p-2">
+										<Skeleton className="mx-auto h-4 w-12" />
+									</td>
+									<td className="p-2">
+										<Skeleton className="h-4 w-16" />
+									</td>
+									<td className="px-1.5 py-1 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
 										-
 									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-14" />
+									<td className="p-2">
+										<Skeleton className="mx-auto h-4 w-12" />
 									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-16" />
+									<td className="p-2">
+										<Skeleton className="mx-auto h-4 w-12" />
 									</td>
-									<td className="p-4 text-right">
-										<Skeleton className="ml-auto h-8 w-24 rounded-lg" />
+									<td className="p-2 text-right">
+										<Skeleton className="ml-auto h-6 w-20 rounded-lg" />
 									</td>
 									</tr>
 
@@ -5508,7 +5517,7 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-									<td className="px-1 py-1.5 text-center align-middle">
+									<td className="px-1 py-1 text-center align-middle">
 										{(() => {
 											const id = row.inventoryId;
 											const hasStockout = stockoutItemIds.has(id);
@@ -5529,28 +5538,28 @@ function InventoryTable({
 											);
 										})()}
 									</td>
-									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle group relative cursor-pointer" onClick={(e) => { if (imagePopoverRow !== row.inventoryId) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); setImagePopoverPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2 }); setImagePopoverRow(row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); } }}>
+									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1 text-center align-middle group relative cursor-pointer" onClick={(e) => { if (imagePopoverRow !== row.inventoryId) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); setImagePopoverPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2 }); setImagePopoverRow(row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); } }}>
 										{(() => {
 											const imgUrl = getInventoryImageUrl(inline.imagePath || row.imagePath);
 											return (
-												<div className="relative mx-auto h-7 w-7">
+												<div className="relative mx-auto h-6 w-6">
 													{imgUrl ? (
 														<img
 																src={imgUrl}
 																alt={row.ingredientName}
-																className="h-7 w-7 rounded-full object-cover border border-border"
+																className="h-6 w-6 rounded-full object-cover border border-border"
 																onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.add("photo-broken"); }}
 														/>
-													) : (
-														<div className="h-7 w-7 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center text-muted-foreground/30 hover:border-muted-foreground/50 hover:text-muted-foreground/60 transition-colors">
-															<Image className="h-3.5 w-3.5" />
-														</div>
+\t\t\t\t\t\t\t\t\t\t\t\t\t) : (
+									<div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center text-muted-foreground/30 hover:border-muted-foreground/50 hover:text-muted-foreground/60 transition-colors">
+										<Image className="h-3 w-3" />
+									</div>
 													)}
 												</div>
 											);
 										})()}
 									</td>
-									<td className="sticky left-[3.5rem] z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
+									<td className="sticky left-[3.5rem] z-10 border-border/60 border-r bg-card px-2 py-1 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input
 						className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background text-[10px]"
 												onBlur={() => void saveMeta(row)}
@@ -5567,7 +5576,7 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
-										<td className="px-2 py-1.5 text-center align-middle">
+										<td className="px-1.5 py-1 text-center align-middle">
 											<select
 												className={`rounded-lg border px-1.5 py-0.5 text-[9px] font-semibold outline-none transition-all ${
 													inline.category === "kitchen"
@@ -5593,7 +5602,7 @@ function InventoryTable({
 												<option value="other">🔧 other</option>
 											</select>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground max-w-[200px]">
+										<td className="px-1.5 py-1 align-middle text-[9px] text-muted-foreground max-w-[200px]">
 											{(inventoryMenuMap[row.inventoryId]?.length ?? 0) > 0 ? (
 												<div className="flex flex-wrap gap-0.5">
 													{inventoryMenuMap[row.inventoryId].slice(0, 6).map((menuName) => (
@@ -5615,10 +5624,10 @@ function InventoryTable({
 												<span className="text-[9px] text-muted-foreground/40 italic">—</span>
 											)}
 										</td>
-										<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
-									<td className="px-2 py-1.5 align-middle text-center">
+										<td className="px-1.5 py-1 align-middle text-[9px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
+									<td className="px-1.5 py-1 align-middle text-center">
 											<input
-												className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-[12px] font-bold outline-none focus:border-border focus:bg-background"
+												className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-[11px] font-bold outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveQuantity(row)}
 												onChange={(e) =>
 													setInlineField(row, "quantity", e.target.value)
@@ -5633,9 +5642,9 @@ function InventoryTable({
 												value={inline.quantity}
 								/>
 									</td>
-									<td className="px-2 py-1.5 align-middle text-center">
+									<td className="px-1.5 py-1 align-middle text-center">
 										<input
-											className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 											onBlur={() => void saveMeta(row)}
 											onChange={(e) =>
 												setInlineField(row, "lowStockThreshold", e.target.value)
@@ -5650,9 +5659,9 @@ function InventoryTable({
 											value={inline.lowStockThreshold}
 										/>
 									</td>
-									<td className="px-2 py-1.5 align-middle text-center">
+									<td className="px-1.5 py-1 align-middle text-center">
 										<input
-											className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 											onBlur={() => void saveMeta(row)}
 											onChange={(e) =>
 												setInlineField(row, "preferredPurchaseQuantity", e.target.value)
@@ -5667,9 +5676,9 @@ function InventoryTable({
 											value={inline.preferredPurchaseQuantity}
 										/>
 									</td>
-									<td className="px-2 py-1.5 align-middle text-center group relative">
+									<td className="px-1.5 py-1 align-middle text-center group relative">
 										<input
-											className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+											className={`mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
 												inline.unit.trim() !== "" &&
 													unitOptionSet.has(normalizeUnitOption(inline.unit))
 											)}`}
