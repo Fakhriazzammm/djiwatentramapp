@@ -215,14 +215,22 @@ function RegisterCompletePage() {
     const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
     const templateText = roleTemplate || defaultTemplate;
     const selectedRole = roles.find((r: any) => String(r?._id) === app.employment?.roleId);
-    const roleDefaults = selectedRole ? getRoleSalaryDefaults(selectedRole) : { bonusTargetConfig: null, customAllowances: [] };
+    const roleDefaults = selectedRole ? getRoleSalaryDefaults(selectedRole) : {};
+
+    // Merge salary from payroll into employment data so {{gaji_pokok}} etc. are populated
+    const mergedEmployment = {
+      ...(app.employment || {}),
+      monthlySalary: (app.employment?.monthlySalary || 0) || (roleDefaults as any).monthlySalary || 0,
+      dailyAllowance: (app.employment?.dailyAllowance || 0) || (roleDefaults as any).dailyAllowance || 0,
+      shiftRate: (app.employment?.shiftRate || 0) || (roleDefaults as any).shiftRate || 0,
+    };
 
     if (templateText) {
       const templateStr = typeof templateText === "string" ? templateText :
         (templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
       const ctx = buildContractVariableContext(
         { fullName: app.full_name, email: app.email, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, placeOfBirth: app.birth_place, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone } as any,
-        app.employment || {},
+        mergedEmployment,
         companyDisplayName,
         signatoryPersonName,
         onboardingSettings.signatoryCompanyAddress,
@@ -230,11 +238,38 @@ function RegisterCompletePage() {
         onboardingSettings.signatoryPersonTitle,
         onboardingSettings.signatoryLocation,
       );
-      const syncedText = replaceContractVariables(templateStr, ctx);
-      const htmlParagraphs = syncedText.split("\n").map((l: string) => l.trim()).filter(Boolean).map((para: string) => `<p>${para}</p>`).join("\n");
-      return { mode: "template" as const, title: `Perjanjian Kerja ${app.employment?.roleName || ""}`, plainText: syncedText, html: `<article>${htmlParagraphs}</article>`, clauses: [{ title: "Ketentuan Kontrak", body: syncedText }] };
+      const fullText = replaceContractVariables(templateStr, ctx);
+      // Parse template text into structured clauses for proper HTML rendering
+      const rawLines = fullText.split("\n");
+      const clauseElements: string[] = [];
+      let clauseTitle = "";
+      let clauseBody: string[] = [];
+      for (const raw of rawLines) {
+        const line = raw.trim();
+        if (!line) continue;
+        if (/^(pasal|bab|klausul|ketentuan)\s*\d*/i.test(line)) {
+          if (clauseTitle) {
+            clauseElements.push(`<section><h3>${clauseTitle}</h3><p>${clauseBody.join("<\/p>\n<p>")}</p></section>`);
+          }
+          clauseTitle = line;
+          clauseBody = [];
+        } else {
+          clauseBody.push(line);
+        }
+      }
+      if (clauseTitle) {
+        clauseElements.push(`<section><h3>${clauseTitle}</h3><p>${clauseBody.join("<\/p>\n<p>")}</p></section>`);
+      }
+      return {
+        mode: "template" as const,
+        title: `Perjanjian Kerja ${app.employment?.roleName || ""}`,
+        plainText: fullText,
+        html: `<article>${clauseElements.join("\n")}</article>`,
+        clauses: [{ title: "Ketentuan Kontrak", body: fullText }],
+      };
     }
 
+    // Fallback: use the built-in template generator with salary from payroll
     const personal: EmployeeOnboardingDraft["personal"] = {
       fullName: app.full_name || "",
       email: app.email || "",
@@ -245,8 +280,8 @@ function RegisterCompletePage() {
       emergencyContactName: app.emergency_contact?.name || "",
       emergencyContactPhone: app.emergency_contact?.phone || "",
     };
-    const built = buildEmployeeContractTemplate(personal, app.employment || {}, companyDisplayName, (roleDefaults as any).bonusTargetConfig ?? undefined, (roleDefaults as any).customAllowances ?? []);
-    const ctx = buildContractVariableContext(personal as any, app.employment || {}, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
+    const built = buildEmployeeContractTemplate(personal, mergedEmployment, companyDisplayName);
+    const ctx = buildContractVariableContext(personal as any, mergedEmployment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
     return {
       ...built,
       plainText: replaceContractVariables(built.plainText, ctx),
