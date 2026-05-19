@@ -2560,7 +2560,7 @@ export function useHybridCreateOrder() {
 					if (itemsError) throw itemsError;
 				}
 
-\t\t\t\tif (!isOpenBill) {
+				if (!isOpenBill) {
 					const financialRow = {
 						source_id: makeSourceId("fin"),
 						tx_type: "income",
@@ -2667,7 +2667,7 @@ export function useHybridUpdateOrder() {
 					const { data: order, error: getError } = await supabase
 						.schema("pos")
 						.from("orders")
-\t\t\t\t\t\t.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no")
+						.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no")
 						.eq("source_id", id)
 						.maybeSingle();
 					if (getError) throw getError;
@@ -2790,7 +2790,7 @@ export function useHybridUpdateOrderStatus() {
 
 				const { data: order, error: getError } = await pos
 					.from("orders")
-\t\t\t\t\t\t.select(
+						.select(
 						"source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no"
 					)
 					.eq("source_id", id)
@@ -2892,7 +2892,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 				const pos = supabase.schema("pos");
 				const { data: order, error: getError } = await pos
 					.from("orders")
-\t\t\t\t\t.select(
+					.select(
 						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, daily_receipt_no"
 					)
 					.eq("source_id", id)
