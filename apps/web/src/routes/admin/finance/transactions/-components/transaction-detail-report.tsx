@@ -1214,7 +1214,7 @@ export function TransactionDetailReport({
 								const hasReceiptMeta = t.metadata?.receiptDetails || t.metadata?.ocr;
 
 								const orderDisplay = t.metadata?.orderNumber || t.orderId || t.metadata?.sourceRef || t._id;
-								const receiptNo = t.metadata?.dailyReceiptNo || t.metadata?.receiptNumber || t.metadata?.receiptDetails?.receiptNumber;
+								const receiptNo = t.metadata?.dailyReceiptNo || t.metadata?.receiptNumber || t.metadata?.receiptDetails?.receiptNumber || t.metadata?.orderNumber || t.metadata?.sourceRef;
 								const entityName = isIncome
 									? (t.merchant || t.metadata?.customerName || "")
 									: (t.merchant || t.metadata?.merchant || t.metadata?.merchantName || t.metadata?.receiptDetails?.merchantName || t.metadata?.supplier || "");
