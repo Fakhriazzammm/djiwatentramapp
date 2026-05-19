@@ -284,6 +284,7 @@ async function recordTransaction(
 	}
 	const paymentMethod = String(payload.payment_method ?? payload.paymentMethod ?? "cash");
 	const status = String(payload.status ?? "completed");
+	const merchant = String(payload.merchant ?? "");
 	const metadata = payload.metadata ?? { source: "telegram_bot", action: "ocr_scan" };
 	const raw = payload.raw ?? {};
 	const creationTime = Number(payload.creation_time ?? Date.now());
@@ -362,10 +363,11 @@ async function recordTransaction(
 			status,
 			metadata,
 			raw,
-			source_fingerprint: sourceFingerprint || null,
-			order_source_id: orderSourceId,
-			creation_time: creationTime,
-		});
+		source_fingerprint: sourceFingerprint || null,
+		order_source_id: orderSourceId,
+		merchant: merchant || null,
+		creation_time: creationTime,
+	});
 
 	if (error) {
 		console.error("recordTransaction failed:", error);

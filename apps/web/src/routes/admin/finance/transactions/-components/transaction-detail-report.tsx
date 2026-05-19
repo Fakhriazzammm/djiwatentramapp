@@ -1217,7 +1217,7 @@ export function TransactionDetailReport({
 								const receiptNo = t.metadata?.dailyReceiptNo || t.metadata?.receiptNumber || t.metadata?.receiptDetails?.receiptNumber;
 								const entityName = isIncome
 									? (t.merchant || t.metadata?.customerName || "")
-									: (t.merchant || t.metadata?.merchant || t.metadata?.merchantName || t.metadata?.supplier || "");
+									: (t.merchant || t.metadata?.merchant || t.metadata?.merchantName || t.metadata?.receiptDetails?.merchantName || t.metadata?.supplier || "");
 
 									const toggleExpand = () => {
 										if (editingItemRowKey === rowKey) return;
