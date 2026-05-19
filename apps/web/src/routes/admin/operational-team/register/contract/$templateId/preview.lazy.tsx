@@ -1,11 +1,11 @@
 import { createLazyFileRoute, useParams, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, useHybridStaffRoles, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 import {
 	getRoleSalaryDefaults,
@@ -41,17 +41,24 @@ function ContractPreviewPage() {
 	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
 	const roles = useHybridStaffRoles() ?? [];
+	const [refreshKey, setRefreshKey] = useState(0);
 
-	const onboardingSettings = useMemo(
-		() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding),
-		[siteSettings?.employeeOnboarding]
-	);
+	// Force refresh on mount to ensure fresh data
+	useEffect(() => {
+		triggerHybridRefresh();
+		const timer = setTimeout(() => setRefreshKey((n) => n + 1), 500);
+		return () => clearTimeout(timer);
+	}, []);
 
 	const [testName, setTestName] = useState("");
 	const [testNIK, setTestNIK] = useState("");
 	const [testAddress, setTestAddress] = useState("");
 	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
+	const onboardingSettings = useMemo(
+		() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding),
+		[siteSettings?.employeeOnboarding, refreshKey]
+	);
 	const contractTemplatesByRoleId = onboardingSettings.contractTemplatesByRoleId || {};
 	const templateValue = contractTemplatesByRoleId[templateId];
 	const templateName = extractNameFromKey(templateId, roles);
