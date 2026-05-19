@@ -1,4 +1,4 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, UserPlus, XCircle } from "lucide-react";
@@ -104,7 +104,6 @@ function getSubmitStepIndex(_settings: EmployeeOnboardingSettings): number {
 
 /* -------- page component -------- */
 function RegisterPage() {
-	const navigate = useNavigate();
 	const roles = useHybridStaffRoles() ?? [];
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
@@ -253,7 +252,8 @@ function RegisterPage() {
 			toast.success("Pendaftaran berhasil dikirim");
 
 			// Redirect ke halaman tracking status
-			navigate({ to: "/register/selesai/$registrationNumber" as any, params: { registrationNumber: String(id ?? appKey) } });
+			const regNumber = String(id ?? appKey);
+			window.location.href = `/register/selesai/${regNumber}`;
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal submit pendaftaran");
 		} finally { setIsSubmitting(false); }

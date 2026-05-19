@@ -41,20 +41,12 @@ export function getBuildMetadata(rootDir) {
 	const commitHash = envCommitHash || gitCommitHash || "local";
 	const buildDate = new Date().toISOString().split("T")[0];
 	const commitCount = runCommand(rootDir, "git rev-list --count HEAD", "0");
-	const commitCountNum = parseInt(commitCount) || 0;
-	const [baseMajor, baseMinor] = getBaseVersion(rootDir).split(".").map(Number);
 
-	// Auto-derive major.minor dari commit count.
-	// Setiap 500 commit → minor naik 1.
-	// Dengan 1140 commit → minor = 2 → 0.2.xxx
-	//
-	// Fallback untuk Vercel shallow clone (commitCount < 500):
-	// pakai base version dari root package.json
-	const useAuto = commitCountNum >= 500;
-	const major = useAuto ? "0" : String(baseMajor);
-	const minor = useAuto ? String(Math.floor(commitCountNum / 500)) : String(baseMinor);
-
-	const version = `${major}.${minor}.${commitCount}-${commitHash}`;
+	// Canonical major.minor dari package.json.
+	// Append commit count + hash sebagai build metadata.
+	// Contoh: 0.2.0-1143-2dc1678 (local) atau 0.2.0-50-2dc1678 (Vercel shallow clone)
+	const baseVersion = getBaseVersion(rootDir);
+	const version = `${baseVersion}-${commitCount}-${commitHash}`;
 
 	return {
 		version,

@@ -48,6 +48,7 @@ export type EmployeeOnboardingDraft = {
 	employment: EmployeeEmploymentData;
 	contract: EmployeeContractDraft;
 	signatureDataUrl?: string;
+	cvUrl?: string;
 	agreements: {
 		dataIsTrue: boolean;
 		contractApproved: boolean;
