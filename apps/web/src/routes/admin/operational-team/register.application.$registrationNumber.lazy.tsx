@@ -283,12 +283,12 @@ function ApplicationDetailPage() {
 							</Badge>
 							{app.raw?.pipelineStep === "contract_signed" && (
 								<Badge variant="default" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
-									Kontrak Ditandatangani ✅
+									Tahap 2 ✅ Kontrak Ditandatangani
 								</Badge>
 							)}
 							{app.status === "approved" && app.raw?.pipelineStep !== "contract_signed" && (
 								<Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
-									Menunggu Tanda Tangan
+									Tahap 2 ⏳ Menunggu Tanda Tangan
 								</Badge>
 							)}
 						</div>
@@ -307,15 +307,19 @@ function ApplicationDetailPage() {
 						<CheckCircle2 className="h-5 w-5 text-emerald-600" />
 						<span>✓ Kontrak sudah ditandatangani</span>
 					</div>
-					<div className="mt-2 flex items-center gap-2">
-						{app.contract_pdf_url && (
-							<a href={app.contract_pdf_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-200 transition-colors">
-								<Download className="h-3.5 w-3.5" /> Unduh PDF Kontrak
+					<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-100/50 p-3">
+						<h4 className="mb-1.5 text-xs font-semibold text-emerald-700">📋 Tahap 2 — Kontrak & Tanda Tangan ✅</h4>
+						<p className="mb-2 text-[11px] text-emerald-600">Kontrak sudah ditandatangani oleh kandidat.</p>
+						<div className="flex items-center gap-2">
+							{app.contract_pdf_url && (
+								<a href={app.contract_pdf_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-200 transition-colors">
+									<Download className="h-3.5 w-3.5" /> Unduh PDF Kontrak
+								</a>
+							)}
+							<a href={"/register/selesai/" + (app.raw?.registrationNumber || "")} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
+								<Eye className="h-3.5 w-3.5" /> Lihat Halaman Kandidat
 							</a>
-						)}
-						<a href="/register/selesai/${app.raw?.registrationNumber}" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
-							<Eye className="h-3.5 w-3.5" /> Lihat Halaman Kandidat
-						</a>
+						</div>
 					</div>
 				</div>
 			)}
@@ -323,11 +327,25 @@ function ApplicationDetailPage() {
 				<div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-800">
 					<div className="flex items-center gap-2 text-sm font-semibold">
 						<CheckCircle2 className="h-5 w-5 text-emerald-600" />
-						<span>✓ Pendaftaran sudah disetujui</span>
+						<span>✓ Tahap 1 — Data & CV Disetujui</span>
 					</div>
 					<p className="mt-1 text-xs text-emerald-600">
-						Akun sudah dibuat. Menunggu kandidat menandatangani kontrak.
+						Akun sudah dibuat. Kandidat dapat melanjutkan ke Tahap 2 (Kontrak & Tanda Tangan).
 					</p>
+					<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-100/50 p-3">
+						<h4 className="mb-1.5 text-xs font-semibold text-emerald-700">📋 Tahap 2 — Kontrak & Tanda Tangan</h4>
+						<p className="mb-2 text-[11px] text-emerald-600">
+							Kandidat perlu menandatangani kontrak melalui halaman berikut:
+						</p>
+						<a
+							href={"/register/selesai/" + (app.raw?.registrationNumber || "")}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-200 transition-colors"
+						>
+							<Eye className="h-3.5 w-3.5" /> Lihat Halaman Kandidat
+						</a>
+					</div>
 				</div>
 			)}
 			{app.status === "rejected" && (
@@ -484,7 +502,7 @@ function ApplicationDetailPage() {
 				<div className="flex items-center gap-2">
 					{!isApproved && (
 						<Button disabled={isSaving || !pin || pin.length !== 6} size="sm" onClick={handleApprove} className="gap-1.5">
-							<CheckCircle2 className="h-4 w-4" />Approve & Buat User
+							<CheckCircle2 className="h-4 w-4" />Setujui Tahap 1 (Data & CV)
 						</Button>
 					)}
 					{!isApproved && (
