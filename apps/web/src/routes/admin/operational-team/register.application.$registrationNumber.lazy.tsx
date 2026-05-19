@@ -69,7 +69,7 @@ function ApplicationDetailPage() {
 				}
 				if (data) {
 					setApp(data);
-					setPin(generateSixDigitPin(data.full_name + data.id));
+					setPin(generateSixDigitPin(data.full_name + data.id + Date.now()));
 					setNotes(data.review_notes ?? "");
 					setUsername(data.employment?.username || data.email || `${data.id}@djiwatentram.local`);
 				} else {

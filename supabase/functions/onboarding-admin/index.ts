@@ -164,10 +164,11 @@ async function handleApprove(
 
   // Hash home PIN if provided
   let homePinFingerprint: string | null = null;
-  if (homePin && typeof homePin === "string" && /^\d{6}$/.test(homePin)) {
+  let finalPin = homePin && typeof homePin === "string" && /^\d{6}$/.test(homePin) ? homePin : null;
+  if (finalPin) {
     const hashBuffer = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(homePin)
+      new TextEncoder().encode(finalPin)
     );
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     homePinFingerprint = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -181,35 +182,56 @@ async function handleApprove(
     onboardingApplicationId,
   };
 
-  // Create user using direct fetch (bypass Supabase client)
-  const insertPayload = {
-    source_id: sourceId,
-    username: String(username).toLowerCase().trim(),
-    name: String(name).trim(),
-    role_source_id: String(roleId),
-    is_active: true,
-    receive_report_emails: Boolean(receiveReportEmails ?? false) as boolean,
-    auth_user_id: authUserId ? String(authUserId) : null,
-    slug: slug && String(slug).trim() !== "" ? String(slug).trim() : String(username).toLowerCase().split("@")[0],
-    home_pin_fingerprint: homePinFingerprint,
-    raw,
-  };
-  console.log("[onboarding-admin] insertPayload:", JSON.stringify(insertPayload));
-  const insertBody = JSON.stringify(insertPayload);
-  console.log("[onboarding-admin] insertBody length:", insertBody.length);
-  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/yumi_users`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": SUPABASE_SERVICE_ROLE_KEY,
-      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify(insertPayload),
-  });
-  if (!insertRes.ok) {
-    const insertErrBody = await insertRes.text();
-    console.error("[onboarding-admin] createUser error:", insertErrBody);
-    return corsResponse({ error: `Gagal buat user: ${insertErrBody}`, payload: JSON.stringify(insertPayload) }, 500);
+  // Create user using direct fetch — retry if PIN fingerprint collides
+  let insertErrBody = "";
+  let userCreated = false;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const insertPayload = {
+      source_id: sourceId,
+      username: String(username).toLowerCase().trim(),
+      name: String(name).trim(),
+      role_source_id: String(roleId),
+      is_active: true,
+      receive_report_emails: Boolean(receiveReportEmails ?? false) as boolean,
+      auth_user_id: authUserId ? String(authUserId) : null,
+      slug: slug && String(slug).trim() !== "" ? String(slug).trim() : String(username).toLowerCase().split("@")[0],
+      home_pin_fingerprint: homePinFingerprint,
+      raw,
+    };
+    console.log("[onboarding-admin] insertPayload (attempt", attempt, "):", JSON.stringify(insertPayload));
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/yumi_users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify(insertPayload),
+    });
+    if (insertRes.ok) {
+      userCreated = true;
+      break;
+    }
+    insertErrBody = await insertRes.text();
+    // Check if duplicate key on fingerprint — retry with new PIN
+    if (insertErrBody.includes("idx_yumi_users_home_pin_fingerprint") || insertErrBody.includes("home_pin_fingerprint")) {
+      finalPin = String(Math.floor(100000 + Math.random() * 900000));
+      const hashBuffer = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(finalPin)
+      );
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      homePinFingerprint = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+      console.log("[onboarding-admin] PIN collision, retrying with new PIN:", finalPin);
+      continue;
+    }
+    // Other error — stop retrying
+    break;
+  }
+
+  if (!userCreated) {
+    console.error("[onboarding-admin] createUser error after retries:", insertErrBody);
+    return corsResponse({ error: `Gagal buat user: ${insertErrBody}` }, 500);
   }
 
   const now = "2026-05-14T00:00:00Z";
