@@ -37,7 +37,7 @@ function corsResponse(body: unknown, status = 200, extraHeaders: Record<string, 
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return corsResponse({}, 204);
+    return corsResponse({ ok: true });
   }
 
   // Only allow POST

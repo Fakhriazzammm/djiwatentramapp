@@ -2557,7 +2557,7 @@ export function useHybridCreateOrder() {
 					if (itemsError) throw itemsError;
 				}
 
-				if (!isOpenBill) {
+\t\t\t\tif (!isOpenBill) {
 					const financialRow = {
 						source_id: makeSourceId("fin"),
 						tx_type: "income",
@@ -2570,6 +2570,11 @@ export function useHybridCreateOrder() {
 						status: "completed",
 						order_source_id: orderId,
 						creation_time: Date.now(),
+						metadata: {
+							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							orderNumber,
+							source: "pos",
+						},
 						raw: {
 							kind: "order_settlement",
 							orderId,
@@ -2659,7 +2664,7 @@ export function useHybridUpdateOrder() {
 					const { data: order, error: getError } = await supabase
 						.schema("pos")
 						.from("orders")
-						.select("source_id, status, order_number, total_amount, payment_method, created_at")
+\t\t\t\t\t\t.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no")
 						.eq("source_id", id)
 						.maybeSingle();
 					if (getError) throw getError;
@@ -2683,6 +2688,11 @@ export function useHybridUpdateOrder() {
 								status: "completed",
 								order_source_id: id,
 								creation_time: Date.now(),
+								metadata: {
+									dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
+									orderNumber: order.order_number ?? undefined,
+									source: "pos",
+								},
 								raw: {
 									kind: "order_settlement_update_order",
 									orderId: id,
@@ -2777,8 +2787,8 @@ export function useHybridUpdateOrderStatus() {
 
 				const { data: order, error: getError } = await pos
 					.from("orders")
-					.select(
-						"source_id, status, order_number, total_amount, payment_method, created_at"
+\t\t\t\t\t\t.select(
+						"source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no"
 					)
 					.eq("source_id", id)
 					.maybeSingle();
@@ -2805,6 +2815,11 @@ export function useHybridUpdateOrderStatus() {
 							status: "completed",
 							order_source_id: id,
 							creation_time: Date.now(),
+							metadata: {
+								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
+								orderNumber: order.order_number ?? undefined,
+								source: "pos",
+							},
 							raw: {
 								kind: "order_settlement_status_update",
 								orderId: id,
