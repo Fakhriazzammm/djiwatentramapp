@@ -42,10 +42,10 @@ export function getBuildMetadata(rootDir) {
 	const buildDate = new Date().toISOString().split("T")[0];
 	const commitCount = runCommand(rootDir, "git rev-list --count HEAD", "0");
 
-	// Versi standar dari package.json.
-	// Update detection via commitHash comparison (separate field).
-	const baseVersion = getBaseVersion(rootDir);
-	const version = baseVersion;
+	// Versi: {major}.{minor}.{commitCount}
+	// Contoh: 0.2.1144 — patch number = total commit, auto-increment tiap build
+	const [major, minor] = getBaseVersion(rootDir).split(".");
+	const version = `${major}.${minor}.${commitCount}`;
 
 	return {
 		version,
