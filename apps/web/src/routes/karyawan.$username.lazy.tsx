@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import { PersonalSchedule } from "@/components/attendance/PersonalSchedule";
 import {
 	useHybridPrivateStaffData,
 	useHybridStaffBySlug,
@@ -271,6 +272,15 @@ function StaffProfilePage() {
 									</p>
 								</div>
 							</div>
+
+							{/* Personal Schedule */}
+							{isUnlocked && staff && (
+								<PersonalSchedule
+									userId={staff._id}
+									month={selectedMonth}
+									year={selectedYear}
+								/>
+							)}
 
 							{/* Slip Gaji Section */}
 							<div className="space-y-4">
