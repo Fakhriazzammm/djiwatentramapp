@@ -134,6 +134,9 @@ function buildLeaderboard(
 		const bonuses = shift.memberBonuses ?? [];
 		for (const mb of bonuses) {
 			if (mb.bonus <= 0) continue;
+			// Skip Manajer — leaderboard khusus staff non-manajerial
+			const role = (mb.roleName ?? "").toLowerCase();
+			if (role.includes("manajer") || role.includes("manager")) continue;
 			const existing = memberMap.get(mb.name) ?? {
 				name: mb.name,
 				roleName: mb.roleName,
