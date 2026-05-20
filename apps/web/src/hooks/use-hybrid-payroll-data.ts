@@ -14,8 +14,24 @@ function useSupabaseValue<T>(
 	return useSupabaseLiveValue(key, load, deps);
 }
 
-// ─── Constants ──────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────
 const SUPABASE_URL = "https://xaemykhjpkgypqqpfdcb.supabase.co";
+
+// ─── Edge Function Helper ────────────────────────────
+// Replaces the broken executeSql() which used Node.js fs/promises in the browser.
+// All write operations now go through the generate-payroll Edge Function
+// which uses the service_role key on the server side.
+async function invokePayrollAction(action: string, payload: Record<string, unknown> = {}) {
+	const supabase = createClient();
+	const { data, error } = await supabase.functions.invoke("generate-payroll", {
+		body: { action, ...payload },
+	});
+	if (error) throw new Error(error.message || "Gagal menghubungi generate-payroll");
+	if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
+		throw new Error(data.error);
+	}
+	return data;
+}
 
 // ─── Fetch: Payroll Periods ─────────────────────────────────────────
 async function fetchPayrollPeriods() {
@@ -192,228 +208,79 @@ async function fetchAttendancePayrollSummary() {
 	return data ?? [];
 }
 
-// ─── SQL Operations via Management API ──────────────────────────────
-async function getManagementToken(): Promise<string> {
-	const fs = await import("fs/promises");
-	const token = (await fs.readFile("/home/ubuntu/.supabase/access-token", "utf-8")).trim();
-	return token;
-}
+// ─── SQL Operations via Edge Function ────────────────
+// These replace the old executeSql() which used Node.js fs/promises (broken in browser).
 
-async function executeSql(query: string): Promise<any> {
-	const token = await getManagementToken();
-	const res = await fetch(
-		`https://api.supabase.com/v1/projects/xaemykhjpkgypqqpfdcb/database/query`,
-		{
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({ query }),
-		}
-	);
-	if (!res.ok) {
-		const text = await res.text();
-		throw new Error(`Management API error: ${res.status} ${text}`);
-	}
-	return res.json();
-}
-
-// ─── SQL: Generate Payroll Run ───────────────────────────────────────
 async function generatePayrollRun(args: {
 	periodId: string;
 	runName?: string;
 	createdBy?: string;
 }): Promise<any> {
-	const sql = `
-		WITH period AS (
-			SELECT id, start_date, end_date, period_name
-			FROM pos.payroll_periods
-			WHERE id = '${args.periodId}'
-		),
-		new_run AS (
-			INSERT INTO pos.payroll_runs (payroll_period_id, run_name, status, created_by)
-			VALUES (
-				(SELECT id FROM period),
-				${args.runName ? `'${args.runName}'` : "NULL"},
-				'processing',
-				${args.createdBy ? `'${args.createdBy}'` : "NULL"}
-			)
-			RETURNING id AS run_id
-		),
-		staff AS (
-			SELECT
-				v.user_id,
-				v.user_name,
-				v.role_name,
-				v.role_id,
-				v.base_hourly_rate,
-				v.base_shift_rate,
-				v.monthly_fixed_salary,
-				v.daily_allowance,
-				v.overtime_rate_per_hour,
-				v.active_role_rule_id
-			FROM pos.pos_payroll_staff_active_view v
-		),
-		attendance AS (
-			SELECT
-				s.user_id,
-				s.user_name,
-				s.role_name,
-				s.total_days_worked,
-				s.total_shifts,
-				s.period_start,
-				s.period_end
-			FROM pos.pos_attendance_payroll_summary_view s
-			WHERE s.period_start >= (SELECT start_date FROM period)
-			  AND s.period_end <= (SELECT end_date FROM period)
-		),
-		inserted_items AS (
-			INSERT INTO pos.payroll_run_items (
-				payroll_run_id, user_id, user_name, role_name, role_rule_id,
-				total_shifts, total_hours, overtime_hours, attendance_days, absent_days,
-				shift_pay, hourly_pay, fixed_salary, daily_allowance_total,
-				overtime_pay, bonus_pay, gross_pay, deductions, net_pay,
-				compensation_breakdown
-			)
-			SELECT
-				(SELECT run_id FROM new_run),
-				st.user_id,
-				st.user_name,
-				st.role_name,
-				st.active_role_rule_id,
-				COALESCE(att.total_shifts, 0),
-				0,
-				0,
-				COALESCE(att.total_days_worked, 0),
-				0,
-				COALESCE(att.total_shifts, 0) * st.base_shift_rate,
-				0,
-				st.monthly_fixed_salary,
-				COALESCE(att.total_days_worked, 0) * st.daily_allowance,
-				0,
-				0,
-				st.monthly_fixed_salary
-					+ COALESCE(att.total_shifts, 0) * st.base_shift_rate
-					+ COALESCE(att.total_days_worked, 0) * st.daily_allowance,
-				0,
-				st.monthly_fixed_salary
-					+ COALESCE(att.total_shifts, 0) * st.base_shift_rate
-					+ COALESCE(att.total_days_worked, 0) * st.daily_allowance,
-				jsonb_build_object(
-					'base_shift_rate', st.base_shift_rate,
-					'monthly_fixed_salary', st.monthly_fixed_salary,
-					'daily_allowance', st.daily_allowance,
-					'overtime_rate_per_hour', st.overtime_rate_per_hour,
-					'shifts', COALESCE(att.total_shifts, 0),
-					'days_worked', COALESCE(att.total_days_worked, 0)
-				)
-			FROM staff st
-			LEFT JOIN attendance att ON att.user_id = st.user_id
-		)
-		UPDATE pos.payroll_runs
-		SET
-			status = 'completed',
-			completed_at = now(),
-			total_employees = (SELECT count(*) FROM inserted_items),
-			total_gross_pay = (SELECT COALESCE(sum(gross_pay), 0) FROM pos.payroll_run_items WHERE payroll_run_id = (SELECT run_id FROM new_run)),
-			total_net_pay = (SELECT COALESCE(sum(net_pay), 0) FROM pos.payroll_run_items WHERE payroll_run_id = (SELECT run_id FROM new_run))
-		WHERE id = (SELECT run_id FROM new_run)
-		RETURNING *;
-	`;
-	return executeSql(sql);
+	return invokePayrollAction("generate_for_period", { periodId: args.periodId });
 }
 
-// ─── SQL: Generate Payslips for a Run ───────────────────────────────
 async function generatePayslipsForRun(args: {
 	runId: string;
 }): Promise<any> {
-	const sql = `
-		INSERT INTO pos.payslips (
-			payroll_run_item_id, user_id, user_name,
-			period_name, period_start, period_end,
-			gross_pay, deductions, net_pay, breakdown, status
-		)
-		SELECT
-			ri.id,
-			ri.user_id,
-			ri.user_name,
-			pp.period_name,
-			pp.start_date,
-			pp.end_date,
-			ri.gross_pay,
-			ri.deductions,
-			ri.net_pay,
-			ri.compensation_breakdown,
-			'generated'
-		FROM pos.payroll_run_items ri
-		JOIN pos.payroll_runs pr ON pr.id = ri.payroll_run_id
-		JOIN pos.payroll_periods pp ON pp.id = pr.payroll_period_id
-		WHERE ri.payroll_run_id = '${args.runId}'
-		ON CONFLICT (payroll_run_item_id) DO UPDATE SET
-			gross_pay = EXCLUDED.gross_pay,
-			deductions = EXCLUDED.deductions,
-			net_pay = EXCLUDED.net_pay,
-			breakdown = EXCLUDED.breakdown,
-			updated_at = now();
-	`;
-	return executeSql(sql);
+	return invokePayrollAction("generate_payslips_for_run", { runId: args.runId });
 }
 
-// ─── SQL: Update Payslip Status ─────────────────────────────────────
 async function updatePayslipStatus(args: {
 	payslipId: string;
 	status: "sent" | "acknowledged" | "disputed";
 }): Promise<any> {
-	const statusTimestamp =
-		args.status === "sent"
-			? "sent_at = now()"
-			: args.status === "acknowledged"
-				? "acknowledged_at = now()"
-				: "";
-
-	const sql = `
-		UPDATE pos.payslips
-		SET status = '${args.status}', ${statusTimestamp} updated_at = now()
-		WHERE id = '${args.payslipId}'
-		RETURNING *;
-	`;
-	return executeSql(sql);
+	return invokePayrollAction("update_payslip_status", {
+		payslipId: args.payslipId,
+		status: args.status,
+	});
 }
 
-// ─── SQL: Approve Payroll Run ───────────────────────────────────────
 async function approvePayrollRun(args: {
 	runId: string;
 	approvedBy?: string;
 }): Promise<any> {
-	const sql = `
-		UPDATE pos.payroll_runs
-		SET status = 'completed',
-		    completed_at = now(),
-		    metadata = jsonb_set(
-				COALESCE(metadata, '{}'),
-				'{approved_by}',
-				${args.approvedBy ? `'"${args.approvedBy}"'` : "'null'"}
-			),
-		    updated_at = now()
-		WHERE id = '${args.runId}'
-		RETURNING *;
-	`;
-	return executeSql(sql);
+	return invokePayrollAction("approve_run", {
+		runId: args.runId,
+		approvedBy: args.approvedBy,
+	});
 }
 
-// ─── SQL: Reverse Payroll Run ───────────────────────────────────────
+async function updatePayrollRunItem(args: {
+	runItemId: string;
+	field: string;
+	value: number;
+}): Promise<any> {
+	return invokePayrollAction("update_run_item", {
+		runItemId: args.runItemId,
+		field: args.field,
+		value: args.value,
+	});
+}
+
+async function syncPayslipFromRunItem(args: {
+	runItemId: string;
+	payslipId: string;
+}): Promise<any> {
+	return invokePayrollAction("sync_payslip_from_run_item", {
+		runItemId: args.runItemId,
+		payslipId: args.payslipId,
+	});
+}
+
+async function executePayrollSql(query: string): Promise<any> {
+	return invokePayrollAction("raw_sql", { query });
+}
+
 async function reversePayrollRun(args: { runId: string }): Promise<any> {
-	const sql = `
+	// Use raw_sql since there's no specific action for reverse
+	return executePayrollSql(`
 		UPDATE pos.payroll_runs
 		SET status = 'reversed', updated_at = now()
 		WHERE id = '${args.runId}'
 		RETURNING *;
-	`;
-	return executeSql(sql);
+	`);
 }
 
-// ─── SQL: Auto-Detect Period & Run ─────────────────────────────────
 async function autoDetectPeriodAndRun(): Promise<{
 	action: "created" | "ran" | "generated" | "skipped" | "error";
 	message: string;
@@ -421,92 +288,12 @@ async function autoDetectPeriodAndRun(): Promise<{
 	runId?: string;
 }> {
 	try {
-		const now = new Date();
-		const monthNames = [
-			"Januari", "Februari", "Maret", "April", "Mei", "Juni",
-			"Juli", "Agustus", "September", "Oktober", "November", "Desember",
-		];
-		const periodName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
-		const year = now.getFullYear();
-		const month = now.getMonth() + 1;
-		const startDateStr = `${year}-${String(month).padStart(2, "0")}-01`;
-		const endDate = new Date(year, month, 0);
-		const endDateStr = `${year}-${String(month).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
-
-		// Step 1: Look for existing period this month
-		const findPeriodSql = `
-			SELECT id, period_name, status
-			FROM pos.payroll_periods
-			WHERE period_name = '${periodName}'
-			LIMIT 1;
-		`;
-		const existingPeriods: any[] = await executeSql(findPeriodSql);
-		let periodId: string | undefined;
-
-		if (!existingPeriods || existingPeriods.length === 0) {
-			// Step 2a: Auto-create period
-			const createSql = `
-				INSERT INTO pos.payroll_periods (period_name, start_date, end_date, status)
-				VALUES ('${periodName}', '${startDateStr}', '${endDateStr}', 'open')
-				RETURNING id;
-			`;
-			const created: any[] = await executeSql(createSql);
-			periodId = created?.[0]?.id;
-			if (!periodId) throw new Error("Failed to create payroll period");
-			// Step 2b: Auto-generate run for new period
-			const runResult = await generatePayrollRun({ periodId });
-			const runId = runResult?.[0]?.id;
-			return {
-				action: "created",
-				message: `Period "${periodName}" created and payroll run generated`,
-				periodId,
-				runId: runId ?? undefined,
-			};
-		}
-
-		periodId = existingPeriods[0].id;
-
-		// Step 3: Check for existing completed runs
-		const findRunSql = `
-			SELECT id, status
-			FROM pos.payroll_runs
-			WHERE payroll_period_id = '${periodId}'
-			ORDER BY run_date DESC
-			LIMIT 1;
-		`;
-		const existingRuns: any[] = await executeSql(findRunSql);
-
-		if (!existingRuns || existingRuns.length === 0) {
-			// No runs yet — generate one
-			const runResult = await generatePayrollRun({ periodId });
-			const runId = runResult?.[0]?.id ?? null;
-			return {
-				action: "ran",
-				message: `Payroll run generated for "${periodName}"`,
-				periodId,
-				runId: runId ?? undefined,
-			};
-		}
-
-		const latestRun = existingRuns[0];
-
-		if (latestRun.status === "completed") {
-			// Run already completed — generate payslips
-			await generatePayslipsForRun({ runId: latestRun.id });
-			return {
-				action: "generated",
-				message: `Payslips generated for run "${latestRun.id}"`,
-				periodId,
-				runId: latestRun.id,
-			};
-		}
-
-		// Run exists but not completed yet
+		const result = await invokePayrollAction("auto_detect");
 		return {
-			action: "skipped",
-			message: `Run "${latestRun.id}" exists but status is "${latestRun.status}" — not auto-generating payslips`,
-			periodId,
-			runId: latestRun.id,
+			action: result.action ?? "error",
+			message: result.message ?? (result.error ?? "Unknown error"),
+			periodId: result.periodId,
+			runId: result.runId,
 		};
 	} catch (err: any) {
 		return {
@@ -514,40 +301,6 @@ async function autoDetectPeriodAndRun(): Promise<{
 			message: err?.message ?? String(err),
 		};
 	}
-}
-
-// ─── SQL: Update Payroll Run Item ──────────────────────────────────
-async function updatePayrollRunItem(args: {
-	runItemId: string;
-	field: string;
-	value: number;
-}): Promise<any> {
-	const sql = `
-		UPDATE pos.payroll_run_items
-		SET ${args.field} = ${args.value}, updated_at = now()
-		WHERE id = '${args.runItemId}'
-		RETURNING *;
-	`;
-	return executeSql(sql);
-}
-
-// ─── SQL: Sync Payslip from Run Item ───────────────────────────────
-async function syncPayslipFromRunItem(args: {
-	runItemId: string;
-	payslipId: string;
-}): Promise<any> {
-	const sql = `
-		UPDATE pos.payslips
-		SET
-			gross_pay = (SELECT gross_pay FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
-			deductions = (SELECT deductions FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
-			net_pay = (SELECT net_pay FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
-			breakdown = (SELECT compensation_breakdown FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
-			updated_at = now()
-		WHERE id = '${args.payslipId}'
-		RETURNING *;
-	`;
-	return executeSql(sql);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -697,5 +450,5 @@ export {
 	autoDetectPeriodAndRun,
 	updatePayrollRunItem,
 	syncPayslipFromRunItem,
-	executeSql as executePayrollSql,
+	executePayrollSql,
 };
