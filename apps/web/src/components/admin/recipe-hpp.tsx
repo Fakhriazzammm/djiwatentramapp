@@ -106,6 +106,11 @@ interface InventoryItem {
 	conversionFactor?: number;
 	quantity: number;
 	latestReferencePrice?: number;
+	preferredPurchaseQuantity?: number;
+	preferredPurchaseUnit?: string;
+	contentToBaseFactor?: number;
+	packNetQuantity?: number;
+	packNetUnit?: string;
 }
 
 interface ProductItem {
@@ -1430,17 +1435,18 @@ export function RecipeHppPage() {
 					invItem?.unit ?? "liter",
 					invItem?.displayUnit ?? "ml"
 				);
+				const baseFactor = invItem?.contentToBaseFactor ?? unitPair.factor;
 
 				return {
 					id: generateId(),
 					inventoryId: ing.inventoryId,
 					ingredientName: invItem?.ingredientName ?? "",
-					purchasePrice: price * (unitPair.factor),
-					purchaseQuantity: 1,
-					purchaseUnit: invItem?.unit ?? unitPair.purchase,
+					purchasePrice: price * baseFactor,
+					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
+					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
 					usageUnit: invItem?.displayUnit ?? unitPair.usage,
-					conversionFactor: unitPair.factor,
+					conversionFactor: baseFactor,
 					costSource: source,
 				};
 			});
@@ -1482,17 +1488,18 @@ export function RecipeHppPage() {
 						invItem?.unit ?? "liter",
 						invItem?.displayUnit ?? "ml"
 					);
+					const productFactor = invItem?.contentToBaseFactor ?? unitPair.factor;
 
 					return {
 						id: generateId(),
 						inventoryId: ing.inventoryId,
 						ingredientName: invItem?.ingredientName ?? "",
-						purchasePrice: price * (unitPair.factor),
-						purchaseQuantity: 1,
-						purchaseUnit: invItem?.unit ?? unitPair.purchase,
+						purchasePrice: price * productFactor,
+						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
+						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
 						usageUnit: invItem?.displayUnit ?? unitPair.usage,
-						conversionFactor: unitPair.factor,
+						conversionFactor: productFactor,
 						costSource: source,
 					};
 				})
@@ -1631,17 +1638,18 @@ export function RecipeHppPage() {
 					invItem?.unit ?? "liter",
 					invItem?.displayUnit ?? "ml"
 				);
+				const baseFactor = invItem?.contentToBaseFactor ?? unitPair.factor;
 
 				return {
 					id: generateId(),
 					inventoryId: ing.inventoryId,
 					ingredientName: invItem?.ingredientName ?? "",
-					purchasePrice: price * (unitPair.factor),
-					purchaseQuantity: 1,
-					purchaseUnit: invItem?.unit ?? unitPair.purchase,
+					purchasePrice: price * baseFactor,
+					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
+					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
 					usageUnit: invItem?.displayUnit ?? unitPair.usage,
-					conversionFactor: unitPair.factor,
+					conversionFactor: baseFactor,
 					costSource: source,
 				};
 			});
@@ -1684,17 +1692,18 @@ export function RecipeHppPage() {
 						invItem?.unit ?? "liter",
 						invItem?.displayUnit ?? "ml"
 					);
+					const productFactor = invItem?.contentToBaseFactor ?? unitPair.factor;
 
 					return {
 						id: generateId(),
 						inventoryId: ing.inventoryId,
 						ingredientName: invItem?.ingredientName ?? "",
-						purchasePrice: price * (unitPair.factor),
-						purchaseQuantity: 1,
-						purchaseUnit: invItem?.unit ?? unitPair.purchase,
+						purchasePrice: price * productFactor,
+						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
+						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
 						usageUnit: invItem?.displayUnit ?? unitPair.usage,
-						conversionFactor: unitPair.factor,
+						conversionFactor: productFactor,
 						costSource: source,
 					};
 				})
@@ -1727,6 +1736,7 @@ export function RecipeHppPage() {
 		const source: PriceSource = costInfo?.latestCostPerUnit ? "inventory" : "manual";
 
 		const unitPair = findUnitPair(item.unit, item.displayUnit ?? item.unit);
+		const invFactor = item.contentToBaseFactor ?? unitPair.factor;
 
 		setForm((prev) => ({
 			...prev,
@@ -1736,11 +1746,11 @@ export function RecipeHppPage() {
 						...ing,
 						inventoryId,
 						ingredientName: item.ingredientName,
-						purchasePrice: price * unitPair.factor,
-						purchaseQuantity: 1,
-						purchaseUnit: item.unit ?? unitPair.purchase,
+						purchasePrice: price * invFactor,
+						purchaseQuantity: item.preferredPurchaseQuantity ?? 1,
+						purchaseUnit: item.preferredPurchaseUnit ?? item.unit ?? unitPair.purchase,
 						usageUnit: item.displayUnit ?? unitPair.usage,
-						conversionFactor: unitPair.factor,
+						conversionFactor: productFactor,
 						costSource: source,
 					}
 					: ing
@@ -1897,7 +1907,9 @@ export function RecipeHppPage() {
 
 				if (costInfo?.latestCostPerUnit && costInfo.latestCostPerUnit > 0) {
 					synced++;
-					const factor = costInfo.conversionFactor ?? findUnitPair(
+					const syncInvItem = (inventory ?? []).find((si: any) => si._id === (matchedInvId ?? ing.inventoryId));
+					const syncBaseFactor = syncInvItem?.contentToBaseFactor ?? costInfo.conversionFactor;
+					const factor = syncBaseFactor ?? findUnitPair(
 						costInfo.unit ?? ing.purchaseUnit,
 						costInfo.displayUnit ?? ing.usageUnit
 					).factor;
@@ -1906,8 +1918,8 @@ export function RecipeHppPage() {
 						...ing,
 						inventoryId: matchedInvId ?? ing.inventoryId,
 						purchasePrice: costInfo.latestCostPerUnit * factor,
-						purchaseQuantity: 1,
-						purchaseUnit: costInfo.unit ?? ing.purchaseUnit,
+						purchaseQuantity: syncInvItem?.preferredPurchaseQuantity ?? 1,
+						purchaseUnit: syncInvItem?.preferredPurchaseUnit ?? costInfo.unit ?? ing.purchaseUnit,
 						usageUnit: baseUnit,
 						conversionFactor: factor,
 						costSource: "inventory" as PriceSource,
