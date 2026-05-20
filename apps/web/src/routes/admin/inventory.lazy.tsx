@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { withSaveToast } from "@/lib/with-save-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
@@ -4746,7 +4747,6 @@ function InventoryTable({
 
 		try {
 			setSavingKey(`${row.inventoryId}:meta`);
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saving" }));
 			const existingStore = stores.find(
 				(store) => store.name.trim().toLowerCase() === preferredStoreNameNorm
 			);
@@ -4766,38 +4766,53 @@ function InventoryTable({
 					}
 				}
 			}
-			await updateItemMutation({
-				id: item._id,
-				ingredientName,
-				unit: normalizedUnit,
-				lowStockThreshold: lowStockThresholdNum,
-				displayUnit:
-					primaryConversion.displayUnit ||
-					(current.displayUnit.trim() || undefined),
-				conversionFactor:
-					primaryConversion.conversionFactor ||
-					(current.conversionFactor
-						? Number(current.conversionFactor)
-						: undefined),
-			unitConversions: parsedUnitConversions,
-			baseRecipeId: item.baseRecipeId || undefined,
-			defaultBrandName: current.defaultBrandName.trim() || undefined,
-				preferredStoreId,
-				preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
-				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
-				category: current.category.trim(),
-				imagePath: current.imagePath.trim() || undefined,
-				netWeight: current.netWeight
-				? Number(current.netWeight)
-				: undefined,
-			lastPurchasePrice: current.lastPurchasePrice
-				? Number(current.lastPurchasePrice)
-				: undefined,
-			packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : undefined,
-				packNetUnit: normalizeUnitOption(current.packNetUnit) || undefined,
-				contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined,
-			});
-				saveLearnedProfile(ingredientName, {
+			const toastResult = await withSaveToast(
+				() =>
+					updateItemMutation({
+						id: item._id,
+						ingredientName,
+						unit: normalizedUnit,
+						lowStockThreshold: lowStockThresholdNum,
+						displayUnit:
+							primaryConversion.displayUnit ||
+							(current.displayUnit.trim() || undefined),
+						conversionFactor:
+							primaryConversion.conversionFactor ||
+							(current.conversionFactor
+								? Number(current.conversionFactor)
+								: undefined),
+						unitConversions: parsedUnitConversions,
+						baseRecipeId: item.baseRecipeId || undefined,
+						defaultBrandName: current.defaultBrandName.trim() || undefined,
+						preferredStoreId,
+						preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
+						preferredPurchaseUnit: preferredPurchaseUnit || undefined,
+						category: current.category.trim(),
+						imagePath: current.imagePath.trim() || undefined,
+						netWeight: current.netWeight
+							? Number(current.netWeight)
+							: undefined,
+						lastPurchasePrice: current.lastPurchasePrice
+							? Number(current.lastPurchasePrice)
+							: undefined,
+						packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : undefined,
+						packNetUnit: normalizeUnitOption(current.packNetUnit) || undefined,
+						contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined,
+						}),
+				{
+					loading: "Menyimpan perubahan...",
+					success: "Tersimpan",
+					onStatusChange: (status) =>
+						setSaveStateByRow((prev) => ({
+							...prev,
+							[row.inventoryId]: status,
+						})),
+				},
+			);
+			if (!toastResult.success) {
+				return;
+			}
+			saveLearnedProfile(ingredientName, {
 				unit: normalizedUnit,
 				lowStockThreshold: lowStockThresholdNum,
 				defaultBrandName: current.defaultBrandName.trim(),
@@ -4805,17 +4820,15 @@ function InventoryTable({
 				conversionFactor: (current.conversionFactor || "").trim(),
 				unitConversionsText: (current.unitConversionsText || "").trim(),
 			});
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
-			toast.success("Tersimpan", { duration: 2000 });
 			debouncedRefresh();
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Gagal menyimpan perubahan";
-			toast.error(message);
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
-		} finally {
-			setSavingKey(null);
-		}
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "Gagal menyimpan perubahan";
+				toast.error(message);
+				setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
+			} finally {
+				setSavingKey(null);
+			}
 	};
 
 	const saveQuantity = async (row: InventoryWorkspaceRow) => {
@@ -4836,24 +4849,36 @@ function InventoryTable({
 
 		try {
 			setSavingKey(`${row.inventoryId}:qty`);
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saving" }));
-			await applyStockAction({
-				inventoryId: item._id,
-				action: "adjust",
-				quantity: quantityNum,
-				notes: "Quick inline update",
-			});
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
-			toast.success("Stok tersimpan", { duration: 2000 });
+			const toastResult = await withSaveToast(
+				() =>
+					applyStockAction({
+						inventoryId: item._id,
+						action: "adjust",
+						quantity: quantityNum,
+						notes: "Quick inline update",
+					}),
+				{
+					loading: "Menyimpan stok...",
+					success: "Stok tersimpan",
+					onStatusChange: (status) =>
+						setSaveStateByRow((prev) => ({
+							...prev,
+							[row.inventoryId]: status,
+						})),
+				},
+			);
+			if (!toastResult.success) {
+				return;
+			}
 			debouncedRefresh();
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Gagal menyimpan stok";
-			toast.error(message);
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
-		} finally {
-			setSavingKey(null);
-		}
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "Gagal menyimpan stok";
+				toast.error(message);
+				setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
+			} finally {
+				setSavingKey(null);
+			}
 	};
 
 	const getPriceDraft = (row: InventoryWorkspaceRow) =>
@@ -4895,27 +4920,41 @@ function InventoryTable({
 			setSavingKey(`${row.inventoryId}:price`);
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saving" }));
 			const inline = getInlineValue(row);
-			await setReferencePriceMutation({
-				inventoryId: row.inventoryId,
-				price: parsed,
-				notes: "Koreksi manual harga terakhir dari tabel inventory",
-				brandName: inline.defaultBrandName?.trim() || undefined,
-			});
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
-			toast.success("Harga terakhir diperbarui"); triggerHybridRefresh();
+			const toastResult = await withSaveToast(
+				() =>
+					setReferencePriceMutation({
+						inventoryId: row.inventoryId,
+						price: parsed,
+						notes: "Koreksi manual harga terakhir dari tabel inventory",
+						brandName: inline.defaultBrandName?.trim() || undefined,
+					}),
+				{
+					loading: "Menyimpan harga...",
+					success: "Harga terakhir diperbarui",
+					onStatusChange: (status) =>
+						setSaveStateByRow((prev) => ({
+							...prev,
+							[row.inventoryId]: status,
+						})),
+				},
+			);
+			if (!toastResult.success) {
+				return;
+			}
+			triggerHybridRefresh();
 			setPriceDraftByRow((prev) => {
 				const next = { ...prev };
 				delete next[row.inventoryId];
 				return next;
 			});
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Gagal memperbarui harga terakhir";
-			toast.error(message);
-			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
-		} finally {
-			setSavingKey(null);
-		}
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "Gagal memperbarui harga terakhir";
+				toast.error(message);
+				setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
+			} finally {
+				setSavingKey(null);
+			}
 	};
 
 	const quickCreate = async () => {

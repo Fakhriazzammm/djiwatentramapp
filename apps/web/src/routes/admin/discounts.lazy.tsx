@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { withSaveToast } from "@/lib/with-save-toast";
 import {
 	useHybridAllDiscounts,
 	useHybridAllProducts,
@@ -207,22 +208,18 @@ function AdminDiscountsPage() {
 			refillAvailability: formData.isFreeRefill ? formData.refillAvailability : undefined,
 		};
 
-		try {
+		const result2 = await withSaveToast(async () => {
 			if (formData.id) {
-				await updateDiscount({
-					id: formData.id,
-					...submissionData,
-				});
-				toast.success("Diskon diperbarui"); triggerHybridRefresh(); triggerHybridRefresh();
+				await updateDiscount({ id: formData.id, ...submissionData });
 			} else {
 				await createDiscount(submissionData);
-				toast.success("Diskon dibuat"); triggerHybridRefresh(); triggerHybridRefresh();
 			}
+			triggerHybridRefresh();
+			triggerHybridRefresh();
+		}, { success: formData.id ? "Diskon diperbarui" : "Diskon dibuat" });
+		if (result2.success) {
 			setIsModalOpen(false);
 			resetForm();
-		} catch (error) {
-			console.error(error);
-			toast.error("Gagal menyimpan diskon");
 		}
 	};
 
@@ -231,13 +228,14 @@ function AdminDiscountsPage() {
 			action: {
 				label: "Hapus",
 				onClick: async () => {
-					try {
-						await deleteDiscount({ id });
-						toast.success("Diskon dihapus"); triggerHybridRefresh(); triggerHybridRefresh();
-					} catch (error) {
-						console.error(error);
-						toast.error("Gagal menghapus diskon");
-					}
+					const result = await withSaveToast(
+						async () => {
+							await deleteDiscount({ id });
+							triggerHybridRefresh();
+							triggerHybridRefresh();
+						},
+						{ success: "Diskon dihapus" }
+					);
 				},
 			},
 		});

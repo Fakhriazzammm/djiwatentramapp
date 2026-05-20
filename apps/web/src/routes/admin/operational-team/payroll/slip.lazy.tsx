@@ -1,6 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { withSaveToast } from "@/lib/with-save-toast";
 import {
 	Search,
 	Filter,
@@ -229,12 +230,12 @@ function PayslipAdminPage() {
 	}, [storeName, storeAddress]);
 
 	const handleStatusUpdate = useCallback(async (payslipId: string, newStatus: string) => {
-		try {
-			await updatePayslipStatus({ payslipId, status: newStatus as any });
-			toast.success("Status berhasil diperbarui!");
+		const result = await withSaveToast(
+			() => updatePayslipStatus({ payslipId, status: newStatus as any }),
+			{ success: "Status berhasil diperbarui!" }
+		);
+		if (result.success) {
 			setSelectedPayslip(null);
-		} catch (e: any) {
-			toast.error(`Gagal memperbarui status: ${e.message}`);
 		}
 	}, []);
 
@@ -343,13 +344,13 @@ function PayslipAdminPage() {
 
 	// ── Inline Edit ─────────────────────────────────────────────────
 	const handleInlineSave = useCallback(async (payslipId: string, runItemId: string, field: string, value: number) => {
-		try {
-			await updatePayrollRunItem({ runItemId, field, value });
-			await syncPayslipFromRunItem({ runItemId, payslipId });
-			toast.success(`${field} berhasil diperbarui`);
-		} catch (e: any) {
-			toast.error(`Gagal menyimpan: ${e.message}`);
-		}
+		const result = await withSaveToast(
+			async () => {
+				await updatePayrollRunItem({ runItemId, field, value });
+				await syncPayslipFromRunItem({ runItemId, payslipId });
+			},
+			{ success: `${field} berhasil diperbarui` }
+		);
 		setEditingCell(null);
 	}, []);
 
@@ -823,13 +824,13 @@ function PayslipAdminPage() {
 													message: `Slip gaji ${p.user_name} akan ditandai sebagai "Dispute".`,
 													variant: "danger",
 													onConfirm: async () => {
-														try {
-															await updatePayslipStatus({ payslipId: p.id, status: "disputed" as any });
-															toast.success("Status diubah ke Dispute");
+														const result = await withSaveToast(
+															() => updatePayslipStatus({ payslipId: p.id, status: "disputed" as any }),
+															{ success: "Status diubah ke Dispute" }
+														);
+														if (result.success) {
 															setSelectedPayslip(null);
 															setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
-														} catch (e: any) {
-															toast.error(e.message);
 														}
 													},
 												});

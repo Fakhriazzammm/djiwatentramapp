@@ -4,6 +4,7 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, en
 import { id } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarPlus, Download, Upload, CalendarDays, X, Clock, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { withSaveToast } from "@/lib/with-save-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -613,7 +614,7 @@ function QuickAddPanel({
   const handleSubmit = async () => {
     if (!date || selectedUserIds.length === 0) return;
     setSaving(true);
-    try {
+    const result = await withSaveToast(async () => {
       if (mode === "edit" && editSchedule) {
         await onUpdate(editSchedule._id, {
           date,
@@ -634,13 +635,11 @@ function QuickAddPanel({
           });
         }
       }
-      toast.success(mode === "edit" ? "Jadwal diupdate" : "Jadwal ditambahkan");
+    }, { success: mode === "edit" ? "Jadwal diupdate" : "Jadwal ditambahkan" });
+    if (result.success) {
       onClose();
-    } catch (err) {
-      toast.error("Gagal menyimpan jadwal");
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
   };
 
   const selectAllByRole = (roleName: string) => {
@@ -954,18 +953,22 @@ function AttendanceJadwalPage() {
       const changes: Partial<CreateScheduleInput> = {};
       if (!sameDate) changes.date = targetDate;
       if (!sameUser && targetUserId) changes.userId = targetUserId;
-      handleUpdate(scheduleId, changes).then(refresh);
-      toast.success("Jadwal dipindahkan");
+      withSaveToast(
+        () => handleUpdate(scheduleId, changes),
+        { success: "Jadwal dipindahkan" }
+      );
     } else {
       // Duplicate default: selalu buat baru di target
-      handleSave({
-        userId: targetUserId ?? schedule.userId,
-        date: targetDate,
-        shiftName: schedule.shiftName,
-        startTime: schedule.startTime ?? undefined,
-        endTime: schedule.endTime ?? undefined,
-      }).then(refresh);
-      toast.success("Jadwal diduplikasi");
+      withSaveToast(
+        () => handleSave({
+          userId: targetUserId ?? schedule.userId,
+          date: targetDate,
+          shiftName: schedule.shiftName,
+          startTime: schedule.startTime ?? undefined,
+          endTime: schedule.endTime ?? undefined,
+        }),
+        { success: "Jadwal diduplikasi" }
+      );
     }
   }, [schedulesByDate, isCtrlHeld]);
 

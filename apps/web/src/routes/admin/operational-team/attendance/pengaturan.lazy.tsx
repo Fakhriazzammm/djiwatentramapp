@@ -1,6 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { withSaveToast } from "@/lib/with-save-toast";
 import {
 	Clock,
 	MapPin,
@@ -120,35 +121,32 @@ function AttendancePengaturanPage() {
 	const teamShiftsGridClass = "grid grid-cols-1 gap-3 xl:grid-cols-2";
 
 	const handleSave = async () => {
-		try {
-			const payload: Record<string, unknown> = {
-				shiftSettings: {
-					...shiftSettings,
-					shiftSchedules: buildShiftSchedules(
-						shiftSettings.predefinedShifts,
-						shiftSettings.shiftSchedules
-					),
-				},
-				attendanceLat,
-				attendanceLng,
-				attendanceRadius,
-			};
+		const payload: Record<string, unknown> = {
+			shiftSettings: {
+				...shiftSettings,
+				shiftSchedules: buildShiftSchedules(
+					shiftSettings.predefinedShifts,
+					shiftSettings.shiftSchedules
+				),
+			},
+			attendanceLat,
+			attendanceLng,
+			attendanceRadius,
+		};
 
-			// Preserve other existing settings
-			if (siteSettings) {
-				for (const key of Object.keys(siteSettings)) {
-					if (!(key in payload)) {
-						(payload as any)[key] = (siteSettings as any)[key];
-					}
+		// Preserve other existing settings
+		if (siteSettings) {
+			for (const key of Object.keys(siteSettings)) {
+				if (!(key in payload)) {
+					(payload as any)[key] = (siteSettings as any)[key];
 				}
 			}
-
-			await updateSiteSettings(payload);
-			toast.success("Pengaturan berhasil disimpan!");
-		} catch (error) {
-			console.error("Save settings error:", error);
-			toast.error(`Gagal menyimpan pengaturan: ${(error as Error).message}`);
 		}
+
+		await withSaveToast(
+			() => updateSiteSettings(payload),
+			{ success: "Pengaturan berhasil disimpan!" }
+		);
 	};
 
 	return (

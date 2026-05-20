@@ -54,6 +54,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkOperations } from "../../components/admin/bulk-operations";
+import { withSaveToast } from "@/lib/with-save-toast";
 
 interface VariationOption {
 	name: string;
@@ -422,20 +423,21 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 				variations: formData.variations,
 			};
 
-			if (editingId) {
-				await updateProduct({
-					id: editingId,
-					...productData,
-					isAvailable: true,
-				});
-			} else {
-				await addProduct({ ...productData, isAvailable: true });
-			}
-
-			toast.success(
-				editingId ? "Produk diperbarui" : "Produk berhasil ditambahkan"
+			const result = await withSaveToast(
+				() =>
+					editingId
+						? updateProduct({
+								id: editingId,
+								...productData,
+								isAvailable: true,
+							})
+						: addProduct({ ...productData, isAvailable: true }),
+				{ success: editingId ? "Produk diperbarui" : "Produk berhasil ditambahkan" }
 			);
-			resetForm();
+			if (result.success) {
+				resetForm();
+				triggerHybridRefresh();
+			}
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal menyimpan produk");
@@ -500,34 +502,41 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 		if (!deleteId) {
 			return;
 		}
-		try {
-			await deleteProduct({ id: deleteId });
-			toast.success("Produk dihapus"); triggerHybridRefresh();
+		const result = await withSaveToast(
+			() => deleteProduct({ id: deleteId }),
+			{ success: "Produk dihapus" }
+		);
+		if (result.success) {
 			setDeleteId(null);
-		} catch (error) {
-			console.error(error);
-			toast.error("Gagal menghapus produk");
+			triggerHybridRefresh();
 		}
 	};
 
 	const toggleAvailability = async (id: Id<"products">, current: boolean) => {
-		await updateProduct({ id, isAvailable: !current });
-		toast.success("Status produk diperbarui"); triggerHybridRefresh();
+		const result = await withSaveToast(
+			() => updateProduct({ id, isAvailable: !current }),
+			{ success: "Status produk diperbarui" }
+		);
+		if (result.success) triggerHybridRefresh();
 	};
 
 	const runBulkAvailability = async (isAvailable: boolean) => {
 		if (selectedIds.length === 0) {
 			return;
 		}
-		await bulkUpdateProducts({
-			ids: selectedIds,
-			updates: { isAvailable },
-		});
-		toast.success(
-			`${selectedIds.length} produk ${
-				isAvailable ? "diaktifkan" : "dinonaktifkan"
-			}`
+		const result = await withSaveToast(
+			() =>
+				bulkUpdateProducts({
+					ids: selectedIds,
+					updates: { isAvailable },
+				}),
+			{
+				success: `${selectedIds.length} produk ${
+					isAvailable ? "diaktifkan" : "dinonaktifkan"
+				}`,
+			}
 		);
+		if (result.success) triggerHybridRefresh();
 	};
 
 	const runBulkCategory = async () => {
@@ -535,15 +544,19 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 			toast.error("Pilih kategori dan produk terlebih dahulu");
 			return;
 		}
-		await Promise.all(
-			selectedIds.map((id) =>
-				updateProduct({
-					id,
-					categoryId: bulkCategoryId as Id<"categories">,
-				})
-			)
+		const result = await withSaveToast(
+			() =>
+				Promise.all(
+					selectedIds.map((id) =>
+						updateProduct({
+							id,
+							categoryId: bulkCategoryId as Id<"categories">,
+						})
+					)
+				),
+			{ success: `${selectedIds.length} produk dipindahkan kategori` }
 		);
-		toast.success(`${selectedIds.length} produk dipindahkan kategori`); triggerHybridRefresh();
+		if (result.success) triggerHybridRefresh();
 	};
 
 	const runBulkDiscount = async () => {
@@ -552,27 +565,36 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 			toast.error("Diskon tidak valid");
 			return;
 		}
-		await Promise.all(
-			selectedProducts.map((product) =>
-				updateProduct({
-					id: product._id,
-					promoPrice: Math.max(
-						Math.round(product.price * (1 - discountPercent / 100)),
-						0
-					),
-				})
-			)
+		const result = await withSaveToast(
+			() =>
+				Promise.all(
+					selectedProducts.map((product) =>
+						updateProduct({
+							id: product._id,
+							promoPrice: Math.max(
+								Math.round(product.price * (1 - discountPercent / 100)),
+								0
+							),
+						})
+					)
+				),
+			{ success: `Diskon ${discountPercent}% diterapkan ke ${selectedIds.length} produk` }
 		);
-		toast.success(`Diskon ${discountPercent}% diterapkan ke ${selectedIds.length} produk`); triggerHybridRefresh();
+		if (result.success) triggerHybridRefresh();
 	};
 
 	const runBulkDelete = async () => {
 		if (selectedIds.length === 0) {
 			return;
 		}
-		await Promise.all(selectedIds.map((id) => deleteProduct({ id })));
-		setSelectedIds([]);
-		toast.success("Produk terpilih berhasil dihapus"); triggerHybridRefresh();
+		const result = await withSaveToast(
+			() => Promise.all(selectedIds.map((id) => deleteProduct({ id }))),
+			{ success: "Produk terpilih berhasil dihapus" }
+		);
+		if (result.success) {
+			setSelectedIds([]);
+			triggerHybridRefresh();
+		}
 	};
 
 	const handleInlineNumberUpdate = async (
@@ -597,24 +619,24 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 		if (parsed === currentValue) {
 			return;
 		}
+		const label =
+			field === "price"
+				? "Harga"
+				: field === "quantity"
+					? "Stok"
+					: field === "promoPrice"
+						? "Harga promo"
+						: "Nomor menu";
 		setIsSavingInline((prev) => ({
 			...prev,
 			[id]: { ...(prev[id] ?? {}), [field]: true },
 		}));
 		try {
-			await updateProduct({
-				id,
-				[field]: parsed,
-			});
-			const label =
-				field === "price"
-					? "Harga"
-					: field === "quantity"
-						? "Stok"
-						: field === "promoPrice"
-							? "Harga promo"
-							: "Nomor menu";
-			toast.success(`${label} diperbarui`); triggerHybridRefresh();
+			const result = await withSaveToast(
+				() => updateProduct({ id, [field]: parsed }),
+				{ success: `${label} diperbarui` }
+			);
+			if (result.success) triggerHybridRefresh();
 		} finally {
 			setIsSavingInline((prev) => ({
 				...prev,
@@ -3076,8 +3098,11 @@ function BaseRecipesTab() {
 				onClose={() => setConfirmDeleteId(null)}
 				onConfirm={async () => {
 					if (confirmDeleteId) {
-						await deleteBaseRecipe({ id: confirmDeleteId });
-						toast.success("Resep base dihapus"); triggerHybridRefresh();
+						const result = await withSaveToast(
+							() => deleteBaseRecipe({ id: confirmDeleteId }),
+							{ success: "Resep base dihapus" }
+						);
+						if (result.success) triggerHybridRefresh();
 					}
 				}}
 				title="Konfirmasi Hapus"
