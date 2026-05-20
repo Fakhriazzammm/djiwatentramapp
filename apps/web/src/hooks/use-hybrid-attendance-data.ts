@@ -335,13 +335,25 @@ async function fetchPrivateStaffData(args: {
 
 async function fetchPayrollReport(args: { month: number; year: number }) {
 	const supabase = createClient();
-	const [{ data: users, error: usersError }, { data: roles, error: rolesError }] =
+	const [{ data: users, error: usersError }, { data: roles, error: rolesError }, { data: siteSettings, error: siteSettingsError }] =
 		await Promise.all([
 			supabase.from("pos_users_public").select("*"),
 			supabase.from("pos_staff_roles").select("*"),
+			supabase.from("pos_site_settings")
+				.select("raw")
+				.not("raw->payrollGlobalConfig", "is", null)
+				.order("_id", { ascending: false })
+				.limit(1)
+				.maybeSingle(),
 		]);
 	if (usersError) throw usersError;
 	if (rolesError) throw rolesError;
+	if (siteSettingsError) throw siteSettingsError;
+
+	// Extract global payroll config as fallback
+	const siteRaw = (siteSettings?.raw ?? {}) as Record<string, any>;
+	const globalPayrollConfig = (siteRaw?.payrollGlobalConfig ?? {}) as Record<string, any>;
+	const globalOvertimeBonusPerHour = safeNum(globalPayrollConfig.overtimeBonusPerHour ?? 0);
 
 	const roleMap = new Map<string, any>(
 		(roles ?? []).map((role: any) => [String(role._id), role])
@@ -366,7 +378,7 @@ async function fetchPayrollReport(args: { month: number; year: number }) {
 			const baseShiftRate = safeNum(raw.baseShiftRate ?? 0);
 			const monthlyFixedSalary = safeNum(raw.monthlyFixedSalary ?? 0);
 			const dailyAllowance = safeNum(raw.dailyAllowance ?? 0);
-			const overtimeBonusPerHour = safeNum(raw.overtimeBonusPerHour ?? raw.overtimeRatePerHour ?? 10000);
+			const overtimeBonusPerHour = safeNum(raw.overtimeBonusPerHour ?? raw.overtimeRatePerHour ?? globalOvertimeBonusPerHour ?? 10000);
 			const latePenaltyPerMinute = 1000;
 			const totalShiftSalary = sessionCount * baseShiftRate;
 			const totalAllowance = safeNum(stats?.daysWorked ?? 0) * dailyAllowance;
