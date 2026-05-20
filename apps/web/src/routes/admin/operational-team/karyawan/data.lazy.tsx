@@ -5,18 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
 	Search,
-	Download,
+	X,
 	FileText,
 	FileSpreadsheet,
 	User,
-	CheckCircle2,
-	XCircle,
 	Camera,
 	Eye,
 	Loader2,
 	ChevronUp,
 	ChevronDown,
+	ChevronRight,
 	ArrowUpDown,
+	IdCard,
+	Building2,
+	PhoneCall,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,14 +28,14 @@ const MONTHS = [
 ];
 
 function fmtDate(val?: string | number) {
-	if (!val) return "—";
+	if (!val) return "\u2014";
 	const d = new Date(val);
 	if (isNaN(d.getTime())) return String(val);
 	return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function fmtCurrency(val?: number) {
-	if (val == null || val === 0) return "—";
+	if (val == null || val === 0) return "\u2014";
 	return new Intl.NumberFormat("id-ID", {
 		style: "currency",
 		currency: "IDR",
@@ -77,6 +79,91 @@ const CSV_HEADER = [
 	"Status", "Wajah", "CV",
 ].join(",");
 
+const STATUS_OPTIONS = [
+	{ value: "", label: "Semua" },
+	{ value: "active", label: "Aktif" },
+	{ value: "inactive", label: "Nonaktif" },
+	{ value: "no_phone", label: "Belum No HP" },
+	{ value: "has_phone", label: "Sudah No HP" },
+];
+
+function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
+	const r = (row as any).raw ?? {};
+	if (!expanded) return null;
+	return (
+		<tr className="border-b border-border/20 bg-muted/10">
+			<td colSpan={15} className="p-0">
+				<div className="px-3 py-3">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
+							<div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-primary">
+								<IdCard className="h-3 w-3" />
+								Identitas
+							</div>
+							<div className="space-y-1">
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">No Identitas</span>
+									<span className="font-medium">{r.identityNumber || "\u2014"}</span>
+								</div>
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">TTL</span>
+									<span className="font-medium text-right">
+										{r.placeOfBirth ? `${r.placeOfBirth}, ` : ""}{fmtDate(r.birthDate)}
+									</span>
+								</div>
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">Alamat</span>
+									<span className="font-medium text-right max-w-[200px] truncate">{r.address || "\u2014"}</span>
+								</div>
+							</div>
+						</div>
+						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
+							<div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-primary">
+								<Building2 className="h-3 w-3" />
+								Pekerjaan
+							</div>
+							<div className="space-y-1">
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">Tgl Mulai</span>
+									<span className="font-medium">{fmtDate(r.startDate)}</span>
+								</div>
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">Gaji Pokok</span>
+									<span className="font-medium">{fmtCurrency(r.monthlySalary)}</span>
+								</div>
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">Lokasi</span>
+									<span className="font-medium">{r.location || "\u2014"}</span>
+								</div>
+							</div>
+						</div>
+						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
+							<div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-primary">
+								<PhoneCall className="h-3 w-3" />
+								Kontak Darurat
+							</div>
+							{r.emergencyContactName ? (
+								<div className="space-y-1">
+									<div className="flex justify-between text-[10px]">
+										<span className="text-muted-foreground">Nama</span>
+										<span className="font-medium">{r.emergencyContactName}</span>
+									</div>
+									<div className="flex justify-between text-[10px]">
+										<span className="text-muted-foreground">No HP</span>
+										<span className="font-medium">{r.emergencyContactPhone || "\u2014"}</span>
+									</div>
+								</div>
+							) : (
+								<p className="text-[10px] text-muted-foreground italic">Tidak ada data</p>
+							)}
+						</div>
+					</div>
+				</div>
+			</td>
+		</tr>
+	);
+}
+
 function DataKaryawanPage() {
 	const navigate = useNavigate();
 	const allStaff = useHybridPublicUsers();
@@ -86,8 +173,8 @@ function DataKaryawanPage() {
 	const [sortCol, setSortCol] = useState("name");
 	const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 	const [isExporting, setIsExporting] = useState<"pdf" | "csv" | null>(null);
+	const [expandedId, setExpandedId] = useState<string | null>(null);
 
-	// Unique roles for filter
 	const allRoles = useMemo(() => {
 		const roles = new Set<string>();
 		(allStaff ?? []).forEach((s: any) => {
@@ -96,11 +183,9 @@ function DataKaryawanPage() {
 		return Array.from(roles).sort();
 	}, [allStaff]);
 
-	// Filter + sort
 	const filtered = useMemo(() => {
 		const list = Array.isArray(allStaff) ? allStaff : [];
 		const q = searchQuery.toLowerCase().trim();
-
 		let result = list.filter((row: any) => {
 			const r = (row as any).raw ?? {};
 			if (q && !row.name?.toLowerCase().includes(q) && !row.username?.toLowerCase().includes(q) && !(r.phone || "").includes(q)) return false;
@@ -111,7 +196,6 @@ function DataKaryawanPage() {
 			if (statusFilter === "has_phone" && !(row as any).raw?.phone) return false;
 			return true;
 		});
-
 		result.sort((a: any, b: any) => {
 			const ra = (a as any).raw ?? {};
 			const rb = (b as any).raw ?? {};
@@ -127,7 +211,6 @@ function DataKaryawanPage() {
 			vb = String(vb ?? "").toLowerCase();
 			return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
 		});
-
 		return result;
 	}, [allStaff, searchQuery, roleFilter, statusFilter, sortCol, sortDir]);
 
@@ -141,10 +224,15 @@ function DataKaryawanPage() {
 	};
 
 	const SortIcon = ({ col }: { col: string }) => {
-		if (sortCol !== col) return <ArrowUpDown className="ml-1 h-3 w-3 shrink-0 opacity-30" />;
+		if (sortCol !== col) return <ArrowUpDown className="ml-1 h-3 w-3 shrink-0 opacity-20" />;
 		return sortDir === "asc"
 			? <ChevronUp className="ml-1 h-3 w-3 shrink-0" />
 			: <ChevronDown className="ml-1 h-3 w-3 shrink-0" />;
+	};
+
+	const toggleExpand = (id: string, e: React.MouseEvent) => {
+		e.stopPropagation();
+		setExpandedId((prev) => prev === id ? null : id);
 	};
 
 	const exportCsv = async () => {
@@ -160,7 +248,7 @@ function DataKaryawanPage() {
 			a.click();
 			URL.revokeObjectURL(url);
 			toast.success(`CSV berhasil diexport (${rows.length} karyawan)`);
-		} catch (err) {
+		} catch {
 			toast.error("Gagal export CSV");
 		} finally {
 			setIsExporting(null);
@@ -186,8 +274,6 @@ function DataKaryawanPage() {
 			if (imgH <= ph) {
 				pdf.addImage(imgData, "PNG", 5, 8, imgW, imgH);
 			} else {
-				// Multi-page
-				let yPos = 8;
 				const pageH = (ph - 15) / imgH * canvas.height;
 				for (let y = 0; y < canvas.height; y += pageH) {
 					if (y > 0) pdf.addPage();
@@ -203,7 +289,7 @@ function DataKaryawanPage() {
 			}
 			pdf.save(`data-karyawan-${new Date().toISOString().slice(0, 10)}.pdf`);
 			toast.success("PDF berhasil diexport");
-		} catch (err) {
+		} catch {
 			toast.error("Gagal export PDF");
 		} finally {
 			setIsExporting(null);
@@ -225,10 +311,9 @@ function DataKaryawanPage() {
 
 	return (
 		<div className="flex flex-col gap-3 p-3 md:p-4">
-			{/* Header */}
 			<div className="flex items-center justify-between flex-wrap gap-2">
 				<div className="flex items-center gap-2.5">
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-400 text-white shadow-sm">
 						<User className="h-4 w-4" />
 					</div>
 					<div>
@@ -239,71 +324,61 @@ function DataKaryawanPage() {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-8 rounded-lg text-[10px] font-bold px-2.5"
-						disabled={isExporting === "csv" || isLoading || isEmpty}
-						onClick={exportCsv}
-					>
+					<Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-bold px-2.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
 						{isExporting === "csv" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
 						<span className="hidden sm:inline ml-1">CSV</span>
 					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-8 rounded-lg text-[10px] font-bold px-2.5"
-						disabled={isExporting === "pdf" || isLoading || isEmpty}
-						onClick={exportPdf}
-					>
+					<Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-bold px-2.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
 						{isExporting === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
 						<span className="hidden sm:inline ml-1">PDF</span>
 					</Button>
 				</div>
 			</div>
 
-			{/* Search & Filter */}
-			<div className="flex items-center gap-2 flex-wrap">
-				<div className="relative flex-1 min-w-[160px] max-w-xs">
+			<div className="rounded-xl border bg-card p-2.5 space-y-2.5">
+				<div className="relative flex-1 max-w-md">
 					<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-					<Input
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="Cari nama, username, No HP..."
-						className="h-8 rounded-xl pl-8 text-[11px] font-medium"
-					/>
+					<Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cari nama, username, No HP..." className="h-8 rounded-xl pl-8 pr-8 text-[11px] font-medium" />
+					{searchQuery && (
+						<button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+							<X className="h-3.5 w-3.5" />
+						</button>
+					)}
 				</div>
-				<select
-					value={roleFilter}
-					onChange={(e) => setRoleFilter(e.target.value)}
-					className="h-8 rounded-xl border border-input bg-background px-2.5 text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
-				>
-					<option value="">Semua Role</option>
-					{allRoles.map((r) => <option key={r} value={r}>{r}</option>)}
-				</select>
-				<select
-					value={statusFilter}
-					onChange={(e) => setStatusFilter(e.target.value)}
-					className="h-8 rounded-xl border border-input bg-background px-2.5 text-[11px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
-				>
-					<option value="">Semua Status</option>
-					<option value="active">Aktif</option>
-					<option value="inactive">Nonaktif</option>
-					<option value="no_phone">Belum Isi No HP</option>
-					<option value="has_phone">Sudah Isi No HP</option>
-				</select>
-				<span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
-					{filtered.length} data
-				</span>
+
+				<div className="flex items-center gap-2 flex-wrap">
+					<div className="flex items-center gap-1 flex-wrap">
+						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Role:</span>
+						<button onClick={() => setRoleFilter("")} className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${!roleFilter ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>Semua</button>
+						{allRoles.slice(0, 8).map((r) => (
+							<button key={r} onClick={() => setRoleFilter(roleFilter === r ? "" : r)} className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${roleFilter === r ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{r}</button>
+						))}
+						{allRoles.length > 8 && (
+							<select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="h-7 rounded-lg border border-input bg-background px-2 text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20">
+								<option value="">Lainnya...</option>
+								{allRoles.slice(8).map((r) => <option key={r} value={r}>{r}</option>)}
+							</select>
+						)}
+					</div>
+
+					<div className="w-px h-5 bg-border/60" />
+
+					<div className="flex items-center gap-1 flex-wrap">
+						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Status:</span>
+						{STATUS_OPTIONS.map((opt) => (
+							<button key={opt.value} onClick={() => setStatusFilter(opt.value)} className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${statusFilter === opt.value ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{opt.label}</button>
+						))}
+					</div>
+
+					<div className="flex-1" />
+					<span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">{filtered.length} dari {Array.isArray(allStaff) ? allStaff.length : 0} data</span>
+				</div>
 			</div>
 
-			{/* Table */}
 			<div className="overflow-x-auto rounded-xl border bg-card">
 				{isLoading ? (
 					<div className="p-6 space-y-3">
-						{[1,2,3,4,5,6,7,8].map((i) => (
-							<div key={i} className="h-6 w-full rounded-lg bg-muted animate-pulse" />
-						))}
+						{[1,2,3,4,5,6].map((i) => <div key={i} className={`h-7 w-full rounded-lg bg-muted animate-pulse ${i > 2 ? "/60" : ""} ${i > 4 ? "/40" : ""}`} />)}
 					</div>
 				) : isEmpty ? (
 					<div className="flex flex-col items-center justify-center py-12 text-center">
@@ -314,122 +389,75 @@ function DataKaryawanPage() {
 				) : (
 					<table id="karyawan-data-table" className="w-full border-collapse text-[11px]">
 						<thead>
-							<tr className="border-b bg-muted/30">
-								<th className="sticky top-0 z-10 bg-muted/30 px-2.5 py-2 text-left">
-									<ThButton col="name">Nama</ThButton>
-								</th>
-								<th className="px-2.5 py-2 text-left">
-									<ThButton col="role">Role</ThButton>
-								</th>
-								<th className="px-2.5 py-2 text-left">
-									<ThButton col="phone">No HP</ThButton>
-								</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap">No Identitas</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap">TTL</th>
-								<th className="px-2.5 py-2 text-left">Alamat</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap">Tgl Mulai</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap">Status Kerja</th>
-								<th className="px-2.5 py-2 text-right">Gaji</th>
-								<th className="px-2.5 py-2 text-left">Lokasi</th>
-								<th className="px-2.5 py-2 text-left">Kontak Darurat</th>
-								<th className="px-2.5 py-2 text-center">
-									<ThButton col="status">Status</ThButton>
-								</th>
-								<th className="px-2.5 py-2 text-center">Wajah</th>
-								<th className="px-2.5 py-2 text-center">CV</th>
+							<tr className="border-b bg-muted/40">
+								<th className="w-8 px-1 py-2 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] text-muted-foreground/40">#</span></th>
+								<th className="px-2.5 py-2 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
+								<th className="px-2.5 py-2 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
+								<th className="px-2.5 py-2 text-left min-w-[100px] hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">No Identitas</th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden lg:table-cell">TTL</th>
+								<th className="px-2.5 py-2 text-left hidden lg:table-cell">Alamat</th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">Tgl Mulai</th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap min-w-[80px] hidden sm:table-cell">Status Kerja</th>
+								<th className="px-2.5 py-2 text-right hidden md:table-cell">Gaji</th>
+								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Lokasi</th>
+								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Kontak Darurat</th>
+								<th className="px-2.5 py-2 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
+								<th className="px-2.5 py-2 text-center hidden lg:table-cell">Wajah</th>
+								<th className="px-2.5 py-2 text-center hidden lg:table-cell">CV</th>
 							</tr>
 						</thead>
 						<tbody>
 							{filtered.length === 0 ? (
-								<tr>
-									<td colSpan={14} className="px-4 py-8 text-center text-xs text-muted-foreground">
-										Tidak ada karyawan yang cocok dengan filter.
-									</td>
-								</tr>
-							) : (
-								filtered.map((row: any) => {
-									const r = (row as any).raw ?? {};
-									const isActive = row.isActive !== false;
-									return (
-										<tr
-											key={row._id}
-											className="border-b border-border/40 hover:bg-muted/20 transition-colors cursor-pointer"
-											onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}
-										>
-											<td className="px-2.5 py-2">
+								<tr><td colSpan={15} className="px-4 py-8 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
+							) : filtered.map((row: any) => {
+								const r = (row as any).raw ?? {};
+								const isActive = row.isActive !== false;
+								const isExpanded = expandedId === row._id;
+								return (
+									<React.Fragment key={row._id}>
+										<tr className={`border-b border-border/30 hover:bg-muted/20 transition-all cursor-pointer ${isExpanded ? "bg-primary/[0.02] shadow-inner" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
+											<td className="px-1 py-2 text-center" onClick={(e) => toggleExpand(row._id, e)}>
+												<button className="inline-flex items-center justify-center h-4 w-4 rounded hover:bg-muted transition-colors">
+													<ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+												</button>
+											</td>
+											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
 												<div className="flex items-center gap-2">
-													<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-black ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-														{(row.name || "?").charAt(0)}
-													</div>
+													<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-black ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
 													<div className="min-w-0">
-														<p className="font-bold text-xs truncate max-w-[140px]">{row.name}</p>
-														<p className="text-[9px] text-muted-foreground truncate max-w-[140px]">@{row.username || row.slug}</p>
+														<p className="font-bold text-xs truncate max-w-[120px]">{row.name}</p>
+														<p className="text-[9px] text-muted-foreground truncate max-w-[120px]">@{row.username || row.slug}</p>
 													</div>
 												</div>
 											</td>
-											<td className="px-2.5 py-2">
-												<span className="inline-flex rounded-md bg-primary/5 px-2 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">
-													{row.roleName || "—"}
+											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
+												<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">{row.roleName || "\u2014"}</span>
+											</td>
+											<td className="px-2.5 py-2 font-medium hidden sm:table-cell">{r.phone || <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-muted-foreground hidden md:table-cell">{r.identityNumber || <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden lg:table-cell">{r.placeOfBirth ? `${r.placeOfBirth}, ` : ""}{fmtDate(r.birthDate)}</td>
+											<td className="px-2.5 py-2 text-muted-foreground max-w-[120px] truncate hidden lg:table-cell">{r.address || <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden md:table-cell">{fmtDate(r.startDate)}</td>
+											<td className="px-2.5 py-2 hidden sm:table-cell">
+												<span className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${r.employmentType === "permanent" ? "bg-emerald-100 text-emerald-700" : r.employmentType === "probation" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "\u2014"}</span>
+											</td>
+											<td className="px-2.5 py-2 text-right font-medium hidden md:table-cell">{fmtCurrency(r.monthlySalary)}</td>
+											<td className="px-2.5 py-2 text-muted-foreground hidden xl:table-cell">{r.location || <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-[10px] hidden xl:table-cell">{r.emergencyContactName ? <div><p className="font-medium">{r.emergencyContactName}</p><p className="text-muted-foreground">{r.emergencyContactPhone || "\u2014"}</p></div> : <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-center">
+												<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] ${isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-muted text-muted-foreground border border-border"}`}>
+													<span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+													{isActive ? "Aktif" : "Nonaktif"}
 												</span>
 											</td>
-											<td className="px-2.5 py-2 font-medium">{r.phone || "—"}</td>
-											<td className="px-2.5 py-2 text-muted-foreground">{r.identityNumber || "—"}</td>
-											<td className="px-2.5 py-2 text-muted-foreground text-[10px]">
-												{r.placeOfBirth ? `${r.placeOfBirth}, ` : ""}{fmtDate(r.birthDate)}
-											</td>
-											<td className="px-2.5 py-2 text-muted-foreground max-w-[150px] truncate">{r.address || "—"}</td>
-											<td className="px-2.5 py-2 text-muted-foreground text-[10px]">{fmtDate(r.startDate)}</td>
-											<td className="px-2.5 py-2">
-												<span className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-													r.employmentType === "permanent"
-														? "bg-emerald-100 text-emerald-700"
-														: r.employmentType === "probation"
-														? "bg-amber-100 text-amber-700"
-														: "bg-muted text-muted-foreground"
-												}`}>
-													{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "—"}
-												</span>
-											</td>
-											<td className="px-2.5 py-2 text-right font-medium">{fmtCurrency(r.monthlySalary)}</td>
-											<td className="px-2.5 py-2 text-muted-foreground">{r.location || "—"}</td>
-											<td className="px-2.5 py-2 text-[10px]">
-												{r.emergencyContactName ? (
-													<div>
-														<p className="font-medium">{r.emergencyContactName}</p>
-														<p className="text-muted-foreground">{r.emergencyContactPhone || "—"}</p>
-													</div>
-												) : "—"}
-											</td>
-											<td className="px-2.5 py-2 text-center">
-												{isActive
-													? <CheckCircle2 className="inline h-4 w-4 text-emerald-500" />
-													: <XCircle className="inline h-4 w-4 text-muted-foreground/40" />
-												}
-											</td>
-											<td className="px-2.5 py-2 text-center">
-												{row.hasFace
-													? <Camera className="inline h-4 w-4 text-primary" />
-													: <span className="text-muted-foreground/30">—</span>
-												}
-											</td>
-											<td className="px-2.5 py-2 text-center">
-												{r.cvUrl ? (
-													<a
-														href={r.cvUrl}
-														target="_blank"
-														rel="noopener noreferrer"
-														onClick={(e) => e.stopPropagation()}
-														className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/10 transition-colors"
-													>
-														<Eye className="h-3 w-3" />
-														Lihat
-													</a>
-												) : <span className="text-muted-foreground/30">—</span>}
-											</td>
+											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{row.hasFace ? <Camera className="inline h-3.5 w-3.5 text-primary" /> : <span className="text-muted-foreground/20">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">\u2014</span>}</td>
 										</tr>
-									);
-								})
-							)}
+										<DetailRow row={row} expanded={isExpanded} />
+									</React.Fragment>
+								);
+							})}
 						</tbody>
 					</table>
 				)}
