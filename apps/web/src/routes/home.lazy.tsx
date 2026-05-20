@@ -40,6 +40,11 @@ const FaceRecognition = lazy(() =>
 	}))
 );
 
+// Preload face models eagerly (not lazy, called on mount)
+const preloadFaceModels = () => {
+	import("@/components/auth/FaceRecognition").then((m) => m.preloadFaceModels?.());
+};
+
 type ShiftRow = {
 	shiftId: string;
 	shiftName: string;
@@ -199,6 +204,9 @@ function HomePage() {
 	const [currentTime, setCurrentTime] = useState(new Date());
 	const [searchQuery, setSearchQuery] = useState("");
 	const [shiftExpanded, setShiftExpanded] = useState(false);
+
+	// Preload face models on mount
+	useEffect(() => { preloadFaceModels(); }, []);
 
 	useEffect(() => {
 		const timer = setInterval(() => {

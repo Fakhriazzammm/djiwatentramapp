@@ -1,6 +1,6 @@
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { FaceRecognition } from "@/components/auth/FaceRecognition";
+import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -191,6 +191,11 @@ function AttendancePage() {
 			}
 		}
 	}, [isAuthenticated, authUser, step, currentlyIn]);
+
+	// Preload face models when user is on select step
+	useEffect(() => {
+		if (step === "select") preloadFaceModels();
+	}, [step]);
 	
 	const handleUserSelect = (staff: any) => {
 		const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff._id);
