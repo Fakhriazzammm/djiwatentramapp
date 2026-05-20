@@ -29,10 +29,13 @@ async function fetchPublicUsers() {
 		_id: row._id,
 		name: row.name,
 		slug: row.slug || String(row.username || "").split("@")[0] || "",
+		username: row.username || "",
 		initial: row.initial || String(row.name || "").charAt(0).toUpperCase(),
 		hasFace: Boolean(row.hasFace),
 		roleId: row.roleId ?? null,
 		roleName: row.roleName ?? "Team",
+		isActive: row.isActive !== false,
+		raw: (row as any).raw ?? null,
 	}));
 }
 

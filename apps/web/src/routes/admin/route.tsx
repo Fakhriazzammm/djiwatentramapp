@@ -87,6 +87,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/operational-team/register/onboarding": "Onboarding Karyawan",
 	"/admin/operational-team/register/contract": "Kontrak Kerja",
 	"/admin/operational-team/karyawan": "Karyawan",
+	"/admin/operational-team/karyawan/data": "Data Karyawan",
 	"/admin/operational-team/register/riwayat": "Riwayat Kontrak",
 	"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
@@ -495,6 +496,7 @@ function AdminLayout() {
 										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
 											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
 											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
+											<DesktopSubNavLink icon={<FileText />} label="Data Karyawan" to="/admin/operational-team/karyawan/data" permission="users:manage" />
 											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
 										<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
 										<DesktopSubNavLink icon={<Settings />} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
