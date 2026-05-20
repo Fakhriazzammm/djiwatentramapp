@@ -1443,7 +1443,7 @@ export function RecipeHppPage() {
 					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
-
+					usageUnit: invItem?.displayUnit ?? "ml",
 					conversionFactor: baseFactor,
 					costSource: source,
 				};
@@ -1496,7 +1496,7 @@ export function RecipeHppPage() {
 						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
-	
+						usageUnit: invItem?.displayUnit ?? "ml",
 						conversionFactor: productFactor,
 						costSource: source,
 					};
@@ -1646,7 +1646,7 @@ export function RecipeHppPage() {
 					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
-
+					usageUnit: invItem?.displayUnit ?? "ml",
 					conversionFactor: baseFactor,
 					costSource: source,
 				};
@@ -1700,7 +1700,7 @@ export function RecipeHppPage() {
 						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
-	
+						usageUnit: invItem?.displayUnit ?? "ml",
 						conversionFactor: productFactor,
 						costSource: source,
 					};
