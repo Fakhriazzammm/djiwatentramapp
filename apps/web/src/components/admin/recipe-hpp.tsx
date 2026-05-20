@@ -1507,7 +1507,7 @@ export function RecipeHppPage() {
 			overheadCosts: [],
 			servingsPerBatch: 1,
 			sellingPrice: product.promoPrice ?? product.price,
-			happyHourPrice: product.promoPrice ? Math.round(product.promoPrice * 0.85) : Math.round(product.price * 0.85),
+			happyHourPrice: 0,
 			productId: selectedProductId,
 			sourceType: recipe ? "recipe_based" : "manual",
 		});
@@ -1711,7 +1711,7 @@ export function RecipeHppPage() {
 			overheadCosts: [],
 			servingsPerBatch: 1,
 			sellingPrice: product.promoPrice ?? product.price,
-			happyHourPrice: product.promoPrice ? Math.round(product.promoPrice * 0.85) : Math.round(product.price * 0.85),
+			happyHourPrice: 0,
 			productId,
 			sourceType: recipe ? "recipe_based" : "manual",
 		};
