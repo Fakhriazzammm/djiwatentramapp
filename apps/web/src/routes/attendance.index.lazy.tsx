@@ -9,9 +9,6 @@ import {
 	KeyRound, 
 	Loader2, 
 	UserCheck, 
-	LogIn, 
-	LogOut, 
-	Users, 
 	MapPin,
 	AlertCircle,
 	CheckCircle2,
@@ -340,25 +337,19 @@ function AttendancePage() {
 
 	return (
 		<div className="flex min-h-screen w-full flex-col bg-background selection:bg-primary/20">
-			{/* Animated Background Mesh */}
-			<div className="fixed inset-0 -z-10 overflow-hidden">
-				<div className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] rounded-full bg-primary/5 blur-[120px] animate-pulse" />
-				<div className="absolute bottom-[-10%] right-[-10%] h-[40%] w-[40%] rounded-full bg-amber-500/5 blur-[120px] animate-pulse [animation-delay:2s]" />
-			</div>
-
 			{/* Header */}
-			<header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/40 bg-background/88 px-4 backdrop-blur-xl md:h-20 md:px-12">
-				<div className="flex items-center gap-3 md:gap-4">
+			<header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border/30 bg-background/90 px-3 backdrop-blur-lg md:h-16 md:px-8">
+				<div className="flex items-center gap-2 md:gap-4">
 					<div className="group relative">
 						<div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 opacity-20 blur transition duration-300 group-hover:opacity-40" />
-						<div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-border/50 bg-card text-primary shadow-sm md:h-12 md:w-12">
-							<Coffee className="h-6 w-6 md:h-7 md:w-7" />
+						<div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-card text-primary shadow-sm">
+							<Coffee className="h-5 w-5" />
 						</div>
 					</div>
 					<div className="min-w-0">
-						<h1 className="text-lg font-black tracking-tight uppercase md:text-xl">Portal Presensi</h1>
+						<h1 className="text-sm md:text-lg font-black tracking-tight uppercase">Portal Presensi</h1>
 						<div className="mt-0.5 flex items-center gap-2">
-							<span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+							<span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
 							<p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground md:text-[10px]">
 								Sistem Biometrik Online
 							</p>
@@ -369,7 +360,7 @@ function AttendancePage() {
 				<div className="flex items-center gap-2 md:gap-4">
 					{/* Shift Detection Chip */}
 					{detectedShift && (
-						<div className={`hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
+						<div className={`hidden md:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
 							isShiftActive 
 								? "bg-blue-50 border-blue-100 text-blue-700" 
 								: "bg-amber-50 border-amber-100 text-amber-700"
@@ -384,7 +375,7 @@ function AttendancePage() {
 					)}
 
 					{/* Status Lokasi Chip */}
-					<div className={`hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
+					<div className={`hidden md:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
 						isInRadius ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-red-50 border-red-100 text-red-700"
 					}`}>
 						{isInRadius ? <CheckCircle2 className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
@@ -403,7 +394,7 @@ function AttendancePage() {
 				</div>
 			</header>
 
-			<main className="flex flex-1 flex-col p-4 md:p-12">
+			<main className="flex flex-1 flex-col p-3 md:p-8">
 				<AnimatePresence mode="wait">
 					{step === "select" && (
 						<motion.div
@@ -411,59 +402,59 @@ function AttendancePage() {
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: -20 }}
 							key="select-step"
-							className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-12"
+							className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6"
 						>
 							{/* Left: User Selection Grid */}
-							<div className="space-y-5 lg:col-span-8 lg:space-y-8">
+							<div className="space-y-4 lg:col-span-8 lg:space-y-6">
 								<div className="space-y-2">
-									<h2 className="text-2xl font-black tracking-tight md:text-3xl">SIAPA ANDA?</h2>
-									<p className="text-sm font-medium text-muted-foreground">Pilih nama Anda untuk melanjutkan proses absensi.</p>
+									<h2 className="text-xl md:text-2xl font-black tracking-tight">SIAPA ANDA?</h2>
+									<p className="text-xs font-medium text-muted-foreground">Pilih nama Anda untuk melanjutkan proses absensi.</p>
 								</div>
 
 								{!allStaff ? (
-									<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-6">
+									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 md:gap-3">
 										{Array.from({ length: 8 }).map((_, i) => (
-											<div key={i} className="aspect-square rounded-3xl bg-muted animate-pulse" />
+											<div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
 										))}
 									</div>
 								) : (
-									<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-6">
+									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 md:gap-3">
 										{allStaff.map((staff: any) => {
 											const isIn = currentlyIn?.some((s: any) => s._id === staff._id);
 											return (
 												<motion.button
-													whileHover={{ scale: 1.05 }}
-													whileTap={{ scale: 0.95 }}
+													whileHover={{ scale: 1.02 }}
+													whileTap={{ scale: 0.97 }}
 													key={staff._id}
 													onClick={() => handleUserSelect(staff)}
-													className={`group relative aspect-square rounded-[1.6rem] border-2 p-4 text-center transition-all duration-300 md:rounded-[2rem] md:p-6 ${
+													className={`group relative aspect-square rounded-xl border-2 p-3 text-center transition-all duration-200 ${
 														isIn 
 														? "bg-emerald-50/30 border-emerald-500/20 hover:border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.05)]" 
 														: "bg-card border-border/50 hover:border-primary shadow-sm hover:shadow-xl"
 													}`}
 												>
-													<div className="flex flex-col items-center gap-4 h-full justify-center">
+													<div className="flex flex-col items-center gap-2 h-full justify-center">
 														<div className="relative">
-															<div className={`h-16 w-16 rounded-2xl flex items-center justify-center font-black text-2xl transition-all duration-300 ${
+															<div className={`h-12 w-12 rounded-xl flex items-center justify-center font-bold text-lg transition-all duration-200 ${
 																isIn ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-white"
 															}`}>
 																{staff.name.charAt(0)}
 															</div>
 															{isIn && (
-																<div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border-2 border-emerald-500 flex items-center justify-center">
+																<div className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-background border-2 border-emerald-500 flex items-center justify-center">
 																	<div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
 																</div>
 															)}
 														</div>
 														<div className="space-y-1">
-															<p className="font-bold text-foreground text-sm leading-tight line-clamp-2 uppercase tracking-tight">
+															<p className="font-bold text-foreground text-[11px] leading-tight line-clamp-2 uppercase tracking-tight">
 																{staff.name}
 															</p>
 															<div className="flex flex-col items-center gap-1">
-																<p className={`text-[10px] font-black uppercase tracking-widest ${isIn ? "text-emerald-600" : "text-muted-foreground/60"}`}>
+																<p className={`text-[9px] font-bold uppercase tracking-widest ${isIn ? "text-emerald-600" : "text-muted-foreground/60"}`}>
 																	{isIn ? "BERTUGAS" : "OFF Duty"}
 																</p>
-																<div className={`mt-1 rounded-full px-3 py-1 text-[8px] font-black uppercase tracking-tighter text-white transition-all ${
+																<div className={`mt-0.5 rounded-full px-2 py-0.5 text-[7px] font-bold uppercase tracking-tighter text-white transition-all ${
 																	isIn ? "bg-amber-500 group-hover:bg-amber-600" : "bg-primary group-hover:bg-primary/80"
 																}`}>
 																	{isIn ? "Klik untuk Keluar" : "Klik untuk Masuk"}
@@ -480,44 +471,40 @@ function AttendancePage() {
 
 							{/* Right: Live Status Board */}
 							<div className="lg:col-span-4">
-								<div className="space-y-4 lg:sticky lg:top-32 lg:space-y-6">
-									<div className="group relative overflow-hidden rounded-[2rem] border border-border/50 bg-card p-5 shadow-xl md:rounded-[2.5rem] md:p-8">
-										<div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
-											<Users className="h-32 w-32" />
-										</div>
-										
-										<div className="relative space-y-4 md:space-y-6">
-											<div className="flex items-center gap-3">
-												<div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-													<Clock className="h-5 w-5" />
+								<div className="space-y-3 lg:sticky lg:top-28 lg:space-y-4">
+									<div className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card p-4 shadow-lg">
+										<div className="relative space-y-3 md:space-y-4">
+											<div className="flex items-center gap-2">
+												<div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+													<Clock className="h-4 w-4" />
 												</div>
 												<div>
-													<h3 className="font-bold text-lg leading-none">Tim Bertugas</h3>
-													<p className="text-[10px] text-muted-foreground font-black mt-1 uppercase tracking-widest">Live Status Dashboard</p>
+													<h3 className="font-bold text-sm leading-none">Tim Bertugas</h3>
+													<p className="text-[9px] text-muted-foreground font-bold mt-0.5 uppercase tracking-widest">Live Status Dashboard</p>
 												</div>
 											</div>
 
 											<div className="space-y-3 md:space-y-4">
 												{!currentlyIn ? (
 													Array.from({ length: 3 }).map((_, i) => (
-														<div key={i} className="h-12 w-full bg-muted/30 rounded-2xl animate-pulse" />
+														<div key={i} className="h-10 w-full bg-muted/30 rounded-xl animate-pulse" />
 													))
 												) : currentlyIn.length === 0 ? (
-													<div className="py-12 text-center space-y-3">
-														<div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground">
+													<div className="py-8 text-center space-y-2">
+														<div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground">
 															<UserCheck className="h-6 w-6" />
 														</div>
 														<p className="text-sm text-muted-foreground font-medium">Belum ada staff yang masuk.</p>
 													</div>
 												) : (
 													currentlyIn.map((staff: any) => (
-														<div key={staff._id} className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100/50 group/item hover:bg-emerald-50 transition-colors">
-															<div className="flex items-center gap-3">
-																<div className="h-10 w-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold">
+														<div key={staff._id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-50/50 border border-emerald-100/50 group/item hover:bg-emerald-50 transition-colors">
+															<div className="flex items-center gap-2">
+																<div className="h-8 w-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold">
 																	{staff.name.charAt(0)}
 																</div>
 																<div className="space-y-0.5">
-																	<p className="font-bold text-sm text-foreground">{staff.name}</p>
+																	<p className="font-bold text-xs text-foreground">{staff.name}</p>
 																	<p className="text-[10px] text-emerald-600 font-bold">
 																		Masuk sejak {new Date(staff.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 																	</p>
@@ -533,19 +520,19 @@ function AttendancePage() {
 
 									{/* Shift Info Card */}
 									{detectedShift && (
-										<div className={`rounded-[1.6rem] border p-4 md:rounded-[2rem] md:p-5 ${
+										<div className={`rounded-2xl border p-3 ${
 											isShiftActive 
 												? "bg-blue-50/50 border-blue-100/50" 
 												: "bg-amber-50/50 border-amber-100/50"
 										}`}>
-											<div className="flex items-center gap-3 mb-2">
-												<div className={`h-9 w-9 rounded-xl flex items-center justify-center ${
+											<div className="flex items-center gap-2 mb-2">
+												<div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
 													isShiftActive ? "bg-blue-500/10 text-blue-600" : "bg-amber-500/10 text-amber-600"
 												}`}>
 													<CalendarClock className="h-4 w-4" />
 												</div>
 												<div>
-													<p className="font-black text-sm leading-none">{detectedShift.name}</p>
+													<p className="font-bold text-xs leading-none">{detectedShift.name}</p>
 													<p className={`text-[9px] font-bold uppercase tracking-widest mt-0.5 ${
 														isShiftActive ? "text-blue-600" : "text-amber-600"
 													}`}>
@@ -564,12 +551,12 @@ function AttendancePage() {
 
 									{/* Geofencing Warning for Select Step */}
 									{!isInRadius && siteSettings?.attendanceLat && (
-										<div className="flex gap-4 rounded-3xl border border-red-100 bg-red-50 p-5 md:p-6">
-											<div className="h-10 w-10 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-												<AlertCircle className="h-6 w-6" />
+										<div className="flex gap-3 rounded-xl border border-red-100 bg-red-50 p-3">
+											<div className="h-8 w-8 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+												<AlertCircle className="h-4 w-4" />
 											</div>
 											<div className="space-y-1">
-												<p className="font-bold text-sm text-red-900">Peringatan Jarak</p>
+												<p className="font-bold text-xs text-red-900">Peringatan Jarak</p>
 												<p className="text-xs text-red-700 leading-relaxed">
 													Anda terdeteksi di luar area kafe. Absensi hanya dapat dilakukan dalam jarak <strong>{siteSettings.attendanceRadius}m</strong> dari lokasi.
 												</p>
@@ -588,22 +575,22 @@ function AttendancePage() {
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: -20 }}
 							key="pin-step"
-							className="mx-auto w-full max-w-md space-y-5"
+							className="mx-auto w-full max-w-sm space-y-4"
 						>
-							<div className="space-y-5 text-center">
-								<div className="mb-1 inline-flex h-16 w-16 items-center justify-center rounded-[2rem] bg-amber-500/10 text-amber-600">
-									<KeyRound className="h-8 w-8" />
+							<div className="space-y-4 text-center">
+								<div className="mb-1 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+									<KeyRound className="h-6 w-6" />
 								</div>
 								<div className="space-y-2">
 									<h2 className="text-2xl font-black tracking-tight uppercase md:text-3xl">Verifikasi PIN</h2>
-									<p className="text-sm text-muted-foreground">Halo <strong>{user?.name}</strong>, masukkan PIN untuk mendaftarkan biometrik baru.</p>
+									<p className="text-xs text-muted-foreground">Halo <strong>{user?.name}</strong>, masukkan PIN untuk mendaftarkan biometrik baru.</p>
 								</div>
 
 								<form className="space-y-4" onSubmit={handlePinSubmit}>
 									<div className="relative">
 										<Input
 											autoFocus
-											className="h-16 rounded-[1.6rem] border-2 pl-4 text-center text-3xl font-black tracking-[0.45em] transition-all focus:border-primary focus:ring-8 focus:ring-primary/5 md:h-20 md:rounded-[2rem] md:text-4xl"
+											className="h-12 md:h-14 rounded-xl border-2 pl-3 text-center text-2xl font-black tracking-[0.4em] transition-all focus:border-primary focus:ring-4 focus:ring-primary/5 md:text-3xl"
 											maxLength={6}
 											onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
 											placeholder="••••••"
@@ -611,17 +598,17 @@ function AttendancePage() {
 											value={pin}
 										/>
 									</div>
-									<div className="grid grid-cols-2 gap-3">
+									<div className="grid grid-cols-2 gap-2">
 										<Button 
 											type="button" 
 											variant="outline" 
-											className="h-12 rounded-2xl font-bold md:h-16"
+											className="h-10 md:h-12 rounded-xl font-bold"
 											onClick={() => { setStep("select"); setPin(""); }}
 										>
 											KEMBALI
 										</Button>
 										<Button 
-											className="h-12 rounded-2xl text-base font-bold md:h-16 md:text-lg" 
+											className="h-10 md:h-12 rounded-xl text-sm md:text-base font-bold" 
 											disabled={pin.length !== 6 || isVerifyingPin} 
 											type="submit"
 										>
@@ -635,15 +622,15 @@ function AttendancePage() {
 
 					{step === "face" && (
 						<motion.div
-							initial={{ opacity: 0, scale: 0.95 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: 0.95 }}
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -20 }}
 							key="face-step"
-							className="mx-auto w-full max-w-xl space-y-4"
+							className="mx-auto w-full max-w-lg space-y-3"
 						>
-							<div className="flex items-center justify-between gap-3">
+							<div className="flex items-center justify-between gap-2">
 								<div className="space-y-1 min-w-0">
-									<h2 className={`text-xl font-black tracking-tight uppercase md:text-2xl ${
+									<h2 className={`text-base md:text-lg font-black tracking-tight uppercase ${
 										isEnrolling ? "text-foreground" : (user?.isCurrentlyIn ? "text-amber-500" : "text-emerald-500")
 									}`}>
 										{isEnrolling 
@@ -651,16 +638,16 @@ function AttendancePage() {
 											: (user?.isCurrentlyIn ? "Konfirmasi Absen Keluar" : "Konfirmasi Absen Masuk")
 										}
 									</h2>
-									<p className="text-sm font-bold text-muted-foreground truncate">
+									<p className="text-xs font-bold text-muted-foreground truncate">
 										Staff: <span className="text-foreground">{user?.name}</span>
 										{detectedShift && !user?.isCurrentlyIn && (
 											<span className="text-muted-foreground/60"> — {detectedShift.name} ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})</span>
 										)}
 									</p>
 								</div>
-								<div className="flex items-center gap-2 shrink-0">
+								<div className="flex items-center gap-1.5 shrink-0">
 									{detectedShift && !user?.isCurrentlyIn && (
-										<div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 border text-[10px] font-bold ${
+										<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[9px] font-bold ${
 											isShiftActive 
 												? "bg-blue-50 border-blue-200 text-blue-700" 
 												: "bg-amber-50 border-amber-200 text-amber-700"
@@ -669,7 +656,7 @@ function AttendancePage() {
 											{detectedShift.name}
 										</div>
 									)}
-									<div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 border text-[10px] font-bold uppercase tracking-wider ${
+									<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[9px] font-bold uppercase tracking-wider ${
 										isInRadius ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-700"
 									}`}>
 										<div className={`h-1.5 w-1.5 rounded-full ${isInRadius ? "bg-emerald-500" : "bg-red-500"}`} />
@@ -680,7 +667,7 @@ function AttendancePage() {
 
 							<div className="relative group">
 								{!isInRadius && siteSettings?.attendanceLat ? (
-									<div className="flex aspect-[3/4] w-full flex-col items-center justify-center space-y-4 rounded-3xl bg-muted p-6 text-center">
+									<div className="flex aspect-[3/4] w-full flex-col items-center justify-center space-y-3 rounded-2xl bg-muted p-4 text-center">
 										<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
 											<Navigation className="h-7 w-7 animate-bounce" />
 										</div>
@@ -693,7 +680,7 @@ function AttendancePage() {
 										</Button>
 									</div>
 								) : !isEnrolling && !user?.hasFace ? (
-									<div className="flex aspect-[3/4] w-full flex-col items-center justify-center space-y-4 rounded-3xl bg-muted p-6 text-center">
+									<div className="flex aspect-[3/4] w-full flex-col items-center justify-center space-y-3 rounded-2xl bg-muted p-4 text-center">
 										<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-amber-100 text-amber-600">
 											<AlertCircle className="h-7 w-7" />
 										</div>
@@ -725,10 +712,10 @@ function AttendancePage() {
 								)}
 							</div>
 
-								<div className="flex flex-col gap-3">
+								<div className="flex flex-col gap-2">
 									{!isEnrolling && (
 										<Button 
-											className={`h-14 w-full rounded-2xl font-black text-lg border-2 shadow-lg transition-all active:scale-95 ${
+											className={`h-11 w-full rounded-xl font-bold text-sm border-2 shadow-md transition-all active:scale-95 ${
 												user?.isCurrentlyIn 
 													? "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white" 
 													: "bg-emerald-500 hover:bg-emerald-600 border-emerald-600 text-white"
@@ -738,15 +725,15 @@ function AttendancePage() {
 												toast.info(`Masukkan PIN untuk ${user?.isCurrentlyIn ? 'Keluar' : 'Masuk'} manual.`);
 											}}
 										>
-											<KeyRound className="mr-3 h-6 w-6" />
+											<KeyRound className="mr-2 h-4 w-4" />
 											{user?.isCurrentlyIn ? "ABSEN KELUAR (PIN)" : "ABSEN MASUK (PIN)"}
 										</Button>
 									)}
 									
-									<div className="flex items-center gap-3">
+									<div className="flex items-center gap-2">
 										{!isEnrolling && (
 											<Button 
-												className="h-11 flex-1 rounded-2xl font-bold"
+												className="h-10 flex-1 rounded-xl font-bold text-[11px]"
 												variant="secondary"
 												onClick={() => {
 													setIsEnrolling(true);
@@ -758,7 +745,7 @@ function AttendancePage() {
 											</Button>
 										)}
 										<Button 
-											className="h-11 flex-1 rounded-2xl" 
+											className="h-10 flex-1 rounded-xl text-[11px]" 
 											onClick={() => {
 												setStep("select");
 												setIsEnrolling(false);
@@ -774,38 +761,34 @@ function AttendancePage() {
 
 					{step === "success" && (
 						<motion.div
-							initial={{ opacity: 0, scale: 0.9 }}
-							animate={{ opacity: 1, scale: 1 }}
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
 							key="success-step"
 							className="max-w-md mx-auto w-full"
 						>
-							<div className="flex flex-col items-center space-y-8 text-center bg-card border border-border/50 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
-								<div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-500 to-primary" />
+							<div className="flex flex-col items-center space-y-5 text-center bg-card border border-border/50 rounded-2xl p-6 shadow-lg relative overflow-hidden">
+								<div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 to-primary" />
 								
 								<motion.div
 									className="relative"
-									initial={{ scale: 0, rotate: -180 }}
-									animate={{ scale: 1, rotate: 0 }}
-									transition={{ type: "spring", stiffness: 150, damping: 12 }}
+									initial={{ scale: 0 }}
+									animate={{ scale: 1 }}
+									transition={{ duration: 0.3 }}
 								>
-									<div className="absolute -inset-6 rounded-full bg-emerald-500/20 blur-2xl animate-pulse" />
-									<motion.div
-										className="relative flex h-32 w-32 items-center justify-center rounded-full bg-emerald-500 text-white shadow-xl shadow-emerald-500/20"
-										animate={{ boxShadow: ["0 10px 25px -5px rgba(16,185,129,0.2)", "0 10px 40px -5px rgba(16,185,129,0.4)", "0 10px 25px -5px rgba(16,185,129,0.2)"] }}
-										transition={{ duration: 2, repeat: Infinity }}
-									>
-										<UserCheck className="h-16 w-16" />
-									</motion.div>
+									<div className="absolute -inset-6 rounded-full bg-emerald-500/20 blur-2xl" />
+									<div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+										<UserCheck className="h-12 w-12" />
+									</div>
 								</motion.div>
 
 								<motion.div
-									className="space-y-4"
+									className="space-y-3"
 									initial={{ opacity: 0, y: 20 }}
 									animate={{ opacity: 1, y: 0 }}
 									transition={{ delay: 0.3 }}
 								>
 									<div className="flex justify-center">
-										<div className={`rounded-full px-6 py-2 text-sm font-black uppercase tracking-[0.2em] shadow-lg ${
+										<div className={`rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] shadow-sm ${
 											user?.isCurrentlyIn 
 												? "bg-amber-100 text-amber-600 border border-amber-200 text-center" 
 												: "bg-emerald-100 text-emerald-600 border border-emerald-200 text-center"
@@ -813,11 +796,11 @@ function AttendancePage() {
 											{user?.isCurrentlyIn ? "Clock Out Berhasil" : "Clock In Berhasil"}
 										</div>
 									</div>
-									<h2 className="text-4xl font-black tracking-tight text-foreground uppercase">SUKSES!</h2>
-									<p className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-primary bg-clip-text text-transparent italic text-center">
+									<h2 className="text-3xl md:text-4xl font-black tracking-tight text-foreground uppercase">SUKSES!</h2>
+									<p className="text-base md:text-lg font-bold bg-gradient-to-r from-emerald-600 to-primary bg-clip-text text-transparent italic text-center">
 										{user?.isCurrentlyIn ? "Sudah diabsen keluar. Hati-hati di jalan!" : "Berhasil diabsen masuk. Semangat!"}
 									</p>
-									<p className="text-sm text-muted-foreground">
+									<p className="text-xs text-muted-foreground">
 										{user?.name} — {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 										{detectedShift && !user?.isCurrentlyIn && (
 											<span className="block text-xs mt-1">
@@ -828,35 +811,15 @@ function AttendancePage() {
 								</motion.div>
 
 								<motion.div
-									className="flex items-center gap-3 rounded-2xl border border-border bg-muted/50 px-6 py-4 w-full"
+									className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 w-full"
 									initial={{ opacity: 0, y: 10 }}
 									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: 0.6 }}
+									transition={{ delay: 0.3 }}
 								>
 									<Loader2 className="h-4 w-4 animate-spin text-primary" />
 									<p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-none">Mengalihkan ke Dashboard...</p>
 								</motion.div>
 
-								{/* Celebration particles */}
-								{Array.from({ length: 12 }).map((_, i) => (
-									<motion.div
-										key={i}
-										className="absolute rounded-full"
-										style={{
-											width: 4 + Math.random() * 8,
-											height: 4 + Math.random() * 8,
-											background: ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ec4899"][i % 5],
-										}}
-										initial={{ top: "50%", left: "50%", opacity: 1, scale: 1 }}
-										animate={{
-											top: `${10 + Math.random() * 80}%`,
-											left: `${5 + Math.random() * 90}%`,
-											opacity: 0,
-											scale: 0,
-										}}
-										transition={{ duration: 1.5 + Math.random(), delay: 0.2 + i * 0.08 }}
-									/>
-								))}
 							</div>
 						</motion.div>
 					)}
@@ -871,5 +834,3 @@ function AttendancePage() {
 export const Route = createLazyFileRoute("/attendance/" as any)({
 	component: AttendancePage,
 });
-
-
