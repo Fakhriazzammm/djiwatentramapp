@@ -185,6 +185,7 @@ function HomePage() {
 		}
 		return Array.from(seen.values()).sort((a, b) => b.startTime - a.startTime);
 	}, [shiftRowsResult]);
+	const [refreshCount, setRefreshCount] = useState(0);
 	const statsToday = useHybridStaffStatsToday(user?._id, refreshCount);
 	const monthProgress = useHybridCurrentMonthProgress();
 	const clockIn = useHybridClockIn();
@@ -195,7 +196,6 @@ function HomePage() {
 
 	const [currentTime, setCurrentTime] = useState(new Date());
 	const [searchQuery, setSearchQuery] = useState("");
-	const [refreshCount, setRefreshCount] = useState(0);
 	const [shiftExpanded, setShiftExpanded] = useState(false);
 
 	useEffect(() => {
