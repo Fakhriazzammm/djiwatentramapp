@@ -344,7 +344,7 @@ async function fetchPayrollReport(args: { month: number; year: number }) {
 			const baseShiftRate = safeNum(raw.baseShiftRate ?? 0);
 			const monthlyFixedSalary = safeNum(raw.monthlyFixedSalary ?? 0);
 			const dailyAllowance = safeNum(raw.dailyAllowance ?? 0);
-			const overtimeBonusPerHour = 10000;
+			const overtimeBonusPerHour = safeNum(raw.overtimeBonusPerHour ?? raw.overtimeRatePerHour ?? 10000);
 			const latePenaltyPerMinute = 1000;
 			const totalShiftSalary = sessionCount * baseShiftRate;
 			const totalAllowance = safeNum(stats?.daysWorked ?? 0) * dailyAllowance;
@@ -352,7 +352,18 @@ async function fetchPayrollReport(args: { month: number; year: number }) {
 			const totalOvertimeBonus = overtimeHours * overtimeBonusPerHour;
 			const totalLateMinutes = 0;
 			const totalPenalty = totalLateMinutes * latePenaltyPerMinute;
-			const totalTargetBonus = 0;
+
+			// ── Bonus Target ─────────────────────────────────────────
+			const bonusTargetConfig = (raw?.bonusTargetConfig ?? {}) as Record<string, any>;
+			const bonusBasis = String(bonusTargetConfig?.basis ?? "shift");
+			const bonusTiers: { thresholdPct?: number; bonusAmount?: number }[] = Array.isArray(bonusTargetConfig?.tiers)
+				? bonusTargetConfig.tiers
+				: [];
+			const firstTier = bonusTiers[0] ?? {};
+			const baseBonusAmount = safeNum((firstTier as any).bonusAmount ?? 0);
+			const totalTargetBonus = bonusBasis === "monthly"
+				? baseBonusAmount
+				: sessionCount * baseBonusAmount;
 			const netSalary =
 				monthlyFixedSalary +
 				totalShiftSalary +
@@ -373,12 +384,13 @@ async function fetchPayrollReport(args: { month: number; year: number }) {
 				monthlyFixedSalary,
 				totalShiftSalary,
 				totalAllowance,
+				overtimeBonusPerHour,
 				totalOvertimeBonus,
+				baseBonusAmount,
+				bonusTargetBasis: bonusBasis,
 				totalTargetBonus,
 				totalPenalty,
 				netSalary,
-				bonusTargetBasis:
-					raw?.bonusTargetConfig?.basis ?? role?.bonusTargetConfig?.basis ?? null,
 			};
 		})
 	);
