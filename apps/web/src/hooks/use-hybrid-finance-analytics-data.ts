@@ -1106,13 +1106,21 @@ async function fetchAccountingEntries(args?: {
 	const ids = (txDates ?? []).map((r: any) => r._id);
 	if (ids.length === 0) return [];
 
-	const { data: entries, error: eError } = await supabase
-		.from("accounting_entries")
-		.select("*")
-		.in("transaction_source_id", ids)
-		.order("transaction_source_id", { ascending: true })
-		.order("item_index", { ascending: true });
-	if (eError) throw eError;
+	// Batch query to avoid URL length limit (927+ IDs in .in() causes 400 Bad Request)
+	const BATCH_SIZE = 50;
+	let allEntries: any[] = [];
+	for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+		const batch = ids.slice(i, i + BATCH_SIZE);
+		const { data: batchEntries, error: batchError } = await supabase
+			.from("accounting_entries")
+			.select("*")
+			.in("transaction_source_id", batch)
+			.order("transaction_source_id", { ascending: true })
+			.order("item_index", { ascending: true });
+		if (batchError) throw batchError;
+		if (batchEntries) allEntries.push(...batchEntries);
+	}
+	const entries = allEntries;
 
 	const { data: coas, error: cError } = await supabase
 		.from("accounting_chart_of_accounts")
