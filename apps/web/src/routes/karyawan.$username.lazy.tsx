@@ -35,6 +35,17 @@ import {
 	useHybridUpdateUserPin,
 	useHybridUpdateUserProfile,
 } from "@/hooks/use-hybrid-write-actions";
+import {
+	useHybridPayslips,
+} from "@/hooks/use-hybrid-payroll-data";
+
+const formatCurrency = (amount: number) => {
+	return new Intl.NumberFormat("id-ID", {
+		style: "currency",
+		currency: "IDR",
+		minimumFractionDigits: 0,
+	}).format(amount);
+};
 
 const MONTHS = [
 	"Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -63,6 +74,7 @@ function StaffProfilePage() {
 	const updateProfileMutation = useHybridUpdateUserProfile();
 
 	const [isEditMode, setIsEditMode] = useState(false);
+	const [showAllPayslips, setShowAllPayslips] = useState(false);
 	const [editName, setEditName] = useState("");
 	const [editEmail, setEditEmail] = useState("");
 	const [editSlug, setEditSlug] = useState("");
@@ -98,6 +110,12 @@ function StaffProfilePage() {
 
 	const privateData = useHybridPrivateStaffData(
 		isUnlocked && staff ? { slug: username, token } : undefined
+	);
+
+	const myPayslips = useHybridPayslips(
+		isUnlocked && staff
+			? { userId: staff._id }
+			: undefined
 	);
 
 	useEffect(() => {
@@ -287,25 +305,89 @@ function StaffProfilePage() {
 								<div className="flex items-center justify-between px-2">
 									<h3 className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm">
 										<FileText className="h-4 w-4 text-primary" />
-										Slip Gaji Terakhir
+										Slip Gaji {showAllPayslips ? "" : "Terakhir"}
 									</h3>
-									<Button variant="link" size="sm" className="text-xs">Lihat Semua</Button>
+									{myPayslips && myPayslips.length > 3 && (
+										<Button
+											variant="link"
+											size="sm"
+											className="text-xs"
+											onClick={() => setShowAllPayslips(!showAllPayslips)}
+										>
+											{showAllPayslips ? "Sembunyikan" : "Lihat Semua"}
+										</Button>
+									)}
 								</div>
 								<div className="space-y-2">
-									<div className="group flex items-center justify-between rounded-xl border bg-card p-3 transition-all hover:border-primary/30 hover:bg-primary/[0.02] opacity-50 grayscale">
-										<div className="flex items-center gap-3">
-											<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-												<FileText className="h-4 w-4" />
-											</div>
-											<div>
-												<p className="font-bold text-xs">Slip Gaji {MONTHS[selectedMonth - 1]}</p>
-												<p className="text-[9px] text-muted-foreground uppercase leading-tight">Rp 0 (Belum dikonfigurasi)</p>
-											</div>
+									{!myPayslips ? (
+										// Loading skeleton
+										<>
+											{[1, 2, 3].map((i) => (
+												<div
+													key={i}
+													className="flex animate-pulse items-center justify-between rounded-xl border bg-card p-3"
+												>
+													<div className="flex items-center gap-3">
+														<div className="h-9 w-9 rounded-lg bg-muted" />
+														<div className="space-y-1.5">
+															<div className="h-3 w-32 rounded bg-muted" />
+															<div className="h-2.5 w-20 rounded bg-muted" />
+														</div>
+													</div>
+												</div>
+											))}
+										</>
+									) : myPayslips.length === 0 ? (
+										// Empty state
+										<div className="rounded-xl border bg-card p-6 text-center">
+											<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+											<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
 										</div>
-										<Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" disabled>
-											<ChevronRight className="h-4 w-4" />
-										</Button>
-									</div>
+									) : (
+										// Payslip list
+										(myPayslips as any[])
+											.slice(0, showAllPayslips ? undefined : 3)
+											.map((payslip: any) => {
+										const statusBadge = ({
+											generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
+											sent: { label: "Dikirim", cls: "bg-blue-100 text-blue-600" },
+											acknowledged: { label: "Diterima", cls: "bg-emerald-100 text-emerald-600" },
+											disputed: { label: "Dispute", cls: "bg-red-100 text-red-600" },
+										} as any)[payslip.status] ?? { label: payslip.status, cls: "bg-gray-100 text-gray-600" };
+
+												return (
+													<div
+														key={payslip.id}
+														className="group flex items-center justify-between rounded-xl border bg-card p-3 transition-all hover:border-primary/30 hover:bg-primary/[0.02]"
+													>
+														<div className="flex items-center gap-3 min-w-0">
+															<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+																<FileText className="h-4 w-4" />
+															</div>
+															<div className="min-w-0">
+																<p className="truncate font-bold text-xs">{payslip.period_name}</p>
+																<p className="text-[10px] font-semibold text-muted-foreground">
+																	{formatCurrency(payslip.net_pay)}
+																</p>
+															</div>
+														</div>
+														<div className="flex items-center gap-2 shrink-0">
+														<span className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusBadge.cls}`}>
+																{statusBadge.label}
+															</span>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="rounded-lg h-8 w-8"
+																onClick={() => toast.info("Fitur download akan segera tersedia")}
+															>
+																<span className="text-xs">⬇</span>
+															</Button>
+														</div>
+													</div>
+												);
+											})
+									)}
 								</div>
 							</div>
 

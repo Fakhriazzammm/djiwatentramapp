@@ -81,6 +81,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/operational-team": "Tim Operasional",
 	"/admin/operational-team/attendance": "Absensi",
 	"/admin/operational-team/payroll": "Gaji & Role",
+	"/admin/operational-team/payroll/slip": "Slip Gaji",
 	"/admin/operational-team/attendance/pengaturan": "Pengaturan Absensi",
 	"/admin/operational-team/register": "Register Karyawan",
 	"/admin/operational-team/register/onboarding": "Onboarding Karyawan",
@@ -205,6 +206,7 @@ const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team",
 	"/admin/operational-team/attendance",
 	"/admin/operational-team/payroll",
+	"/admin/operational-team/payroll/slip",
 	"/admin/operational-team/register",
 	"/admin/operational-team/register/onboarding",
 	"/admin/operational-team/register/contract",
@@ -472,6 +474,7 @@ function AdminLayout() {
 							<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
 							<DesktopNavLink icon={<Settings />} isCollapsed={isCollapsed} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
 							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
+							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Slip Gaji" to="/admin/operational-team/payroll/slip" permission="users:manage" />
 							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
 							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 							<DesktopNavLink icon={<FileSignature />} isCollapsed={isCollapsed} label="Kontrak" to="/admin/operational-team/register/contract" permission="users:manage" />
@@ -496,6 +499,7 @@ function AdminLayout() {
 										<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
 										<DesktopSubNavLink icon={<Settings />} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
 											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
+										<DesktopSubNavLink icon={<FileText />} label="Slip Gaji" to="/admin/operational-team/payroll/slip" permission="users:manage" />
 										<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />
 										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 										<DesktopSubNavLink icon={<FileSignature />} label="Kontrak Kerja" to="/admin/operational-team/register/contract" permission="users:manage" />
