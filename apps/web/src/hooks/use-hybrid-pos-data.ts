@@ -337,19 +337,8 @@ function useSupabaseValue<T>(
 	return useSupabaseLiveValue(key, load, deps, { ...options, refreshTrigger: mergedTrigger });
 }
 
-function getHppCostPerBaseUnit(ingredient: HppIngredientRecord) {
-	const purchasePrice = Number(ingredient.purchasePrice ?? 0);
-	const purchaseQuantity = Number(ingredient.purchaseQuantity ?? 0);
-	const conversionFactor = Number(ingredient.conversionFactor ?? 0);
-	const totalBaseUnits = purchaseQuantity * conversionFactor;
-	if (totalBaseUnits <= 0) {
-		return 0;
-	}
-	return purchasePrice / totalBaseUnits;
-}
-
 function getHppIngredientCostPerServing(ingredient: HppIngredientRecord) {
-	return getHppCostPerBaseUnit(ingredient) * Number(ingredient.usagePerServing ?? 0);
+	return Number(ingredient.purchasePrice ?? 0) * Number(ingredient.usagePerServing ?? 0);
 }
 
 function computeHppSummary(calculation: HppCalculationRecord) {
