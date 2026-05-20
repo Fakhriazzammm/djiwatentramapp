@@ -1445,7 +1445,7 @@ export function RecipeHppPage() {
 					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
-					usageUnit: invItem?.displayUnit ?? unitPair.usage,
+
 					conversionFactor: baseFactor,
 					costSource: source,
 				};
@@ -1498,7 +1498,7 @@ export function RecipeHppPage() {
 						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
-						usageUnit: invItem?.displayUnit ?? unitPair.usage,
+	
 						conversionFactor: productFactor,
 						costSource: source,
 					};
@@ -1648,7 +1648,7 @@ export function RecipeHppPage() {
 					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
-					usageUnit: invItem?.displayUnit ?? unitPair.usage,
+
 					conversionFactor: baseFactor,
 					costSource: source,
 				};
@@ -1702,7 +1702,7 @@ export function RecipeHppPage() {
 						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
-						usageUnit: invItem?.displayUnit ?? unitPair.usage,
+	
 						conversionFactor: productFactor,
 						costSource: source,
 					};
@@ -1749,7 +1749,7 @@ export function RecipeHppPage() {
 						purchasePrice: price,
 						purchaseQuantity: item.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: item.preferredPurchaseUnit ?? item.unit ?? unitPair.purchase,
-						usageUnit: item.displayUnit ?? unitPair.usage,
+
 						conversionFactor: invFactor,
 						costSource: source,
 					}
@@ -1920,7 +1920,7 @@ export function RecipeHppPage() {
 						purchasePrice: costInfo.latestCostPerUnit,
 						purchaseQuantity: syncInvItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: syncInvItem?.preferredPurchaseUnit ?? costInfo.unit ?? ing.purchaseUnit,
-						usageUnit: baseUnit,
+
 						conversionFactor: factor,
 						costSource: "inventory" as PriceSource,
 					};
