@@ -88,6 +88,42 @@
 | `/admin/minigames` | `minigames.tsx` | Minigames admin |
 | `/admin/operational-team` | `operational-team/` | **Team management** (attendance, jadwal, payroll, karyawan, register, contract) |
 
+## Inventory Inline Editing (Critical Pattern)
+
+### 5-layer sync untuk setiap field baru di `pos.inventory`
+
+Saat menambah kolom baru ke tabel inventory, WAJIB sync di **5 tempat** ini:
+
+| Layer | File | Fungsi/Posisi |
+|-------|------|---------------|
+| 1. **Database View** | `supabase/migrations/*.sql` | View `public.pos_inventory` → pilih kolom dari `pos.inventory` |
+| 2. **Read Hook** | `use-hybrid-pos-data.ts` | `fetchInventory()` → mapping snake_case → camelCase |
+| 3. **Write Hook** | `use-hybrid-write-actions.ts` | `useHybridUpdateInventoryItem()` → `if (args?.field) updates.field_db = value` |
+| 4. **Inline State Type** | `inventory.lazy.tsx` | `useState<Record<string, { field: string }>>({})` → tipe inlineValues |
+| 5. **Inline State Init** | `inventory.lazy.tsx` | `getInlineValue()` + `setInlineField()` initialization |
+
+### Checklist field baru:
+- [ ] View: `ALTER VIEW public.pos_inventory ... select col_name as "camelCase"`
+- [ ] fetchInventory: `field: row.camelCase ?? row.snake_case ?? default`
+- [ ] useHybridUpdateInventoryItem: `if (args?.field !== undefined) updates.field_db = value`
+- [ ] inlineValues type: tambah `field: string` ke Record type
+- [ ] getInlineValue default: tambah default value dari row
+- [ ] setInlineField init: tambah di initialization object (sama dengan getInlineValue)
+- [ ] saveMeta no-change check: tambah perbandingan di if-condition
+- [ ] saveMeta updateItemMutation: tambah field ke parameter call
+- [ ] Table cell: tambah `<input>` atau kontrol di rendering
+
+### Field yang sudah sync ✅ (20 field):
+ingredientName, unit, quantity, lowStockThreshold, displayUnit, conversionFactor, unitConversions, baseRecipeId, defaultBrandName, preferredStoreId, preferredPurchaseQuantity, preferredPurchaseUnit, lastPurchasePrice, lastPurchaseAt, lastPurchaseStoreId, netWeight, category, imagePath, packNetQuantity, packNetUnit, contentToBaseFactor
+
+### Field TABLE yang MISSING dari VIEW ❌:
+`aliases` (jsonb), `creation_time` (double precision) — ada di `pos.inventory` table tapi tidak di `public.pos_inventory` view
+
+### Save flow:
+- **saveMeta()** → `useHybridUpdateInventoryItem` → UPDATE `pos.inventory` (semua field meta)
+- **saveQuantity()** → `useHybridApplyInventoryStockAction` → UPDATE + INSERT transaction (stok)
+- **saveReferencePrice()** → `useHybridSetInventoryReferencePrice` → INSERT transaction + UPDATE harga
+
 ## Hooks Reference
 
 ### Data hooks (return data | null | undefined)
