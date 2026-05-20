@@ -51,6 +51,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 function AttendancePage() {
 	const navigate = useNavigate();
 	const [step, setStep] = useState<"select" | "pin" | "face" | "success">("select");
+	const [refreshCount, setRefreshCount] = useState(0);
 	const { user: authUser, isAuthenticated, role: authRole } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
@@ -65,7 +66,7 @@ function AttendancePage() {
 	// Data Queries/Mutations
 	const siteSettings = useHybridSiteSettings();
 	const allStaff = useHybridPublicUsers();
-	const currentlyIn = useHybridCurrentlyInStore();
+	const currentlyIn = useHybridCurrentlyInStore(refreshCount);
 
 	const verifyPin = useHybridVerifyHomePin();
 	const enrollFace = useHybridEnrollFace();
@@ -294,6 +295,7 @@ function AttendancePage() {
 			}
 			
 			toast.dismiss("clocking");
+			setRefreshCount(c => c + 1);
 			setStep("success");
 			
 			setTimeout(() => {

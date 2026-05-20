@@ -185,7 +185,7 @@ function HomePage() {
 		}
 		return Array.from(seen.values()).sort((a, b) => b.startTime - a.startTime);
 	}, [shiftRowsResult]);
-	const statsToday = useHybridStaffStatsToday(user?._id);
+	const statsToday = useHybridStaffStatsToday(user?._id, refreshCount);
 	const monthProgress = useHybridCurrentMonthProgress();
 	const clockIn = useHybridClockIn();
 	const clockOut = useHybridClockOut();
@@ -195,6 +195,7 @@ function HomePage() {
 
 	const [currentTime, setCurrentTime] = useState(new Date());
 	const [searchQuery, setSearchQuery] = useState("");
+	const [refreshCount, setRefreshCount] = useState(0);
 	const [shiftExpanded, setShiftExpanded] = useState(false);
 
 	useEffect(() => {
@@ -606,6 +607,7 @@ function HomePage() {
 													toast.success("Berhasil Clock In", { id: toastId });
 												}
 												setShowFaceModal(false);
+												setRefreshCount(c => c + 1);
 											} catch (err: any) {
 												toast.error(err?.message || "Gagal memproses absensi", { id: toastId });
 												throw err;

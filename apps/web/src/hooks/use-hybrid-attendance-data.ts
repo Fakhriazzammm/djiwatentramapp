@@ -236,11 +236,11 @@ export function useHybridPublicUsers() {
 }
 
 
-export function useHybridCurrentlyInStore() {
+export function useHybridCurrentlyInStore(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue(
 		"attendance-currently-in-store",
 		fetchCurrentlyInStore,
-		[]
+		[refreshTrigger]
 	);
 	return supabaseData as any;
 }
@@ -294,11 +294,11 @@ export function useHybridStaffLogs(args?: {
 	return supabaseData as any;
 }
 
-export function useHybridStaffStatsToday(userId?: string) {
+export function useHybridStaffStatsToday(userId?: string, refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue(
 		`attendance-staff-stats-today:${userId ?? "skip"}`,
 		() => (userId ? fetchStaffStatsToday(userId) : Promise.resolve(null)),
-		[userId]
+		[userId, refreshTrigger]
 	);
 	return supabaseData as any;
 }
@@ -444,4 +444,3 @@ export function useHybridPrivateStaffData(args?: {
 		[args?.slug, args?.pin, args?.token]
 	) as any;
 }
-
