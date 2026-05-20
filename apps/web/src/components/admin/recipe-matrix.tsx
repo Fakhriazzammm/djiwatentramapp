@@ -208,6 +208,11 @@ export function RecipeMatrixPage() {
 	});
 
 	const [baseSteps, setBaseSteps] = useState<RecipeStep[]>([]);
+	const [productStepsModal, setProductStepsModal] = useState<{
+		productId: string;
+		productName: string;
+		steps: RecipeStep[];
+	} | null>(null);
 
 	const loading = !products || !inventory || !recipes;
 
