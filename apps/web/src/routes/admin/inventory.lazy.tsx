@@ -4505,7 +4505,7 @@ function InventoryTable({
 				unit: row.unit,
 				lowStockThreshold: String(row.lowStockThreshold),
 				defaultBrandName: row.defaultBrandName ?? "",
-				preferredStoreName: row.lastPurchaseStoreName || row.preferredStoreName || "",
+				preferredStoreName: row.preferredStoreName || row.lastPurchaseStoreName || "",
 				preferredPurchaseQuantity:
 					row.latestTransaction?.purchaseQuantity != null
 						? String(row.latestTransaction.purchaseQuantity)
@@ -4597,6 +4597,8 @@ function InventoryTable({
 	const saveMeta = async (row: InventoryWorkspaceRow) => {
 		const item = inventoryMap.get(row.inventoryId);
 		if (!item) {
+			console.warn(`[inventory] Item ${row.inventoryId} (${row.ingredientName}) not found in inventoryMap`);
+			toast.error(`Data "${row.ingredientName}" tidak ditemukan — coba refresh halaman`);
 			return;
 		}
 		const current = getInlineValue(row);
@@ -4680,20 +4682,20 @@ function InventoryTable({
 			preferredPurchaseQuantityNum === row.preferredPurchaseQuantity &&
 			preferredPurchaseUnit === normalizeUnitOption(row.preferredPurchaseUnit) &&
 			(current.displayUnit.trim() || "") === (row.displayUnit ?? "") &&
-			(current.conversionFactor
-				? Number(current.conversionFactor)
-				: undefined) === row.conversionFactor &&
-			(current.imagePath.trim() || "") === (row.imagePath ?? "") &&
-			current.unitConversionsText.trim() ===
-				formatUnitConversionsText(
-					row.unitConversions,
-					row.displayUnit,
-					row.conversionFactor
-				) &&
-				current.category.trim() === ((inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen") &&
-			(current.packNetQuantity ? Number(current.packNetQuantity) : undefined) === row.packNetQuantity &&
-			normalizeUnitOption(current.packNetUnit) === normalizeUnitOption(row.packNetUnit) &&
-			(current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined) === row.contentToBaseFactor
+            (current.conversionFactor
+                ? Number(current.conversionFactor)
+                : null) === (row.conversionFactor ?? null) &&
+            (current.imagePath.trim() || "") === (row.imagePath ?? "") &&
+            current.unitConversionsText.trim() ===
+                formatUnitConversionsText(
+                    row.unitConversions,
+                    row.displayUnit,
+                    row.conversionFactor
+                ) &&
+                current.category.trim() === ((inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen") &&
+            (current.packNetQuantity ? Number(current.packNetQuantity) : null) === (row.packNetQuantity ?? null) &&
+            normalizeUnitOption(current.packNetUnit) === normalizeUnitOption(row.packNetUnit) &&
+            (current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null) === (row.contentToBaseFactor ?? null)
 		) {
 			return;
 		}
@@ -4704,13 +4706,22 @@ function InventoryTable({
 			const existingStore = stores.find(
 				(store) => store.name.trim().toLowerCase() === preferredStoreNameNorm
 			);
-			const preferredStoreId =
-				preferredStoreName === ""
-					? undefined
-					: existingStore?._id ??
-						(await createStoreMutation({
+			let preferredStoreId: string | undefined = undefined;
+			if (preferredStoreName !== "") {
+				if (existingStore?._id) {
+					preferredStoreId = existingStore._id;
+				} else {
+					try {
+						const newStoreId = await createStoreMutation({
 							name: preferredStoreName,
-						}));
+						});
+						preferredStoreId = newStoreId as string | undefined;
+					} catch (storeErr) {
+						console.warn("[inventory] Gagal buat store baru, save tetap lanjut tanpa preferredStore:", storeErr);
+						toast.warning("Gagal menyimpan toko, tapi data lainnya tetap tersimpan");
+					}
+				}
+			}
 			await updateItemMutation({
 				id: item._id,
 				ingredientName,
