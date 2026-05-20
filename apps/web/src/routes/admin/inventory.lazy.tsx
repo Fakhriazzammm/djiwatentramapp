@@ -4797,7 +4797,7 @@ function InventoryTable({
 				packNetUnit: normalizeUnitOption(current.packNetUnit) || undefined,
 				contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined,
 			});
-			saveLearnedProfile(ingredientName, {
+				saveLearnedProfile(ingredientName, {
 				unit: normalizedUnit,
 				lowStockThreshold: lowStockThresholdNum,
 				defaultBrandName: current.defaultBrandName.trim(),
@@ -4806,6 +4806,7 @@ function InventoryTable({
 				unitConversionsText: (current.unitConversionsText || "").trim(),
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
+			toast.success("Tersimpan", { duration: 2000 });
 			debouncedRefresh();
 		} catch (error) {
 			const message =
@@ -4843,6 +4844,7 @@ function InventoryTable({
 				notes: "Quick inline update",
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
+			toast.success("Stok tersimpan", { duration: 2000 });
 			debouncedRefresh();
 		} catch (error) {
 			const message =
