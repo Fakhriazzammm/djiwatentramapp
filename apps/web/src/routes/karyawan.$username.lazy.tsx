@@ -407,7 +407,7 @@ function StaffProfilePage() {
 													setEditNewPassword("");
 													
 													if (editSlug !== username) {
-														navigate({ to: `/profile/${editSlug}` as any, replace: true });
+														navigate({ to: `/karyawan/${editSlug}` as any, replace: true });
 													}
 												} catch (err: any) {
 													toast.error(err.message || "Gagal memperbarui profil");
