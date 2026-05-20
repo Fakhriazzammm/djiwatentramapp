@@ -170,10 +170,8 @@ function createEmptyIngredient(): IngredientRow {
 
 function computeHpp(form: HppFormData): HppMetrics {
 	const ingredientCostPerServing = form.ingredients.reduce((sum, ing) => {
-		const totalBaseUnits = ing.purchaseQuantity * ing.conversionFactor;
-		if (totalBaseUnits <= 0) return sum;
-		const costPerBaseUnit = ing.purchasePrice / totalBaseUnits;
-		return sum + costPerBaseUnit * ing.usagePerServing;
+		if (!ing.purchasePrice || !ing.usagePerServing) return sum;
+		return sum + ing.purchasePrice * ing.usagePerServing;
 	}, 0);
 
 	const totalHppPerServing = ingredientCostPerServing;
