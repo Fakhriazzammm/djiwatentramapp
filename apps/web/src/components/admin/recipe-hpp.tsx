@@ -897,8 +897,8 @@ function IngredientsTableCard({
 						<tbody>
 							<AnimatePresence mode="popLayout">
 								{form.ingredients.map((ing, idx) => {
-									const subtotal = ing.purchaseQuantity > 0 && ing.conversionFactor > 0
-										? (ing.purchasePrice / (ing.purchaseQuantity * ing.conversionFactor)) * ing.usagePerServing
+									const subtotal = ing.purchasePrice > 0
+										? ing.purchasePrice * ing.usagePerServing
 										: 0;
 									const badge = getPriceSourceBadge(ing.costSource);
 									const usageOptions = ing.usageUnit ? [ing.usageUnit, "ml", "gram", "pcs", "sdm", "sdt"] : ["ml", "gram", "pcs"];
@@ -1441,7 +1441,7 @@ export function RecipeHppPage() {
 					id: generateId(),
 					inventoryId: ing.inventoryId,
 					ingredientName: invItem?.ingredientName ?? "",
-					purchasePrice: price,
+					purchasePrice: price / baseFactor,
 					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
@@ -1494,7 +1494,7 @@ export function RecipeHppPage() {
 						id: generateId(),
 						inventoryId: ing.inventoryId,
 						ingredientName: invItem?.ingredientName ?? "",
-						purchasePrice: price,
+						purchasePrice: price / productFactor,
 						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
@@ -1644,7 +1644,7 @@ export function RecipeHppPage() {
 					id: generateId(),
 					inventoryId: ing.inventoryId,
 					ingredientName: invItem?.ingredientName ?? "",
-					purchasePrice: price,
+					purchasePrice: price / baseFactor,
 					purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 					purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 					usagePerServing: ing.amount,
@@ -1698,7 +1698,7 @@ export function RecipeHppPage() {
 						id: generateId(),
 						inventoryId: ing.inventoryId,
 						ingredientName: invItem?.ingredientName ?? "",
-						purchasePrice: price,
+						purchasePrice: price / productFactor,
 						purchaseQuantity: invItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: invItem?.preferredPurchaseUnit ?? invItem?.unit ?? unitPair.purchase,
 						usagePerServing: ing.amount,
@@ -1746,7 +1746,7 @@ export function RecipeHppPage() {
 						...ing,
 						inventoryId,
 						ingredientName: item.ingredientName,
-						purchasePrice: price,
+						purchasePrice: price / invFactor,
 						purchaseQuantity: item.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: item.preferredPurchaseUnit ?? item.unit ?? unitPair.purchase,
 
@@ -1917,7 +1917,7 @@ export function RecipeHppPage() {
 					return {
 						...ing,
 						inventoryId: matchedInvId ?? ing.inventoryId,
-						purchasePrice: costInfo.latestCostPerUnit,
+						purchasePrice: costInfo.latestCostPerUnit / factor,
 						purchaseQuantity: syncInvItem?.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: syncInvItem?.preferredPurchaseUnit ?? costInfo.unit ?? ing.purchaseUnit,
 
