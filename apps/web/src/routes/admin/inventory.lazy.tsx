@@ -4498,6 +4498,15 @@ function InventoryTable({
 				row.conversionFactor
 			),
 			category: (inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen",
+			packNetQuantity:
+				typeof row.packNetQuantity === "number" && row.packNetQuantity > 0
+					? String(row.packNetQuantity)
+					: "",
+			packNetUnit: row.packNetUnit ?? "",
+			contentToBaseFactor:
+				typeof row.contentToBaseFactor === "number" && row.contentToBaseFactor > 0
+					? String(row.contentToBaseFactor)
+					: "",
 		};
 
 	const setInlineField = (
@@ -4520,8 +4529,7 @@ function InventoryTable({
 			| "packNetUnit"
 			| "contentToBaseFactor"
 			| "lastPurchasePrice"
-			| "netWeight"
-			| "imagePath",
+			| "netWeight",
 		value: string
 	) => {
 		setInlineValues((prev) => {
