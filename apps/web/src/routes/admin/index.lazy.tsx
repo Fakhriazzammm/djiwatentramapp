@@ -20,7 +20,6 @@ import { PeriodComparisonCards, TrendChart } from "./finance/-components/finance
 import { useMemo, useState } from "react";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { ShiftDetailModal } from "./-components/ShiftDetailModal";
-import { LeaderboardPanel } from "./-components/leaderboard-panel";
 import {
 	useHybridDashboardStats,
 	useHybridShiftStatus,
@@ -516,8 +515,6 @@ function DashboardAdmin() {
 				</div>
 			</div>
 
-			{/* Leaderboard Bonus Shift */}
-			<LeaderboardPanel />
 		</div>
 	);
 }

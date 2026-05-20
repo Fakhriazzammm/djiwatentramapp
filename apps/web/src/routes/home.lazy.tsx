@@ -3,6 +3,7 @@ import {
 	ChevronDown,
 	Copy,
 	Loader2,
+	Trophy,
 	X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { HomeServiceGrid } from "@/components/home/home-service-grid";
 import { HomeStickyStrip } from "@/components/home/home-sticky-strip";
 import { HomeRepeatUsage } from "@/components/home/home-repeat-usage";
 import { HomeBottomNav } from "@/components/home/home-bottom-nav";
+import { LeaderboardPanel } from "@/routes/admin/-components/leaderboard-panel";
 
 const FaceRecognition = lazy(() =>
 	import("@/components/auth/FaceRecognition").then((m) => ({
@@ -531,6 +533,11 @@ function HomePage() {
 							)}
 						</div>
 					)}
+				</section>
+
+				{/* Leaderboard Bonus Shift */}
+				<section className="mb-5">
+					<LeaderboardPanel />
 				</section>
 
 				{/* Footer */}
