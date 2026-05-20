@@ -1750,7 +1750,7 @@ export function RecipeHppPage() {
 						purchaseQuantity: item.preferredPurchaseQuantity ?? 1,
 						purchaseUnit: item.preferredPurchaseUnit ?? item.unit ?? unitPair.purchase,
 						usageUnit: item.displayUnit ?? unitPair.usage,
-						conversionFactor: productFactor,
+						conversionFactor: invFactor,
 						costSource: source,
 					}
 					: ing
