@@ -724,7 +724,7 @@ export function SettingsPage({
 
 	const [selectedPayrollStaff, setSelectedPayrollStaff] = useState<any | null>(null);
 
-	const attendanceLogs = useHybridAdminAttendanceLogs(100);
+	const attendanceLogs = useHybridAdminAttendanceLogs(500, reportFilter.month, reportFilter.year);
 
 	const adminCreateLog = useHybridAdminCreateAttendanceLog();
 	const adminUpdateLog = useHybridAdminUpdateAttendanceLog();
@@ -2135,6 +2135,11 @@ export function SettingsPage({
 									</div>
 								</div>
 								<div className="flex items-center gap-2">
+									{attendanceLogs && (
+										<span className="text-[10px] font-medium text-muted-foreground">
+											{attendanceLogs.length} log
+										</span>
+									)}
 									{selectedLogIds.size > 0 && (
 										<Button variant="destructive" size="sm" onClick={handleBulkDelete} className="text-xs h-8"><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Hapus {selectedLogIds.size}</Button>
 									)}

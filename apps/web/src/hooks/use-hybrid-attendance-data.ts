@@ -193,22 +193,48 @@ async function fetchStaffStatsToday(userId: string) {
 	};
 }
 
-async function fetchAdminLogs(limit = 100) {
+async function fetchAdminLogs(limit = 500, startDate?: string, endDate?: string) {
 	const supabase = createClient();
-	const { data, error } = await supabase
+	let query = supabase
 		.from("pos_attendance_logs")
 		.select("*")
 		.order("timestamp", { ascending: false })
 		.limit(limit);
 
+	if (startDate) {
+		const startTs = new Date(startDate).getTime();
+		query = query.gte("timestamp", startTs);
+	}
+	if (endDate) {
+		const endTs = new Date(endDate + "T23:59:59").getTime();
+		query = query.lte("timestamp", endTs);
+	}
+
+	const { data, error } = await query;
 	if (error) throw error;
 	return data ?? [];
+}
+
+export function useHybridAdminAttendanceLogs(limit = 500, month?: number, year?: number) {
+	const now = new Date();
+	const m = month ?? now.getMonth() + 1;
+	const y = year ?? now.getFullYear();
+	const startDate = `${y}-${String(m).padStart(2, "0")}-01`;
+	const endDate = new Date(y, m, 0).toISOString().split("T")[0];
+
+	const supabaseData = useSupabaseValue(
+		`attendance-admin-logs:${m}:${y}:${limit}`,
+		() => fetchAdminLogs(limit, startDate, endDate),
+		[limit, m, y]
+	);
+	return supabaseData as any;
 }
 
 export function useHybridPublicUsers() {
 	const supabaseData = useSupabaseValue("attendance-public-users", fetchPublicUsers, []);
 	return supabaseData as any;
 }
+
 
 export function useHybridCurrentlyInStore() {
 	const supabaseData = useSupabaseValue(
@@ -273,15 +299,6 @@ export function useHybridStaffStatsToday(userId?: string) {
 		`attendance-staff-stats-today:${userId ?? "skip"}`,
 		() => (userId ? fetchStaffStatsToday(userId) : Promise.resolve(null)),
 		[userId]
-	);
-	return supabaseData as any;
-}
-
-export function useHybridAdminAttendanceLogs(limit = 100) {
-	const supabaseData = useSupabaseValue(
-		`attendance-admin-logs:${limit}`,
-		() => fetchAdminLogs(limit),
-		[limit]
 	);
 	return supabaseData as any;
 }
