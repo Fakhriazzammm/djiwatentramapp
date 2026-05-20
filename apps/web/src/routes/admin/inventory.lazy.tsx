@@ -4103,6 +4103,8 @@ function InventoryTable({
 				packNetQuantity: string;
 				packNetUnit: string;
 				contentToBaseFactor: string;
+				lastPurchasePrice: string;
+				netWeight: string;
 			}
 		>
 	>({});
@@ -4466,6 +4468,10 @@ function InventoryTable({
 			lowStockThreshold: String(row.lowStockThreshold),
 			defaultBrandName: row.defaultBrandName ?? "",
 			preferredStoreName: row.lastPurchaseStoreName || row.preferredStoreName || "",
+			lastPurchasePrice:
+				row.lastPurchasePrice != null
+					? String(row.lastPurchasePrice)
+					: "",
 			preferredPurchaseQuantity:
 				row.latestTransaction?.purchaseQuantity != null
 					? String(row.latestTransaction.purchaseQuantity)
@@ -4478,6 +4484,10 @@ function InventoryTable({
 				"",
 			displayUnit: row.displayUnit ?? "",
 			imagePath: row.imagePath ?? "",
+			netWeight:
+				row.netWeight != null
+					? String(row.netWeight)
+					: "",
 			conversionFactor:
 				typeof row.conversionFactor === "number" && row.conversionFactor > 0
 					? String(row.conversionFactor)
@@ -4508,7 +4518,10 @@ function InventoryTable({
 			| "category"
 			| "packNetQuantity"
 			| "packNetUnit"
-			| "contentToBaseFactor",
+			| "contentToBaseFactor"
+			| "lastPurchasePrice"
+			| "netWeight"
+			| "imagePath",
 		value: string
 	) => {
 		setInlineValues((prev) => {
@@ -4518,7 +4531,11 @@ function InventoryTable({
 				unit: row.unit,
 				lowStockThreshold: String(row.lowStockThreshold),
 				defaultBrandName: row.defaultBrandName ?? "",
-				preferredStoreName: row.preferredStoreName || row.lastPurchaseStoreName || "",
+				preferredStoreName: row.lastPurchaseStoreName || row.preferredStoreName || "",
+				lastPurchasePrice:
+					row.lastPurchasePrice != null
+						? String(row.lastPurchasePrice)
+						: "",
 				preferredPurchaseQuantity:
 					row.latestTransaction?.purchaseQuantity != null
 						? String(row.latestTransaction.purchaseQuantity)
@@ -4708,7 +4725,13 @@ function InventoryTable({
                 current.category.trim() === ((inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen") &&
             (current.packNetQuantity ? Number(current.packNetQuantity) : null) === (row.packNetQuantity ?? null) &&
             normalizeUnitOption(current.packNetUnit) === normalizeUnitOption(row.packNetUnit) &&
-            (current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null) === (row.contentToBaseFactor ?? null)
+            (current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null) === (row.contentToBaseFactor ?? null) &&
+            (current.lastPurchasePrice
+                ? Number(current.lastPurchasePrice)
+                : null) === (row.lastPurchasePrice ?? null) &&
+            (current.netWeight
+                ? Number(current.netWeight)
+                : null) === (row.netWeight ?? null)
 		) {
 			return;
 		}
@@ -4756,7 +4779,13 @@ function InventoryTable({
 				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
 				category: current.category.trim(),
 				imagePath: current.imagePath.trim() || undefined,
-				packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : undefined,
+				netWeight: current.netWeight
+				? Number(current.netWeight)
+				: undefined,
+			lastPurchasePrice: current.lastPurchasePrice
+				? Number(current.lastPurchasePrice)
+				: undefined,
+			packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : undefined,
 				packNetUnit: normalizeUnitOption(current.packNetUnit) || undefined,
 				contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined,
 			});
