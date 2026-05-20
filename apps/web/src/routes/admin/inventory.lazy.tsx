@@ -847,10 +847,6 @@ function InventoryPage() {
 	const workspace = useHybridInventoryWorkspace( {
 		daysWindow: 30,
 	}) as InventoryWorkspaceData | undefined;
-	const realtimePriceMonitor = useHybridRealtimePriceMonitor( {
-		limit: 300,
-		search: searchQuery || undefined,
-	}) as RealtimePriceMonitorData | undefined;
 	const yumiAiInsights = useHybridInventoryYumiAiInsights( {
 		limit: 40,
 	}) as InventoryYumiAiInsightsData | undefined;
@@ -1047,12 +1043,8 @@ function InventoryPage() {
 	}, [filterActiveOnly]);
 
 	const priceMonitorDeltaMap = useMemo(() => {
-		const map = new Map<string, number>();
-		for (const row of realtimePriceMonitor?.rows ?? []) {
-			map.set(row.nameKey, row.priceDelta ?? 0);
-		}
-		return map;
-	}, [realtimePriceMonitor]);
+		return new Map<string, number>();
+	}, []);
 
 	useEffect(() => {
 		if (actionType !== null) {
@@ -1610,8 +1602,8 @@ function InventoryPage() {
 			)}
 
 			{viewPreset === "priceMonitor" ? (
-				<RealtimePriceMonitorTable
-					data={realtimePriceMonitor}
+				<LazyPriceMonitorWrapper
+					searchQuery={searchQuery}
 					onApplyReferencePrice={handleApplyReferencePrice}
 				/>
 			) : viewPreset === "yumiAi" ? (
@@ -3123,6 +3115,27 @@ function InventoryDetailDrawer({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function LazyPriceMonitorWrapper({
+	searchQuery,
+	onApplyReferencePrice,
+}: {
+	searchQuery: string;
+	onApplyReferencePrice: (
+		row: RealtimePriceMonitorData["rows"][number]
+	) => Promise<void>;
+}) {
+	const realtimePriceMonitor = useHybridRealtimePriceMonitor({
+		limit: 300,
+		search: searchQuery || undefined,
+	}) as RealtimePriceMonitorData | undefined;
+	return (
+		<RealtimePriceMonitorTable
+			data={realtimePriceMonitor}
+			onApplyReferencePrice={onApplyReferencePrice}
+		/>
 	);
 }
 

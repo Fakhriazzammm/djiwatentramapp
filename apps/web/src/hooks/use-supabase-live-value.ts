@@ -36,10 +36,16 @@ export function useSupabaseLiveValue<T>(
 
 		let active = true;
 		let inFlight = false;
+		let pendingReload = false;
 
 		const reload = async () => {
-			if (!active || inFlight) return;
+			if (!active) return;
+			if (inFlight) {
+				pendingReload = true;
+				return;
+			}
 			inFlight = true;
+			pendingReload = false;
 			try {
 				const next = await load();
 				if (active) setData(next);
@@ -48,6 +54,7 @@ export function useSupabaseLiveValue<T>(
 				if (active) setData(null);
 			} finally {
 				inFlight = false;
+				if (pendingReload && active) void reload();
 			}
 		};
 

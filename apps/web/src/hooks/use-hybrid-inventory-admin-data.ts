@@ -439,11 +439,15 @@ async function fetchProductsAll() {
 	})) as ProductRecord[];
 }
 
-async function fetchInventoryTransactionsAll() {
+async function fetchInventoryTransactionsAll(cutoff?: number) {
 	const supabase = createClient();
-	const { data, error } = await supabase
+	let query = supabase
 		.from("pos_inventory_transactions")
-		.select("*")
+		.select("*");
+	if (cutoff != null) {
+		query = query.gte("timestamp", cutoff);
+	}
+	const { data, error } = await query
 		.order("timestamp", { ascending: false })
 		.limit(5000);
 	if (error) throw error;
@@ -562,22 +566,22 @@ function buildStoreLookup(stores: InventoryStoreRecord[]) {
 }
 
 async function loadWorkspace(daysWindow: number) {
+	const msPerDay = 24 * 60 * 60 * 1000;
+	const cutoff = Date.now() - daysWindow * msPerDay;
 	const [items, transactions, recipes, products, baseRecipes, stores] = await Promise.all([
 		fetchInventoryRows(),
-		fetchInventoryTransactionsAll(),
+		fetchInventoryTransactionsAll(cutoff),
 		fetchRecipes(),
 		fetchProductsAll(),
 		fetchBaseRecipes(),
 		fetchInventoryStores(),
 	]);
 
-	const msPerDay = 24 * 60 * 60 * 1000;
-	const cutoff = Date.now() - daysWindow * msPerDay;
 	const usageRows = transactions.filter(
-		(row) => row.type === "usage" && row.timestamp >= cutoff
+		(row) => row.type === "usage"
 	);
 	const restockRows = transactions.filter(
-		(row) => row.type === "restock" && row.timestamp >= cutoff
+		(row) => row.type === "restock"
 	);
 
 	const usageByInventoryId: Record<string, number> = {};
@@ -1244,7 +1248,7 @@ async function loadYumiInsights(limit: number) {
 	const [items, stores, transactions] = await Promise.all([
 		fetchInventoryRows(),
 		fetchInventoryStores(),
-		fetchInventoryTransactionsAll(),
+		fetchInventoryTransactionsAll(cutoff90),
 	]);
 	const usageRows = transactions.filter(
 		(row) => row.type === "usage" && row.timestamp >= cutoff30
@@ -1577,10 +1581,11 @@ export function useHybridHppRecipes() {
 
 export function useHybridInventoryWorkspace(options?: { daysWindow?: number }) {
 	const daysWindow = Math.max(1, Math.min(90, options?.daysWindow ?? 30));
-	const supabaseData = useSupabaseValue(
+	const supabaseData = useSupabaseLiveValue(
 		`inventory-workspace:${daysWindow}`,
 		() => loadWorkspace(daysWindow),
-		[daysWindow]
+		[daysWindow],
+		{ refreshMs: 60_000 }
 	);
 	return supabaseData as any;
 }
