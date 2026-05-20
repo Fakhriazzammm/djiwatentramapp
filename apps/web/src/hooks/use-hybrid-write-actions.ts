@@ -4982,12 +4982,22 @@ export function useHybridUpdateUserProfile() {
 				if (args?.username !== undefined)
 					updates.username = String(args.username).trim().toLowerCase();
 				if (args?.slug !== undefined) updates.slug = String(args.slug).trim();
-				if (args?.password !== undefined) {
-					updates.raw = {
-						...(user.raw ?? {}),
-						password: String(args.password),
-					};
-				}
+				// Unified raw JSON merge — preserve existing data, handle null
+				const existingRaw = (user.raw as Record<string, unknown>) ?? {};
+				let rawNeedsUpdate = false;
+				const rawUpdates: Record<string, unknown> = { ...existingRaw };
+				if (args?.password !== undefined) { rawUpdates.password = String(args.password); rawNeedsUpdate = true; }
+				if (args?.phone !== undefined) { rawUpdates.phone = args.phone; rawNeedsUpdate = true; }
+				if (args?.identityNumber !== undefined) { rawUpdates.identityNumber = args.identityNumber; rawNeedsUpdate = true; }
+				if (args?.address !== undefined) { rawUpdates.address = args.address; rawNeedsUpdate = true; }
+				if (args?.birthDate !== undefined) { rawUpdates.birthDate = args.birthDate; rawNeedsUpdate = true; }
+				if (args?.placeOfBirth !== undefined) { rawUpdates.placeOfBirth = args.placeOfBirth; rawNeedsUpdate = true; }
+				if (args?.emergencyContactName !== undefined) { rawUpdates.emergencyContactName = args.emergencyContactName; rawNeedsUpdate = true; }
+				if (args?.emergencyContactPhone !== undefined) { rawUpdates.emergencyContactPhone = args.emergencyContactPhone; rawNeedsUpdate = true; }
+				if (args?.startDate !== undefined) { rawUpdates.startDate = args.startDate; rawNeedsUpdate = true; }
+				if (args?.employmentType !== undefined) { rawUpdates.employmentType = args.employmentType; rawNeedsUpdate = true; }
+				if (args?.location !== undefined) { rawUpdates.location = args.location; rawNeedsUpdate = true; }
+				if (rawNeedsUpdate) updates.raw = rawUpdates;
 				if (Object.keys(updates).length === 0) return { success: true };
 
 				const { error } = await createClient()

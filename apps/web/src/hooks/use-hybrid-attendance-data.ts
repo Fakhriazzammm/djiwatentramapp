@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
@@ -68,6 +68,7 @@ async function fetchUserBySlug(slug: string) {
 		slug: data.slug,
 		roleName: data.roleName || "Team",
 		hasFace: Boolean(data.hasFace),
+		raw: (data as any).raw ?? null,
 	};
 }
 
@@ -325,6 +326,7 @@ async function fetchPrivateStaffData(args: {
 		roleName: data.roleName ?? "Team",
 		hasFace: Boolean(data.hasFace),
 		isActive: Boolean(data.isActive),
+		raw: (data as any).raw ?? null,
 	};
 }
 

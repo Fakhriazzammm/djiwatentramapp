@@ -81,6 +81,13 @@ function StaffProfilePage() {
 	const [editOldPassword, setEditOldPassword] = useState("");
 	const [editNewPassword, setEditNewPassword] = useState("");
 	const [isSavingProfile, setIsSavingProfile] = useState(false);
+	const [editPhone, setEditPhone] = useState("");
+	const [editIdentityNumber, setEditIdentityNumber] = useState("");
+	const [editAddress, setEditAddress] = useState("");
+	const [editBirthDate, setEditBirthDate] = useState("");
+	const [editPlaceOfBirth, setEditPlaceOfBirth] = useState("");
+	const [editEmergencyContactName, setEditEmergencyContactName] = useState("");
+	const [editEmergencyContactPhone, setEditEmergencyContactPhone] = useState("");
 
 	// Auto-unlock if current user is the owner or an admin
 	useEffect(() => {
@@ -125,6 +132,14 @@ function StaffProfilePage() {
 		}
 		if (privateData && isUnlocked) {
 			setEditEmail(privateData.username || "");
+			const raw = (privateData as any).raw ?? {};
+			setEditPhone(raw.phone || "");
+			setEditIdentityNumber(raw.identityNumber || "");
+			setEditAddress(raw.address || "");
+			setEditBirthDate(raw.birthDate || "");
+			setEditPlaceOfBirth(raw.placeOfBirth || "");
+			setEditEmergencyContactName(raw.emergencyContactName || "");
+			setEditEmergencyContactPhone(raw.emergencyContactPhone || "");
 		}
 	}, [staff, privateData, isUnlocked]);
 
@@ -432,6 +447,29 @@ function StaffProfilePage() {
 								</div>
 							</div>
 
+							{/* Incomplete data badge */}
+							{isUnlocked && privateData?.raw && (
+								(() => {
+									const r = privateData.raw as any;
+									const missingFields = [r.phone, r.identityNumber, r.address, r.birthDate, r.emergencyContactName].filter(f => !f);
+									if (missingFields.length === 0) return null;
+									return (
+										<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+											<div className="flex items-start gap-3">
+												<div className="shrink-0 mt-0.5">⚠️</div>
+												<div className="flex-1 min-w-0">
+													<p className="text-[10px] font-black uppercase tracking-wide">Lengkapi Data Diri</p>
+													<p className="mt-0.5 text-[11px] font-medium">Isi No HP, Alamat, dan data lainnya untuk memudahkan administrasi.</p>
+												</div>
+												<Button variant="outline" size="sm" className="shrink-0 rounded-lg font-bold text-[10px] h-8 px-3 border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => setIsEditMode(true)}>
+													EDIT NOW
+												</Button>
+											</div>
+										</div>
+									);
+								})()
+							)}
+
 							{/* Account Settings */}
 							<div className="space-y-4">
 								<div className="flex items-center justify-between px-2">
@@ -464,6 +502,26 @@ function StaffProfilePage() {
 												<span className="text-muted-foreground font-medium">Username Profil</span>
 												<span className="font-bold">@{staff.slug}</span>
 											</div>
+											<div className="flex justify-between items-center text-xs">
+												<span className="text-muted-foreground font-medium">No HP / WA</span>
+												<span className="font-bold">{privateData?.raw?.phone || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-xs">
+												<span className="text-muted-foreground font-medium">No Identitas (KTP)</span>
+												<span className="font-bold">{privateData?.raw?.identityNumber || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-xs">
+												<span className="text-muted-foreground font-medium">Tempat, Tgl Lahir</span>
+												<span className="font-bold">{[privateData?.raw?.placeOfBirth, privateData?.raw?.birthDate].filter(Boolean).join(", ") || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-xs">
+												<span className="text-muted-foreground font-medium">Alamat</span>
+												<span className="font-bold max-w-[180px] truncate">{privateData?.raw?.address || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-xs">
+												<span className="text-muted-foreground font-medium">Kontak Darurat</span>
+												<span className="font-bold text-right max-w-[180px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
+											</div>
 										</div>
 									) : (
 										<form 
@@ -481,6 +539,13 @@ function StaffProfilePage() {
 														slug: editSlug !== staff?.slug ? editSlug : undefined,
 														password: editNewPassword || undefined,
 														oldPassword: editNewPassword ? editOldPassword : undefined,
+														phone: editPhone || undefined,
+														identityNumber: editIdentityNumber || undefined,
+														address: editAddress || undefined,
+														birthDate: editBirthDate || undefined,
+														placeOfBirth: editPlaceOfBirth || undefined,
+														emergencyContactName: editEmergencyContactName || undefined,
+														emergencyContactPhone: editEmergencyContactPhone || undefined,
 													});
 													
 													toast.success("Profil berhasil diperbarui!");
@@ -525,6 +590,38 @@ function StaffProfilePage() {
 														className="h-10 rounded-xl font-bold text-xs"
 														placeholder="username-profil"
 													/>
+												</div>
+
+												<div className="pt-2 border-t mt-2 space-y-2.5">
+													<p className="text-[9px] font-black text-primary uppercase ml-1">Data Tambahan</p>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No HP / WA</label>
+														<Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: 08123456789" />
+													</div>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No Identitas (KTP)</label>
+														<Input value={editIdentityNumber} onChange={(e) => setEditIdentityNumber(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="KTP / SIM" />
+													</div>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tempat Lahir</label>
+														<Input value={editPlaceOfBirth} onChange={(e) => setEditPlaceOfBirth(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: Jakarta" />
+													</div>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tanggal Lahir</label>
+														<Input value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="YYYY-MM-DD" />
+													</div>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Alamat</label>
+														<Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Alamat lengkap" />
+													</div>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (Nama)</label>
+														<Input value={editEmergencyContactName} onChange={(e) => setEditEmergencyContactName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nama kontak darurat" />
+													</div>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (No HP)</label>
+														<Input value={editEmergencyContactPhone} onChange={(e) => setEditEmergencyContactPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="No HP kontak darurat" />
+													</div>
 												</div>
 
 												<div className="pt-2 border-t mt-2 space-y-2.5">
