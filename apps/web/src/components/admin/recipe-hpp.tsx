@@ -1389,6 +1389,8 @@ export function RecipeHppPage() {
 			result = result.filter((p) => recipesByProduct.has(p._id));
 		}
 		return result;
+	}, [products, baseRecipes, productSearch, recipeFilter, recipesByProduct, hppType]);
+
 	useEffect(() => {
 		if (search?.type === "base_recipe") {
 			setHppType("base_recipe");
@@ -1400,7 +1402,20 @@ export function RecipeHppPage() {
 
 	useEffect(() => {
 		if (!selectedProductId || !products || !inventory || !recipes) return;
-		if (form.productId === selectedProductId && form.ingredients.length > 0 && form.ingredients[0].inventoryId) return;
+		if (form.productId === selectedProductId && form.ingredients.length > 0 && form.ingredients[0].inventoryId) {
+		// Re-populate only if recipe ingredients actually changed (data refresh)
+		const allRecipes = (recipes ?? []) as RecipeData[];
+		const recipe = allRecipes.find((r) => r.productId === selectedProductId && !r.variantName);
+		if (recipe && recipe.ingredients?.length === form.ingredients.length) {
+			// Same ingredient count — check if IDs match
+			const formInvIds = new Set(form.ingredients.map((i) => i.inventoryId).filter(Boolean));
+			const recipeInvIds = new Set(recipe.ingredients.map((i) => String(i.inventoryId)));
+			if (formInvIds.size === recipeInvIds.size && [...formInvIds].every((id) => recipeInvIds.has(id))) {
+				return; // Already in sync
+			}
+		}
+		// Ingredients differ — fall through to re-populate
+		}
 
 		if (hppType === "base_recipe" && baseRecipes) {
 			const baseRecipe = (baseRecipes as any[]).find((br: any) => br._id === selectedProductId);
@@ -1492,7 +1507,6 @@ export function RecipeHppPage() {
 		setSelectedRows(new Set());
 		setEditingId(null);
 	}, [selectedProductId, products, inventory, recipes, inventoryCosts, hppType, baseRecipes]);
-	}, [products, baseRecipes, productSearch, recipeFilter, recipesByProduct, hppType]);
 
 	const usedInventoryIds = useMemo(() => {
 		return new Set(form.ingredients.map((ing) => ing.inventoryId).filter(Boolean) as string[]);
