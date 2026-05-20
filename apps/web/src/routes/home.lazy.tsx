@@ -37,10 +37,9 @@ import {
 	TrendingUp,
 	Zap,
 } from "lucide-react";
-import { FaceRecognition } from "@/components/auth/FaceRecognition";
 import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import {
@@ -56,6 +55,12 @@ import {
 	useHybridClockOut,
 } from "@/hooks/use-hybrid-write-actions";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+
+const FaceRecognition = lazy(() =>
+  import("@/components/auth/FaceRecognition").then((m) => ({
+    default: m.FaceRecognition,
+  }))
+);
 
 type RoleMenuItem = {
 	to: string;
@@ -305,7 +310,7 @@ export const Route = createLazyFileRoute("/home")({
 
 function HomePage() {
 	const navigate = useNavigate();
-	const { user, role: userRole, logout } = useYumiAuth();
+	const { user, role: userRole, logout, isAdmin } = useYumiAuth();
 	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Yumi POS";
 	const shiftRowsResult = useHybridShiftReportRows() as ShiftRow[] | null | undefined;
@@ -471,7 +476,8 @@ function HomePage() {
 	return (
 		<div className="app-page min-h-app text-foreground">
 			<div className="mx-auto w-full max-w-md px-4 pb-8 pt-6 md:max-w-4xl">
-				{/* Djiwa Personal Hub / Profile Card — Redesigned */}
+				{!isAdmin && (
+				<>
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
@@ -550,22 +556,22 @@ function HomePage() {
 					{/* ── STATS: 3-column ── */}
 					<div className="mx-4 grid grid-cols-3 divide-x divide-border/40 rounded-2xl border border-border/50 bg-background/60 shadow-sm overflow-hidden">
 						{/* Hari ini */}
-						<div className="px-3 py-2.5">
-							<p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+						<div className="px-2 py-1.5">
+							<p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
 								Hari Ini
 							</p>
-							<p className="mt-1.5 text-base font-black text-foreground leading-none">
+							<p className="mt-1 text-sm font-black text-foreground leading-none">
 								{workDurationLabel}
 							</p>
-							<p className="mt-0.5 text-[9px] text-muted-foreground/60">total kerja</p>
+							<p className="mt-0.5 text-[8px] text-muted-foreground/60">total kerja</p>
 						</div>
 
 						{/* Shift */}
-						<div className="px-3 py-2.5">
-							<p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+						<div className="px-2 py-1.5">
+							<p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
 								Shift
 							</p>
-							<p className="mt-1.5 text-sm font-black text-foreground leading-none line-clamp-1">
+							<p className="mt-1 text-xs font-black text-foreground leading-none line-clamp-1">
 								{activeShiftInfo ? activeShiftInfo.name : "—"}
 							</p>
 							{activeShiftInfo?.openTime && activeShiftInfo?.closeTime ? (
@@ -578,16 +584,16 @@ function HomePage() {
 						</div>
 
 						{/* Target shift */}
-						<div className="px-3 py-2.5">
-							<p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+						<div className="px-2 py-1.5">
+							<p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
 								Target
 							</p>
 							{shiftPct !== null ? (
 								<>
-									<p className={`mt-1.5 text-base font-black leading-none ${shiftPct >= 100 ? "text-emerald-600" : "text-foreground"}`}>
+									<p className={`mt-1 text-sm font-black leading-none ${shiftPct >= 100 ? "text-emerald-600" : "text-foreground"}`}>
 										{shiftPct}%
 									</p>
-									<div className="mt-1.5 h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+									<div className="mt-1 h-0.5 w-full rounded-full bg-muted/50 overflow-hidden">
 										<motion.div
 											className={`h-full rounded-full ${shiftPct >= 100 ? "bg-emerald-500" : shiftPct >= 70 ? "bg-amber-500" : "bg-primary"}`}
 											initial={{ width: 0 }}
@@ -598,8 +604,8 @@ function HomePage() {
 								</>
 							) : (
 								<>
-									<p className="mt-1.5 text-sm font-black text-muted-foreground/40 leading-none">—</p>
-									<p className="mt-0.5 text-[9px] text-muted-foreground/40">no target</p>
+									<p className="mt-1 text-xs font-black text-muted-foreground/40 leading-none">—</p>
+									<p className="mt-0.5 text-[8px] text-muted-foreground/40">no target</p>
 								</>
 							)}
 						</div>
@@ -677,28 +683,26 @@ function HomePage() {
 
 				<AnimatePresence>
 					{showFaceModal && (
-						<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+						<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-2 backdrop-blur-md">
 							<motion.div 
 								initial={{ opacity: 0, scale: 0.9 }}
 								animate={{ opacity: 1, scale: 1 }}
 								exit={{ opacity: 0, scale: 0.9 }}
-								className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] bg-card shadow-2xl"
+								className="relative w-full max-w-sm md:max-w-lg overflow-hidden rounded-2xl bg-card shadow-2xl"
 							>
-								<div className="absolute top-6 right-6 z-10">
+								<div className="absolute top-3 right-3 z-10">
 									<Button 
 										variant="ghost" 
 										size="icon" 
 										onClick={() => setShowFaceModal(false)}
-										className="h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-all"
+										className="h-8 w-8 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-all"
 									>
-										<X className="h-6 w-6" />
+										<X className="h-4 w-4" />
 									</Button>
 								</div>
 								
-								<div className="p-8">
-									<h2 className="text-2xl font-black tracking-tight text-center mb-6 uppercase">
-										Verifikasi Wajah
-									</h2>
+								<div className="p-3">
+									<Suspense fallback={<div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
 									<FaceRecognition 
 										mode="verify" 
 										onVerify={async (descriptor) => {
@@ -752,11 +756,14 @@ function HomePage() {
 											}
 										}}
 									/>
+									</Suspense>
 								</div>
 							</motion.div>
 						</div>
 					)}
 				</AnimatePresence>
+				</>
+				)}
 
 				<div className="mt-5 space-y-4">
 					{ROLE_SECTIONS.map((section) => (

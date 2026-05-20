@@ -1,768 +1,278 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import * as faceapi from "face-api.js";
 import Webcam from "react-webcam";
-import { Loader2, Camera, CheckCircle2, XCircle, ScanFace, RefreshCw } from "lucide-react";
+import { Loader2, Camera, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FaceRecognitionProps {
-	onMatch?: (descriptor: number[]) => void;
-	onVerify?: (descriptor: number[]) => Promise<void> | void;
-	onCapture?: (descriptor: number[]) => void;
-	onModelError?: (error: string) => void;
-	targetDescriptor?: number[];
-	mode: "enroll" | "verify";
-	className?: string;
+  onMatch?: (d: number[]) => void;
+  onVerify?: (d: number[]) => Promise<void> | void;
+  onCapture?: (d: number[]) => void;
+  onModelError?: (e: string) => void;
+  targetDescriptor?: number[];
+  mode: "enroll" | "verify";
+  className?: string;
 }
 
-const MODEL_CDN_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
-
-const MODEL_PATH_CANDIDATES = (() => {
-	const baseUrl = import.meta.env.BASE_URL || "/";
-	const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-	const paths = [
-		`${normalizedBase}/models`,
-		"/models",
-		MODEL_CDN_URL,
-	];
-	// Ensure paths are absolute by adding leading slash if they don't have one and aren't URLs
-	return [...new Set(paths.map((path) => {
-		if (path.startsWith("http")) return path;
-		let p = path.replace(/\/{2,}/g, "/");
-		if (!p.startsWith("/")) p = "/" + p;
-		return p;
-	}))];
+const MODEL_CDN =
+  "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
+const CANDIDATES = (() => {
+  const b = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+  return [...new Set([`${b}/models`, "/models", MODEL_CDN].map((p) =>
+    p.startsWith("http") ? p : "/" + p.replace(/\/+/g, "/").replace(/^\/*/, "")
+  ))];
 })();
 
-async function canReachModelManifest(path: string) {
-	try {
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 1500);
-		
-		const response = await fetch(
-			`${path}/tiny_face_detector_model-weights_manifest.json`,
-			{ method: "GET", cache: "force-cache", signal: controller.signal }
-		);
-		clearTimeout(timeoutId);
-		return response.ok;
-	} catch (err) {
-		return false;
-	}
-}
-
-function LoadTimer({ startMs }: { startMs: number }) {
-	const [sec, setSec] = useState(0);
-	useEffect(() => {
-		const id = setInterval(() => setSec(parseFloat(((Date.now() - startMs) / 1000).toFixed(1))), 100);
-		return () => clearInterval(id);
-	}, [startMs]);
-	return <p className="mt-2 text-xs font-mono text-white/40">{sec}s</p>;
+async function canReach(p: string) {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 1500);
+    const r = await fetch(`${p}/tiny_face_detector_model-weights_manifest.json`, {
+      method: "GET", cache: "force-cache", signal: c.signal,
+    });
+    clearTimeout(t);
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
 export function FaceRecognition({
-	onMatch,
-	onVerify,
-	onCapture,
-	onModelError,
-	targetDescriptor,
-	mode,
-	className = "",
+  onMatch, onVerify, onCapture, onModelError,
+  targetDescriptor, mode, className = "",
 }: FaceRecognitionProps) {
-	const webcamRef = useRef<Webcam>(null);
-	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-	const autoCaptureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const isProcessingRef = useRef(false);
-	const lastAttemptRef = useRef(0);
+  const wRef = useRef<Webcam>(null);
+  const dRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pRef = useRef(false);
+  const lRef = useRef(false);
 
-	const [modelsLoaded, setModelsLoaded] = useState(false);
-	const [loadingStep, setLoadingStep] = useState<string>("Inisialisasi...");
-	const [modelPath, setModelPath] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
-	const [matchStatus, setMatchStatus] = useState<"idle" | "detecting" | "scanning" | "success" | "fail">("idle");
-	const [faceDetected, setFaceDetected] = useState(false);
-	const [scanProgress, setScanProgress] = useState(0);
-	const [autoCaptureReady, setAutoCaptureReady] = useState(false);
-	const [retryCount, setRetryCount] = useState(0);
-	const [scanLineY, setScanLineY] = useState(0);
-	const [elapsedMs, setElapsedMs] = useState(0);
-	const [loadStartMs, setLoadStartMs] = useState(Date.now());
-	const [loadElapsedSec, setLoadElapsedSec] = useState(0);
-	const [cooldown, setCooldown] = useState(false);
-	const [hintIndex, setHintIndex] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [lMsg, setLMsg] = useState("Memuat sistem biometrik...");
+  const [err, setErr] = useState<string | null>(null);
+  const [st, setSt] = useState<"idle" | "scanning" | "success" | "fail">("idle");
+  const [face, setFace] = useState(false);
+  const [r, setR] = useState(0);
 
-	const hints = {
-		noFace: [
-			"Arahkan wajah ke depan kamera",
-			"Pastikan pencahayaan cukup terang",
-			"Lepas masker atau kacamata hitam",
-			"Jaga jarak 30–50 cm dari kamera",
-			"Hadapkan wajah lurus ke kamera",
-		],
-		faceDetected: [
-			"Tahan posisi — wajah terdeteksi",
-			"Jangan bergerak, sistem memindai",
-			"Lihat lurus ke kamera",
-			"Pertahankan ekspresi netral",
-		],
-		scanning: [
-			"Memindai... tahan posisi",
-			"Jangan bergerak sebentar",
-			"Scan sedang berlangsung",
-			"Sedikit lagi...",
-		],
-		success: {
-			enroll: "Wajah berhasil didaftarkan!",
-			verify: "Absensi berhasil — selamat bekerja!",
-		},
-		fail: {
-			noFace: "Wajah tidak terdeteksi — coba lagi",
-			noMatch: "Wajah tidak dikenali — coba PIN",
-		},
-	};
+  // Load models
+  useEffect(() => {
+    if (lRef.current) return;
+    lRef.current = true;
+    let cancelled = false;
+    const load = async () => {
+      setErr(null);
+      setLoaded(false);
+      setLMsg("Memuat sistem biometrik...");
+      const gt = setTimeout(() => {
+        if (!cancelled) { setErr("Waktu pemuatan habis."); onModelError?.("Waktu pemuatan habis."); }
+      }, 20000);
 
-	// Cycle hints every 2.5 seconds
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setHintIndex((prev) => prev + 1);
-		}, 2500);
-		return () => clearInterval(interval);
-	}, []);
+      for (const cp of CANDIDATES) {
+        if (!cp.startsWith("http") && !(await canReach(cp))) continue;
+        try {
+          setLMsg("Memuat Detektor...");
+          await faceapi.nets.tinyFaceDetector.loadFromUri(cp);
+          setLMsg("Memuat Landmark...");
+          await faceapi.nets.faceLandmark68Net.loadFromUri(cp);
+          setLMsg("Memuat Pengenalan...");
+          await faceapi.nets.faceRecognitionNet.loadFromUri(cp);
+          if (!cancelled) { clearTimeout(gt); setLoaded(true); setLMsg(""); }
+          return;
+        } catch (e) { console.warn(`Load fail ${cp}:`, e); }
+      }
+      if (!cancelled) { clearTimeout(gt); setErr("Gagal memuat. Gunakan PIN."); onModelError?.("Gagal memuat. Gunakan PIN."); }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [r]);
 
-	useEffect(() => {
-		let cancelled = false;
+  // Face detection loop
+  useEffect(() => {
+    if (!loaded || st !== "idle") return;
+    const detect = async () => {
+      if (!wRef.current?.video || pRef.current) return;
+      try {
+        const det = await faceapi
+          .detectSingleFace(wRef.current.video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
+          .withFaceLandmarks();
+        setFace(!!det);
+      } catch { /* silent */ }
+    };
+    dRef.current = setInterval(detect, 300);
+    return () => { if (dRef.current) clearInterval(dRef.current); };
+  }, [loaded, st]);
 
-		const loadModels = async () => {
-			setError(null);
-			setModelsLoaded(false);
-			setMatchStatus("idle");
-			setLoadStartMs(Date.now());
-			
-			// Global timeout for entire loading process
-			const globalTimeout = setTimeout(() => {
-				if (!cancelled && !modelsLoaded) {
-					const errorMsg = "Waktu pemuatan habis. Jaringan mungkin sedang sibuk.";
-					setError(errorMsg);
-					onModelError?.(errorMsg);
-				}
-			}, 20000);
+  const capture = useCallback(async () => {
+    if (!wRef.current || !loaded || pRef.current) return;
+    pRef.current = true;
+    if (dRef.current) { clearInterval(dRef.current); dRef.current = null; }
+    setSt("scanning");
+    try {
+      const video = wRef.current.video;
+      if (!video) throw new Error("no video");
+      const det = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      if (!det) { setSt("fail"); setFace(false); return; }
+      const desc = Array.from(det.descriptor);
+      if (mode === "enroll") { onCapture?.(desc); setSt("success"); }
+      else if (mode === "verify" && onVerify) { await onVerify(desc); setSt("success"); onMatch?.(desc); }
+      else if (mode === "verify" && targetDescriptor) {
+        const d = faceapi.euclideanDistance(new Float32Array(desc), new Float32Array(targetDescriptor));
+        d < 0.6 ? (setSt("success"), onMatch?.(desc)) : setSt("fail");
+      } else { setSt("fail"); if (mode === "verify" && !targetDescriptor) onModelError?.("Data wajah tidak tersedia."); }
+    } catch (err) { console.error(err); setSt("fail"); }
+    finally { pRef.current = false; }
+  }, [loaded, mode, targetDescriptor, onMatch, onVerify, onCapture, onModelError]);
 
-			for (const candidatePath of MODEL_PATH_CANDIDATES) {
-				const isCDN = candidatePath.startsWith("http");
-				if (!isCDN) {
-					const manifestExists = await canReachModelManifest(candidatePath);
-					if (!manifestExists) continue;
-				}
+  const retry = () => { setSt("idle"); setFace(false); };
+  const reload = () => { setErr(null); setLoaded(false); lRef.current = false; setR((c) => c + 1); };
 
-				try {
-					setLoadingStep("Memuat Detektor (1/3)...");
-					setLoadingStep(`Memuat Detektor (1/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}s`);
-					await faceapi.nets.tinyFaceDetector.loadFromUri(candidatePath);
-					
-					setLoadingStep(`Memuat Landmark (2/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}s`);
-					await faceapi.nets.faceLandmark68Net.loadFromUri(candidatePath);
-					
-					setLoadingStep(`Memuat Pengenalan (3/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}s`);
-					await faceapi.nets.faceRecognitionNet.loadFromUri(candidatePath);
-					
-					if (!cancelled) {
-						clearTimeout(globalTimeout);
-						setModelPath(candidatePath);
-						setModelsLoaded(true);
-						setLoadElapsedSec(parseFloat(((Date.now() - loadStartMs) / 1000).toFixed(1)));
-					}
-					return;
-				} catch (err) {
-					console.error(`Failed to load face-api models from ${candidatePath}:`, err);
-					// Continue to next candidate
-				}
-			}
+  const frameColor = face ? "rgba(16,185,129,0.7)" : st === "scanning" ? "rgba(59,130,246,0.7)" : "rgba(255,255,255,0.25)";
+  const frameGlow = face ? "0 0 20px rgba(16,185,129,0.2)" : st === "scanning" ? "0 0 20px rgba(59,130,246,0.2)" : "none";
 
-			if (!cancelled) {
-				clearTimeout(globalTimeout);
-				const errorMsg = "Gagal memuat sistem biometrik. Gunakan PIN jika terus berlanjut.";
-				setError(errorMsg);
-				onModelError?.(errorMsg);
-			}
-		};
+  return (
+    <div className={`flex flex-col items-center gap-5 ${className}`}>
+      <div className="relative w-full max-w-xs overflow-hidden rounded-[2rem] bg-black shadow-2xl ring-1 ring-border/20" style={{ aspectRatio: "4/5" }}>
+        {/* Loading */}
+        {!loaded && !err && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/90">
+            <div className="relative">
+              <div className="absolute -inset-3 rounded-full bg-primary/20 blur-lg animate-pulse" />
+              <Loader2 className="relative h-10 w-10 animate-spin text-primary" />
+            </div>
+            <p className="mt-4 text-sm font-bold text-white">{lMsg}</p>
+          </motion.div>
+        )}
 
-		loadModels();
-		return () => { cancelled = true; };
-	}, [retryCount]);
+        {/* Error */}
+        {err && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-red-950/90 p-6 text-center">
+            <XCircle className="h-12 w-12 text-red-400" />
+            <p className="mt-3 text-sm font-bold text-red-300">{err}</p>
+            <Button className="mt-5 rounded-2xl" onClick={reload} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" /> Muat Ulang
+            </Button>
+          </motion.div>
+        )}
 
-	// Scan line animation
-	useEffect(() => {
-		if (matchStatus !== "scanning") {
-			return;
-		}
-		const interval = setInterval(() => {
-			setScanLineY((prev) => (prev >= 100 ? 0 : prev + 2));
-		}, 30);
-		return () => clearInterval(interval);
-	}, [matchStatus]);
+        {/* Webcam */}
+        <Webcam audio={false} mirrored={false} ref={wRef} screenshotFormat="image/jpeg"
+          className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[110%] w-full object-cover scale-x-[-1]"
+          videoConstraints={{ width: { ideal: 480 }, height: { ideal: 640 }, facingMode: "user" }}
+        />
 
-	// Auto-detect face continuously when idle
-	useEffect(() => {
-		if (!modelsLoaded || matchStatus !== "idle" || cooldown) return;
+        {/* Vignette */}
+        <div className="absolute inset-0 z-10 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 55% 60% at 50% 45%, transparent 0%, transparent 60%, rgba(0,0,0,0.7) 100%)" }}
+        />
 
-		const detectLoop = async () => {
-			if (!webcamRef.current?.video || matchStatus !== "idle") return;
-			const video = webcamRef.current.video;
+        {/* Oval frame — pure CSS */}
+        <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+          <div className="w-[60%] h-[62%] rounded-[50%] border-2 transition-colors duration-300"
+            style={{ borderColor: frameColor, boxShadow: frameGlow }} />
+        </div>
 
-			try {
-				const detection = await faceapi
-					.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
-					.withFaceLandmarks();
+        {/* Face indicator */}
+        {loaded && st === "idle" && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+            <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-md border transition-all duration-300 ${
+              face ? "bg-emerald-500/20 border-emerald-500/30" : "bg-white/10 border-white/20"
+            }`}>
+              <span className={`h-2 w-2 rounded-full ${face ? "bg-emerald-400 animate-pulse" : "bg-white/40"}`} />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-white/80">
+                {face ? "Wajah Terdeteksi" : "Arahkan Wajah ke Kamera"}
+              </span>
+            </div>
+          </div>
+        )}
 
-				if (detection) {
-					setFaceDetected(true);
-					setAutoCaptureReady(true);
-				} else {
-					setFaceDetected(false);
-					setAutoCaptureReady(false);
-				}
-			} catch {
-				// Silently retry
-			}
-		};
+        {/* Scanning */}
+        {st === "scanning" && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+            <div className="flex items-center gap-2 rounded-full bg-blue-500/20 px-4 py-2 backdrop-blur-md border border-blue-500/30">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+              <span className="text-xs font-bold text-blue-300">Memindai Wajah...</span>
+            </div>
+          </div>
+        )}
 
-		scanIntervalRef.current = setInterval(detectLoop, 200);
-		return () => {
-			if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
-		};
-	}, [modelsLoaded, matchStatus]);
+        {/* Success */}
+        <AnimatePresence>
+          {st === "success" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center">
+              <div className="absolute inset-0 bg-emerald-500/20 backdrop-blur-[3px]" />
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 shadow-2xl shadow-emerald-500/40">
+                <CheckCircle2 className="h-12 w-12 text-white" strokeWidth={2.5} />
+              </motion.div>
+              <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                className="relative mt-4 text-lg font-black text-white uppercase tracking-wide">Berhasil!</motion.p>
+              <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                className="relative mt-1 text-sm text-emerald-200">
+                {mode === "enroll" ? "Wajah berhasil didaftarkan!" : "Absensi berhasil — selamat bekerja!"}
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-	const performCapture = useCallback(async () => {
-		if (!webcamRef.current || !modelsLoaded) return;
-		if (isProcessingRef.current || matchStatus === "success" || cooldown) return;
-		
-		isProcessingRef.current = true;
+        {/* Fail */}
+        <AnimatePresence>
+          {st === "fail" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center">
+              <div className="absolute inset-0 bg-red-500/20 backdrop-blur-[3px]" />
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500 shadow-2xl shadow-red-500/40">
+                <XCircle className="h-12 w-12 text-white" strokeWidth={2.5} />
+              </motion.div>
+              <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                className="relative mt-4 text-lg font-black text-white uppercase tracking-wide">
+                {face ? "Wajah Tidak Cocok" : "Tidak Terdeteksi"}
+              </motion.p>
+              <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                className="relative mt-2 text-sm text-red-200">
+                {face ? "Wajah tidak dikenali — coba lagi" : "Arahkan wajah ke kamera"}
+              </motion.p>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                className="relative mt-5">
+                <Button onClick={retry}
+                  className="rounded-2xl bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md h-11 px-8">
+                  <RefreshCw className="mr-2 h-4 w-4" /> Coba Lagi
+                </Button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-		// Clear auto-detect interval
-		if (scanIntervalRef.current) {
-			clearInterval(scanIntervalRef.current);
-			scanIntervalRef.current = null;
-		}
+        <canvas className="hidden" />
+      </div>
 
-		setMatchStatus("scanning");
-		setScanProgress(0);
-		setAutoCaptureReady(false);
-		const startTime = Date.now();
+      {/* Capture button */}
+      {st === "idle" && loaded && (
+        <div className="flex flex-col items-center gap-2">
+          <button disabled={!face} onClick={capture}
+            className="h-16 w-16 rounded-full bg-primary shadow-xl shadow-primary/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed">
+            <Camera className="h-7 w-7 text-white" />
+          </button>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {face ? "Ketuk untuk Absen" : "Cari Wajah..."}
+          </p>
+        </div>
+      )}
 
-		const progressInterval = setInterval(() => {
-			setScanProgress((prev) => {
-				if (prev >= 90) {
-					clearInterval(progressInterval);
-					return 90;
-				}
-				return prev + Math.random() * 20;
-			});
-			setElapsedMs(Date.now() - startTime);
-		}, 100);
-
-		try {
-			const video = webcamRef.current.video;
-			if (!video) throw new Error("Video not available");
-
-			const detections = await faceapi
-				.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
-				.withFaceLandmarks()
-				.withFaceDescriptor();
-
-			clearInterval(progressInterval);
-			setScanProgress(100);
-			setElapsedMs(Date.now() - startTime);
-
-			if (!detections) {
-				setTimeout(() => {
-					setMatchStatus("fail");
-					setFaceDetected(false);
-				}, 500);
-				return;
-			}
-
-			const descriptor = Array.from(detections.descriptor);
-
-
-
-			if (mode === "enroll") {
-				onCapture?.(descriptor);
-				setMatchStatus("success");
-			} else if (mode === "verify" && onVerify) {
-				await onVerify(descriptor);
-				setMatchStatus("success");
-				onMatch?.(descriptor);
-			} else if (mode === "verify" && targetDescriptor) {
-				const distance = faceapi.euclideanDistance(
-					new Float32Array(descriptor),
-					new Float32Array(targetDescriptor)
-				);
-
-				if (distance < 0.6) {
-					setMatchStatus("success");
-					onMatch?.(descriptor);
-				} else {
-					setMatchStatus("fail");
-				}
-			} else if (mode === "verify" && !targetDescriptor) {
-				setMatchStatus("fail");
-				onModelError?.("Data wajah tidak tersedia untuk verifikasi.");
-			}
-		} catch (err) {
-			console.error("Face detection error:", err);
-			clearInterval(progressInterval);
-			setMatchStatus("fail");
-			setCooldown(true);
-			setTimeout(() => {
-				setCooldown(false);
-				isProcessingRef.current = false;
-			}, 2000);
-		} finally {
-			isProcessingRef.current = false;
-		}
-	}, [modelsLoaded, matchStatus, mode, targetDescriptor, onMatch, onVerify, onCapture, cooldown, onModelError]);
-
-	// Auto-capture when face is stable
-	useEffect(() => {
-		if (autoCaptureReady && matchStatus === "idle" && modelsLoaded && !cooldown) {
-			autoCaptureTimeoutRef.current = setTimeout(() => {
-				if (autoCaptureReady && !isProcessingRef.current && !cooldown) {
-					performCapture();
-				}
-			}, 1000);
-		}
-		return () => {
-			if (autoCaptureTimeoutRef.current) clearTimeout(autoCaptureTimeoutRef.current);
-		};
-	}, [autoCaptureReady, matchStatus, modelsLoaded, performCapture, cooldown]);
-
-	const handleRetry = () => {
-		setMatchStatus("idle");
-		setFaceDetected(false);
-		setAutoCaptureReady(false);
-		setScanProgress(0);
-		setScanLineY(0);
-	};
-
-	const handleReloadModels = () => {
-		setError(null);
-		setModelsLoaded(false);
-		setRetryCount((c) => c + 1);
-	};
-
-	return (
-		<div className={`flex flex-col items-center gap-4 ${className}`}>
-			<div className="relative w-full overflow-hidden rounded-[2.5rem] bg-black shadow-2xl ring-2 ring-border/30"
-				style={{ aspectRatio: "4/5" }}
-			>
-				{/* Loading overlay */}
-				<AnimatePresence>
-					{!modelsLoaded && !error && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm"
-						>
-							<div className="relative">
-								<div className="absolute -inset-4 rounded-full bg-primary/20 blur-xl animate-pulse" />
-								<Loader2 className="relative h-12 w-12 animate-spin text-primary" />
-							</div>
-							<p className="mt-4 text-sm font-bold text-white">{loadingStep}</p>
-							<p className="mt-1 text-center text-xs text-white/50">
-								Menyiapkan sistem biometrik
-							</p>
-							<LoadTimer startMs={loadStartMs} />
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* Error overlay */}
-				<AnimatePresence>
-					{error && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-red-950/90 p-6 text-center backdrop-blur-sm"
-						>
-							<XCircle className="h-14 w-14 text-red-400" />
-							<p className="mt-3 font-bold text-red-300">{error}</p>
-							<Button
-								className="mt-5 rounded-2xl"
-								onClick={handleReloadModels}
-								variant="outline"
-							>
-								<RefreshCw className="mr-2 h-4 w-4" />
-								Muat Ulang
-							</Button>
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* Webcam */}
-				<Webcam
-					audio={false}
-					className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[110%] w-full object-cover scale-x-[-1]"
-					mirrored={false}
-					ref={webcamRef}
-					screenshotFormat="image/jpeg"
-					videoConstraints={{
-						width: { ideal: 480 },
-						height: { ideal: 640 },
-						facingMode: "user",
-					}}
-				/>
-
-				{/* Hidden canvas for detections */}
-				<canvas ref={canvasRef} className="hidden" />
-
-				{/* Dark vignette overlay */}
-				<div className="absolute inset-0 z-10 pointer-events-none"
-					style={{
-						background: "radial-gradient(ellipse 55% 60% at 50% 45%, transparent 0%, transparent 60%, rgba(0,0,0,0.7) 100%)",
-					}}
-				/>
-
-				{/* Dashed Oval Overlay */}
-				<div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
-					<svg
-						className="w-full h-full"
-						viewBox="0 0 300 400"
-						preserveAspectRatio="xMidYMid meet"
-					>
-						<defs>
-							<filter id="oval-glow">
-								<feGaussianBlur stdDeviation="3" result="blur" />
-								<feMerge>
-									<feMergeNode in="blur" />
-									<feMergeNode in="SourceGraphic" />
-								</feMerge>
-							</filter>
-						</defs>
-						{/* Outer glow oval */}
-						<ellipse
-							cx="150"
-							cy="185"
-							rx="95"
-							ry="125"
-							fill="none"
-							stroke={faceDetected ? "#10b981" : matchStatus === "scanning" ? "#3b82f6" : "rgba(255,255,255,0.3)"}
-							strokeWidth="3"
-							strokeDasharray="12 8"
-							opacity={0.6}
-							filter="url(#oval-glow)"
-						>
-							{matchStatus === "scanning" && (
-								<animate
-									attributeName="stroke-dashoffset"
-									from="0"
-									to="40"
-									dur="1s"
-									repeatCount="indefinite"
-								/>
-							)}
-						</ellipse>
-						{/* Inner oval */}
-						<ellipse
-							cx="150"
-							cy="185"
-							rx="90"
-							ry="120"
-							fill="none"
-							stroke={faceDetected ? "#10b981" : matchStatus === "scanning" ? "#3b82f6" : "rgba(255,255,255,0.5)"}
-							strokeWidth="2"
-							strokeDasharray="8 6"
-							opacity={0.8}
-						>
-							{matchStatus === "scanning" && (
-								<animate
-									attributeName="stroke-dashoffset"
-									from="0"
-									to="-28"
-									dur="0.8s"
-									repeatCount="indefinite"
-								/>
-							)}
-						</ellipse>
-						{/* Corner markers */}
-						{/* Top-left */}
-						<line x1="70" y1="80" x2="85" y2="80" stroke="white" strokeWidth="2" opacity="0.6" />
-						<line x1="70" y1="80" x2="70" y2="95" stroke="white" strokeWidth="2" opacity="0.6" />
-						{/* Top-right */}
-						<line x1="230" y1="80" x2="215" y2="80" stroke="white" strokeWidth="2" opacity="0.6" />
-						<line x1="230" y1="80" x2="230" y2="95" stroke="white" strokeWidth="2" opacity="0.6" />
-						{/* Bottom-left */}
-						<line x1="70" y1="290" x2="85" y2="290" stroke="white" strokeWidth="2" opacity="0.6" />
-						<line x1="70" y1="290" x2="70" y2="275" stroke="white" strokeWidth="2" opacity="0.6" />
-						{/* Bottom-right */}
-						<line x1="230" y1="290" x2="215" y2="290" stroke="white" strokeWidth="2" opacity="0.6" />
-						<line x1="230" y1="290" x2="230" y2="275" stroke="white" strokeWidth="2" opacity="0.6" />
-					</svg>
-				</div>
-
-				{/* Scanner line animation */}
-				<AnimatePresence>
-					{matchStatus === "scanning" && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="absolute inset-0 z-15 pointer-events-none overflow-hidden"
-						>
-							<motion.div
-								className="absolute left-0 right-0 h-1"
-								style={{
-									background: "linear-gradient(90deg, transparent, #3b82f6, #8b5cf6, #3b82f6, transparent)",
-									boxShadow: "0 0 20px 4px rgba(59,130,246,0.4), 0 0 60px 10px rgba(139,92,246,0.2)",
-									top: `${scanLineY}%`,
-								}}
-								transition={{ duration: 0.1 }}
-							/>
-							{/* Scan glow under the line */}
-							<div
-								className="absolute left-0 right-0 h-20 pointer-events-none"
-								style={{
-									top: `${scanLineY}%`,
-									transform: "translateY(-50%)",
-									background: "linear-gradient(180deg, transparent, rgba(59,130,246,0.1), transparent)",
-								}}
-							/>
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* Auto-capture countdown indicator */}
-				<AnimatePresence>
-					{autoCaptureReady && matchStatus === "idle" && (
-						<motion.div
-							initial={{ opacity: 0, scale: 0.8 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: 0.8 }}
-							className="absolute top-6 left-1/2 -translate-x-1/2 z-20"
-						>
-							<div className="flex items-center gap-2 rounded-full bg-emerald-500/20 px-4 py-2 backdrop-blur-md border border-emerald-500/30">
-								<div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-								<span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
-									{hints.faceDetected[hintIndex % hints.faceDetected.length]}
-								</span>
-							</div>
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* Face not detected hint */}
-				<AnimatePresence>
-					{!faceDetected && matchStatus === "idle" && modelsLoaded && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20"
-						>
-							<div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-md border border-white/20">
-								<ScanFace className="h-4 w-4 text-white/70" />
-								<span className="text-xs font-medium text-white/70">
-									{hints.noFace[hintIndex % hints.noFace.length]}
-								</span>
-							</div>
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* Scanning progress bar */}
-				<AnimatePresence>
-					{matchStatus === "scanning" && (
-						<motion.div
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: 20 }}
-							className="absolute bottom-0 left-0 right-0 z-20"
-						>
-							<div className="p-4 bg-gradient-to-t from-black/80 to-transparent">
-								<div className="flex items-center gap-3 mb-2">
-									<Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-									<span className="text-xs font-bold text-white uppercase tracking-wider">
-										{hints.scanning[hintIndex % hints.scanning.length]}
-									</span>
-									<span className="text-xs font-mono text-blue-300 ml-auto">
-										{(elapsedMs / 1000).toFixed(1)}s
-									</span>
-								</div>
-								<div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-									<motion.div
-										className="h-full rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"
-										initial={{ width: "0%" }}
-										animate={{ width: `${Math.min(scanProgress, 100)}%` }}
-										transition={{ duration: 0.3 }}
-									/>
-								</div>
-							</div>
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* SUCCESS overlay */}
-				<AnimatePresence>
-					{matchStatus === "success" && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="absolute inset-0 z-20 flex flex-col items-center justify-center"
-						>
-							<div className="absolute inset-0 bg-emerald-500/20 backdrop-blur-[3px]" />
-							<motion.div
-								initial={{ scale: 0 }}
-								animate={{ scale: 1 }}
-								transition={{ type: "spring", stiffness: 200, damping: 15 }}
-								className="relative"
-							>
-								<div className="absolute -inset-6 rounded-full bg-emerald-500/30 blur-2xl animate-pulse" />
-								<motion.div
-									className="relative flex h-28 w-28 items-center justify-center rounded-full bg-emerald-500 shadow-2xl shadow-emerald-500/40"
-									initial={{ rotate: -180, scale: 0 }}
-									animate={{ rotate: 0, scale: 1 }}
-									transition={{ type: "spring", stiffness: 150, damping: 12, delay: 0.2 }}
-								>
-									<CheckCircle2 className="h-16 w-16 text-white" strokeWidth={2.5} />
-								</motion.div>
-							</motion.div>
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.4 }}
-								className="relative mt-6 text-center"
-							>
-								<p className="text-2xl font-black text-white uppercase tracking-wide">Terverifikasi!</p>
-								<p className="mt-1 text-sm text-emerald-200">
-									{mode === "enroll" ? hints.success.enroll : hints.success.verify}
-								</p>
-								<p className="mt-1 text-xs font-mono text-emerald-300/70">
-									{(elapsedMs / 1000).toFixed(2)} detik
-								</p>
-							</motion.div>
-							{/* Confetti-like particles */}
-							{Array.from({ length: 8 }).map((_, i) => (
-								<motion.div
-									key={i}
-									className="absolute h-2 w-2 rounded-full bg-emerald-400"
-									initial={{
-										top: "50%", left: "50%", opacity: 1, scale: 1,
-									}}
-									animate={{
-										top: `${30 + Math.random() * 40}%`,
-										left: `${20 + Math.random() * 60}%`,
-										opacity: 0, scale: 0,
-									}}
-									transition={{ duration: 1.5, delay: 0.3 + i * 0.1 }}
-								/>
-							))}
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* FAIL overlay */}
-				<AnimatePresence>
-					{matchStatus === "fail" && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="absolute inset-0 z-20 flex flex-col items-center justify-center"
-						>
-							<div className="absolute inset-0 bg-red-500/20 backdrop-blur-[3px]" />
-							<motion.div
-								initial={{ scale: 0 }}
-								animate={{ scale: 1, x: [0, -10, 10, -10, 10, 0] }}
-								transition={{ scale: { type: "spring", stiffness: 200, damping: 15 }, x: { duration: 0.5, delay: 0.3 } }}
-								className="relative"
-							>
-								<div className="absolute -inset-6 rounded-full bg-red-500/30 blur-2xl" />
-								<div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-red-500 shadow-2xl shadow-red-500/40">
-									<XCircle className="h-16 w-16 text-white" strokeWidth={2.5} />
-								</div>
-							</motion.div>
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.4 }}
-								className="relative mt-6 text-center"
-							>
-								<p className="text-2xl font-black text-white uppercase tracking-wide">
-									{faceDetected ? "Wajah Tidak Cocok" : "Wajah Tidak Terdeteksi"}
-								</p>
-								<p className="mt-1 text-sm text-red-200">
-									{faceDetected
-										? hints.fail.noMatch
-										: hints.fail.noFace}
-								</p>
-							</motion.div>
-							<motion.div
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.7 }}
-								className="relative mt-6"
-							>
-								<Button
-									onClick={handleRetry}
-									className="rounded-2xl bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md h-12 px-8"
-								>
-									<RefreshCw className="mr-2 h-4 w-4" />
-									Coba Lagi
-								</Button>
-							</motion.div>
-						</motion.div>
-					)}
-				</AnimatePresence>
-
-				{/* Mode badge */}
-				<div className="absolute top-4 left-4 z-20">
-					<div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 backdrop-blur-md border text-[10px] font-bold uppercase tracking-wider ${
-						mode === "enroll"
-							? "bg-amber-500/20 border-amber-500/30 text-amber-300"
-							: "bg-blue-500/20 border-blue-500/30 text-blue-300"
-					}`}>
-						<Camera className="h-3 w-3" />
-						{mode === "enroll" ? "Pendaftaran" : "Verifikasi"}
-					</div>
-				</div>
-			</div>
-
-			{/* Manual capture button */}
-			{matchStatus === "idle" && (
-				<motion.div
-					initial={{ opacity: 0, y: 10 }}
-					animate={{ opacity: 1, y: 0 }}
-					className="flex flex-col items-center gap-3 w-full"
-				>
-					<Button
-						className="h-14 w-14 rounded-full shadow-xl shadow-primary/20 transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
-						disabled={!modelsLoaded || !faceDetected}
-						onClick={performCapture}
-						size="icon"
-					>
-						<Camera className="h-6 w-6" />
-					</Button>
-					<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-						{faceDetected ? "Ketuk untuk absen sekarang" : hints.noFace[hintIndex % hints.noFace.length]}
-					</p>
-				</motion.div>
-			)}
-
-			{/* Retry button during failure */}
-			{matchStatus === "fail" && (
-				<div className="w-full">
-					<Button
-						onClick={handleRetry}
-						variant="outline"
-						className="w-full h-12 rounded-2xl"
-					>
-						<RefreshCw className="mr-2 h-4 w-4" />
-						Pindai Ulang Wajah
-					</Button>
-				</div>
-			)}
-		</div>
-	);
+      {/* Retry */}
+      {st === "fail" && (
+        <Button onClick={retry} variant="outline" className="w-full max-w-xs h-12 rounded-2xl">
+          <RefreshCw className="mr-2 h-4 w-4" /> Pindai Ulang Wajah
+        </Button>
+      )}
+    </div>
+  );
 }
