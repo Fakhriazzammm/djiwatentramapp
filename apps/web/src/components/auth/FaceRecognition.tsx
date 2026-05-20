@@ -24,6 +24,8 @@ const CANDIDATES = (() => {
   ))];
 })();
 
+let preloadPromise: Promise<boolean> | null = null;
+
 async function canReach(p: string) {
   try {
     const c = new AbortController();
@@ -36,6 +38,27 @@ async function canReach(p: string) {
   } catch {
     return false;
   }
+}
+
+async function loadModelsImpl(): Promise<boolean> {
+  for (const cp of CANDIDATES) {
+    if (!cp.startsWith("http") && !(await canReach(cp))) continue;
+    try {
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(cp),
+        faceapi.nets.faceLandmark68Net.loadFromUri(cp),
+        faceapi.nets.faceRecognitionNet.loadFromUri(cp),
+      ]);
+      return true;
+    } catch (e) { console.warn(`Load fail \${cp}:`, e); }
+  }
+  return false;
+}
+
+/** Pre-load face-api models so FaceRecognition mounts instantly. */
+export function preloadFaceModels(): Promise<boolean> {
+  if (!preloadPromise) preloadPromise = loadModelsImpl();
+  return preloadPromise;
 }
 
 export function FaceRecognition({
@@ -64,22 +87,15 @@ export function FaceRecognition({
       setLoaded(false);
       setLMsg("Memuat sistem biometrik...");
       const gt = setTimeout(() => {
-        if (!cancelled) { setErr("Waktu pemuatan habis."); onModelError?.("Waktu pemuatan habis."); }
-      }, 20000);
+        if (!cancelled) { setErr("Waktu muat habis. Gunakan PIN."); onModelError?.("Waktu muat habis. Gunakan PIN."); }
+      }, 12000);
 
-      for (const cp of CANDIDATES) {
-        if (!cp.startsWith("http") && !(await canReach(cp))) continue;
-        try {
-          setLMsg("Memuat Detektor...");
-          await faceapi.nets.tinyFaceDetector.loadFromUri(cp);
-          setLMsg("Memuat Landmark...");
-          await faceapi.nets.faceLandmark68Net.loadFromUri(cp);
-          setLMsg("Memuat Pengenalan...");
-          await faceapi.nets.faceRecognitionNet.loadFromUri(cp);
-          if (!cancelled) { clearTimeout(gt); setLoaded(true); setLMsg(""); }
-          return;
-        } catch (e) { console.warn(`Load fail ${cp}:`, e); }
-      }
+      try {
+        // Use shared preload — returns instantly if already loaded
+        const ok = await (preloadPromise ?? loadModelsImpl());
+        if (ok && !cancelled) { clearTimeout(gt); setLoaded(true); setLMsg(""); return; }
+      } catch (e) { console.warn("Face load error:", e); }
+
       if (!cancelled) { clearTimeout(gt); setErr("Gagal memuat. Gunakan PIN."); onModelError?.("Gagal memuat. Gunakan PIN."); }
     };
     load();

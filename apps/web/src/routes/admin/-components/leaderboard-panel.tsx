@@ -108,9 +108,17 @@ const RANK_COLORS = [
 
 // ── Aggregator ────────────────────────────────────────────────────────────
 
+function isThisMonth(timestamp: number): boolean {
+	const now = new Date();
+	const d = new Date(timestamp);
+	return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
 function buildLeaderboard(
 	shifts: any[],
 ): LeaderboardEntry[] {
+	// Only include shifts from the current month
+	const monthShifts = shifts.filter((s: any) => s.startTime && isThisMonth(s.startTime));
 	const memberMap = new Map<
 		string,
 		{
@@ -122,7 +130,7 @@ function buildLeaderboard(
 		}
 	>();
 
-	for (const shift of shifts) {
+	for (const shift of monthShifts) {
 		const bonuses = shift.memberBonuses ?? [];
 		for (const mb of bonuses) {
 			if (mb.bonus <= 0) continue;
