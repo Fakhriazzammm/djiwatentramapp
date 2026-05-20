@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
 	Lock, 
 	Unlock, 
 	Clock, 
+	Download,
 	ChevronLeft, 
 	FileText, 
 	TrendingUp, 
@@ -38,6 +39,8 @@ import {
 import {
 	useHybridPayslips,
 } from "@/hooks/use-hybrid-payroll-data";
+import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 
 const formatCurrency = (amount: number) => {
 	return new Intl.NumberFormat("id-ID", {
@@ -125,6 +128,9 @@ function StaffProfilePage() {
 			: undefined
 	);
 
+	const settings = useHybridSiteSettings() as any;
+	const storeName = settings?.storeName || "TENTREM KOFFIE";
+	const storeAddress = settings?.storeAddress || "";
 	useEffect(() => {
 		if (staff && isUnlocked) {
 			setEditName(staff.name || "");
@@ -142,6 +148,41 @@ function StaffProfilePage() {
 			setEditEmergencyContactPhone(raw.emergencyContactPhone || "");
 		}
 	}, [staff, privateData, isUnlocked]);
+
+	const handleDownloadPayslip = useCallback(async (payslip: any) => {
+		try {
+			const breakdown: PayslipBreakdown = payslip.breakdown ?? {};
+			const blob = generatePayslipPDF(
+				{
+					id: payslip.id,
+					user_id: payslip.user_id,
+					user_name: payslip.user_name,
+					period_name: payslip.period_name,
+					period_start: payslip.period_start,
+					period_end: payslip.period_end,
+					gross_pay: payslip.gross_pay ?? 0,
+					deductions: payslip.deductions ?? 0,
+					net_pay: payslip.net_pay ?? 0,
+					status: payslip.status ?? "generated",
+					sent_at: payslip.sent_at,
+					acknowledged_at: payslip.acknowledged_at,
+					breakdown,
+				},
+				breakdown,
+				storeName,
+				storeAddress
+			);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `slip-gaji-${(payslip.user_name ?? "karyawan").toLowerCase().replace(/\s+/g, "-")}-${(payslip.period_name ?? "").toLowerCase().replace(/\s+/g, "-")}.pdf`;
+			a.click();
+			URL.revokeObjectURL(url);
+			toast.success("PDF berhasil diunduh");
+		} catch (e: any) {
+			toast.error(`Gagal mengunduh PDF: ${e.message}`);
+		}
+	}, [storeName, storeAddress]);
 
 	if (staff === undefined) {
 		return (
@@ -394,9 +435,9 @@ function StaffProfilePage() {
 																variant="ghost"
 																size="icon"
 																className="rounded-lg h-8 w-8"
-																onClick={() => toast.info("Fitur download akan segera tersedia")}
+																onClick={() => handleDownloadPayslip(payslip)}
 															>
-																<span className="text-xs">⬇</span>
+																<Download className="h-4 w-4" />
 															</Button>
 														</div>
 													</div>

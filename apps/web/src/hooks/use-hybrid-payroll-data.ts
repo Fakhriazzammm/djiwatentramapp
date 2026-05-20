@@ -413,6 +413,143 @@ async function reversePayrollRun(args: { runId: string }): Promise<any> {
 	return executeSql(sql);
 }
 
+// ─── SQL: Auto-Detect Period & Run ─────────────────────────────────
+async function autoDetectPeriodAndRun(): Promise<{
+	action: "created" | "ran" | "generated" | "skipped" | "error";
+	message: string;
+	periodId?: string;
+	runId?: string;
+}> {
+	try {
+		const now = new Date();
+		const monthNames = [
+			"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+			"Juli", "Agustus", "September", "Oktober", "November", "Desember",
+		];
+		const periodName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+		const year = now.getFullYear();
+		const month = now.getMonth() + 1;
+		const startDateStr = `${year}-${String(month).padStart(2, "0")}-01`;
+		const endDate = new Date(year, month, 0);
+		const endDateStr = `${year}-${String(month).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
+
+		// Step 1: Look for existing period this month
+		const findPeriodSql = `
+			SELECT id, period_name, status
+			FROM pos.payroll_periods
+			WHERE period_name = '${periodName}'
+			LIMIT 1;
+		`;
+		const existingPeriods: any[] = await executeSql(findPeriodSql);
+		let periodId: string | undefined;
+
+		if (!existingPeriods || existingPeriods.length === 0) {
+			// Step 2a: Auto-create period
+			const createSql = `
+				INSERT INTO pos.payroll_periods (period_name, start_date, end_date, status)
+				VALUES ('${periodName}', '${startDateStr}', '${endDateStr}', 'open')
+				RETURNING id;
+			`;
+			const created: any[] = await executeSql(createSql);
+			periodId = created?.[0]?.id;
+			if (!periodId) throw new Error("Failed to create payroll period");
+			// Step 2b: Auto-generate run for new period
+			const runResult = await generatePayrollRun({ periodId });
+			const runId = runResult?.[0]?.id;
+			return {
+				action: "created",
+				message: `Period "${periodName}" created and payroll run generated`,
+				periodId,
+				runId: runId ?? undefined,
+			};
+		}
+
+		periodId = existingPeriods[0].id;
+
+		// Step 3: Check for existing completed runs
+		const findRunSql = `
+			SELECT id, status
+			FROM pos.payroll_runs
+			WHERE payroll_period_id = '${periodId}'
+			ORDER BY run_date DESC
+			LIMIT 1;
+		`;
+		const existingRuns: any[] = await executeSql(findRunSql);
+
+		if (!existingRuns || existingRuns.length === 0) {
+			// No runs yet — generate one
+			const runResult = await generatePayrollRun({ periodId });
+			const runId = runResult?.[0]?.id ?? null;
+			return {
+				action: "ran",
+				message: `Payroll run generated for "${periodName}"`,
+				periodId,
+				runId: runId ?? undefined,
+			};
+		}
+
+		const latestRun = existingRuns[0];
+
+		if (latestRun.status === "completed") {
+			// Run already completed — generate payslips
+			await generatePayslipsForRun({ runId: latestRun.id });
+			return {
+				action: "generated",
+				message: `Payslips generated for run "${latestRun.id}"`,
+				periodId,
+				runId: latestRun.id,
+			};
+		}
+
+		// Run exists but not completed yet
+		return {
+			action: "skipped",
+			message: `Run "${latestRun.id}" exists but status is "${latestRun.status}" — not auto-generating payslips`,
+			periodId,
+			runId: latestRun.id,
+		};
+	} catch (err: any) {
+		return {
+			action: "error",
+			message: err?.message ?? String(err),
+		};
+	}
+}
+
+// ─── SQL: Update Payroll Run Item ──────────────────────────────────
+async function updatePayrollRunItem(args: {
+	runItemId: string;
+	field: string;
+	value: number;
+}): Promise<any> {
+	const sql = `
+		UPDATE pos.payroll_run_items
+		SET ${args.field} = ${args.value}, updated_at = now()
+		WHERE id = '${args.runItemId}'
+		RETURNING *;
+	`;
+	return executeSql(sql);
+}
+
+// ─── SQL: Sync Payslip from Run Item ───────────────────────────────
+async function syncPayslipFromRunItem(args: {
+	runItemId: string;
+	payslipId: string;
+}): Promise<any> {
+	const sql = `
+		UPDATE pos.payslips
+		SET
+			gross_pay = (SELECT gross_pay FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
+			deductions = (SELECT deductions FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
+			net_pay = (SELECT net_pay FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
+			breakdown = (SELECT compensation_breakdown FROM pos.payroll_run_items WHERE id = '${args.runItemId}'),
+			updated_at = now()
+		WHERE id = '${args.payslipId}'
+		RETURNING *;
+	`;
+	return executeSql(sql);
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // EXPORTED HOOKS
 // ═══════════════════════════════════════════════════════════════════
@@ -557,5 +694,8 @@ export {
 	updatePayslipStatus,
 	approvePayrollRun,
 	reversePayrollRun,
+	autoDetectPeriodAndRun,
+	updatePayrollRunItem,
+	syncPayslipFromRunItem,
 	executeSql as executePayrollSql,
 };

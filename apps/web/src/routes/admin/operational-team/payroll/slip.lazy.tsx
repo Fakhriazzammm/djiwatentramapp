@@ -16,14 +16,10 @@ import {
 } from "lucide-react";
 import {
 	useHybridPayslips,
-	useHybridPayrollPeriods,
-	useHybridPayrollRuns,
-	useHybridPayrollStaffActive,
-	useHybridPayrollRoleRules,
-	generatePayslipsForRun,
 	updatePayslipStatus,
-	approvePayrollRun,
-	reversePayrollRun,
+	autoDetectPeriodAndRun,
+	updatePayrollRunItem,
+	syncPayslipFromRunItem,
 } from "@/hooks/use-hybrid-payroll-data";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
@@ -111,7 +107,6 @@ function PayslipAdminPage() {
 	const [statusFilter, setStatusFilter] = useState<string>("");
 	const [periodFilter, setPeriodFilter] = useState<string>("");
 	const [selectedPayslip, setSelectedPayslip] = useState<any | null>(null);
-	const [isGenerating, setIsGenerating] = useState(false);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [confirmConfig, setConfirmConfig] = useState<{
 		isOpen: boolean;
@@ -122,12 +117,16 @@ function PayslipAdminPage() {
 	}>({ isOpen: false, title: "", message: "", variant: "info" as const, onConfirm: () => {} });
 
 	const allPayslips = useHybridPayslips({ status: statusFilter || undefined }) as any[] | null;
-	const periods = useHybridPayrollPeriods() as any[] | null;
-	const staffActive = useHybridPayrollStaffActive() as any[] | null;
-	const runs = useHybridPayrollRuns(periodFilter || undefined) as any[] | null;
 	const settings = useHybridSiteSettings() as any;
 	const storeName = settings?.storeName || "TENTREM KOFFIE";
 	const storeAddress = settings?.storeAddress || "";
+	const [isAutoProcessing, setIsAutoProcessing] = useState(false);
+	const [autoTrigger, setAutoTrigger] = useState(0);
+	const [editingCell, setEditingCell] = useState<{
+		payslipId: string;
+		runItemId: string;
+		field: string;
+	} | null>(null);
 
 	// ── Filtered Data ──────────────────────────────────────────────
 	const filteredPayslips = useMemo(() => {
@@ -163,17 +162,17 @@ function PayslipAdminPage() {
 	}, [filteredPayslips]);
 
 	const periodOptions = useMemo(() => {
-		if (!periods) return [];
-		return periods.map((p: any) => ({
-			value: p.id,
-			label: p.period_name ?? `${p.start_date ?? ""} - ${p.end_date ?? ""}`,
-		}));
-	}, [periods]);
-
-	const completedRuns = useMemo(() => {
-		if (!runs) return [];
-		return runs.filter((r: any) => r.status === "completed");
-	}, [runs]);
+		if (!allPayslips || allPayslips.length === 0) return [];
+		const unique = new Map<string, { value: string; label: string }>();
+		allPayslips.forEach((p: any) => {
+			const id = p.payroll_period_id ?? p.period_name;
+			const label = p.period_name ?? `${p.period_start ?? ""} - ${p.period_end ?? ""}`;
+			if (id && !unique.has(id)) {
+				unique.set(id, { value: id, label });
+			}
+		});
+		return Array.from(unique.values());
+	}, [allPayslips]);
 
 	// ── Handlers ────────────────────────────────────────────────────
 	const toggleSelect = useCallback((id: string) => {
@@ -282,30 +281,6 @@ function PayslipAdminPage() {
 		});
 	}, [selectedIds, filteredPayslips]);
 
-	const handleGeneratePayslips = useCallback(async () => {
-		if (completedRuns.length === 0) { toast.error("Tidak ada completed run untuk generate payslip"); return; }
-		const latestRun = completedRuns[0];
-
-		setConfirmConfig({
-			isOpen: true,
-			title: "Generate Slip Gaji?",
-			message: `Generate payslip dari run "${latestRun.run_name ?? latestRun.id}" (${latestRun.total_employees ?? 0} karyawan)?`,
-			variant: "warning" as const,
-			onConfirm: async () => {
-				setIsGenerating(true);
-				try {
-					await generatePayslipsForRun({ runId: latestRun.id });
-					toast.success("Payslip berhasil digenerate!");
-					setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
-				} catch (e: any) {
-					toast.error(`Gagal generate: ${e.message}`);
-				} finally {
-					setIsGenerating(false);
-				}
-			},
-		});
-	}, [completedRuns]);
-
 	const handleExportCSV = useCallback(() => {
 		if (!filteredPayslips || filteredPayslips.length === 0) {
 			toast.error("Tidak ada data untuk diexport");
@@ -348,6 +323,35 @@ function PayslipAdminPage() {
 		URL.revokeObjectURL(url);
 		toast.success(`${rows.length} payslip diexport sebagai CSV`);
 	}, [filteredPayslips]);
+
+	// ── Auto-Run on Mount ───────────────────────────────────────────
+	useEffect(() => {
+		if (allPayslips === undefined) return;
+		if (allPayslips === null) return;
+
+		if (allPayslips.length === 0) {
+			setIsAutoProcessing(true);
+			autoDetectPeriodAndRun().then((result) => {
+				setIsAutoProcessing(false);
+				if (result.action !== "skipped" && result.action !== "error") {
+					setAutoTrigger((n) => n + 1);
+					toast.success(result.message);
+				}
+			}).catch(() => setIsAutoProcessing(false));
+		}
+	}, [allPayslips, autoTrigger]);
+
+	// ── Inline Edit ─────────────────────────────────────────────────
+	const handleInlineSave = useCallback(async (payslipId: string, runItemId: string, field: string, value: number) => {
+		try {
+			await updatePayrollRunItem({ runItemId, field, value });
+			await syncPayslipFromRunItem({ runItemId, payslipId });
+			toast.success(`${field} berhasil diperbarui`);
+		} catch (e: any) {
+			toast.error(`Gagal menyimpan: ${e.message}`);
+		}
+		setEditingCell(null);
+	}, []);
 
 	// ── Render ─────────────────────────────────────────────────────
 	const isLoading = allPayslips === undefined;
@@ -408,21 +412,7 @@ function PayslipAdminPage() {
 			{/* ACTION BAR */}
 			<div className="flex flex-wrap items-center gap-2">
 				{!isEmpty && (
-					<>
-						<Button
-							variant="outline"
-							size="sm"
-							className="text-xs h-9"
-							onClick={handleGeneratePayslips}
-							disabled={isGenerating || completedRuns.length === 0}
-						>
-							{isGenerating ? (
-								<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-							) : (
-								<Plus className="mr-1.5 h-3.5 w-3.5" />
-							)}
-							Generate Slip
-						</Button>
+							<>
 						{selectedIds.size > 0 && (
 							<Button
 								variant="default"
@@ -446,6 +436,20 @@ function PayslipAdminPage() {
 					</>
 				)}
 			</div>
+
+			{/* AUTO-REFRESH INDICATOR */}
+			{isAutoProcessing && (
+				<div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+					<Loader2 className="h-3 w-3 animate-spin" />
+					<span>Menghitung slip gaji dari data absensi...</span>
+				</div>
+			)}
+			{!isAutoProcessing && allPayslips && allPayslips.length > 0 && (
+				<div className="flex items-center gap-1 text-[10px] text-emerald-600/70 px-1">
+					<div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+					<span>Real-time dari absensi</span>
+				</div>
+			)}
 
 			{/* FILTER BAR */}
 			<div className="flex flex-wrap items-center gap-3">
@@ -489,25 +493,13 @@ function PayslipAdminPage() {
 					<FileText className="h-16 w-16 text-muted-foreground/30" />
 					<p className="mt-4 text-sm font-medium text-muted-foreground">Belum ada data slip gaji</p>
 					<p className="text-xs text-muted-foreground/70 mt-1">
-						Generate payslip dari payroll run yang sudah completed.
+						Belum ada data absensi untuk periode ini. Slip gaji akan muncul otomatis setelah ada data kehadiran.
 					</p>
-					<Button
-						className="mt-6"
-						onClick={handleGeneratePayslips}
-						disabled={isGenerating || completedRuns.length === 0}
-						variant="default"
-					>
-						{isGenerating ? (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-						) : (
-							<Plus className="mr-2 h-4 w-4" />
-						)}
-						Generate Slip Gaji
-					</Button>
-					{completedRuns.length === 0 && (
-						<p className="text-[10px] text-muted-foreground/50 mt-2">
-							Tidak ada completed payroll run. Proses penggajian dulu di halaman Payroll.
-						</p>
+					{allPayslips && allPayslips.length === 0 && (
+						<div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+							<div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+							<span>Auto-generate aktif — slip akan muncul otomatis</span>
+						</div>
 					)}
 				</div>
 			)}
@@ -577,12 +569,60 @@ function PayslipAdminPage() {
 													<span className="text-[10px] text-muted-foreground">{breakdown.role_name ?? "-"}</span>
 												</td>
 												<td className="px-3 py-2.5 text-xs">{payslip.period_name ?? "-"}</td>
-												<td className="px-3 py-2.5 text-right tabular-nums text-xs">
-													{fmtCurrencyShort(payslip.gross_pay ?? 0)}
-												</td>
-												<td className="px-3 py-2.5 text-right tabular-nums font-semibold text-xs">
-													{fmtCurrencyShort(payslip.net_pay ?? 0)}
-												</td>
+								<td className="px-3 py-2.5 text-right tabular-nums text-xs">
+									{editingCell?.payslipId === payslip.id && editingCell.field === "gross_pay" ? (
+										<input
+											type="number"
+											className="w-20 h-7 px-1 text-right text-xs border rounded"
+											defaultValue={payslip.gross_pay ?? 0}
+											autoFocus
+											onBlur={(e) => {
+												e.stopPropagation();
+												const val = Number(e.target.value);
+												if (isFinite(val) && val !== (payslip.gross_pay ?? 0)) {
+													handleInlineSave(payslip.id, payslip.payroll_run_item_id, "gross_pay", val);
+												} else {
+													setEditingCell(null);
+												}
+											}}
+											onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setEditingCell(null); }}
+										/>
+									) : (
+										<span
+											className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+											onClick={(e) => { e.stopPropagation(); setEditingCell({ payslipId: payslip.id, runItemId: payslip.payroll_run_item_id, field: "gross_pay" }); }}
+										>
+											{fmtCurrencyShort(payslip.gross_pay ?? 0)}
+										</span>
+									)}
+								</td>
+								<td className="px-3 py-2.5 text-right tabular-nums font-semibold text-xs">
+									{editingCell?.payslipId === payslip.id && editingCell.field === "net_pay" ? (
+										<input
+											type="number"
+											className="w-20 h-7 px-1 text-right text-xs border rounded"
+											defaultValue={payslip.net_pay ?? 0}
+											autoFocus
+											onBlur={(e) => {
+												e.stopPropagation();
+												const val = Number(e.target.value);
+												if (isFinite(val) && val !== (payslip.net_pay ?? 0)) {
+													handleInlineSave(payslip.id, payslip.payroll_run_item_id, "net_pay", val);
+												} else {
+													setEditingCell(null);
+												}
+											}}
+											onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setEditingCell(null); }}
+										/>
+									) : (
+										<span
+											className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+											onClick={(e) => { e.stopPropagation(); setEditingCell({ payslipId: payslip.id, runItemId: payslip.payroll_run_item_id, field: "net_pay" }); }}
+										>
+											{fmtCurrencyShort(payslip.net_pay ?? 0)}
+										</span>
+									)}
+								</td>
 												<td className="px-3 py-2.5 text-center">
 													<span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusBadgeClass(payslip.status)}`}>
 														{translateStatus(payslip.status)}
