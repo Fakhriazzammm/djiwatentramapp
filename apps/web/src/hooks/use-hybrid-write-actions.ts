@@ -914,6 +914,9 @@ export function useHybridUpdateBaseRecipe() {
 			if (args?.ingredients !== undefined) {
 				updates.ingredients = Array.isArray(args.ingredients) ? args.ingredients : [];
 			}
+			if (args?.steps !== undefined) {
+				updates.steps = Array.isArray(args.steps) ? args.steps : [];
+			}
 			if (Object.keys(updates).length === 0) return;
 			const { error } = await createClient().schema("pos").from("base_recipes").update(updates).eq("source_id", id);
 			if (error) throw error;
@@ -960,6 +963,7 @@ export function useHybridSaveRecipe() {
 				product_source_id: productId,
 				variant_name: variantName,
 				ingredients: Array.isArray(args?.ingredients) ? args.ingredients : [],
+				steps: args?.steps ?? [],
 				creation_time: Date.now(),
 				raw: args ?? {},
 			};

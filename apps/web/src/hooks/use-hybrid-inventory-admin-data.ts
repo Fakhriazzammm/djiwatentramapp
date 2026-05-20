@@ -36,6 +36,16 @@ type InventoryRecord = {
 	_creationTime?: number;
 };
 
+export type RecipeStep = {
+  order: number;
+  title: string;
+  description: string;
+  icon?: string;
+  timerSeconds?: number | null;
+  temperature?: string | null;
+  ingredientIds?: string[] | null;
+};
+
 type RecipeRecord = {
 	_id: string;
 	productId: string;
@@ -44,6 +54,7 @@ type RecipeRecord = {
 		inventoryId: string;
 		amount: number;
 	}>;
+	steps?: RecipeStep[] | null;
 };
 
 type BaseRecipeRecord = {
@@ -57,6 +68,7 @@ type BaseRecipeRecord = {
 		inventoryId: string;
 		amount: number;
 	}>;
+	steps?: RecipeStep[] | null;
 };
 
 type ProductRecord = {

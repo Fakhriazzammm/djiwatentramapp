@@ -34,6 +34,8 @@ import {
 import { useHybridRecipes, useHybridBaseRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 import { useHybridCreateBaseRecipe, useHybridUpdateBaseRecipe, useHybridDeleteBaseRecipe, useHybridEnsureInventoryItemForBaseRecipe } from "@/hooks/use-hybrid-write-actions";
 import { BaseRecipeForm, ModalScaffold, IngredientEditor } from "@/components/admin/recipe-book";
+import { RecipeStepsEditor } from "@/components/admin/recipe-steps-editor";
+import type { RecipeStep } from "@/hooks/use-hybrid-inventory-admin-data";
 import { useHybridSaveRecipe, useHybridDeleteRecipe, useHybridUpsertHppFromRecipe } from "@/hooks/use-hybrid-write-actions";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -201,7 +203,10 @@ export function RecipeMatrixPage() {
 		targetUnit: "ml",
 		targetQuantity: "1000",
 		ingredients: [],
+		steps: [] as RecipeStep[],
 	});
+
+	const [baseSteps, setBaseSteps] = useState<RecipeStep[]>([]);
 
 	const loading = !products || !inventory || !recipes;
 
@@ -364,11 +369,8 @@ export function RecipeMatrixPage() {
 					ingredients,
 				});
 
-				setLocalAmounts((prev) => {
-					const next = { ...prev };
-					delete next[key];
-					return next;
-				});
+				// Keep value in localAmounts (already set optimistically by handleCellSave)
+				// Don't delete — avoids flashback to stale recipeByProduct before realtime refresh
 
 				// Sync HPP after recipe change (Recipe → HPP)
 				upsertHppFromRecipe({
@@ -553,7 +555,9 @@ export function RecipeMatrixPage() {
 			targetUnit: "ml",
 			targetQuantity: "1000",
 			ingredients: [],
+			steps: [],
 		});
+		setBaseSteps([]);
 		setBaseModalOpen(true);
 	};
 
@@ -566,7 +570,9 @@ export function RecipeMatrixPage() {
 			targetUnit: preset.targetUnit,
 			targetQuantity: preset.targetQuantity,
 			ingredients: [],
+			steps: [],
 		});
+		setBaseSteps([]);
 		setBaseModalOpen(true);
 	};
 
@@ -579,7 +585,9 @@ export function RecipeMatrixPage() {
 			targetUnit: br.targetUnit,
 			targetQuantity: String(br.targetQuantity),
 			ingredients: br.ingredients ?? [],
+			steps: br.steps ?? [],
 		});
+		setBaseSteps(br.steps ?? []);
 		setBaseModalOpen(true);
 	};
 
@@ -598,6 +606,7 @@ export function RecipeMatrixPage() {
 			targetUnit: baseForm.targetUnit.trim(),
 			targetQuantity: Number(baseForm.targetQuantity),
 			ingredients: baseForm.ingredients,
+			steps: baseSteps,
 		};
 		try {
 			if (editingBaseId) {
@@ -887,6 +896,24 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 												<Calculator className="h-3 w-3 shrink-0 text-muted-foreground/30 group-hover:text-primary/50" />
 											</Link>
 
+											{hasRecipe && (
+												<button
+													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-all"
+													onClick={(e) => {
+														e.preventDefault();
+														e.stopPropagation();
+														const existingRecipe = recipes?.find((r) => !r.variantName && String(r.productId) === String(product._id));
+														setProductStepsModal({
+															productId: String(product._id),
+															productName: product.name ?? '',
+															steps: existingRecipe?.steps ?? [],
+														});
+													}}
+													title="Atur langkah-langkah"
+													>
+														<ListOrdered className="h-3 w-3" />
+												</button>
+											)}
 											{hasRecipe && (
 												<button
 													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
@@ -1218,11 +1245,55 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 							latestInventoryCosts={costs}
 							setIngredients={(next) => setBaseForm((prev) => ({ ...prev, ingredients: next }))}
 						/>
+
+						<div className="border-t border-border pt-4 mt-4">
+							<RecipeStepsEditor
+								steps={baseSteps}
+								onChange={setBaseSteps}
+							/>
+						</div>
 						<div className="flex justify-end gap-2">
 							<Button onClick={() => setBaseModalOpen(false)} type="button" variant="outline">Batal</Button>
 							<Button type="submit">Simpan</Button>
 						</div>
 					</form>
+				</ModalScaffold>
+			)}
+
+			{/* ── Product Steps Modal ── */}
+			{productStepsModal && (
+				<ModalScaffold
+					onClose={() => setProductStepsModal(null)}
+					title={`Langkah-Langkah: ${productStepsModal.productName}`}
+				>
+					<div className="space-y-4">
+						<RecipeStepsEditor
+							steps={productStepsModal.steps}
+							onChange={(next) => setProductStepsModal((prev) => prev ? { ...prev, steps: next } : null)}
+						/>
+						<div className="flex justify-end gap-2 pt-2 border-t border-border">
+							<Button onClick={() => setProductStepsModal(null)} type="button" variant="outline" size="sm">Batal</Button>
+							<Button
+								type="button"
+								size="sm"
+								onClick={async () => {
+									try {
+										await saveRecipe({
+											productId: productStepsModal.productId as any,
+											ingredients: [],
+											steps: productStepsModal.steps,
+										});
+										toast.success('Langkah-langkah tersimpan');
+										setProductStepsModal(null);
+									} catch (err) {
+										toast.error(err?.message ?? 'Gagal menyimpan langkah');
+									}
+								}}
+							>
+								Simpan Langkah
+							</Button>
+						</div>
+					</div>
 				</ModalScaffold>
 			)}
 		</div>
