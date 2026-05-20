@@ -32,7 +32,7 @@ const QUICK_ACTIONS: ReadonlyArray<QuickActionItem> = [
 	},
 	{
 		label: "Absensi",
-		subtitle: "Clock In / Out",
+		subtitle: "Absen Masuk / Keluar",
 		icon: UserCheck,
 		gradient: "from-emerald-500 to-teal-400",
 		href: "/attendance",

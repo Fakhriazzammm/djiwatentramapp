@@ -92,7 +92,7 @@ function StockOpnamePage() {
         notes: `Stock opname ${role} selesai`,
       });
 
-      toast.success("Stock opname tersimpan & Clock Out berhasil!");
+      toast.success("Stock opname tersimpan & Absen Keluar berhasil!");
       navigate({ to: "/home" });
     } catch (err: any) {
       toast.error(err?.message || "Gagal menyimpan opname");

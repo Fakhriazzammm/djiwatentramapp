@@ -33,7 +33,7 @@ function getStripConfig(
 			border: "border border-emerald-500/20",
 			icon: Play,
 			iconColor: "text-emerald-500",
-			message: "Shift belum dimulai • Clock In",
+			message: "Shift belum dimulai • Absen Masuk",
 		};
 	}
 
@@ -42,7 +42,7 @@ function getStripConfig(
 		border: "border border-amber-500/20",
 		icon: Clock,
 		iconColor: "text-amber-500",
-		message: "Shift aktif — jangan lupa Clock Out",
+		message: "Shift aktif — jangan lupa Absen Keluar",
 	};
 }
 

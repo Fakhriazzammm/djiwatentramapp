@@ -350,12 +350,12 @@ export function StockOpnamePanel({
           ) : state.isLastPerson ? (
             <>
               <Check className="mr-2 h-5 w-5" />
-              Simpan FINAL & Clock Out
+              Simpan FINAL & Absen Keluar
             </>
           ) : (
             <>
               <ArrowRight className="mr-2 h-5 w-5" />
-              Simpan & Clock Out
+              Simpan & Absen Keluar
             </>
           )}
         </Button>

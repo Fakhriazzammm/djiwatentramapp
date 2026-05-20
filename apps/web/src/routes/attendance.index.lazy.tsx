@@ -800,7 +800,7 @@ function AttendancePage() {
 												? "bg-amber-100 text-amber-600 border border-amber-200 text-center" 
 												: "bg-emerald-100 text-emerald-600 border border-emerald-200 text-center"
 										}`}>
-											{user?.isCurrentlyIn ? "Clock Out Berhasil" : "Clock In Berhasil"}
+											{user?.isCurrentlyIn ? "Absen Keluar Berhasil" : "Absen Masuk Berhasil"}
 										</div>
 									</div>
 									<h2 className="text-3xl md:text-4xl font-black tracking-tight text-foreground uppercase">SUKSES!</h2>

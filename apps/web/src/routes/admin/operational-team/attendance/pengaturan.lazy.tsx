@@ -425,7 +425,7 @@ function AttendancePengaturanPage() {
 					<div className="rounded-xllll border border-amber-200 bg-amber-50 p-4 text-xs text-amber-700 leading-relaxed dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-300">
 						<p className="font-bold">Penting:</p>
 						<p className="mt-1">
-							Sistem absensi akan memvalidasi lokasi GPS staff saat melakukan Clock In/Out. 
+							Sistem absensi akan memvalidasi lokasi GPS staff saat melakukan Absen Masuk/Keluar. 
 							Pastikan koordinat di bawah sesuai dengan lokasi fisik kafe Anda.
 						</p>
 					</div>

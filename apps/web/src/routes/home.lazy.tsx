@@ -303,8 +303,8 @@ function HomePage() {
 	const primaryActionTitle = !hasFaceDescriptor
 		? "Daftarkan Wajah"
 		: statsToday?.isWorking
-			? "Clock Out"
-			: "Clock In";
+			? "Absen Keluar"
+			: "Absen Masuk";
 
 	const handlePrimaryAttendanceAction = () => {
 		if (!hasFaceDescriptor) {
@@ -582,7 +582,7 @@ function HomePage() {
 										onVerify={async (descriptor) => {
 											if (isProcessing) return;
 											setIsProcessing(true);
-											const toastId = toast.loading(statsToday?.isWorking ? "Proses Clock Out..." : "Proses Clock In...");
+											const toastId = toast.loading(statsToday?.isWorking ? "Proses Absen Keluar..." : "Proses Absen Masuk...");
 											try {
 												const location = await getCurrentLocation();
 												if (statsToday?.isWorking) {
@@ -612,14 +612,14 @@ function HomePage() {
 														faceDescriptor: descriptor,
 														location,
 													});
-													toast.success("Berhasil Clock Out", { id: toastId });
+													toast.success("Berhasil Absen Keluar", { id: toastId });
 												} else {
 													await clockIn({
 														userId: user!._id,
 														faceDescriptor: descriptor,
 														location,
 													});
-													toast.success("Berhasil Clock In", { id: toastId });
+													toast.success("Berhasil Absen Masuk", { id: toastId });
 												}
 												setShowFaceModal(false);
 												setRefreshCount(c => c + 1);
