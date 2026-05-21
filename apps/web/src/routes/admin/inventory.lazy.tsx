@@ -4725,7 +4725,21 @@ function InventoryTable({
 				normalizedDisplayUnit &&
 				normalizedDisplayUnit !== "pcs";
 			const hasChainConversion = (parsedUnitConversions?.length ?? 0) > 0;
-			if (!hasLegacyConversion && !hasChainConversion) {
+			const previousConversionsText = formatUnitConversionsText(
+				row.unitConversions,
+				row.displayUnit,
+				row.conversionFactor
+			);
+			const conversionFieldsChanged =
+				(current.displayUnit.trim() || "") !== (row.displayUnit ?? "") ||
+				(current.conversionFactor
+					? Number(current.conversionFactor)
+					: null) !== (row.conversionFactor ?? null) ||
+				current.unitConversionsText.trim() !== previousConversionsText;
+
+			// Jangan blok edit kolom lain (Min/Beli/Harga/etc) hanya karena item pcs belum punya konversi.
+			// Validasi ini hanya dijalankan kalau user memang mengubah field terkait konversi.
+			if (conversionFieldsChanged && !hasLegacyConversion && !hasChainConversion) {
 				toast.error(
 					"Untuk unit pcs, isi minimal satu konversi (contoh: gram:200 atau dus:12)"
 				);
@@ -4793,18 +4807,21 @@ function InventoryTable({
 						lowStockThreshold: lowStockThresholdNum,
 						displayUnit:
 							primaryConversion.displayUnit ||
-							(current.displayUnit.trim() || undefined),
+							(current.displayUnit.trim() || null),
 						conversionFactor:
 							primaryConversion.conversionFactor ||
 							(current.conversionFactor
 								? Number(current.conversionFactor)
-								: undefined),
+								: null),
 						unitConversions: parsedUnitConversions,
 						baseRecipeId: item.baseRecipeId || undefined,
 						defaultBrandName: current.defaultBrandName.trim() || undefined,
 						preferredStoreId,
-						preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
-						preferredPurchaseUnit: preferredPurchaseUnit || undefined,
+						preferredPurchaseQuantity:
+							preferredPurchaseQuantityRaw === ""
+								? null
+								: preferredPurchaseQuantityNum,
+						preferredPurchaseUnit: preferredPurchaseUnit || null,
 						category: current.category.trim(),
 						imagePath: current.imagePath.trim() || undefined,
 						netWeight: current.netWeight
@@ -4813,9 +4830,9 @@ function InventoryTable({
 						lastPurchasePrice: current.lastPurchasePrice
 							? Number(current.lastPurchasePrice)
 							: undefined,
-						packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : undefined,
-						packNetUnit: normalizeUnitOption(current.packNetUnit) || undefined,
-						contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : undefined,
+						packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : null,
+						packNetUnit: normalizeUnitOption(current.packNetUnit) || null,
+						contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null,
 						}),
 				{
 					loading: "Menyimpan perubahan...",

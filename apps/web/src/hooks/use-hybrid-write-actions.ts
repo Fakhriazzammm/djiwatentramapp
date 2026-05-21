@@ -1145,7 +1145,12 @@ export function useHybridUpdateInventoryItem() {
 			if (args?.baseRecipeId !== undefined) updates.base_recipe_source_id = args.baseRecipeId ?? null;
 			if (args?.defaultBrandName !== undefined) updates.default_brand_name = args.defaultBrandName ?? null;
 			if (args?.preferredStoreId !== undefined) updates.preferred_store_source_id = args.preferredStoreId ?? null;
-			if (args?.preferredPurchaseQuantity !== undefined) updates.preferred_purchase_quantity = Number(args.preferredPurchaseQuantity ?? 0);
+			if (args?.preferredPurchaseQuantity !== undefined) {
+				updates.preferred_purchase_quantity =
+					args.preferredPurchaseQuantity === null
+						? null
+						: Number(args.preferredPurchaseQuantity ?? 0);
+			}
 			if (args?.preferredPurchaseUnit !== undefined) updates.preferred_purchase_unit = args.preferredPurchaseUnit ?? null;
 			if (args?.netWeight !== undefined) updates.net_weight = args.netWeight ?? null;
 			if (args?.category !== undefined) updates.category = args.category ?? null;
