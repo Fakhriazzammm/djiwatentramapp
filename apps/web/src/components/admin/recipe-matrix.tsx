@@ -286,7 +286,10 @@ export function RecipeMatrixPage() {
 			const recipe = (recipes ?? []).find((r) => String(r.productId) === productId && !r.variantName);
 			if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) {
 				if (savedHppMap?.[productId]) {
-					result[productId] = savedHppMap[productId];
+					result[productId] = {
+						...savedHppMap[productId],
+						name: product.name ? `HPP ${product.name}` : (savedHppMap[productId]?.name ?? "HPP Produk"),
+					};
 				}
 				continue;
 			}
@@ -325,7 +328,7 @@ export function RecipeMatrixPage() {
 
 			result[productId] = {
 				hppId: savedHppMap?.[productId]?.hppId ?? productId,
-				name: savedHppMap?.[productId]?.name ?? `HPP ${product.name ?? ""}`,
+				name: product.name ? `HPP ${product.name}` : (savedHppMap?.[productId]?.name ?? "HPP Produk"),
 				hppPerServing: ingredientCostPerServing,
 				sellingPrice,
 				profitPerServing,
