@@ -6,6 +6,7 @@ import {
 	useState,
 	type ReactNode,
 } from "react";
+import { createClient } from "@/lib/client";
 import { toast } from "sonner";
 import {
 	logoutYumiSession,
@@ -79,9 +80,52 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 		[clearSession]
 	);
 
+	// Try Supabase session recovery when no custom token exists
+	const recoverFromSupabaseSession = useCallback(async () => {
+		try {
+			const supabase = createClient();
+			const { data: { session: sbSession } } = await supabase.auth.getSession();
+			if (!sbSession?.user) return;
+
+			const { data: claims, error: claimsError } = await supabase.rpc("get_yumi_user_claims");
+			if (claimsError || !claims?.role_name) return;
+
+			const userMeta = sbSession.user.user_metadata || {};
+			if (userMeta.is_active === false) return;
+
+			const recoveredSession = {
+				user: {
+					_id: claims.source_id || userMeta.source_id || "",
+					name: claims.name || userMeta.name || "",
+					username: (sbSession.user.email?.split("@")[0] ?? "") || "",
+					slug: userMeta.slug || "",
+					roleId: userMeta.role_source_id || "",
+					hasFace: false,
+					requiresPinChange: false,
+				},
+				role: {
+					_id: userMeta.role_source_id || "",
+					name: claims.role_name || "staff",
+					permissions: Array.isArray(claims.permissions) ? claims.permissions : [],
+				},
+				expiresAt: new Date(sbSession.expires_at!).getTime(),
+			} as YumiValidatedSession;
+
+			setSession(recoveredSession);
+			setIsLoading(false);
+		} catch {
+			// Silent — no session to recover
+		}
+	}, []);
+
 	useEffect(() => {
-		void refreshSession(token);
-	}, [refreshSession, token]);
+		if (token) {
+			void refreshSession(token);
+		} else {
+			// No custom token — try Supabase session recovery
+			void recoverFromSupabaseSession();
+		}
+	}, [refreshSession, recoverFromSupabaseSession, token]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
