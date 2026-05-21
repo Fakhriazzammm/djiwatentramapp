@@ -10,6 +10,8 @@ export type EmployeePersonalData = {
 	maritalStatus?: string;
 	emergencyContactName?: string;
 	emergencyContactPhone?: string;
+	bankName?: string;
+	bankAccount?: string;
 };
 
 export type EmployeeEmploymentData = {
@@ -182,6 +184,8 @@ export function buildEmployeeOnboardingPayload(
 			source: "public_register",
 			agreements: draft.agreements,
 			password: cleanText(employment.password),
+			bankName: cleanOptional(draft.personal.bankName),
+			bankAccount: cleanOptional(draft.personal.bankAccount),
 		},
 	};
 }

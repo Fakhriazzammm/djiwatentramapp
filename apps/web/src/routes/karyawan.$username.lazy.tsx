@@ -91,6 +91,8 @@ function StaffProfilePage() {
 	const [editPlaceOfBirth, setEditPlaceOfBirth] = useState("");
 	const [editEmergencyContactName, setEditEmergencyContactName] = useState("");
 	const [editEmergencyContactPhone, setEditEmergencyContactPhone] = useState("");
+const [editBankName, setEditBankName] = useState("");
+const [editBankAccount, setEditBankAccount] = useState("");
 
 	// Auto-unlock if current user is the owner or an admin
 	useEffect(() => {
@@ -146,6 +148,8 @@ function StaffProfilePage() {
 			setEditPlaceOfBirth(raw.placeOfBirth || "");
 			setEditEmergencyContactName(raw.emergencyContactName || "");
 			setEditEmergencyContactPhone(raw.emergencyContactPhone || "");
+			setEditBankName(String((raw as any)?.bankName ?? ""))
+			setEditBankAccount(String((raw as any)?.bankAccount ?? ""))
 		}
 	}, [staff, privateData, isUnlocked]);
 
@@ -555,17 +559,25 @@ function StaffProfilePage() {
 												<span className="text-muted-foreground font-medium">No Identitas (KTP)</span>
 												<span className="font-bold">{privateData?.raw?.identityNumber || "---"}</span>
 											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Tempat, Tgl Lahir</span>
-												<span className="font-bold">{[privateData?.raw?.placeOfBirth, privateData?.raw?.birthDate].filter(Boolean).join(", ") || "---"}</span>
-											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Alamat</span>
-												<span className="font-bold max-w-[180px] truncate">{privateData?.raw?.address || "---"}</span>
-											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Kontak Darurat</span>
-												<span className="font-bold text-right max-w-[180px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
+										<div className="flex justify-between items-center text-xs">
+											<span className="text-muted-foreground font-medium">Tempat, Tgl Lahir</span>
+											<span className="font-bold">{[privateData?.raw?.placeOfBirth, privateData?.raw?.birthDate].filter(Boolean).join(", ") || "---"}</span>
+										</div>
+										<div className="flex justify-between items-center text-xs">
+											<span className="text-muted-foreground font-medium">Alamat</span>
+											<span className="font-bold max-w-[180px] truncate">{privateData?.raw?.address || "---"}</span>
+										</div>
+										<div className="flex justify-between items-center text-xs">
+											<span className="text-muted-foreground font-medium">Nama Bank</span>
+											<span className="font-bold">{(privateData as any)?.raw?.bankName || "---"}</span>
+										</div>
+										<div className="flex justify-between items-center text-xs">
+											<span className="text-muted-foreground font-medium">No Rekening</span>
+											<span className="font-bold">{(privateData as any)?.raw?.bankAccount || "---"}</span>
+										</div>
+										<div className="flex justify-between items-center text-xs">
+											<span className="text-muted-foreground font-medium">Kontak Darurat</span>
+											<span className="font-bold text-right max-w-[180px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
 											</div>
 											<div className="border-t pt-3 mt-3 space-y-3">
 												<p className="text-[9px] font-black text-primary uppercase">Informasi Pekerjaan</p>
@@ -603,6 +615,8 @@ function StaffProfilePage() {
 														placeOfBirth: editPlaceOfBirth || undefined,
 														emergencyContactName: editEmergencyContactName || undefined,
 														emergencyContactPhone: editEmergencyContactPhone || undefined,
+														bankName: editBankName || undefined,
+														bankAccount: editBankAccount || undefined,
 													});
 
 													// Jika ada password baru, update via Supabase Auth
@@ -689,12 +703,20 @@ function StaffProfilePage() {
 														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tanggal Lahir</label>
 														<Input value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="YYYY-MM-DD" />
 													</div>
-													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Alamat</label>
-														<Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Alamat lengkap" />
-													</div>
-													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (Nama)</label>
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Alamat</label>
+													<Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Alamat lengkap" />
+												</div>
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Nama Bank</label>
+													<Input value={editBankName} onChange={(e) => setEditBankName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: BCA, Mandiri" />
+												</div>
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No Rekening</label>
+													<Input value={editBankAccount} onChange={(e) => setEditBankAccount(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nomor rekening" />
+												</div>
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (Nama)</label>
 														<Input value={editEmergencyContactName} onChange={(e) => setEditEmergencyContactName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nama kontak darurat" />
 													</div>
 													<div className="space-y-1">

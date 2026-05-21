@@ -48,6 +48,8 @@ const initialDraft: EmployeeOnboardingDraft = {
 		placeOfBirth: "",
 		emergencyContactName: "",
 		emergencyContactPhone: "",
+		bankName: "",
+		bankAccount: "",
 	},
 	employment: {
 		roleId: "",
@@ -425,6 +427,8 @@ function RegisterPage() {
 								<Field label="Tempat lahir"><Input value={draft.personal.placeOfBirth} onChange={(e) => updatePersonal("placeOfBirth", e.target.value)} placeholder="Contoh: Jakarta" /></Field>
 								<Field label="Kontak darurat"><Input value={draft.personal.emergencyContactName} onChange={(e) => updatePersonal("emergencyContactName", e.target.value)} placeholder="Nama kontak darurat" /></Field>
 								<Field label="No kontak darurat"><Input value={draft.personal.emergencyContactPhone} onChange={(e) => updatePersonal("emergencyContactPhone", e.target.value)} /></Field>
+								<Field label="Nama Bank"><Input value={draft.personal.bankName} onChange={(e) => updatePersonal("bankName", e.target.value)} placeholder="Contoh: BCA" /></Field>
+								<Field label="No Rekening"><Input value={draft.personal.bankAccount} onChange={(e) => updatePersonal("bankAccount", e.target.value)} placeholder="0123456789" /></Field>
 								<Field className="md:col-span-2" label="Alamat"><Textarea value={draft.personal.address} onChange={(e) => updatePersonal("address", e.target.value)} /></Field>
 							</CardContent>
 						</Card>

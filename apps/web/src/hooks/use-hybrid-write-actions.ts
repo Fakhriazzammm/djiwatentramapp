@@ -5004,6 +5004,8 @@ export function useHybridUpdateUserProfile() {
 				if (args?.placeOfBirth !== undefined) { rawUpdates.placeOfBirth = args.placeOfBirth; rawNeedsUpdate = true; }
 				if (args?.emergencyContactName !== undefined) { rawUpdates.emergencyContactName = args.emergencyContactName; rawNeedsUpdate = true; }
 				if (args?.emergencyContactPhone !== undefined) { rawUpdates.emergencyContactPhone = args.emergencyContactPhone; rawNeedsUpdate = true; }
+				if (args?.bankName !== undefined) { rawUpdates.bankName = args.bankName; rawNeedsUpdate = true; }
+				if (args?.bankAccount !== undefined) { rawUpdates.bankAccount = args.bankAccount; rawNeedsUpdate = true; }
 				if (args?.startDate !== undefined) { rawUpdates.startDate = args.startDate; rawNeedsUpdate = true; }
 				if (args?.employmentType !== undefined) { rawUpdates.employmentType = args.employmentType; rawNeedsUpdate = true; }
 				if (args?.location !== undefined) { rawUpdates.location = args.location; rawNeedsUpdate = true; }

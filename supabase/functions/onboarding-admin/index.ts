@@ -191,11 +191,15 @@ async function handleApprove(
   }
 
   // Build raw JSON for user
+  const appRaw = (app.raw as Record<string, unknown>) ?? {};
   const raw: Record<string, unknown> = {
     ...(payload.raw as Record<string, unknown> ?? {}),
     password,
     requiresPinChange: Boolean(requiresPinChange),
     onboardingApplicationId,
+    // Preserve bank info from registration
+    bankName: String(appRaw.bankName ?? "") || undefined,
+    bankAccount: String(appRaw.bankAccount ?? "") || undefined,
   };
 
   // Create user using direct fetch — retry if PIN fingerprint collides
