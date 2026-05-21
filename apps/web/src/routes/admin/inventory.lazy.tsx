@@ -4482,20 +4482,20 @@ function InventoryTable({
 			unit: row.unit,
 			lowStockThreshold: String(row.lowStockThreshold),
 			defaultBrandName: row.defaultBrandName ?? "",
-			preferredStoreName: row.lastPurchaseStoreName || row.preferredStoreName || "",
+			preferredStoreName: row.preferredStoreName || row.lastPurchaseStoreName || "",
 			lastPurchasePrice:
 				row.lastPurchasePrice != null
 					? String(row.lastPurchasePrice)
 					: "",
 			preferredPurchaseQuantity:
-				row.latestTransaction?.purchaseQuantity != null
-					? String(row.latestTransaction.purchaseQuantity)
-					: row.preferredPurchaseQuantity != null
-						? String(row.preferredPurchaseQuantity)
+				row.preferredPurchaseQuantity != null
+					? String(row.preferredPurchaseQuantity)
+					: row.latestTransaction?.purchaseQuantity != null
+						? String(row.latestTransaction.purchaseQuantity)
 						: "",
 			preferredPurchaseUnit:
-				normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
 				normalizeUnitOption(row.preferredPurchaseUnit) ||
+				normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
 				"",
 			displayUnit: row.displayUnit ?? "",
 			imagePath: row.imagePath ?? "",
@@ -4554,20 +4554,20 @@ function InventoryTable({
 				unit: row.unit,
 				lowStockThreshold: String(row.lowStockThreshold),
 				defaultBrandName: row.defaultBrandName ?? "",
-				preferredStoreName: row.lastPurchaseStoreName || row.preferredStoreName || "",
+				preferredStoreName: row.preferredStoreName || row.lastPurchaseStoreName || "",
 				lastPurchasePrice:
 					row.lastPurchasePrice != null
 						? String(row.lastPurchasePrice)
 						: "",
 				preferredPurchaseQuantity:
-					row.latestTransaction?.purchaseQuantity != null
-						? String(row.latestTransaction.purchaseQuantity)
-						: row.preferredPurchaseQuantity != null
-							? String(row.preferredPurchaseQuantity)
+					row.preferredPurchaseQuantity != null
+						? String(row.preferredPurchaseQuantity)
+						: row.latestTransaction?.purchaseQuantity != null
+							? String(row.latestTransaction.purchaseQuantity)
 							: "",
 				preferredPurchaseUnit:
-					normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
 					normalizeUnitOption(row.preferredPurchaseUnit) ||
+					normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
 					"",
 				displayUnit: row.displayUnit ?? "",
 			imagePath: row.imagePath ?? "",
@@ -4613,29 +4613,33 @@ function InventoryTable({
 				if (!existing) {
 					continue;
 				}
-				const latestStoreName = (row.lastPurchaseStoreName || "").trim();
-				const latestPurchaseQuantity = row.latestTransaction?.purchaseQuantity;
-				const latestPurchaseUnit = normalizeUnitOption(row.latestTransaction?.purchaseUnit);
+				const resolvedStoreName =
+					(row.preferredStoreName || row.lastPurchaseStoreName || "").trim();
+				const resolvedPurchaseQuantity =
+					row.preferredPurchaseQuantity ?? row.latestTransaction?.purchaseQuantity ?? null;
+				const resolvedPurchaseUnit =
+					normalizeUnitOption(row.preferredPurchaseUnit) ||
+					normalizeUnitOption(row.latestTransaction?.purchaseUnit);
 				let updated = existing;
-				if (latestStoreName && latestStoreName !== updated.preferredStoreName) {
+				if (resolvedStoreName !== updated.preferredStoreName) {
 					updated = {
 						...updated,
-						preferredStoreName: latestStoreName,
+						preferredStoreName: resolvedStoreName,
 					};
 				}
-				if (latestPurchaseQuantity != null) {
-					const normalizedQty = String(latestPurchaseQuantity);
-					if (normalizedQty !== updated.preferredPurchaseQuantity) {
-						updated = {
-							...updated,
-							preferredPurchaseQuantity: normalizedQty,
-						};
-					}
-				}
-				if (latestPurchaseUnit && latestPurchaseUnit !== normalizeUnitOption(updated.preferredPurchaseUnit)) {
+				const normalizedQty =
+					resolvedPurchaseQuantity == null ? "" : String(resolvedPurchaseQuantity);
+				if (normalizedQty !== updated.preferredPurchaseQuantity) {
 					updated = {
 						...updated,
-						preferredPurchaseUnit: latestPurchaseUnit,
+						preferredPurchaseQuantity: normalizedQty,
+					};
+				}
+				const normalizedUnit = normalizeUnitOption(updated.preferredPurchaseUnit);
+				if ((resolvedPurchaseUnit || "") !== normalizedUnit) {
+					updated = {
+						...updated,
+						preferredPurchaseUnit: resolvedPurchaseUnit || "",
 					};
 				}
 				if (updated !== existing) {
@@ -5196,16 +5200,16 @@ function InventoryTable({
 						lowStockThreshold: String(row.lowStockThreshold),
 						defaultBrandName: row.defaultBrandName ?? "",
 						preferredStoreName:
-							row.lastPurchaseStoreName || row.preferredStoreName || "",
+							row.preferredStoreName || row.lastPurchaseStoreName || "",
 						preferredPurchaseQuantity:
-							row.latestTransaction?.purchaseQuantity != null
-								? String(row.latestTransaction.purchaseQuantity)
-								: row.preferredPurchaseQuantity != null
-									? String(row.preferredPurchaseQuantity)
+							row.preferredPurchaseQuantity != null
+								? String(row.preferredPurchaseQuantity)
+								: row.latestTransaction?.purchaseQuantity != null
+									? String(row.latestTransaction.purchaseQuantity)
 									: "",
 						preferredPurchaseUnit:
-							normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
 							normalizeUnitOption(row.preferredPurchaseUnit) ||
+							normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
 							"",
 						displayUnit: row.displayUnit ?? "",
 			imagePath: row.imagePath ?? "",
