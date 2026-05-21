@@ -53,7 +53,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
-import { authClient } from "@/lib/auth-client";
 import { APP_VERSION } from "@/lib/version";
 import { Footer } from "@/components/layout/Footer";
 
@@ -710,13 +709,8 @@ function AdminLayout() {
 						className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 font-medium text-muted-foreground text-sm transition-all hover:bg-destructive/10 hover:text-destructive ${isCollapsed ? "justify-center px-0" : ""
 							}`}
 						onClick={() => {
-							authClient.signOut({
-								fetchOptions: {
-									onSuccess: () => {
-										navigate({ to: "/" });
-									},
-								},
-							});
+							logout();
+							navigate({ to: "/" });
 						}}
 						title={isCollapsed ? "Keluar" : undefined}
 						type="button"
@@ -800,15 +794,10 @@ function AdminLayout() {
 								<DropdownMenuSeparator />
 								<DropdownMenuItem
 									className="text-destructive focus:text-destructive"
-									onClick={() => {
-										authClient.signOut({
-											fetchOptions: {
-												onSuccess: () => {
-													navigate({ to: "/" });
-												},
-											},
-										});
-									}}
+								onClick={() => {
+									logout();
+									navigate({ to: "/" });
+								}}
 								>
 									<LogOut className="mr-2 h-4 w-4" />
 									<span>Keluar</span>
@@ -911,16 +900,11 @@ function AdminLayout() {
 								<div className="border-border border-t pt-3">
 									<button
 										className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive/10 p-2.5 transition-colors active:bg-destructive/20"
-										onClick={() => {
-											setIsQuickMenuOpen(false);
-											authClient.signOut({
-												fetchOptions: {
-													onSuccess: () => {
-														navigate({ to: "/" });
-													},
-												},
-											});
-										}}
+								onClick={() => {
+									setIsQuickMenuOpen(false);
+									logout();
+									navigate({ to: "/" });
+								}}
 										type="button"
 									>
 										<LogOut className="h-4 w-4 text-destructive" />

@@ -9,14 +9,13 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth-client";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 import { Button } from "./ui/button";
 
 export default function UserMenu() {
 	const navigate = useNavigate();
-	const { user } = useYumiAuth();
+	const { user, logout } = useYumiAuth();
 
 	return (
 		<DropdownMenu>
@@ -30,14 +29,9 @@ export default function UserMenu() {
 					<DropdownMenuItem>{user?.username}</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => {
-							authClient.signOut({
-								fetchOptions: {
-									onSuccess: () => {
-										navigate({
-											to: "/dashboard",
-										});
-									},
-								},
+							logout();
+							navigate({
+								to: "/dashboard",
 							});
 						}}
 						variant="destructive"

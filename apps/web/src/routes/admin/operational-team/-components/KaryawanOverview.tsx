@@ -27,12 +27,10 @@ import {
 	useHybridStaffUsers,
 } from "@/hooks/use-hybrid-pos-data";
 import {
-	useHybridBindUserProfile,
 	useHybridCreateUser,
 	useHybridUpdateUser,
 	useHybridDeleteUser,
 } from "@/hooks/use-hybrid-write-actions";
-import { authClient } from "@/lib/auth-client";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOME_PIN_REGEX = /^\d{6}$/;
@@ -69,7 +67,6 @@ export default function KaryawanOverview() {
 	const _createUser = useHybridCreateUser();
 	const _updateUser = useHybridUpdateUser();
 	const deleteUser = useHybridDeleteUser();
-	const bindProfile = useHybridBindUserProfile();
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [showAddModal, setShowAddModal] = useState(false);
@@ -215,26 +212,6 @@ export default function KaryawanOverview() {
 					homePin: normalizedHomePin || undefined,
 					slug: formUser.slug || undefined,
 				});
-
-				// Best effort sync to external auth
-				try {
-					const result = await authClient.signUp.email({
-						email: normalizedEmail,
-						password: formUser.password,
-						name: formUser.name,
-					});
-					const authUserId = result?.data?.user?.id;
-					if (authUserId && authUserId !== "test-id") {
-						await bindProfile({
-							authUserId,
-							name: formUser.name,
-							email: normalizedEmail,
-							roleId: formUser.roleId as Id<"roles">,
-						});
-					}
-				} catch {
-					// non-blocking
-				}
 
 				if (createdUserId) {
 					toast.success("User berhasil dibuat!");

@@ -1,17 +1,15 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 
-import SignInForm from "@/components/sign-in-form";
-import SignUpForm from "@/components/sign-up-form";
 import UserMenu from "@/components/user-menu";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { Button } from "@/components/ui/button";
 
 export const Route = createLazyFileRoute("/dashboard")({
 	component: RouteComponent,
 });
 
 function RouteComponent() {
-	const [showSignIn, setShowSignIn] = useState(false);
+	const navigate = useNavigate();
 	const { isAuthenticated } = useYumiAuth();
 	const privateData = isAuthenticated
 		? { message: "This is private" }
@@ -26,13 +24,13 @@ function RouteComponent() {
 					<UserMenu />
 				</div>
 			) : (
-				<>
-					{showSignIn ? (
-						<SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
-					) : (
-						<SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
-					)}
-				</>
+				<div style={{ padding: "2rem", textAlign: "center" }}>
+					<h2>Login Required</h2>
+					<p>You need to log in to access the dashboard.</p>
+					<Button onClick={() => navigate({ to: "/home" })}>
+						Login dengan PIN
+					</Button>
+				</div>
 			)}
 		</>
 	);

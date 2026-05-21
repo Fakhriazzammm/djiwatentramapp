@@ -59,7 +59,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { authClient } from "@/lib/auth-client";
 import {
 	useHybridSiteSettings,
 	useHybridStaffRoles,
@@ -75,7 +74,6 @@ import {
 	useHybridAdminCreateAttendanceLog,
 	useHybridAdminDeleteAttendanceLog,
 	useHybridAdminUpdateAttendanceLog,
-	useHybridBindUserProfile,
 	useHybridCreateRole,
 	useHybridCreateUser,
 	useHybridDeleteRole,
@@ -1181,7 +1179,6 @@ export function SettingsPage({
 	};
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const bindProfile = useHybridBindUserProfile();
 
 	const handleCreateUser = async () => {
 		const normalizedEmail = normalizeEmail(newUser.username);
@@ -1211,27 +1208,6 @@ export function SettingsPage({
 				homePin: normalizedHomePin || undefined,
 				slug: newUser.slug || undefined,
 			});
-
-			// Best effort sync to external auth provider.
-			try {
-				const result = await authClient.signUp.email({
-					email: normalizedEmail,
-					password: newUser.password,
-					name: newUser.name,
-				});
-				const authUserId = result?.data?.user?.id;
-				// Ignore known local stub id to prevent all users binding to the same auth id.
-				if (authUserId && authUserId !== "test-id") {
-					await bindProfile({
-						authUserId,
-						name: newUser.name,
-						email: normalizedEmail,
-						roleId: newUser.roleId as Id<"roles">,
-					});
-				}
-			} catch (_authError) {
-				// Do not fail the whole flow: profile is already created and can be managed from admin.
-			}
 
 			if (createdUserId) {
 				setNewUser({

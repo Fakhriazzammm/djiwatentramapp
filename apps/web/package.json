@@ -25,7 +25,6 @@
     "@types/papaparse": "^5.5.2",
     "@yumipos/backend": "workspace:*",
     "@yumipos/env": "workspace:*",
-    "better-auth": "^1.4.18",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
