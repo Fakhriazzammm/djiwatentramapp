@@ -205,7 +205,7 @@ export function useHybridSubmitEmployeeApplication() {
 					await fetch(supabaseUrl + "/functions/v1/send-telegram-report", {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ text: msg, chat_id: "-5204005129" }),
+						body: JSON.stringify({ text: msg, chat_id: "-1003337635075" }),
 					});
 				} catch (_e) {
 					// Silent -- jangan sampai gagal-kan registrasi
