@@ -919,7 +919,34 @@ const [editBankAccount, setEditBankAccount] = useState("");
 								</div>
 							</div>
 
-							{/* Quick Action Float */}
+						{/* Grup Telegram — selalu tampil */}
+							<div className="space-y-4">
+								<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
+									<Bell className="h-4 w-4 text-sky-500" />
+									Grup Telegram
+								</h3>
+								<div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
+									<div className="flex items-start gap-3">
+										<div className="shrink-0 mt-0.5 text-lg">💬</div>
+										<div className="flex-1 min-w-0">
+											<p className="text-[10px] font-black uppercase tracking-wide text-sky-800">Gabung Grup Karyawan</p>
+											<p className="mt-0.5 text-[11px] font-medium text-sky-700">
+												Dapatkan pengumuman, jadwal, dan info terbaru dari tim.
+											</p>
+											<Button
+												variant="outline"
+												size="sm"
+												className="mt-2 h-8 rounded-lg text-[10px] font-bold px-3 border-sky-300 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
+												onClick={() => window.open("https://t.me/addlist/076D_FFRNFw5ZWI1", "_blank")}
+											>
+												GABUNG GRUP
+											</Button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+						{/* Quick Action Float */}
 							<div className="fixed bottom-6 left-0 right-0 px-4">
 								<Button 
 									className="h-14 w-full max-w-2xl mx-auto rounded-2xl text-base font-black shadow-2xl shadow-primary/40 flex items-center justify-center gap-2"
