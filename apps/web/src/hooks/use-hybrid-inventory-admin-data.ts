@@ -33,6 +33,10 @@ type InventoryRecord = {
 	lastPurchaseStoreId?: string | null;
 	netWeight?: string | null;
 	imagePath?: string | null;
+	category?: string | null;
+	packNetQuantity?: number | null;
+	packNetUnit?: string | null;
+	contentToBaseFactor?: number | null;
 	_creationTime?: number;
 };
 
@@ -223,6 +227,10 @@ type InventoryWorkspaceData = {
 		lastPurchaseStoreName: string | null;
 		lastPurchasePrice: number | null;
 		netWeight: string | null;
+		category: string | null;
+		packNetQuantity: number | null;
+		packNetUnit: string | null;
+		contentToBaseFactor: number | null;
 		lowStockThreshold: number;
 		avgDailyUsage: number;
 		daysUntilStockout: number | null;
@@ -393,6 +401,18 @@ async function fetchInventoryRows() {
 		lastPurchaseStoreId: row.lastPurchaseStoreId ?? row.last_purchase_store_source_id ?? null,
 		imagePath: row.imagePath ?? row.image_path ?? null,
 		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
+		category: row.category ?? null,
+		packNetQuantity:
+			(row.packNetQuantity ?? row.pack_net_quantity) === null ||
+			(row.packNetQuantity ?? row.pack_net_quantity) === undefined
+				? null
+				: Number(row.packNetQuantity ?? row.pack_net_quantity),
+		packNetUnit: row.packNetUnit ?? row.pack_net_unit ?? null,
+		contentToBaseFactor:
+			(row.contentToBaseFactor ?? row.content_to_base_factor) === null ||
+			(row.contentToBaseFactor ?? row.content_to_base_factor) === undefined
+				? null
+				: Number(row.contentToBaseFactor ?? row.content_to_base_factor),
 		_creationTime:
 			(row._creationTime ?? row.creation_time) === null || (row._creationTime ?? row.creation_time) === undefined
 				? Number(row.lastPurchaseAt ?? row.last_purchase_at ?? 0)
@@ -755,6 +775,10 @@ async function loadWorkspace(daysWindow: number) {
 					  }
 					: null,
 				netWeight: item.netWeight ?? null,
+				category: item.category ?? null,
+				packNetQuantity: item.packNetQuantity ?? null,
+				packNetUnit: item.packNetUnit ?? null,
+				contentToBaseFactor: item.contentToBaseFactor ?? null,
 			};
 		})
 		.sort((left, right) => {

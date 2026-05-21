@@ -4815,7 +4815,7 @@ function InventoryTable({
 								: null),
 						unitConversions: parsedUnitConversions,
 						baseRecipeId: item.baseRecipeId || undefined,
-						defaultBrandName: current.defaultBrandName.trim() || undefined,
+						defaultBrandName: current.defaultBrandName.trim() || null,
 						preferredStoreId,
 						preferredPurchaseQuantity:
 							preferredPurchaseQuantityRaw === ""
@@ -4823,13 +4823,12 @@ function InventoryTable({
 								: preferredPurchaseQuantityNum,
 						preferredPurchaseUnit: preferredPurchaseUnit || null,
 						category: current.category.trim(),
-						imagePath: current.imagePath.trim() || undefined,
-						netWeight: current.netWeight
-							? Number(current.netWeight)
-							: undefined,
-						lastPurchasePrice: current.lastPurchasePrice
-							? Number(current.lastPurchasePrice)
-							: undefined,
+						imagePath: current.imagePath.trim() || null,
+						netWeight: current.netWeight.trim() || null,
+						lastPurchasePrice:
+							current.lastPurchasePrice.trim() === ""
+								? null
+								: Number(current.lastPurchasePrice),
 						packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : null,
 						packNetUnit: normalizeUnitOption(current.packNetUnit) || null,
 						contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null,

@@ -1154,11 +1154,12 @@ export function useHybridUpdateInventoryItem() {
 			if (args?.preferredPurchaseUnit !== undefined) updates.preferred_purchase_unit = args.preferredPurchaseUnit ?? null;
 			if (args?.netWeight !== undefined) updates.net_weight = args.netWeight ?? null;
 			if (args?.category !== undefined) updates.category = args.category ?? null;
+			if (args?.imagePath !== undefined) updates.image_path = args.imagePath ?? null;
 			if (args?.packNetQuantity !== undefined) updates.pack_net_quantity = args.packNetQuantity != null ? Number(args.packNetQuantity) : null;
 			if (args?.packNetUnit !== undefined) updates.pack_net_unit = args.packNetUnit ?? null;
 			if (args?.contentToBaseFactor !== undefined) updates.content_to_base_factor = args.contentToBaseFactor != null ? Number(args.contentToBaseFactor) : null;
-			if (args?.lastPurchasePrice !== undefined) updates.last_purchase_price = Number(args.lastPurchasePrice ?? 0);
-			if (args?.lastPurchaseAt !== undefined) updates.last_purchase_at = Number(args.lastPurchaseAt ?? 0);
+			if (args?.lastPurchasePrice !== undefined) updates.last_purchase_price = args.lastPurchasePrice != null ? Number(args.lastPurchasePrice) : null;
+			if (args?.lastPurchaseAt !== undefined) updates.last_purchase_at = args.lastPurchaseAt != null ? Number(args.lastPurchaseAt) : null;
 			if (args?.lastPurchaseStoreId !== undefined) updates.last_purchase_store_source_id = args.lastPurchaseStoreId ?? null;
 			if (Object.keys(updates).length === 0) return;
 			const { error } = await createClient().schema("pos").from("inventory").update(updates).eq("source_id", id);
