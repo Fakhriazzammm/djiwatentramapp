@@ -22,6 +22,7 @@ import {
 	Sparkles,
 	Gauge,
 	AlertCircle,
+	CircleDollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import {
 	useHybridAllProducts,
 	useHybridCategories,
 	useHybridInventory,
+	useHybridHppProductMap,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBaseRecipes,
@@ -202,6 +204,7 @@ export function RecipeViewPage() {
 	const inventory = useHybridInventory();
 	const recipes = useHybridRecipes();
 	const baseRecipes = useHybridBaseRecipes();
+	const hppMap = useHybridHppProductMap();
 
 	const [search, setSearch] = useState("");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -443,6 +446,23 @@ export function RecipeViewPage() {
 												{row.recipe.ingredients.length} bahan
 											</p>
 										</div>
+										{(() => {
+											const hpp = hppMap?.[row.product._id];
+											return hpp ? (
+												<span className="shrink-0 text-[10px] font-semibold tabular-nums text-emerald-600">
+													{new Intl.NumberFormat("id-ID", {
+														style: "currency",
+														currency: "IDR",
+														minimumFractionDigits: 0,
+														maximumFractionDigits: 0,
+													}).format(hpp.hppPerServing)}
+												</span>
+											) : (
+												<span className="shrink-0 text-[10px] text-muted-foreground/50 italic">
+													—
+												</span>
+											);
+										})()}
 										<ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100" />
 									</button>
 								))}
