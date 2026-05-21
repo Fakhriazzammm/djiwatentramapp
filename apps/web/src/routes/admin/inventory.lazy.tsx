@@ -4800,40 +4800,43 @@ function InventoryTable({
 				}
 			}
 			const toastResult = await withSaveToast(
-				() =>
-					updateItemMutation({
-						id: item._id,
-						ingredientName,
-						unit: normalizedUnit,
-						lowStockThreshold: lowStockThresholdNum,
-						displayUnit:
-							primaryConversion.displayUnit ||
-							(current.displayUnit.trim() || null),
-						conversionFactor:
-							primaryConversion.conversionFactor ||
-							(current.conversionFactor
-								? Number(current.conversionFactor)
-								: null),
-						unitConversions: parsedUnitConversions,
-						baseRecipeId: item.baseRecipeId || undefined,
-						defaultBrandName: current.defaultBrandName.trim() || null,
-						preferredStoreId,
-						preferredPurchaseQuantity:
-							preferredPurchaseQuantityRaw === ""
-								? null
-								: preferredPurchaseQuantityNum,
-						preferredPurchaseUnit: preferredPurchaseUnit || null,
-						category: current.category.trim(),
-						imagePath: current.imagePath.trim() || null,
-						netWeight: current.netWeight.trim() || null,
-						lastPurchasePrice:
-							current.lastPurchasePrice.trim() === ""
-								? null
-								: Number(current.lastPurchasePrice),
-						packNetQuantity: current.packNetQuantity ? Number(current.packNetQuantity) : null,
-						packNetUnit: normalizeUnitOption(current.packNetUnit) || null,
-						contentToBaseFactor: current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null,
-						}),
+				() => {
+					const payload: Record<string, unknown> = { id: item._id };
+					const category = current.category.trim();
+					const rowCategory = (inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen";
+					if (ingredientName !== row.ingredientName) payload.ingredientName = ingredientName;
+					if (normalizedUnit !== row.unit) payload.unit = normalizedUnit;
+					if (lowStockThresholdNum !== row.lowStockThreshold) payload.lowStockThreshold = lowStockThresholdNum;
+					if (current.defaultBrandName.trim() !== (row.defaultBrandName ?? ""))
+						payload.defaultBrandName = current.defaultBrandName.trim() || null;
+					if (preferredStoreNameNorm !== (row.preferredStoreName ?? "").trim().toLowerCase())
+						payload.preferredStoreId = preferredStoreId;
+					const newDisplayUnit = primaryConversion.displayUnit || (current.displayUnit.trim() || null);
+					if ((newDisplayUnit ?? "") !== (row.displayUnit ?? "")) payload.displayUnit = newDisplayUnit;
+					const convFactor = primaryConversion.conversionFactor || (current.conversionFactor ? Number(current.conversionFactor) : null);
+					if (convFactor !== (row.conversionFactor ?? null)) payload.conversionFactor = convFactor;
+					if (JSON.stringify(parsedUnitConversions) !== JSON.stringify(row.unitConversions))
+						payload.unitConversions = parsedUnitConversions;
+					if (preferredPurchaseQuantityNum !== row.preferredPurchaseQuantity)
+						payload.preferredPurchaseQuantity = preferredPurchaseQuantityRaw === "" ? null : preferredPurchaseQuantityNum;
+					if (preferredPurchaseUnit !== normalizeUnitOption(row.preferredPurchaseUnit))
+						payload.preferredPurchaseUnit = preferredPurchaseUnit || null;
+					if (category !== rowCategory) payload.category = category;
+					const imgPath = current.imagePath.trim() || null;
+					if ((imgPath ?? "") !== (row.imagePath ?? "")) payload.imagePath = imgPath;
+					const netW = current.netWeight.trim() || null;
+					if ((netW ?? "") !== (row.netWeight ?? "")) payload.netWeight = netW;
+					const pp = current.lastPurchasePrice.trim();
+					const newPrice = pp === "" ? null : Number(pp);
+					if (newPrice !== row.lastPurchasePrice) payload.lastPurchasePrice = newPrice;
+					const newPackQty = current.packNetQuantity ? Number(current.packNetQuantity) : null;
+					if (newPackQty !== (row.packNetQuantity ?? null)) payload.packNetQuantity = newPackQty;
+					const newPackUnit = normalizeUnitOption(current.packNetUnit) || null;
+					if (newPackUnit !== normalizeUnitOption(row.packNetUnit)) payload.packNetUnit = newPackUnit;
+					const newCBF = current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null;
+					if (newCBF !== (row.contentToBaseFactor ?? null)) payload.contentToBaseFactor = newCBF;
+					return updateItemMutation(payload);
+				},
 				{
 					loading: "Menyimpan perubahan...",
 					success: "Tersimpan",
