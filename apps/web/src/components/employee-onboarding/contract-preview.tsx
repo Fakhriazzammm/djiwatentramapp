@@ -1,5 +1,6 @@
 import type { EmployeeContractDraft } from "@/lib/employee-onboarding-schema";
 import { sanitizeContractHtml } from "@/lib/sanitize-contract-html";
+import { SignaturePad } from "@/components/employee-onboarding/signature-pad";
 
 function escapeRegExp(value: string) {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -61,9 +62,11 @@ type ContractPreviewProps = {
 	companyName?: string;
 	signatoryName?: string;
 	signatorySignatureUrl?: string;
+	editable?: boolean;
+	onSignatureChange?: (value: string) => void;
 };
 
-export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, signatoryName, signatorySignatureUrl }: ContractPreviewProps) {
+export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, signatoryName, signatorySignatureUrl, editable, onSignatureChange }: ContractPreviewProps) {
 	const rawHtml = contract.html
 		? contract.html
 		: contract.clauses?.length
@@ -141,6 +144,13 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 							className="mt-3 h-20 object-contain sm:mt-4 sm:h-24"
 							src={signatureDataUrl}
 						/>
+					) : editable ? (
+						<div className="mt-2 sm:mt-3">
+							<SignaturePad
+								value={signatureDataUrl}
+								onChange={(v) => onSignatureChange?.(v)}
+							/>
+						</div>
 					) : (
 						<div className="mt-12 sm:mt-16" />
 					)}

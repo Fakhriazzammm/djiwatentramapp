@@ -27,7 +27,6 @@ import { normalizeEmployeeOnboardingSettings, getRoleSalaryDefaults } from "@/li
 import { useHybridSignContract } from "@/hooks/use-employee-onboarding-actions";
 import { toast } from "sonner";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
-import { SignaturePad } from "@/components/employee-onboarding/signature-pad";
 import {
   buildEmployeeContractTemplate,
   buildContractVariableContext,
@@ -399,7 +398,7 @@ function RegisterCompletePage() {
     );
   }
 
-  // ── Phase: Contract Review (after approved) ──
+  // ── Phase: Contract Review + Signature Inline ──
   if (phase === "contract" && isContractPhase) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 px-3 py-6 sm:px-4 sm:py-8">
@@ -408,80 +407,55 @@ function RegisterCompletePage() {
             <Button size="sm" variant="ghost" onClick={() => setPhase("tracking")} className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <Badge variant="secondary" className="gap-1"><FileText className="h-3 w-3" /> Kontrak Kerja</Badge>
+            <Badge variant="secondary" className="gap-1"><FileSignature className="h-3 w-3" /> Review & Tanda Tangan</Badge>
           </div>
           <h1 className="text-xl font-bold tracking-tight">Review & Tanda Tangan Kontrak</h1>
-          <Card className="border sm:rounded-xl">
-            <CardHeader className="pb-2 sm:pb-4">
-              <CardTitle className="text-base sm:text-lg">Kontrak Kerja</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Baca kontrak dengan saksama sebelum melanjutkan.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {contractPreview?.plainText ? (
-                <ContractPreview contract={contractPreview} employeeName={app.full_name} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
-              ) : (
-                <div className="rounded-lg border border-dashed p-6 text-center">
-                  <p className="text-sm text-muted-foreground">Kontrak akan tersedia setelah admin menyiapkan template.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setPhase("tracking")}>
-              Batal
-            </Button>
-            <Button onClick={() => setPhase("signature")}>
-              Setuju & Lanjut ke Tanda Tangan
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  // ── Phase: Signature ──
-  if (phase === "signature" && isContractPhase) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 px-3 py-6 sm:px-4 sm:py-8">
-        <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setPhase("contract")} className="h-8 w-8">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Badge variant="secondary" className="gap-1"><FileSignature className="h-3 w-3" /> Tanda Tangan</Badge>
-          </div>
-          <h1 className="text-xl font-bold tracking-tight">Tanda Tangan Kontrak</h1>
-          <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-            <Card className="flex-1 border sm:rounded-xl">
-              <CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Tanda Tangan & Submit</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <SignaturePad value={signatureDataUrl} onChange={setSignatureDataUrl} />
-                <label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
-                  <Checkbox checked={agreedData} onCheckedChange={(v) => setAgreedData(Boolean(v))} className="size-5 border-2" />
-                  <span className="font-medium text-foreground select-none">Saya menyatakan data yang saya isi benar.</span>
-                </label>
-                <label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
-                  <Checkbox checked={agreedContract} onCheckedChange={(v) => setAgreedContract(Boolean(v))} className="size-5 border-2" />
-                  <span className="font-medium text-foreground select-none">Saya menyetujui isi kontrak kerja.</span>
-                </label>
+          {contractPreview?.plainText ? (
+            <ContractPreview
+              contract={contractPreview}
+              employeeName={app.full_name}
+              companyName={companyDisplayName}
+              signatoryName={signatoryPersonName}
+              signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
+              editable
+              onSignatureChange={setSignatureDataUrl}
+            />
+          ) : (
+            <Card className="border sm:rounded-xl">
+              <CardContent className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">Kontrak akan tersedia setelah admin menyiapkan template.</p>
               </CardContent>
             </Card>
-            <div className="flex-1">
-              {contractPreview && (
-                <ContractPreview contract={contractPreview} employeeName={app.full_name} signatureDataUrl={signatureDataUrl} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setPhase("contract")} disabled={isSigning}>
-              Kembali
-            </Button>
-            <Button onClick={handleSignContract} disabled={isSigning || !agreedData || !agreedContract || !signatureDataUrl}>
-              {isSigning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</> : "Kirim Tanda Tangan"}
-            </Button>
-          </div>
+          )}
+
+          {/* Checkboxes & Submit */}
+          <Card className="border sm:rounded-xl">
+            <CardHeader className="pb-2 sm:pb-4">
+              <CardTitle className="text-base sm:text-lg">Konfirmasi & Kirim</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Tanda tangani kontrak di area "Karyawan" di atas, lalu setujui persyaratan berikut.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
+                <Checkbox checked={agreedData} onCheckedChange={(v) => setAgreedData(Boolean(v))} className="size-5 border-2" />
+                <span className="font-medium text-foreground select-none">Saya menyatakan data yang saya isi benar.</span>
+              </label>
+              <label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
+                <Checkbox checked={agreedContract} onCheckedChange={(v) => setAgreedContract(Boolean(v))} className="size-5 border-2" />
+                <span className="font-medium text-foreground select-none">Saya menyetujui isi kontrak kerja.</span>
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-2">
+                <Button variant="outline" onClick={() => setPhase("tracking")} disabled={isSigning}>
+                  Batal
+                </Button>
+                <Button onClick={handleSignContract} disabled={isSigning || !agreedData || !agreedContract || !signatureDataUrl}>
+                  {isSigning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</> : "Kirim Tanda Tangan"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
