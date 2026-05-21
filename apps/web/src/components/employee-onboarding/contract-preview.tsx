@@ -125,6 +125,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 					<p className="text-xs font-medium text-slate-800 sm:text-sm">{displayCompanyName}</p>
 					{signatorySignatureUrl ? (
 						<img
+							crossOrigin="anonymous"
 							alt="Tanda tangan perusahaan"
 							className="mt-3 h-20 object-contain sm:mt-4 sm:h-24"
 							src={signatorySignatureUrl}
@@ -140,6 +141,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 					<p className="text-xs text-slate-500 sm:text-sm">Karyawan</p>
 					{signatureDataUrl ? (
 						<img
+							crossOrigin="anonymous"
 							alt="Tanda tangan karyawan"
 							className="mt-3 h-20 object-contain sm:mt-4 sm:h-24"
 							src={signatureDataUrl}
