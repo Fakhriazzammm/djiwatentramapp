@@ -1130,12 +1130,12 @@ export function useHybridUpdateInventoryItem() {
 			if (args?.lowStockThreshold !== undefined) updates.low_stock_threshold = Number(args.lowStockThreshold ?? 0);
 			if (args?.displayUnit !== undefined) updates.display_unit = args.displayUnit ?? null;
 			if (args?.conversionFactor !== undefined) {
-				// #3: CF Validation
+				// #3: CF Validation — allow decimals (e.g. 2.5 kg per pack)
 				const cfVal = args.conversionFactor === null ? null : Number(args.conversionFactor ?? 0);
 				if (cfVal !== null && cfVal > 1) {
-					if (!Number.isInteger(cfVal) || cfVal < 2 || cfVal > 100000) {
+					if (cfVal < 1 || cfVal > 100000) {
 						throw new Error(
-							`Faktor konversi harus bilangan bulat antara 2 dan 100.000. Nilai saat ini: ${cfVal}. Gunakan 1 atau kosongkan jika tidak ada konversi.`
+							`Faktor konversi harus antara 1 dan 100.000. Nilai saat ini: ${cfVal}. Gunakan 1 atau kosongkan jika tidak ada konversi.`
 						);
 					}
 				}

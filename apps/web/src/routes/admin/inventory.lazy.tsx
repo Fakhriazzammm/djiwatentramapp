@@ -4667,16 +4667,15 @@ function InventoryTable({
 		const normalizedUnit = normalizeUnitOption(current.unit);
 		const lowStockThresholdNum = Number(current.lowStockThreshold);
 		const conversionFactorNum = Number(current.conversionFactor);
-		// Validasi conversion factor: harus integer > 1 dan < 100000
+		// Validasi conversion factor: harus > 0 dan < 100000
 		const conversionFactorRaw = current.conversionFactor.trim();
 		if (conversionFactorRaw) {
 			if (
-				!Number.isInteger(Number(conversionFactorRaw)) ||
 				!Number.isFinite(conversionFactorNum) ||
-				conversionFactorNum < 1 ||
+				conversionFactorNum <= 0 ||
 				conversionFactorNum >= 100000
 			) {
-				toast.error("Faktor konversi harus bilangan bulat lebih dari 1 dan kurang dari 100.000");
+				toast.error("Faktor konversi harus lebih dari 0 dan kurang dari 100.000");
 				setInlineField(row, "conversionFactor",
 					typeof row.conversionFactor === "number" && row.conversionFactor > 0
 						? String(row.conversionFactor)
@@ -4724,8 +4723,7 @@ function InventoryTable({
 		if (normalizedUnit === "pcs") {
 			const hasLegacyConversion =
 				normalizedDisplayUnit &&
-				!Number.isNaN(conversionFactorNum) &&
-				conversionFactorNum > 0;
+				normalizedDisplayUnit !== "pcs";
 			const hasChainConversion = (parsedUnitConversions?.length ?? 0) > 0;
 			if (!hasLegacyConversion && !hasChainConversion) {
 				toast.error(
