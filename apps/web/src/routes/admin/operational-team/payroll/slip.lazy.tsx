@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { withSaveToast } from "@/lib/with-save-toast";
@@ -123,6 +123,7 @@ function PayslipAdminPage() {
 	const storeAddress = settings?.storeAddress || "";
 	const [isAutoProcessing, setIsAutoProcessing] = useState(false);
 	const [autoTrigger, setAutoTrigger] = useState(0);
+	const navigate = useNavigate();
 	const [editingCell, setEditingCell] = useState<{
 		payslipId: string;
 		runItemId: string;
@@ -540,6 +541,7 @@ function PayslipAdminPage() {
 										<th className="px-3 py-3">Karyawan</th>
 										<th className="px-3 py-3">Role</th>
 										<th className="px-3 py-3">Periode</th>
+										<th className="px-3 py-3 text-right">Run</th>
 										<th className="px-3 py-3 text-right">Gaji Bruto</th>
 										<th className="px-3 py-3 text-right">Gaji Bersih</th>
 										<th className="px-3 py-3 text-center">Status</th>
@@ -564,12 +566,23 @@ function PayslipAdminPage() {
 													/>
 												</td>
 												<td className="px-3 py-2.5">
-													<p className="font-semibold text-foreground text-xs">{payslip.user_name ?? "-"}</p>
+													<button
+														className="font-semibold text-foreground text-xs hover:text-primary hover:underline transition-colors text-left"
+														onClick={(e) => {
+															e.stopPropagation();
+															if (payslip.slug) navigate({ to: `/karyawan/${payslip.slug}` as any });
+														}}
+													>
+														{payslip.user_name ?? "-"}
+													</button>
 												</td>
 												<td className="px-3 py-2.5">
 													<span className="text-[10px] text-muted-foreground">{breakdown.role_name ?? "-"}</span>
 												</td>
 												<td className="px-3 py-2.5 text-xs">{payslip.period_name ?? "-"}</td>
+								<td className="px-3 py-2.5 text-xs text-muted-foreground tabular-nums">
+								{payslip.created_at ? new Date(payslip.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-"}
+								</td>
 								<td className="px-3 py-2.5 text-right tabular-nums text-xs">
 									{editingCell?.payslipId === payslip.id && editingCell.field === "gross_pay" ? (
 										<input
@@ -709,8 +722,11 @@ function PayslipAdminPage() {
 								<div className="text-center border-b pb-3">
 									<p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Slip Gaji</p>
 									<h2 className="text-lg font-black text-foreground mt-0.5">{p.user_name ?? "-"}</h2>
-									<p className="text-xs text-muted-foreground">{b.role_name ?? "-"}</p>
+									<p className="text-xs text-muted-foreground">{b.role_name ?? p.role_name ?? "-"}</p>
 									<p className="text-xs font-semibold text-primary mt-1">{monthName}</p>
+									<p className="text-[10px] text-muted-foreground mt-0.5">
+										Dibuat: {p.created_at ? new Date(p.created_at).toLocaleDateString("id-ID") : "-"}
+									</p>
 								</div>
 
 								{/* Attendance Summary */}

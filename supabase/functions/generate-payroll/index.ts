@@ -192,16 +192,15 @@ async function generatePayrollRun(supabase: ReturnType<typeof createClient>, per
     ),
     attendance AS (
       SELECT
-        s.user_id,
-        s.user_name,
-        s.role_name,
-        s.total_days_worked,
-        s.total_shifts,
-        s.period_start,
-        s.period_end
-      FROM pos.pos_attendance_payroll_summary_view s
-      WHERE s.period_start >= (SELECT start_date FROM period)
-        AND s.period_end <= (SELECT end_date FROM period)
+        user_id,
+        user_name,
+        role_name,
+        total_days_worked,
+        total_shifts
+      FROM pos.get_attendance_summary_for_period(
+        (SELECT start_date FROM period),
+        (SELECT end_date FROM period)
+      )
     ),
     inserted_items AS (
       INSERT INTO pos.payroll_run_items (
@@ -236,12 +235,18 @@ async function generatePayrollRun(supabase: ReturnType<typeof createClient>, per
           + COALESCE(att.total_shifts, 0) * st.base_shift_rate
           + COALESCE(att.total_days_worked, 0) * st.daily_allowance,
         jsonb_build_object(
+          'role_name', st.role_name,
           'base_shift_rate', st.base_shift_rate,
           'monthly_fixed_salary', st.monthly_fixed_salary,
           'daily_allowance', st.daily_allowance,
           'overtime_rate_per_hour', st.overtime_rate_per_hour,
           'shifts', COALESCE(att.total_shifts, 0),
-          'days_worked', COALESCE(att.total_days_worked, 0)
+          'days_worked', COALESCE(att.total_days_worked, 0),
+          'total_shift_pay', COALESCE(att.total_shifts, 0) * st.base_shift_rate,
+          'total_allowance', COALESCE(att.total_days_worked, 0) * st.daily_allowance,
+          'total_overtime_bonus', 0,
+          'total_penalty', 0,
+          'bonus_target', '{}'::jsonb
         )
       FROM staff st
       LEFT JOIN attendance att ON att.user_id = st.user_id
@@ -264,7 +269,7 @@ async function generatePayrollRun(supabase: ReturnType<typeof createClient>, per
 async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>, runId: string) {
   const sql = `
     INSERT INTO pos.payslips (
-      payroll_run_item_id, user_id, user_name,
+      payroll_run_item_id, user_id, user_name, slug,
       period_name, period_start, period_end,
       gross_pay, deductions, net_pay, breakdown, status
     )
@@ -272,6 +277,7 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
       ri.id,
       ri.user_id,
       ri.user_name,
+      (SELECT slug FROM public.pos_staff_users WHERE _id = ri.user_id),
       pp.period_name,
       pp.start_date,
       pp.end_date,
@@ -289,6 +295,7 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
       deductions = EXCLUDED.deductions,
       net_pay = EXCLUDED.net_pay,
       breakdown = EXCLUDED.breakdown,
+      slug = EXCLUDED.slug,
       updated_at = now();
   `;
   return queryRaw(supabase, sql);
@@ -340,6 +347,7 @@ async function handleSyncPayslipFromRunItem(supabase: ReturnType<typeof createCl
       deductions = (SELECT deductions FROM pos.payroll_run_items WHERE id = '${runItemId}'),
       net_pay = (SELECT net_pay FROM pos.payroll_run_items WHERE id = '${runItemId}'),
       breakdown = (SELECT compensation_breakdown FROM pos.payroll_run_items WHERE id = '${runItemId}'),
+      slug = (SELECT slug FROM public.pos_staff_users WHERE _id = (SELECT user_id FROM pos.payroll_run_items WHERE id = '${runItemId}')),
       updated_at = now()
     WHERE id = '${payslipId}'
     RETURNING *;
