@@ -94,6 +94,41 @@ function StaffProfilePage() {
 const [editBankName, setEditBankName] = useState("");
 const [editBankAccount, setEditBankAccount] = useState("");
 
+	// Onboarding state
+	const ONBOARDING_DISMISS_KEY = "karyawan_onboarding_dismissed";
+	const [showOnboarding, setShowOnboarding] = useState(() => {
+		if (typeof window === "undefined") return false;
+		if (authUser?.slug !== username) return false;
+		return !localStorage.getItem(ONBOARDING_DISMISS_KEY);
+	});
+	const [completedSteps, setCompletedSteps] = useState(0);
+	const [isCelebrating, setIsCelebrating] = useState(false);
+	const [showEditTooltip, setShowEditTooltip] = useState(false);
+
+	const dismissOnboarding = useCallback(() => {
+		setIsCelebrating(true);
+		setTimeout(() => {
+			localStorage.setItem(ONBOARDING_DISMISS_KEY, "true");
+			setShowOnboarding(false);
+			setIsCelebrating(false);
+			setCompletedSteps(0);
+		}, 800);
+	}, []);
+
+	const handleLengkapiData = useCallback(() => {
+		setCompletedSteps(1);
+		localStorage.setItem(ONBOARDING_DISMISS_KEY, "true");
+		setShowOnboarding(false);
+		setIsEditMode(true);
+		setShowEditTooltip(true);
+		setTimeout(() => setShowEditTooltip(false), 4000);
+	}, []);
+
+	const handleGabungGrup = useCallback(() => {
+		setCompletedSteps(2);
+		window.open("https://t.me/addlist/076D_FFRNFw5ZWI1", "_blank");
+	}, []);
+
 	// Auto-unlock if current user is the owner or an admin
 	useEffect(() => {
 		if (isAuthenticated && authUser) {
@@ -522,6 +557,7 @@ const [editBankAccount, setEditBankAccount] = useState("");
 										<User className="h-4 w-4 text-primary" />
 										Data Pribadi
 									</h3>
+									<div className="flex items-center gap-1">
 									<Button 
 										variant="ghost" 
 										size="sm" 
@@ -530,6 +566,25 @@ const [editBankAccount, setEditBankAccount] = useState("");
 									>
 										{isEditMode ? "BATAL" : "EDIT PROFIL"}
 									</Button>
+									{showEditTooltip && (
+										<motion.div
+											initial={{ opacity: 0, x: -10 }}
+											animate={{ opacity: 1, x: 0 }}
+											exit={{ opacity: 0 }}
+											className="relative inline-flex items-center gap-1.5"
+										>
+											<motion.div
+												animate={{ x: [0, 3, 0] }}
+												transition={{ repeat: Infinity, duration: 1.5 }}
+											>
+												<span className="text-base">👉</span>
+											</motion.div>
+											<span className="whitespace-nowrap rounded-lg bg-primary px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">
+												Isi data dirimu!
+											</span>
+										</motion.div>
+									)}
+									</div>
 								</div>
 								
 								<div className="rounded-2xl border bg-card p-4 space-y-4">
@@ -878,6 +933,194 @@ const [editBankAccount, setEditBankAccount] = useState("");
 					)}
 				</AnimatePresence>
 			</main>
+
+		{/* Onboarding Overlay */}
+		<AnimatePresence>
+			{showOnboarding && isUnlocked && (
+				<motion.div
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4"
+				>
+					<motion.div
+						initial={{ opacity: 0, y: "100%" }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: "100%" }}
+						transition={{ type: "spring", damping: 30, stiffness: 300 }}
+						className="relative w-full sm:max-w-md bg-card border rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 pb-8 sm:pb-6 shadow-2xl max-h-[85vh] overflow-y-auto"
+					>
+						{isCelebrating && (
+							<div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-10">
+								{Array.from({ length: 12 }).map((_, i) => (
+									<motion.div
+										key={i}
+										className="absolute h-2 w-2 rounded-full"
+										style={{
+											left: `${10 + Math.random() * 80}%`,
+											top: `${10 + Math.random() * 40}%`,
+											background: ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"][i % 5],
+										}}
+										initial={{ opacity: 1, scale: 1, y: 0 }}
+										animate={{
+											opacity: 0,
+											scale: 0,
+											y: -80 - Math.random() * 120,
+											x: (Math.random() - 0.5) * 60,
+											rotate: Math.random() * 360,
+										}}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									/>
+								))}
+								<motion.div
+									className="absolute inset-0 flex items-center justify-center"
+									initial={{ scale: 0, opacity: 0 }}
+									animate={{ scale: 1.5, opacity: [0, 1, 1, 0] }}
+									transition={{ duration: 0.6 }}
+								>
+									<div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30">
+										<Check className="h-8 w-8 text-white" />
+									</div>
+								</motion.div>
+							</div>
+						)}
+
+						{/* X button */}
+						<button
+							onClick={dismissOnboarding}
+							className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+						>
+							<X className="h-4 w-4" />
+						</button>
+
+						{/* Progress Bar */}
+						<div className="mb-5 mt-2">
+							<div className="flex items-center justify-between mb-1.5">
+								<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+									{completedSteps === 0 ? 'Baru Mulai' : completedSteps === 1 ? '1 Langkah Selesai' : 'Selesai!'}
+								</span>
+								<span className="text-[9px] font-bold text-muted-foreground">{completedSteps}/2</span>
+							</div>
+							<div className="h-1.5 rounded-full bg-muted overflow-hidden">
+								<motion.div
+									initial={{ width: "0%" }}
+									animate={{ width: `${(completedSteps / 2) * 100}%` }}
+									transition={{ type: "spring", damping: 20, stiffness: 200 }}
+									className={`h-full rounded-full ${completedSteps === 2 ? "bg-emerald-500" : "bg-primary"}`}
+								/>
+							</div>
+						</div>
+
+						{/* Welcome */}
+						<div className="text-center mb-6">
+							<motion.div
+								initial={{ scale: 0 }}
+								animate={{ scale: 1 }}
+								transition={{ delay: 0.2, type: "spring", damping: 15 }}
+								className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10"
+							>
+								<span className="text-2xl">✨</span>
+							</motion.div>
+							<h2 className="text-lg sm:text-xl font-black tracking-tight">Selamat Datang!</h2>
+							<p className="text-xs text-muted-foreground mt-1">Selesaikan 2 langkah berikut untuk memulai.</p>
+						</div>
+
+						{/* Step 1: Lengkapi Data */}
+						{completedSteps >= 1 ? (
+							<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 mb-3">
+								<div className="flex items-center gap-3">
+									<div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white">
+										<Check className="h-4 w-4" />
+									</div>
+									<div>
+										<p className="font-bold text-sm text-emerald-800">Data Diri ✓</p>
+										<p className="text-[11px] text-emerald-600">Sudah dilengkapi</p>
+									</div>
+								</div>
+							</div>
+						) : (
+							<motion.div
+								initial={{ opacity: 0, x: -20 }}
+								animate={{ opacity: 1, x: 0 }}
+								transition={{ delay: 0.3 }}
+								className="rounded-xl border p-3.5 mb-3"
+							>
+								<div className="flex items-start gap-3">
+									<div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm sm:text-base font-black text-primary">
+										1
+									</div>
+									<div className="flex-1 min-w-0">
+										<p className="font-bold text-sm">Lengkapi Data Diri</p>
+										<p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+											Isi No HP, alamat, dan data lainnya agar administrasi lebih mudah.
+										</p>
+										<Button
+											size="sm"
+											className="mt-2 h-8 rounded-lg text-[10px] font-bold px-3"
+											onClick={handleLengkapiData}
+										>
+											LENGKAPI SEKARANG
+										</Button>
+									</div>
+								</div>
+							</motion.div>
+						)}
+
+						{/* Step 2: Telegram Group */}
+						{completedSteps >= 2 ? (
+							<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 mb-4">
+								<div className="flex items-center gap-3">
+									<div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white">
+										<Check className="h-4 w-4" />
+									</div>
+									<div>
+										<p className="font-bold text-sm text-emerald-800">Grup Telegram ✓</p>
+										<p className="text-[11px] text-emerald-600">Sudah bergabung</p>
+									</div>
+								</div>
+							</div>
+						) : (
+							<motion.div
+								initial={{ opacity: 0, x: -20 }}
+								animate={{ opacity: 1, x: 0 }}
+								transition={{ delay: 0.5 }}
+								className="rounded-xl border p-3.5 mb-4"
+							>
+								<div className="flex items-start gap-3">
+									<div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sm sm:text-base font-black text-sky-600">
+										2
+									</div>
+									<div className="flex-1 min-w-0">
+										<p className="font-bold text-sm">Gabung Grup Telegram</p>
+										<p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+											Dapatkan informasi terbaru, pengumuman, dan update dari tim.
+										</p>
+										<Button
+											size="sm"
+											variant="outline"
+											className="mt-2 h-8 rounded-lg text-[10px] font-bold px-3"
+											onClick={handleGabungGrup}
+										>
+											GABUNG GRUP
+										</Button>
+									</div>
+								</div>
+							</motion.div>
+						)}
+
+						{/* Skip */}
+						<div className="text-center">
+							<button
+								onClick={dismissOnboarding}
+								className="text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors"
+							>
+								Nanti Saja
+							</button>
+						</div>
+					</motion.div>
+				</motion.div>
+			)}
+		</AnimatePresence>
 
 			<Footer className="mt-6 pb-6" />
 		</div>
