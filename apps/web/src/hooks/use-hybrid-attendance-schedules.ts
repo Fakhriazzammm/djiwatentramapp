@@ -2,6 +2,18 @@ import { useCallback, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
+// Fallback generateId() untuk non-secure context
+function generateId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
+}
+
 export type AttendanceSchedule = {
   _id: string;
   userId: string;
@@ -102,7 +114,7 @@ export function useHybridCreateAttendanceSchedule() {
     try {
       const supabase = createClient();
       const pos = supabase.schema("pos");
-      const sourceId = crypto.randomUUID();
+      const sourceId = generateId();
       const { error: dbError } = await pos.from("attendance_schedules").insert({
         source_id: sourceId,
         user_id: input.userId,
@@ -156,7 +168,7 @@ export function useHybridBulkCreateAttendanceSchedules() {
       const supabase = createClient();
       const pos = supabase.schema("pos");
       const records = inputs.map((i) => ({
-        source_id: crypto.randomUUID(),
+        source_id: generateId(),
         user_id: i.userId,
         date: i.date,
         shift_name: i.shiftName,
@@ -220,7 +232,7 @@ export function useHybridBulkReplaceAttendanceSchedules() {
         // Insert new records
         if (inputs.length > 0) {
           const records = inputs.map((i) => ({
-            source_id: crypto.randomUUID(),
+            source_id: generateId(),
             user_id: i.userId,
             date: i.date,
             shift_name: i.shiftName,
