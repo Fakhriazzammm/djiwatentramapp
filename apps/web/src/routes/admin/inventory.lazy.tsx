@@ -4773,7 +4773,8 @@ function InventoryTable({
             (current.lastPurchasePrice
                 ? Number(current.lastPurchasePrice)
                 : null) === (row.lastPurchasePrice ?? null) &&
-            (current.netWeight?.trim() || "") === (row.netWeight ?? "")
+            (current.netWeight?.trim() || "") === (row.netWeight ?? "") &&
+            (Number(current.quantity) || 0) === (row.currentStock ?? 0)
 		) {
 			return;
 		}
@@ -4835,6 +4836,10 @@ function InventoryTable({
 					if (newPackUnit !== normalizeUnitOption(row.packNetUnit)) payload.packNetUnit = newPackUnit;
 					const newCBF = current.contentToBaseFactor ? Number(current.contentToBaseFactor) : null;
 					if (newCBF !== (row.contentToBaseFactor ?? null)) payload.contentToBaseFactor = newCBF;
+					const qtyNum = current.quantity === "" ? null : Number(current.quantity);
+					if (qtyNum !== null && !Number.isNaN(qtyNum) && qtyNum >= 0 && qtyNum !== row.currentStock) {
+						payload.quantity = qtyNum;
+					}
 					return updateItemMutation(payload);
 				},
 				{
