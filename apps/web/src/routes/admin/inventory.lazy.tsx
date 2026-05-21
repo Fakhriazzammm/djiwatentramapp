@@ -4021,6 +4021,7 @@ function InventoryTable({
 	const [imagePopoverPos, setImagePopoverPos] = useState<{top: number; left: number} | null>(null);
 	const imagePopoverRef = useRef<HTMLDivElement | null>(null);
 	const [imageUrlInput, setImageUrlInput] = useState("");
+	const [isRecalculating, setIsRecalculating] = useState(false);
 	const [imagePopoverTab, setImagePopoverTab] = useState<"upload" | "url">("upload");
 	const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
 	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -4031,6 +4032,12 @@ function InventoryTable({
 			setLastRefreshedAt(new Date());
 			refreshTimerRef.current = null;
 		}, 600);
+	}, []);
+
+	const handleRecalculateAll = useCallback(() => {
+		setIsRecalculating(true);
+		triggerHybridRefresh();
+		setLastRefreshedAt(new Date());
 	}, []);
 
 	// Click outside to close dropdown
@@ -4059,6 +4066,13 @@ function InventoryTable({
 		};
 	}, [imagePopoverRow]);
 	const inventoryCosts = useHybridLatestInventoryCosts();
+	const prevRowsRef = useRef(filteredRows);
+	useEffect(() => {
+		if (isRecalculating && filteredRows !== prevRowsRef.current) {
+			setIsRecalculating(false);
+		}
+		prevRowsRef.current = filteredRows;
+	}, [filteredRows, isRecalculating]);
 	const statusFilteredRows = useMemo(() => {
 		return statusFilter === "all"
 			? filteredRows
@@ -5300,6 +5314,12 @@ function InventoryTable({
 					<span className="text-muted-foreground/40">·</span>
 					<span>4. Konversi, Harga</span>
 				</div>
+				{isRecalculating && (
+					<div className="mb-1.5 flex items-center gap-2 px-2.5 py-1">
+						<Loader2 className="h-3 w-3 animate-spin text-primary" />
+						<span className="text-[10px] font-medium text-primary">Menghitung ulang...</span>
+					</div>
+				)}
 				<div className="overflow-x-auto">
 				<table
 				className="min-w-[2200px] w-max table-auto text-left text-[8px] md:text-[9px]"
@@ -5384,7 +5404,7 @@ function InventoryTable({
 										))}
 									<button
 										className="ml-0.5 rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-										onClick={(e) => { e.stopPropagation(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										onClick={(e) => { e.stopPropagation(); handleRecalculateAll(); }}
 										title="Hitung ulang harga"
 										type="button"
 									>
@@ -5397,7 +5417,7 @@ function InventoryTable({
 									Harga/Unit
 									<button
 										className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-										onClick={() => { triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										onClick={() => handleRecalculateAll()}
 										title="Hitung ulang harga/unit"
 										type="button"
 									>
@@ -5411,7 +5431,7 @@ function InventoryTable({
 									Nilai Stok
 									<button
 										className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-										onClick={() => { triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										onClick={() => handleRecalculateAll()}
 										title="Hitung ulang nilai stok"
 										type="button"
 									>
@@ -5424,8 +5444,8 @@ function InventoryTable({
 									<div className="flex items-center gap-0.5">
 										<button
 											className="rounded p-0.5 text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
-											onClick={() => { triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
-											title="Refresh data bahan baku"
+											onClick={() => handleRecalculateAll()}
+											title="Hitung ulang semua data"
 											type="button"
 										>
 											<RotateCw className="h-3 w-3" />
