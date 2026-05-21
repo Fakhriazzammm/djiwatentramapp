@@ -556,7 +556,7 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{nama_karyawan}}": personal.fullName || "Karyawan",
 		"{{nik}}": personal.identityNumber || "-",
 		"{{tempat_lahir}}": personal.placeOfBirth || "-",
-		"{{tanggal_lahir}}": personal.birthDate || "-",
+		"{{tanggal_lahir}}": formatDateId(personal.birthDate),
 		"{{alamat}}": personal.address || "-",
 		"{{agama}}": personal.religion || "-",
 		"{{status_pernikahan}}": personal.maritalStatus || "-",

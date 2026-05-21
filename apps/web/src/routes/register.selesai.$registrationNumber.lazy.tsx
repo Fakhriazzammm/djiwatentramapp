@@ -289,6 +289,7 @@ function RegisterCompletePage() {
       phone: app.phone || "",
       identityNumber: app.identity_number || "",
       address: app.address || "",
+      placeOfBirth: app.birth_place || "",
       birthDate: app.birth_date || "",
       emergencyContactName: app.emergency_contact?.name || "",
       emergencyContactPhone: app.emergency_contact?.phone || "",
