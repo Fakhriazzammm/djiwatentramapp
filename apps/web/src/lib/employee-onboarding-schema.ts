@@ -24,6 +24,7 @@ export type EmployeeEmploymentData = {
 	username: string;
 	slug: string;
 	homePin?: string;
+	password?: string;
 	contractDuration?: number;
 	/** Selected by candidate: 6, 12, or 24 months for probation type; fixed 1 for others */
 	probationDurationMonths?: 1 | 6 | 12 | 24;
@@ -180,6 +181,7 @@ export function buildEmployeeOnboardingPayload(
 		raw: {
 			source: "public_register",
 			agreements: draft.agreements,
+			password: cleanText(employment.password),
 		},
 	};
 }

@@ -10,11 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
 import { createClient } from "@/lib/client";
-import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridApproveApplication, useHybridRejectApplication, useHybridMarkRevision, useHybridDeleteApplication } from "@/hooks/use-employee-onboarding-actions";
-import { calculateEstimatedMonthlySalary, buildContractVariableContext, replaceContractVariables } from "@/lib/employee-onboarding-schema";
-import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
+import { calculateEstimatedMonthlySalary, buildContractVariableContext, replaceContractVariables, buildEmployeeContractTemplate } from "@/lib/employee-onboarding-schema";
+import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, getRoleSalaryDefaults } from "@/lib/employee-onboarding-settings";
 import { jsPDF } from "jspdf";
 import { Separator } from "@/components/ui/separator";
 
@@ -31,6 +31,7 @@ function ApplicationDetailPage() {
 	const { registrationNumber } = Route.useParams() as { registrationNumber: string };
 	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
+	const roles = useHybridStaffRoles() ?? [];
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || onboardingSettings.signatoryName || "Djiwa Tentram").trim();
 	const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
@@ -44,15 +45,13 @@ function ApplicationDetailPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [notFound, setNotFound] = useState(false);
 
-	const [password, setPassword] = useState(onboardingSettings.defaultPassword);
+	const [password, setPassword] = useState("");
 	const [pin, setPin] = useState("");
 	const [notes, setNotes] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 	const [username, setUsername] = useState("");
-
-	useEffect(() => { setPassword(onboardingSettings.defaultPassword); }, [onboardingSettings.defaultPassword]);
 
 	/* ── Load application data ── */
 	useEffect(() => {
@@ -72,12 +71,102 @@ function ApplicationDetailPage() {
 					setPin(generateSixDigitPin(data.full_name + data.id + Date.now()));
 					setNotes(data.review_notes ?? "");
 					setUsername(data.employment?.username || data.email || `${data.id}@djiwatentram.local`);
+					setPassword(data.raw?.password || onboardingSettings.defaultPassword || "");
 				} else {
 					setNotFound(true);
 				}
 				setIsLoading(false);
 			});
 	}, [registrationNumber]);
+
+	/* ── Generate contract preview dynamically when saved contract is empty ── */
+	const displayContract = useMemo(() => {
+		if (!app) return null;
+		// If contract already has content, use it as-is
+		if (app.contract?.clauses?.length > 0 || app.contract?.plainText || app.contract?.html) {
+			return app.contract;
+		}
+		// Generate dynamically from template + employment data (same as /register/selesai/ page)
+		const roleTemplate = onboardingSettings.contractTemplatesByRoleId[app.employment?.roleId || ""];
+		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
+		const templateText = roleTemplate || defaultTemplate;
+		const selectedRole = roles.find((r: any) => String(r?._id) === app.employment?.roleId);
+		const roleDefaults = selectedRole ? getRoleSalaryDefaults(selectedRole) : {};
+
+		const mergedEmployment = {
+			...(app.employment || {}),
+			monthlySalary: (app.employment?.monthlySalary || 0) || (roleDefaults as any).monthlySalary || 0,
+			dailyAllowance: (app.employment?.dailyAllowance || 0) || (roleDefaults as any).dailyAllowance || 0,
+			shiftRate: (app.employment?.shiftRate || 0) || (roleDefaults as any).shiftRate || 0,
+		};
+
+		if (templateText) {
+			const templateStr = typeof templateText === "string" ? templateText :
+				(templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
+			const ctx = buildContractVariableContext(
+				{ fullName: app.full_name, email: app.email, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, placeOfBirth: app.birth_place, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone } as any,
+				mergedEmployment,
+				companyDisplayName,
+				signatoryPersonName,
+				onboardingSettings.signatoryCompanyAddress,
+				onboardingSettings.signatoryCompanyNIB,
+				onboardingSettings.signatoryPersonTitle,
+				onboardingSettings.signatoryLocation,
+			);
+			const fullText = replaceContractVariables(templateStr, ctx);
+			const rawLines = fullText.split("\n");
+			const clauseElements: string[] = [];
+			let clauseTitle = "";
+			let clauseBody: string[] = [];
+			for (const raw of rawLines) {
+				const line = raw.trim();
+				if (!line) continue;
+				if (/^(pasal|bab|klausul|ketentuan)\s*\d*/i.test(line)) {
+					if (clauseTitle) {
+						clauseElements.push(`<section><h3>${clauseTitle}</h3><p>${clauseBody.join("<\/p>\n<p>")}</p></section>`);
+					}
+					clauseTitle = line;
+					clauseBody = [];
+				} else {
+					clauseBody.push(line);
+				}
+			}
+			if (clauseTitle) {
+				clauseElements.push(`<section><h3>${clauseTitle}</h3><p>${clauseBody.join("<\/p>\n<p>")}</p></section>`);
+			}
+			return {
+				mode: "template" as const,
+				title: `Perjanjian Kerja ${app.employment?.roleName || ""}`,
+				plainText: fullText,
+				html: `<article>${clauseElements.join("\n")}</article>`,
+				clauses: [{ title: "Ketentuan Kontrak", body: fullText }],
+			};
+		}
+
+		// Fallback: use built-in template generator
+		const personal = {
+			fullName: app.full_name || "",
+			email: app.email || "",
+			phone: app.phone || "",
+			identityNumber: app.identity_number || "",
+			address: app.address || "",
+			birthDate: app.birth_date || "",
+			emergencyContactName: app.emergency_contact?.name || "",
+			emergencyContactPhone: app.emergency_contact?.phone || "",
+		};
+		const built = buildEmployeeContractTemplate(personal, mergedEmployment, companyDisplayName);
+		const ctx = buildContractVariableContext(personal as any, mergedEmployment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
+		return {
+			...built,
+			plainText: replaceContractVariables(built.plainText, ctx),
+			clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
+			html: `<article>${built.clauses.map((c) => {
+				const body = replaceContractVariables(c.body, ctx);
+				const paras = body.split("\n").map((l: string) => l.trim()).filter(Boolean).map((p: string) => `<p>${p}</p>`).join("\n");
+				return `<section><h3>${c.title}</h3>${paras}</section>`;
+			}).join("")}</article>`,
+		};
+	}, [app, onboardingSettings, roles, companyDisplayName, signatoryPersonName]);
 
 	/* ── Download PDF ── */
 	async function downloadContractPdf() {
@@ -102,15 +191,15 @@ function ApplicationDetailPage() {
 			}
 
 			addWrappedText(companyDisplayName, 10, "bold", "center");
-			addWrappedText(app.contract?.title || "Perjanjian Kerja", 16, "bold", "center");
+			addWrappedText(displayContract?.title || "Perjanjian Kerja", 16, "bold", "center");
 			y += 2;
 			pdf.setDrawColor(180);
 			pdf.line(m, y, pw - m, y);
 			y += 6;
 
 			// Replace variable di contract text pake data aplikasi
-			const rawContractText = app.contract?.plainText ||
-				(app.contract?.clauses ?? []).map((c: any) => `${c.title}\n${c.body}`).join("\n\n");
+			const rawContractText = displayContract?.plainText ||
+				(displayContract?.clauses ?? []).map((c: any) => `${c.title}\n${c.body}`).join("\n\n") || "";
 			const ctx = buildContractVariableContext(
 				{ fullName: app.full_name, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, placeOfBirth: app.birth_place, email: app.email, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone },
 				{ ...(app.employment || {}), monthlySalary: app.employment?.monthlySalary || 0, dailyAllowance: app.employment?.dailyAllowance || 0, shiftRate: app.employment?.shiftRate || 0 },
@@ -497,14 +586,20 @@ function ApplicationDetailPage() {
 						</Button>
 					</div>
 					<div className="max-h-[520px] overflow-y-auto rounded-xl border bg-white shadow-sm">
-						<ContractPreview
-							contract={app.contract}
-							employeeName={app.full_name}
-							signatureDataUrl={app.signature_url}
-							companyName={companyDisplayName}
-							signatoryName={signatoryPersonName}
-							signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
-						/>
+						{displayContract ? (
+							<ContractPreview
+								contract={displayContract}
+								employeeName={app.full_name}
+								signatureDataUrl={app.signature_url}
+								companyName={companyDisplayName}
+								signatoryName={signatoryPersonName}
+								signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
+							/>
+						) : (
+							<div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
+								Template kontrak belum tersedia.
+							</div>
+						)}
 					</div>
 				</div>
 			</div>

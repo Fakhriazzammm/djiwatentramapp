@@ -61,6 +61,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 		username: "",
 		slug: "",
 		homePin: "",
+		password: "",
 	},
 	contract: { mode: "template", title: "", plainText: "", clauses: [] },
 	signatureDataUrl: "",
@@ -490,15 +491,8 @@ function RegisterPage() {
 								<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
 								<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
 								<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
-								{/* Salary fields — pre-filled from payroll role rules */}
-								<div className="col-span-2 border-t pt-2 mt-1">
-									<p className="text-xs font-semibold text-muted-foreground mb-2">Kompensasi</p>
-									<div className="grid gap-3 sm:gap-4 md:grid-cols-3">
-										<Field label="Gaji Pokok/bulan"><Input type="number" value={draft.employment.monthlySalary || ""} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value))} placeholder="0" /></Field>
-										<Field label="T. Transport/hari"><Input type="number" value={draft.employment.dailyAllowance || ""} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value))} placeholder="0" /></Field>
-										<Field label="Rate Shift"><Input type="number" value={draft.employment.shiftRate || ""} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value))} placeholder="0" /></Field>
-									</div>
-								</div>
+								<Field label="Password"><Input type="password" value={draft.employment.password || ""} onChange={(e) => updateEmployment("password", e.target.value)} placeholder="Min. 6 karakter" /></Field>
+
 								{/* Upload CV */}
 								<div className="space-y-1.5 sm:space-y-2 md:col-span-2">
 									<Label className="text-xs sm:text-sm">Upload CV (opsional)</Label>
