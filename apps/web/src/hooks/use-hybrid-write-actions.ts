@@ -5267,6 +5267,32 @@ export function useHybridCreateUser() {
 					raw,
 				});
 				if (error) throw error;
+
+				// Auto-create Supabase Auth user
+				try {
+					const email = String(args?.email || username).includes('@')
+						? (args?.email || username)
+						: `${username}@djiwa.internal`;
+					const password = args?.password || crypto.randomUUID().slice(0, 12);
+
+					const { data: authData, error: authError } = await createClient().functions.invoke("yumi-auth", {
+						body: {
+							action: "createAuthUser",
+							sourceId,
+							email,
+							password,
+							name,
+						},
+					});
+
+					if (!authError && authData?.authUserId) {
+						await createClient().from("yumi_users").update({ auth_user_id: authData.authUserId }).eq("source_id", sourceId);
+					}
+				} catch (authUserErr) {
+					console.warn("[createUser] failed to create auth user:", authUserErr);
+					// Non-fatal — user tetap bisa login via custom session
+				}
+
 				return sourceId;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-create-user] fallback disabled", error);

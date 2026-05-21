@@ -8,7 +8,10 @@ type AuthAction =
 	| "listPublicUsers"
 	| "loginWithPin"
 	| "validateSession"
-	| "logoutSession";
+	| "logoutSession"
+	| "updateEmail"
+	| "backfillAuthUsers"
+	| "createAuthUser";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -274,6 +277,100 @@ async function logoutSession(payload: JsonRecord) {
 	return { success: true };
 }
 
+async function handleUpdateEmail(
+	supabaseAdmin: ReturnType<typeof createClient>,
+	payload: JsonRecord
+) {
+	const userId = normalizeUserId(payload.userId);
+	const newEmail = normalizeToken(payload.newEmail);
+	if (!userId || !newEmail) throw new Error("userId dan newEmail wajib");
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) throw new Error("Format email tidak valid");
+
+	const { data: user } = await supabaseAdmin
+		.from("yumi_users")
+		.select("auth_user_id")
+		.eq("source_id", userId)
+		.single();
+	if (!user?.auth_user_id) throw new Error("User tidak memiliki Supabase Auth account");
+
+	const { error } = await supabaseAdmin.auth.admin.updateUserById(user.auth_user_id, {
+		email: newEmail,
+		email_confirm: true,
+	});
+	if (error) throw error;
+
+	await supabaseAdmin.from("yumi_users").update({ email: newEmail }).eq("source_id", userId);
+
+	return { success: true };
+}
+
+async function handleCreateAuthUser(payload: JsonRecord) {
+	const sourceId = normalizeUserId(payload.sourceId);
+	const email = normalizeToken(payload.email);
+	const password = normalizeToken(payload.password);
+	const name = toTrimmedString(payload.name);
+
+	if (!sourceId || !email || !password) throw new Error("sourceId, email, password wajib");
+
+	const { data, error } = await supabaseAdmin.auth.admin.createUser({
+		email,
+		password,
+		email_confirm: true,
+		user_metadata: { source_id: sourceId, name },
+	});
+	if (error) throw error;
+
+	// Update yumi_users.auth_user_id
+	await supabaseAdmin.from("yumi_users").update({ auth_user_id: data.user.id }).eq("source_id", sourceId);
+
+	return { authUserId: data.user.id };
+}
+
+async function handleBackfillAuthUsers() {
+	const { data: users, error } = await supabaseAdmin
+		.from("yumi_users")
+		.select("source_id, username, name, raw")
+		.is("auth_user_id", null);
+
+	if (error) throw error;
+	if (!users?.length) return { message: "Semua user sudah punya auth_user_id", count: 0 };
+
+	// Fetch all auth.users and map by user_metadata->source_id
+	const { data: allAuthUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+	if (authError) throw authError;
+
+	const authBySourceId = new Map<string, string>();
+	for (const au of allAuthUsers.users || []) {
+		const sid = au.user_metadata?.source_id;
+		if (sid) authBySourceId.set(sid, au.id);
+	}
+
+	let created = 0;
+	let details_list: string[] = [];
+
+	for (const user of users) {
+		try {
+			const authUserId = authBySourceId.get(user.source_id);
+			if (!authUserId) {
+				details_list.push(`${user.username}: tidak ditemukan di auth.users, skip`);
+				continue;
+			}
+
+			await supabaseAdmin
+				.from("yumi_users")
+				.update({ auth_user_id: authUserId })
+				.eq("source_id", user.source_id);
+
+			created++;
+			details_list.push(`${user.username}: mapped`);
+		} catch (e: any) {
+			details_list.push(`${user.username}: ${e.message}`);
+		}
+	}
+
+	return { message: `Backfill selesai: ${created} user`, details: details_list };
+}
+
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") {
 		return new Response("ok", { headers: corsHeaders });
@@ -292,6 +389,12 @@ Deno.serve(async (req) => {
 				return json(await validateSession(body));
 			case "logoutSession":
 				return json(await logoutSession(body));
+			case "updateEmail":
+				return json(await handleUpdateEmail(supabaseAdmin, body));
+			case "backfillAuthUsers":
+				return json(await handleBackfillAuthUsers());
+			case "createAuthUser":
+				return json(await handleCreateAuthUser(body));
 			default:
 				return fail("Auth action tidak dikenali", 404);
 		}

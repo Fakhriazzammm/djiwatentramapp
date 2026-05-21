@@ -41,6 +41,7 @@ import {
 } from "@/hooks/use-hybrid-payroll-data";
 import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { createClient } from "@/lib/client";
 
 const formatCurrency = (amount: number) => {
 	return new Intl.NumberFormat("id-ID", {
@@ -81,7 +82,6 @@ function StaffProfilePage() {
 	const [editName, setEditName] = useState("");
 	const [editEmail, setEditEmail] = useState("");
 	const [editSlug, setEditSlug] = useState("");
-	const [editOldPassword, setEditOldPassword] = useState("");
 	const [editNewPassword, setEditNewPassword] = useState("");
 	const [isSavingProfile, setIsSavingProfile] = useState(false);
 	const [editPhone, setEditPhone] = useState("");
@@ -137,7 +137,7 @@ function StaffProfilePage() {
 			setEditSlug(staff.slug || "");
 		}
 		if (privateData && isUnlocked) {
-			setEditEmail(privateData.username || "");
+			setEditEmail(privateData.email || privateData.username || "");
 			const raw = (privateData as any).raw ?? {};
 			setEditPhone(raw.phone || "");
 			setEditIdentityNumber(raw.identityNumber || "");
@@ -536,7 +536,11 @@ function StaffProfilePage() {
 												<span className="font-bold">{staff.name}</span>
 											</div>
 											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Email / Username</span>
+												<span className="text-muted-foreground font-medium">Email</span>
+												<span className="font-bold">{privateData?.email || privateData?.username || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-xs">
+												<span className="text-muted-foreground font-medium">Username</span>
 												<span className="font-bold">{privateData?.username || "---"}</span>
 											</div>
 											<div className="flex justify-between items-center text-xs">
@@ -563,6 +567,21 @@ function StaffProfilePage() {
 												<span className="text-muted-foreground font-medium">Kontak Darurat</span>
 												<span className="font-bold text-right max-w-[180px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
 											</div>
+											<div className="border-t pt-3 mt-3 space-y-3">
+												<p className="text-[9px] font-black text-primary uppercase">Informasi Pekerjaan</p>
+												<div className="flex justify-between items-center text-xs">
+													<span className="text-muted-foreground font-medium">Mulai Bekerja</span>
+													<span className="font-bold">{privateData?.raw?.startDate || "---"}</span>
+												</div>
+												<div className="flex justify-between items-center text-xs">
+													<span className="text-muted-foreground font-medium">Status Kepegawaian</span>
+													<span className="font-bold">{privateData?.raw?.employmentType === "probation" ? "Probation" : privateData?.raw?.employmentType || "---"}</span>
+												</div>
+												<div className="flex justify-between items-center text-xs">
+													<span className="text-muted-foreground font-medium">Lokasi</span>
+													<span className="font-bold">{privateData?.raw?.location || "---"}</span>
+												</div>
+											</div>
 										</div>
 									) : (
 										<form 
@@ -576,10 +595,7 @@ function StaffProfilePage() {
 													await updateProfileMutation({
 														token,
 														name: editName !== staff?.name ? editName : undefined,
-														username: editEmail !== privateData?.username ? editEmail : undefined,
 														slug: editSlug !== staff?.slug ? editSlug : undefined,
-														password: editNewPassword || undefined,
-														oldPassword: editNewPassword ? editOldPassword : undefined,
 														phone: editPhone || undefined,
 														identityNumber: editIdentityNumber || undefined,
 														address: editAddress || undefined,
@@ -588,12 +604,25 @@ function StaffProfilePage() {
 														emergencyContactName: editEmergencyContactName || undefined,
 														emergencyContactPhone: editEmergencyContactPhone || undefined,
 													});
-													
+
+													// Jika ada password baru, update via Supabase Auth
+													if (editNewPassword) {
+														const { error: pwError } = await createClient().auth.updateUser({ password: editNewPassword });
+														if (pwError) throw pwError;
+													}
+
+													// Jika ada email baru, update via edge function
+													if (editEmail && editEmail !== privateData?.email && editEmail !== privateData?.username) {
+														const { error: emailError } = await createClient().functions.invoke("yumi-auth", {
+															body: { action: "updateEmail", userId: staff._id, newEmail: editEmail },
+														});
+														if (emailError) throw new Error(emailError.message || "Gagal update email");
+													}
+
 													toast.success("Profil berhasil diperbarui!");
 													setIsEditMode(false);
-													setEditOldPassword("");
 													setEditNewPassword("");
-													
+
 													if (editSlug !== username) {
 														navigate({ to: `/karyawan/${editSlug}` as any, replace: true });
 													}
@@ -615,7 +644,16 @@ function StaffProfilePage() {
 													/>
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Email / Username</label>
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username (login, tidak bisa diubah)</label>
+													<Input 
+														value={privateData?.username || ""}
+														className="h-10 rounded-xl font-bold text-xs opacity-60"
+														placeholder="username"
+														disabled
+													/>
+												</div>
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Email</label>
 													<Input 
 														value={editEmail}
 														onChange={(e) => setEditEmail(e.target.value)}
@@ -667,18 +705,9 @@ function StaffProfilePage() {
 
 												<div className="pt-2 border-t mt-2 space-y-2.5">
 													<p className="text-[9px] font-black text-primary uppercase ml-1">Ubah Password (Opsional)</p>
+
 													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Lama</label>
-														<Input 
-															type="password"
-															value={editOldPassword}
-															onChange={(e) => setEditOldPassword(e.target.value)}
-															className="h-10 rounded-xl font-bold text-xs"
-															placeholder="Ketik password lama"
-														/>
-													</div>
-													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Baru</label>
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Baru (Opsional)</label>
 														<Input 
 															type="password"
 															value={editNewPassword}
