@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, FileSignature, Download, GripVertical, Loader2, Plus, Save, Sparkles, Trash2, Upload, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -486,59 +487,58 @@ Pastikan body pasal 1 menyebut "${companyName} sebagai perwakilan perusahaan".`;
 	async function downloadContractPdf() {
 		setIsDownloadingPdf(true);
 		try {
-			const pdf = new jsPDF("p", "mm", "a4");
-			const pw = pdf.internal.pageSize.getWidth();
-			const ph = pdf.internal.pageSize.getHeight();
-			const m = 15;
-			const uw = pw - m * 2;
-			let y = m;
+			const element = document.getElementById("employee-contract-preview");
+			if (!element) throw new Error("Preview kontrak tidak ditemukan di DOM");
 
-			function addWrappedText(text: string, fontSize = 10, style: "normal" | "bold" = "normal", align: "left" | "center" = "left") {
-				pdf.setFont("helvetica", style);
-				pdf.setFontSize(fontSize);
-				for (const ln of pdf.splitTextToSize(String(text || ""), uw) as string[]) {
-					if (y + fontSize * 0.45 > ph - m) { pdf.addPage(); y = m; }
-					pdf.text(ln, align === "center" ? pw / 2 : m, y, { align });
-					y += fontSize * 0.45 + 1.5;
+			// Wait for all images (signatures) to load
+			const images = Array.from(element.querySelectorAll("img"));
+			await Promise.allSettled(
+				images.map((img) =>
+					img.complete && img.naturalWidth > 0
+						? Promise.resolve()
+						: new Promise((r) => { img.onload = r; img.onerror = r; })
+				)
+			);
+			await new Promise((r) => setTimeout(r, 500));
+
+			const pdf = new jsPDF("p", "mm", "a4");
+			const pageWidth = pdf.internal.pageSize.getWidth();
+			const pageHeight = pdf.internal.pageSize.getHeight();
+
+			const canvas = await html2canvas(element, {
+				scale: 5,
+				useCORS: true,
+				allowTaint: false,
+				logging: false,
+				backgroundColor: "#ffffff",
+			});
+
+			const imgData = canvas.toDataURL("image/png");
+			const imgWidth = pageWidth;
+			const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+			if (imgHeight <= pageHeight) {
+				pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+			} else {
+				const totalPages = Math.ceil(imgHeight / pageHeight);
+				for (let i = 0; i < totalPages; i++) {
+					if (i > 0) pdf.addPage();
+					const srcY = (i * pageHeight * canvas.width) / imgWidth;
+					const srcHeight = (pageHeight * canvas.width) / imgWidth;
+					const pageCanvas = document.createElement("canvas");
+					pageCanvas.width = canvas.width;
+					pageCanvas.height = Math.min(srcHeight, canvas.height - srcY);
+					const pageCtx = pageCanvas.getContext("2d");
+					if (pageCtx) {
+						pageCtx.drawImage(canvas, 0, srcY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+					}
+					const pageImgData = pageCanvas.toDataURL("image/png");
+					pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, pageHeight);
 				}
 			}
 
-			const pdfBodyText = testPreviewText || contractPreview.plainText ||
-				contractPreview.clauses.map((c) => `${c.title}\n${c.body}`).join("\n\n");
-			const pdfEmployeeName = testPreviewName || "[Nama Karyawan]";
-
-			addWrappedText(companyDisplayName, 10, "bold", "center");
-			addWrappedText(contractPreview.title || "Perjanjian Kerja", 16, "bold", "center");
-			y += 2;
-			pdf.setDrawColor(180);
-			pdf.line(m, y, pw - m, y);
-			y += 6;
-
-			for (const paragraph of String(pdfBodyText || "").split(/\n+/)) {
-				const trimmed = paragraph.trim();
-				if (!trimmed) { y += 2; continue; }
-				addWrappedText(trimmed, 10);
-				y += 1;
-			}
-
-			if (y > ph - 55) { pdf.addPage(); y = m; }
-			y += 8;
-			const cw = uw / 2 - 6;
-			pdf.setFontSize(9);
-			pdf.setFont("helvetica", "normal");
-			pdf.text("Pihak Perusahaan", m, y);
-			pdf.text(pdfEmployeeName, m + cw + 12, y);
-			y += 28;
-			pdf.setDrawColor(180);
-			pdf.line(m, y, m + cw, y);
-			pdf.line(m + cw + 12, y, m + cw + 12 + cw, y);
-			y += 5;
-			pdf.setFont("helvetica", "bold");
-			pdf.setFontSize(10);
-			pdf.text(signatoryPersonNameLocal || companyDisplayName, m, y);
-			pdf.text(pdfEmployeeName, m + cw + 12, y);
-
-			pdf.save(`kontrak-${(contractPreview.title || "perjanjian-kerja").replace(/\s+/g, "-").toLowerCase()}.pdf`);
+			const safeName = (contractPreview.title || "perjanjian-kerja").replace(/\s+/g, "-").toLowerCase();
+			pdf.save(`kontrak-${safeName}.pdf`);
 			toast.success("PDF berhasil diunduh");
 		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
 		finally { setIsDownloadingPdf(false); }
