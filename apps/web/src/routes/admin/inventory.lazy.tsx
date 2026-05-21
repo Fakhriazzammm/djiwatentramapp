@@ -4569,18 +4569,22 @@ function InventoryTable({
 					normalizeUnitOption(row.preferredPurchaseUnit) ||
 					normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
 					"",
-				displayUnit: row.displayUnit ?? "",
+			displayUnit: row.displayUnit ?? "",
 			imagePath: row.imagePath ?? "",
-				conversionFactor:
-					typeof row.conversionFactor === "number" && row.conversionFactor > 0
-						? String(row.conversionFactor)
-						: "",
-				unitConversionsText: formatUnitConversionsText(
-					row.unitConversions,
-					row.displayUnit,
-					row.conversionFactor
-				),
-				category: (inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen",
+			netWeight:
+				row.netWeight != null
+					? String(row.netWeight)
+					: "",
+			conversionFactor:
+				typeof row.conversionFactor === "number" && row.conversionFactor > 0
+					? String(row.conversionFactor)
+					: "",
+			unitConversionsText: formatUnitConversionsText(
+				row.unitConversions,
+				row.displayUnit,
+				row.conversionFactor
+			),
+			category: (inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen",
 				packNetQuantity:
 					typeof row.packNetQuantity === "number" && row.packNetQuantity > 0
 						? String(row.packNetQuantity)
@@ -4756,9 +4760,7 @@ function InventoryTable({
             (current.lastPurchasePrice
                 ? Number(current.lastPurchasePrice)
                 : null) === (row.lastPurchasePrice ?? null) &&
-            (current.netWeight
-                ? Number(current.netWeight)
-                : null) === (row.netWeight ?? null)
+            (current.netWeight?.trim() || "") === (row.netWeight ?? "")
 		) {
 			return;
 		}
