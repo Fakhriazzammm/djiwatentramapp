@@ -5934,13 +5934,17 @@ function InventoryTable({
 									<td className="px-1.5 py-1 align-middle text-center">
 										<input
 											className="mx-auto w-[8ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
-											onBlur={() => void saveMeta(row)}
+											onBlur={(e) => {
+												setInlineField(row, "preferredPurchaseQuantity", (e.target as HTMLInputElement).value);
+												setTimeout(() => void saveMeta(row), 0);
+											}}
 											onChange={(e) =>
 												setInlineField(row, "preferredPurchaseQuantity", e.target.value)
 											}
 											onKeyDown={(e) => {
 												if (e.key === "Enter") {
-													void saveMeta(row);
+													setInlineField(row, "preferredPurchaseQuantity", (e.target as HTMLInputElement).value);
+													setTimeout(() => void saveMeta(row), 0);
 													(e.target as HTMLInputElement).blur();
 												}
 											}}
