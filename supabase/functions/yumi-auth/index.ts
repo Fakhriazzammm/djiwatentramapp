@@ -148,6 +148,34 @@ async function loginWithPin(payload: JsonRecord) {
 		.update({ last_login_at: new Date().toISOString() })
 		.eq("source_id", user.source_id);
 
+	// --- START: Supabase Auth dual session ---
+	let supabaseAccessToken: string | null = null;
+	let supabaseRefreshToken: string | null = null;
+
+	try {
+		const { data: userRecord } = await supabaseAdmin
+			.from("yumi_users")
+			.select("auth_user_id")
+			.eq("source_id", user.source_id)
+			.single();
+
+		if (userRecord?.auth_user_id) {
+			const { data: sessionData, error: sessionError } =
+				await supabaseAdmin.auth.admin.createSession({
+					user_id: userRecord.auth_user_id,
+				});
+
+			if (!sessionError && sessionData) {
+				supabaseAccessToken = sessionData.access_token;
+				supabaseRefreshToken = sessionData.refresh_token;
+			}
+		}
+	} catch (sessionErr) {
+		console.warn("[yumi-auth] Failed to create Supabase session:", sessionErr);
+		// Non-fatal — custom token tetap return
+	}
+	// --- END: Supabase Auth dual session ---
+
 	return {
 		token,
 		expiresAt,
@@ -159,6 +187,8 @@ async function loginWithPin(payload: JsonRecord) {
 				Array.isArray(user.face_descriptor) && user.face_descriptor.length > 0,
 			requiresPinChange: Boolean(user.raw?.requiresPinChange),
 		},
+		supabaseAccessToken,
+		supabaseRefreshToken,
 	};
 }
 

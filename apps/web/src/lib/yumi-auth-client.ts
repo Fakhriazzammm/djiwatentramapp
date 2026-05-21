@@ -253,13 +253,31 @@ export async function listPublicYumiUsers() {
 }
 
 export async function loginWithYumiPin(userId: string, pin: string) {
-	try {
-		return await invokeAuth<LoginResponse>({
-			action: "loginWithPin",
-			userId,
-			pin,
-		});
-	} catch (invokeError) {
+  try {
+    const response = await invokeAuth<LoginResponse & {
+      supabaseAccessToken?: string | null;
+      supabaseRefreshToken?: string | null;
+    }>({
+      action: "loginWithPin",
+      userId,
+      pin,
+    });
+
+    // Set Supabase Auth session jika tersedia
+    if (response.supabaseAccessToken && response.supabaseRefreshToken) {
+      try {
+        const supabase = createClient();
+        await supabase.auth.setSession({
+          access_token: response.supabaseAccessToken,
+          refresh_token: response.supabaseRefreshToken,
+        });
+      } catch (sessionErr) {
+        console.warn("[yumi-auth] Failed to set Supabase session:", sessionErr);
+      }
+    }
+
+    return response;
+  } catch (invokeError) {
 		console.warn(
 			"[yumi-auth] loginWithPin failed, falling back to public views",
 			invokeError
@@ -334,8 +352,16 @@ export async function logoutYumiSession(token: string) {
 		return;
 	}
 
-	await invokeAuth<{ success: boolean }>({
-		action: "logoutSession",
-		token,
-	});
+  await invokeAuth<{ success: boolean }>({
+    action: "logoutSession",
+    token,
+  });
+
+  // Juga logout dari Supabase Auth
+  try {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+  } catch {
+    // Silent — custom token sudah dihapus
+  }
 }
