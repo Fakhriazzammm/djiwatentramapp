@@ -5897,13 +5897,17 @@ function InventoryTable({
 									<td className="px-1.5 py-1 align-middle text-center">
 											<input
 												className="mx-auto w-[9ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono tabular-nums text-[11px] font-bold outline-none focus:border-border focus:bg-background"
-												onBlur={() => void saveQuantity(row)}
+												onBlur={(e) => {
+													setInlineField(row, "quantity", (e.target as HTMLInputElement).value);
+													debouncedSaveMeta(row);
+												}}
 												onChange={(e) =>
 													setInlineField(row, "quantity", e.target.value)
 												}
 												onKeyDown={(e) => {
 													if (e.key === "Enter") {
-														void saveQuantity(row);
+														setInlineField(row, "quantity", (e.target as HTMLInputElement).value);
+														debouncedSaveMeta(row);
 														(e.target as HTMLInputElement).blur();
 													}
 												}}
