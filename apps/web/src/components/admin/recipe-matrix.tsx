@@ -54,6 +54,29 @@ function cn(...classes: (string | false | null | undefined)[]) {
 	return classes.filter(Boolean).join(" ");
 }
 
+function safeLower(value: unknown) {
+	return typeof value === "string" ? value.toLowerCase() : "";
+}
+
+const COMMON_UNIT_PAIRS = [
+	{ purchase: "liter", usage: "ml", factor: 1000 },
+	{ purchase: "kg", usage: "gram", factor: 1000 },
+	{ purchase: "box (1L)", usage: "ml", factor: 1000 },
+	{ purchase: "box (500ml)", usage: "ml", factor: 500 },
+	{ purchase: "box (250ml)", usage: "ml", factor: 250 },
+	{ purchase: "karung (25kg)", usage: "gram", factor: 25_000 },
+	{ purchase: "karung (50kg)", usage: "gram", factor: 50_000 },
+	{ purchase: "pack", usage: "pcs", factor: 1 },
+	{ purchase: "lusin", usage: "pcs", factor: 12 },
+	{ purchase: "dus", usage: "pcs", factor: 1 },
+];
+
+function findUnitPair(purchaseUnit: string, usageUnit: string) {
+	return COMMON_UNIT_PAIRS.find(
+		(p) => safeLower(p.purchase).includes(safeLower(purchaseUnit)) && safeLower(p.usage).includes(safeLower(usageUnit))
+	) ?? { purchase: purchaseUnit, usage: usageUnit, factor: 1 };
+}
+
 // ─── Cell Editor ─────────────────────────────────────────────
 
 function CellEditor({
@@ -170,7 +193,7 @@ export function RecipeMatrixPage() {
 	const inventory = useHybridInventory();
 	const recipes = useHybridRecipes();
 	const baseRecipes = useHybridBaseRecipes();
-	const hppMap = useHybridHppProductMap();
+	const savedHppMap = useHybridHppProductMap();
 	const costs = useHybridLatestInventoryCosts();
 	const saveRecipe = useHybridSaveRecipe();
 	const deleteRecipe = useHybridDeleteRecipe();
@@ -246,6 +269,76 @@ export function RecipeMatrixPage() {
 		}
 		return map;
 	}, [categories]);
+
+	const inventoryById = useMemo(() => {
+		const map = new Map<string, any>();
+		for (const item of inventory ?? []) {
+			map.set(String(item._id), item);
+		}
+		return map;
+	}, [inventory]);
+
+	const hppMap = useMemo(() => {
+		const result: Record<string, { hppId: string; name: string; hppPerServing: number; sellingPrice: number; profitPerServing: number; marginPercent: number }> = {};
+
+		for (const product of products ?? []) {
+			const productId = String(product._id);
+			const recipe = (recipes ?? []).find((r) => String(r.productId) === productId && !r.variantName);
+			if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) {
+				if (savedHppMap?.[productId]) {
+					result[productId] = savedHppMap[productId];
+				}
+				continue;
+			}
+
+			const ingredientCostPerServing = recipe.ingredients.reduce((sum, ing) => {
+				const inventoryId = String(ing.inventoryId ?? "");
+				if (!inventoryId) return sum;
+
+				const invItem = inventoryById.get(inventoryId);
+				const costInfo = costs?.[inventoryId];
+				const latestCostPerUnit = Number(costInfo?.latestCostPerUnit ?? 0);
+				const usagePerServing = Number(ing.amount ?? 0);
+				if (!(latestCostPerUnit > 0) || !(usagePerServing > 0)) return sum;
+
+				const unitPair = findUnitPair(
+					invItem?.unit ?? costInfo?.unit ?? "",
+					invItem?.displayUnit ?? costInfo?.displayUnit ?? ""
+				);
+				const invFactor = Number(invItem?.contentToBaseFactor ?? 0);
+				const costFactor = Number(costInfo?.conversionFactor ?? 0);
+				const factor = invFactor > 0
+					? invFactor
+					: costFactor > 0
+						? costFactor
+						: unitPair.factor > 0
+							? unitPair.factor
+							: 1;
+
+				const purchasePrice = latestCostPerUnit / factor;
+				return sum + purchasePrice * usagePerServing;
+			}, 0);
+
+			const sellingPrice = Number(product.promoPrice ?? product.price ?? 0);
+			const profitPerServing = sellingPrice - ingredientCostPerServing;
+			const marginPercent = sellingPrice > 0 ? (profitPerServing / sellingPrice) * 100 : 0;
+
+			result[productId] = {
+				hppId: savedHppMap?.[productId]?.hppId ?? productId,
+				name: savedHppMap?.[productId]?.name ?? `HPP ${product.name ?? ""}`,
+				hppPerServing: ingredientCostPerServing,
+				sellingPrice,
+				profitPerServing,
+				marginPercent,
+			};
+		}
+
+		for (const [key, value] of Object.entries(savedHppMap ?? {})) {
+			if (!result[key]) result[key] = value as any;
+		}
+
+		return result;
+	}, [products, recipes, inventoryById, costs, savedHppMap]);
 
 	const ingredientColumns = useMemo(() => {
 		const filtered = (inventory ?? []).filter((item) =>
