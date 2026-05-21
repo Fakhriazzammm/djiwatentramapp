@@ -18,6 +18,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ADMIN_SECRET = Deno.env.get("ONBOARDING_ADMIN_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const TELEGRAM_WELCOME_CHAT_ID = Deno.env.get("TELEGRAM_WELCOME_CHAT_ID") ?? "";
 
 if (!ADMIN_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing required environment variables: ONBOARDING_ADMIN_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY");
@@ -355,6 +356,47 @@ async function handleApprove(
       });
     } catch (_e) {
       console.warn("[onboarding-admin] Telegram notification failed:", _e);
+    }
+  }
+
+  // ── Telegram welcome notification (ke grup baru) ──
+  if (TELEGRAM_WELCOME_CHAT_ID && telegramBotToken) {
+    try {
+      const startDate = typeof payload.employment === "object" && payload.employment !== null
+        ? String((payload.employment as any).startDate ?? "-")
+        : "-";
+      const welcomeMsg = [
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🎉 KARYAWAN BARU — DJIWA TENTRAM",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "Selamat datang di Djiwa Tentram Cafe & Resto,",
+        "bagian dari Yumme Group! 🌟",
+        "",
+        "📋 Data Karyawan",
+        `  - Nama: ${name}`,
+        `  - Role: ${roleName}`,
+        `  - No HP: ${phone}`,
+        `  - Tgl Mulai: ${startDate}`,
+        "",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "💡 Pastikan data diri & kontrak sudah lengkap.",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "— Manajemen Djiwa Tentram",
+      ].join("\n");
+
+      await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: parseInt(TELEGRAM_WELCOME_CHAT_ID, 10),
+          text: welcomeMsg,
+          disable_web_page_preview: true,
+        }),
+      });
+    } catch (_e) {
+      console.warn("[onboarding-admin] Welcome notification failed:", _e);
     }
   }
 

@@ -173,14 +173,55 @@ export function useHybridSubmitEmployeeApplication() {
 				.select("id")
 				.single();
 			if (error) throw error;
-			return data?.id ?? null;
+
+			// -- Fire-and-forget Telegram notification --
+			const applicationId = data?.id ?? null;
+			;(async () => {
+				try {
+					const roleName = String(payload.employment?.roleName ?? "-");
+					const now = new Date().toLocaleString("id-ID", {
+						weekday: "long",
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+						hour: "2-digit",
+						minute: "2-digit",
+					});
+					const msg = [
+						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+						"📝 PENDAFTARAN MASUK — DJIWA TENTRAM",
+						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+						"",
+						"Ada pendaftar baru yang perlu direview! 👀",
+						"",
+						`👤 Nama: ${payload.full_name}`,
+						`📞 Kontak: ${payload.phone}`,
+						`🎯 Role: ${roleName}`,
+						`⏰ Waktu: ${now}`,
+						"",
+						`🔗 Review: https://pos.yumme.id/admin/operational-team/register/onboarding`,
+						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+					].join("\n");
+					await fetch(supabaseUrl + "/functions/v1/send-telegram-report", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ text: msg, chat_id: "-5204005129" }),
+					});
+				} catch (_e) {
+					// Silent -- jangan sampai gagal-kan registrasi
+					console.warn("[notif] Gagal kirim notifikasi registrasi:", _e);
+				}
+				return applicationId;
+			})().catch(() => {});
+
+			return applicationId;
 		},
 		[fallback]
 	);
 }
 
 // ---------------------------------------------------------------------------
-// Admin hooks — all go through the onboarding-admin Edge Function
+// Admin hooks -- all go through the onboarding-admin Edge Function
 // (service_role key → bypasses RLS, authenticated via admin secret)
 // ---------------------------------------------------------------------------
 
@@ -269,7 +310,7 @@ export function useHybridBulkDeleteApplications() {
 
 /**
  * (Deprecated) Use useHybridApproveApplication + useHybridRejectApplication instead.
- * Kept for backwards compatibility — calls the same edge function.
+ * Kept for backwards compatibility -- calls the same edge function.
  */
 export function useHybridUpdateEmployeeApplicationStatus() {
 	const { user } = useYumiAuth();
