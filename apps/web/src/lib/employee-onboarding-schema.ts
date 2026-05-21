@@ -606,6 +606,7 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 
 		// --- Employment data ---
 		"{{jabatan}}": employment.roleName || "Karyawan",
+		"[Jabatan]": employment.roleName || "Karyawan",
 		"{{tanggal_mulai}}": formatDateId(startDate),
 		"{{tanggal_akhir}}": formatDateId(endDateStr) || "-",
 		"{{durasi_kontrak}}": String(durationMonths) + " (" + numberToWords(durationMonths) + ")",

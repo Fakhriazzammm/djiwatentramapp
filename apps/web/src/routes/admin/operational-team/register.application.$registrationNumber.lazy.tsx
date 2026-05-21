@@ -83,8 +83,8 @@ function ApplicationDetailPage() {
 	/* ── Generate contract preview dynamically when saved contract is empty ── */
 	const displayContract = useMemo(() => {
 		if (!app) return null;
-		// If contract already has content, use it as-is
-		if (app.contract?.clauses?.length > 0 || app.contract?.plainText || app.contract?.html) {
+		// If contract already has proper content (html + title), use it as-is
+		if ((app.contract?.clauses?.length > 0 || app.contract?.html) && app.contract?.title) {
 			return app.contract;
 		}
 		// Generate dynamically from template + employment data (same as /register/selesai/ page)
