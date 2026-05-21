@@ -1321,6 +1321,8 @@ export function RecipeHppPage() {
 	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 	const [productSearch, setProductSearch] = useState("");
 	const [productDropdownOpen, setProductDropdownOpen] = useState(false);
+const [baseRecipeSearch, setBaseRecipeSearch] = useState("");
+const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [form, setForm] = useState<HppFormData>({
@@ -1965,6 +1967,10 @@ export function RecipeHppPage() {
 				setProductSearch={setProductSearch}
 				productDropdownOpen={productDropdownOpen}
 				setProductDropdownOpen={setProductDropdownOpen}
+				baseRecipeSearch={baseRecipeSearch}
+				setBaseRecipeSearch={setBaseRecipeSearch}
+				baseRecipeDropdownOpen={baseRecipeDropdownOpen}
+				setBaseRecipeDropdownOpen={setBaseRecipeDropdownOpen}
 				hppType={hppType}
 				setHppType={setHppType}
 				recipeFilter={recipeFilter}
