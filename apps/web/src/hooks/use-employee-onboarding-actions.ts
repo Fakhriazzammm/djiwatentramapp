@@ -157,6 +157,7 @@ export function useHybridSubmitEmployeeApplication() {
 					identity_number: payload.identity_number ?? null,
 					address: payload.address ?? null,
 					birth_date: payload.birth_date ?? null,
+					birth_place: payload.birth_place ?? null,
 					emergency_contact: payload.emergency_contact ?? {},
 					employment: payload.employment ?? {},
 					contract: payload.contract ?? {},

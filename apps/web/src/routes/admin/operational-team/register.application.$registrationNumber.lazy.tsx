@@ -105,7 +105,7 @@ function ApplicationDetailPage() {
 			const templateStr = typeof templateText === "string" ? templateText :
 				(templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
 			const ctx = buildContractVariableContext(
-				{ fullName: app.full_name, email: app.email, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, placeOfBirth: app.birth_place, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone } as any,
+				{ fullName: app.full_name, email: app.email, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, placeOfBirth: app.birth_place || app.raw?.birth_place || app.raw?.personal?.placeOfBirth || "", emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone } as any,
 				mergedEmployment,
 				companyDisplayName,
 				signatoryPersonName,
@@ -151,7 +151,7 @@ function ApplicationDetailPage() {
 			phone: app.phone || "",
 			identityNumber: app.identity_number || "",
 			address: app.address || "",
-			placeOfBirth: app.birth_place || "",
+			placeOfBirth: app.birth_place || app.raw?.birth_place || app.raw?.personal?.placeOfBirth || "",
 			birthDate: app.birth_date || "",
 			emergencyContactName: app.emergency_contact?.name || "",
 			emergencyContactPhone: app.emergency_contact?.phone || "",
@@ -465,7 +465,7 @@ function ApplicationDetailPage() {
 							<InfoRow label="Email" value={app.email || "-"} />
 							<InfoRow label="NIK" value={app.identity_number || "-"} />
 							<InfoRow label="Tgl Lahir" value={app.birth_date ? new Date(app.birth_date).toLocaleDateString("id-ID") : "-"} />
-							<InfoRow label="Tempat Lahir" value={app.birth_place || "-"} />
+							<InfoRow label="Tempat Lahir" value={app.birth_place || app.raw?.birth_place || app.raw?.personal?.placeOfBirth || "-"} />
 							<div className="col-span-2">
 								<InfoRow label="Alamat" value={app.address || "-"} />
 							</div>
