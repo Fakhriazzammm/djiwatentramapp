@@ -16,6 +16,7 @@ import { useHybridApproveApplication, useHybridRejectApplication, useHybridMarkR
 import { calculateEstimatedMonthlySalary, buildContractVariableContext, replaceContractVariables, buildEmployeeContractTemplate } from "@/lib/employee-onboarding-schema";
 import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, getRoleSalaryDefaults } from "@/lib/employee-onboarding-settings";
 import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import { Separator } from "@/components/ui/separator";
 
 /* -------- helpers -------- */
@@ -173,68 +174,44 @@ function ApplicationDetailPage() {
 		if (!app) return;
 		setIsDownloadingPdf(true);
 		try {
-			const pdf = new jsPDF("p", "mm", "a4");
-			const pw = pdf.internal.pageSize.getWidth();
-			const ph = pdf.internal.pageSize.getHeight();
-			const m = 15;
-			const uw = pw - m * 2;
-			let y = m;
+			const element = document.getElementById("employee-contract-preview");
+			if (!element) throw new Error("Preview kontrak tidak ditemukan di DOM");
 
-			function addWrappedText(text: string, fontSize = 10, style: "normal" | "bold" = "normal", align: "left" | "center" = "left") {
-				pdf.setFont("helvetica", style);
-				pdf.setFontSize(fontSize);
-				for (const ln of pdf.splitTextToSize(String(text || ""), uw) as string[]) {
-					if (y + fontSize * 0.45 > ph - m) { pdf.addPage(); y = m; }
-					pdf.text(ln, align === "center" ? pw / 2 : m, y, { align });
-					y += fontSize * 0.45 + 1.5;
+			const pdf = new jsPDF("p", "mm", "a4");
+			const pageWidth = pdf.internal.pageSize.getWidth();
+			const pageHeight = pdf.internal.pageSize.getHeight();
+
+			const canvas = await html2canvas(element, {
+				scale: 3,
+				useCORS: true,
+				allowTaint: false,
+				logging: false,
+				backgroundColor: "#ffffff",
+			});
+
+			const imgData = canvas.toDataURL("image/jpeg", 0.95);
+			const imgWidth = pageWidth;
+			const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+			if (imgHeight <= pageHeight) {
+				pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
+			} else {
+				const totalPages = Math.ceil(imgHeight / pageHeight);
+				for (let i = 0; i < totalPages; i++) {
+					if (i > 0) pdf.addPage();
+					const srcY = (i * pageHeight * canvas.width) / imgWidth;
+					const srcHeight = (pageHeight * canvas.width) / imgWidth;
+					const pageCanvas = document.createElement("canvas");
+					pageCanvas.width = canvas.width;
+					pageCanvas.height = srcHeight;
+					const pageCtx = pageCanvas.getContext("2d");
+					if (pageCtx) {
+						pageCtx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
+					}
+					const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
+					pdf.addImage(pageImgData, "JPEG", 0, 0, imgWidth, pageHeight);
 				}
 			}
-
-			addWrappedText(companyDisplayName, 10, "bold", "center");
-			addWrappedText(displayContract?.title || "Perjanjian Kerja", 16, "bold", "center");
-			y += 2;
-			pdf.setDrawColor(180);
-			pdf.line(m, y, pw - m, y);
-			y += 6;
-
-			// Replace variable di contract text pake data aplikasi
-			const rawContractText = displayContract?.plainText ||
-				(displayContract?.clauses ?? []).map((c: any) => `${c.title}\n${c.body}`).join("\n\n") || "";
-			const ctx = buildContractVariableContext(
-				{ fullName: app.full_name, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, placeOfBirth: app.birth_place, email: app.email, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone },
-				{ ...(app.employment || {}), monthlySalary: app.employment?.monthlySalary || 0, dailyAllowance: app.employment?.dailyAllowance || 0, shiftRate: app.employment?.shiftRate || 0 },
-				companyDisplayName,
-				signatoryPersonName,
-				onboardingSettings.signatoryCompanyAddress,
-				onboardingSettings.signatoryCompanyNIB,
-				onboardingSettings.signatoryPersonTitle,
-				onboardingSettings.signatoryLocation,
-			);
-			const bodyText = replaceContractVariables(rawContractText, ctx);
-
-			for (const paragraph of String(bodyText || "").split(/\n+/)) {
-				const trimmed = paragraph.trim();
-				if (!trimmed) { y += 2; continue; }
-				addWrappedText(trimmed, 10);
-				y += 1;
-			}
-
-			if (y > ph - 55) { pdf.addPage(); y = m; }
-			y += 8;
-			const cw = uw / 2 - 6;
-			pdf.setFontSize(9);
-			pdf.setFont("helvetica", "normal");
-			pdf.text("Pihak Perusahaan", m, y);
-			pdf.text("Karyawan", m + cw + 12, y);
-			y += 28;
-			pdf.setDrawColor(180);
-			pdf.line(m, y, m + cw, y);
-			pdf.line(m + cw + 12, y, m + cw + 12 + cw, y);
-			y += 5;
-			pdf.setFont("helvetica", "bold");
-			pdf.setFontSize(10);
-			pdf.text(signatoryPersonName || companyDisplayName, m, y);
-			pdf.text(app.full_name || "Karyawan", m + cw + 12, y);
 
 			const safeName = (app.full_name || "kontrak").replace(/\s+/g, "-").toLowerCase();
 			pdf.save(`kontrak-${safeName}.pdf`);
