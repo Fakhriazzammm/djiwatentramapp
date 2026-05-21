@@ -746,8 +746,7 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 				menuNumber,
 				variations: [],
 			});
-			toast.success("Produk berhasil ditambahkan"); triggerHybridRefresh();
-			toast.info("Kelola recipe produk dari halaman /admin/recipe bila diperlukan");
+			toast.success("Produk berhasil ditambahkan. Kelola recipe dari halaman /admin/recipe bila diperlukan.", { duration: 4000 }); triggerHybridRefresh();
 			resetInlineCreateRow();
 		} catch (error) {
 			console.error(error);

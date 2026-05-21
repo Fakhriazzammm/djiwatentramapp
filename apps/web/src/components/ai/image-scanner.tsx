@@ -298,23 +298,28 @@ export function ImageScanner({
 				syncMode: batchSyncMode,
 			});
 
-			if (result.summary.totalGenerated > 0) {
+			if (result.summary.totalFailed > 0) {
+				const succeeded = result.summary.totalGenerated || 0;
+				const total = succeeded + result.summary.totalFailed;
+				if (succeeded > 0) {
+					setGeneratedResults(result.generated);
+					toast.error(`${succeeded}/${total} transaksi berhasil, ${result.summary.totalFailed} gagal`, { duration: 4000 });
+				} else {
+					toast.error(`${result.summary.totalFailed} gambar gagal diproses`);
+				}
+			} else if (result.summary.totalGenerated > 0) {
 				setGeneratedResults(result.generated);
 				toast.success(
 					`Berhasil generate ${result.summary.totalGenerated} transaksi, total Rp${result.summary.totalAmount.toLocaleString(
 						"id-ID"
 					)}`
 				);
-
-				if (onDataGenerated) {
-					result.generated.forEach((g: any) => {
-						onDataGenerated(g.type, g);
-					});
-				}
 			}
 
-			if (result.summary.totalFailed > 0) {
-				toast.error(`${result.summary.totalFailed} gambar gagal diproses`);
+			if (result.generated && onDataGenerated) {
+				result.generated.forEach((g: any) => {
+					onDataGenerated(g.type, g);
+				});
 			}
 		} catch (error) {
 			console.error(error);
