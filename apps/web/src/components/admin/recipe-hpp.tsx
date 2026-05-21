@@ -764,9 +764,11 @@ function IngredientsTableCard({
 	selectedRows,
 	setSelectedRows,
 	inventory,
+	baseRecipes,
 	usedInventoryIds,
 	selectedRecipe,
 	handleSelectInventoryItem,
+	handleSelectBaseRecipe,
 	handleIngredientChange,
 	handleToggleRow,
 	handleToggleAll,
@@ -787,9 +789,11 @@ function IngredientsTableCard({
 	selectedRows: Set<string>;
 	setSelectedRows: (v: Set<string>) => void;
 	inventory: InventoryItem[] | undefined;
+	baseRecipes?: { _id: string; name: string; category?: string | null }[];
 	usedInventoryIds: Set<string>;
 	selectedRecipe: RecipeData | null;
 	handleSelectInventoryItem: (rowId: string, inventoryId: string, item: InventoryItem) => void;
+	handleSelectBaseRecipe?: (rowId: string, recipe: { _id: string; name: string }) => void;
 	handleIngredientChange: (id: string, field: keyof IngredientRow, value: any) => void;
 	handleToggleRow: (id: string) => void;
 	handleToggleAll: () => void;
@@ -2078,9 +2082,11 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 						selectedRows={selectedRows}
 						setSelectedRows={setSelectedRows}
 						inventory={inventory}
+						baseRecipes={baseRecipes}
 						usedInventoryIds={usedInventoryIds}
 						selectedRecipe={selectedRecipe}
 						handleSelectInventoryItem={handleSelectInventoryItem}
+						handleSelectBaseRecipe={handleSelectBaseRecipe}
 						handleIngredientChange={handleIngredientChange}
 						handleToggleRow={handleToggleRow}
 						handleToggleAll={handleToggleAll}
