@@ -187,27 +187,27 @@ function ApplicationDetailPage() {
 						: new Promise((r) => { img.onload = r; img.onerror = r; })
 				)
 			);
-			// Small delay for CSS to settle
-			await new Promise((r) => setTimeout(r, 300));
+			// Small delay for CSS/webfont rendering to settle
+			await new Promise((r) => setTimeout(r, 500));
 
 			const pdf = new jsPDF("p", "mm", "a4");
 			const pageWidth = pdf.internal.pageSize.getWidth();
 			const pageHeight = pdf.internal.pageSize.getHeight();
 
 			const canvas = await html2canvas(element, {
-				scale: 3,
+				scale: 5,
 				useCORS: true,
 				allowTaint: false,
 				logging: false,
 				backgroundColor: "#ffffff",
 			});
 
-			const imgData = canvas.toDataURL("image/jpeg", 0.95);
+			const imgData = canvas.toDataURL("image/png");
 			const imgWidth = pageWidth;
 			const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
 			if (imgHeight <= pageHeight) {
-				pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
+				pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 			} else {
 				const totalPages = Math.ceil(imgHeight / pageHeight);
 				for (let i = 0; i < totalPages; i++) {
@@ -216,13 +216,13 @@ function ApplicationDetailPage() {
 					const srcHeight = (pageHeight * canvas.width) / imgWidth;
 					const pageCanvas = document.createElement("canvas");
 					pageCanvas.width = canvas.width;
-					pageCanvas.height = srcHeight;
+					pageCanvas.height = Math.min(srcHeight, canvas.height - srcY);
 					const pageCtx = pageCanvas.getContext("2d");
 					if (pageCtx) {
-						pageCtx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
+						pageCtx.drawImage(canvas, 0, srcY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
 					}
-					const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-					pdf.addImage(pageImgData, "JPEG", 0, 0, imgWidth, pageHeight);
+					const pageImgData = pageCanvas.toDataURL("image/png");
+					pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, pageHeight);
 				}
 			}
 

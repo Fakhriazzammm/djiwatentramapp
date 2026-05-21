@@ -35,7 +35,6 @@ function waitForImages(element: HTMLElement, timeout = 5000): Promise<void> {
 					};
 				}
 			} else {
-				// Canvas is always "loaded"
 				loaded++;
 				if (loaded >= total) { clearTimeout(timer); resolve(); }
 			}
@@ -44,10 +43,10 @@ function waitForImages(element: HTMLElement, timeout = 5000): Promise<void> {
 }
 
 /**
- * Generate a PDF from the HTML contract preview DOM element using html2canvas.
- * This ensures the PDF matches the visual preview (Times New Roman font,
- * centering, bold titles, signature areas, etc.) exactly, including both
- * company and employee signature images.
+ * Generate a professional-quality PDF from the HTML contract preview DOM element
+ * using html2canvas at high resolution with lossless PNG capture.
+ * Preserves all rich text formatting: Times New Roman, bold/centered headings,
+ * justified paragraphs, signature images, proper margins and spacing.
  */
 export async function generateContractPdfBlob(
 	_draft: EmployeeOnboardingDraft,
@@ -65,23 +64,25 @@ export async function generateContractPdfBlob(
 		// Wait for all images to load before capturing
 		await waitForImages(element);
 
-		// Small additional delay to allow CSS rendering to settle
-		await new Promise((r) => setTimeout(r, 300));
+		// Small additional delay to allow CSS/webfont rendering to settle
+		await new Promise((r) => setTimeout(r, 500));
 
+		// Capture at high scale for crisp text (5x = 600dpi on standard screen)
 		const canvas = await html2canvas(element, {
-			scale: 3,
+			scale: 5,
 			useCORS: true,
 			allowTaint: false,
 			logging: false,
 			backgroundColor: "#ffffff",
 		});
 
-		const imgData = canvas.toDataURL("image/jpeg", 0.95);
+		// Use PNG for lossless quality (no JPEG compression artifacts on text)
+		const imgData = canvas.toDataURL("image/png");
 		const imgWidth = pageWidth;
 		const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
 		if (imgHeight <= pageHeight) {
-			pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
+			pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 		} else {
 			const totalPages = Math.ceil(imgHeight / pageHeight);
 			for (let i = 0; i < totalPages; i++) {
@@ -90,19 +91,19 @@ export async function generateContractPdfBlob(
 				const srcHeight = (pageHeight * canvas.width) / imgWidth;
 				const pageCanvas = document.createElement("canvas");
 				pageCanvas.width = canvas.width;
-				pageCanvas.height = srcHeight;
+				pageCanvas.height = Math.min(srcHeight, canvas.height - srcY);
 				const pageCtx = pageCanvas.getContext("2d");
 				if (pageCtx) {
 					pageCtx.drawImage(
 						canvas,
 						0, srcY,
-						canvas.width, srcHeight,
+						canvas.width, pageCanvas.height,
 						0, 0,
-						canvas.width, srcHeight,
+						canvas.width, pageCanvas.height,
 					);
 				}
-				const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-				pdf.addImage(pageImgData, "JPEG", 0, 0, imgWidth, pageHeight);
+				const pageImgData = pageCanvas.toDataURL("image/png");
+				pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, pageHeight);
 			}
 		}
 
