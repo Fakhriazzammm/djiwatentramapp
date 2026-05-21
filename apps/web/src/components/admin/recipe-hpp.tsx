@@ -226,14 +226,18 @@ function findUnitPair(purchaseUnit: string, usageUnit: string) {
 function ComboboxCell({
 	value,
 	inventoryItems,
+	baseRecipes,
 	usedInventoryIds,
 	onChange,
+	onSelectBaseRecipe,
 	placeholder = "Pilih Bahan...",
 }: {
 	value: string;
 	inventoryItems: InventoryItem[];
+	baseRecipes?: { _id: string; name: string; category?: string | null }[];
 	usedInventoryIds: Set<string>;
 	onChange: (inventoryId: string, item: InventoryItem) => void;
+	onSelectBaseRecipe?: (recipeId: string, recipe: { _id: string; name: string; category?: string | null }) => void;
 	placeholder?: string;
 }) {
 	const [open, setOpen] = useState(false);
@@ -248,6 +252,13 @@ function ComboboxCell({
 			return safeLower(item.ingredientName).includes(safeLower(search));
 		});
 	}, [inventoryItems, usedInventoryIds, search, value]);
+
+	const filteredBaseRecipes = useMemo(() => {
+		if (!baseRecipes) return [];
+		return baseRecipes.filter((r) =>
+			safeLower(r.name).includes(safeLower(search))
+		);
+	}, [baseRecipes, search]);
 
 	const selectedItem = inventoryItems.find((item) => item._id === value);
 
@@ -328,12 +339,18 @@ function ComboboxCell({
 								autoFocus
 							/>
 						</div>
-						{filtered.length === 0 ? (
+						{filtered.length === 0 && filteredBaseRecipes.length === 0 ? (
 							<div className="px-2 py-3 text-center text-[10px] text-muted-foreground">
 								Tidak ada bahan ditemukan
 							</div>
 						) : (
-							filtered.map((item) => (
+							<>
+							{filtered.length > 0 && (
+								<div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+									Inventory
+								</div>
+							)}
+							{filtered.map((item) => (
 								<div
 									key={item._id}
 									className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent ${item._id === value ? "bg-accent font-medium" : ""}`}
@@ -349,7 +366,35 @@ function ComboboxCell({
 										{getSmallestUnitLabel(item)}
 									</span>
 								</div>
-							))
+							))}
+							{filteredBaseRecipes.length > 0 && filtered.length > 0 && (
+								<div className="my-1 border-t border-border/50" />
+							)}
+							{filteredBaseRecipes.length > 0 && (
+								<div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+									Base Recipe
+								</div>
+							)}
+							{filteredBaseRecipes.map((recipe) => (
+								<div
+									key={recipe._id}
+									className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent"
+									onClick={() => {
+										onSelectBaseRecipe?.(recipe._id, recipe);
+										setOpen(false);
+										setSearch("");
+									}}
+								>
+									<BookOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
+									<span className="flex-1 truncate">{recipe.name}</span>
+									{recipe.category && (
+										<span className="shrink-0 text-[10px] text-muted-foreground">
+											{recipe.category}
+										</span>
+									)}
+								</div>
+							))}
+							</>
 						)}
 					</div>,
 					document.body
@@ -916,13 +961,15 @@ function IngredientsTableCard({
 												/>
 											</td>
 											<td className="px-1 py-1.5 min-w-[180px]">
-												<ComboboxCell
-													value={ing.inventoryId ?? ""}
-													inventoryItems={(inventory ?? []) as InventoryItem[]}
-													usedInventoryIds={usedInventoryIds}
-													onChange={(invId, item) => handleSelectInventoryItem(ing.id, invId, item)}
-													placeholder={ing.ingredientName || "Pilih Bahan..."}
-												/>
+							<ComboboxCell
+								value={ing.inventoryId ?? ""}
+								inventoryItems={(inventory ?? []) as InventoryItem[]}
+								baseRecipes={(baseRecipes ?? []) as { _id: string; name: string; category?: string | null }[]}
+								usedInventoryIds={usedInventoryIds}
+								onChange={(invId, item) => handleSelectInventoryItem(ing.id, invId, item)}
+								onSelectBaseRecipe={(recipeId, recipe) => handleSelectBaseRecipe(ing.id, recipe)}
+								placeholder={ing.ingredientName || "Pilih Bahan..."}
+							/>
 											</td>
 											<td className="px-1 py-1.5">
 												<NumberCell
@@ -1763,6 +1810,27 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 		}));
 		hasUnsavedChanges.current = true;
 	}, [inventoryCosts]);
+
+	const handleSelectBaseRecipe = useCallback((rowId: string, recipe: { _id: string; name: string }) => {
+		setForm((prev) => ({
+			...prev,
+			ingredients: prev.ingredients.map((ing) =>
+				ing.id === rowId
+					? {
+						...ing,
+						inventoryId: `base_recipe:${recipe._id}`,
+						ingredientName: `[Base] ${recipe.name}`,
+						purchasePrice: 0,
+						purchaseQuantity: 1,
+						purchaseUnit: "unit",
+						conversionFactor: 1,
+						costSource: "manual",
+					}
+					: ing
+			),
+		}));
+		hasUnsavedChanges.current = true;
+	}, []);
 
 	const handleAddRow = useCallback(() => {
 		setForm((prev) => ({
