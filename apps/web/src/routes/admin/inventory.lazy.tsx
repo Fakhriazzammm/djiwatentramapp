@@ -4067,6 +4067,7 @@ function InventoryTable({
 	}, [imagePopoverRow]);
 	const inventoryCosts = useHybridLatestInventoryCosts();
 	const prevRowsRef = useRef(filteredRows);
+	const pendingSaveRef = useRef<Set<string>>(new Set());
 	useEffect(() => {
 		if (isRecalculating && filteredRows !== prevRowsRef.current) {
 			setIsRecalculating(false);
@@ -4662,6 +4663,11 @@ function InventoryTable({
 			toast.error(`Data "${row.ingredientName}" tidak ditemukan — coba refresh halaman`);
 			return;
 		}
+		const rowKey = `${row.inventoryId}:meta`;
+		if (pendingSaveRef.current.has(rowKey)) {
+			return;
+		}
+		pendingSaveRef.current.add(rowKey);
 		const current = getInlineValue(row);
 		const ingredientName = current.ingredientName.trim();
 		const normalizedUnit = normalizeUnitOption(current.unit);
