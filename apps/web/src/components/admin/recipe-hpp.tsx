@@ -1620,10 +1620,15 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 
 	const hasUnsavedChanges = useRef(false);
 
-	const handleSelectProduct = useCallback((productId: string) => {
+	const handleSelectProduct = useCallback((productId: string, isBaseRecipe = false) => {
 		setSelectedProductId(productId);
-		setProductDropdownOpen(false);
-		setProductSearch("");
+		if (!isBaseRecipe) {
+			setProductDropdownOpen(false);
+			setProductSearch("");
+		} else {
+			setBaseRecipeDropdownOpen(false);
+			setBaseRecipeSearch("");
+		}
 
 		if (hppType === "base_recipe" && baseRecipes) {
 			const baseRecipe = (baseRecipes as any[]).find((br: any) => br._id === productId);
