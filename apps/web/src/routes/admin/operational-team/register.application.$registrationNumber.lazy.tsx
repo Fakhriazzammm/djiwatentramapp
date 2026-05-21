@@ -178,6 +178,18 @@ function ApplicationDetailPage() {
 			const element = document.getElementById("employee-contract-preview");
 			if (!element) throw new Error("Preview kontrak tidak ditemukan di DOM");
 
+			// Wait for all images (signatures) to load
+			const images = Array.from(element.querySelectorAll("img"));
+			await Promise.allSettled(
+				images.map((img) =>
+					img.complete && img.naturalWidth > 0
+						? Promise.resolve()
+						: new Promise((r) => { img.onload = r; img.onerror = r; })
+				)
+			);
+			// Small delay for CSS to settle
+			await new Promise((r) => setTimeout(r, 300));
+
 			const pdf = new jsPDF("p", "mm", "a4");
 			const pageWidth = pdf.internal.pageSize.getWidth();
 			const pageHeight = pdf.internal.pageSize.getHeight();

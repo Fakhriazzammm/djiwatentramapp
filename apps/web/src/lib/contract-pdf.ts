@@ -8,9 +8,46 @@ export async function dataUrlToBlob(dataUrl: string) {
 }
 
 /**
+ * Wait for all images in an element to finish loading before capture.
+ */
+function waitForImages(element: HTMLElement, timeout = 5000): Promise<void> {
+	const images = Array.from(element.querySelectorAll("img, canvas")) as (HTMLImageElement | HTMLCanvasElement)[];
+	if (images.length === 0) return Promise.resolve();
+
+	return new Promise((resolve) => {
+		let loaded = 0;
+		const total = images.length;
+		const timer = setTimeout(() => resolve(), timeout);
+
+		for (const img of images) {
+			if (img instanceof HTMLImageElement) {
+				if (img.complete && img.naturalWidth > 0) {
+					loaded++;
+					if (loaded >= total) { clearTimeout(timer); resolve(); }
+				} else {
+					img.onload = () => {
+						loaded++;
+						if (loaded >= total) { clearTimeout(timer); resolve(); }
+					};
+					img.onerror = () => {
+						loaded++;
+						if (loaded >= total) { clearTimeout(timer); resolve(); }
+					};
+				}
+			} else {
+				// Canvas is always "loaded"
+				loaded++;
+				if (loaded >= total) { clearTimeout(timer); resolve(); }
+			}
+		}
+	});
+}
+
+/**
  * Generate a PDF from the HTML contract preview DOM element using html2canvas.
  * This ensures the PDF matches the visual preview (Times New Roman font,
- * centering, bold titles, signature areas, etc.) exactly.
+ * centering, bold titles, signature areas, etc.) exactly, including both
+ * company and employee signature images.
  */
 export async function generateContractPdfBlob(
 	_draft: EmployeeOnboardingDraft,
@@ -21,14 +58,18 @@ export async function generateContractPdfBlob(
 	const pageHeight = pdf.internal.pageSize.getHeight();
 
 	if (!element) {
-		// Fallback: generate simple text PDF if no DOM element available
 		return generateFallbackPdf(_draft, pdf);
 	}
 
 	try {
-		// Capture the contract preview as a canvas image
+		// Wait for all images to load before capturing
+		await waitForImages(element);
+
+		// Small additional delay to allow CSS rendering to settle
+		await new Promise((r) => setTimeout(r, 300));
+
 		const canvas = await html2canvas(element, {
-			scale: 3, // High resolution for crisp text
+			scale: 3,
 			useCORS: true,
 			allowTaint: false,
 			logging: false,
@@ -39,18 +80,14 @@ export async function generateContractPdfBlob(
 		const imgWidth = pageWidth;
 		const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-		// If content fits on one page
 		if (imgHeight <= pageHeight) {
 			pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
 		} else {
-			// Split into multiple pages
 			const totalPages = Math.ceil(imgHeight / pageHeight);
 			for (let i = 0; i < totalPages; i++) {
 				if (i > 0) pdf.addPage();
-				// Calculate the portion of the canvas to render on this page
 				const srcY = (i * pageHeight * canvas.width) / imgWidth;
 				const srcHeight = (pageHeight * canvas.width) / imgWidth;
-				// Create a temporary canvas for this page slice
 				const pageCanvas = document.createElement("canvas");
 				pageCanvas.width = canvas.width;
 				pageCanvas.height = srcHeight;
