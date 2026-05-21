@@ -52,43 +52,92 @@ serve(async (req: Request) => {
   }
 
   try {
-    const body = await req.json();
-    const { ids } = body;
+    const body = await req.json() as { ids?: string[]; source_ids?: string[] };
+    const { ids, source_ids } = body;
+    const hasIds = Array.isArray(ids) && ids.length > 0;
+    const hasSourceIds = Array.isArray(source_ids) && source_ids.length > 0;
 
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return corsResponse({ error: "ids array is required" }, 400);
+    // Validasi: minimal salah satu dari ids atau source_ids harus diisi
+    if (!hasIds && !hasSourceIds) {
+      return corsResponse({ error: "Either ids or source_ids array is required" }, 400);
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Step 1: Fetch applications to get approved_user_source_id
-    const { data: apps, error: fetchError } = await supabase
-      .from("employee_onboarding_applications")
-      .select("id, approved_user_source_id, full_name")
-      .in("id", ids);
+    // ── Collect applications from both lookup paths ──────────────
+    let allApps: any[] = [];
+    let rawSourceIds: string[] = [];
 
-    if (fetchError) {
-      console.error("[delete-employee-cascade] Fetch error:", fetchError);
-      return corsResponse({ error: fetchError.message }, 500);
+    // Path 1: lookup by ids (existing behavior)
+    if (hasIds) {
+      const { data: appsById, error: fetchError } = await supabase
+        .from("employee_onboarding_applications")
+        .select("id, approved_user_source_id, full_name")
+        .in("id", ids);
+
+      if (fetchError) {
+        console.error("[delete-employee-cascade] Fetch by ids error:", fetchError);
+        return corsResponse({ error: fetchError.message }, 500);
+      }
+
+      if (appsById) {
+        allApps.push(...appsById);
+      }
     }
 
-    if (!apps || apps.length === 0) {
+    // Path 2: lookup by source_ids (approved_user_source_id)
+    if (hasSourceIds) {
+      rawSourceIds = source_ids;
+
+      const { data: appsBySource, error: fetchError } = await supabase
+        .from("employee_onboarding_applications")
+        .select("id, approved_user_source_id, full_name")
+        .in("approved_user_source_id", source_ids);
+
+      if (fetchError) {
+        console.error("[delete-employee-cascade] Fetch by source_ids error:", fetchError);
+        return corsResponse({ error: fetchError.message }, 500);
+      }
+
+      if (appsBySource) {
+        allApps.push(...appsBySource);
+      }
+    }
+
+    if (allApps.length === 0) {
       return corsResponse({ error: "Applications not found" }, 404);
     }
 
-    // Collect all source IDs for cleanup
-    const sourceIds = apps
+    // Deduplicate by id (union)
+    const seen = new Set<string>();
+    const uniqueApps = allApps.filter((app: any) => {
+      if (seen.has(app.id)) return false;
+      seen.add(app.id);
+      return true;
+    });
+
+    // Collect all source IDs: from lookup results + raw source_ids param
+    const sourceIdsFromApps = uniqueApps
       .map((a: any) => a.approved_user_source_id)
       .filter(Boolean);
 
-    console.log(`[delete-employee-cascade] Deleting ${apps.length} applications, source_ids:`, sourceIds);
+    const allSourceIds = [...new Set([...sourceIdsFromApps, ...rawSourceIds])];
+    const allAppIds = uniqueApps.map((a: any) => a.id);
 
-    // Step 2: Delete from pos_users_public (the karyawan list)
-    if (sourceIds.length > 0) {
+    const deletedNames = uniqueApps.map((a: any) => a.full_name);
+    console.log(
+      `[delete-employee-cascade] Deleting ${uniqueApps.length} applications, source_ids:`,
+      allSourceIds,
+      "names:",
+      deletedNames,
+    );
+
+    // ── Step 2: Delete from pos_users_public (the karyawan list) ──
+    if (allSourceIds.length > 0) {
       const { error: posDeleteError } = await supabase
         .from("pos_users_public")
         .delete()
-        .in("_id", sourceIds);
+        .in("_id", allSourceIds);
 
       if (posDeleteError) {
         console.error("[delete-employee-cascade] pos_users_public delete error:", posDeleteError);
@@ -96,12 +145,12 @@ serve(async (req: Request) => {
       }
     }
 
-    // Step 3: Delete from yumi_users (auth)
-    if (sourceIds.length > 0) {
+    // ── Step 3: Delete from yumi_users (auth) ──
+    if (allSourceIds.length > 0) {
       const { error: authDeleteError } = await supabase
         .from("yumi_users")
         .delete()
-        .in("source_id", sourceIds);
+        .in("source_id", allSourceIds);
 
       if (authDeleteError) {
         console.error("[delete-employee-cascade] yumi_users delete error:", authDeleteError);
@@ -109,11 +158,11 @@ serve(async (req: Request) => {
       }
     }
 
-    // Step 4: Delete from employee_onboarding_applications
+    // ── Step 4: Delete from employee_onboarding_applications ──
     const { error: appDeleteError } = await supabase
       .from("employee_onboarding_applications")
       .delete()
-      .in("id", ids);
+      .in("id", allAppIds);
 
     if (appDeleteError) {
       console.error("[delete-employee-cascade] Onboarding app delete error:", appDeleteError);
@@ -122,8 +171,8 @@ serve(async (req: Request) => {
 
     return corsResponse({
       success: true,
-      deleted: apps.length,
-      names: apps.map((a: any) => a.full_name),
+      deleted: uniqueApps.length,
+      names: deletedNames,
     });
   } catch (e: any) {
     console.error("[delete-employee-cascade] Error:", e.message);

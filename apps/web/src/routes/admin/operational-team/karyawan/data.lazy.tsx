@@ -19,9 +19,11 @@ import {
 	IdCard,
 	Building2,
 	PhoneCall,
+	Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as React from "react";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 const MONTHS = [
 	"Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
@@ -93,7 +95,7 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 	if (!expanded) return null;
 	return (
 		<tr className="border-b border-border/20 bg-muted/10">
-			<td colSpan={15} className="p-0">
+			<td colSpan={16} className="p-0">
 				<div className="px-3 py-3">
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
@@ -175,6 +177,25 @@ function DataKaryawanPage() {
 	const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 	const [isExporting, setIsExporting] = useState<"pdf" | "csv" | null>(null);
 	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+	const [confirmModal, setConfirmModal] = useState<{
+		isOpen: boolean;
+		title: string;
+		subtitle?: string;
+		message: string;
+		confirmText?: string;
+		loading: boolean;
+		variant?: "danger" | "warning" | "info";
+		onConfirm: () => void;
+	}>({
+		isOpen: false,
+		title: "",
+		message: "",
+		loading: false,
+		onConfirm: () => {},
+	});
 
 	const allRoles = useMemo(() => {
 		const roles = new Set<string>();
@@ -300,6 +321,87 @@ function DataKaryawanPage() {
 	const isLoading = allStaff === undefined;
 	const isEmpty = Array.isArray(allStaff) && allStaff.length === 0;
 
+	async function cascadeDeleteUsers(sourceIds: string[]) {
+		if (sourceIds.length === 0) return;
+		const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+		const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
+		const res = await fetch(supabaseUrl + "/functions/v1/delete-employee-cascade", {
+			method: "POST",
+			headers: { "Content-Type": "application/json", "x-admin-secret": adminSecret },
+			body: JSON.stringify({ source_ids: sourceIds }),
+		});
+		const result = await res.json();
+		if (!res.ok) throw new Error(result?.error || "Gagal menghapus");
+		return result;
+	}
+
+	function handleSingleDelete(row: any) {
+		setConfirmModal({
+			isOpen: true,
+			title: "Hapus Karyawan?",
+			subtitle: row.name || "Karyawan",
+			message: "Seluruh data terkait akan terhapus permanen dari:\n• Pendaftaran onboarding\n• Riwayat kontrak\n• Daftar data karyawan\n• Akun login",
+			confirmText: "Ya, Hapus",
+			variant: "danger",
+			loading: false,
+			onConfirm: async () => {
+				setDeletingIds((prev) => new Set(prev).add(row._id));
+				try {
+					await cascadeDeleteUsers([row._id]);
+					setSelectedIds((prev) => { const n = new Set(prev); n.delete(row._id); return n; });
+					toast.success("Karyawan dihapus");
+					// Force re-fetch by changing search query (hack: trigger re-render)
+					setTimeout(() => window.location.reload(), 500);
+				} catch (e: any) {
+					toast.error(e?.message || "Gagal menghapus");
+				} finally {
+					setDeletingIds((prev) => { const n = new Set(prev); n.delete(row._id); return n; });
+					setConfirmModal((p) => ({ ...p, isOpen: false }));
+				}
+			},
+		});
+	}
+
+	function handleBulkDelete() {
+		if (selectedIds.size === 0) return;
+		setConfirmModal({
+			isOpen: true,
+			title: `Hapus ${selectedIds.size} Karyawan?`,
+			message: `${selectedIds.size} data karyawan akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.`,
+			confirmText: "Ya, Hapus Semua",
+			variant: "danger",
+			loading: false,
+			onConfirm: async () => {
+				setIsBulkDeleting(true);
+				try {
+					const ids = Array.from(selectedIds);
+					await cascadeDeleteUsers(ids);
+					setSelectedIds(new Set());
+					toast.success(`${ids.length} karyawan dihapus`);
+					setTimeout(() => window.location.reload(), 500);
+				} catch (e: any) {
+					toast.error(e?.message || "Gagal menghapus");
+				} finally {
+					setIsBulkDeleting(false);
+					setConfirmModal((p) => ({ ...p, isOpen: false }));
+				}
+			},
+		});
+	}
+
+	const toggleSelect = (id: string) => {
+		setSelectedIds((prev) => {
+			const n = new Set(prev);
+			if (n.has(id)) n.delete(id); else n.add(id);
+			return n;
+		});
+	};
+
+	const toggleSelectAll = () => {
+		if (selectedIds.size === filtered.length) { setSelectedIds(new Set()); }
+		else { setSelectedIds(new Set(filtered.map((row: any) => row._id))); }
+	};
+
 	const ThButton = ({ col, children, className = "" }: { col: string; children: React.ReactNode; className?: string }) => (
 		<button
 			className={`flex items-center gap-0.5 whitespace-nowrap font-bold text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors ${className}`}
@@ -376,6 +478,26 @@ function DataKaryawanPage() {
 				</div>
 			</div>
 
+			{selectedIds.size > 0 && (
+				<div className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
+					<span className="text-[10px] font-medium text-muted-foreground">{selectedIds.size} dipilih</span>
+					<Button
+						variant="destructive"
+						size="sm"
+						onClick={handleBulkDelete}
+						disabled={isBulkDeleting}
+						className="text-[10px] h-7 ml-auto"
+					>
+						{isBulkDeleting ? (
+							<Loader2 className="h-3 w-3 mr-1 animate-spin" />
+						) : (
+							<Trash2 className="h-3 w-3 mr-1" />
+						)}
+						Hapus {selectedIds.size}
+					</Button>
+				</div>
+			)}
+
 			<div className="overflow-x-auto rounded-xl border bg-card">
 				{isLoading ? (
 					<div className="p-6 space-y-3">
@@ -391,6 +513,14 @@ function DataKaryawanPage() {
 					<table id="karyawan-data-table" className="w-full border-collapse text-[11px]">
 						<thead>
 							<tr className="border-b bg-muted/40">
+								<th className="w-8 px-1 py-2 text-center">
+									<input
+										type="checkbox"
+										className="h-3 w-3 rounded"
+										checked={filtered.length > 0 && selectedIds.size === filtered.length}
+										onChange={toggleSelectAll}
+									/>
+								</th>
 								<th className="w-8 px-1 py-2 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] text-muted-foreground/40">#</span></th>
 								<th className="px-2.5 py-2 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
 								<th className="px-2.5 py-2 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
@@ -406,11 +536,12 @@ function DataKaryawanPage() {
 								<th className="px-2.5 py-2 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
 								<th className="px-2.5 py-2 text-center hidden lg:table-cell">Wajah</th>
 								<th className="px-2.5 py-2 text-center hidden lg:table-cell">CV</th>
+								<th className="w-10 px-1 py-2 text-center"><span className="text-[8px] text-muted-foreground/40">✕</span></th>
 							</tr>
 						</thead>
 						<tbody>
 							{filtered.length === 0 ? (
-								<tr><td colSpan={15} className="px-4 py-8 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
+								<tr><td colSpan={16} className="px-4 py-8 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
 							) : filtered.map((row: any) => {
 								const r = (row as any).raw ?? {};
 								const isActive = row.isActive !== false;
@@ -418,6 +549,14 @@ function DataKaryawanPage() {
 								return (
 									<React.Fragment key={row._id}>
 										<tr className={`border-b border-border/30 hover:bg-muted/20 transition-all cursor-pointer ${isExpanded ? "bg-primary/[0.02] shadow-inner" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
+											<td className="px-1 py-2 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(row._id); }}>
+												<input
+													type="checkbox"
+													className="h-3 w-3 rounded"
+													checked={selectedIds.has(row._id)}
+													onChange={() => toggleSelect(row._id)}
+												/>
+											</td>
 											<td className="px-1 py-2 text-center" onClick={(e) => toggleExpand(row._id, e)}>
 												<button className="inline-flex items-center justify-center h-4 w-4 rounded hover:bg-muted transition-colors">
 													<ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
@@ -453,7 +592,21 @@ function DataKaryawanPage() {
 												</span>
 											</td>
 											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{row.hasFace ? <Camera className="inline h-3.5 w-3.5 text-primary" /> : <span className="text-muted-foreground/20">\u2014</span>}</td>
-											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">—</span>}</td>
+											<td className="px-1 py-2 text-center">
+												<button
+													title="Hapus"
+													className="p-1 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+													onClick={(e) => { e.stopPropagation(); handleSingleDelete(row); }}
+													disabled={deletingIds.has(row._id)}
+												>
+													{deletingIds.has(row._id) ? (
+														<Loader2 className="h-3 w-3 animate-spin" />
+													) : (
+														<Trash2 className="h-3 w-3" />
+													)}
+												</button>
+											</td>
 										</tr>
 										<DetailRow row={row} expanded={isExpanded} />
 									</React.Fragment>
@@ -463,6 +616,18 @@ function DataKaryawanPage() {
 					</table>
 				)}
 			</div>
+
+			<ConfirmationModal
+				isOpen={confirmModal.isOpen}
+				onClose={() => setConfirmModal((p) => ({ ...p, isOpen: false }))}
+				onConfirm={confirmModal.onConfirm}
+				title={confirmModal.title}
+				subtitle={confirmModal.subtitle}
+				message={confirmModal.message}
+				confirmText={confirmModal.confirmText}
+				variant={confirmModal.variant}
+				loading={confirmModal.loading}
+			/>
 		</div>
 	);
 }

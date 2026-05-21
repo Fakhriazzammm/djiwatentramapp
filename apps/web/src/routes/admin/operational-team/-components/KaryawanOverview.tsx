@@ -29,7 +29,6 @@ import {
 import {
 	useHybridCreateUser,
 	useHybridUpdateUser,
-	useHybridDeleteUser,
 } from "@/hooks/use-hybrid-write-actions";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,7 +65,6 @@ export default function KaryawanOverview() {
 	const roles = useHybridStaffRoles(refreshTrigger);
 	const _createUser = useHybridCreateUser();
 	const _updateUser = useHybridUpdateUser();
-	const deleteUser = useHybridDeleteUser();
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [showAddModal, setShowAddModal] = useState(false);
@@ -97,7 +95,9 @@ export default function KaryawanOverview() {
 	const [confirmDelete, setConfirmDelete] = useState<{
 		isOpen: boolean;
 		title: string;
+		subtitle?: string;
 		message: string;
+		confirmText?: string;
 		onConfirm: () => void;
 		variant?: "danger" | "warning" | "info";
 	}>({
@@ -228,23 +228,38 @@ export default function KaryawanOverview() {
 		}
 	};
 
-	const handleDelete = (id: Id<"users">) => {
+	async function cascadeDeleteUsers(sourceIds: string[]) {
+		if (sourceIds.length === 0) return;
+		const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+		const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
+		const res = await fetch(supabaseUrl + "/functions/v1/delete-employee-cascade", {
+			method: "POST",
+			headers: { "Content-Type": "application/json", "x-admin-secret": adminSecret },
+			body: JSON.stringify({ source_ids: sourceIds }),
+		});
+		const result = await res.json();
+		if (!res.ok) throw new Error(result?.error || "Gagal menghapus");
+		return result;
+	}
+
+	const handleDelete = (user: any) => {
 		setConfirmDelete({
 			isOpen: true,
-			title: "Hapus Pengguna?",
-			message: "Akun ini tidak akan bisa login lagi ke sistem.",
+			title: "Hapus Karyawan?",
+			subtitle: user?.name || "Karyawan",
+			message: `Seluruh data terkait akan terhapus permanen dari:\n• Pendaftaran onboarding\n• Riwayat kontrak\n• Daftar data karyawan\n• Akun login`,
 			variant: "danger",
+			confirmText: "Ya, Hapus",
 			onConfirm: async () => {
 				setSavingUser(true);
 				try {
-					await deleteUser({ id });
-					toast.success("User dihapus");
+					await cascadeDeleteUsers([user._id]);
+					toast.success("Karyawan dihapus");
 					setRefreshTrigger((n) => n + 1);
-				} catch {
-					toast.error("Gagal menghapus user");
+				} catch (e: any) {
+					toast.error(e?.message || "Gagal menghapus");
 				} finally {
 					setSavingUser(false);
-					setConfirmDelete((p) => ({ ...p, isOpen: false }));
 				}
 			},
 		});
@@ -396,7 +411,7 @@ export default function KaryawanOverview() {
 									<button
 										title="Hapus Staf"
 										className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-										onClick={() => handleDelete(user._id)}
+										onClick={() => handleDelete(user)}
 										disabled={savingUser}
 									>
 										<Trash2 className="h-3.5 w-3.5" />
@@ -538,8 +553,11 @@ export default function KaryawanOverview() {
 				onClose={() => setConfirmDelete((p) => ({ ...p, isOpen: false }))}
 				onConfirm={confirmDelete.onConfirm}
 				title={confirmDelete.title}
+				subtitle={confirmDelete.subtitle}
 				message={confirmDelete.message}
+				confirmText={confirmDelete.confirmText}
 				variant={confirmDelete.variant}
+				loading={savingUser}
 			/>
 		</div>
 	);

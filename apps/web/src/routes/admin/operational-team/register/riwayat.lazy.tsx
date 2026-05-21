@@ -2,6 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Search, Download, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,23 @@ function ContractHistoryPage() {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+	const [confirmModal, setConfirmModal] = useState<{
+		isOpen: boolean;
+		title: string;
+		subtitle?: string;
+		message: string;
+		confirmText?: string;
+		loading: boolean;
+		onConfirm: () => void;
+		variant?: "danger" | "warning" | "info";
+	}>({
+		isOpen: false,
+		title: "",
+		message: "",
+		loading: false,
+		onConfirm: () => {},
+	});
 
 	const handleExtend = async () => {
 		if (!extendDialog) return;
@@ -142,35 +160,55 @@ function ContractHistoryPage() {
 	}
 
 	async function handleSingleDelete(id: string) {
-		if (!window.confirm("Hapus karyawan ini? Data akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.")) return;
-		setDeletingIds((prev) => new Set(prev).add(id));
-		try {
-			await cascadeDelete([id]);
-			setApplications((prev) => prev.filter((a) => a.id !== id));
-			setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
-			toast.success("Karyawan dihapus");
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal menghapus");
-		} finally {
-			setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
-		}
+		setConfirmModal({
+			isOpen: true,
+			title: "Hapus Karyawan?",
+			message: "Data akan terhapus permanen dari onboarding, kontrak, dan daftar karyawan.",
+			confirmText: "Ya, Hapus",
+			variant: "danger",
+			loading: false,
+			onConfirm: async () => {
+				setDeletingIds((prev) => new Set(prev).add(id));
+				try {
+					await cascadeDelete([id]);
+					setApplications((prev) => prev.filter((a) => a.id !== id));
+					setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+					toast.success("Karyawan dihapus");
+				} catch (e: any) {
+					toast.error(e?.message || "Gagal menghapus");
+				} finally {
+					setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+					setConfirmModal((p) => ({ ...p, isOpen: false }));
+				}
+			},
+		});
 	}
 
 	async function handleBulkDelete() {
 		if (selectedIds.size === 0) return;
-		if (!window.confirm(`Hapus ${selectedIds.size} karyawan? Data akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.`)) return;
-		setIsBulkDeleting(true);
-		try {
-			const ids = Array.from(selectedIds);
-			await cascadeDelete(ids);
-			setApplications((prev) => prev.filter((a) => !ids.includes(a.id)));
-			setSelectedIds(new Set());
-			toast.success(`${ids.length} karyawan dihapus`);
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal menghapus");
-		} finally {
-			setIsBulkDeleting(false);
-		}
+		setConfirmModal({
+			isOpen: true,
+			title: `Hapus ${selectedIds.size} Karyawan?`,
+			message: `${selectedIds.size} data karyawan akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.`,
+			confirmText: "Ya, Hapus Semua",
+			variant: "danger",
+			loading: false,
+			onConfirm: async () => {
+				setIsBulkDeleting(true);
+				try {
+					const ids = Array.from(selectedIds);
+					await cascadeDelete(ids);
+					setApplications((prev) => prev.filter((a) => !ids.includes(a.id)));
+					setSelectedIds(new Set());
+					toast.success(`${ids.length} karyawan dihapus`);
+				} catch (e: any) {
+					toast.error(e?.message || "Gagal menghapus");
+				} finally {
+					setIsBulkDeleting(false);
+					setConfirmModal((p) => ({ ...p, isOpen: false }));
+				}
+			},
+		});
 	}
 
 	const toggleSelect = (id: string) => {
@@ -401,6 +439,18 @@ function ContractHistoryPage() {
 					</div>
 				</DialogContent>
 			</Dialog>
+
+			<ConfirmationModal
+				isOpen={confirmModal.isOpen}
+				onClose={() => setConfirmModal((p) => ({ ...p, isOpen: false }))}
+				onConfirm={confirmModal.onConfirm}
+				title={confirmModal.title}
+				subtitle={confirmModal.subtitle}
+				message={confirmModal.message}
+				confirmText={confirmModal.confirmText}
+				variant={confirmModal.variant}
+				loading={confirmModal.loading}
+			/>
 		</div>
 	);
 }

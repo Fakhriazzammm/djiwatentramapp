@@ -9,6 +9,7 @@ import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { formatOnboardingCurrency, normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 /* -------- helpers -------- */
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -41,6 +42,22 @@ export function AdminOnboardingPage() {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+	const [confirmModal, setConfirmModal] = useState<{
+		isOpen: boolean;
+		title: string;
+		subtitle?: string;
+		message: string;
+		confirmText?: string;
+		loading: boolean;
+		onConfirm: () => void;
+		variant?: "danger" | "warning" | "info";
+	}>({
+		isOpen: false,
+		title: "",
+		message: "",
+		loading: false,
+		onConfirm: () => {},
+	});
 	const stats = useMemo(
 		() => ({
 			pending: applications.filter((a: any) => a.status === "pending").length,
@@ -73,29 +90,46 @@ export function AdminOnboardingPage() {
 	}
 
 	async function handleDeleteApplication(id: string) {
-		if (!window.confirm("Hapus pendaftaran ini? Data akan dihapus permanen dari onboarding dan daftar karyawan (jika sudah di-approve).")) return;
-		setDeletingIds((prev) => new Set(prev).add(id));
-		try {
-			await cascadeDelete([id]);
-			setApplications((prev) => prev.filter((a: any) => a.id !== id));
-			setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
-			toast.success("Pendaftaran dihapus");
-		} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
-		finally { setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; }); }
+		setConfirmModal({
+			isOpen: true,
+			title: "Hapus Pendaftaran?",
+			message: `Data akan terhapus permanen dari onboarding, kontrak, dan daftar karyawan (jika sudah di-approve).`,
+			confirmText: "Ya, Hapus",
+			variant: "danger",
+			loading: false,
+			onConfirm: async () => {
+				try {
+					await cascadeDelete([id]);
+					setApplications((prev) => prev.filter((a: any) => a.id !== id));
+					setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+					toast.success("Pendaftaran dihapus");
+				} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
+				setConfirmModal((p) => ({ ...p, isOpen: false }));
+			},
+		});
 	}
 
 	async function handleBulkDelete() {
 		if (selectedIds.size === 0) return;
-		if (!window.confirm("Hapus " + selectedIds.size + " pendaftaran? Data akan dihapus permanen dari onboarding dan daftar karyawan (jika sudah di-approve).")) return;
-		setIsBulkDeleting(true);
-		try {
-			const ids = Array.from(selectedIds);
-			await cascadeDelete(ids);
-			setApplications((prev) => prev.filter((a: any) => !ids.includes(a.id)));
-			setSelectedIds(new Set());
-			toast.success(ids.length + " pendaftaran dihapus");
-		} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
-		finally { setIsBulkDeleting(false); }
+		setConfirmModal({
+			isOpen: true,
+			title: `Hapus ${selectedIds.size} Pendaftaran?`,
+			message: `${selectedIds.size} pendaftaran akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan (jika sudah di-approve).`,
+			confirmText: "Ya, Hapus Semua",
+			variant: "danger",
+			loading: false,
+			onConfirm: async () => {
+				setIsBulkDeleting(true);
+				try {
+					const ids = Array.from(selectedIds);
+					await cascadeDelete(ids);
+					setApplications((prev) => prev.filter((a: any) => !ids.includes(a.id)));
+					setSelectedIds(new Set());
+					toast.success(ids.length + " pendaftaran dihapus");
+				} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
+				finally { setIsBulkDeleting(false); setConfirmModal((p) => ({ ...p, isOpen: false })); }
+			},
+		});
 	}
 
 	const toggleSelect = (id: string) => {
@@ -214,6 +248,18 @@ export function AdminOnboardingPage() {
 					)}
 				</CardContent>
 			</Card>
+
+			<ConfirmationModal
+				isOpen={confirmModal.isOpen}
+				onClose={() => setConfirmModal((p) => ({ ...p, isOpen: false }))}
+				onConfirm={confirmModal.onConfirm}
+				title={confirmModal.title}
+				subtitle={confirmModal.subtitle}
+				message={confirmModal.message}
+				confirmText={confirmModal.confirmText}
+				variant={confirmModal.variant}
+				loading={confirmModal.loading}
+			/>
 		</div>
 	);
 }
