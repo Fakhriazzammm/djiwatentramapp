@@ -6077,16 +6077,16 @@ function InventoryTable({
 												return <Loader2 className="mx-auto h-3 w-3 animate-spin text-muted-foreground/50" />;
 											}
 											const price = Number(getPriceDraft(row)) || 0;
-											const rawFactor = inline.conversionFactor.trim();
-											const factor = rawFactor ? Number(rawFactor) : (typeof row.conversionFactor === "number" && row.conversionFactor > 0 ? row.conversionFactor : 1);
-											const hasConversion = factor > 1 && row.displayUnit && row.displayUnit.toLowerCase() !== row.unit.toLowerCase();
-											const unitPrice = price / factor;
-											const labelUnit = hasConversion ? (row.displayUnit || row.unit) : row.unit;
+											const rawFactor = inline.contentToBaseFactor.trim();
+											const factor = rawFactor
+												? Number(rawFactor)
+												: (typeof row.contentToBaseFactor === "number" && row.contentToBaseFactor > 0 ? row.contentToBaseFactor : 1);
+											const unitPrice = price / (factor || 1);
 											if (!price) return <span className="text-muted-foreground/40">—</span>;
 											return (
 												<div className="flex flex-col items-center gap-0.5">
-													<span className="font-semibold text-foreground/80">{formatCurrencyIDR(unitPrice)}/{labelUnit}</span>
-													{hasConversion && (
+													<span className="font-semibold text-foreground/80">{formatCurrencyIDR(unitPrice)}/{row.unit}</span>
+													{factor > 1 && (
 														<span className="text-[8px] text-muted-foreground/40 font-mono">
 															{formatCurrencyIDR(price)}/{factor}
 														</span>
@@ -6116,7 +6116,7 @@ function InventoryTable({
 										{saveStateByRow[row.inventoryId] === "saving" ? (
 											<Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground/50" />
 										) : (
-											formatCurrencyIDR((Number(inline.quantity) || 0) * ((Number(getPriceDraft(row)) || 0) / (((inline.conversionFactor.trim() ? Number(inline.conversionFactor) : (typeof row.conversionFactor === "number" && row.conversionFactor > 0 ? row.conversionFactor : 1))) || 1)))
+											formatCurrencyIDR((Number(inline.quantity) || 0) * ((Number(getPriceDraft(row)) || 0) / (((inline.contentToBaseFactor.trim() ? Number(inline.contentToBaseFactor) : (typeof row.contentToBaseFactor === "number" && row.contentToBaseFactor > 0 ? row.contentToBaseFactor : 1))) || 1)))
 										)}
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right">
@@ -6188,7 +6188,7 @@ function InventoryTable({
 								</td>
 								<td className="px-2 py-1.5" colSpan={2}></td>
 								<td className="px-2 py-1.5 text-right font-mono text-foreground">
-									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + ((r.currentStock || 0) * ((r.lastPurchasePrice || 0) / ((typeof r.conversionFactor === "number" && r.conversionFactor > 0) ? r.conversionFactor : 1))), 0))}
+									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + ((r.currentStock || 0) * ((r.lastPurchasePrice || 0) / ((typeof r.contentToBaseFactor === "number" && r.contentToBaseFactor > 0) ? r.contentToBaseFactor : 1))), 0))}
 								</td>
 								<td className="px-2 py-1.5"></td>
 							</tr>
