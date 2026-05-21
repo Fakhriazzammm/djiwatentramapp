@@ -339,6 +339,47 @@ export async function validateYumiSession(token: string) {
 		return localSession;
 	}
 
+	// Try Supabase Auth session first (faster — no Edge Function call)
+	if (typeof window !== "undefined") {
+		try {
+			const supabase = createClient();
+			const { data: { session: sbSession } } = await supabase.auth.getSession();
+
+			if (sbSession?.user) {
+				const { data: claims, error: claimsError } = await supabase.rpc("get_yumi_user_claims");
+
+				if (!claimsError && claims && claims.role_name) {
+					const userMeta = sbSession.user.user_metadata || {};
+					if (userMeta.is_active === false) {
+						return null;
+					}
+
+					const expiresAt = new Date(sbSession.expires_at!).getTime();
+					return {
+						user: {
+							_id: claims.source_id || userMeta.source_id || "",
+							name: claims.name || userMeta.name || "",
+							username: (sbSession.user.email?.split("@")[0] ?? "") || "",
+							slug: userMeta.slug || "",
+							roleId: userMeta.role_source_id || "",
+							hasFace: false,
+							requiresPinChange: false,
+						},
+						role: {
+							_id: userMeta.role_source_id || "",
+							name: claims.role_name || "staff",
+							permissions: Array.isArray(claims.permissions) ? claims.permissions : [],
+						},
+						expiresAt,
+					} satisfies YumiValidatedSession;
+				}
+			}
+		} catch (e) {
+			console.warn("[yumi-auth] Supabase session check failed:", e);
+		}
+	}
+
+	// Fall back to Edge Function validation (existing)
 	const data = await invokeAuth<{ session: YumiValidatedSession | null }>({
 		action: "validateSession",
 		token,
