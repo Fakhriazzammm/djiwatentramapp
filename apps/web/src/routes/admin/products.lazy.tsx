@@ -79,6 +79,7 @@ export const Route = createLazyFileRoute("/admin/products")({
 
 function AdminProductsPage() {
 	const products = useHybridAllProducts();
+	const recipes = useHybridRecipes();
 	const categories = useHybridCategories();
 	const variationPresets = useHybridVariationPresets();
 
@@ -109,6 +110,7 @@ function AdminProductsPage() {
 									categories={categories}
 									products={products}
 									variationPresets={variationPresets}
+								recipes={recipes}
 								/>
 							</motion.div>
 						);
@@ -136,10 +138,12 @@ function ProductsTab({
 	products,
 	categories,
 	variationPresets,
+	recipes,
 }: {
 	products: (Doc<"products"> & { storageId?: string })[] | undefined;
 	categories: Doc<"categories">[] | undefined;
 	variationPresets: Doc<"variationPresets">[] | undefined;
+	recipes?: { productId?: string; variantName?: string | null }[] | null;
 }) {
 	const hppProductMap = useHybridHppProductMap();
 
@@ -1025,6 +1029,31 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												)}
 											</div>
 											<p className="mt-2 truncate font-semibold text-sm">{product.name}</p>
+											{(() => {
+												const hasRecipe = recipes?.some(r => String(r.productId ?? "") === String(product._id) && !r.variantName);
+												return (
+													<div className="flex items-center gap-1.5 mt-1 flex-wrap">
+														{hasRecipe
+															? <span className="rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-700">✅ Ada Resep</span>
+															: <span className="rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[8px] font-semibold text-amber-700">⚠️ Perlu Resep</span>
+														}
+														<Link
+															to="/admin/recipe"
+															search={{ productId: String(product._id) }}
+															className="text-[9px] text-primary hover:underline"
+														>
+															Atur Resep
+														</Link>
+														<Link
+															to="/admin/recipe/hpp"
+															search={{ productId: String(product._id) }}
+															className="text-[9px] text-muted-foreground hover:text-primary hover:underline"
+														>
+															HPP
+														</Link>
+													</div>
+												);
+											})()}
 											<p className="text-primary text-xs">{formatRupiah(product.price)}</p>
 										</div>
 									))}

@@ -32,12 +32,18 @@ import {
 	useHybridInventory,
 	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
-import { useHybridRecipes, useHybridBaseRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
-import { useHybridCreateBaseRecipe, useHybridUpdateBaseRecipe, useHybridDeleteBaseRecipe, useHybridEnsureInventoryItemForBaseRecipe } from "@/hooks/use-hybrid-write-actions";
-import { BaseRecipeForm, ModalScaffold, IngredientEditor } from "@/components/admin/recipe-book";
+import { useHybridRecipes, filterProductsWithoutRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
+import { ModalScaffold } from "@/components/admin/recipe-book";
 import { RecipeStepsEditor } from "@/components/admin/recipe-steps-editor";
 import type { RecipeStep } from "@/hooks/use-hybrid-inventory-admin-data";
 import { useHybridSaveRecipe, useHybridDeleteRecipe, useHybridUpsertHppFromRecipe } from "@/hooks/use-hybrid-write-actions";
+
+import { ProductSelector } from "@/components/admin/product-selector";
+import { MissingRecipeTab } from "@/components/admin/missing-recipe-tab";
+import PerProductRecipeEditor from "@/components/admin/per-product-recipe-editor";
+import QuickProductForm from "@/components/admin/quick-product-form";
+import { useNavigate } from "@tanstack/react-router";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -124,65 +130,24 @@ function CellEditor({
 				step="0.1"
 			/>
 			<span className="text-[8px] text-muted-foreground shrink-0">{unit}</span>
+			{showQuickProductForm && (
+				<QuickProductForm
+					open={showQuickProductForm}
+					onClose={() => setShowQuickProductForm(false)}
+					onSuccess={(productId) => {
+						setShowQuickProductForm(false);
+						setSelectedProductId(productId);
+						setViewMode('per-product');
+						triggerHybridRefresh();
+					}}
+				/>
+			)}
+
 		</div>
 	);
 }
 
-
-const ALA_CARTE_BASE_PRESETS: Array<{ name: string; category: string; targetUnit: string; targetQuantity: string; description: string }> = [
-	{
-		name: "Based Ayam Mentega Sauce",
-		category: "Base Sauce",
-		targetUnit: "gr",
-		targetQuantity: "1000",
-		description: "Base sauce untuk menu ala carte Ayam Mentega.",
-	},
-	{
-		name: "Based Kemangi Sauce",
-		category: "Base Sauce",
-		targetUnit: "gr",
-		targetQuantity: "1000",
-		description: "Base sauce untuk menu ala carte Ayam Rempah Kemangi.",
-	},
-	{
-		name: "Based Paha Ayam Mentega",
-		category: "Lainnya",
-		targetUnit: "paha utuh",
-		targetQuantity: "1",
-		description: "Base persiapan paha ayam utuh untuk menu ala carte.",
-	},
-];
-
-const ALA_CARTE_PRODUCT_TEMPLATES = [
-	{
-		productKeywords: ["ayam mentega"],
-		ingredients: [
-			{ keywords: ["paha ayam"], amount: 1, unit: "text" as const },
-			{ keywords: ["based ayam mentega sauce", "mentega sauce"], amount: 120, unit: "gr" as const },
-			{ keywords: ["based paha ayam mentega"], amount: 1, unit: "pcs" as const },
-			{ keywords: ["bawang goreng"], amount: 10, unit: "gr" as const },
-			{ keywords: ["biji wijen"], amount: 3, unit: "gr" as const },
-			{ keywords: ["selada"], amount: 20, unit: "pcs" as const },
-			{ keywords: ["timun"], amount: 20, unit: "gr" as const },
-		],
-	},
-	{
-		productKeywords: ["ayam rempah kemangi"],
-		ingredients: [
-			{ keywords: ["paha ayam"], amount: 1, unit: "text" as const },
-			{ keywords: ["based kemangi sauce", "kemangi sauce"], amount: 120, unit: "gr" as const },
-			{ keywords: ["based paha ayam mentega"], amount: 1, unit: "pcs" as const },
-			{ keywords: ["bawang goreng"], amount: 10, unit: "gr" as const },
-			{ keywords: ["biji wijen"], amount: 3, unit: "gr" as const },
-			{ keywords: ["selada"], amount: 20, unit: "pcs" as const },
-			{ keywords: ["timun"], amount: 20, unit: "gr" as const },
-		],
-	},
-];
-
 // ─── Ala Carte Keywords untuk filter & badge ──────────────────
-
-const ALA_CARTE_KEYWORDS: string[] = ["ayam mentega", "ayam rempah kemangi"];
 
 // ─── Main Component ──────────────────────────────────────────
 
@@ -192,16 +157,11 @@ export function RecipeMatrixPage() {
 	const categories = useHybridCategories();
 	const inventory = useHybridInventory();
 	const recipes = useHybridRecipes();
-	const baseRecipes = useHybridBaseRecipes();
 	const savedHppMap = useHybridHppProductMap();
 	const costs = useHybridLatestInventoryCosts();
 	const saveRecipe = useHybridSaveRecipe();
 	const deleteRecipe = useHybridDeleteRecipe();
 	const upsertHppFromRecipe = useHybridUpsertHppFromRecipe();
-	const createBaseRecipe = useHybridCreateBaseRecipe();
-	const updateBaseRecipe = useHybridUpdateBaseRecipe();
-	const deleteBaseRecipe = useHybridDeleteBaseRecipe();
-	const ensureInvForBase = useHybridEnsureInventoryItemForBaseRecipe();
 
 	// State
 	const [search, setSearch] = useState("");
@@ -212,30 +172,19 @@ export function RecipeMatrixPage() {
 	const [showAllIngredients, setShowAllIngredients] = useState(true);
 	const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 	const [readMode, setReadMode] = useState(false);
-	const [baseModalOpen, setBaseModalOpen] = useState(false);
-	const [editingBaseId, setEditingBaseId] = useState<string | null>(null);
-	const [deletingBaseId, setDeletingBaseId] = useState<string | null>(null);
-	const [applyingAlaCarteSync, setApplyingAlaCarteSync] = useState(false);
 	const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
 	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 	const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
-	const [filterType, setFilterType] = useState<"semua" | "ala-carte" | "base" | "produk">("semua");
-	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
-		name: "",
-		description: "",
-		category: "Lainnya",
-		targetUnit: "ml",
-		targetQuantity: "1000",
-		ingredients: [],
-		steps: [] as RecipeStep[],
-	});
-
-	const [baseSteps, setBaseSteps] = useState<RecipeStep[]>([]);
 	const [productStepsModal, setProductStepsModal] = useState<{
 		productId: string;
 		productName: string;
 		steps: RecipeStep[];
 	} | null>(null);
+	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+	const [activeTab, setActiveTab] = useState<'all' | 'missing'>('all');
+	const [viewMode, setViewMode] = useState<'per-product' | 'matrix'>('per-product');
+	const [showQuickProductForm, setShowQuickProductForm] = useState(false);
+	const navigate = useNavigate();
 
 	const loading = !products || !inventory || !recipes;
 
@@ -379,56 +328,6 @@ export function RecipeMatrixPage() {
 			);
 	}, [products, search, categoryById]);
 
-	// ── Determines if a product is ala carte based on name ──
-
-	const isAlaCarteProduct = useMemo(() => {
-		const set = new Set<string>();
-		for (const p of products ?? []) {
-			const name = (p.name ?? "").toLowerCase();
-			for (const kw of ALA_CARTE_KEYWORDS) {
-				if (name.includes(kw)) {
-					set.add(String(p._id));
-					break;
-				}
-			}
-		}
-		return set;
-	}, [products]);
-
-	// ── Filter products by type ──
-
-	const filteredProductRows = useMemo(() => {
-		if (filterType === "base") return [];
-		return productRows.filter((p) => {
-			if (filterType === "semua" || filterType === "produk") return true;
-			if (filterType === "ala-carte") return isAlaCarteProduct.has(String(p._id));
-			return true;
-		});
-	}, [productRows, filterType, isAlaCarteProduct]);
-
-	// ── Base Recipe lookup ──
-
-	const baseIngredientMap = useMemo(() => {
-		const map = new Map<string, Map<string, number>>();
-		for (const br of baseRecipes ?? []) {
-			const ingMap = new Map<string, number>();
-			for (const ing of br.ingredients ?? []) {
-				ingMap.set(String(ing.inventoryId), ing.amount);
-			}
-			map.set(String(br._id), ingMap);
-		}
-		return map;
-	}, [baseRecipes]);
-
-	const getBaseAmount = useCallback(
-		(baseId: string, inventoryId: string): number | null => {
-			const ingMap = baseIngredientMap.get(baseId);
-			const val = ingMap?.get(inventoryId);
-			return val != null ? val : null;
-		},
-		[baseIngredientMap]
-	);
-
 	// ── Get amount (local override > recipe) ──
 
 	const getAmount = useCallback(
@@ -494,36 +393,6 @@ export function RecipeMatrixPage() {
 		[recipeByProduct, saveRecipe, upsertHppFromRecipe]
 	);
 
-	// ── Save base recipe cell ──
-
-	const handleBaseCellSave = useCallback(
-		async (baseId: string, inventoryId: string, amount: number) => {
-			const existingMap = baseIngredientMap.get(baseId);
-			const ingredients: { inventoryId: string; amount: number }[] = [];
-
-			if (existingMap) {
-				for (const [invId, amt] of existingMap) {
-					if (String(invId) === String(inventoryId)) {
-						if (amount > 0) ingredients.push({ inventoryId: invId, amount });
-					} else {
-						ingredients.push({ inventoryId: invId, amount: amt });
-					}
-				}
-			}
-			if (amount > 0 && !existingMap?.has(inventoryId)) {
-				ingredients.push({ inventoryId, amount });
-			}
-
-			try {
-				await updateBaseRecipe({ id: baseId as any, ingredients } as any);
-				toast.success("Tersimpan");
-			} catch (err: any) {
-				toast.error(err?.message ?? "Gagal menyimpan");
-			}
-		},
-		[baseIngredientMap, updateBaseRecipe]
-	);
-
 	// ── Delete recipe ──
 
 	const handleDeleteRecipe = useCallback(async (productId: string) => {
@@ -552,84 +421,6 @@ export function RecipeMatrixPage() {
 		}
 	}, [recipes, deleteRecipe]);
 
-	const handleApplyAlaCarteSync = useCallback(async () => {
-		if (!products || !inventory || applyingAlaCarteSync) return;
-
-		setApplyingAlaCarteSync(true);
-		try {
-			const normalizedInventory = (inventory ?? []).map((item) => ({
-				...item,
-				_normName: String(item.ingredientName ?? "").toLowerCase(),
-			}));
-
-			const findInventoryByKeywords = (keywords: string[]) => {
-				const lower = keywords.map((k) => k.toLowerCase());
-				return normalizedInventory.find((item) => lower.some((kw) => item._normName.includes(kw)));
-			};
-
-			let successCount = 0;
-			const warnings: string[] = [];
-
-			for (const template of ALA_CARTE_PRODUCT_TEMPLATES) {
-				const product = (products ?? []).find((p) => {
-					const name = String(p.name ?? "").toLowerCase();
-					return template.productKeywords.every((kw) => name.includes(kw));
-				});
-
-				if (!product) {
-					warnings.push(`Produk tidak ditemukan: ${template.productKeywords.join(" ")}`);
-					continue;
-				}
-
-				const ingredients: { inventoryId: Id<"inventory">; amount: number }[] = [];
-				const missing: string[] = [];
-
-				for (const row of template.ingredients) {
-					const inv = findInventoryByKeywords(row.keywords);
-					if (!inv) {
-						missing.push(row.keywords[0]);
-						continue;
-					}
-
-					let amountInSmallest = row.amount;
-					if (row.unit !== "text") {
-						amountInSmallest = convertToSmallestUnit(inv as any, row.amount);
-					}
-
-					ingredients.push({
-						inventoryId: String(inv._id) as Id<"inventory">,
-						amount: amountInSmallest,
-					});
-				}
-
-				if (missing.length > 0) {
-					warnings.push(`Bahan belum lengkap untuk ${product.name}: ${missing.join(", ")}`);
-					continue;
-				}
-
-				await saveRecipe({
-					productId: String(product._id) as Id<"products">,
-					ingredients,
-				});
-
-				upsertHppFromRecipe({
-					productId: String(product._id) as Id<"products">,
-					overheadCosts: [],
-				}).catch(() => {});
-
-				successCount += 1;
-			}
-
-			if (successCount > 0) toast.success(`Sinkron ala carte selesai (${successCount} produk).`);
-			if (warnings.length > 0) toast.warning(warnings.join(" | "));
-			if (successCount === 0 && warnings.length === 0) toast.info("Tidak ada perubahan resep ala carte.");
-		} catch (error: any) {
-			toast.error(error?.message ?? "Gagal sinkron resep ala carte.");
-		} finally {
-			setApplyingAlaCarteSync(false);
-		}
-	}, [products, inventory, applyingAlaCarteSync, saveRecipe, upsertHppFromRecipe]);
-
 	// ── Cell interaction ──
 
 	const handleCellClick = (productId: string, inventoryId: string) => {
@@ -645,103 +436,6 @@ export function RecipeMatrixPage() {
 	};
 
 	const handleCellCancel = () => setEditingCell(null);
-
-	// ── Base Recipe CRUD ──
-
-	const handleOpenCreateBase = () => {
-		setEditingBaseId(null);
-		setBaseForm({
-			name: "",
-			description: "",
-			category: "Lainnya",
-			targetUnit: "ml",
-			targetQuantity: "1000",
-			ingredients: [],
-			steps: [],
-		});
-		setBaseSteps([]);
-		setBaseModalOpen(true);
-	};
-
-	const handleOpenPresetBase = (preset: (typeof ALA_CARTE_BASE_PRESETS)[number]) => {
-		setEditingBaseId(null);
-		setBaseForm({
-			name: preset.name,
-			description: preset.description,
-			category: preset.category,
-			targetUnit: preset.targetUnit,
-			targetQuantity: preset.targetQuantity,
-			ingredients: [],
-			steps: [],
-		});
-		setBaseSteps([]);
-		setBaseModalOpen(true);
-	};
-
-	const handleOpenEditBase = (br: any) => {
-		setEditingBaseId(br._id);
-		setBaseForm({
-			name: br.name,
-			description: br.description ?? "",
-			category: br.category ?? "Lainnya",
-			targetUnit: br.targetUnit,
-			targetQuantity: String(br.targetQuantity),
-			ingredients: br.ingredients ?? [],
-			steps: br.steps ?? [],
-		});
-		setBaseSteps(br.steps ?? []);
-		setBaseModalOpen(true);
-	};
-
-	const handleSaveBase = async () => {
-		if (!baseForm.name.trim()) return toast.error("Nama recipe wajib diisi");
-		if (baseForm.ingredients.length === 0) return toast.error("Tambahkan minimal satu bahan");
-		if (baseForm.ingredients.some((item) => item.amount <= 0)) return toast.error("Jumlah bahan harus lebih dari 0");
-		let baseName = baseForm.name.trim();
-		if (baseName && !baseName.toLowerCase().includes("(base recipe)")) {
-			baseName = `${baseName} (Base Recipe)`;
-		}
-		const payload = {
-			name: baseName,
-			description: baseForm.description.trim() || undefined,
-			category: baseForm.category,
-			targetUnit: baseForm.targetUnit.trim(),
-			targetQuantity: Number(baseForm.targetQuantity),
-			ingredients: baseForm.ingredients,
-			steps: baseSteps,
-		};
-		try {
-			if (editingBaseId) {
-				await updateBaseRecipe({ id: editingBaseId as any, ...payload });
-				toast.success("Base recipe diperbarui");
-			} else {
-				await createBaseRecipe(payload);
-				toast.success("Base recipe ditambahkan");
-			}
-			setBaseModalOpen(false);
-		} catch (err: any) {
-			toast.error(err?.message ?? "Gagal menyimpan base recipe");
-		}
-	};
-
-	const handleDeleteBase = async (id: string) => {
-		setPendingDeleteIds((prev) => new Set(prev).add(`base:${id}`));
-		setDeletingBaseId(id);
-		try {
-			await deleteBaseRecipe({ id: id as any });
-			await new Promise((r) => setTimeout(r, 400));
-			toast.success("Base recipe dihapus");
-		} catch (err: any) {
-			toast.error(err?.message ?? "Gagal menghapus base recipe");
-		} finally {
-			setDeletingBaseId(null);
-			setPendingDeleteIds((prev) => {
-				const next = new Set(prev);
-				next.delete(`base:${id}`);
-				return next;
-			});
-		}
-	};
 
 	// ── Selection & Bulk Delete ──
 
@@ -759,10 +453,9 @@ export function RecipeMatrixPage() {
 			if (prev.size > 0) return new Set();
 			const all = new Set<string>();
 			for (const p of productRows) all.add(`product:${p._id}`);
-			for (const br of baseRecipes ?? []) all.add(`base:${br._id}`);
 			return all;
 		});
-	}, [productRows, baseRecipes]);
+	}, [productRows]);
 
 	const handleBulkDelete = useCallback(async () => {
 		const ids = [...selectedRowIds];
@@ -786,9 +479,8 @@ export function RecipeMatrixPage() {
 						await deleteRecipe({ id: recipe._id as Id<"recipes"> });
 						upsertHppFromRecipe({ productId: rawId, overheadCosts: [] }).catch(() => {});
 					}
-				} else if (type === "base") {
-					await deleteBaseRecipe({ id: rawId as any });
 				}
+
 				deletedCount++;
 			} catch {
 				errorCount++;
@@ -803,9 +495,13 @@ export function RecipeMatrixPage() {
 		} else {
 			toast.warning(`${deletedCount} berhasil, ${errorCount} gagal`);
 		}
-	}, [selectedRowIds, recipes, deleteRecipe, deleteBaseRecipe, upsertHppFromRecipe]);
+	}, [selectedRowIds, recipes, deleteRecipe, upsertHppFromRecipe]);
 
 	const hasRecipeCount = productRows.filter((p) => recipeByProduct.has(String(p._id))).length;
+	const missingCount = useMemo(() => {
+		if (!products || !recipes) return 0;
+		return filterProductsWithoutRecipes(products, recipes).length;
+	}, [products, recipes]);
 	const totalIngredients = usedIngredientIds.size;
 
 	// ── Loading ──
@@ -852,7 +548,7 @@ export function RecipeMatrixPage() {
 				</Link>
 			</div>
 
-			{/* ── Search + Filter ── */}
+			{/* ── Search + Tabs + Mode ── */}
 			<div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-background shrink-0">
 				<>
 					<div className="relative flex-1 max-w-[220px]">
@@ -882,20 +578,48 @@ export function RecipeMatrixPage() {
 					>
 						{showAllIngredients ? "Bahan dipakai" : "Semua bahan"}
 					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-6 text-[10px] px-2"
-						onClick={handleApplyAlaCarteSync}
-						disabled={applyingAlaCarteSync}
-					>
-						{applyingAlaCarteSync ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-						Sync Ala Carte
-					</Button>
 				</>
 			</div>
 
-			{/* ── Matrix Table ── */}
+			<div className="flex items-center gap-3 mb-3 flex-wrap px-4 py-1">
+				<ProductSelector
+					products={(products ?? []) as any}
+					recipes={(recipes ?? []) as any}
+					selectedProductId={selectedProductId ?? undefined}
+					onSelect={(id) => { setSelectedProductId(id); setViewMode('per-product'); }}
+					onCreateNew={() => setShowQuickProductForm(true)}
+				/>
+				<div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+					<button className={cn("px-2.5 py-1 rounded text-[10px] font-medium transition-all", activeTab === 'all' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground')} onClick={() => setActiveTab('all')}>📋 Semua Resep</button>
+					<button className={cn("px-2.5 py-1 rounded text-[10px] font-medium transition-all flex items-center gap-1", activeTab === 'missing' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground')} onClick={() => setActiveTab('missing')}>⚠️ Perlu Resep{missingCount > 0 ? ` (${missingCount})` : ''}</button>
+				</div>
+				<button className={cn("px-2.5 py-1 rounded text-[10px] border transition-all", viewMode === 'per-product' ? 'bg-primary/10 border-primary/20 text-primary' : 'border-border text-muted-foreground')} onClick={() => setViewMode(viewMode === 'per-product' ? 'matrix' : 'per-product')}>
+					{viewMode === 'per-product' ? '📊 Matrix' : '🔍 Per Produk'}
+				</button>
+			</div>
+
+			{activeTab === 'missing' && (
+				<MissingRecipeTab
+					products={(products ?? []) as any}
+					recipes={(recipes ?? []) as any}
+					onSelectProduct={(id) => { setSelectedProductId(id); setViewMode('per-product'); setActiveTab('all'); }}
+				/>
+			)}
+
+			{viewMode === 'per-product' && selectedProductId && (
+				<PerProductRecipeEditor
+					product={products?.find(p => String(p._id) === selectedProductId) ?? null}
+					recipe={recipes?.find(r => String(r.productId) === selectedProductId && !r.variantName) ?? null}
+					inventory={(inventory ?? []) as any}
+					latestCosts={costs as any}
+					onSave={async (ingredients) => { await saveRecipe({ productId: selectedProductId as any, ingredients }); }}
+					onNavigateToHpp={() => navigate({ to: '/admin/recipe/hpp', search: { productId: selectedProductId } })}
+					onNavigateToProduct={() => navigate({ to: '/admin/products' })}
+				/>
+			)}
+
+			{viewMode !== 'per-product' && (<React.Fragment>
+		{/* ── Matrix Table ── */}
 			<div className="flex-1 overflow-auto">
 				<table className="border-collapse w-max min-w-full">
 					<thead>
@@ -905,8 +629,8 @@ export function RecipeMatrixPage() {
 								<div className="flex items-center gap-1">
 									<input
 										type="checkbox"
-										checked={selectedRowIds.size > 0 && selectedRowIds.size === productRows.length + (baseRecipes?.length ?? 0)}
-										ref={(el) => { if (el) el.indeterminate = selectedRowIds.size > 0 && selectedRowIds.size < productRows.length + (baseRecipes?.length ?? 0); }}
+										checked={selectedRowIds.size > 0 && selectedRowIds.size === productRows.length}
+										ref={(el) => { if (el) el.indeterminate = selectedRowIds.size > 0 && selectedRowIds.size < productRows.length; }}
 										onChange={toggleSelectAll}
 										className="h-3 w-3 shrink-0 accent-primary"
 									/>
@@ -1117,109 +841,6 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 								</tr>
 							);
 						})}
-						{/* ── Base Recipe Rows ── */}
-						{(() => {
-							const pendingBaseIds = [...pendingDeleteIds]
-								.filter((id) => id.startsWith("base:"))
-								.map((id) => id.replace("base:", ""));
-							const extantBaseRecipes = baseRecipes ?? [];
-							const extantBaseIds = new Set(extantBaseRecipes.map((br: any) => String(br._id)));
-							const staleBases = pendingBaseIds
-								.filter((bid) => !extantBaseIds.has(bid))
-								.map((bid) => ({ _id: bid, name: "", category: "", targetUnit: "", targetQuantity: "", ingredients: [], _stale: true }));
-							return [...extantBaseRecipes, ...staleBases].map((br: any) => {
-								const isDeleting = pendingDeleteIds.has(`base:${br._id}`);
-								return (
-									<tr key={`base-${br._id}`} className={cn("border-b border-border/20 group", isDeleting && "opacity-40 pointer-events-none", !isDeleting && "hover:bg-primary/[0.02]")}>
-									{/* Base name */}
-									<td className={cn(
-									"sticky left-0 z-10 border-r border-border/40 px-2 py-1.5",
-									selectedRowIds.has(`base:${br._id}`) ? "bg-primary/[0.06]" : "bg-card group-hover:bg-primary/[0.03]"
-								)}>
-									<div className="flex items-center gap-1.5">
-										<input
-											type="checkbox"
-											checked={selectedRowIds.has(`base:${br._id}`)}
-											onChange={() => toggleRowSelection(`base:${br._id}`)}
-											onClick={(e) => e.stopPropagation()}
-											className="h-3 w-3 shrink-0 accent-primary"
-										/>
-										<Link
-											to="/admin/recipe/hpp"
-											search={{ productId: String(br._id), type: "base_recipe" }}
-											className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary transition-colors flex-1 min-w-0"
-										>
-											<span className="truncate">{br.name}</span>
-											<Calculator className="h-3 w-3 shrink-0 text-muted-foreground/30 group-hover:text-primary/50" />
-										</Link>
-										<button
-											className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-											onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteBase(br._id); }}
-											title="Hapus base recipe"
-										>
-											<Trash2 className="h-3 w-3" />
-										</button>
-									</div>
-								</td>
-								{/* Category */}
-								<td className="sticky left-[130px] z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-1 py-1.5 text-center text-[9px] text-muted-foreground tabular-nums">
-									{br.category ? br.category.slice(0, 3).toUpperCase() : "—"}
-								</td>
-								{/* HPP (not applicable) */}
-								<td className="border-r border-border/40 px-2 py-1.5 text-right text-[10px] tabular-nums">
-									<span className="text-muted-foreground/30 text-[10px]">—</span>
-								</td>
-								{/* Ingredient cells */}
-								{ingredientColumns.map((ing) => {
-									const invId = String(ing._id);
-									const baseId = String(br._id);
-									const amount = getBaseAmount(baseId, invId);
-									const key = `base:${baseId}:${invId}`;
-									const isEditing = editingCell === key;
-									const cellUnitInfo = getSmallestUnitInfo(ing);
-									const displayAmount = amount != null ? amount * (cellUnitInfo?.factor ?? 1) : null;
-
-									if (isEditing) {
-										return (
-											<td key={invId} className="border-r border-border/40 px-1 py-0.5 bg-primary/[0.04]">
-												<CellEditor
-													value={displayAmount != null ? String(displayAmount) : ""}
-													unit={(getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit || "")}
-													onSave={(val) => { const f = cellUnitInfo?.factor ?? 1; handleBaseCellSave(baseId, invId, Number(val) / f); setEditingCell(null); }}
-													onCancel={handleCellCancel}
-												/>
-											</td>
-										);
-									}
-
-									return (
-										<td
-											key={invId}
-											className={cn(
-												"border-r border-border/40 px-2 py-1.5 text-center text-[10px] tabular-nums cursor-pointer transition-colors select-none",
-												amount != null && amount > 0
-													? "bg-primary/[0.04] hover:bg-primary/[0.08] font-medium text-foreground"
-													: "text-muted-foreground/20 hover:bg-muted/30"
-											)}
-											onClick={() => { setEditingCell(key); }}
-											title={
-												displayAmount != null
-													? `${displayAmount} ${getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit}`
-													: "Klik untuk isi"
-											}
-										>
-											{displayAmount != null ? (
-												displayAmount
-											) : (
-												<span className="text-[8px] opacity-40">·</span>
-											)}
-										</td>
-									);
-								})}
-								{/* Empty cell for add-ingredient column */}
-								<td className="border-r border-border/20 px-1 py-1.5" />
-							</tr>
-						)})})()}
 						{productRows.length === 0 && (
 							<tr>
 								<td
@@ -1292,75 +913,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				</div>
 			)}
 
-		{/* ── Base Recipe Modal ── */}
-			{baseModalOpen && (
-				<ModalScaffold
-					onClose={() => setBaseModalOpen(false)}
-					title={editingBaseId ? "Edit Base Recipe" : "Buat Base Recipe"}
-				>
-					<form
-						className="space-y-4"
-						onSubmit={(e) => { e.preventDefault(); handleSaveBase(); }}
-					>
-						<div className="grid gap-3 md:grid-cols-2">
-							<Input
-								onChange={(e) => setBaseForm((prev) => ({ ...prev, name: e.target.value }))}
-								placeholder="Nama recipe"
-								required
-								value={baseForm.name}
-							/>
-							<select
-								className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-								onChange={(e) => setBaseForm((prev) => ({ ...prev, category: e.target.value }))}
-								value={baseForm.category}
-							>
-								<option value="Lainnya">Lainnya</option>
-								<option value="Base Susu">Base Susu</option>
-								<option value="Base Sauce">Base Sauce</option>
-								<option value="Base Sirup">Base Sirup</option>
-								<option value="Base Teh">Base Teh</option>
-								<option value="Kopi">Kopi</option>
-								<option value="Dessert">Dessert</option>
-							</select>
-							<Input
-								onChange={(e) => setBaseForm((prev) => ({ ...prev, targetUnit: e.target.value }))}
-								placeholder="Unit hasil"
-								required
-								value={baseForm.targetUnit}
-							/>
-							<Input
-								min="1"
-								onChange={(e) => setBaseForm((prev) => ({ ...prev, targetQuantity: e.target.value }))}
-								required
-								type="number"
-								value={baseForm.targetQuantity}
-							/>
-						</div>
-						<Textarea
-							onChange={(e) => setBaseForm((prev) => ({ ...prev, description: e.target.value }))}
-							placeholder="Deskripsi atau catatan"
-							value={baseForm.description}
-						/>
-						<IngredientEditor
-							ingredients={baseForm.ingredients}
-							inventory={inventory ?? []}
-							latestInventoryCosts={costs}
-							setIngredients={(next) => setBaseForm((prev) => ({ ...prev, ingredients: next }))}
-						/>
-
-						<div className="border-t border-border pt-4 mt-4">
-							<RecipeStepsEditor
-								steps={baseSteps}
-								onChange={setBaseSteps}
-							/>
-						</div>
-						<div className="flex justify-end gap-2">
-							<Button onClick={() => setBaseModalOpen(false)} type="button" variant="outline">Batal</Button>
-							<Button type="submit">Simpan</Button>
-						</div>
-					</form>
-				</ModalScaffold>
-			)}
+			</React.Fragment>)}
 
 			{/* ── Product Steps Modal ── */}
 			{productStepsModal && (
@@ -1398,6 +951,19 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 					</div>
 				</ModalScaffold>
 			)}
+			{showQuickProductForm && (
+				<QuickProductForm
+					open={showQuickProductForm}
+					onClose={() => setShowQuickProductForm(false)}
+					onSuccess={(productId) => {
+						setShowQuickProductForm(false);
+						setSelectedProductId(productId);
+						setViewMode('per-product');
+						triggerHybridRefresh();
+					}}
+				/>
+			)}
+
 		</div>
 	);
 }
@@ -1514,6 +1080,19 @@ function ReadOnlyView({
 					</div>
 				</div>
 			)}
+			{showQuickProductForm && (
+				<QuickProductForm
+					open={showQuickProductForm}
+					onClose={() => setShowQuickProductForm(false)}
+					onSuccess={(productId) => {
+						setShowQuickProductForm(false);
+						setSelectedProductId(productId);
+						setViewMode('per-product');
+						triggerHybridRefresh();
+					}}
+				/>
+			)}
+
 		</div>
 	);
 }

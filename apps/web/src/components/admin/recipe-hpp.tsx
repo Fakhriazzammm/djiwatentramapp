@@ -59,6 +59,10 @@ import {
 	useHybridSaveRecipe,
 } from "@/hooks/use-hybrid-write-actions";
 
+
+import { ProductSelector } from "@/components/admin/product-selector";
+import QuickProductForm from "@/components/admin/quick-product-form";
+import { filterProductsWithoutRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 // ─── Types ───────────────────────────────────────────────────
 
 type IngredientRow = {
@@ -1392,6 +1396,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 	const [syncPanelOpen, setSyncPanelOpen] = useState(false);
 	const [aiAnalyzing, setAiAnalyzing] = useState(false);
 	const [recipeFilter, setRecipeFilter] = useState(false);
+	const [showQuickProductForm, setShowQuickProductForm] = useState(false);
 
 	const metrics = useMemo(() => computeHpp(form), [form]);
 
@@ -1423,6 +1428,17 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 		return allRecipes.find((r) => r.productId === selectedProductId && !r.variantName) ?? null;
 	}, [selectedProductId, recipes]);
 
+
+	const recipeForSelectedProduct = useMemo(() => {
+		if (!recipes || !selectedProductId) return null;
+		const allRecipes = recipes as RecipeData[];
+		return allRecipes.find(r => String(r.productId) === selectedProductId && !r.variantName) ?? null;
+	}, [recipes, selectedProductId]);
+
+	const productsWithoutRecipe = useMemo(() => {
+		if (!products || !recipes) return [];
+		return filterProductsWithoutRecipes(products as any, recipes as any);
+	}, [products, recipes]);
 	const filteredProducts = useMemo(() => {
 		if (hppType === "base_recipe") {
 			if (!baseRecipes) return [];
@@ -2032,6 +2048,39 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 
 	return (
 		<div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 md:p-6">
+
+		{/* ── Product Selector ── */}
+		<div className="mb-4">
+			<ProductSelector
+				products={(products ?? []) as any}
+				recipes={(recipes ?? []) as any}
+				selectedProductId={selectedProductId ?? undefined}
+				onSelect={(id) => setSelectedProductId(id)}
+				onCreateNew={() => setShowQuickProductForm(true)}
+			/>
+		</div>
+
+		{selectedProductId && !recipeForSelectedProduct && (
+			<div className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-4">
+				<div className="flex items-center gap-2">
+					<AlertTriangle className="h-4 w-4 text-amber-600" />
+					<span className="text-[12px] font-medium text-amber-800">Resep belum ada untuk produk ini</span>
+				</div>
+				<p className="text-[11px] text-amber-700 mt-1">Silakan atur resep terlebih dahulu untuk menghitung HPP.</p>
+				<Button
+					size="sm"
+					variant="outline"
+					className="mt-2 h-7 text-[10px]"
+					onClick={() => navigate({ to: '/admin/recipe', search: { productId: selectedProductId } })}
+				>
+					<Link2 className="h-3 w-3 mr-1" />
+					Atur Resep Sekarang
+				</Button>
+			</div>
+		)}
+
+		{selectedProductId ? (
+			<>
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center gap-2">
 					<Calculator className="h-5 w-5 text-primary" />
@@ -2122,6 +2171,38 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 					/>
 				</>
 			)}
+			</>
+		) : (
+			<div className="text-center py-16">
+				Pilih produk untuk menghitung HPP...</div>
+		)}
+
+		{!selectedProductId && (
+			<div className="mt-6">
+				<h3 className="text-[11px] font-semibold mb-2 flex items-center gap-1">
+					<AlertTriangle className="h-3 w-3 text-amber-500" />
+					Produk Tanpa Resep ({productsWithoutRecipe.length})</h3>
+				<div className="space-y-1">
+					{productsWithoutRecipe.slice(0, 10).map(p => (
+					<div key={p._id} className="flex items-center justify-between rounded border px-3 py-1.5 text-[10px]">
+					<span>{p.name}</span>
+					<Button size="sm" variant="ghost" className="h-5 text-[10px]" onClick={() => navigate({ to: '/admin/recipe', search: { productId: String(p._id) } })}>Atur Resep</Button>
+					</div>
+					))}</div>
+			</div>
+		)}
+
+		{showQuickProductForm && (
+			<QuickProductForm
+				open={showQuickProductForm}
+				onClose={() => setShowQuickProductForm(false)}
+				onSuccess={(productId) => {
+					setShowQuickProductForm(false);
+					setSelectedProductId(productId);
+					triggerHybridRefresh();
+				}}
+			/>
+		)}
 		</div>
 	);
 }

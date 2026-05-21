@@ -1712,3 +1712,11 @@ export function useHybridInventoryPriceInsights(
 	return supabaseData as any;
 }
 
+export function filterProductsWithoutRecipes(
+	products: ProductRecord[],
+	recipes: RecipeRecord[]
+): ProductRecord[] {
+	const productIdsWithRecipe = new Set(recipes.map((r) => String(r.productId)));
+	return products.filter((p) => !productIdsWithRecipe.has(String(p._id)));
+}
+
