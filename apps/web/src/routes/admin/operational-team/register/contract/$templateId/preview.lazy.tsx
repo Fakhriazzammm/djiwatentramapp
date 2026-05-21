@@ -76,6 +76,7 @@ function ContractPreviewPage() {
 		const roleDefaults = selectedRole
 			? (() => { const d = getRoleSalaryDefaults(selectedRole); return { monthlySalary: d.monthlySalary, dailyAllowance: d.dailyAllowance, shiftRate: d.shiftRate }; })()
 			: { monthlySalary: 0, dailyAllowance: 0, shiftRate: 0 };
+		const bonusConfig = (selectedRole as any)?.bonusTargetConfig ?? undefined;
 		const ctx = buildContractVariableContext(
 			{ fullName: testName, phone: "", identityNumber: testNIK || undefined, address: testAddress || undefined, birthDate: undefined, placeOfBirth: undefined },
 			{ roleId: "", roleName: templateName, startDate: new Date().toISOString().slice(0, 10), employmentType: "full_time", location: onboardingSettings.defaultLocation || "Djiwa Tentram", monthlySalary: roleDefaults.monthlySalary, dailyAllowance: roleDefaults.dailyAllowance, shiftRate: roleDefaults.shiftRate, username: "", slug: "", contractDuration: 12 },

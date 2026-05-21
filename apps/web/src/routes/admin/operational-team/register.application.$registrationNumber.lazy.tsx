@@ -93,6 +93,8 @@ function ApplicationDetailPage() {
 		const templateText = roleTemplate || defaultTemplate;
 		const selectedRole = roles.find((r: any) => String(r?._id) === app.employment?.roleId);
 		const roleDefaults = selectedRole ? getRoleSalaryDefaults(selectedRole) : {};
+		const bonusConfig = (selectedRole as any)?.bonusTargetConfig ?? undefined;
+		const customAllowances = (selectedRole as any)?.customAllowances ?? undefined;
 
 		const mergedEmployment = {
 			...(app.employment || {}),
@@ -114,7 +116,7 @@ function ApplicationDetailPage() {
 				onboardingSettings.signatoryPersonTitle,
 				onboardingSettings.signatoryLocation,
 			);
-			const fullText = replaceContractVariables(templateStr, ctx);
+			const fullText = replaceContractVariables(templateStr, ctx, bonusConfig);
 			const rawLines = fullText.split("\n");
 			const clauseElements: string[] = [];
 			let clauseTitle = "";
@@ -156,14 +158,14 @@ function ApplicationDetailPage() {
 			emergencyContactName: app.emergency_contact?.name || "",
 			emergencyContactPhone: app.emergency_contact?.phone || "",
 		};
-		const built = buildEmployeeContractTemplate(personal, mergedEmployment, companyDisplayName);
+		const built = buildEmployeeContractTemplate(personal, mergedEmployment, companyDisplayName, bonusConfig, customAllowances);
 		const ctx = buildContractVariableContext(personal as any, mergedEmployment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
 		return {
 			...built,
-			plainText: replaceContractVariables(built.plainText, ctx),
-			clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
+			plainText: replaceContractVariables(built.plainText, ctx, bonusConfig),
+			clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx, bonusConfig) })),
 			html: `<article>${built.clauses.map((c) => {
-				const body = replaceContractVariables(c.body, ctx);
+				const body = replaceContractVariables(c.body, ctx, bonusConfig);
 				const paras = body.split("\n").map((l: string) => l.trim()).filter(Boolean).map((p: string) => `<p>${p}</p>`).join("\n");
 				return `<section><h3>${c.title}</h3>${paras}</section>`;
 			}).join("")}</article>`,

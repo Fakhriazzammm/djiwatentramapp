@@ -220,7 +220,11 @@ export function calculateEstimatedMonthlySalary(employment: EmployeeEmploymentDa
 	return estimatedMonthly;
 }
 
-export function buildCompensationBody(employment: EmployeeEmploymentData): string {
+export function buildCompensationBody(
+	employment: EmployeeEmploymentData,
+	bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] },
+	customAllowances?: { name?: string; amount?: number; type?: string }[],
+): string {
 	const monthly = employment.monthlySalary ?? 0;
 	const daily = employment.dailyAllowance ?? 0;
 	const shift = employment.shiftRate ?? 0;
@@ -251,7 +255,33 @@ export function buildCompensationBody(employment: EmployeeEmploymentData): strin
 	const itemsText = items.join(", ");
 	const detailsText = details.join(". ");
 
-	return `${itemsText}. ${detailsText}. Estimasi total penghasilan per bulan: ${formatMoney(totalMonthly)}. Perhitungan berdasarkan ${WORKING_DAYS_PER_MONTH} hari kerja per bulan.`;
+	let result = `${itemsText}. ${detailsText}. Estimasi total penghasilan per bulan: ${formatMoney(totalMonthly)}. Perhitungan berdasarkan ${WORKING_DAYS_PER_MONTH} hari kerja per bulan.`;
+
+	// Tambah keterangan bonus insentif
+	if (bonusConfig && Array.isArray(bonusConfig.tiers) && bonusConfig.tiers.length > 0) {
+		const basis = bonusConfig.basis === "shift" ? "per shift" : "per bulan";
+		const tiers = bonusConfig.tiers
+			.filter((t) => t.bonusAmount > 0)
+			.sort((a, b) => a.thresholdPct - b.thresholdPct)
+			.map((t) => `Pencapaian ${t.thresholdPct}% target: bonus ${formatMoney(t.bonusAmount)}`)
+			.join(". ");
+		result += ` Bonus insentif: ${tiers}. Bonus dibayarkan bersamaan dengan gaji periode berikutnya setelah evaluasi pencapaian target ${basis}.`;
+	}
+
+	// Tambah tunjangan tambahan (custom allowances)
+	if (Array.isArray(customAllowances) && customAllowances.length > 0) {
+		const lines = customAllowances
+			.filter((a) => a.name && a.amount && a.amount > 0)
+			.map((a) => {
+				const period = a.type === "monthly" ? "bulan" : a.type === "daily" ? "hari" : "bulan";
+				return `${a.name}: ${formatMoney(a.amount)}/${period}`;
+			});
+		if (lines.length > 0) {
+			result += ` Tunjangan tambahan: ${lines.join(", ")}.`;
+		}
+	}
+
+	return result;
 }
 
 export function buildBonusClause(bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] }): string {
@@ -336,7 +366,7 @@ PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut "Para Pihak" sepakat u
 		...probationClause,
 		{
 			title: "Pasal 5 — Kompensasi dan Tunjangan",
-			body: buildCompensationBody(employment),
+			body: buildCompensationBody(employment, bonusConfig, customAllowances),
 		},
 		{
 			title: "Pasal 6 — Waktu Kerja",
@@ -584,7 +614,7 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{tunjangan_harian}}": formatMoney(daily),
 		"{{rate_shift}}": formatMoney(shift),
 		"{{estimasi_total}}": formatMoney(estimatedTotal),
-		"{{kompensasi_body}}": buildCompensationBody(employment),
+	\t"{{kompensasi_body}}": buildCompensationBody(employment, bonusConfig),
 
 		// --- Bonus Target ---
 		"{{bonus_target_basis}}": bonusConfig ? (bonusConfig.basis === "daily" ? "Per Hari" : bonusConfig.basis === "monthly" ? "Per Bulan" : "Per Shift") : "-",
