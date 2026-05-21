@@ -1,25 +1,19 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { FileBarChart, ClipboardList, CalendarDays } from "lucide-react";
+import { FileBarChart, ClipboardList } from "lucide-react";
 import { SettingsPage } from "../settings.lazy";
 
-type AttendanceTab = "attendance-report" | "attendance-logs" | "attendance-schedule";
+type AttendanceTab = "attendance-report" | "attendance-logs";
 
 const tabs: { id: AttendanceTab; label: string; icon: typeof FileBarChart }[] = [
 	{ id: "attendance-report", label: "Data Absensi", icon: FileBarChart },
 	{ id: "attendance-logs", label: "Log Absensi", icon: ClipboardList },
-	{ id: "attendance-schedule", label: "Jadwal", icon: CalendarDays },
 ];
 
 function AttendanceIndexPage() {
 	const [activeTab, setActiveTab] = useState<AttendanceTab>("attendance-report");
-	const navigate = useNavigate();
 
 	const handleTabClick = (tabId: AttendanceTab) => {
-		if (tabId === "attendance-schedule") {
-			navigate({ to: "/admin/operational-team/attendance/jadwal" });
-			return;
-		}
 		setActiveTab(tabId);
 	};
 
@@ -33,9 +27,7 @@ function AttendanceIndexPage() {
 						type="button"
 						onClick={() => handleTabClick(tab.id)}
 						className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-							tab.id === "attendance-schedule"
-								? "bg-background text-foreground shadow-sm"
-								: activeTab === tab.id
+							activeTab === tab.id
 								? "bg-background text-foreground shadow-sm"
 								: "text-muted-foreground hover:text-foreground"
 						}`}
