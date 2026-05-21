@@ -4067,7 +4067,7 @@ function InventoryTable({
 	}, [imagePopoverRow]);
 	const inventoryCosts = useHybridLatestInventoryCosts();
 	const prevRowsRef = useRef(filteredRows);
-	const pendingSaveRef = useRef<Set<string>>(new Set());
+	const pendingSaveTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 	useEffect(() => {
 		if (isRecalculating && filteredRows !== prevRowsRef.current) {
 			setIsRecalculating(false);
@@ -4663,11 +4663,6 @@ function InventoryTable({
 			toast.error(`Data "${row.ingredientName}" tidak ditemukan — coba refresh halaman`);
 			return;
 		}
-		const rowKey = `${row.inventoryId}:meta`;
-		if (pendingSaveRef.current.has(rowKey)) {
-			return;
-		}
-		pendingSaveRef.current.add(rowKey);
 		const current = getInlineValue(row);
 		const ingredientName = current.ingredientName.trim();
 		const normalizedUnit = normalizeUnitOption(current.unit);
@@ -4869,6 +4864,17 @@ function InventoryTable({
 			} finally {
 				setSavingKey(null);
 			}
+	};
+
+	const debouncedSaveMeta = (row: InventoryWorkspaceRow) => {
+		const key = `${row.inventoryId}:meta`;
+		if (pendingSaveTimerRef.current[key]) {
+			clearTimeout(pendingSaveTimerRef.current[key]);
+		}
+		pendingSaveTimerRef.current[key] = setTimeout(() => {
+			delete pendingSaveTimerRef.current[key];
+			void saveMeta(row);
+		}, 50);
 	};
 
 	const saveQuantity = async (row: InventoryWorkspaceRow) => {
@@ -5820,7 +5826,7 @@ function InventoryTable({
 						className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background text-[10px]"
 												onBlur={(e) => {
 												setInlineField(row, "ingredientName", (e.target as HTMLInputElement).value);
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 											}}
 												onChange={(e) =>
 													setInlineField(row, "ingredientName", e.target.value)
@@ -5828,7 +5834,7 @@ function InventoryTable({
 												onKeyDown={(e) => {
 													if (e.key === "Enter") {
 														setInlineField(row, "ingredientName", (e.target as HTMLInputElement).value);
-														setTimeout(() => void saveMeta(row), 0);
+														debouncedSaveMeta(row);
 														(e.target as HTMLInputElement).blur();
 													}
 												}}
@@ -5907,7 +5913,7 @@ function InventoryTable({
 											className="mx-auto w-[8ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 											onBlur={(e) => {
 											setInlineField(row, "lowStockThreshold", (e.target as HTMLInputElement).value);
-											setTimeout(() => void saveMeta(row), 0);
+											debouncedSaveMeta(row);
 										}}
 											onChange={(e) =>
 												setInlineField(row, "lowStockThreshold", e.target.value)
@@ -5915,7 +5921,7 @@ function InventoryTable({
 											onKeyDown={(e) => {
 												if (e.key === "Enter") {
 													setInlineField(row, "lowStockThreshold", (e.target as HTMLInputElement).value);
-													setTimeout(() => void saveMeta(row), 0);
+													debouncedSaveMeta(row);
 													(e.target as HTMLInputElement).blur();
 												}
 											}}
@@ -5936,7 +5942,7 @@ function InventoryTable({
 													"unit",
 													normalizeUnitOption((e.target as HTMLInputElement).value)
 												);
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 											}}
 											onChange={(e) =>
 												setInlineField(
@@ -5957,7 +5963,7 @@ function InventoryTable({
 											className="mx-auto w-[8ch] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 											onBlur={(e) => {
 												setInlineField(row, "preferredPurchaseQuantity", (e.target as HTMLInputElement).value);
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 											}}
 											onChange={(e) =>
 												setInlineField(row, "preferredPurchaseQuantity", e.target.value)
@@ -5965,7 +5971,7 @@ function InventoryTable({
 											onKeyDown={(e) => {
 												if (e.key === "Enter") {
 													setInlineField(row, "preferredPurchaseQuantity", (e.target as HTMLInputElement).value);
-													setTimeout(() => void saveMeta(row), 0);
+													debouncedSaveMeta(row);
 													(e.target as HTMLInputElement).blur();
 												}
 											}}
@@ -5979,7 +5985,7 @@ function InventoryTable({
 											list="inventory-unit-options-table"
 											onBlur={(e) => {
 												setInlineField(row, "preferredPurchaseUnit", normalizeUnitOption((e.target as HTMLInputElement).value));
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 											}}
 											onChange={(e) =>
 												setInlineField(row, "preferredPurchaseUnit", normalizeUnitOption(e.target.value))
@@ -5987,7 +5993,7 @@ function InventoryTable({
 											onKeyDown={(e) => {
 												if (e.key === "Enter") {
 													setInlineField(row, "preferredPurchaseUnit", normalizeUnitOption((e.target as HTMLInputElement).value));
-													setTimeout(() => void saveMeta(row), 0);
+													debouncedSaveMeta(row);
 													(e.target as HTMLInputElement).blur();
 												}
 											}}
@@ -6000,7 +6006,7 @@ function InventoryTable({
 											className="mx-auto w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold tabular-nums text-[9px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 											onBlur={(e) => {
 											setInlineField(row, "packNetQuantity", (e.target as HTMLInputElement).value);
-											setTimeout(() => void saveMeta(row), 0);
+											debouncedSaveMeta(row);
 										}}
 											onChange={(e) =>
 												setInlineField(row, "packNetQuantity", e.target.value)
@@ -6008,7 +6014,7 @@ function InventoryTable({
 											onKeyDown={(e) => {
 												if (e.key === "Enter") {
 													setInlineField(row, "packNetQuantity", (e.target as HTMLInputElement).value);
-													setTimeout(() => void saveMeta(row), 0);
+													debouncedSaveMeta(row);
 													(e.target as HTMLInputElement).blur();
 												}
 											}}
@@ -6023,7 +6029,7 @@ function InventoryTable({
 											list="inventory-unit-options-table"
 											onBlur={(e) => {
 												setInlineField(row, "packNetUnit", normalizeUnitOption((e.target as HTMLInputElement).value));
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 											}}
 											onChange={(e) =>
 												setInlineField(row, "packNetUnit", normalizeUnitOption(e.target.value))
@@ -6031,7 +6037,7 @@ function InventoryTable({
 											onKeyDown={(e) => {
 												if (e.key === "Enter") {
 													setInlineField(row, "packNetUnit", normalizeUnitOption((e.target as HTMLInputElement).value));
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 													(e.target as HTMLInputElement).blur();
 												}
 											}}
@@ -6045,7 +6051,7 @@ function InventoryTable({
 												className="w-[10ch] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono tabular-nums text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
 												onBlur={(e) => {
 												setInlineField(row, "contentToBaseFactor", (e.target as HTMLInputElement).value);
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 											}}
 												onChange={(e) =>
 													setInlineField(row, "contentToBaseFactor", e.target.value)
@@ -6053,7 +6059,7 @@ function InventoryTable({
 												onKeyDown={(e) => {
 													if (e.key === "Enter") {
 														setInlineField(row, "contentToBaseFactor", (e.target as HTMLInputElement).value);
-														setTimeout(() => void saveMeta(row), 0);
+														debouncedSaveMeta(row);
 														(e.target as HTMLInputElement).blur();
 													}
 												}}
@@ -6068,7 +6074,7 @@ function InventoryTable({
 												list="inventory-unit-options-table"
 												onBlur={(e) => {
 												setInlineField(row, "unit", normalizeUnitOption((e.target as HTMLInputElement).value));
-												setTimeout(() => void saveMeta(row), 0);
+												debouncedSaveMeta(row);
 											}}
 												onChange={(e) =>
 													setInlineField(row, "unit", normalizeUnitOption(e.target.value))
@@ -6076,7 +6082,7 @@ function InventoryTable({
 												onKeyDown={(e) => {
 													if (e.key === "Enter") {
 														setInlineField(row, "unit", normalizeUnitOption((e.target as HTMLInputElement).value));
-													setTimeout(() => void saveMeta(row), 0);
+													debouncedSaveMeta(row);
 														(e.target as HTMLInputElement).blur();
 													}
 												}}
