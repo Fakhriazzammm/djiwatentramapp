@@ -5858,7 +5858,7 @@ function InventoryTable({
 																	? "border-amber-200 bg-amber-50 text-amber-700 focus:border-amber-400"
 																	: "border-slate-200 bg-slate-50 text-slate-600 focus:border-slate-400"
 												}`}
-												onBlur={() => void saveMeta(row)}
+												onBlur={() => void debouncedSaveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "category", e.target.value)
 												}
