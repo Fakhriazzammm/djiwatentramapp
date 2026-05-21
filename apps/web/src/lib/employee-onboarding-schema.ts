@@ -584,6 +584,7 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{tunjangan_harian}}": formatMoney(daily),
 		"{{rate_shift}}": formatMoney(shift),
 		"{{estimasi_total}}": formatMoney(estimatedTotal),
+		"{{kompensasi_body}}": buildCompensationBody(employment),
 
 		// --- Bonus Target ---
 		"{{bonus_target_basis}}": bonusConfig ? (bonusConfig.basis === "daily" ? "Per Hari" : bonusConfig.basis === "monthly" ? "Per Bulan" : "Per Shift") : "-",
