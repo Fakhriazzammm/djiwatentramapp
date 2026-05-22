@@ -5009,6 +5009,7 @@ export function useHybridUpdateUserProfile() {
 				if (args?.startDate !== undefined) { rawUpdates.startDate = args.startDate; rawNeedsUpdate = true; }
 				if (args?.employmentType !== undefined) { rawUpdates.employmentType = args.employmentType; rawNeedsUpdate = true; }
 				if (args?.location !== undefined) { rawUpdates.location = args.location; rawNeedsUpdate = true; }
+				if (args?.photoUrl !== undefined) { updates.photo_url = args.photoUrl; }
 				if (rawNeedsUpdate) updates.raw = rawUpdates;
 				if (Object.keys(updates).length === 0) return { success: true };
 

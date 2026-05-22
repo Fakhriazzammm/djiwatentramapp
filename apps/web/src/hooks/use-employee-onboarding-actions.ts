@@ -164,6 +164,7 @@ export function useHybridSubmitEmployeeApplication() {
 					signature_url: payload.signature_url ?? null,
 					contract_pdf_url: payload.contract_pdf_url ?? null,
 					cv_url: payload.cv_url ?? null,
+					photo_url: payload.photo_url ?? null,
 					attachments: payload.attachments ?? {},
 					raw: {
 						...(payload.raw ?? {}),

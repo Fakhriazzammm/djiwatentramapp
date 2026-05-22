@@ -98,6 +98,7 @@ type StaffUserRecord = {
 	slug?: string | null;
 	isActive: boolean;
 	receiveReportEmails?: boolean;
+	photoUrl?: string | null;
 };
 type ShiftStatusRecord = {
 	isOpen: boolean;
@@ -1569,6 +1570,7 @@ async function fetchStaffUsers() {
 		slug: row.slug ?? null,
 		isActive: Boolean(row.isActive),
 		receiveReportEmails: Boolean(row.receiveReportEmails),
+		photoUrl: row.photoUrl ?? null,
 	})) as StaffUserRecord[];
 }
 

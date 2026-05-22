@@ -1,7 +1,7 @@
 import { createLazyFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, UserPlus, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 	contract: { mode: "template", title: "", plainText: "", clauses: [] },
 	signatureDataUrl: "",
 	cvUrl: "",
+	photoUrl: "",
 	agreements: { dataIsTrue: false, contractApproved: false },
 };
 
@@ -140,6 +141,9 @@ function RegisterPage() {
 	const [cvFile, setCvFile] = useState<File | null>(null);
 	const [isUploadingCv, setIsUploadingCv] = useState(false);
 	const [cvUploadedUrl, setCvUploadedUrl] = useState<string | null>(null);
+	const [photoFile, setPhotoFile] = useState<File | null>(null);
+	const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+	const [photoUploadedUrl, setPhotoUploadedUrl] = useState<string | null>(null);
 
 	/* ── Sync salary from payroll when role changes ── */
 	useEffect(() => {
@@ -273,10 +277,19 @@ function RegisterPage() {
 				setIsUploadingCv(false);
 			}
 
+			// Upload foto profile jika ada
+			let photoUrl: string | null = photoUploadedUrl ?? null;
+			if (photoFile && !photoUploadedUrl) {
+				setIsUploadingPhoto(true);
+				photoUrl = await uploadFile({ file: photoFile, contentType: photoFile.type || "image/jpeg", fileName: `${appKey}-photo.${photoFile.name.split(".").pop() || "jpg"}`, folder: "employee-contracts/profile-photos" });
+				setPhotoUploadedUrl(photoUrl);
+				setIsUploadingPhoto(false);
+			}
+
 			// Build payload fase 1 — tanpa contract & signature
 			const payload = buildEmployeeOnboardingPayload(
 				{ ...draft, contract: { mode: "template", title: "", plainText: "", clauses: [] }, signatureDataUrl: "", agreements: { dataIsTrue: true, contractApproved: false } },
-				{ cvUrl, registrationNumber: appKey },
+				{ cvUrl, photoUrl, registrationNumber: appKey },
 			);
 			payload.raw = {
 				...payload.raw,
@@ -539,6 +552,57 @@ function RegisterPage() {
 									)}
 									<p className="text-xs text-muted-foreground">Format: PDF, DOC, JPG, PNG. Maksimal 5 MB.</p>
 								</div>
+
+								{/* Upload Foto Profile */}
+								<div className="space-y-1.5 sm:space-y-2 md:col-span-2">
+									<Label className="text-xs sm:text-sm">Upload Foto Profile (opsional)</Label>
+									<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+										<label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+											<Camera className="h-4 w-4" />
+											<span>{photoFile ? photoFile.name : "Pilih file foto"}</span>
+											<input
+												type="file"
+												accept=".jpg,.jpeg,.png,.webp"
+												className="hidden"
+												onChange={(e) => {
+													const file = e.target.files?.[0];
+													if (file) {
+														setPhotoFile(file);
+														setPhotoUploadedUrl(null);
+													}
+												}}
+											/>
+										</label>
+										{photoFile && (
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="text-xs text-destructive h-8"
+												onClick={() => { setPhotoFile(null); setPhotoUploadedUrl(null); }}
+											>
+												Hapus
+											</Button>
+										)}
+									</div>
+									{photoFile && !photoUploadedUrl && (
+										<p className="text-xs text-amber-600">Foto akan diupload saat pendaftaran dikirim</p>
+									)}
+									{photoUploadedUrl && (
+										<p className="text-xs text-emerald-600 flex items-center gap-1">
+											<CheckCircle2 className="h-3 w-3" /> Foto siap
+										</p>
+									)}
+									{photoFile && (
+										<div className="mt-1">
+											<img
+												src={URL.createObjectURL(photoFile)}
+												alt="Preview foto"
+												className="h-16 w-16 rounded-full object-cover border"
+											/>
+										</div>
+									)}
+								</div>
 							</CardContent>
 						</Card>
 						</motion.div>
@@ -570,13 +634,13 @@ function RegisterPage() {
 
 						{step === maxFormIdx ? (
 							<Button
-								disabled={isSubmitting || isUploadingCv}
-								onClick={handleSubmit}
-								size="sm"
-								className="sm:h-10 sm:px-4 sm:text-sm"
-							>
-								{(isSubmitting || isUploadingCv) && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-								{isUploadingCv ? "Mengupload CV..." : "Kirim Pendaftaran"}
+							disabled={isSubmitting || isUploadingCv || isUploadingPhoto}
+							onClick={handleSubmit}
+							size="sm"
+							className="sm:h-10 sm:px-4 sm:text-sm"
+						>
+							{(isSubmitting || isUploadingCv || isUploadingPhoto) && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+							{isUploadingCv ? "Mengupload CV..." : isUploadingPhoto ? "Mengupload Foto..." : "Kirim Pendaftaran"}
 							</Button>
 						) : (
 							<Button

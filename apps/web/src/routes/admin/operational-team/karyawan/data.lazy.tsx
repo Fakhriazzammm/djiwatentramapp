@@ -564,7 +564,11 @@ function DataKaryawanPage() {
 											</td>
 											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
 												<div className="flex items-center gap-2">
-													<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-black ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
+													{row.photoUrl ? (
+														<img src={row.photoUrl} alt={row.name || ""} className="h-6 w-6 shrink-0 rounded-lg object-cover" />
+													) : (
+														<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-black ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
+													)}
 													<div className="min-w-0">
 														<p className="font-bold text-xs truncate max-w-[120px]">{row.name}</p>
 														<p className="text-[9px] text-muted-foreground truncate max-w-[120px]">@{row.username || row.slug}</p>

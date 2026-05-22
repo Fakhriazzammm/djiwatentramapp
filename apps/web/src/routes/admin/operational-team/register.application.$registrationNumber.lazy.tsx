@@ -484,6 +484,15 @@ function ApplicationDetailPage() {
 									</a>
 								</div>
 							)}
+							{app.photo_url && (
+								<div className="col-span-2 mt-2 flex justify-center">
+									<img
+										src={app.photo_url}
+										alt="Foto Profile"
+										className="h-24 w-24 rounded-full object-cover border-2 border-primary/20 shadow-sm"
+									/>
+								</div>
+							)}
 						</div>
 					</div>
 

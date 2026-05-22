@@ -162,7 +162,7 @@ async function handleApprove(
   // Check if already approved & fetch raw data (needed to preserve registrationNumber etc.)
   const { data: app, error: appError } = await supabase
     .from("employee_onboarding_applications")
-    .select("id, status, approved_user_source_id, raw")
+    .select("id, status, approved_user_source_id, photo_url, raw")
     .eq("id", String(applicationId))
     .maybeSingle();
 
@@ -216,6 +216,7 @@ async function handleApprove(
       auth_user_id: authUserId ? String(authUserId) : null,
       slug: slug && String(slug).trim() !== "" ? String(slug).trim() : String(username).toLowerCase().split("@")[0],
       home_pin_fingerprint: homePinFingerprint,
+      photo_url: String(app?.photo_url ?? "") || undefined,
       raw,
     };
     console.log("[onboarding-admin] insertPayload (attempt", attempt, "):", JSON.stringify(insertPayload));

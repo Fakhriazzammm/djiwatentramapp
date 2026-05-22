@@ -52,6 +52,7 @@ export type EmployeeOnboardingDraft = {
 	contract: EmployeeContractDraft;
 	signatureDataUrl?: string;
 	cvUrl?: string;
+	photoUrl?: string;
 	agreements: {
 		dataIsTrue: boolean;
 		contractApproved: boolean;
@@ -81,6 +82,7 @@ export type EmployeeOnboardingApplicationPayload = {
 	signature_url: string | null;
 	contract_pdf_url: string | null;
 	cv_url: string | null;
+	photo_url: string | null;
 	registration_number: string | null;
 	attachments: Record<string, unknown>;
 	raw: Record<string, unknown>;
@@ -145,7 +147,7 @@ export function validateEmployeeOnboardingDraft(draft: EmployeeOnboardingDraft):
 
 export function buildEmployeeOnboardingPayload(
 	draft: EmployeeOnboardingDraft,
-	files?: { signatureUrl?: string | null; contractPdfUrl?: string | null; cvUrl?: string | null; registrationNumber?: string | null }
+	files?: { signatureUrl?: string | null; contractPdfUrl?: string | null; cvUrl?: string | null; photoUrl?: string | null; registrationNumber?: string | null }
 ): EmployeeOnboardingApplicationPayload {
 	const personal = draft.personal;
 	const employment = draft.employment;
@@ -178,6 +180,7 @@ export function buildEmployeeOnboardingPayload(
 		signature_url: files?.signatureUrl ?? null,
 		contract_pdf_url: files?.contractPdfUrl ?? null,
 		cv_url: files?.cvUrl ?? null,
+		photo_url: files?.photoUrl ?? null,
 		registration_number: files?.registrationNumber ?? null,
 		attachments: {},
 		raw: {

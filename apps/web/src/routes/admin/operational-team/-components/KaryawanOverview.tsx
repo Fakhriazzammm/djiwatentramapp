@@ -370,11 +370,15 @@ export default function KaryawanOverview() {
 								className="flex items-center gap-3 rounded-xl border bg-card px-3.5 py-2.5 hover:bg-muted/20 transition-colors group"
 							>
 								{/* Avatar */}
-								<div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ${
-									isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-								}`}>
-									{getInitials(user.name)}
-								</div>
+								{user.photoUrl ? (
+									<img src={user.photoUrl} alt={user.name || ""} className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+								) : (
+									<div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ${
+										isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+									}`}>
+										{getInitials(user.name)}
+									</div>
+								)}
 
 								{/* Name & Username */}
 								<div className="min-w-0 flex-1">

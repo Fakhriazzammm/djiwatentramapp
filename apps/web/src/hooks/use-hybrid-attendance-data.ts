@@ -35,6 +35,7 @@ async function fetchPublicUsers() {
 		roleId: row.roleId ?? null,
 		roleName: row.roleName ?? "Team",
 		isActive: row.isActive !== false,
+		photoUrl: row.photoUrl ?? null,
 		raw: (row as any).raw ?? null,
 	}));
 }
@@ -71,6 +72,7 @@ async function fetchUserBySlug(slug: string) {
 		slug: data.slug,
 		roleName: data.roleName || "Team",
 		hasFace: Boolean(data.hasFace),
+		photoUrl: (data as any).photoUrl ?? null,
 		raw: (data as any).raw ?? null,
 	};
 }

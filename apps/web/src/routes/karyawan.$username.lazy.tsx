@@ -95,6 +95,8 @@ function StaffProfilePage() {
 	const [editEmergencyContactPhone, setEditEmergencyContactPhone] = useState("");
 const [editBankName, setEditBankName] = useState("");
 const [editBankAccount, setEditBankAccount] = useState("");
+const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
 	// Onboarding state
 	const ONBOARDING_DISMISS_KEY = "karyawan_onboarding_dismissed";
@@ -279,9 +281,13 @@ const [editBankAccount, setEditBankAccount] = useState("");
 							{/* Header Profile */}
 							<div className="flex flex-col items-center text-center">
 								<div className="relative mb-4">
-									<div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-3xl font-black text-primary shadow-inner">
-										{staff.name.charAt(0)}
-									</div>
+									{staff.photoUrl ? (
+										<img src={staff.photoUrl} alt={staff.name} className="h-20 w-20 rounded-2xl object-cover shadow-inner" />
+									) : (
+										<div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-3xl font-black text-primary shadow-inner">
+											{staff.name.charAt(0)}
+										</div>
+									)}
 									<div className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-lg">
 										<Lock className="h-4 w-4" />
 									</div>
@@ -325,9 +331,13 @@ const [editBankAccount, setEditBankAccount] = useState("");
 						>
 							{/* Header Unlocked */}
 							<div className="flex items-center gap-4 rounded-2xl bg-primary/5 p-4 border border-primary/10">
-								<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-2xl font-black text-primary-foreground shadow-lg">
-									{staff.name.charAt(0)}
-								</div>
+								{staff.photoUrl ? (
+									<img src={staff.photoUrl} alt={staff.name} className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-lg" />
+								) : (
+									<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-2xl font-black text-primary-foreground shadow-lg">
+										{staff.name.charAt(0)}
+									</div>
+								)}
 								<div className="flex-1">
 									<h1 className="text-xl font-black tracking-tight">{staff.name}</h1>
 									<p className="font-bold text-primary text-[10px] uppercase">{staff.roleName}</p>
@@ -661,6 +671,27 @@ const [editBankAccount, setEditBankAccount] = useState("");
 												
 												setIsSavingProfile(true);
 												try {
+													// Upload foto profile jika ada file baru
+													let photoUrl: string | undefined;
+													if (editPhotoFile) {
+														setIsUploadingPhoto(true);
+														const supabase = createClient();
+														const ext = editPhotoFile.name.split('.').pop() || 'jpg';
+														const objectPath = `profile-photos/${staff?.slug || username}_${Date.now()}.${ext}`;
+														const { error: uploadError } = await supabase.storage
+															.from("employee-contracts")
+															.upload(objectPath, editPhotoFile, {
+																contentType: editPhotoFile.type || "image/jpeg",
+																upsert: true,
+															});
+														if (uploadError) throw uploadError;
+														const { data: publicUrlData } = supabase.storage
+															.from("employee-contracts")
+															.getPublicUrl(objectPath);
+														photoUrl = publicUrlData.publicUrl;
+														setIsUploadingPhoto(false);
+													}
+
 													await updateProfileMutation({
 														token,
 														name: editName !== staff?.name ? editName : undefined,
@@ -674,6 +705,7 @@ const [editBankAccount, setEditBankAccount] = useState("");
 														emergencyContactPhone: editEmergencyContactPhone || undefined,
 														bankName: editBankName || undefined,
 														bankAccount: editBankAccount || undefined,
+														photoUrl,
 													});
 
 													// Jika ada password baru, update via Supabase Auth
@@ -693,6 +725,8 @@ const [editBankAccount, setEditBankAccount] = useState("");
 													toast.success("Profil berhasil diperbarui!");
 													setIsEditMode(false);
 													setEditNewPassword("");
+													setEditPhotoFile(null);
+													setIsUploadingPhoto(false);
 
 													if (editSlug !== username) {
 														navigate({ to: `/karyawan/${editSlug}` as any, replace: true });
@@ -779,6 +813,53 @@ const [editBankAccount, setEditBankAccount] = useState("");
 													<div className="space-y-1">
 														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (No HP)</label>
 														<Input value={editEmergencyContactPhone} onChange={(e) => setEditEmergencyContactPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="No HP kontak darurat" />
+													</div>
+												</div>
+
+												<div className="pt-2 border-t mt-2 space-y-2.5">
+													<p className="text-[9px] font-black text-primary uppercase ml-1">Foto Profile</p>
+													<div className="space-y-2">
+														{staff.photoUrl && !editPhotoFile && (
+															<div className="flex items-center gap-3">
+																<img
+																	src={staff.photoUrl}
+																	alt="Profile"
+																	className="h-16 w-16 rounded-full object-cover border-2 border-primary/20"
+																/>
+																<span className="text-xs text-muted-foreground">Foto saat ini</span>
+															</div>
+														)}
+														{editPhotoFile && (
+															<div className="flex items-center gap-3">
+																<img
+																	src={URL.createObjectURL(editPhotoFile)}
+																	alt="Preview"
+																	className="h-16 w-16 rounded-full object-cover border-2 border-primary/20"
+																/>
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="sm"
+																	className="text-xs text-destructive h-8"
+																	onClick={() => setEditPhotoFile(null)}
+																>
+																	Hapus
+																</Button>
+															</div>
+														)}
+														<label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+															<Camera className="h-4 w-4" />
+															<span>{editPhotoFile ? editPhotoFile.name : "Pilih file foto"}</span>
+															<input
+																type="file"
+																accept=".jpg,.jpeg,.png,.webp"
+																className="hidden"
+																onChange={(e) => {
+																	const file = e.target.files?.[0];
+																	if (file) setEditPhotoFile(file);
+																}}
+															/>
+														</label>
 													</div>
 												</div>
 
