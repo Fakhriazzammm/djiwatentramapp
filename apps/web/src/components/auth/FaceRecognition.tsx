@@ -66,9 +66,12 @@ export function FaceRecognition({
   targetDescriptor, mode, className = "",
 }: FaceRecognitionProps) {
   const wRef = useRef<Webcam>(null);
-  const dRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const afRef = useRef(0);
   const pRef = useRef(false);
   const lRef = useRef(false);
+  const stableRef = useRef(0);
+  const alreadyRef = useRef(false);
 
   const [loaded, setLoaded] = useState(false);
   const [lMsg, setLMsg] = useState("Memuat sistem biometrik...");
@@ -88,7 +91,7 @@ export function FaceRecognition({
       setLMsg("Memuat sistem biometrik...");
       const gt = setTimeout(() => {
         if (!cancelled) { setErr("Waktu muat habis. Gunakan PIN."); onModelError?.("Waktu muat habis. Gunakan PIN."); }
-      }, 12000);
+      }, 3000);
 
       try {
         // Use shared preload — returns instantly if already loaded
@@ -102,32 +105,124 @@ export function FaceRecognition({
     return () => { cancelled = true; };
   }, [r]);
 
-  // Face detection loop
+  // Face detection loop — requestAnimationFrame, continuous, no gaps
   useEffect(() => {
     if (!loaded || st !== "idle") return;
+    stableRef.current = 0;
+    alreadyRef.current = false;
+
+    const drawBox = (
+      det: faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>> | null
+    ) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!det) return;
+      const box = det.detection.box;
+      const vid = wRef.current?.video;
+      if (!vid) return;
+      const vw = vid.videoWidth;
+      const vh = vid.videoHeight;
+      if (!vw || !vh) return;
+      const sx = canvas.width / vw;
+      const sy = canvas.height / vh;
+      // Mirror x because video is displayed with scale-x-[-1]
+      const x = canvas.width - (box.x + box.width) * sx;
+      const y = box.y * sy;
+      const w = box.width * sx;
+      const h = box.height * sy;
+      ctx.strokeStyle = "#22c55e";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x, y, w, h);
+    };
+
+    const syncCanvas = () => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const parent = canvas.parentElement;
+        if (parent) {
+          canvas.width = parent.clientWidth;
+          canvas.height = parent.clientHeight;
+        }
+      }
+    };
+
     const detect = async () => {
-      if (!wRef.current?.video || pRef.current) return;
+      const vid = wRef.current?.video;
+      if (!vid || pRef.current || alreadyRef.current) {
+        afRef.current = requestAnimationFrame(detect);
+        return;
+      }
       try {
         const det = await faceapi
-          .detectSingleFace(wRef.current.video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
-          .withFaceLandmarks();
-        setFace(!!det);
-      } catch { /* silent */ }
+          .detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.5 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        if (!det) {
+          setFace(false);
+          stableRef.current = 0;
+          drawBox(null);
+        } else {
+          setFace(true);
+          drawBox(det);
+          // Auto-verify: 3 stable consecutive detections (verify mode only)
+          if (mode === "verify" && !alreadyRef.current) {
+            stableRef.current += 1;
+            if (stableRef.current >= 3) {
+              alreadyRef.current = true;
+              const desc = Array.from(det.descriptor);
+              if (onVerify) {
+                try {
+                  await onVerify(desc);
+                  setSt("success");
+                  onMatch?.(desc);
+                } catch {
+                  setSt("fail");
+                }
+              } else if (targetDescriptor) {
+                const d = faceapi.euclideanDistance(
+                  new Float32Array(desc),
+                  new Float32Array(targetDescriptor)
+                );
+                d < 0.6
+                  ? (setSt("success"), onMatch?.(desc))
+                  : setSt("fail");
+              } else {
+                onModelError?.("Data wajah tidak tersedia.");
+                setSt("fail");
+              }
+            }
+          }
+        }
+      } catch {
+        stableRef.current = 0;
+        setFace(false);
+        drawBox(null);
+      }
+      if (!alreadyRef.current) {
+        afRef.current = requestAnimationFrame(detect);
+      }
     };
-    dRef.current = setInterval(detect, 300);
-    return () => { if (dRef.current) clearInterval(dRef.current); };
-  }, [loaded, st]);
+
+    syncCanvas();
+    afRef.current = requestAnimationFrame(detect);
+    return () => {
+      cancelAnimationFrame(afRef.current);
+    };
+  }, [loaded, st, mode, onVerify, onMatch, targetDescriptor, onModelError]);
 
   const capture = useCallback(async () => {
     if (!wRef.current || !loaded || pRef.current) return;
     pRef.current = true;
-    if (dRef.current) { clearInterval(dRef.current); dRef.current = null; }
+    cancelAnimationFrame(afRef.current);
     setSt("scanning");
     try {
       const video = wRef.current.video;
       if (!video) throw new Error("no video");
       const det = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
       if (!det) { setSt("fail"); setFace(false); return; }
@@ -267,7 +362,10 @@ export function FaceRecognition({
           )}
         </AnimatePresence>
 
-        <canvas className="hidden" />
+        {/* Bounding box overlay — green box when face detected */}
+        <canvas ref={canvasRef}
+          className="absolute inset-0 z-[11] pointer-events-none"
+        />
       </div>
 
       {/* Capture button */}

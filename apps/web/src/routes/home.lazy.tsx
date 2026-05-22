@@ -2,13 +2,8 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import {
 	ChevronDown,
 	Copy,
-	Loader2,
-	Trophy,
-	X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { AnimatePresence, motion } from "framer-motion";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import {
@@ -19,10 +14,6 @@ import {
 } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridStaffStatsToday } from "@/hooks/use-hybrid-attendance-data";
-import {
-	useHybridClockIn,
-	useHybridClockOut,
-} from "@/hooks/use-hybrid-write-actions";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 import { HomeSearchBar } from "@/components/home/home-search-bar";
@@ -33,17 +24,6 @@ import { HomeStickyStrip } from "@/components/home/home-sticky-strip";
 import { HomeRepeatUsage } from "@/components/home/home-repeat-usage";
 import { HomeBottomNav } from "@/components/home/home-bottom-nav";
 import { LeaderboardPanel } from "@/routes/admin/-components/leaderboard-panel";
-
-const FaceRecognition = lazy(() =>
-	import("@/components/auth/FaceRecognition").then((m) => ({
-		default: m.FaceRecognition,
-	}))
-);
-
-// Preload face models eagerly (not lazy, called on mount)
-const preloadFaceModels = () => {
-	import("@/components/auth/FaceRecognition").then((m) => m.preloadFaceModels?.());
-};
 
 type ShiftRow = {
 	shiftId: string;
@@ -195,18 +175,9 @@ function HomePage() {
 	const [refreshCount, setRefreshCount] = useState(0);
 	const statsToday = useHybridStaffStatsToday(user?._id, refreshCount);
 	const monthProgress = useHybridCurrentMonthProgress();
-	const clockIn = useHybridClockIn();
-	const clockOut = useHybridClockOut();
-
-	const [showFaceModal, setShowFaceModal] = useState(false);
-	const [isProcessing, setIsProcessing] = useState(false);
-
 	const [currentTime, setCurrentTime] = useState(new Date());
 	const [searchQuery, setSearchQuery] = useState("");
 	const [shiftExpanded, setShiftExpanded] = useState(false);
-
-	// Preload face models on mount
-	useEffect(() => { preloadFaceModels(); }, []);
 
 	useEffect(() => {
 		const timer = setInterval(() => {
@@ -307,26 +278,8 @@ function HomePage() {
 			: "Absen Masuk";
 
 	const handlePrimaryAttendanceAction = () => {
-		if (!hasFaceDescriptor) {
-			toast.info("Wajah belum terdaftar. Lengkapi dari halaman absensi tim.");
-			navigate({ to: "/attendance" as any });
-			return;
-		}
-		setShowFaceModal(true);
+		navigate({ to: "/attendance" as any });
 	};
-
-	const getCurrentLocation = () =>
-		new Promise<{ lat: number; lng: number }>((resolve, reject) => {
-			if (!navigator.geolocation) {
-				reject(new Error("Browser tidak mendukung geolokasi."));
-				return;
-			}
-			navigator.geolocation.getCurrentPosition(
-				(pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-				() => reject(new Error("Izin lokasi diperlukan untuk absensi.")),
-				{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-			);
-		});
 
 	const handleAvatarClick = () => {
 		const to = user?.slug ? (`/karyawan/${user.slug}` as any) : ("/attendance" as any);
@@ -366,8 +319,8 @@ function HomePage() {
 					activeShiftTime={activeShiftTime}
 					userRoleName={userRole?.name || "Staff"}
 				primaryActionTitle={primaryActionTitle}
-				isProcessing={isProcessing}
-					onPrimaryAction={handlePrimaryAttendanceAction}
+				isProcessing={false}
+				onPrimaryAction={handlePrimaryAttendanceAction}
 					onAvatarClick={handleAvatarClick}
 				/>
 
@@ -553,90 +506,6 @@ function HomePage() {
 					Tap satu tombol untuk langsung pindah ke halaman kerja.
 				</div>
 			</div>
-
-			{/* Face Recognition Modal */}
-			<AnimatePresence>
-				{showFaceModal && (
-					<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-2 backdrop-blur-md">
-						<motion.div
-							initial={{ opacity: 0, scale: 0.9 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: 0.9 }}
-							className="relative w-full max-w-sm md:max-w-lg overflow-hidden rounded-2xl bg-card shadow-2xl"
-						>
-							<div className="absolute top-3 right-3 z-10">
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={() => setShowFaceModal(false)}
-									className="h-8 w-8 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-all"
-								>
-									<X className="h-4 w-4" />
-								</Button>
-							</div>
-
-							<div className="p-3">
-								<Suspense fallback={<div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
-									<FaceRecognition
-										mode="verify"
-										onVerify={async (descriptor) => {
-											if (isProcessing) return;
-											setIsProcessing(true);
-											const toastId = toast.loading(statsToday?.isWorking ? "Proses Absen Keluar..." : "Proses Absen Masuk...");
-											try {
-												const location = await getCurrentLocation();
-												if (statsToday?.isWorking) {
-													// Check if role needs stock opname
-													const roleName = (userRole?.name || "").toLowerCase();
-													const needsOpname = roleName.includes("bar") || roleName.includes("kitchen");
-													if (needsOpname) {
-														const opnameRole = roleName.includes("bar") ? "bar" : "kitchen";
-														toast.dismiss(toastId);
-														setShowFaceModal(false);
-														navigate({
-															to: "/attendance/stock-opname",
-															search: {
-																role: opnameRole,
-																shiftId: selectedShift?.shiftId || "",
-																shiftName: selectedShift?.shiftName || "Shift",
-																userId: user!._id,
-																userName: user?.name || "Staff",
-																faceDescriptor: descriptor.join(","),
-																location: JSON.stringify(location),
-															}
-														} as any);
-														return;
-													}
-													await clockOut({
-														userId: user!._id,
-														faceDescriptor: descriptor,
-														location,
-													});
-													toast.success("Berhasil Absen Keluar", { id: toastId });
-												} else {
-													await clockIn({
-														userId: user!._id,
-														faceDescriptor: descriptor,
-														location,
-													});
-													toast.success("Berhasil Absen Masuk", { id: toastId });
-												}
-												setShowFaceModal(false);
-												setRefreshCount(c => c + 1);
-											} catch (err: any) {
-												toast.error(err?.message || "Gagal memproses absensi", { id: toastId });
-												throw err;
-											} finally {
-												setIsProcessing(false);
-											}
-										}}
-									/>
-								</Suspense>
-							</div>
-						</motion.div>
-					</div>
-				)}
-			</AnimatePresence>
 
 			{/* Mobile Bottom Nav */}
 			<HomeBottomNav />
