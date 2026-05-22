@@ -69,6 +69,7 @@ import {
 	buildReceiptMetaFromCart,
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
+import { playSuccessSound } from "@/lib/play-success-sound";
 
 const fmt = (n: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -1232,16 +1233,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				if (shouldOpenBill) {
 					if (useMayarGateway) {
-						toast.success("Invoice Mayar berhasil dibuat"); triggerHybridRefresh();
+						toast.success("Invoice Mayar berhasil dibuat"); triggerHybridRefresh(); playSuccessSound();
 						if (mayarInvoice?.link && typeof window !== "undefined") {
 							window.open(mayarInvoice.link, "_blank", "noopener,noreferrer");
 						}
 					} else {
-						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh();
+						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh(); playSuccessSound();
 					}
 					setLastOrderId(orderId);
 				} else {
-					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh();
+					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh(); playSuccessSound();
 					setLastOrderId(orderId);
 
 					if (siteSettings?.autoPrint !== false) {

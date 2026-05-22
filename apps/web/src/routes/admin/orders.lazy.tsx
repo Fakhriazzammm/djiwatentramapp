@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { playSuccessSound } from "@/lib/play-success-sound";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -333,6 +334,9 @@ function AdminOrders() {
 				`Status pesanan diperbarui menjadi ${getStatusLabel(newStatus)}`
 			);
 			setSelectedOrder({ ...selectedOrder, status: newStatus });
+			if (newStatus === "paid" || newStatus === "completed") {
+				playSuccessSound();
+			}
 		} catch (_error) {
 			toast.error("Gagal memperbarui status pesanan");
 		}
