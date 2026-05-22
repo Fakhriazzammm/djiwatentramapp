@@ -17,6 +17,8 @@ import {
 	Camera,
 	ShieldCheck,
 	History,
+	Bell,
+	Check,
 	LogOut,
 	ChevronRight,
 	Calendar,
