@@ -680,6 +680,18 @@ function RegisterCompletePage() {
             <p className="text-sm leading-relaxed text-sky-600 dark:text-sky-300">
               Simpan URL halaman ini untuk mengecek status pendaftaran nanti.
             </p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href).then(
+                  () => toast.success("Link halaman disalin!"),
+                  () => toast.error("Gagal menyalin link"),
+                );
+              }}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-sky-100 active:scale-95 dark:border-sky-700 dark:bg-sky-950/30 dark:text-sky-300 dark:hover:bg-sky-900/40"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Salin Link Halaman
+            </button>
           </div>
         </motion.div>
 
