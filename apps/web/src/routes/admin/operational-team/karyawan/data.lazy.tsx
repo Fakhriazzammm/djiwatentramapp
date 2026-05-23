@@ -15,6 +15,7 @@ import {
 	ChevronUp,
 	ChevronDown,
 	ChevronRight,
+	ChevronLeft,
 	ArrowUpDown,
 	IdCard,
 	Building2,
@@ -203,6 +204,15 @@ function DataKaryawanPage() {
 			if (s.roleName) roles.add(s.roleName);
 		});
 		return Array.from(roles).sort();
+	}, [allStaff]);
+
+	const stats = useMemo(() => {
+		if (!Array.isArray(allStaff)) return { total: 0, active: 0, inactive: 0, noPhone: 0 };
+		const total = allStaff.length;
+		const active = allStaff.filter((s: any) => s.isActive !== false).length;
+		const inactive = allStaff.filter((s: any) => s.isActive === false).length;
+		const noPhone = allStaff.filter((s: any) => !((s as any).raw?.phone)).length;
+		return { total, active, inactive, noPhone };
 	}, [allStaff]);
 
 	const filtered = useMemo(() => {
@@ -414,8 +424,16 @@ function DataKaryawanPage() {
 
 	return (
 		<div className="flex flex-col gap-3 p-3 md:p-4">
+			{/* Header */}
 			<div className="flex items-center justify-between flex-wrap gap-2">
 				<div className="flex items-center gap-2.5">
+					<button
+						onClick={() => navigate({ to: "/admin/operational-team/karyawan" as any })}
+						className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+						title="Kembali ke Overview"
+					>
+						<ChevronLeft className="h-4 w-4" />
+					</button>
 					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-400 text-white shadow-sm">
 						<User className="h-4 w-4" />
 					</div>
@@ -427,26 +445,53 @@ function DataKaryawanPage() {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-bold px-2.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
-						{isExporting === "csv" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
-						<span className="hidden sm:inline ml-1">CSV</span>
+					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[9px] font-bold px-2 gap-1.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
+						{isExporting === "csv" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+						CSV
 					</Button>
-					<Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-bold px-2.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
-						{isExporting === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-						<span className="hidden sm:inline ml-1">PDF</span>
+					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[9px] font-bold px-2 gap-1.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
+						{isExporting === "pdf" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+						PDF
 					</Button>
 				</div>
 			</div>
 
+			{/* Stats Summary */}
+			<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+				{[
+					{ label: "Total", value: stats.total, color: "bg-primary/10 text-primary" },
+					{ label: "Aktif", value: stats.active, color: "bg-emerald-100 text-emerald-700" },
+					{ label: "Nonaktif", value: stats.inactive, color: "bg-red-100 text-red-700" },
+					{ label: "Belum No HP", value: stats.noPhone, color: "bg-amber-100 text-amber-700" },
+				].map((stat) => (
+					<div
+						key={stat.label}
+						className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2"
+					>
+						<div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-black ${stat.color}`}>
+							{stat.value}
+						</div>
+						<div className="min-w-0">
+							<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+							<p className="text-sm font-black text-foreground">{stat.value}</p>
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* Toolbar: Search + Filters */}
 			<div className="rounded-xl border bg-card p-2.5 space-y-2.5">
-				<div className="relative flex-1 max-w-md">
-					<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-					<Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cari nama, username, No HP..." className="h-8 rounded-xl pl-8 pr-8 text-[11px] font-medium" />
-					{searchQuery && (
-						<button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-							<X className="h-3.5 w-3.5" />
-						</button>
-					)}
+				<div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+					<div className="relative flex-1 max-w-xs">
+						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+						<Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cari nama, username, No HP..." className="h-8 rounded-xl pl-8 pr-8 text-[11px] font-medium" />
+						{searchQuery && (
+							<button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+								<X className="h-3.5 w-3.5" />
+							</button>
+						)}
+					</div>
+					<span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap sm:ml-auto">{filtered.length} dari {Array.isArray(allStaff) ? allStaff.length : 0} data</span>
 				</div>
 
 				<div className="flex items-center gap-2 flex-wrap">
@@ -472,12 +517,10 @@ function DataKaryawanPage() {
 							<button key={opt.value} onClick={() => setStatusFilter(opt.value)} className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${statusFilter === opt.value ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{opt.label}</button>
 						))}
 					</div>
-
-					<div className="flex-1" />
-					<span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">{filtered.length} dari {Array.isArray(allStaff) ? allStaff.length : 0} data</span>
 				</div>
 			</div>
 
+			{/* Bulk Delete Bar */}
 			{selectedIds.size > 0 && (
 				<div className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
 					<span className="text-[10px] font-medium text-muted-foreground">{selectedIds.size} dipilih</span>
@@ -498,10 +541,11 @@ function DataKaryawanPage() {
 				</div>
 			)}
 
+			{/* Table */}
 			<div className="overflow-x-auto rounded-xl border bg-card">
 				{isLoading ? (
 					<div className="p-6 space-y-3">
-						{[1,2,3,4,5,6].map((i) => <div key={i} className={`h-7 w-full rounded-lg bg-muted animate-pulse ${i > 2 ? "/60" : ""} ${i > 4 ? "/40" : ""}`} />)}
+						{[1,2,3,4,5,6].map((i) => <div key={i} className="h-7 w-full rounded-lg bg-muted/40 animate-pulse" />)}
 					</div>
 				) : isEmpty ? (
 					<div className="flex flex-col items-center justify-center py-12 text-center">
@@ -511,53 +555,53 @@ function DataKaryawanPage() {
 					</div>
 				) : (
 					<table id="karyawan-data-table" className="w-full border-collapse text-[11px]">
-						<thead>
+						<thead className="sticky top-0 z-10">
 							<tr className="border-b bg-muted/40">
-								<th className="w-8 px-1 py-2 text-center">
+								<th className="w-8 px-1 py-2.5 text-center">
 									<input
 										type="checkbox"
-										className="h-3 w-3 rounded"
+										className="h-3 w-3 rounded cursor-pointer"
 										checked={filtered.length > 0 && selectedIds.size === filtered.length}
 										onChange={toggleSelectAll}
 									/>
 								</th>
-								<th className="w-8 px-1 py-2 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] text-muted-foreground/40">#</span></th>
-								<th className="px-2.5 py-2 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
-								<th className="px-2.5 py-2 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
-								<th className="px-2.5 py-2 text-left min-w-[100px] hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">No Identitas</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden lg:table-cell">TTL</th>
-								<th className="px-2.5 py-2 text-left hidden lg:table-cell">Alamat</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">Tgl Mulai</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap min-w-[80px] hidden sm:table-cell">Status Kerja</th>
-								<th className="px-2.5 py-2 text-right hidden md:table-cell">Gaji</th>
-								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Lokasi</th>
-								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Kontak Darurat</th>
-								<th className="px-2.5 py-2 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
-								<th className="px-2.5 py-2 text-center hidden lg:table-cell">Wajah</th>
-								<th className="px-2.5 py-2 text-center hidden lg:table-cell">CV</th>
-								<th className="w-10 px-1 py-2 text-center"><span className="text-[8px] text-muted-foreground/40">✕</span></th>
+								<th className="w-8 px-1 py-2.5 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] text-muted-foreground/40">#</span></th>
+								<th className="px-2.5 py-2.5 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
+								<th className="px-2.5 py-2.5 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
+								<th className="px-2.5 py-2.5 text-left min-w-[100px] hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
+								<th className="px-2.5 py-2.5 text-left whitespace-nowrap hidden md:table-cell">No Identitas</th>
+								<th className="px-2.5 py-2.5 text-left whitespace-nowrap hidden lg:table-cell">TTL</th>
+								<th className="px-2.5 py-2.5 text-left hidden lg:table-cell">Alamat</th>
+								<th className="px-2.5 py-2.5 text-left whitespace-nowrap hidden md:table-cell">Tgl Mulai</th>
+								<th className="px-2.5 py-2.5 text-left whitespace-nowrap min-w-[80px] hidden sm:table-cell">Status Kerja</th>
+								<th className="px-2.5 py-2.5 text-right hidden md:table-cell">Gaji</th>
+								<th className="px-2.5 py-2.5 text-left hidden xl:table-cell">Lokasi</th>
+								<th className="px-2.5 py-2.5 text-left hidden xl:table-cell">Kontak Darurat</th>
+								<th className="px-2.5 py-2.5 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
+								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">Wajah</th>
+								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">CV</th>
+								<th className="w-10 px-1 py-2.5 text-center"><span className="text-[8px] text-muted-foreground/40">✕</span></th>
 							</tr>
 						</thead>
 						<tbody>
 							{filtered.length === 0 ? (
 								<tr><td colSpan={16} className="px-4 py-8 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
-							) : filtered.map((row: any) => {
+							) : filtered.map((row: any, idx: number) => {
 								const r = (row as any).raw ?? {};
 								const isActive = row.isActive !== false;
 								const isExpanded = expandedId === row._id;
 								return (
 									<React.Fragment key={row._id}>
-										<tr className={`border-b border-border/30 hover:bg-muted/20 transition-all cursor-pointer ${isExpanded ? "bg-primary/[0.02] shadow-inner" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
+										<tr className={`border-b border-border/20 hover:bg-muted/10 transition-colors cursor-pointer ${isExpanded ? "bg-primary/[0.02]" : ""} ${selectedIds.has(row._id) ? "bg-primary/[0.03]" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
 											<td className="px-1 py-2 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(row._id); }}>
 												<input
 													type="checkbox"
-													className="h-3 w-3 rounded"
+													className="h-3 w-3 rounded cursor-pointer"
 													checked={selectedIds.has(row._id)}
 													onChange={() => toggleSelect(row._id)}
 												/>
 											</td>
-											<td className="px-1 py-2 text-center" onClick={(e) => toggleExpand(row._id, e)}>
+											<td className="px-1 py-2 text-center text-[10px] text-muted-foreground/40 font-mono" onClick={(e) => toggleExpand(row._id, e)}>
 												<button className="inline-flex items-center justify-center h-4 w-4 rounded hover:bg-muted transition-colors">
 													<ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
 												</button>
@@ -565,9 +609,9 @@ function DataKaryawanPage() {
 											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
 												<div className="flex items-center gap-2">
 													{row.photoUrl ? (
-														<img src={row.photoUrl} alt={row.name || ""} className="h-6 w-6 shrink-0 rounded-lg object-cover" />
+														<img src={row.photoUrl} alt={row.name || ""} className="h-6 w-6 shrink-0 rounded-lg object-cover ring-1 ring-border" />
 													) : (
-														<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-black ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
+														<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-black ring-1 ring-border/50 ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
 													)}
 													<div className="min-w-0">
 														<p className="font-bold text-xs truncate max-w-[120px]">{row.name}</p>
@@ -576,26 +620,26 @@ function DataKaryawanPage() {
 												</div>
 											</td>
 											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
-												<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">{row.roleName || "\u2014"}</span>
+												<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">{row.roleName || "—"}</span>
 											</td>
-											<td className="px-2.5 py-2 font-medium hidden sm:table-cell">{r.phone || <span className="text-muted-foreground/40">\u2014</span>}</td>
-											<td className="px-2.5 py-2 text-muted-foreground hidden md:table-cell">{r.identityNumber || <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 font-medium hidden sm:table-cell">{r.phone || <span className="text-muted-foreground/40">—</span>}</td>
+											<td className="px-2.5 py-2 text-muted-foreground hidden md:table-cell">{r.identityNumber || <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden lg:table-cell">{r.placeOfBirth ? `${r.placeOfBirth}, ` : ""}{fmtDate(r.birthDate)}</td>
-											<td className="px-2.5 py-2 text-muted-foreground max-w-[120px] truncate hidden lg:table-cell">{r.address || <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-muted-foreground max-w-[120px] truncate hidden lg:table-cell">{r.address || <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden md:table-cell">{fmtDate(r.startDate)}</td>
 											<td className="px-2.5 py-2 hidden sm:table-cell">
-												<span className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${r.employmentType === "permanent" ? "bg-emerald-100 text-emerald-700" : r.employmentType === "probation" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "\u2014"}</span>
+												<span className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${r.employmentType === "permanent" ? "bg-emerald-100 text-emerald-700" : r.employmentType === "probation" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "—"}</span>
 											</td>
 											<td className="px-2.5 py-2 text-right font-medium hidden md:table-cell">{fmtCurrency(r.monthlySalary)}</td>
-											<td className="px-2.5 py-2 text-muted-foreground hidden xl:table-cell">{r.location || <span className="text-muted-foreground/40">\u2014</span>}</td>
-											<td className="px-2.5 py-2 text-[10px] hidden xl:table-cell">{r.emergencyContactName ? <div><p className="font-medium">{r.emergencyContactName}</p><p className="text-muted-foreground">{r.emergencyContactPhone || "\u2014"}</p></div> : <span className="text-muted-foreground/40">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-muted-foreground hidden xl:table-cell">{r.location || <span className="text-muted-foreground/40">—</span>}</td>
+											<td className="px-2.5 py-2 text-[10px] hidden xl:table-cell">{r.emergencyContactName ? <div><p className="font-medium">{r.emergencyContactName}</p><p className="text-muted-foreground">{r.emergencyContactPhone || "—"}</p></div> : <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-center">
 												<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] ${isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-muted text-muted-foreground border border-border"}`}>
 													<span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
 													{isActive ? "Aktif" : "Nonaktif"}
 												</span>
 											</td>
-											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{row.hasFace ? <Camera className="inline h-3.5 w-3.5 text-primary" /> : <span className="text-muted-foreground/20">\u2014</span>}</td>
+											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{row.hasFace ? <Camera className="inline h-3.5 w-3.5 text-primary" /> : <span className="text-muted-foreground/20">—</span>}</td>
 											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">—</span>}</td>
 											<td className="px-1 py-2 text-center">
 												<button

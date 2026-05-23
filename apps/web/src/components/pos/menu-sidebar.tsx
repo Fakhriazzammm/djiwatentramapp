@@ -1038,6 +1038,7 @@ function DashboardTab({
 	const orders = useHybridOrders();
 	const lowStockItems = useHybridLowStockItems();
 	const products = useHybridProducts();
+	const allStaffUsers = useHybridStaffUsers();
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -1158,9 +1159,11 @@ function DashboardTab({
 		let productsText = "";
 		Object.entries(itemsByCatAndProd).forEach(([cat, prods]) => {
 			const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
-			productsText += `- ${cat} (${catTotal}):\n`;
+			productsText += `- ${cat} (${catTotal}):
+`;
 			Object.entries(prods).forEach(([name, qty]) => {
-				productsText += `  • ${name}: ${qty}\n`;
+				productsText += `  • ${name}: ${qty}
+`;
 			});
 		});
 		if (!productsText) productsText = "-";
@@ -1169,7 +1172,8 @@ function DashboardTab({
 			.sort((a, b) => b[1] - a[1])
 			.slice(0, 3)
 			.map(([name, qty]) => `- ${name}: ${qty}`)
-			.join("\n") || "-";
+			.join("
+") || "-";
 
 		const expensesByCategory: Record<string, number> = {};
 		let totalExpenseVal = 0;
@@ -1181,7 +1185,8 @@ function DashboardTab({
 		const netBalance = totalRevenue - totalExpenseVal;
 		const expensesText = Object.entries(expensesByCategory)
 			.map(([cat, amount]) => `${cat}: Rp. ${amount.toLocaleString("id-ID")}`)
-			.join("\n") || "Tidak ada pengeluaran hari ini";
+			.join("
+") || "Tidak ada pengeluaran hari ini";
 
 		const shopName = siteSettings?.storeName || "YUMI POS";
 
@@ -1215,14 +1220,17 @@ function DashboardTab({
 				let sProductsText = "";
 				Object.entries(sItemsByCatAndProd).forEach(([cat, prods]) => {
 					const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
-					sProductsText += `- ${cat} (${catTotal}):\n`;
+					sProductsText += `- ${cat} (${catTotal}):
+`;
 					Object.entries(prods).forEach(([name, qty]) => {
-						sProductsText += `  • ${name}: ${qty}\n`;
+						sProductsText += `  • ${name}: ${qty}
+`;
 					});
 				});
 				if (!sProductsText) sProductsText = "-";
 				else sProductsText = sProductsText.trimEnd();
-				const sTopProductsText = Object.entries(sItemsByName).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, qty]) => `- ${name}: ${qty}`).join("\n") || "-";
+				const sTopProductsText = Object.entries(sItemsByName).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, qty]) => `- ${name}: ${qty}`).join("
+") || "-";
 
 				const sTransactions = todayTransactions?.filter((t: any) => t.date >= sStart && t.date <= sEnd) || [];
 				let sExpenseVal = 0;
@@ -1233,7 +1241,32 @@ function DashboardTab({
 				});
 
 				const statusLabel = shiftObj.endTime ? " (SELESAI)" : " (AKTIF)";
-				const teamLabel = shiftObj.teamMembers ? `\nTim: ${shiftObj.teamMembers}` : "";
+				const teamLabel = (() => {
+					if (!shiftObj.teamMembers) return "";
+					const names = shiftObj.teamMembers.split(",").map((n: string) => n.trim()).filter(Boolean);
+					if (!names.length) return "";
+					if (!allStaffUsers?.length) return `
+Tim: ${shiftObj.teamMembers}`;
+					const grouped = new Map<string, string[]>();
+					names.forEach((name: string) => {
+						const user = allStaffUsers.find((u: any) => u.name.trim().toLowerCase() === name.toLowerCase());
+						const role = user?.roleName?.trim() || "Lainnya";
+						if (!grouped.has(role)) grouped.set(role, []);
+						grouped.get(role)!.push(name);
+					});
+					const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+					const sortedRoles = [...grouped.keys()].sort((a, b) => {
+						const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
+						const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
+						return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+					});
+					return "
+" + sortedRoles.map(role => {
+						const formattedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+						return `${formattedRole}: ${grouped.get(role)!.join(", ")}`;
+					}).join("
+");
+				})();
 				allShiftsText += `👥 ${(shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`)}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
 Tunai: Rp. ${sCash.toLocaleString("id-ID")}
@@ -1254,10 +1287,13 @@ ${sTopProductsText}
 Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
 
 Kasir: ${shiftObj.cashierName || "Kasir"}${teamLabel}
----\n`;
+---
+`;
 			});
 		} else {
-			allShiftsText = `👥 BELUM ADA SHIFT\n---\n`;
+			allShiftsText = `👥 BELUM ADA SHIFT
+---
+`;
 		}
 
 		return `📊 Daily Revenue Report
@@ -1290,7 +1326,7 @@ Total Potongan: Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
 Total Produk Terjual: ${totalItems}`;
-	}, [todayOrders, products, categoriesList, shiftStatus, siteSettings, todayTransactions]);
+	}, [todayOrders, products, categoriesList, shiftStatus, siteSettings, todayTransactions, allStaffUsers]);
 
 	return (
 		<div className="space-y-3">
@@ -2530,29 +2566,51 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 						</div>
 						<div className="space-y-1.5">
 							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Tim Bertugas (Opsional)</Label>
-							<div className="rounded-md border bg-background p-2 space-y-1.5 max-h-32 overflow-y-auto">
+							<div className="rounded-md border bg-background p-2 space-y-2 max-h-48 overflow-y-auto">
 								{staffUsers.length === 0 ? (
 									<p className="text-[10px] text-muted-foreground italic px-1">Memuat data staff...</p>
-								) : (
-									staffUsers.map((u: any) => (
-										<label
-											key={u._id}
-											className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer"
-										>
-											<Checkbox
-												checked={teamMembers.includes(u.name)}
-												onCheckedChange={(checked: boolean) => {
-													setTeamMembers(prev =>
-														checked
-															? [...prev, u.name]
-															: prev.filter(n => n !== u.name)
-													);
-												}}
-											/>
-											<span className="text-xs">{u.name}</span>
-										</label>
-									))
-								)}
+								) : (() => {
+									const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+									const grouped = new Map<string, any[]>();
+									const others: any[] = [];
+									staffUsers.forEach((u: any) => {
+										const rn = (u.roleName || "").trim();
+										if (roleOrder.some(r => r.toLowerCase() === rn.toLowerCase())) {
+											const key = rn.charAt(0).toUpperCase() + rn.slice(1).toLowerCase();
+											if (!grouped.has(key)) grouped.set(key, []);
+											grouped.get(key)!.push(u);
+										} else {
+											others.push(u);
+										}
+									});
+									const sections = roleOrder
+										.filter(r => grouped.has(r))
+										.map(r => ({ role: r, users: grouped.get(r)! }));
+									if (others.length) sections.push({ role: "Lainnya", users: others });
+									return sections.map(({ role, users }) => (
+										<div key={role}>
+											<p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70 mb-1 px-1">{role}</p>
+											{users.map((u: any) => (
+												<label
+													key={u._id}
+													className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer"
+												>
+													<Checkbox
+														checked={teamMembers.includes(u.name)}
+														onCheckedChange={(checked: boolean) => {
+															setTeamMembers(prev =>
+																checked
+																	? [...prev, u.name]
+																	: prev.filter(n => n !== u.name)
+															);
+														}}
+													/>
+													<span className="text-xs">{u.name}</span>
+												</label>
+											))}
+										</div>
+									));
+								})()}
 							</div>
 							{teamMembers.length > 0 && (
 								<p className="text-[10px] text-muted-foreground">
