@@ -139,7 +139,7 @@ class FinanceManager:
         }
 
         result = await self._record_via_edge(payload)
-        logger.info("Transaction recorded: %s Rp%.0f (%s) — ok=%s", tx_type, amount, category, result.get("ok"))
+        logger.info("Transaction recorded: %s Rp%.0f (%s) — ok=%s", tx_type, amount, category, result.get("success"))
         return result
 
     def _now_wib(self) -> datetime:

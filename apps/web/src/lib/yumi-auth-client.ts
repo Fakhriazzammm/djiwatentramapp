@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/client";
+import { invokeEdgeFunction, ApiError } from "@/lib/api-helper";
 
 export type YumiPublicUser = {
 	_id: string;
@@ -76,26 +77,7 @@ function assertSupabaseConfig() {
 
 async function invokeAuth<T>(body: Record<string, unknown>) {
 	assertSupabaseConfig();
-
-	const supabase = createClient();
-	const { data, error } = await supabase.functions.invoke("yumi-auth", {
-		body,
-	});
-
-	if (error) {
-		throw new Error(error.message || "Gagal memanggil auth service");
-	}
-
-	if (
-		data &&
-		typeof data === "object" &&
-		"error" in data &&
-		typeof data.error === "string"
-	) {
-		throw new Error(data.error);
-	}
-
-	return data as T;
+	return invokeEdgeFunction<T>("yumi-auth", body);
 }
 
 function encodeLocalSession(session: YumiValidatedSession) {

@@ -2,6 +2,7 @@
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -418,13 +419,7 @@ function useHybridStorageUpload(
 }
 
 async function invokeYumiAiAction(action: string, payload: Record<string, unknown>) {
-	const supabase = createClient();
-	const { data, error } = await supabase.functions.invoke("yumi-ai", {
-		body: { action, ...payload },
-	});
-	if (error) throw new Error(error.message || "Gagal menghubungi AI");
-	if ((data as any)?.error) throw new Error((data as any).error);
-	return data;
+	return invokeEdgeFunction("yumi-ai", { action, ...payload });
 }
 
 export function useHybridBulkCreateProducts() {
@@ -2253,13 +2248,7 @@ export function useHybridYumiChat() {
 			images?: string[];
 			contextHint?: string;
 		}) => {
-			const supabase = createClient();
-			const { data, error } = await supabase.functions.invoke("yumi-ai", {
-				body: { action: "yumiChat", ...args },
-			});
-			if (error) throw new Error(error.message || "Gagal menghubungi AI");
-			if (data?.error) throw new Error(data.error);
-			return data as { content: string; toolCalls: unknown[] };
+			return invokeEdgeFunction<{ content: string; toolCalls: unknown[] }>("yumi-ai", { action: "yumiChat", ...args });
 		},
 		[]
 	);
@@ -2267,13 +2256,7 @@ export function useHybridYumiChat() {
 
 export function useHybridBulkScanImageData() {
 	return useCallback(async (args: { images: string[] }) => {
-		const supabase = createClient();
-		const { data, error } = await supabase.functions.invoke("yumi-ai", {
-			body: { action: "bulkScanImageData", ...args },
-		});
-		if (error) throw new Error(error.message || "Gagal menganalisis gambar");
-		if (data?.error) throw new Error(data.error);
-		return data;
+		return invokeEdgeFunction("yumi-ai", { action: "bulkScanImageData", ...args });
 	}, []);
 }
 
@@ -2281,12 +2264,7 @@ export function useHybridGenerateBusinessBriefing() {
 	return useCallback(
 		async (args: { localHour: number; context?: string }) => {
 			const supabase = createClient();
-			const { data, error } = await supabase.functions.invoke("yumi-ai", {
-				body: { action: "generateBusinessBriefing", ...args },
-			});
-			if (error) throw new Error(error.message || "Gagal membuat briefing");
-			if (data?.error) throw new Error(data.error);
-			return data as { content: string };
+			return invokeEdgeFunction<{ content: string }>("yumi-ai", { action: "generateBusinessBriefing", ...args });
 		},
 		[]
 	);
@@ -3781,10 +3759,9 @@ export function useHybridCreateTransaction() {
 			}
 
 			// ── Call API Gateway (edge function) ────────────────
-			const { data: gwResult, error: gwError } = await createClient().functions.invoke(
+			const gwResult = await invokeEdgeFunction(
 				"record-financial-transaction",
 				{
-					body: {
 						tx_type: type,
 						amount,
 						category,
@@ -3798,8 +3775,7 @@ export function useHybridCreateTransaction() {
 					},
 				}
 			);
-			if (gwError) throw new Error(gwError.message || "Gateway error");
-			const sourceId = (gwResult as any)?.sourceId;
+			const sourceId = gwResult?.sourceId;
 			if (!sourceId) throw new Error("Gateway returned no sourceId");
 
 				// Fire-and-forget: notify Yumi Finance Analyzer for real-time AI analysis
@@ -3989,26 +3965,24 @@ export function useHybridRecordExpenseIntake() {
 					transactionId = existingId;
 				} else {
 					// ── Create via API Gateway ──────────────────────
-					const { data: gwResult, error: gwError } = await createClient().functions.invoke(
+					const gwResult = await invokeEdgeFunction(
 						"record-financial-transaction",
 						{
-							body: {
-								tx_type: type,
-								amount,
-								category,
-								description: effectiveDescription || undefined,
-								merchant: tx?.merchant || undefined,
-								tx_date: date,
-								payment_method: tx?.paymentMethod || "cash",
-								status: tx?.status || "completed",
-								source_fingerprint: args?.sourceFingerprint || undefined,
-								metadata,
-							},
+							tx_type: type,
+							amount,
+							category,
+							description: effectiveDescription || undefined,
+							merchant: tx?.merchant || undefined,
+							tx_date: date,
+							payment_method: tx?.paymentMethod || "cash",
+							status: tx?.status || "completed",
+							source_fingerprint: args?.sourceFingerprint || undefined,
+							metadata,
 						}
 					);
-					const gwSourceId = (gwResult as any)?.sourceId;
-					if (gwError || !gwSourceId) {
-						console.warn("[supabase-hybrid:write-record-expense-intake] gateway failed, using direct insert", gwError);
+					const gwSourceId = gwResult?.sourceId;
+					if (!gwSourceId) {
+						console.warn("[supabase-hybrid:write-record-expense-intake] gateway failed");
 						const directSourceId =
 							typeof crypto !== "undefined" && "randomUUID" in crypto
 								? crypto.randomUUID()
@@ -5279,17 +5253,15 @@ export function useHybridCreateUser() {
 						: `${username}@djiwa.internal`;
 					const password = args?.password || crypto.randomUUID().slice(0, 12);
 
-					const { data: authData, error: authError } = await createClient().functions.invoke("yumi-auth", {
-						body: {
-							action: "createAuthUser",
-							sourceId,
-							email,
-							password,
-							name,
-						},
+					const authData = await invokeEdgeFunction("yumi-auth", {
+						action: "createAuthUser",
+						sourceId,
+						email,
+						password,
+						name,
 					});
 
-					if (!authError && authData?.authUserId) {
+					if (authData?.authUserId) {
 						await createClient().from("yumi_users").update({ auth_user_id: authData.authUserId }).eq("source_id", sourceId);
 					}
 				} catch (authUserErr) {

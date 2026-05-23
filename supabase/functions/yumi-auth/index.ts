@@ -30,7 +30,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 });
 
 function json(body: JsonRecord, status = 200) {
-	return new Response(JSON.stringify(body), {
+	return new Response(JSON.stringify({ success: true, ...body }), {
 		status,
 		headers: {
 			...corsHeaders,
@@ -39,8 +39,8 @@ function json(body: JsonRecord, status = 200) {
 	});
 }
 
-function fail(message: string, status = 400) {
-	return json({ error: message }, status);
+function fail(code: string, message: string, status = 400) {
+	return json({ success: false, error: { code, message } }, status);
 }
 
 function normalizeToken(value: unknown) {
@@ -396,10 +396,10 @@ Deno.serve(async (req) => {
 			case "createAuthUser":
 				return json(await handleCreateAuthUser(body));
 			default:
-				return fail("Auth action tidak dikenali", 404);
+				return fail("UNKNOWN_ACTION", "Auth action tidak dikenali", 404);
 		}
 	} catch (error) {
 		console.error("yumi-auth failed", error);
-		return fail(error instanceof Error ? error.message : "Unknown error", 400);
+		return fail("INTERNAL_ERROR", error instanceof Error ? error.message : "Unknown error", 400);
 	}
 });

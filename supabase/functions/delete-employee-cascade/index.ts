@@ -42,13 +42,13 @@ serve(async (req: Request) => {
 
   // Only allow POST
   if (req.method !== "POST") {
-    return corsResponse({ error: "Method not allowed" }, 405);
+    return corsResponse({ success: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" } }, 405);
   }
 
   // Verify admin secret
   const adminSecret = req.headers.get("x-admin-secret") ?? "";
   if (!adminSecret || adminSecret !== ADMIN_SECRET) {
-    return corsResponse({ error: "Unauthorized" }, 401);
+    return corsResponse({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, 401);
   }
 
   try {
@@ -59,7 +59,7 @@ serve(async (req: Request) => {
 
     // Validasi: minimal salah satu dari ids atau source_ids harus diisi
     if (!hasIds && !hasSourceIds) {
-      return corsResponse({ error: "Either ids or source_ids array is required" }, 400);
+      return corsResponse({ success: false, error: { code: "VALIDATION_ERROR", message: "Either ids or source_ids array is required" } }, 400);
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -77,7 +77,7 @@ serve(async (req: Request) => {
 
       if (fetchError) {
         console.error("[delete-employee-cascade] Fetch by ids error:", fetchError);
-        return corsResponse({ error: fetchError.message }, 500);
+        return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: fetchError.message } }, 500);
       }
 
       if (appsById) {
@@ -96,7 +96,7 @@ serve(async (req: Request) => {
 
       if (fetchError) {
         console.error("[delete-employee-cascade] Fetch by source_ids error:", fetchError);
-        return corsResponse({ error: fetchError.message }, 500);
+        return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: fetchError.message } }, 500);
       }
 
       if (appsBySource) {
@@ -105,7 +105,7 @@ serve(async (req: Request) => {
     }
 
     if (allApps.length === 0) {
-      return corsResponse({ error: "Applications not found" }, 404);
+      return corsResponse({ success: false, error: { code: "NOT_FOUND", message: "Applications not found" } }, 404);
     }
 
     // Deduplicate by id (union)
@@ -166,7 +166,7 @@ serve(async (req: Request) => {
 
     if (appDeleteError) {
       console.error("[delete-employee-cascade] Onboarding app delete error:", appDeleteError);
-      return corsResponse({ error: appDeleteError.message }, 500);
+      return corsResponse({ success: false, error: { code: "DELETE_ERROR", message: appDeleteError.message } }, 500);
     }
 
     return corsResponse({
@@ -176,6 +176,6 @@ serve(async (req: Request) => {
     });
   } catch (e: any) {
     console.error("[delete-employee-cascade] Error:", e.message);
-    return corsResponse({ error: e.message }, 500);
+    return corsResponse({ success: false, error: { code: "INTERNAL_ERROR", message: e.message } }, 500);
   }
 });

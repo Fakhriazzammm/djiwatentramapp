@@ -63,7 +63,7 @@ serve(async (req) => {
   // ── Auth check ──────────────────────────────────────────────
   const authHeader = req.headers.get("x-admin-secret");
   if (authHeader !== ADMIN_SECRET) {
-    return corsResponse({ error: "Unauthorized: invalid or missing admin secret" }, 401);
+    return corsResponse({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized: invalid or missing admin secret" } }, 401);
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -90,12 +90,12 @@ serve(async (req) => {
       case "bulk_delete":
         return await handleBulkDelete(supabase, payload);
       default:
-        return corsResponse({ error: `Unknown action: ${action}` }, 400);
+        return corsResponse({ success: false, error: { code: "UNKNOWN_ACTION", message: `Unknown action: ${action}` } }, 400);
     }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Internal server error";
     console.error("[onboarding-admin] Error:", message);
-    return corsResponse({ error: message }, 500);
+    return corsResponse({ success: false, error: { code: "INTERNAL_ERROR", message } }, 500);
   }
 });
 
@@ -119,10 +119,10 @@ async function handleList(
 
   if (error) {
     console.error("[onboarding-admin] list error:", error);
-    return corsResponse({ error: error.message }, 500);
+    return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: error.message } }, 500);
   }
 
-  return corsResponse({ data });
+  return corsResponse({ success: true, data });
 }
 
 // ── 2. Approve application ────────────────────────────────────
@@ -154,7 +154,7 @@ async function handleApprove(
     if (!name) missing.push("name");
     if (!roleId) missing.push("roleId");
     return corsResponse(
-      { error: `Data tidak lengkap: ${missing.join(", ")} wajib`, debug: { applicationId, username, name, roleId } },
+      { success: false, error: { code: "VALIDATION_ERROR", message: `Data tidak lengkap: ${missing.join(", ")} wajib` }, debug: { applicationId, username, name, roleId } },
       400
     );
   }
@@ -168,11 +168,11 @@ async function handleApprove(
 
   if (appError) {
     console.error("[onboarding-admin] approve fetch error:", JSON.stringify(appError));
-    return corsResponse({ error: `Query error: ${appError.message}`, detail: JSON.stringify(appError) }, 500);
+    return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: `Query error: ${appError.message}` }, detail: JSON.stringify(appError) }, 500);
   }
-  if (!app) return corsResponse({ error: `Pendaftaran tidak ditemukan (${applicationId})` }, 404);
+  if (!app) return corsResponse({ success: false, error: { code: "NOT_FOUND", message: `Pendaftaran tidak ditemukan (${applicationId})` } }, 404);
   if (app.status === "approved" || app.approved_user_source_id) {
-    return corsResponse({ error: "Pendaftaran ini sudah disetujui" }, 409);
+    return corsResponse({ success: false, error: { code: "CONFLICT", message: "Pendaftaran ini sudah disetujui" } }, 409);
   }
 
   // Generate source ID for new user
@@ -252,7 +252,7 @@ async function handleApprove(
 
   if (!userCreated) {
     console.error("[onboarding-admin] createUser error after retries:", insertErrBody);
-    return corsResponse({ error: `Gagal buat user: ${insertErrBody}` }, 500);
+    return corsResponse({ success: false, error: { code: "CREATE_USER_ERROR", message: `Gagal buat user: ${insertErrBody}` } }, 500);
   }
 
   // ── Generate employee NIP ──
@@ -322,7 +322,7 @@ async function handleApprove(
   if (!updateAppRes.ok) {
     const updateErrBody = await updateAppRes.text();
     console.error("[onboarding-admin] updateApp error:", updateErrBody);
-    return corsResponse({ error: `Gagal update aplikasi: ${updateErrBody}` }, 500);
+    return corsResponse({ success: false, error: { code: "UPDATE_ERROR", message: `Gagal update aplikasi: ${updateErrBody}` } }, 500);
   }
 
   // ── Telegram notification ──
@@ -421,7 +421,7 @@ async function handleStatusUpdate(
   const { id, reviewNotes, reviewedBy } = payload as Record<string, unknown>;
 
   if (!id) {
-    return corsResponse({ error: "id wajib diisi" }, 400);
+    return corsResponse({ success: false, error: { code: "VALIDATION_ERROR", message: "id wajib diisi" } }, 400);
   }
 
   const { error } = await supabase
@@ -436,7 +436,7 @@ async function handleStatusUpdate(
 
   if (error) {
     console.error(`[onboarding-admin] update ${status} error:`, error);
-    return corsResponse({ error: error.message }, 500);
+    return corsResponse({ success: false, error: { code: "UPDATE_ERROR", message: error.message } }, 500);
   }
 
   return corsResponse({ success: true, message: `Status diubah ke ${status}` });
@@ -450,7 +450,7 @@ async function handleDelete(
   const { id } = payload as Record<string, unknown>;
 
   if (!id) {
-    return corsResponse({ error: "id wajib diisi" }, 400);
+    return corsResponse({ success: false, error: { code: "VALIDATION_ERROR", message: "id wajib diisi" } }, 400);
   }
 
   // Don't allow deleting approved applications
@@ -460,10 +460,10 @@ async function handleDelete(
     .eq("id", String(id))
     .maybeSingle();
 
-  if (checkError) return corsResponse({ error: checkError.message }, 500);
-  if (!app) return corsResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+  if (checkError) return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: checkError.message } }, 500);
+  if (!app) return corsResponse({ success: false, error: { code: "NOT_FOUND", message: "Pendaftaran tidak ditemukan" } }, 404);
   if (app.status === "approved" && app.approved_user_source_id) {
-    return corsResponse({ error: "Tidak bisa menghapus pendaftaran yang sudah disetujui" }, 403);
+    return corsResponse({ success: false, error: { code: "CONFLICT", message: "Tidak bisa menghapus pendaftaran yang sudah disetujui" } }, 403);
   }
 
   const { error } = await supabase
@@ -473,7 +473,7 @@ async function handleDelete(
 
   if (error) {
     console.error("[onboarding-admin] delete error:", error);
-    return corsResponse({ error: error.message }, 500);
+    return corsResponse({ success: false, error: { code: "DELETE_ERROR", message: error.message } }, 500);
   }
 
   return corsResponse({ success: true, message: "Pendaftaran dihapus" });
@@ -488,7 +488,7 @@ async function handleSignContract(
 
   if (!applicationId || !signatureUrl || !contractPdfUrl || !contractText) {
     return corsResponse(
-      { error: "Data tidak lengkap: applicationId, signatureUrl, contractPdfUrl, contractText wajib" },
+      { success: false, error: { code: "VALIDATION_ERROR", message: "Data tidak lengkap: applicationId, signatureUrl, contractPdfUrl, contractText wajib" } },
       400
     );
   }
@@ -500,10 +500,10 @@ async function handleSignContract(
     .eq("id", String(applicationId))
     .maybeSingle();
 
-  if (appError) return corsResponse({ error: appError.message }, 500);
-  if (!app) return corsResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+  if (appError) return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: appError.message } }, 500);
+  if (!app) return corsResponse({ success: false, error: { code: "NOT_FOUND", message: "Pendaftaran tidak ditemukan" } }, 404);
   if (app.status !== "approved") {
-    return corsResponse({ error: "Pendaftaran harus disetujui terlebih dahulu" }, 409);
+    return corsResponse({ success: false, error: { code: "CONFLICT", message: "Pendaftaran harus disetujui terlebih dahulu" } }, 409);
   }
 
   // Update application with signed contract
@@ -520,7 +520,7 @@ async function handleSignContract(
 
   if (updateError) {
     console.error("[onboarding-admin] sign_contract update error:", updateError);
-    return corsResponse({ error: updateError.message }, 500);
+    return corsResponse({ success: false, error: { code: "UPDATE_ERROR", message: updateError.message } }, 500);
   }
 
   return corsResponse({
@@ -540,13 +540,13 @@ async function handleSetStatus(
 
   // ── Validate input ──
   if (!id || !status) {
-    return corsResponse({ error: "Parameter id dan status wajib diisi" }, 400);
+    return corsResponse({ success: false, error: { code: "VALIDATION_ERROR", message: "Parameter id dan status wajib diisi" } }, 400);
   }
 
   const VALID_TARGETS = ["pending", "rejected", "needs_revision"] as const;
   if (!VALID_TARGETS.includes(status as any)) {
     return corsResponse({
-      error: `Status target tidak valid. Gunakan: ${VALID_TARGETS.join(", ")}`,
+      success: false, error: { code: "VALIDATION_ERROR", message: `Status target tidak valid. Gunakan: ${VALID_TARGETS.join(", ")}` },
     }, 400);
   }
 
@@ -559,10 +559,10 @@ async function handleSetStatus(
 
   if (appError) {
     console.error("[onboarding-admin] set_status fetch error:", appError);
-    return corsResponse({ error: appError.message }, 500);
+    return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: appError.message } }, 500);
   }
   if (!app) {
-    return corsResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+    return corsResponse({ success: false, error: { code: "NOT_FOUND", message: "Pendaftaran tidak ditemukan" } }, 404);
   }
 
   // ── Validate transition ──
@@ -577,7 +577,7 @@ async function handleSetStatus(
   const allowed = VALID_TRANSITIONS[app.status] ?? [];
   if (!allowed.includes(status)) {
     return corsResponse({
-      error: `Transisi tidak valid: ${app.status} → ${status}. Transisi yang diizinkan: ${allowed.join(", ") || "tidak ada"}`,
+      success: false, error: { code: "INVALID_TRANSITION", message: `Transisi tidak valid: ${app.status} → ${status}. Transisi yang diizinkan: ${allowed.join(", ") || "tidak ada"}` },
     }, 400);
   }
 
@@ -586,7 +586,7 @@ async function handleSetStatus(
     const raw = (app.raw as Record<string, unknown>) ?? {};
     if (raw.pipelineStep === "contract_signed") {
       return corsResponse({
-        error: "Tidak bisa mengubah status: karyawan sudah menandatangani kontrak",
+        success: false, error: { code: "CONFLICT", message: "Tidak bisa mengubah status: karyawan sudah menandatangani kontrak" },
       }, 409);
     }
   }
@@ -609,7 +609,7 @@ async function handleSetStatus(
 
   if (updateError) {
     console.error("[onboarding-admin] set_status update error:", updateError);
-    return corsResponse({ error: updateError.message }, 500);
+    return corsResponse({ success: false, error: { code: "UPDATE_ERROR", message: updateError.message } }, 500);
   }
 
   return corsResponse({
@@ -626,7 +626,7 @@ async function handleBulkDelete(
   const { ids } = payload as { ids?: string[] };
 
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
-    return corsResponse({ error: "ids array wajib diisi" }, 400);
+    return corsResponse({ success: false, error: { code: "VALIDATION_ERROR", message: "ids array wajib diisi" } }, 400);
   }
 
   // Only allow deleting non-approved applications
@@ -635,7 +635,7 @@ async function handleBulkDelete(
     .select("id, status, approved_user_source_id")
     .in("id", ids);
 
-  if (checkError) return corsResponse({ error: checkError.message }, 500);
+  if (checkError) return corsResponse({ success: false, error: { code: "QUERY_ERROR", message: checkError.message } }, 500);
 
   const approvedIds = (apps ?? [])
     .filter((a: any) => a.status === "approved" && a.approved_user_source_id)
@@ -643,7 +643,7 @@ async function handleBulkDelete(
 
   if (approvedIds.length > 0) {
     return corsResponse({
-      error: `${approvedIds.length} pendaftaran sudah disetujui dan tidak bisa dihapus`,
+      success: false, error: { code: "CONFLICT", message: `${approvedIds.length} pendaftaran sudah disetujui dan tidak bisa dihapus` },
       approvedIds,
     }, 403);
   }
@@ -655,7 +655,7 @@ async function handleBulkDelete(
 
   if (error) {
     console.error("[onboarding-admin] bulk delete error:", error);
-    return corsResponse({ error: error.message }, 500);
+    return corsResponse({ success: false, error: { code: "DELETE_ERROR", message: error.message } }, 500);
   }
 
   return corsResponse({ success: true, message: `${ids.length} pendaftaran dihapus` });

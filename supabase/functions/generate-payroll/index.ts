@@ -35,8 +35,8 @@ function corsResponse(body: unknown, status = 200, extraHeaders: Record<string, 
   });
 }
 
-function fail(message: string, status = 400) {
-  return corsResponse({ error: message }, status);
+function fail(code: string, message: string, status = 400) {
+  return corsResponse({ success: false, error: { code, message } }, status);
 }
 
 // ─── Helpers ────────────────────────────────────────
@@ -390,7 +390,7 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return fail("Method not allowed", 405);
+    return fail("METHOD_NOT_ALLOWED", "Method not allowed", 405);
   }
 
   try {
@@ -429,13 +429,13 @@ serve(async (req) => {
         result = await handleRawSql(supabase, payload);
         break;
       default:
-        return fail(`Unknown action: ${action}`, 400);
+        return fail("UNKNOWN_ACTION", `Unknown action: ${action}`, 400);
     }
 
-    return corsResponse({ ok: true, result, action, ...(typeof result === "object" ? result : {}) });
+    return corsResponse({ success: true, result, action, ...(typeof result === "object" ? result : {}) });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("[generate-payroll] Error:", message);
-    return corsResponse({ error: message }, 500);
+    return corsResponse({ success: false, error: { code: "INTERNAL_ERROR", message } }, 500);
   }
 });

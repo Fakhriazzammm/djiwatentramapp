@@ -26,6 +26,14 @@ const telegramDefaultChatId =
 	Deno.env.get("TELEGRAM_CHAT_ID") ??
 	Deno.env.get("TELELEGRAM_CHAT_ID");
 
+function jsonOk(data: Record<string, unknown>, status = 200) {
+	const { ok, error: _, ...rest } = data;
+	return new Response(JSON.stringify({ success: true, ...rest }), {
+		status,
+		headers: { ...corsHeaders, "Content-Type": "application/json" },
+	});
+}
+
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -33,8 +41,8 @@ function jsonResponse(body: unknown, status = 200) {
 	});
 }
 
-function fail(message: string, status = 400) {
-	return jsonResponse({ error: message }, status);
+function fail(code: string, message: string, status = 400) {
+	return jsonResponse({ success: false, error: { code, message } }, status);
 }
 
 async function callOpenAI(messages: unknown[], model = openaiModelChat) {
@@ -866,31 +874,52 @@ Deno.serve(async (req) => {
 
 		switch (action) {
 			case "yumiChat":
-				return jsonResponse(await yumiChat(body));
-			case "bulkScanImageData":
-				return jsonResponse(await bulkScanImageData(body));
+				return jsonOk(await yumiChat(body) as Record<string, unknown>);
+			case "bulkScanImageData": {
+				const result = await bulkScanImageData(body);
+				return jsonOk({ items: result } as Record<string, unknown>);
+			}
 			case "generateBusinessBriefing":
-				return jsonResponse(await generateBusinessBriefing(body));
-			case "sendTelegram":
-				return jsonResponse(await sendTelegram(body));
-			case "recordTransaction":
-				return jsonResponse(await recordTransaction(body));
-			case "classifyTransactionItems":
-				return jsonResponse(await classifyTransactionItems(body));
-			case "executeSql":
-				return jsonResponse(await executeSql(body));
-		case "insertInventory":
-			return jsonResponse(await insertInventory(body));
-		case "submitEmployeeApplication":
-			return jsonResponse(await submitEmployeeApplication(body));
-		case "parseAttendanceSchedule":
-			return jsonResponse(await parseAttendanceSchedule(body));
+				return jsonOk(await generateBusinessBriefing(body) as Record<string, unknown>);
+			case "sendTelegram": {
+				const result = await sendTelegram(body);
+				if (!result.ok) return fail("TELEGRAM_ERROR", result.error || "Gagal kirim Telegram", 400);
+				return jsonOk(result);
+			}
+			case "recordTransaction": {
+				const result = await recordTransaction(body);
+				if (!result.ok) return fail("REQUEST_FAILED", result.error || "Gagal", 400);
+				return jsonOk(result);
+			}
+			case "classifyTransactionItems": {
+				const result = await classifyTransactionItems(body);
+				if (!result.ok) return fail("REQUEST_FAILED", result.error || "Gagal", 400);
+				return jsonOk(result);
+			}
+			case "executeSql": {
+				const result = await executeSql(body);
+				if (!result.ok) return fail("REQUEST_FAILED", result.error || "SQL failed", 400);
+				return jsonOk(result);
+			}
+			case "insertInventory": {
+				const result = await insertInventory(body);
+				if (!result.ok) return fail("REQUEST_FAILED", result.error || "Gagal", 400);
+				return jsonOk(result);
+			}
+			case "submitEmployeeApplication":
+				return jsonOk(await submitEmployeeApplication(body) as Record<string, unknown>);
+			case "parseAttendanceSchedule": {
+				const result = await parseAttendanceSchedule(body);
+				if (result.error) return fail("AI_PARSE_ERROR", result.error as string, 400);
+				return jsonOk(result as Record<string, unknown>);
+			}
 		default:
-				return fail("AI action tidak dikenali", 404);
+			return fail("UNKNOWN_ACTION", "AI action tidak dikenali", 404);
 		}
 	} catch (error) {
 		console.error("yumi-ai failed", error);
 		return fail(
+			"INTERNAL_ERROR",
 			error instanceof Error ? error.message : "Unknown error",
 			400
 		);

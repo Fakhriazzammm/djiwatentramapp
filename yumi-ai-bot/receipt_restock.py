@@ -599,12 +599,15 @@ async def auto_create_items(
                     continue
 
                 data = resp.json()
-                if not data.get("ok"):
+                if not data.get("success"):
+                    err = data.get("error", "unknown")
+                    if isinstance(err, dict):
+                        err = err.get("message", "unknown")
                     logger.warning("insertInventory failed %s: %s",
-                                   m.receipt_name, data.get("error", "unknown"))
+                                   m.receipt_name, err)
                     continue
 
-                # Edge function returns {ok, sourceId} — use sourceId as inventory_id
+                # Edge function returns {success, sourceId} — use sourceId as inventory_id
                 source_id = data.get("sourceId", "")
                 if not source_id:
                     logger.warning("insertInventory: no sourceId for %s", m.receipt_name)

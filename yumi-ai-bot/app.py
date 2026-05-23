@@ -320,10 +320,13 @@ async def _save_ocr_receipt_to_db(ocr_data: dict) -> dict:
 
     if resp.status_code < 400:
         data = resp.json()
-        if data.get("ok"):
+        if data.get("success"):
             return {"success": True, "sourceId": data.get("sourceId"), "amount": total, "merchant": merchant, "items_count": len(items)}
         else:
-            return {"success": False, "error": data.get("error", "Unknown error")}
+            err = data.get("error", "Unknown error")
+            if isinstance(err, dict):
+                err = err.get("message", "Unknown error")
+            return {"success": False, "error": err}
     else:
         return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text}"}
 
@@ -734,15 +737,18 @@ async def _handle_ocr_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
             if resp.status_code < 400:
                 data = resp.json()
-                if data.get("ok"):
+                if data.get("success"):
                     await query.edit_message_text(
                         query.message.text + f"\n\n✅ Berhasil disimpan sebagai {label} — Rp {amount:,.0f}",
                         parse_mode="Markdown",
                         reply_markup=None,
                     )
                 else:
+                    err = data.get("error", "Unknown")
+                    if isinstance(err, dict):
+                        err = err.get("message", "Unknown")
                     await query.edit_message_text(
-                        query.message.text + f"\n\n❌ Gagal: {data.get('error', 'Unknown')}",
+                        query.message.text + f"\n\n❌ Gagal: {err}",
                         reply_markup=None,
                     )
             else:

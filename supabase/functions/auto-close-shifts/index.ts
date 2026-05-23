@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
     const cronSecret = Deno.env.get("CRON_SECRET") || "";
     const headerSecret = req.headers.get("x-cron-secret") || "";
     if (cronSecret && headerSecret !== cronSecret) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     if (settingsError) throw settingsError;
     if (!settingsRows || settingsRows.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No site settings found", closed: 0 }),
+        JSON.stringify({ success: true, message: "No site settings found", closed: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
     if (schedules.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No shift schedules configured", closed: 0 }),
+        JSON.stringify({ success: true, message: "No shift schedules configured", closed: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
 
     if (!activeShifts || activeShifts.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No active shifts to close", closed: 0, logs: debugLogs }),
+        JSON.stringify({ success: true, message: "No active shifts to close", closed: 0, logs: debugLogs }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -317,7 +317,8 @@ Deno.serve(async (req: Request) => {
     console.error("[auto-close-shifts] Error:", errMsg, errStack);
     return new Response(
       JSON.stringify({
-        error: errMsg,
+        success: false,
+        error: { code: "INTERNAL_ERROR", message: errMsg },
         stack: errStack,
         logs: debugLogs,
       }),

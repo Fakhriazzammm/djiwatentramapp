@@ -18,7 +18,7 @@ serve(async (req) => {
   try {
     // Only allow POST
     if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      return new Response(JSON.stringify({ success: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" } }), {
         status: 405,
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -31,7 +31,7 @@ serve(async (req) => {
     const { text, chat_id } = body
 
     if (!text || typeof text !== 'string') {
-      return new Response(JSON.stringify({ ok: false, error: 'text is required' }), {
+      return new Response(JSON.stringify({ success: false, error: { code: "VALIDATION_ERROR", message: "text is required" } }), {
         status: 400,
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -58,7 +58,7 @@ serve(async (req) => {
     console.log('[Edge Function] Bot response status:', botResponse.status)
     console.log('[Edge Function] Bot response:', data)
 
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify({ success: true, ...data }), {
       status: botResponse.status,
       headers: {
         'Access-Control-Allow-Origin': '*',
@@ -69,8 +69,8 @@ serve(async (req) => {
     console.error('[Edge Function] Error:', error)
     return new Response(
       JSON.stringify({
-        ok: false,
-        error: error.message || 'Internal server error',
+        success: false,
+        error: { code: "INTERNAL_ERROR", message: error.message || 'Internal server error' },
       }),
       {
         status: 500,

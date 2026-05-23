@@ -32,8 +32,8 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function fail(message: string, status = 400) {
-  return jsonResponse({ ok: false, error: message }, status);
+function fail(code: string, message: string, status = 400) {
+  return jsonResponse({ success: false, error: { code, message } }, status);
 }
 
 Deno.serve(async (req) => {
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return fail("Method not allowed", 405);
+    return fail("METHOD_NOT_ALLOWED", "Method not allowed", 405);
   }
 
   try {
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     if (!supabaseUrl || !supabaseKey) {
-      return fail("Supabase not configured");
+      return fail("CONFIG_ERROR", "Supabase not configured", 500);
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -59,11 +59,11 @@ Deno.serve(async (req) => {
     // ── Normalize input ─────────────────────────────────────
     const txType = payload.tx_type ?? payload.type ?? "";
     if (!txType || !["income", "expense"].includes(txType)) {
-      return fail("tx_type/type harus 'income' atau 'expense'");
+      return fail("VALIDATION_ERROR", "tx_type/type harus 'income' atau 'expense'", 400);
     }
     const amount = Number(payload.amount ?? 0);
     if (amount <= 0) {
-      return fail("amount harus > 0");
+      return fail("VALIDATION_ERROR", "amount harus > 0", 400);
     }
     const category = String(payload.category ?? "lainnya").trim() || "lainnya";
     const description = String(payload.description ?? "").trim();
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
         console.log(
           `[DEDUP] Duplicate by fingerprint ${fingerprint}, returning ${existing.source_id}`
         );
-        return jsonResponse({ ok: true, sourceId: existing.source_id, dedup: true });
+        return jsonResponse({ success: true, sourceId: existing.source_id, dedup: true });
       }
     }
 
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
         console.log(
           `[DEDUP] Duplicate by match: ${amount}/${category}/${description}, returning ${similar.source_id}`
         );
-        return jsonResponse({ ok: true, sourceId: similar.source_id, dedup: true });
+        return jsonResponse({ success: true, sourceId: similar.source_id, dedup: true });
       }
     }
 
@@ -147,20 +147,20 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (existing) {
           return jsonResponse({
-            ok: true,
+            success: true,
             sourceId: existing.source_id,
             dedup: true,
           });
         }
       }
       console.error("Insert failed:", error);
-      return jsonResponse({ ok: false, error: error.message }, 500);
+      return fail("INSERT_ERROR", error.message, 500);
     }
 
-    return jsonResponse({ ok: true, sourceId });
+    return jsonResponse({ success: true, sourceId });
   } catch (err) {
     console.error("record-financial-transaction error:", err);
     const message = err instanceof Error ? err.message : String(err);
-    return jsonResponse({ ok: false, error: message }, 500);
+    return fail("INTERNAL_ERROR", message, 500);
   }
 });

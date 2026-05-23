@@ -40,7 +40,7 @@ load_dotenv()
 
 # ── Config ─────────────────────────────────────────────────────────
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-FINANCE_GROUP_ID = int(os.getenv("FINANCE_GROUP_ID", "-4995568785"))
+FINANCE_GROUP_ID = int(os.getenv("FINANCE_GROUP_ID", "-1003916990045"))
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -1462,7 +1462,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     )
 
     # ── Accounting dual-write ────────────────────────────────────
-    if tx_result.get("ok") and items and tx_type in ("income", "expense"):
+    if tx_result.get("success") and items and tx_type in ("income", "expense"):
         source_id = tx_result.get("sourceId", "")
         asyncio.ensure_future(_write_accounting_entries(
             source_id=source_id,
@@ -1484,7 +1484,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
         lines.append(f"🏪 {merchant}")
     lines.append(f"💰 Total: {format_amount(int(total))}")
     lines.append(f"📁 Kategori: {get_category_label(category)}")
-    if tx_result.get("ok"):
+    if tx_result.get("success"):
         lines.append(f"✅ Berhasil disimpan")
         # Accounting badge jika ada entries
         if items:
@@ -1893,16 +1893,19 @@ async def _write_accounting_entries(
                 return
 
             result = resp.json()
-            if result.get("ok"):
+            if result.get("success"):
                 classifications = result.get("classifications", [])
                 logger.info(
                     "Accounting entries created: %d items for tx %s",
                     len(classifications), source_id,
                 )
             else:
+                err = result.get("error", "?")
+                if isinstance(err, dict):
+                    err = err.get("message", "?")
                 logger.warning(
                     "Accounting classification failed: %s",
-                    result.get("error", "?"),
+                    err,
                 )
 
     except Exception as e:
@@ -3016,7 +3019,7 @@ async def cmd_hapus_konfirmasi(update: Update, context: ContextTypes.DEFAULT_TYP
 
     try:
         result = await finance.delete_transaction(source_id)
-        if result.get("ok"):
+        if result.get("success"):
             d = result["deleted"]
             parts = [f"✅ *Transaksi berhasil dihapus*"]
             parts.append(f"🆔 `{source_id[:32]}...`")
@@ -3137,7 +3140,7 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 },
             )
 
-            if tx_result.get("ok"):
+            if tx_result.get("success"):
                 saved += 1
                 total_all += ri["total"]
 
@@ -3167,11 +3170,11 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 failed += 1
 
             # Restok inventory untuk expense
-            if tx_type == "expense" and tx_result.get("ok"):
+            if tx_type == "expense" and tx_result.get("success"):
                 await _restok_bulk_items(ri)
 
             # ── Accounting dual-write untuk expense ────────────
-            if tx_type == "expense" and tx_result.get("ok"):
+            if tx_type == "expense" and tx_result.get("success"):
                 source_id = tx_result.get("sourceId", "")
                 items_list = ri.get("items", [])
                 if source_id and items_list:
@@ -3441,11 +3444,11 @@ async def _handle_bulkitem_callback(update: Update, context: ContextTypes.DEFAUL
         )
 
         state["processed"][idx] = action
-        if tx_result.get("ok") and action == "expense":
+        if tx_result.get("success") and action == "expense":
             await _restok_bulk_items(ri)
 
         # ── Accounting dual-write untuk expense ────────────
-        if tx_result.get("ok") and action == "expense":
+        if tx_result.get("success") and action == "expense":
             source_id = tx_result.get("sourceId", "")
             items_list = ri.get("items", [])
             if source_id and items_list:
@@ -3881,7 +3884,7 @@ async def _sync_pos_orders() -> int:
             order_source_id=row.get("_id", ""),
         )
         
-        if result.get("ok"):
+        if result.get("success"):
             created += 1
             logger.info("order_sync: created income %s for order %s (Rp%.0f)", 
                        result.get("sourceId", "?"), order_no, total)

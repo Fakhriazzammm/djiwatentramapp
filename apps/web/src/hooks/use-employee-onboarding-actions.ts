@@ -3,6 +3,7 @@ import { useMutation } from "@/lib/backend-bridge";
 import { createClient } from "@/lib/client";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useHybridCreateUser } from "./use-hybrid-write-actions";
+import { invokeEdgeFunction, invokeDirectFetch } from "@/lib/api-helper";
 
 const api = new Proxy(
 	{},
@@ -57,13 +58,7 @@ function buildStoragePath(args: { folder: string; fileName?: string; contentType
 }
 
 async function invokeYumiAiAction(action: string, payload: Record<string, unknown>) {
-	const supabase = createClient();
-	const { data, error } = await supabase.functions.invoke("yumi-ai", {
-		body: { action, ...payload },
-	});
-	if (error) throw new Error(error.message || "Gagal menghubungi AI");
-	if ((data as any)?.error) throw new Error((data as any).error);
-	return data;
+	return invokeEdgeFunction("yumi-ai", { action, ...payload });
 }
 
 // ---------------------------------------------------------------------------
@@ -78,7 +73,7 @@ async function invokeAdminAction(action: string, payload: Record<string, unknown
 		throw new Error("VITE_ADMIN_SECRET tidak dikonfigurasi. Tambahkan ke .env");
 	}
 	const functionUrl = `${supabaseUrl}/functions/v1/onboarding-admin`;
-	const response = await fetch(functionUrl, {
+	return invokeDirectFetch(functionUrl, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -86,10 +81,6 @@ async function invokeAdminAction(action: string, payload: Record<string, unknown
 		},
 		body: JSON.stringify({ action, ...payload }),
 	});
-	const data = await response.json();
-	if (!response.ok) throw new Error((data as any)?.error || `Gagal: ${response.status}`);
-	if ((data as any)?.error) throw new Error((data as any).error);
-	return data;
 }
 
 // ---------------------------------------------------------------------------

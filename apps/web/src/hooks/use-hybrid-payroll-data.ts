@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 
 function safeNum(value: unknown) {
 	const n = Number(value ?? 0);
@@ -22,15 +23,7 @@ const SUPABASE_URL = "https://xaemykhjpkgypqqpfdcb.supabase.co";
 // All write operations now go through the generate-payroll Edge Function
 // which uses the service_role key on the server side.
 async function invokePayrollAction(action: string, payload: Record<string, unknown> = {}) {
-	const supabase = createClient();
-	const { data, error } = await supabase.functions.invoke("generate-payroll", {
-		body: { action, ...payload },
-	});
-	if (error) throw new Error(error.message || "Gagal menghubungi generate-payroll");
-	if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
-		throw new Error(data.error);
-	}
-	return data;
+	return invokeEdgeFunction("generate-payroll", { action, ...payload });
 }
 
 // ─── Fetch: Payroll Periods ─────────────────────────────────────────
@@ -288,12 +281,12 @@ async function autoDetectPeriodAndRun(): Promise<{
 	runId?: string;
 }> {
 	try {
-		const result = await invokePayrollAction("auto_detect");
+		const result = await invokePayrollAction("auto_detect") as Record<string, unknown>;
 		return {
-			action: result.action ?? "error",
-			message: result.message ?? (result.error ?? "Unknown error"),
-			periodId: result.periodId,
-			runId: result.runId,
+			action: (result.action ?? "error") as "created" | "ran" | "generated" | "skipped" | "error",
+			message: String(result.message ?? result.error ?? "Unknown error"),
+			periodId: result.periodId as string | undefined,
+			runId: result.runId as string | undefined,
 		};
 	} catch (err: any) {
 		return {
