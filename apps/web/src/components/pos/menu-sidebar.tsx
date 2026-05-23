@@ -1257,8 +1257,7 @@ Tim: ${shiftObj.teamMembers}`;
 						const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
 						return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
 					});
-					return "
-" + sortedRoles.map(role => {
+					return "\n" + sortedRoles.map(role => {
 						const formattedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 						return `${formattedRole}: ${grouped.get(role)!.join(", ")}`;
 					}).join("\n");
