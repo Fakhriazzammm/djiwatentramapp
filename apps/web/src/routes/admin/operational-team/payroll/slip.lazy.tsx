@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { withSaveToast } from "@/lib/with-save-toast";
 import {
@@ -7,18 +7,15 @@ import {
 	Filter,
 	Download,
 	Eye,
-	Loader2,
 	AlertCircle,
 	FileText,
 	Send,
 	AlertTriangle,
-	Plus,
 	RotateCw,
 } from "lucide-react";
 import {
 	useHybridPayslips,
 	updatePayslipStatus,
-	autoDetectPeriodAndRun,
 	updatePayrollRunItem,
 	syncPayslipFromRunItem,
 } from "@/hooks/use-hybrid-payroll-data";
@@ -121,9 +118,10 @@ function PayslipAdminPage() {
 	const settings = useHybridSiteSettings() as any;
 	const storeName = settings?.storeName || "TENTREM KOFFIE";
 	const storeAddress = settings?.storeAddress || "";
-	const [isAutoProcessing, setIsAutoProcessing] = useState(false);
-	const [autoTrigger, setAutoTrigger] = useState(0);
+
 	const navigate = useNavigate();
+	const [autoTrigger, setAutoTrigger] = useState(0);
+	
 	const [editingCell, setEditingCell] = useState<{
 		payslipId: string;
 		runItemId: string;
@@ -326,22 +324,7 @@ function PayslipAdminPage() {
 		toast.success(`${rows.length} payslip diexport sebagai CSV`);
 	}, [filteredPayslips]);
 
-	// ── Auto-Run on Mount ───────────────────────────────────────────
-	useEffect(() => {
-		if (allPayslips === undefined) return;
-		if (allPayslips === null) return;
 
-		if (allPayslips.length === 0) {
-			setIsAutoProcessing(true);
-			autoDetectPeriodAndRun().then((result) => {
-				setIsAutoProcessing(false);
-				if (result.action !== "skipped" && result.action !== "error") {
-					setAutoTrigger((n) => n + 1);
-					toast.success(result.message);
-				}
-			}).catch(() => setIsAutoProcessing(false));
-		}
-	}, [allPayslips, autoTrigger]);
 
 	// ── Inline Edit ─────────────────────────────────────────────────
 	const handleInlineSave = useCallback(async (payslipId: string, runItemId: string, field: string, value: number) => {
@@ -439,17 +422,11 @@ function PayslipAdminPage() {
 				)}
 			</div>
 
-			{/* AUTO-REFRESH INDICATOR */}
-			{isAutoProcessing && (
-				<div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
-					<Loader2 className="h-3 w-3 animate-spin" />
-					<span>Menghitung slip gaji dari data absensi...</span>
-				</div>
-			)}
-			{!isAutoProcessing && allPayslips && allPayslips.length > 0 && (
+			{/* REALTIME BADGE */}
+			{allPayslips && allPayslips.length > 0 && (
 				<div className="flex items-center gap-1 text-[10px] text-emerald-600/70 px-1">
 					<div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-					<span>Real-time dari absensi</span>
+					<span>Real-time per shift</span>
 				</div>
 			)}
 
@@ -584,7 +561,7 @@ function PayslipAdminPage() {
 								{payslip.created_at ? new Date(payslip.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-"}
 								</td>
 								<td className="px-3 py-2.5 text-right tabular-nums text-xs">
-									{editingCell?.payslipId === payslip.id && editingCell.field === "gross_pay" ? (
+									{editingCell?.payslipId === payslip.id && editingCell?.field === "gross_pay" ? (
 										<input
 											type="number"
 											className="w-20 h-7 px-1 text-right text-xs border rounded"
@@ -611,7 +588,7 @@ function PayslipAdminPage() {
 									)}
 								</td>
 								<td className="px-3 py-2.5 text-right tabular-nums font-semibold text-xs">
-									{editingCell?.payslipId === payslip.id && editingCell.field === "net_pay" ? (
+									{editingCell?.payslipId === payslip.id && editingCell?.field === "net_pay" ? (
 										<input
 											type="number"
 											className="w-20 h-7 px-1 text-right text-xs border rounded"
