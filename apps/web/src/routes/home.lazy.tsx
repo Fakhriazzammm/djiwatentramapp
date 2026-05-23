@@ -11,6 +11,7 @@ import {
 	useHybridShiftDetails,
 	useHybridShiftReportRows,
 	useHybridSiteSettings,
+	useHybridStaffUsers,
 } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridStaffStatsToday } from "@/hooks/use-hybrid-attendance-data";
@@ -69,11 +70,35 @@ function formatTime(timestamp?: number) {
 	});
 }
 
-function buildShiftSummaryText(shift: ShiftRow, details: any) {
+function formatTeamMembersByRole(teamMembers: string, allStaffUsers: any[] | undefined): string {
+	if (!teamMembers?.trim()) return "-";
+	const names = teamMembers.split(",").map((n: string) => n.trim()).filter(Boolean);
+	if (!names.length) return "-";
+	if (!allStaffUsers?.length) return teamMembers;
+	const grouped = new Map<string, string[]>();
+	const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+	names.forEach((name: string) => {
+		const user = allStaffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
+		const role = user?.roleName?.trim() || "Lainnya";
+		if (!grouped.has(role)) grouped.set(role, []);
+		grouped.get(role)!.push(name);
+	});
+	const sortedRoles = [...grouped.keys()].sort((a, b) => {
+		const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
+		const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
+		return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+	});
+	return sortedRoles.map(role => {
+		const formattedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+		return `${formattedRole}: ${grouped.get(role)!.join(", ")}`;
+	}).join("\n");
+}
+
+function buildShiftSummaryText(shift: ShiftRow, details: any, allStaffUsers?: any[]) {
 	const topProducts = details?.topProducts ?? [];
 	const productBreakdown = details?.productBreakdown ?? [];
 	const expenseBreakdown = details?.expenseBreakdown ?? [];
-	const teamLabel = shift.teamMembers?.trim() ? shift.teamMembers : "-";
+	const teamLabel = formatTeamMembersByRole(shift.teamMembers ?? "", allStaffUsers);
 	const derivedTotalItems = productBreakdown.reduce(
 		(acc: number, category: any) => acc + Number(category?.totalQuantity ?? 0),
 		0,
@@ -157,6 +182,7 @@ function HomePage() {
 	const { user, role: userRole } = useYumiAuth();
 	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Yumi POS";
+	const allStaffUsers = useHybridStaffUsers();
 	const shiftRowsResult = useHybridShiftReportRows() as ShiftRow[] | null | undefined;
 	const shiftRows = useMemo(() => {
 		const raw = Array.isArray(shiftRowsResult) ? shiftRowsResult : [];
@@ -259,8 +285,8 @@ function HomePage() {
 
 	const summaryText = useMemo(() => {
 		if (!selectedShift || !shiftDetails) return "";
-		return buildShiftSummaryText(selectedShift, shiftDetails);
-	}, [selectedShift, shiftDetails]);
+		return buildShiftSummaryText(selectedShift, shiftDetails, allStaffUsers);
+	}, [selectedShift, shiftDetails, allStaffUsers]);
 
 	const hasFaceDescriptor = !!user?.hasFace;
 	const workDurationLabel = `${statsToday?.totalHours ?? 0}j ${statsToday?.totalMinutes ?? 0}m`;

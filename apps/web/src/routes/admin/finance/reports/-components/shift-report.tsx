@@ -24,6 +24,7 @@ import {
 	useHybridShiftReportRows,
 	useHybridShiftDetails,
 	useHybridSiteSettings,
+	useHybridStaffUsers,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridAdminBulkDeleteShifts,
@@ -120,11 +121,35 @@ function formatCompactRange(startTime: number, endTime?: number) {
 	return `${formatDateTime(startTime)} • ${formatTime(startTime)}-${formatTime(endTime)}`;
 }
 
-function buildShiftSummaryText(shift: ShiftRow, details: any) {
+function formatTeamMembersByRole(teamMembers: string, allStaffUsers: any[] | undefined): string {
+	if (!teamMembers?.trim()) return "-";
+	const names = teamMembers.split(",").map((n: string) => n.trim()).filter(Boolean);
+	if (!names.length) return "-";
+	if (!allStaffUsers?.length) return teamMembers;
+	const grouped = new Map<string, string[]>();
+	const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+	names.forEach((name: string) => {
+		const user = allStaffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
+		const role = user?.roleName?.trim() || "Lainnya";
+		if (!grouped.has(role)) grouped.set(role, []);
+		grouped.get(role)!.push(name);
+	});
+	const sortedRoles = [...grouped.keys()].sort((a, b) => {
+		const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
+		const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
+		return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+	});
+	return sortedRoles.map(role => {
+		const formattedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+		return `${formattedRole}: ${grouped.get(role)!.join(", ")}`;
+	}).join("\n");
+}
+
+function buildShiftSummaryText(shift: ShiftRow, details: any, allStaffUsers?: any[]) {
 	const productBreakdown = details?.productBreakdown ?? [];
 	const topProducts = details?.topProducts ?? [];
 	const expenseBreakdown = details?.expenseBreakdown ?? [];
-	const teamLabel = shift.teamMembers?.trim() ? shift.teamMembers : "-";
+	const teamLabel = formatTeamMembersByRole(shift.teamMembers ?? "", allStaffUsers);
 	const derivedTotalItems = productBreakdown.reduce(
 		(acc: number, category: any) => acc + Number(category?.totalQuantity ?? 0),
 		0,
@@ -205,6 +230,7 @@ export function ShiftReport({ range }: Props) {
 	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Toko";
 	const allRows = useHybridShiftReportRows() as ShiftRow[] | undefined;
+	const allStaffUsers = useHybridStaffUsers();
 	const rows = useMemo(() => {
 		if (!allRows) {
 			return undefined;
@@ -407,7 +433,7 @@ export function ShiftReport({ range }: Props) {
 
 	const summaryText =
 		selectedShift && details
-			? buildShiftSummaryText(selectedShift, details)
+			? buildShiftSummaryText(selectedShift, details, allStaffUsers)
 			: "";
 
 	const handleSendShiftEmail = async (shift: ShiftRow) => {
@@ -624,7 +650,7 @@ export function ShiftReport({ range }: Props) {
 									<TableHead>Shift</TableHead>
 									<TableHead>Status</TableHead>
 									<TableHead>Kasir</TableHead>
-									<TableHead>Tim</TableHead>
+									<TableHead>Barista</TableHead><TableHead>Kitchen</TableHead><TableHead>Kasir</TableHead><TableHead>Waitress</TableHead><TableHead>Manajer</TableHead>
 									<TableHead>Modal</TableHead>
 									<TableHead>Tunai</TableHead>
 									<TableHead>Debit/QRIS</TableHead>
@@ -686,11 +712,31 @@ export function ShiftReport({ range }: Props) {
 											<TableCell className="whitespace-nowrap">
 												{shift.cashierName || "-"}
 											</TableCell>
-											<TableCell className="max-w-[170px]">
-												<div className="truncate whitespace-nowrap text-muted-foreground">
-													{shift.teamMembers || "-"}
-												</div>
-											</TableCell>
+											{(() => {
+												if (!shift.teamMembers) return <><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell></>;
+												const names = shift.teamMembers.split(",").map((n: string) => n.trim()).filter(Boolean);
+												if (!names.length) return <><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell></>;
+												if (!allStaffUsers?.length) {
+													// Fallback: put all names in Barista cell
+													return <><TableCell>{shift.teamMembers}</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell></>;
+												}
+												const grouped = new Map<string, string[]>();
+												const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+												names.forEach((name: string) => {
+													const user = allStaffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
+													const role = user?.roleName?.trim() || "Lainnya";
+													if (!grouped.has(role)) grouped.set(role, []);
+													grouped.get(role)!.push(name);
+												});
+												return roleOrder.map(role => {
+													const members = grouped.get(role) || [];
+													return (
+														<TableCell key={role}>
+															{members.length > 0 ? members.join(", ") : <span className="text-muted-foreground">-</span>}
+														</TableCell>
+													);
+												});
+											})()}
 											<TableCell className="whitespace-nowrap">{formatCurrencyIDR(shift.startingCash, true)}</TableCell>
 											<TableCell className="whitespace-nowrap">{formatCurrencyIDR(shift.cashRevenue, true)}</TableCell>
 											<TableCell className="whitespace-nowrap">{formatCurrencyIDR(shift.qrisRevenue, true)}</TableCell>
@@ -940,7 +986,38 @@ export function ShiftReport({ range }: Props) {
 											label="Total Produk"
 											value={`${selectedShift.totalItemsSold} item`}
 										/>
-										<InfoRow label="Tim" value={selectedShift.teamMembers || "-"} />
+										{(() => {
+											if (!selectedShift.teamMembers) return <InfoRow label="Tim" value="-" />;
+											const names = selectedShift.teamMembers.split(",").map((n: string) => n.trim()).filter(Boolean);
+											if (!names.length) return <InfoRow label="Tim" value="-" />;
+											if (!allStaffUsers?.length) return <InfoRow label="Tim" value={selectedShift.teamMembers} />;
+											const grouped = new Map<string, string[]>();
+											const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+											names.forEach((name: string) => {
+												const user = allStaffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
+												const role = user?.roleName?.trim() || "Lainnya";
+												if (!grouped.has(role)) grouped.set(role, []);
+												grouped.get(role)!.push(name);
+											});
+											const sortedRoles = [...grouped.keys()].sort((a, b) => {
+												const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
+												const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
+												return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+											});
+											return (
+												<div className="flex flex-col gap-1 rounded-xl bg-background px-3 py-2">
+													{sortedRoles.map(role => {
+														const formattedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+														return (
+															<div key={role} className="flex items-center justify-between gap-3 text-sm">
+																<span className="text-muted-foreground">{formattedRole}</span>
+																<span className="text-right font-semibold text-foreground">{grouped.get(role)!.join(", ")}</span>
+															</div>
+														);
+													})}
+												</div>
+											);
+										})()}
 										<InfoRow
 											label="Transaksi POS"
 											value={`${selectedShift.orderCount} transaksi`}
