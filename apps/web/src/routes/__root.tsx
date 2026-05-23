@@ -2,6 +2,7 @@ import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/rea
 import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigation";
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
+import { preloadFaceModels } from "../components/auth/FaceRecognition";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useEffect } from "react";
 
@@ -41,6 +42,13 @@ function RootContent() {
 			}
 		}
 	}, [isAuthenticated, isLoading, isStaff, user, location.pathname, navigate]);
+
+	// Preload face recognition models saat user login
+	useEffect(() => {
+		if (isAuthenticated) {
+			preloadFaceModels();
+		}
+	}, [isAuthenticated]);
 
 	if (isLoading) {
 		return (

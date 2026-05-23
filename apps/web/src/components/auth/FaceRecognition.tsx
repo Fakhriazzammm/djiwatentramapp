@@ -156,21 +156,34 @@ export function FaceRecognition({
         return;
       }
       try {
-        const det = await faceapi
-          .detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 96, scoreThreshold: 0.6 }))
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-        if (!det) {
-          setFace(false);
-          stableRef.current = 0;
-          drawBox(null);
+        const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 96, scoreThreshold: 0.6 });
+        if (stableRef.current < 1) {
+          // Phase 1: Fast detection only (no landmarks, no descriptor)
+          const det = await faceapi.detectSingleFace(vid, opts);
+          if (!det) {
+            stableRef.current = 0;
+            setFace(false);
+            drawBox(null);
+          } else {
+            stableRef.current = 1;
+            setFace(true);
+          }
         } else {
-          setFace(true);
-          drawBox(det);
-          // Auto-verify: 2 stable consecutive detections (verify mode only)
-          if (mode === "verify" && !alreadyRef.current) {
-            stableRef.current += 1;
-            if (stableRef.current >= 2) {
+          // Phase 2: Full pipeline with descriptor (landmarks + face descriptor)
+          const det = await faceapi
+            .detectSingleFace(vid, opts)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+          if (!det) {
+            stableRef.current = 0;
+            setFace(false);
+            drawBox(null);
+          } else {
+            setFace(true);
+            drawBox(det);
+            stableRef.current = 2;
+            // Direct verify on first full detection (no need for extra stable frames)
+            if (mode === "verify" && !alreadyRef.current) {
               alreadyRef.current = true;
               const desc = Array.from(det.descriptor);
               if (onVerify) {
