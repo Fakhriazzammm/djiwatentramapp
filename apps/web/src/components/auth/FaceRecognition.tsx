@@ -91,7 +91,7 @@ export function FaceRecognition({
       setLMsg("Memuat sistem biometrik...");
       const gt = setTimeout(() => {
         if (!cancelled) { setErr("Waktu muat habis. Gunakan PIN."); onModelError?.("Waktu muat habis. Gunakan PIN."); }
-      }, 3000);
+      }, 5000);
 
       try {
         // Use shared preload — returns instantly if already loaded
@@ -157,7 +157,7 @@ export function FaceRecognition({
       }
       try {
         const det = await faceapi
-          .detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.5 }))
+          .detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 96, scoreThreshold: 0.6 }))
           .withFaceLandmarks()
           .withFaceDescriptor();
         if (!det) {
@@ -167,10 +167,10 @@ export function FaceRecognition({
         } else {
           setFace(true);
           drawBox(det);
-          // Auto-verify: 3 stable consecutive detections (verify mode only)
+          // Auto-verify: 2 stable consecutive detections (verify mode only)
           if (mode === "verify" && !alreadyRef.current) {
             stableRef.current += 1;
-            if (stableRef.current >= 3) {
+            if (stableRef.current >= 2) {
               alreadyRef.current = true;
               const desc = Array.from(det.descriptor);
               if (onVerify) {
@@ -222,7 +222,7 @@ export function FaceRecognition({
       const video = wRef.current.video;
       if (!video) throw new Error("no video");
       const det = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.5 }))
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 96, scoreThreshold: 0.6 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
       if (!det) { setSt("fail"); setFace(false); return; }
