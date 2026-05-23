@@ -97,6 +97,7 @@ _BEVERAGE_CATEGORY_IDS: set[str] = set()
 _BEVERAGE_PRODUCT_IDS: set[str] = set()
 _FOOD_CATEGORY_IDS: set[str] = set()
 _FOOD_PRODUCT_IDS: set[str] = set()
+_STAFF_ROLE_MAP: dict[str, str] = {}
 
 async def _build_beverage_lookup():
     global _BEVERAGE_CATEGORY_IDS, _BEVERAGE_PRODUCT_IDS
@@ -147,6 +148,53 @@ async def _build_food_lookup():
         logger.info("Food products loaded: %d", len(_FOOD_PRODUCT_IDS))
     except Exception as e:
         logger.warning("build_food_lookup failed: %s", e)
+
+async def _build_staff_lookup():
+    global _STAFF_ROLE_MAP
+    try:
+        users = await _fetch("pos_staff_users", "select=name,roleName&isActive=eq.true&limit=200")
+        _STAFF_ROLE_MAP = {
+            u.get("name", "").strip().lower(): (u.get("roleName") or "").strip()
+            for u in users if u.get("name")
+        }
+        logger.info("Staff role map loaded: %d users", len(_STAFF_ROLE_MAP))
+    except Exception as e:
+        logger.warning("build_staff_lookup failed: %s", e)
+
+_ROLE_ORDER = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"]
+
+def _format_team_by_role(team_members: str, target_role: str | None = None) -> str:
+    if not team_members or not team_members.strip():
+        return ""
+    names = [n.strip() for n in team_members.split(",") if n.strip()]
+    if not names:
+        return ""
+    # Group by role
+    grouped: dict[str, list[str]] = {}
+    for name in names:
+        key = name.lower()
+        role = _STAFF_ROLE_MAP.get(key, "Lainnya")
+        if role not in grouped:
+            grouped[role] = []
+        grouped[role].append(name)
+
+    if target_role:
+        # Filter for specific role
+        members = []
+        for role, role_names in grouped.items():
+            if role.lower() == target_role.lower():
+                members.extend(role_names)
+        if not members:
+            return ""
+        return f"{target_role}: {', '.join(members)}"
+    else:
+        # All roles, sorted
+        sorted_roles = sorted(grouped.keys(), key=lambda r: next((i for i, o in enumerate(_ROLE_ORDER) if o.lower() == r.lower()), 99))
+        parts = []
+        for role in sorted_roles:
+            formatted_role = role[0].upper() + role[1:].lower() if role else role
+            parts.append(f"  {formatted_role}: {', '.join(grouped[role])}")
+        return "\n" + "\n".join(parts)
 
 async def _lazy_fetch_product_category(pid: str) -> str:
     try:
@@ -454,6 +502,8 @@ async def _send_with_retry(bot, chat_id: int, text: str, reply_markup=None, max_
 # ── Notifications with inline keyboard ───────────────────────────
 
 async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line=None):
+    shift = await _find_shift_at_time(ts_ms)
+    team = shift.get("team_members", "")
     type_labels = {
         "dine_in": "🍽 Dine-in",
         "takeaway": "🛍 Takeaway",
@@ -480,10 +530,15 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         f"🆔 {order_no}",
     ])
     base_text = "\n".join(lines)
-    base_text += "\n".join([
+    extra_lines = [
         "",
         f"{type_label}",
         f"👤 {customer}",
+    ]
+    barista_team_text = _format_team_by_role(team, "Barista") if team else ""
+    if barista_team_text:
+        extra_lines.append(f"👥 {barista_team_text}")
+    extra_lines.extend([
         "",
         "Minuman:",
         *item_lines,
@@ -492,6 +547,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         "",
         "Tekan tombol untuk memproses pesanan",
     ])
+    base_text += "\n".join(extra_lines)
 
     kb = InlineKeyboardMarkup([
         [
@@ -524,6 +580,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         logger.error("send_barista_notification failed for %s: %s", order_no, e)
 
 async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line=None):
+    shift = await _find_shift_at_time(ts_ms)
+    team = shift.get("team_members", "")
     type_labels = {
         "dine_in": "🍽 Dine-in",
         "takeaway": "🛍 Takeaway",
@@ -550,10 +608,15 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         f"🆔 {order_no}",
     ])
     base_text = "\n".join(lines)
-    base_text += "\n".join([
+    extra_lines = [
         "",
         f"{type_label}",
         f"👤 {customer}",
+    ]
+    kitchen_team_text = _format_team_by_role(team, "Kitchen") if team else ""
+    if kitchen_team_text:
+        extra_lines.append(f"👥 {kitchen_team_text}")
+    extra_lines.extend([
         "",
         "Makanan:",
         *item_lines,
@@ -562,6 +625,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         "",
         "Tekan tombol untuk memproses pesanan",
     ])
+    base_text += "\n".join(extra_lines)
 
     kb = InlineKeyboardMarkup([
         [
@@ -716,7 +780,11 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         f"👥 Kasir: {cashier}",
     ])
     if team:
-        lines.append(f"📋 Tim: {team}")
+        team_text = _format_team_by_role(team)  # all roles
+        if team_text:
+            lines.append(f"📋 Tim:{team_text}")
+        else:
+            lines.append(f"📋 Tim: {team}")
     lines.append("")
     lines.append("Items:")
     for i in items:
@@ -852,6 +920,7 @@ async def _post_init(app):
 
     await _build_beverage_lookup()
     await _build_food_lookup()
+    await _build_staff_lookup()
 
     # Restore active orders from Supabase (persistent across restarts)
     await _load_active_orders(app.bot)
