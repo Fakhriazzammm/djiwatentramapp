@@ -1172,8 +1172,7 @@ function DashboardTab({
 			.sort((a, b) => b[1] - a[1])
 			.slice(0, 3)
 			.map(([name, qty]) => `- ${name}: ${qty}`)
-			.join("
-") || "-";
+			.join("\n") || "-";
 
 		const expensesByCategory: Record<string, number> = {};
 		let totalExpenseVal = 0;
@@ -1185,8 +1184,7 @@ function DashboardTab({
 		const netBalance = totalRevenue - totalExpenseVal;
 		const expensesText = Object.entries(expensesByCategory)
 			.map(([cat, amount]) => `${cat}: Rp. ${amount.toLocaleString("id-ID")}`)
-			.join("
-") || "Tidak ada pengeluaran hari ini";
+			.join("\n") || "Tidak ada pengeluaran hari ini";
 
 		const shopName = siteSettings?.storeName || "YUMI POS";
 
@@ -1229,8 +1227,7 @@ function DashboardTab({
 				});
 				if (!sProductsText) sProductsText = "-";
 				else sProductsText = sProductsText.trimEnd();
-				const sTopProductsText = Object.entries(sItemsByName).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, qty]) => `- ${name}: ${qty}`).join("
-") || "-";
+				const sTopProductsText = Object.entries(sItemsByName).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, qty]) => `- ${name}: ${qty}`).join("\n") || "-";
 
 				const sTransactions = todayTransactions?.filter((t: any) => t.date >= sStart && t.date <= sEnd) || [];
 				let sExpenseVal = 0;
@@ -1264,8 +1261,7 @@ Tim: ${shiftObj.teamMembers}`;
 " + sortedRoles.map(role => {
 						const formattedRole = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 						return `${formattedRole}: ${grouped.get(role)!.join(", ")}`;
-					}).join("
-");
+					}).join("\n");
 				})();
 				allShiftsText += `👥 ${(shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`)}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
