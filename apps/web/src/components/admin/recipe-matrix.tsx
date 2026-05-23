@@ -605,7 +605,7 @@ export function RecipeMatrixPage() {
 				/>
 			)}
 
-			{viewMode !== 'per-product' && (<React.Fragment>
+			{viewMode !== 'per-product' && (<>
 		{/* ── Matrix Table ── */}
 			<div className="flex-1 overflow-auto">
 				<table className="border-collapse w-max min-w-full">
@@ -900,7 +900,8 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				</div>
 			)}
 
-			</React.Fragment>)}
+			</>
+			)}
 
 			{/* ── Product Steps Modal ── */}
 			{productStepsModal && (
