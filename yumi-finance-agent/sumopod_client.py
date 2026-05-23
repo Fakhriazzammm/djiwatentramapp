@@ -91,15 +91,22 @@ class SumoPodClient:
                 data = resp.json()
                 reply = data["choices"][0]["message"]["content"]
 
+            # Bersihkan code block markdown (\`\`\`) dari raw reply
+            clean_reply = reply.strip()
+            if clean_reply.startswith("```"):
+                clean_reply = re.sub(r"^```\w*\n?", "", clean_reply)
+                clean_reply = re.sub(r"\n?```\s*$", "", clean_reply)
+
             # Parse structured response
-            action_match = re.search(r"ACTION:\s*(\w+)", reply)
-            amount_match = re.search(r"AMOUNT:\s*([\d.,]+)", reply)
-            cat_match = re.search(r"CATEGORY:\s*(\w+)", reply)
-            desc_match = re.search(r"DESCRIPTION:\s*(.+?)(?:\n|$)", reply)
-            conf_match = re.search(r"CONFIDENCE:\s*(\w+)", reply)
-            reply_match = re.search(r"REPLY:\s*(.+?)$", reply, re.DOTALL)
-            merchant_match = re.search(r"MERCHANT:\s*(.*?)(?:\n|$)", reply)
-            pm_match = re.search(r"PAYMENT_METHOD:\s*(.*?)(?:\n|$)", reply)
+            action_match = re.search(r"ACTION:\s*(\w+)", clean_reply)
+            amount_match = re.search(r"AMOUNT:\s*([\d.,]+)", clean_reply)
+            cat_match = re.search(r"CATEGORY:\s*(\w+)", clean_reply)
+            desc_match = re.search(r"DESCRIPTION:\s*(.+?)(?:\n|$)", clean_reply)
+            conf_match = re.search(r"CONFIDENCE:\s*(\w+)", clean_reply)
+            # REPLY: berhenti sebelum field berikutnya (word+colon) atau akhir string
+            reply_match = re.search(r"REPLY:\s*(.+?)(?=\n\w+\s*:|\Z)", clean_reply, re.DOTALL)
+            merchant_match = re.search(r"MERCHANT:\s*(.*?)(?:\n|$)", clean_reply)
+            pm_match = re.search(r"PAYMENT_METHOD:\s*(.*?)(?:\n|$)", clean_reply)
 
             action = action_match.group(1) if action_match else "unknown"
 
@@ -114,7 +121,7 @@ class SumoPodClient:
 
             # Parse items: "ITEMS: Timun|1|kg|8000, Selada|1|kg|40000" atau "ITEMS: Timun|1||8000, Selada|1||40000"
             items = []
-            items_match = re.search(r"ITEMS:\s*(.+)", reply)
+            items_match = re.search(r"ITEMS:\s*(.+)", clean_reply)
             if items_match:
                 raw_items = items_match.group(1).strip()
                 for part in re.split(r'[,;]\s*', raw_items):
