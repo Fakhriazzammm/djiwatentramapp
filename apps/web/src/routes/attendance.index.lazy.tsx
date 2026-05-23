@@ -234,12 +234,13 @@ function AttendancePage() {
 			}
 
 			// 2. If in enroll mode, save the face data first
-			if (isEnrolling && descriptor && pin) {
+			if (isEnrolling && descriptor) {
 				toast.loading("Mendaftarkan wajah...", { id: "save-face" });
 				await enrollFace({
 					userId: user.id as any,
-					pin,
+					pin: pin || undefined,
 					faceDescriptor: descriptor,
+					skipPinVerification: !pin,
 				});
 				toast.success("Wajah berhasil terdaftar!", { id: "save-face" });
 				setIsEnrolling(false);
@@ -718,8 +719,7 @@ function AttendancePage() {
 												variant="secondary"
 												onClick={() => {
 													setIsEnrolling(true);
-													setStep("pin");
-													toast.info("Masukkan PIN untuk mendaftarkan wajah baru.");
+													setStep("face");
 												}}
 											>
 												Daftar Ulang Wajah
