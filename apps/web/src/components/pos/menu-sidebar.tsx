@@ -2269,6 +2269,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [notes, setNotes] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
+	const [showEndConfirm, setShowEndConfirm] = useState(false);
 	
 	// Cash Breakdown State
 	const [breakdown, setBreakdown] = useState<Record<string, number>>({
@@ -2384,6 +2385,61 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		toast.info("Pecahan diisi otomatis sesuai estimasi laci");
 	};
 
+	const handleEndShift = async () => {
+		if (!shiftStatus?.shiftInfo?.shiftId) {
+			// Fallback if it's a legacy shift without ID
+			toast.error("Shift ini dimulai dari versi lama. Mohon gunakan tombol legacy.");
+			setIsSubmitting(false);
+			return;
+		}
+		setIsSubmitting(true);
+		setSubmitError(null);
+		try {
+			const completedShiftStartTime =
+				shiftStatus?.ongoingShift?.startTime || Date.now();
+			await endShift({
+				shiftId: shiftStatus.shiftInfo.shiftId as Id<"shifts">,
+				endingCashPhysical: Number(cashInRegister),
+				nonCashConfirmed: Number(nonCashConfirmed),
+				cashBreakdown: breakdown as any,
+				notes,
+			});
+			if (siteSettings?.shiftSettings?.autoSendShiftReportEmail) {
+				try {
+					await sendShiftReportEmail({
+						startTime: completedShiftStartTime,
+					});
+					toast.success("Shift berhasil diakhiri dan email laporan terkirim");
+				} catch (emailError) {
+					console.error("Shift report email failed:", emailError);
+					toast.success("Shift berhasil diakhiri");
+					const message =
+						emailError instanceof Error
+							? emailError.message
+							: "Laporan shift gagal dikirim email. Cek konfigurasi Resend.";
+					toast.warning(message);
+				}
+			} else {
+				toast.success("Shift berhasil diakhiri");
+			}
+			
+			setAmount("");
+			setCashInRegister("");
+			setNonCashConfirmed("");
+			setNotes("");
+			setCashierName("");
+			setTeamMembers([]);
+			onClose();
+		} catch (error) {
+			console.error(error);
+			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
+			setSubmitError(message);
+			toast.error(message);
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		
@@ -2406,39 +2462,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				toast.success("Shift berhasil dimulai");
 				setShiftRefreshTrigger((c) => c + 1);
 			} else {
-				if (!shiftStatus?.shiftInfo?.shiftId) {
-					// Fallback if it's a legacy shift without ID
-					toast.error("Shift ini dimulai dari versi lama. Mohon gunakan tombol legacy.");
-					setIsSubmitting(false);
-					return;
-				}
-				const completedShiftStartTime =
-					shiftStatus?.ongoingShift?.startTime || Date.now();
-				await endShift({
-					shiftId: shiftStatus.shiftInfo.shiftId as Id<"shifts">,
-					endingCashPhysical: Number(cashInRegister),
-					nonCashConfirmed: Number(nonCashConfirmed),
-					cashBreakdown: breakdown as any,
-					notes,
-				});
-				if (siteSettings?.shiftSettings?.autoSendShiftReportEmail) {
-					try {
-						await sendShiftReportEmail({
-							startTime: completedShiftStartTime,
-						});
-						toast.success("Shift berhasil diakhiri dan email laporan terkirim");
-					} catch (emailError) {
-						console.error("Shift report email failed:", emailError);
-						toast.success("Shift berhasil diakhiri");
-						const message =
-							emailError instanceof Error
-								? emailError.message
-								: "Laporan shift gagal dikirim email. Cek konfigurasi Resend.";
-						toast.warning(message);
-					}
-				} else {
-					toast.success("Shift berhasil diakhiri");
-				}
+				// "akhiri" — open confirmation dialog instead of direct submit
+				e.preventDefault();
+				setShowEndConfirm(true);
+				setIsSubmitting(false);
+				return;
 			}
 			
 			setAmount("");
@@ -2662,6 +2690,28 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							</CardContent>
 						</Card>
 
+						{/* Detail Pengeluaran */}
+						{shiftExpense > 0 && (
+							<Card className="border-border bg-rose-50/30 overflow-hidden">
+								<CardContent className="p-2.5">
+									<div className="flex items-center justify-between mb-1">
+										<h4 className="text-[9px] font-black uppercase tracking-widest text-rose-700 flex items-center gap-1">
+											<TrendingDown className="h-2.5 w-2.5" /> Pengeluaran Shift
+										</h4>
+										<span className="text-[10px] font-black text-rose-700">Rp {shiftExpense.toLocaleString('id-ID')}</span>
+									</div>
+									<div className="space-y-1">
+										{todayTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed' && t.date >= (shiftStatus?.latestMulai || 0)).map((t: any, i: number) => (
+											<div key={i} className="flex items-center justify-between text-[10px]">
+												<span className="text-muted-foreground">{t.category || "Lainnya"}{t.description ? ` — ${t.description}` : ""}</span>
+												<span className="font-semibold text-rose-600">Rp {Number(t.amount).toLocaleString('id-ID')}</span>
+											</div>
+										))}
+									</div>
+								</CardContent>
+							</Card>
+						)}
+
 						{/* Pecahan Uang Section */}
 						<div className="space-y-1.5">
 							<div className="flex items-center justify-between">
@@ -2709,7 +2759,24 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 									/>
 								</div>
 								<p className="text-[8px] text-muted-foreground italic font-medium">* Otomatis dari input pecahan</p>
-							</div>
+							{/* Selisih Real-time */}
+							{cashInRegister && Number(cashInRegister) > 0 && (() => {
+								const expected = (shiftStatus?.ongoingShift?.startingCash ?? 0) + shiftCash - shiftExpense;
+								const actual = Number(cashInRegister);
+								const diff = actual - expected;
+								const isExact = diff === 0;
+								const absDiff = Math.abs(diff);
+								const statusColor = isExact ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : absDiff > 50000 ? 'text-rose-600 bg-rose-50 border-rose-200' : 'text-amber-600 bg-amber-50 border-amber-200';
+								const icon = isExact ? '✅' : diff > 0 ? '⬆️' : '⬇️';
+								const label = isExact ? 'Pas' : diff > 0 ? `Lebih Rp ${absDiff.toLocaleString('id-ID')}` : `Kurang Rp ${absDiff.toLocaleString('id-ID')}`;
+								return (
+									<div className={`mt-2 flex items-center justify-between rounded-lg border px-3 py-1.5 text-[10px] font-bold ${statusColor}`}>
+										<span>Selisih:</span>
+										<span>{icon} {label}</span>
+									</div>
+								);
+							})()}
+						</div>
 
 							<div className="space-y-1">
 								<Label className="text-[9px] font-bold uppercase text-muted-foreground">Konfirmasi QRIS/EDC (Rp)</Label>
@@ -2751,7 +2818,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				<Button
 					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : 'bg-destructive hover:bg-destructive/90'}`}
 					disabled={isSubmitting}
-					type="submit"
+					type={shiftType === 'mulai' ? 'submit' : 'button'}
+					onClick={shiftType === 'akhiri' ? () => setShowEndConfirm(true) : undefined}
 				>
 					{isSubmitting ? (
 						<Loader2 className="mr-2 h-3 w-3 animate-spin text-white" />
@@ -2760,6 +2828,43 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					)}
 				</Button>
 			</form>
+
+			{/* Konfirmasi Akhiri Shift */}
+			<Dialog open={showEndConfirm} onOpenChange={setShowEndConfirm}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle className="text-sm font-black uppercase tracking-tight">Konfirmasi Tutup Shift</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-2 text-sm">
+						<div className="rounded-xl bg-muted/30 p-3 space-y-1.5 text-xs">
+							<div className="flex justify-between"><span className="text-muted-foreground">Shift</span><span className="font-bold">{shiftName || shiftStatus?.shiftInfo?.shiftName}</span></div>
+							<div className="flex justify-between"><span className="text-muted-foreground">Kasir</span><span className="font-bold">{cashierName || shiftStatus?.shiftInfo?.cashierName}</span></div>
+							<div className="flex justify-between"><span className="text-muted-foreground">💰 Uang Fisik</span><span className="font-bold">Rp {Number(cashInRegister || 0).toLocaleString('id-ID')}</span></div>
+							<div className="flex justify-between"><span className="text-muted-foreground">💳 QRIS/EDC</span><span className="font-bold">Rp {Number(nonCashConfirmed || 0).toLocaleString('id-ID')}</span></div>
+							{(() => {
+								const expected = (shiftStatus?.ongoingShift?.startingCash ?? 0) + shiftCash - shiftExpense;
+								const actual = Number(cashInRegister || 0);
+								const diff = actual - expected;
+								return (
+									<div className={`flex justify-between ${diff === 0 ? 'text-emerald-600' : diff > 0 ? 'text-amber-600' : 'text-rose-600'}`}>
+										<span>📊 Selisih</span>
+										<span className="font-black">{diff === 0 ? '✅ Pas' : diff > 0 ? `⬆️+ Rp ${diff.toLocaleString('id-ID')}` : `⬇️- Rp ${Math.abs(diff).toLocaleString('id-ID')}`}</span>
+									</div>
+								);
+							})()}
+							{shiftExpense > 0 && <div className="flex justify-between"><span className="text-muted-foreground">💸 Pengeluaran</span><span className="font-bold text-rose-600">-Rp {shiftExpense.toLocaleString('id-ID')}</span></div>}
+							{notes && <div className="border-t border-border pt-1.5 mt-1.5"><span className="text-muted-foreground">📝 Catatan:</span><p className="font-medium mt-0.5">{notes}</p></div>}
+						</div>
+					</div>
+					<div className="flex gap-2">
+						<Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-bold" onClick={() => setShowEndConfirm(false)}>Kembali</Button>
+						<Button variant="destructive" size="sm" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={handleEndShift}>
+							{isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+							✅ Akhiri Shift
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 			<div className="h-6 shrink-0" />
 		</div>
 	);
