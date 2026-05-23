@@ -130,19 +130,6 @@ function CellEditor({
 				step="0.1"
 			/>
 			<span className="text-[8px] text-muted-foreground shrink-0">{unit}</span>
-			{showQuickProductForm && (
-				<QuickProductForm
-					open={showQuickProductForm}
-					onClose={() => setShowQuickProductForm(false)}
-					onSuccess={(productId) => {
-						setShowQuickProductForm(false);
-						setSelectedProductId(productId);
-						setViewMode('per-product');
-						triggerHybridRefresh();
-					}}
-				/>
-			)}
-
 		</div>
 	);
 }
@@ -182,7 +169,7 @@ export function RecipeMatrixPage() {
 	} | null>(null);
 	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<'all' | 'missing'>('all');
-	const [viewMode, setViewMode] = useState<'per-product' | 'matrix'>('per-product');
+	const [viewMode, setViewMode] = useState<'per-product' | 'matrix'>('matrix');
 	const [showQuickProductForm, setShowQuickProductForm] = useState(false);
 	const navigate = useNavigate();
 
