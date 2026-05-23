@@ -54,6 +54,24 @@ function ContractPreviewPage() {
 	const [testNIK, setTestNIK] = useState("");
 	const [testAddress, setTestAddress] = useState("");
 	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+	const [sigDataUrl, setSigDataUrl] = useState<string | null>(null);
+
+	// Pre-fetch admin signature to data URL for PDF inclusion
+	useEffect(() => {
+		if (onboardingSettings.signatorySignatureUrl && !sigDataUrl) {
+			fetch(onboardingSettings.signatorySignatureUrl, { mode: "cors" })
+				.then((r) => r.blob())
+				.then((blob) => {
+					return new Promise<string>((resolve) => {
+						const reader = new FileReader();
+						reader.onloadend = () => resolve(reader.result as string);
+						reader.readAsDataURL(blob);
+					});
+				})
+				.then((dataUrl) => setSigDataUrl(dataUrl))
+				.catch(() => {/* signature tetap tidak wajib */});
+		}
+	}, [onboardingSettings.signatorySignatureUrl, sigDataUrl]);
 
 	const onboardingSettings = useMemo(
 		() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding),
@@ -154,9 +172,20 @@ function ContractPreviewPage() {
 			pdf.setFontSize(9);
 			pdf.setFont("helvetica", "normal");
 			pdf.text("Pihak Perusahaan", m, y);
+			const signatureTop = y + 40;
+			pdf.setDrawColor(180);
+			// Sisipkan gambar tanda tangan admin jika tersedia
+			if (sigDataUrl) {
+				try {
+					const sigImg = new Image();
+					sigImg.src = sigDataUrl;
+					const sigW = 40;
+					const sigH = (sigImg.height / sigImg.width) * sigW;
+					pdf.addImage(sigDataUrl, "PNG", m, y + 4, sigW, Math.min(sigH, 20));
+				} catch {/* skip jika gagal */}
+			}
 			pdf.text(testName || "[Nama Karyawan]", m + cw + 12, y);
 			y += 28;
-			pdf.setDrawColor(180);
 			pdf.line(m, y, m + cw, y);
 			pdf.line(m + cw + 12, y, m + cw + 12 + cw, y);
 			y += 5;

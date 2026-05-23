@@ -8,6 +8,33 @@ export async function dataUrlToBlob(dataUrl: string) {
 }
 
 /**
+ * Convert all <img crossOrigin> elements in the DOM subtree to inline data URLs
+ * so html2canvas can capture them regardless of CORS headers.
+ */
+async function convertCrossOriginImagesToDataUrls(element: HTMLElement): Promise<void> {
+	const images = Array.from(element.querySelectorAll('img[crossorigin], img[crossOrigin]'));
+	await Promise.all(
+		images.map(async (img) => {
+			const htmlImg = img as HTMLImageElement;
+			const src = htmlImg.src;
+			if (!src || src.startsWith('data:')) return; // already inline
+			try {
+				const resp = await fetch(src, { mode: 'cors' });
+				const blob = await resp.blob();
+				const dataUrl = await new Promise<string>((resolve) => {
+					const reader = new FileReader();
+					reader.onloadend = () => resolve(reader.result as string);
+					reader.readAsDataURL(blob);
+				});
+				htmlImg.src = dataUrl;
+			} catch {
+				// Jika gagal fetch, biarkan saja — html2canvas akan coba dengan useCORS
+			}
+		})
+	);
+}
+
+/**
  * Wait for all images in an element to finish loading before capture.
  */
 function waitForImages(element: HTMLElement, timeout = 5000): Promise<void> {
@@ -61,6 +88,10 @@ export async function generateContractPdfBlob(
 	}
 
 	try {
+		// Pre-convert cross-origin images (signatures) to data URLs so html2canvas
+		// can capture them regardless of CORS headers
+		await convertCrossOriginImagesToDataUrls(element);
+
 		// Wait for all images to load before capturing
 		await waitForImages(element);
 
@@ -71,7 +102,7 @@ export async function generateContractPdfBlob(
 		const canvas = await html2canvas(element, {
 			scale: 5,
 			useCORS: true,
-			allowTaint: false,
+			allowTaint: true,
 			logging: false,
 			backgroundColor: "#ffffff",
 		});
