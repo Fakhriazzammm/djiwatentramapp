@@ -67,6 +67,7 @@ from categories import auto_categorize, categorize_item, categorize_item_with_me
 from sumopod_client import SumoPodClient
 from memory import MemoryManager, normalize_name
 from item_normalization import expand_item_alias, normalize_unit, load_aliases_from_db
+from db_categories import build_resolver
 from analyzer import TransactionAnalyzer
 # (no supplier import needed — moved to Yumi Purchasing)
 
@@ -3983,6 +3984,12 @@ def main():
         _asyncio.ensure_future(_load_inventory_aliases())
     except Exception as e:
         logger.warning("Alias load failed (non-fatal): %s", e)
+
+    # ── Load DB categories resolver ──────────────────────────────
+    try:
+        _asyncio.ensure_future(build_resolver(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY))
+    except Exception as e:
+        logger.warning("DB category resolver load failed (non-fatal): %s", e)
 
     # ── Load pending sessions ───────────────────────────────────
     _load_pending()

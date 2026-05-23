@@ -1,10 +1,18 @@
-"""categories.py — Kategori keuangan & auto-kategorisasi berbasis keyword."""
+"""categories.py — Kategori keuangan & auto-kategorisasi berbasis keyword + DB lookup.
+
+Memanfaatkan db_categories.py untuk lookup data dari Supabase:
+- pos.inventory.category → finance category
+- pos.products + pos.categories → product category context
+- pos.recipes → ingredient → product linkage
+"""
 
 import re
 import os
 import logging
 import httpx
 import json
+
+from db_categories import get_resolver
 
 logger = logging.getLogger("yumi-finance.categories")
 
@@ -328,6 +336,11 @@ def auto_categorize(text: str, amount: float = 0) -> tuple[str, str]:
 def categorize_item(item_name: str, item_price: float = 0) -> tuple[str, str, str]:
     """Kategorikan satu item belanjaan berdasarkan nama dan harga.
 
+    Priority:
+    1. DB lookup (dari inventory, products, recipes via db_categories)
+    2. Keyword matching (FINANCE_CATEGORIES)
+    3. AI fallback (di ai_categorize_item)
+
     Returns:
         (category_key, confidence: 'high'|'medium'|'low', suggested_label)
         suggested_label diisi jika confidence='low' (untuk membuat kategori baru).
@@ -335,6 +348,15 @@ def categorize_item(item_name: str, item_price: float = 0) -> tuple[str, str, st
     name_lower = item_name.lower().strip()
     if not name_lower:
         return "lainnya", "low", ""
+
+    # ── 1. DB lookup — prioritas tertinggi ───────────────────────
+    from db_categories import get_resolver as _get_resolver
+    db_resolver = _get_resolver()
+    if db_resolver.is_loaded:
+        db_cat, db_source = db_resolver.lookup(name_lower)
+        if db_cat:
+            # DB match = high confidence, skip keyword matching
+            return db_cat, "high", f"(DB: {db_source})"
 
     # Normalisasi OCR noise: hapus net-weight/kemasan agar keyword match lebih akurat
     name_norm = re.sub(r"\b\d+(?:[.,]\d+)?\s*(kg|kilo|gr|gram|g|ml|l|liter|litre|ltr)\b", " ", name_lower)
@@ -519,6 +541,17 @@ async def ai_categorize_item(
         cat_info = get_all_categories().get(cached, {})
         label = cat_info.get("label", cached.title())
         return cached, "high", label
+
+    # 1b. Cek DB resolver — prioritas di atas keyword matching
+    from db_categories import get_resolver as _get_resolver
+    db_resolver = _get_resolver()
+    if db_resolver.is_loaded:
+        db_cat, db_source = db_resolver.lookup(name_lower)
+        if db_cat:
+            _ai_category_cache[name_lower] = db_cat
+            cat_info = get_all_categories().get(db_cat, {})
+            label = cat_info.get("label", db_cat.title())
+            return db_cat, "high", label
 
     # 2. Cek keyword matching dulu — kalo high confidence, skip AI
     cat_key, cat_conf, suggested = categorize_item(item_name, item_price)
