@@ -3762,18 +3762,17 @@ export function useHybridCreateTransaction() {
 			const gwResult = await invokeEdgeFunction(
 				"record-financial-transaction",
 				{
-						tx_type: type,
-						amount,
-						category,
-						description: description || undefined,
-						merchant: args?.merchant || undefined,
-						tx_date: date,
-						payment_method: args?.paymentMethod || "cash",
-						status: args?.status || "completed",
-						source_fingerprint: fingerprint || undefined,
-						metadata,
-					},
-				}
+					tx_type: type,
+					amount,
+					category,
+					description: description || undefined,
+					merchant: args?.merchant || undefined,
+					tx_date: date,
+					payment_method: args?.paymentMethod || "cash",
+					status: args?.status || "completed",
+					source_fingerprint: fingerprint || undefined,
+					metadata,
+				},
 			);
 			const sourceId = gwResult?.sourceId;
 			if (!sourceId) throw new Error("Gateway returned no sourceId");
@@ -4855,16 +4854,27 @@ export function useHybridEnrollFace() {
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
 			try {
-				const userId = String(args?.userId ?? "");
-				const pin = String(args?.pin ?? "").trim();
-				const faceDescriptor = Array.isArray(args?.faceDescriptor)
-					? args.faceDescriptor
-					: [];
-				if (!userId || !/^\d{6}$/.test(pin) || faceDescriptor.length === 0) {
+			const userId = String(args?.userId ?? "");
+			const pin = String(args?.pin ?? "").trim();
+			const faceDescriptor = Array.isArray(args?.faceDescriptor)
+				? args.faceDescriptor
+				: [];
+			const skipPinVerification = Boolean(args?.skipPinVerification);
+
+			// Validasi data
+			if (!userId || faceDescriptor.length === 0) {
+				throw new Error("Data pendaftaran wajah tidak valid");
+			}
+
+			const supabase = createClient();
+
+			if (!skipPinVerification) {
+				// Branch A: dengan validasi PIN
+				if (!/^\d{6}$/.test(pin)) {
 					throw new Error("Data pendaftaran wajah tidak valid");
 				}
+
 				const pinFingerprint = await sha256Hex(pin);
-				const supabase = createClient();
 				const { data: user, error: userError } = await supabase
 					.from("yumi_users")
 					.select("source_id, home_pin_fingerprint, is_active, raw")
@@ -4892,7 +4902,28 @@ export function useHybridEnrollFace() {
 					})
 					.eq("source_id", userId);
 				if (patchError) throw patchError;
-				return { success: true };
+			} else {
+				// Branch B: skip PIN verification — hanya verifikasi user exist
+				const { data: user, error: userError } = await supabase
+					.from("yumi_users")
+					.select("source_id, is_active")
+					.eq("source_id", userId)
+					.maybeSingle();
+				if (userError) throw userError;
+				if (!user || user.is_active === false) {
+					throw new Error("User tidak ditemukan");
+				}
+
+				const { error: patchError } = await supabase
+					.from("yumi_users")
+					.update({
+						face_descriptor: faceDescriptor,
+					})
+					.eq("source_id", userId);
+				if (patchError) throw patchError;
+			}
+
+			return { success: true };
 			} catch (error) {
 				console.error("[supabase-hybrid:write-enroll-face] fallback disabled", error);
 				throw error;
