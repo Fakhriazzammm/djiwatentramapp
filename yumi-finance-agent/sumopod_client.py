@@ -226,7 +226,7 @@ class SumoPodClient:
                 }
             ],
             "temperature": 0.1,
-            "max_tokens": 2048,
+            "max_tokens": 8192,
             "stream": False,
         }
 
@@ -254,28 +254,17 @@ class SumoPodClient:
 
         Returns dict with: type, name, category, items, total, date, time, merchant, receiptNumber, paymentMethod, confidence, rawText
         """
-        prompt = """Analisis gambar struk/nota belanja ini dan ekstrak data dalam format JSON berikut (tanpa markdown, hanya JSON murni):
-{
-  "type": "expense",
-  "name": "Nama Merchant/Toko",
-  "category": "Kategori pengeluaran (misal: Makanan, Belanja, dll)",
-  "transactionType": "expense",
-  "total": 0,
-  "subtotal": 0,
-  "tax": 0,
-  "serviceCharge": 0,
-  "discount": 0,
-  "items": [{"name": "Nama item", "qty": 1, "price": 0, "subtotal": 0, "unit": "pcs"}],
-  "date": "YYYY-MM-DD",
-  "time": "HH:MM",
-  "receiptNumber": "Nomor struk",
-  "paymentMethod": "Cash/Debit/Credit/QRIS",
-  "notes": "",
-  "confidence": 0.9,
-  "rawText": "Teks dari struk"
-}
-Jika ada informasi yang tidak bisa dibaca, gunakan null atau 0. confidence antara 0-1.
-WAJIB balas JSON valid saja. Jangan gunakan markdown, jangan penjelasan, jangan teks di luar JSON."""
+        prompt = """Analisis gambar struk/nota belanja ini dan ekstrak data dalam format JSON berikut. STRUK BISA PANJANG — baca SEMUA item, jangan sampai ada yang terlewat. teks di rawText harus LENGKAP (semua teks yang terbaca), jangan dipotong.
+
+{ "type": "expense", "name": "Nama Merchant/Toko", "category": "Kategori", "transactionType": "expense", "total": 0, "subtotal": 0, "tax": 0, "serviceCharge": 0, "discount": 0, "items": [{"name": "Nama item", "qty": 1, "price": 0, "subtotal": 0, "unit": "pcs"}], "date": "YYYY-MM-DD", "time": "HH:MM", "receiptNumber": "", "paymentMethod": "Cash/Debit/QRIS", "notes": "", "confidence": 0.9, "rawText": "SEMUA teks yang terbaca di struk, jangan dipotong" }
+
+PENTING:
+- Baca SEMUA item di struk, jangan ada yang dilewatkan
+- rawText harus berisi SEMUA teks dari struk, dari baris pertama sampai terakhir
+- items[] harus berisi SEMUA item yang terbaca
+- Jika struk panjang sekalipun, tulis semua item
+- confidence 0-1
+- WAJIB balas JSON valid saja. Jangan markdown, jangan teks lain."""
 
         if not image_base64_uri.startswith("data:image"):
             return {"success": False, "error": "Format URI gambar tidak valid."}
@@ -304,7 +293,7 @@ WAJIB balas JSON valid saja. Jangan gunakan markdown, jangan penjelasan, jangan 
                     }
                 ],
                 "temperature": 0.1,
-                "max_tokens": 4096,
+                "max_tokens": 16384,
                 "stream": False,
             }
 
@@ -415,11 +404,12 @@ WAJIB balas JSON valid saja. Jangan gunakan markdown, jangan penjelasan, jangan 
         timeout: int = 90,
     ) -> list[dict]:
         """Extract only receipt line items, separate from receipt summary JSON."""
-        prompt = """Baca semua item barang pada struk ini. Balas format baris saja, tanpa markdown dan tanpa JSON:
+        prompt = """Baca SEMUA item barang pada struk ini. STRUK BISA PANJANG — pastikan tidak ada item yang terlewat. Balas format baris saja, tanpa markdown dan tanpa JSON:
 NAMA_ITEM|QTY|HARGA_SATUAN|SUBTOTAL
 Abaikan SUBTOTAL, TOTAL, CASH, CHANGE, DISCOUNT, MEMBER, PPN, dan pesan promosi.
 Contoh: ROSE BRAND POUCH 2L|2|43950|87900
-Harga rupiah tulis angka saja tanpa titik/koma."""
+Harga rupiah tulis angka saja tanpa titik/koma.
+PENTING: Tulis SEMUA item, jangan ada yang dilewatkan meskipun struk panjang."""
         payload = {
             "model": model,
             "messages": [
@@ -432,7 +422,7 @@ Harga rupiah tulis angka saja tanpa titik/koma."""
                 }
             ],
             "temperature": 0.0,
-            "max_tokens": 4096,
+            "max_tokens": 8192,
             "stream": False,
         }
         try:

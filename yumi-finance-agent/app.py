@@ -1048,12 +1048,14 @@ async def _handle_edit_item_field(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
     # Parse: editfield_{ref_id}_{item_idx}
-    parts = query.data.split("_", 2)
-    if len(parts) < 3:
+    # ref_id bisa mengandung underscore (rcpt_0), jadi jangan split sederhana
+    rest = query.data[len("editfield_"):]
+    last_underscore = rest.rfind("_")
+    if last_underscore < 0:
         return
-    ref_id = parts[1]
+    ref_id = rest[:last_underscore]
     try:
-        item_idx = int(parts[2])
+        item_idx = int(rest[last_underscore + 1:])
     except (ValueError, IndexError):
         return
 
