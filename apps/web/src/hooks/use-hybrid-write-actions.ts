@@ -4438,16 +4438,41 @@ export function useHybridEndShift() {
 					}
 				}
 
+				// ── Hitung diskon dari orders aktual ──
+				let totalDiscountFromOrders = 0;
+				let totalGrossSales = totalRevenue;
+				let totalItemsSold = 0;
+				try {
+					const { data: shiftOrders } = await supabase
+						.schema("pos")
+						.from("orders")
+						.select("total_amount, discount_amount")
+						.gte("creation_time", Number(shift.startTime))
+						.lt("creation_time", endTime)
+						.in("status", ["completed", "paid"])
+						.limit(1000);
+					if (shiftOrders && shiftOrders.length > 0) {
+						totalDiscountFromOrders = shiftOrders.reduce(
+							(sum: number, o: any) => sum + Number(o.discount_amount ?? 0), 0
+						);
+						totalItemsSold = shiftOrders.length;
+						totalGrossSales = totalRevenue + totalDiscountFromOrders;
+					}
+				} catch (e) {
+					console.warn("[supabase-hybrid:write-end-shift] failed to query orders for discount", e);
+				}
+
 				const endingCashExpected =
 					Number(shift.startingCash ?? 0) + cashRevenue - totalExpenses;
 				const nonCashExpected = qrisRevenue;
 				const summary = {
 					totalRevenue,
+					totalGrossSales,
+					totalDiscount: totalDiscountFromOrders,
 					totalExpenses,
-					totalItemsSold: Number((shift.summary as any)?.totalItemsSold ?? 0),
+					totalItemsSold: Math.max(Number((shift.summary as any)?.totalItemsSold ?? 0), totalItemsSold),
 					cashRevenue,
 					qrisRevenue,
-					totalDiscount: Number((shift.summary as any)?.totalDiscount ?? 0),
 				};
 
 				const { error: updateError } = await supabase

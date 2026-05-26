@@ -1120,9 +1120,9 @@ async function fetchShiftReports() {
 	}
 	const shiftsPerDay = await getShiftsPerDay();
 
-	// Step 3: Untuk shift aktif, query orders untuk revenue realtime
+	// Step 3: Untuk shift aktif, query orders untuk revenue & diskon realtime
 	const activeShifts = shifts.filter((s: any) => s.end_time == null);
-	let activeRevenue: Record<string, { total: number; cash: number; qris: number }> = {};
+	let activeRevenue: Record<string, { total: number; cash: number; qris: number; discount: number; itemsSold: number }> = {};
 	for (const s of activeShifts) {
 		const sid = s.source_id;
 		const st = Number(s.start_time ?? 0);
@@ -1130,22 +1130,23 @@ async function fetchShiftReports() {
 			const { data: orders } = await supabase
 				.schema("pos")
 				.from("orders")
-				.select("total_amount,payment_method,status")
+				.select("total_amount, discount_amount, payment_method, status")
 				.gte("created_at", st)
 				.in("status", ["completed", "paid"]);
 			if (orders) {
-				let total = 0, cash = 0, qris = 0;
+				let total = 0, cash = 0, qris = 0, discount = 0;
 				for (const o of orders as any[]) {
 					const p = Number(o.total_amount ?? 0);
 					total += p;
+					discount += Number(o.discount_amount ?? 0);
 					const m = String(o.payment_method ?? "").toLowerCase();
 					if (m.includes("cash") || m.includes("tunai")) cash += p;
 					else if (m.includes("qris") || m.includes("qr")) qris += p;
 				}
-				activeRevenue[sid] = { total, cash, qris };
+				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: orders.length };
 			}
 		} catch {}
-		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0 };
+		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0, discount: 0, itemsSold: 0 };
 	}
 
 	// Step 4: Hitung daily_collected per hari dari financial_transactions
@@ -1231,10 +1232,10 @@ async function fetchShiftReports() {
 		const cashRev = isActive && rev ? rev.cash : Number(summary.cashRevenue ?? 0);
 		const qrisRev = isActive && rev ? rev.qris : Number(summary.qrisRevenue ?? 0);
 		const totalRev = isActive && rev ? rev.total : Number(summary.totalRevenue ?? 0);
-		const grossSales = Number(summary.totalGrossSales ?? totalRev);
-		const discount = Number(summary.totalDiscount ?? 0);
+		const discount = isActive && rev ? rev.discount : Number(summary.totalDiscount ?? 0);
+		const grossSales = totalRev + discount;
 		const expenses = Number(summary.totalExpenses ?? 0);
-		const itemsSold = deriveTotalItemsSoldFromSummary(summary);
+		const itemsSold = isActive && rev ? rev.itemsSold : deriveTotalItemsSoldFromSummary(summary);
 
 		const isShiftTargetMet = hasTarget ? shiftCollected >= shiftTarget : undefined;
 		const isDailyTargetMet = hasTarget ? dailyCollected >= dailyTarget : undefined;
