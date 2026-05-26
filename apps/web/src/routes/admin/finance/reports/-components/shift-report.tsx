@@ -724,9 +724,19 @@ export function ShiftReport({ range }: Props) {
 												}
 												const grouped = new Map<string, string[]>();
 												const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+												// Normalize role names to match roleOrder:
+												// BARISTA→Barista, CHEF→Kitchen, KASIR→Kasir, MANAGER→Manajer
+												const roleNormalize = new Map<string, string>();
+												for (const r of roleOrder) {
+													roleNormalize.set(r.toUpperCase(), r);
+													roleNormalize.set(r.toLowerCase(), r);
+												}
+												roleNormalize.set("CHEF", "Kitchen");
+												roleNormalize.set("MANAGER", "Manajer");
 												names.forEach((name: string) => {
 													const user = allStaffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
-													const role = user?.roleName?.trim() || "Lainnya";
+													const rawRole = user?.roleName?.trim() || "Lainnya";
+													const role = roleNormalize.get(rawRole.toUpperCase()) ?? rawRole;
 													if (!grouped.has(role)) grouped.set(role, []);
 													grouped.get(role)!.push(name);
 												});
@@ -1364,12 +1374,14 @@ function TableHead({
 function TableCell({
 	children,
 	className = "",
+	title,
 }: {
 	children: React.ReactNode;
 	className?: string;
+	title?: string;
 }) {
 	return (
-		<td className={`whitespace-nowrap px-3 py-1.5 align-middle leading-5 ${className}`}>
+		<td className={`whitespace-nowrap px-3 py-1.5 align-middle leading-5 ${className}`} title={title}>
 			{children}
 		</td>
 	);
