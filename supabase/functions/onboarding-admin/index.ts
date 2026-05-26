@@ -205,10 +205,15 @@ async function handleApprove(
 
   // Build raw JSON for user
   const appRaw = (app.raw as Record<string, unknown>) ?? {};
+  // Untuk user baru via registrasi maupun admin: selalu set requiresPinChange = true
+  // agar user diminta ganti PIN di /karyawan/$username
+  const finalRequiresPinChange = requiresPinChange !== undefined
+    ? Boolean(requiresPinChange)
+    : true;
   const raw: Record<string, unknown> = {
     ...(payload.raw as Record<string, unknown> ?? {}),
     password,
-    requiresPinChange: Boolean(requiresPinChange),
+    requiresPinChange: finalRequiresPinChange,
     onboardingApplicationId,
     // Preserve bank info from registration
     bankName: String(appRaw.bankName ?? "") || undefined,
