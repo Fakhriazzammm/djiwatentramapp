@@ -178,16 +178,29 @@ async function handleApprove(
   // Generate source ID for new user
   const sourceId = `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
 
-  // Hash home PIN if provided
+  // Hash home PIN if provided, otherwise fall back to stored fingerprint from registration
   let homePinFingerprint: string | null = null;
-  let finalPin = homePin && typeof homePin === "string" && /^\d{6}$/.test(homePin) ? homePin : null;
-  if (finalPin) {
+  let pinFromAdmin = false;
+  let rawPin = homePin && typeof homePin === "string" && /^\d{6}$/.test(homePin) ? String(homePin) : null;
+  if (rawPin) {
+    pinFromAdmin = true;
     const hashBuffer = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(finalPin)
+      new TextEncoder().encode(rawPin)
     );
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     homePinFingerprint = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  } else if (
+    app.raw &&
+    typeof app.raw === "object" &&
+    (app.raw as Record<string, unknown>).homePinFingerprint
+  ) {
+    homePinFingerprint = String((app.raw as Record<string, unknown>).homePinFingerprint);
+  } else {
+    return corsResponse(
+      { success: false, error: { code: "VALIDATION_ERROR", message: "PIN wajib diisi — tidak ada PIN yang dikirim dan tidak ada stored fingerprint dari pendaftaran" } },
+      400
+    );
   }
 
   // Build raw JSON for user
@@ -234,16 +247,20 @@ async function handleApprove(
       break;
     }
     insertErrBody = await insertRes.text();
-    // Check if duplicate key on fingerprint — retry with new PIN
+    // Check if duplicate key on fingerprint — retry with new PIN (only if PIN came from admin input)
     if (insertErrBody.includes("idx_yumi_users_home_pin_fingerprint") || insertErrBody.includes("home_pin_fingerprint")) {
-      finalPin = String(Math.floor(100000 + Math.random() * 900000));
+      if (!pinFromAdmin) {
+        console.error("[onboarding-admin] stored PIN fingerprint collision, cannot retry:", insertErrBody);
+        return corsResponse({ success: false, error: { code: "PIN_COLLISION", message: "Stored PIN fingerprint conflict — user perlu registrasi ulang dengan PIN berbeda" } }, 409);
+      }
+      rawPin = String(Math.floor(100000 + Math.random() * 900000));
       const hashBuffer = await crypto.subtle.digest(
         "SHA-256",
-        new TextEncoder().encode(finalPin)
+        new TextEncoder().encode(rawPin)
       );
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       homePinFingerprint = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-      console.log("[onboarding-admin] PIN collision, retrying with new PIN:", finalPin);
+      console.log("[onboarding-admin] PIN collision, retrying with new PIN:", rawPin);
       continue;
     }
     // Other error — stop retrying

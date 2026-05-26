@@ -21,6 +21,7 @@ import {
 	buildEmployeeOnboardingPayload,
 	clausesToPlainText,
 	createEmployeeSlug,
+	sha256Hex,
 	type EmployeeContractClause,
 	type EmployeeOnboardingDraft,
 } from "@/lib/employee-onboarding-schema";
@@ -298,6 +299,11 @@ function RegisterPage() {
 				documentChecklist: onboardingSettings.documentChecklist,
 				salaryPreview: onboardingSettings.salaryPreview,
 				registrationNumber: appKey,
+				// Simpan SHA-256 fingerprint PIN agar admin bisa approve tanpa harus
+				// ganti PIN — user bisa login dengan PIN yang sama saat registrasi
+				homePinFingerprint: draft.employment.homePin
+					? await sha256Hex(draft.employment.homePin)
+					: undefined,
 			};
 			const id = await submitApplication({ payload });
 			console.log("[RegisterPage] submit success, db id:", id, "appKey:", appKey);

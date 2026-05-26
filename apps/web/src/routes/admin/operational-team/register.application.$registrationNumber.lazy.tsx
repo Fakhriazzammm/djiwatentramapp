@@ -242,7 +242,7 @@ function ApplicationDetailPage() {
 			toast.info("Pendaftaran ini sudah disetujui.");
 			return;
 		}
-		if (!pin || pin.length !== 6) {
+		if (!app?.raw?.homePinFingerprint && (!pin || pin.length !== 6)) {
 			toast.error("PIN harus 6 digit");
 			return;
 		}
@@ -556,6 +556,9 @@ function ApplicationDetailPage() {
 										</Field>
 										<Field label="PIN 6 digit">
 											<Input maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className="h-8 text-xs" />
+											{app?.raw?.homePinFingerprint && (
+												<p className="mt-1 text-[10px] text-emerald-600">✓ PIN dari pendaftaran tersedia</p>
+											)}
 										</Field>
 									</div>
 									<Field label="Catatan review">
@@ -610,7 +613,7 @@ function ApplicationDetailPage() {
 			<div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center gap-2">
 					{!isApproved && (
-						<Button disabled={isSaving || !pin || pin.length !== 6} size="sm" onClick={handleApprove} className="gap-1.5">
+						<Button disabled={isSaving || (!app?.raw?.homePinFingerprint && (!pin || pin.length !== 6))} size="sm" onClick={handleApprove} className="gap-1.5">
 							<CheckCircle2 className="h-4 w-4" />Setujui Tahap 1 (Data & CV)
 						</Button>
 					)}
