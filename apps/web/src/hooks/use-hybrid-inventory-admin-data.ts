@@ -437,6 +437,15 @@ async function fetchRecipes() {
 	})) as RecipeRecord[];
 }
 
+async function fetchRecipeProducts() {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos.recipe_products_view")
+		.select("*");
+	if (error) throw error;
+	return data ?? [];
+}
+
 async function fetchBaseRecipes() {
 	const supabase = createClient();
 	const { data, error } = await supabase
@@ -1603,6 +1612,11 @@ export function useHybridRecipes() {
 	return supabaseData as any;
 }
 
+export function useHybridRecipeProducts() {
+	const supabaseData = useSupabaseValue("recipe-products", fetchRecipeProducts, []);
+	return supabaseData as any;
+}
+
 async function fetchHppRecipes() {
 	const supabase = createClient();
 	const { data, error } = await supabase.from("pos_hpp_calculations").select("productId,ingredients");
@@ -1718,5 +1732,28 @@ export function filterProductsWithoutRecipes(
 ): ProductRecord[] {
 	const productIdsWithRecipe = new Set(recipes.map((r) => String(r.productId)));
 	return products.filter((p) => !productIdsWithRecipe.has(String(p._id)));
+}
+
+export async function linkProductToRecipe(recipeId: string, productId: string) {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.schema('pos')
+		.from('recipe_products')
+		.insert({ recipe_id: recipeId, product_id: productId })
+		.select()
+		.single();
+	if (error) throw error;
+	return data;
+}
+
+export async function unlinkProductFromRecipe(recipeId: string, productId: string) {
+	const supabase = createClient();
+	const { error } = await supabase
+		.schema('pos')
+		.from('recipe_products')
+		.delete()
+		.eq('recipe_id', recipeId)
+		.eq('product_id', productId);
+	if (error) throw error;
 }
 

@@ -1,5 +1,5 @@
 {
-  "version": 441,
+  "version": 453,
   "entries": [
     {
       "id": "fc7cee30-3f76-4147-9858-fc2ce098807e",
@@ -480,9 +480,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-19T08:05:15.061003+00:00",
-      "updatedAt": "2026-05-19T08:05:15.061003+00:00"
+      "updatedAt": "2026-05-25T06:50:41.573496+00:00"
     },
     {
       "id": "86f9ec3e-7a6d-41b2-b24e-db649d8dca97",
@@ -585,9 +585,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-19T08:05:15.064938+00:00",
-      "updatedAt": "2026-05-19T08:05:15.064938+00:00"
+      "updatedAt": "2026-05-23T12:54:36.622103+00:00"
     },
     {
       "id": "d0d81afb-8a74-455d-923d-51d55a8235e2",
@@ -711,9 +711,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-19T08:05:15.070343+00:00",
-      "updatedAt": "2026-05-19T08:05:15.070343+00:00"
+      "updatedAt": "2026-05-23T12:55:16.514182+00:00"
     },
     {
       "id": "baf33712-dc8e-4c47-a730-5db44001b80b",
@@ -795,9 +795,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 4,
       "createdAt": "2026-05-19T08:05:15.090747+00:00",
-      "updatedAt": "2026-05-19T08:05:15.090747+00:00"
+      "updatedAt": "2026-05-25T06:50:41.541205+00:00"
     },
     {
       "id": "8c28998a-a2ba-4543-85f2-43c39e070cb3",
@@ -1026,9 +1026,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-19T08:05:15.103369+00:00",
-      "updatedAt": "2026-05-19T08:05:15.103369+00:00"
+      "updatedAt": "2026-05-25T06:45:32.043343+00:00"
     },
     {
       "id": "6ab21fa4-f638-44f6-82a5-a213fc881c3b",
@@ -1446,9 +1446,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 2,
+      "usageCount": 4,
       "createdAt": "2026-05-19T08:05:15.130717+00:00",
-      "updatedAt": "2026-05-22T13:14:18.937099+00:00"
+      "updatedAt": "2026-05-25T06:48:58.014683+00:00"
     },
     {
       "id": "e5096070-f9a3-4cbf-9aa7-93a935f30781",
@@ -1614,9 +1614,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-19T08:05:15.144708+00:00",
-      "updatedAt": "2026-05-19T08:05:15.144708+00:00"
+      "updatedAt": "2026-05-23T12:54:36.925223+00:00"
     },
     {
       "id": "a0105b88-0288-423a-9ca6-605f006bed54",
@@ -1698,9 +1698,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 4,
+      "usageCount": 8,
       "createdAt": "2026-05-19T08:05:15.151868+00:00",
-      "updatedAt": "2026-05-23T07:03:50.714569+00:00"
+      "updatedAt": "2026-05-23T12:55:21.321121+00:00"
     },
     {
       "id": "16004d96-5940-4199-8b5e-a4d071f3c066",
@@ -1824,9 +1824,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-19T08:05:15.162881+00:00",
-      "updatedAt": "2026-05-19T08:05:15.162881+00:00"
+      "updatedAt": "2026-05-25T06:50:41.525404+00:00"
     },
     {
       "id": "1ad252f6-e419-41f6-afdc-9e7da2183206",
@@ -1887,9 +1887,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-19T08:05:15.168546+00:00",
-      "updatedAt": "2026-05-19T08:05:15.168546+00:00"
+      "updatedAt": "2026-05-25T06:46:10.675943+00:00"
     },
     {
       "id": "7c89cb6f-fc17-4557-9e90-d288d789cb06",
@@ -2160,9 +2160,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 2,
+      "usageCount": 7,
       "createdAt": "2026-05-19T08:05:15.197047+00:00",
-      "updatedAt": "2026-05-23T07:04:52.480443+00:00"
+      "updatedAt": "2026-05-25T07:23:10.466888+00:00"
     },
     {
       "id": "168f04a4-3a3b-4b87-b1d7-e95d064c59d9",
@@ -2433,9 +2433,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-19T08:05:15.229158+00:00",
-      "updatedAt": "2026-05-19T08:05:15.229158+00:00"
+      "updatedAt": "2026-05-25T06:54:23.337528+00:00"
     },
     {
       "id": "6eed9770-ed4b-420d-9e5e-7610860146e3",
@@ -2454,9 +2454,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 4,
       "createdAt": "2026-05-19T08:05:15.231737+00:00",
-      "updatedAt": "2026-05-19T08:05:15.231737+00:00"
+      "updatedAt": "2026-05-23T12:55:06.395112+00:00"
     },
     {
       "id": "353f501c-8f6c-4219-9234-9653654bfb77",
@@ -2622,9 +2622,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-19T08:05:15.253339+00:00",
-      "updatedAt": "2026-05-19T08:05:15.253339+00:00"
+      "updatedAt": "2026-05-23T12:55:11.164400+00:00"
     },
     {
       "id": "ae5405ab-fafd-492a-a0c2-f9ec12839fc3",
@@ -3168,9 +3168,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 3,
+      "usageCount": 7,
       "createdAt": "2026-05-19T08:05:15.329117+00:00",
-      "updatedAt": "2026-05-22T07:30:28.686452+00:00"
+      "updatedAt": "2026-05-24T07:34:35.471200+00:00"
     },
     {
       "id": "dd9d5eb0-1abd-4f72-9071-f382485cd34e",
@@ -3924,9 +3924,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 75.0,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-22T03:44:40.528501+00:00",
-      "updatedAt": "2026-05-22T03:44:40.528501+00:00"
+      "updatedAt": "2026-05-23T12:54:44.555075+00:00"
     },
     {
       "id": "3bdd839e-4c4d-4d28-b33e-159b27633632",
@@ -4029,9 +4029,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 95.0,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-22T13:14:23.865759+00:00",
-      "updatedAt": "2026-05-22T13:14:23.865759+00:00"
+      "updatedAt": "2026-05-23T12:54:51.556661+00:00"
     },
     {
       "id": "c2c00db4-8840-433e-aa84-df478d787745",
@@ -4092,9 +4092,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 100.0,
-      "usageCount": 1,
+      "usageCount": 4,
       "createdAt": "2026-05-22T13:14:57.493998+00:00",
-      "updatedAt": "2026-05-22T13:14:57.493998+00:00"
+      "updatedAt": "2026-05-25T06:47:24.393170+00:00"
     },
     {
       "id": "549ee73a-1c77-4d58-9957-e2632a4f3fb9",
@@ -4449,9 +4449,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-23T01:19:36.643322+00:00",
-      "updatedAt": "2026-05-23T01:19:36.643322+00:00"
+      "updatedAt": "2026-05-25T06:47:24.370823+00:00"
     },
     {
       "id": "1d180373-76a4-4c4d-99bb-f2e29e0771f2",
@@ -4890,9 +4890,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-23T01:19:36.819436+00:00",
-      "updatedAt": "2026-05-23T01:19:36.819436+00:00"
+      "updatedAt": "2026-05-25T06:46:10.697678+00:00"
     },
     {
       "id": "2ff15a95-d2c2-4535-88ca-4251c5855747",
@@ -5100,9 +5100,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-23T01:19:36.897595+00:00",
-      "updatedAt": "2026-05-23T01:19:36.897595+00:00"
+      "updatedAt": "2026-05-25T07:24:42.280599+00:00"
     },
     {
       "id": "aa1ac03f-ec20-4b60-879f-ba16d1e5a772",
@@ -5814,9 +5814,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 6,
       "createdAt": "2026-05-23T01:19:37.202459+00:00",
-      "updatedAt": "2026-05-23T01:19:37.202459+00:00"
+      "updatedAt": "2026-05-25T06:46:52.990359+00:00"
     },
     {
       "id": "b14bccdd-7820-4cf9-bc8d-14902eb3b306",
@@ -6003,9 +6003,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-23T01:19:37.294640+00:00",
-      "updatedAt": "2026-05-23T01:19:37.294640+00:00"
+      "updatedAt": "2026-05-23T12:54:55.692381+00:00"
     },
     {
       "id": "3424bbe3-b0c0-4ddc-9e7e-e8b981a7e75b",
@@ -6066,9 +6066,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-23T01:19:37.328093+00:00",
-      "updatedAt": "2026-05-23T01:19:37.328093+00:00"
+      "updatedAt": "2026-05-23T12:55:16.447432+00:00"
     },
     {
       "id": "bbce6d13-83ba-4080-a1eb-f6be5113fe4b",
@@ -6591,9 +6591,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-23T01:19:37.589529+00:00",
-      "updatedAt": "2026-05-23T01:19:37.589529+00:00"
+      "updatedAt": "2026-05-23T12:54:56.836005+00:00"
     },
     {
       "id": "fbae8453-b4f2-48bb-9952-9ee39619f7fe",
@@ -6801,9 +6801,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-23T01:19:37.699326+00:00",
-      "updatedAt": "2026-05-23T01:19:37.699326+00:00"
+      "updatedAt": "2026-05-25T06:48:58.035880+00:00"
     },
     {
       "id": "67446e60-8630-4840-aa0e-805d93de4297",
@@ -6906,9 +6906,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-23T01:19:37.755036+00:00",
-      "updatedAt": "2026-05-23T01:19:37.755036+00:00"
+      "updatedAt": "2026-05-25T06:50:41.556112+00:00"
     },
     {
       "id": "b2c200a3-0a4a-4fa8-87c9-33528897a4c3",
@@ -6948,9 +6948,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-23T01:19:37.777800+00:00",
-      "updatedAt": "2026-05-23T01:19:37.777800+00:00"
+      "updatedAt": "2026-05-23T12:55:16.588225+00:00"
     },
     {
       "id": "6a1dbcf5-a57a-4132-8735-cc937f1594eb",
@@ -7389,9 +7389,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-23T01:19:38.017350+00:00",
-      "updatedAt": "2026-05-23T01:19:38.017350+00:00"
+      "updatedAt": "2026-05-25T06:46:10.646405+00:00"
     },
     {
       "id": "13c9ebca-8ad0-4fab-b3ec-3bbb2c2593df",
@@ -7662,9 +7662,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 4,
       "createdAt": "2026-05-23T01:19:38.179192+00:00",
-      "updatedAt": "2026-05-23T01:19:38.179192+00:00"
+      "updatedAt": "2026-05-23T12:55:06.488818+00:00"
     },
     {
       "id": "1701dfe8-8d44-4001-8e74-368340a14874",
@@ -8460,9 +8460,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-23T01:19:38.682516+00:00",
-      "updatedAt": "2026-05-23T01:19:38.682516+00:00"
+      "updatedAt": "2026-05-23T12:55:16.554871+00:00"
     },
     {
       "id": "ed84bb06-4993-4698-b6f8-c63f663da874",
@@ -8964,9 +8964,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-23T01:19:38.991857+00:00",
-      "updatedAt": "2026-05-23T01:19:38.991857+00:00"
+      "updatedAt": "2026-05-25T06:47:56.174670+00:00"
     },
     {
       "id": "9c6f10b7-31dc-41d0-be42-d912522a6a05",
@@ -9006,9 +9006,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 3,
       "createdAt": "2026-05-23T01:19:39.017282+00:00",
-      "updatedAt": "2026-05-23T01:19:39.017282+00:00"
+      "updatedAt": "2026-05-25T06:47:56.191981+00:00"
     },
     {
       "id": "1e83fc09-0f52-458b-8434-0ed9a2298e44",
@@ -9240,7 +9240,259 @@
       "usageCount": 1,
       "createdAt": "2026-05-23T01:19:39.167290+00:00",
       "updatedAt": "2026-05-23T01:19:39.167290+00:00"
+    },
+    {
+      "id": "59344d29-481d-40f1-80b3-28539b75d2c7",
+      "type": "expense_match",
+      "userInput": "B. daun",
+      "parsedName": "B. daun",
+      "matchedInventoryId": "kd7d50snetkdtejs8t06b1f4j1841csr",
+      "matchedIngredientName": "Bawang Daun",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 90.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-23T12:54:53.468699+00:00",
+      "updatedAt": "2026-05-23T12:54:53.468699+00:00"
+    },
+    {
+      "id": "cb176403-45ce-417a-86c5-d92930693674",
+      "type": "expense_match",
+      "userInput": "B. Bombay",
+      "parsedName": "B. Bombay",
+      "matchedInventoryId": "kd7fmjkh7f2mny2a0zct1g2dh9841ma4",
+      "matchedIngredientName": "Bawang Bombai",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-23T12:54:54.060293+00:00",
+      "updatedAt": "2026-05-23T12:54:54.060293+00:00"
+    },
+    {
+      "id": "215381ee-0a83-4243-b139-562c1c0425ab",
+      "type": "expense_match",
+      "userInput": "Matcha Powder Premium Halal Flavorl... (qty:1, price:220000)",
+      "parsedName": "Matcha Powder Premium Halal Flavorl... (qty:1, price:220000)",
+      "matchedInventoryId": "kd7e6qmsgd8qg6y2b2ryxdrxr18401zh",
+      "matchedIngredientName": "Matcha Powder",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-23T12:55:05.065657+00:00",
+      "updatedAt": "2026-05-23T12:55:05.065657+00:00"
+    },
+    {
+      "id": "e66655c5-ea32-4fdf-ab17-4b29681829ba",
+      "type": "expense_match",
+      "userInput": "KRESEK SEMI JMBCETAK",
+      "parsedName": "KRESEK SEMI JMBCETAK",
+      "matchedInventoryId": "kd72t6ry3ad4jts3ga606rkpvh84wfbd",
+      "matchedIngredientName": "Kresek Piala 28 Putih",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 85.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-23T12:55:08.705051+00:00",
+      "updatedAt": "2026-05-23T12:55:08.705051+00:00"
+    },
+    {
+      "id": "4abc4b14-ef5f-42eb-85b4-92a11ddb8c1d",
+      "type": "expense_match",
+      "userInput": "Sproo So flores bajwa fw",
+      "parsedName": "Sproo So flores bajwa fw",
+      "matchedInventoryId": "kd768t6rd9rckr6xmk19wkh1b184mmh4",
+      "matchedIngredientName": "Beans Arabika Flores Bajawa FW",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T06:45:38.842054+00:00",
+      "updatedAt": "2026-05-25T06:45:38.842054+00:00"
+    },
+    {
+      "id": "48fd15db-63ea-4c17-85cb-4b8a998f0c92",
+      "type": "expense_match",
+      "userInput": "Bowl 500 + tutup",
+      "parsedName": "Bowl 500 + tutup",
+      "matchedInventoryId": "kd7a3jt6qvy1evmg90jt1h27en84f3q5",
+      "matchedIngredientName": "Paperbowl 650ml",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 85.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T06:46:20.965242+00:00",
+      "updatedAt": "2026-05-25T06:46:20.965242+00:00"
+    },
+    {
+      "id": "132245c2-903b-4162-a65b-50591414de79",
+      "type": "expense_match",
+      "userInput": "B mrh",
+      "parsedName": "B mrh",
+      "matchedInventoryId": "labx0ny0x401n0x9n3b8afwaw97bxmoa",
+      "matchedIngredientName": "Bumbu Kunci Mas",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 85.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T06:49:08.818184+00:00",
+      "updatedAt": "2026-05-25T06:49:08.818184+00:00"
+    },
+    {
+      "id": "ed3b829b-b71e-481f-86eb-97c86cc4ac25",
+      "type": "expense_match",
+      "userInput": "B gorg",
+      "parsedName": "B gorg",
+      "matchedInventoryId": "kd7fa0mzthte034yw22kyqp5td840yve",
+      "matchedIngredientName": "Minyak Goreng",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 90.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T06:49:09.238746+00:00",
+      "updatedAt": "2026-05-25T06:49:09.238746+00:00"
+    },
+    {
+      "id": "aa9376ef-8044-4e39-b295-bb1cf9d9ed52",
+      "type": "expense_match",
+      "userInput": "pangsit Besar",
+      "parsedName": "pangsit Besar",
+      "matchedInventoryId": "kd7fbj7zg1ewd7agz2pqzqktzs840fzb",
+      "matchedIngredientName": "Kulit Pangsit (Cap Jempol)",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T06:49:09.633019+00:00",
+      "updatedAt": "2026-05-25T06:49:09.633019+00:00"
+    },
+    {
+      "id": "376c39e8-a927-4982-b7c0-23857046a030",
+      "type": "expense_match",
+      "userInput": "kerupuk orange (qty:1, price:18000)",
+      "parsedName": "kerupuk orange (qty:1, price:18000)",
+      "matchedInventoryId": "kd7da8a44zczs0qnp8nrhp652x840frn",
+      "matchedIngredientName": "Kerupuk",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 85.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T06:52:45.462959+00:00",
+      "updatedAt": "2026-05-25T06:52:45.462959+00:00"
+    },
+    {
+      "id": "52cd8f6a-3876-4d2b-bb98-01dc3cb26732",
+      "type": "expense_match",
+      "userInput": "SENDOK MAKAN BENING TRIFI PAK@",
+      "parsedName": "SENDOK MAKAN BENING TRIFI PAK@25",
+      "matchedInventoryId": "kd75xe42533xpecnc3aqwfyze584nxef",
+      "matchedIngredientName": "Sendok Garpu",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 85.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T06:54:24.334802+00:00",
+      "updatedAt": "2026-05-25T06:54:24.334802+00:00"
+    },
+    {
+      "id": "e7edb92d-85f2-4cf6-9ad1-5a7cc7274bb7",
+      "type": "expense_match",
+      "userInput": "Gas (qty:2, price:20000)",
+      "parsedName": "Gas 3 Kg (qty:2, price:20000)",
+      "matchedInventoryId": "kd75y6wp4cxa9b2ft57fthgj5x84ebw9",
+      "matchedIngredientName": "Gas 3 Kg",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 100.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-25T07:26:15.628009+00:00",
+      "updatedAt": "2026-05-25T07:26:15.628009+00:00"
     }
   ],
-  "last_updated": "2026-05-23T07:04:52.480483+00:00"
+  "last_updated": "2026-05-25T07:26:15.629574+00:00"
 }

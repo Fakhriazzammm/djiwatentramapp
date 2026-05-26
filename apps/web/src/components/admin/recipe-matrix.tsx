@@ -8,8 +8,10 @@ import {
 	CheckCircle2,
 	ChevronRight,
 	Edit,
+	ExternalLink,
 	Eye,
 	FileText,
+	Link2,
 	ListOrdered,
 	Loader2,
 	Package,
@@ -32,7 +34,7 @@ import {
 	useHybridInventory,
 	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
-import { useHybridRecipes, filterProductsWithoutRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
+import { useHybridRecipes, filterProductsWithoutRecipes, useHybridRecipeProducts, linkProductToRecipe, unlinkProductFromRecipe } from "@/hooks/use-hybrid-inventory-admin-data";
 import { ModalScaffold } from "@/components/admin/recipe-book";
 import { RecipeStepsEditor } from "@/components/admin/recipe-steps-editor";
 import type { RecipeStep } from "@/hooks/use-hybrid-inventory-admin-data";
@@ -172,8 +174,28 @@ export function RecipeMatrixPage() {
 	const [viewMode, setViewMode] = useState<'per-product' | 'matrix'>('matrix');
 	const [showQuickProductForm, setShowQuickProductForm] = useState(false);
 	const navigate = useNavigate();
+	const [showLinkDialog, setShowLinkDialog] = useState(false);
+	const [linkingProductSearch, setLinkingProductSearch] = useState("");
+	const recipeProducts = useHybridRecipeProducts();
 
 	const loading = !products || !inventory || !recipes;
+
+	const selectedProduct = useMemo(() => {
+		if (!selectedProductId || !products) return null;
+		return products.find((p: any) => String(p._id) === selectedProductId) ?? null;
+	}, [selectedProductId, products]);
+
+	const selectedRecipe = useMemo(() => {
+		if (!selectedProductId || !recipes) return null;
+		return recipes.find((r: any) => String(r.productId) === selectedProductId && !r.variantName) ?? null;
+	}, [selectedProductId, recipes]);
+
+	const linkedRecipeProducts = useMemo(() => {
+		if (!selectedRecipe?._id || !recipeProducts) return [];
+		return (recipeProducts as any[]).filter(
+			(rp: any) => String(rp.recipe_id) === String(selectedRecipe._id)
+		);
+	}, [selectedRecipe, recipeProducts]);
 
 	// ── Derived Data ──
 
@@ -593,6 +615,66 @@ export function RecipeMatrixPage() {
 				/>
 			)}
 
+			{/* ── Produk Terkait Banner ── */}
+			{selectedProduct && viewMode === 'per-product' && (
+				<div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 mb-3 mx-4">
+					<div className="flex items-center gap-3 min-w-0">
+						<Link2 className="h-4 w-4 shrink-0 text-primary" />
+						<div className="min-w-0">
+							<span className="text-[12px] font-semibold truncate">{selectedProduct.name}</span>
+							<span className="ml-2 text-[10px] text-muted-foreground">
+								{categoryById.get(String(selectedProduct.categoryId)) ?? ""} · {formatRupiah(selectedProduct.price)}
+							</span>
+						</div>
+					</div>
+					<div className="flex items-center gap-1.5 shrink-0 ml-3">
+						<Button size="sm" variant="ghost" className="h-6 text-[10px]"
+							onClick={() => navigate({ to: "/admin/products" })}>
+							<ExternalLink className="h-3 w-3 mr-1" />Lihat Produk
+						</Button>
+						<Button size="sm" variant="ghost" className="h-6 text-[10px]"
+							onClick={() => navigate({ to: "/admin/recipe/hpp", search: { productId: selectedProductId } })}>
+							<Calculator className="h-3 w-3 mr-1" />Hitung HPP
+						</Button>
+					</div>
+				</div>
+			)}
+
+			{/* ── Linked Products ── */}
+			{selectedProduct && selectedRecipe && viewMode === 'per-product' && (
+				<div className="mx-4 mb-3">
+					<div className="flex items-center justify-between mb-1.5">
+						<span className="text-[11px] font-semibold text-muted-foreground">Produk Terkait ({linkedRecipeProducts.length})</span>
+						<Button size="sm" variant="outline" className="h-6 text-[10px]"
+							onClick={() => setShowLinkDialog(true)}>
+							<Plus className="h-3 w-3 mr-1" />Link ke Produk Lain
+						</Button>
+					</div>
+					{linkedRecipeProducts.filter((rp: any) => String(rp.product_id) !== selectedProductId).length > 0 ? (
+						<div className="flex flex-wrap gap-1.5">
+							{linkedRecipeProducts.filter((rp: any) => String(rp.product_id) !== selectedProductId).map((rp: any) => (
+								<Badge key={rp.product_id} variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
+									{rp.product_name ?? rp.product_id}
+									<button className="ml-0.5 hover:text-destructive" onClick={async () => {
+										try {
+											await unlinkProductFromRecipe(String(selectedRecipe._id), String(rp.product_id));
+											toast.success("Produk berhasil di-unlink");
+											triggerHybridRefresh("recipe-products");
+										} catch (e: any) {
+											toast.error(e.message ?? "Gagal unlink produk");
+										}
+									}}>
+										<X className="h-2.5 w-2.5" />
+									</button>
+								</Badge>
+							))}
+						</div>
+					) : (
+						<p className="text-[10px] text-muted-foreground italic">Belum ada produk lain yang terlink ke resep ini</p>
+					)}
+				</div>
+			)}
+
 			{viewMode === 'per-product' && selectedProductId && (
 				<PerProductRecipeEditor
 					product={products?.find(p => String(p._id) === selectedProductId) ?? null}
@@ -950,6 +1032,65 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						triggerHybridRefresh();
 					}}
 				/>
+			)}
+
+			{/* ── Link Produk Dialog ── */}
+			{showLinkDialog && selectedRecipe && (
+				<ModalScaffold
+					onClose={() => { setShowLinkDialog(false); setLinkingProductSearch(""); }}
+					title="Link ke Produk Lain"
+				>
+					<div className="space-y-3">
+						<Input
+							placeholder="Cari produk..."
+							value={linkingProductSearch}
+							onChange={(e) => setLinkingProductSearch(e.target.value)}
+							className="h-8 text-[11px]"
+						/>
+						<div className="max-h-48 overflow-y-auto space-y-1">
+							{(products ?? [])
+								.filter((p: any) => {
+									if (!p?._id) return false;
+									if (String(p._id) === selectedProductId) return false;
+									if (linkingProductSearch && !String(p.name ?? "").toLowerCase().includes(linkingProductSearch.toLowerCase())) return false;
+									if (linkedRecipeProducts.some((rp: any) => String(rp.product_id) === String(p._id) || String(rp.product_id) === String(p.sourceId))) return false;
+									return true;
+								})
+								.slice(0, 50)
+								.map((p: any) => (
+									<button
+										key={p._id}
+										className="w-full text-left px-3 py-1.5 rounded text-[11px] hover:bg-muted transition-colors flex items-center justify-between"
+										onClick={async () => {
+											try {
+												await linkProductToRecipe(String(selectedRecipe._id), String(p.sourceId ?? p._id));
+												toast.success(`"${p.name}" berhasil di-link ke resep`);
+												triggerHybridRefresh("recipe-products");
+												setShowLinkDialog(false);
+												setLinkingProductSearch("");
+											} catch (e: any) {
+												toast.error(e.message ?? "Gagal link produk");
+											}
+										}}
+									>
+										<span className="font-medium truncate">{p.name}</span>
+										<span className="text-[10px] text-muted-foreground shrink-0 ml-2">
+											{categoryById.get(String(p.categoryId)) ?? ""}
+										</span>
+									</button>
+								))}
+						</div>
+						{(products ?? []).filter((p: any) => {
+							if (!p?._id) return false;
+							if (String(p._id) === selectedProductId) return false;
+							if (linkingProductSearch && !String(p.name ?? "").toLowerCase().includes(linkingProductSearch.toLowerCase())) return false;
+							if (linkedRecipeProducts.some((rp: any) => String(rp.product_id) === String(p._id) || String(rp.product_id) === String(p.sourceId))) return false;
+							return true;
+						}).length === 0 && (
+							<p className="text-[10px] text-muted-foreground italic text-center py-4">Tidak ada produk lain yang tersedia</p>
+						)}
+					</div>
+				</ModalScaffold>
 			)}
 
 		</div>

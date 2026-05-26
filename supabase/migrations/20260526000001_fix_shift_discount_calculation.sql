@@ -90,11 +90,11 @@ declare
   v_shift record;
 begin
   for v_shift in
-    select source_id, shift_name, start_time, end_time, summary
-    from pos.shifts
-    where end_time is not null
-      and start_time is not null
-    order by start_time desc
+    select s.source_id, s.shift_name, s.start_time, s.end_time, s.summary
+    from pos.shifts s
+    where s.end_time is not null
+      and s.start_time is not null
+    order by s.start_time desc
   loop
     -- Save old values
     old_discount := coalesce((v_shift.summary ->> 'totalDiscount')::numeric, 0);

@@ -50,6 +50,9 @@ import {
 import {
 	useHybridRecipes,
 	useHybridBaseRecipes,
+	useHybridRecipeProducts,
+	linkProductToRecipe,
+	unlinkProductFromRecipe,
 } from "@/hooks/use-hybrid-inventory-admin-data";
 import {
 	useHybridCreateHppCalculation,
@@ -1359,6 +1362,7 @@ export function RecipeHppPage() {
 	const recipes = useHybridRecipes();
 	const baseRecipes = useHybridBaseRecipes() as any[] | undefined;
 	const discounts = useHybridAllDiscounts() as any[] | undefined;
+	const recipeProducts = useHybridRecipeProducts() as any[] | undefined;
 
 	const loading = !products || !inventory || !recipes;
 	const emptyProductList = products && products.length === 0;
@@ -1397,6 +1401,8 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 	const [aiAnalyzing, setAiAnalyzing] = useState(false);
 	const [recipeFilter, setRecipeFilter] = useState(false);
 	const [showQuickProductForm, setShowQuickProductForm] = useState(false);
+	const [linkProductModalOpen, setLinkProductModalOpen] = useState(false);
+	const [linkProductSearch, setLinkProductSearch] = useState("");
 
 	const metrics = useMemo(() => computeHpp(form), [form]);
 
@@ -1434,6 +1440,31 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 		const allRecipes = recipes as RecipeData[];
 		return allRecipes.find(r => String(r.productId) === selectedProductId && !r.variantName) ?? null;
 	}, [recipes, selectedProductId]);
+
+	// ── Linked Products ──
+	const currentRecipeProducts = useMemo(() => {
+		if (!recipeProducts || !selectedRecipe) return [];
+		return (recipeProducts as any[]).filter(
+			(rp: any) => String(rp.recipe_id || rp.recipeId) === selectedRecipe._id
+		);
+	}, [recipeProducts, selectedRecipe]);
+
+	const linkedProducts = useMemo(() => {
+		if (!products || !currentRecipeProducts || !selectedProduct) return [];
+		const linkedProductIds = new Set(
+			currentRecipeProducts
+				.map((rp: any) => rp.product_id || rp.productId)
+				.filter((id: string) => String(id) !== selectedProduct._id)
+		);
+		return products.filter((p) => linkedProductIds.has(p._id));
+	}, [products, currentRecipeProducts, selectedProduct]);
+
+	const unlinkedProducts = useMemo(() => {
+		if (!products || !selectedProduct) return [];
+		const linkedIds = new Set(linkedProducts.map((p) => p._id));
+		linkedIds.add(selectedProduct._id);
+		return products.filter((p) => !linkedIds.has(p._id));
+	}, [products, selectedProduct, linkedProducts]);
 
 	const productsWithoutRecipe = useMemo(() => {
 		if (!products || !recipes) return [];
@@ -2044,6 +2075,33 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 		}, 1500);
 	}, [form]);
 
+	const handleLinkProduct = useCallback(async (productId: string) => {
+		if (!selectedRecipe) {
+			toast.error("Resep belum ada — atur resep dulu");
+			return;
+		}
+		try {
+			await linkProductToRecipe(selectedRecipe._id, productId);
+			toast.success("Produk berhasil ditautkan ✅");
+			triggerHybridRefresh();
+			setLinkProductModalOpen(false);
+			setLinkProductSearch("");
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal menautkan produk");
+		}
+	}, [selectedRecipe]);
+
+	const handleUnlinkProduct = useCallback(async (productId: string) => {
+		if (!selectedRecipe) return;
+		try {
+			await unlinkProductFromRecipe(selectedRecipe._id, productId);
+			toast.success("Produk berhasil dilepaskan");
+			triggerHybridRefresh();
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal melepas produk");
+		}
+	}, [selectedRecipe]);
+
 	const hasSelection = selectedProduct || selectedBaseRecipe;
 
 	return (
@@ -2087,6 +2145,62 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 					<h1 className="text-lg font-bold">HPP Resep</h1>
 				</div>
 			</div>
+
+			{/* ── Produk Terkait Banner ── */}
+			{selectedProduct && selectedRecipe && (
+				<div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+					<div className="mb-2 flex items-center gap-2 text-[11px] font-medium text-blue-800">
+						<Link2 className="h-3.5 w-3.5" />
+						Produk Terkait
+					</div>
+					{linkedProducts.length > 0 ? (
+						<div className="space-y-1">
+							{linkedProducts.map((p) => (
+								<div key={p._id} className="flex items-center justify-between rounded bg-white/60 px-2 py-1">
+									<div className="flex items-center gap-2">
+										<span className="text-[11px] font-medium">{p.name}</span>
+										<span className="text-[10px] text-muted-foreground tabular-nums">
+											{formatCurrency(p.promoPrice ?? p.price)}
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										<Button
+											size="sm"
+											variant="ghost"
+											className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+											onClick={() => handleUnlinkProduct(p._id)}
+											title="Lepas tautan"
+										>
+											<X className="h-3 w-3" />
+										</Button>
+										<Button
+											size="sm"
+											variant="ghost"
+											className="h-6 px-1.5 text-[10px] text-blue-600"
+											onClick={() => navigate({ to: '/admin/recipe/hpp', search: { productId: p._id } })}
+											title="Buka HPP produk ini"
+										>
+											<Calculator className="h-3 w-3 mr-0.5" />
+											HPP
+										</Button>
+									</div>
+								</div>
+							))}
+						</div>
+					) : (
+						<p className="text-[11px] text-blue-600/70">Belum ada produk lain yang terlink ke resep ini</p>
+					)}
+					<Button
+						size="sm"
+						variant="outline"
+						className="mt-2 h-7 gap-1 text-[10px]"
+						onClick={() => setLinkProductModalOpen(true)}
+					>
+						<Plus className="h-3 w-3" />
+						Link ke Produk Lain
+					</Button>
+				</div>
+			)}
 
 			<ProductSelectorCard
 				productSearch={productSearch}
@@ -2202,6 +2316,60 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 					triggerHybridRefresh();
 				}}
 			/>
+		)}
+
+		{/* ── Link ke Produk Lain Modal ── */}
+		{linkProductModalOpen && (
+			<div
+				className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+				onClick={() => setLinkProductModalOpen(false)}
+			>
+				<div
+					className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl"
+					onClick={(e) => e.stopPropagation()}
+				>
+					<div className="mb-3 flex items-center justify-between">
+						<h3 className="text-sm font-semibold">Link ke Produk Lain</h3>
+						<Button
+							size="sm"
+							variant="ghost"
+							className="h-6 w-6 p-0"
+							onClick={() => setLinkProductModalOpen(false)}
+						>
+							<X className="h-4 w-4" />
+						</Button>
+					</div>
+					<Input
+						placeholder="Cari produk..."
+						value={linkProductSearch}
+						onChange={(e) => setLinkProductSearch(e.target.value)}
+						className="mb-2 h-8 text-xs"
+					/>
+					<div className="max-h-60 space-y-0.5 overflow-auto">
+						{unlinkedProducts
+							.filter((p) => safeLower(p.name).includes(safeLower(linkProductSearch)))
+							.map((p) => (
+								<div
+									key={p._id}
+									className="flex cursor-pointer items-center justify-between rounded px-2 py-1.5 text-xs hover:bg-accent"
+									onClick={() => handleLinkProduct(p._id)}
+								>
+									<span>{p.name}</span>
+									<span className="text-muted-foreground tabular-nums">
+										{formatCurrency(p.promoPrice ?? p.price)}
+									</span>
+								</div>
+							))}
+						{unlinkedProducts.filter((p) =>
+							safeLower(p.name).includes(safeLower(linkProductSearch))
+						).length === 0 && (
+							<p className="py-4 text-center text-xs text-muted-foreground">
+								Tidak ada produk tersedia
+							</p>
+						)}
+					</div>
+				</div>
+			</div>
 		)}
 		</div>
 	);

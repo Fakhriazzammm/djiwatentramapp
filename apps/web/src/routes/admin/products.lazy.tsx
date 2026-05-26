@@ -1075,7 +1075,8 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												<th className="px-3 py-3">Promo</th>
 												<th className="px-3 py-3">Stok</th>
 												<th className="px-3 py-3">Status</th>
-												<th className="px-3 py-3">Health</th>
+												<th className="px-3 py-3">Resep</th>
+												<th className="px-3 py-3">HPP</th>
 												<th className="px-3 py-3 text-right">Aksi</th>
 											</tr>
 										</thead>
@@ -1274,6 +1275,7 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												filteredProducts.map((product) => {
 													const health = getHealthScore(product);
 													const hpp = hppProductMap?.[product._id];
+													const hasRecipe = recipes?.some(r => String(r.productId ?? "") === String(product._id) && !r.variantName);
 
 													return (
 														<tr className="group transition-colors hover:bg-muted/40" key={product._id}>
@@ -1449,17 +1451,29 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 																	)}
 																</div>
 															</td>
-															<td className="px-3 py-3">
-																<div className="space-y-1">
-																	<div className="h-1.5 w-24 rounded-full bg-muted">
-																		<div
-																			className={`${health > 80 ? "bg-green-500" : health > 50 ? "bg-amber-500" : "bg-red-500"} h-full rounded-full`}
-																			style={{ width: `${health}%` }}
-																		/>
-																	</div>
-																	<p className="text-[10px] text-muted-foreground">{health}/100</p>
-																</div>
-															</td>
+													<td className="px-3 py-3">
+														<Link to="/admin/recipe" search={{ productId: String(product._id) }}
+															className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+																hasRecipe
+																	? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+																	: "bg-amber-50 text-amber-700 hover:bg-amber-100"
+																}`}
+														>
+															{hasRecipe ? "✅ Resep" : "⚠️ Atur"}
+														</Link>
+													</td>
+
+													<td className="px-3 py-3">
+														<Link to="/admin/recipe/hpp" search={{ productId: String(product._id) }}
+															className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+																hpp
+																	? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+																	: "bg-muted text-muted-foreground"
+																}`}
+														>
+															{hpp ? "📊 HPP" : "—"}
+														</Link>
+													</td>
 															<td className="px-3 py-3">
 								<div className="flex justify-end gap-1">
 													<button className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" onClick={() => handleEdit(product)} type="button" title="Edit produk">
@@ -3289,7 +3303,7 @@ function MixedRecipesTab() {
 								(total: number, recipe: any) => total + recipe.ingredients.length,
 								0
 							);
-							const hpp = hppProductMap?.[product._id];
+													const hpp = hppProductMap?.[product._id];
 
 							return (
 								<tr key={product._id}>

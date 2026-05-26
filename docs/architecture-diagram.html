@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Djiwa Tentram App — Architecture Diagram</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #020617;
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; padding: 40px;
+}
+.diagram-container {
+  background: #0f172a; border-radius: 20px; border: 1px solid #1e293b;
+  padding: 40px; max-width: 1200px; width: 100%;
+}
+h1 {
+  font-size: 24px; color: #e2e8f0; font-weight: 700;
+  display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+}
+.pulse { width: 10px; height: 10px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.subtitle { color: #64748b; font-size: 12px; margin-bottom: 32px; }
+svg { width: 100%; height: auto; }
+.legend { margin-top: 24px; display: flex; gap: 24px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #94a3b8; }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; }
+</style>
+</head>
+<body>
+<div class="diagram-container">
+  <h1><span class="pulse"></span> Djiwa Tentram App — Architecture</h1>
+  <p class="subtitle">Full-stack POS + Management System · 3 schemas · 8 Edge Functions · 40+ tables</p>
+
+  <svg viewBox="0 0 1100 650" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+      </pattern>
+      <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 Z" fill="#64748b"/>
+      </marker>
+      <marker id="arrow-dashed" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 Z" fill="#fb7185"/>
+      </marker>
+      <marker id="arrow-amber" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 Z" fill="#fbbf24"/>
+      </marker>
+      <marker id="arrow-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 Z" fill="#34d399"/>
+      </marker>
+      <linearGradient id="g-frontend" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:rgba(8,51,68,0.6)"/>
+        <stop offset="100%" style="stop-color:rgba(8,51,68,0.3)"/>
+      </linearGradient>
+      <linearGradient id="g-backend" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:rgba(6,78,59,0.6)"/>
+        <stop offset="100%" style="stop-color:rgba(6,78,59,0.3)"/>
+      </linearGradient>
+      <linearGradient id="g-db" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:rgba(76,29,149,0.6)"/>
+        <stop offset="100%" style="stop-color:rgba(76,29,149,0.3)"/>
+      </linearGradient>
+      <linearGradient id="g-external" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:rgba(30,41,59,0.6)"/>
+        <stop offset="100%" style="stop-color:rgba(30,41,59,0.3)"/>
+      </linearGradient>
+    </defs>
+
+    <rect width="1100" height="650" fill="url(#grid)"/>
+
+    <!-- FRONTEND LAYER -->
+    <rect x="60" y="30" width="980" height="180" rx="12" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.5"/>
+    <text x="75" y="52" fill="#22d3ee" font-size="11" font-weight="600" opacity="0.8">FRONTEND LAYER</text>
+
+    <!-- React App -->
+    <rect x="90" y="65" width="240" height="130" rx="8" fill="url(#g-frontend)" stroke="#22d3ee" stroke-width="1.5"/>
+    <text x="210" y="95" fill="#22d3ee" font-size="12" font-weight="700" text-anchor="middle">React 19 + Vite</text>
+    <text x="210" y="113" fill="#64748b" font-size="9" text-anchor="middle">TanStack Router · Tailwind v4 · shadcn/ui</text>
+    <text x="210" y="128" fill="#64748b" font-size="9" text-anchor="middle">TypeScript · Supabase Realtime</text>
+    <text x="210" y="143" fill="#64748b" font-size="9" text-anchor="middle">lucide-react · framer-motion · sonner</text>
+    <text x="210" y="163" fill="#64748b" font-size="8" text-anchor="middle">/admin (dashboard) · /menu (POS) · /home · /$brandSlug</text>
+
+    <!-- POS Cashier -->
+    <rect x="380" y="65" width="200" height="90" rx="8" fill="url(#g-frontend)" stroke="#22d3ee" stroke-width="1.5"/>
+    <text x="480" y="92" fill="#22d3ee" font-size="11" font-weight="700" text-anchor="middle">POS Cashier (/menu)</text>
+    <text x="480" y="108" fill="#64748b" font-size="9" text-anchor="middle">Order · Payment · Shift</text>
+    <text x="480" y="123" fill="#64748b" font-size="9" text-anchor="middle">Discount · Kitchen/Bar Display</text>
+
+    <!-- Admin Panel -->
+    <rect x="630" y="65" width="200" height="90" rx="8" fill="url(#g-frontend)" stroke="#22d3ee" stroke-width="1.5"/>
+    <text x="730" y="92" fill="#22d3ee" font-size="11" font-weight="700" text-anchor="middle">Admin Panel (/admin)</text>
+    <text x="730" y="108" fill="#64748b" font-size="9" text-anchor="middle">Products · Inventory · Recipe</text>
+    <text x="730" y="123" fill="#64748b" font-size="9" text-anchor="middle">Finance · Attendance · Payroll</text>
+
+    <!-- Customer Ordering -->
+    <rect x="880" y="65" width="130" height="90" rx="8" fill="url(#g-frontend)" stroke="#22d3ee" stroke-width="1.5"/>
+    <text x="945" y="92" fill="#22d3ee" font-size="11" font-weight="700" text-anchor="middle">Customer</text>
+    <text x="945" y="108" fill="#64748b" font-size="9" text-anchor="middle">Ordering</text>
+    <text x="945" y="123" fill="#64748b" font-size="9" text-anchor="middle">(/$brandSlug)</text>
+
+    <!-- BACKEND LAYER -->
+    <rect x="60" y="230" width="980" height="200" rx="12" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.5"/>
+    <text x="75" y="252" fill="#34d399" font-size="11" font-weight="600" opacity="0.8">BACKEND LAYER (Supabase)</text>
+
+    <!-- Edge Functions -->
+    <rect x="90" y="265" width="420" height="150" rx="8" fill="url(#g-backend)" stroke="#34d399" stroke-width="1.5"/>
+    <text x="300" y="290" fill="#34d399" font-size="11" font-weight="700" text-anchor="middle">Edge Functions (Deno · 8 total)</text>
+    <text x="110" y="312" fill="#94a3b8" font-size="9">yumi-auth → Login, PIN, Session Management</text>
+    <text x="110" y="328" fill="#94a3b8" font-size="9">yumi-ai → OpenAI Chat, Receipt OCR, Business Briefing</text>
+    <text x="110" y="344" fill="#94a3b8" font-size="9">onboarding-admin → Employee Reg, Approve, Contract</text>
+    <text x="110" y="360" fill="#94a3b8" font-size="9">auto-close-shifts → Auto close + recurring expenses</text>
+    <text x="110" y="376" fill="#94a3b8" font-size="9">generate-payroll → Auto payroll generation + payslips</text>
+    <text x="110" y="392" fill="#94a3b8" font-size="9">record-financial-tx / send-telegram-report / delete-cascade</text>
+
+    <!-- RPC Functions -->
+    <rect x="560" y="265" width="240" height="150" rx="8" fill="url(#g-backend)" stroke="#34d399" stroke-width="1.5"/>
+    <text x="680" y="290" fill="#34d399" font-size="11" font-weight="700" text-anchor="middle">RPC Functions (20+)</text>
+    <text x="580" y="312" fill="#94a3b8" font-size="9">auto_close_overdue_shifts</text>
+    <text x="580" y="328" fill="#94a3b8" font-size="9">get_currently_in_store</text>
+    <text x="580" y="344" fill="#94a3b8" font-size="9">next_daily_receipt_no</text>
+    <text x="580" y="360" fill="#94a3b8" font-size="9">next_registration_number</text>
+    <text x="580" y="376" fill="#94a3b8" font-size="9">fn_create_accounting_entries</text>
+    <text x="580" y="392" fill="#94a3b8" font-size="9">get_yumi_user_claims · exec_sql</text>
+
+    <!-- Triggers -->
+    <rect x="850" y="265" width="160" height="150" rx="8" fill="url(#g-backend)" stroke="#34d399" stroke-width="1.5"/>
+    <text x="930" y="290" fill="#34d399" font-size="11" font-weight="700" text-anchor="middle">Triggers (20+)</text>
+    <text x="865" y="312" fill="#94a3b8" font-size="9">Auto fingerprint</text>
+    <text x="865" y="328" fill="#94a3b8" font-size="9">Auto accounting entries</text>
+    <text x="865" y="344" fill="#94a3b8" font-size="9">Shift auto-close schedule</text>
+    <text x="865" y="360" fill="#94a3b8" font-size="9">User deactivation cascade</text>
+    <text x="865" y="376" fill="#94a3b8" font-size="9">Payroll audit trail</text>
+    <text x="865" y="392" fill="#94a3b8" font-size="9">Updated_at auto-set</text>
+
+    <!-- DATABASE LAYER -->
+    <rect x="60" y="450" width="980" height="180" rx="12" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.5"/>
+    <text x="75" y="472" fill="#a78bfa" font-size="11" font-weight="600" opacity="0.8">DATABASE LAYER (PostgreSQL · 3 schemas · 40+ tables · 30+ views)</text>
+
+    <rect x="90" y="485" width="280" height="130" rx="8" fill="url(#g-db)" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="230" y="510" fill="#a78bfa" font-size="11" font-weight="700" text-anchor="middle">pos Schema (26 tables)</text>
+    <text x="105" y="530" fill="#94a3b8" font-size="9">orders · order_items · products</text>
+    <text x="105" y="545" fill="#94a3b8" font-size="9">inventory · inventory_transactions</text>
+    <text x="105" y="560" fill="#94a3b8" font-size="9">financial_transactions · shifts</text>
+    <text x="105" y="575" fill="#94a3b8" font-size="9">recipes · base_recipes · discounts</text>
+    <text x="105" y="590" fill="#94a3b8" font-size="9">payroll_* (8 tables) · booking_* · attendance_*</text>
+
+    <rect x="410" y="485" width="280" height="130" rx="8" fill="url(#g-db)" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="550" y="510" fill="#a78bfa" font-size="11" font-weight="700" text-anchor="middle">public Schema (11 tables)</text>
+    <text x="425" y="530" fill="#94a3b8" font-size="9">yumi_users · yumi_roles · yumi_sessions</text>
+    <text x="425" y="545" fill="#94a3b8" font-size="9">employee_onboarding_applications</text>
+    <text x="425" y="560" fill="#94a3b8" font-size="9">contract_approvals · registration_counters</text>
+    <text x="425" y="575" fill="#94a3b8" font-size="9">accounting_chart_of_accounts</text>
+    <text x="425" y="590" fill="#94a3b8" font-size="9">accounting_entries · reconciliation_logs</text>
+
+    <rect x="730" y="485" width="280" height="130" rx="8" fill="url(#g-db)" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="870" y="510" fill="#a78bfa" font-size="11" font-weight="700" text-anchor="middle">legacy_mirror + Views</text>
+    <text x="745" y="530" fill="#94a3b8" font-size="9">legacy_mirror.documents (attendance, HPP, etc)</text>
+    <text x="745" y="545" fill="#94a3b8" font-size="9">legacy_mirror.import_runs</text>
+    <text x="745" y="560" fill="#94a3b8" font-size="9">30+ public.pos_* views (camelCase)</text>
+    <text x="745" y="575" fill="#94a3b8" font-size="9">Read via public views, write via pos.*</text>
+    <text x="745" y="590" fill="#94a3b8" font-size="9">All writes: service_role (bypass RLS)</text>
+
+    <!-- ARROWS: Frontend → Backend -->
+    <line x1="210" y1="195" x2="210" y2="265" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="480" y1="155" x2="480" y2="265" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="730" y1="155" x2="730" y2="265" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="945" y1="155" x2="945" y2="485" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- ARROWS: Backend → Database -->
+    <line x1="300" y1="415" x2="230" y2="485" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="680" y1="415" x2="550" y2="485" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="930" y1="415" x2="870" y2="485" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- EXTERNAL LAYER (on top of diagram in corner) -->
+    <rect x="850" y="32" width="180" height="28" rx="6" fill="url(#g-external)" stroke="#fbbf24" stroke-width="1.2"/>
+    <text x="940" y="51" fill="#fbbf24" font-size="9" font-weight="700" text-anchor="middle">Telegram Bot</text>
+
+    <rect x="850" y="195" width="180" height="28" rx="6" fill="url(#g-external)" stroke="#fbbf24" stroke-width="1.2"/>
+    <text x="940" y="214" fill="#fbbf24" font-size="9" font-weight="700" text-anchor="middle">OpenAI API</text>
+
+    <!-- Dashed arrows to external -->
+    <line x1="850" y1="46" x2="560" y2="265" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow-dashed)"/>
+    <line x1="850" y1="209" x2="300" y2="265" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow-amber)"/>
+
+    <!-- Internal bot service -->
+    <text x="50" y="218" fill="#64748b" font-size="8">yumi-ai-bot (Python, localhost:8001)</text>
+    <text x="50" y="230" fill="#64748b" font-size="8">yumi-finance-agent · yumi-purchasing-agent</text>
+
+    <!-- Legend -->
+    <text x="75" y="648" fill="#64748b" font-size="8">Architecture Diagram — Djiwa Tentram App · Generated 2026-05-23</text>
+  </svg>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(8,51,68,0.4);border-color:#22d3ee"></div>Frontend</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(6,78,59,0.4);border-color:#34d399"></div>Backend</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(76,29,149,0.4);border-color:#a78bfa"></div>Database</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(30,41,59,0.5);border-color:#fbbf24"></div>External</div>
+    <div class="legend-item"><span style="color:#fb7185;font-size:14px">- - -</span> Security/Notification</div>
+  </div>
+</div>
+</body>
+</html>
