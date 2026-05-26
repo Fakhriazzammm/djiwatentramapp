@@ -199,6 +199,14 @@ function HomePage() {
 		return Array.from(seen.values()).sort((a, b) => b.startTime - a.startTime);
 	}, [shiftRowsResult]);
 	const [refreshCount, setRefreshCount] = useState(0);
+	// Force refresh stats saat navigasi balik dari /attendance setelah clock-out
+	// Karena pos_attendance_logs view membaca legacy_mirror.documents yg gak trigger realtime
+	useEffect(() => {
+		if (sessionStorage.getItem("__attendance_clockout__")) {
+			sessionStorage.removeItem("__attendance_clockout__");
+			setRefreshCount(Date.now());
+		}
+	}, []);
 	const statsToday = useHybridStaffStatsToday(user?._id, refreshCount);
 	const monthProgress = useHybridCurrentMonthProgress();
 	const [currentTime, setCurrentTime] = useState(new Date());

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import type { UseSupabaseLiveValueOptions } from "@/hooks/use-supabase-live-value";
 
 function safeNum(value: unknown) {
 	const n = Number(value ?? 0);
@@ -10,9 +11,10 @@ function safeNum(value: unknown) {
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
-	deps: readonly unknown[]
+	deps: readonly unknown[],
+	options?: UseSupabaseLiveValueOptions
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, options);
 }
 
 async function fetchPublicUsers() {
@@ -246,7 +248,8 @@ export function useHybridCurrentlyInStore(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue(
 		"attendance-currently-in-store",
 		fetchCurrentlyInStore,
-		[refreshTrigger]
+		[refreshTrigger],
+		{ refreshMs: 90000 }
 	);
 	return supabaseData as any;
 }

@@ -31,6 +31,7 @@ type InventoryRecord = Record<string, any>;
 type ShiftReportRecord = {
 	shiftId: string;
 	shiftName: string;
+	notes: string;
 	cashierName: string;
 	teamMembers: string;
 	startTime: number;
@@ -1068,7 +1069,7 @@ async function fetchShiftReports() {
 	const { data: shifts, error: shiftsError } = await supabase
 		.schema("pos")
 		.from("shifts")
-		.select("source_id,shift_name,cashier_name,team_members,start_time,end_time,starting_cash,summary")
+		.select("source_id,shift_name,cashier_name,team_members,start_time,end_time,starting_cash,summary,notes")
 		.not("start_time", "is", null)
 		.order("start_time", { ascending: false, nullsFirst: false })
 		.limit(200);
@@ -1262,6 +1263,7 @@ async function fetchShiftReports() {
 		return {
 			shiftId: sid,
 			shiftName: s.shift_name ?? "Shift",
+			notes: s.notes ?? "",
 			cashierName: s.cashier_name ?? "",
 			teamMembers: s.team_members ?? "",
 			startTime: st,

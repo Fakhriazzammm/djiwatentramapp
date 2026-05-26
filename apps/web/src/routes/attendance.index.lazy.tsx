@@ -1,5 +1,5 @@
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import {
 	CheckCircle2,
 	Clock,
 	Navigation,
-	CalendarClock
+	CalendarClock,
+	RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -61,6 +62,7 @@ function AttendancePage() {
 	// Geolocation State
 	const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 	const [locationError, setLocationError] = useState<string | null>(null);
+	const [locationLoading, setLocationLoading] = useState(false);
 
 	// Data Queries/Mutations
 	const siteSettings = useHybridSiteSettings();
@@ -147,49 +149,75 @@ function AttendancePage() {
 		return { lat: userLocation.lat, lng: userLocation.lng };
 	}, [userLocation]);
 
-	// Watch Location
-	useEffect(() => {
+	// Lokasi: single-shot getCurrentPosition — gak perlu continuous GPS
+	const fetchLocation = useCallback(() => {
 		if (!navigator.geolocation) {
 			setLocationError("Browser tidak mendukung geolokasi.");
 			return;
 		}
-
-		const watchId = navigator.geolocation.watchPosition(
+		setLocationLoading(true);
+		navigator.geolocation.getCurrentPosition(
 			(pos) => {
 				setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
 				setLocationError(null);
+				setLocationLoading(false);
 			},
 			(err) => {
-				setLocationError("Izin lokasi diperlukan untuk absensi.");
-				console.error(err);
+				// Coba sekali lagi setelah error (kadang GPS butuh warmup)
+				if (err.code === err.POSITION_UNAVAILABLE) {
+					setTimeout(() => {
+						navigator.geolocation.getCurrentPosition(
+							(pos2) => {
+								setUserLocation({ lat: pos2.coords.latitude, lng: pos2.coords.longitude });
+								setLocationError(null);
+								setLocationLoading(false);
+							},
+							(err2) => {
+								setLocationError("Izin lokasi diperlukan untuk absensi.");
+								console.error(err2);
+								setLocationLoading(false);
+							},
+							{ enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+						);
+					}, 2000);
+				} else {
+					setLocationError("Izin lokasi diperlukan untuk absensi.");
+					console.error(err);
+					setLocationLoading(false);
+				}
 			},
-			{ enableHighAccuracy: true }
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
 		);
-
-		return () => navigator.geolocation.clearWatch(watchId);
 	}, []);
 
-	// Auto-select if authenticated
+	// Single shot on mount — gak perlu watchPosition (sumber utama lag)
 	useEffect(() => {
-		if (isAuthenticated && authUser && step === "select") {
-			const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === authUser._id);
-			const staffFromList = allStaff?.find((s: any) => s._id === authUser._id);
-			setUser({
-				id: authUser._id,
-				name: authUser.name,
-				hasFace: !!authUser.hasFace,
-				isCurrentlyIn,
-				roleName: authRole?.name || staffFromList?.roleName || "",
-			});
-			if (authUser.hasFace) {
-				setIsEnrolling(false);
-				setStep("face");
-			} else {
-				setIsEnrolling(true);
-				setStep("pin");
+		fetchLocation();
+	}, [fetchLocation]);
+
+		// Auto-select if authenticated (hanya jalankan sekali pas mount)
+		const autoSelectedRef = useRef(false);
+		useEffect(() => {
+			if (isAuthenticated && authUser && step === "select" && !autoSelectedRef.current) {
+				autoSelectedRef.current = true;
+				const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === authUser._id);
+				const staffFromList = allStaff?.find((s: any) => s._id === authUser._id);
+				setUser({
+					id: authUser._id,
+					name: authUser.name,
+					hasFace: !!authUser.hasFace,
+					isCurrentlyIn,
+					roleName: authRole?.name || staffFromList?.roleName || "",
+				});
+				if (authUser.hasFace) {
+					setIsEnrolling(false);
+					setStep("face");
+				} else {
+					setIsEnrolling(true);
+					setStep("pin");
+				}
 			}
-		}
-	}, [isAuthenticated, authUser, step, currentlyIn]);
+		}, [isAuthenticated, authUser, step, currentlyIn]);
 
 	// Preload face models when user is on select step
 	useEffect(() => {
@@ -302,8 +330,9 @@ function AttendancePage() {
 			toast.dismiss("clocking");
 			setRefreshCount(c => c + 1);
 			setStep("success");
-			
+			$
 			setTimeout(() => {
+				sessionStorage.setItem("__attendance_clockout__", "1");
 				navigate({ to: "/home" });
 			}, 3000);
 		} catch (err: any) {
@@ -361,12 +390,24 @@ function AttendancePage() {
 				<div className="flex items-center gap-2 md:gap-4">
 
 					{/* Status Lokasi Chip */}
-					<div className={`hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
-						isInRadius ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-red-50 border-red-100 text-red-700"
-					}`}>
-						{isInRadius ? <CheckCircle2 className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
-						{isInRadius ? "Dalam Area Kafe" : "Luar Jangkauan"}
-					</div>
+					{locationLoading ? (
+						<div className="hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold bg-amber-50 border-amber-100 text-amber-700 transition-all">
+							<Loader2 className="h-4 w-4 animate-spin" />
+							Mendeteksi Lokasi...
+						</div>
+					) : (
+						<div className={`hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
+							isInRadius ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-red-50 border-red-100 text-red-700"
+						}`}>
+							{isInRadius ? <CheckCircle2 className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+							{isInRadius ? "Dalam Area Kafe" : "Luar Jangkauan"}
+						</div>
+					)}
+					{!locationLoading && (
+						<button onClick={fetchLocation} className="hidden sm:flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted/50 transition-colors" title="Refresh lokasi">
+							<RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+						</button>
+					)}
 
 					<Button 
 						onClick={() => navigate({ to: "/home" })} 

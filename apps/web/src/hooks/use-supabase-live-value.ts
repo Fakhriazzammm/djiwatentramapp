@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
 
-type UseSupabaseLiveValueOptions = {
+export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
 	refreshMs?: number;
 	refreshTrigger?: number;

@@ -721,6 +721,7 @@ export function exportBookingOrdersJPG(orders: BookingOrderRow[], storeName: str
 export interface ShiftReportRow {
 	shiftId: string;
 	shiftName: string;
+	notes: string;
 	cashierName: string;
 	teamMembers: string;
 	startTime: number;

@@ -62,6 +62,7 @@ type MemberBonusInfo = {
 type ShiftRow = {
 	shiftId: string;
 	shiftName: string;
+	notes: string;
 	cashierName: string;
 	teamMembers: string;
 	startTime: number;
@@ -634,7 +635,7 @@ export function ShiftReport({ range }: Props) {
 					</div>
 
 					<div className="overflow-x-auto">
-						<table className="min-w-[1560px] w-full border-collapse text-[13px]">
+						<table className="min-w-[1720px] w-full border-collapse text-[13px]">
 							<thead className="bg-muted/40 text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
 								<tr>
 									<th className="w-9 px-3 py-2.5">
@@ -662,6 +663,7 @@ export function ShiftReport({ range }: Props) {
 									<TableHead className="text-emerald-700">Bonus Tim</TableHead>
 									<TableHead>Pengeluaran</TableHead>
 									<TableHead>Produk</TableHead>
+									<TableHead>Catatan</TableHead>
 									<TableHead>Aksi</TableHead>
 								</tr>
 							</thead>
@@ -784,6 +786,13 @@ export function ShiftReport({ range }: Props) {
 											</TableCell>
 											<TableCell className="whitespace-nowrap text-center">
 												{shift.totalItemsSold}
+											</TableCell>
+											<TableCell className="max-w-[160px] truncate text-muted-foreground/80 text-[11px]" title={shift.notes || ""}>
+												{shift.notes ? (
+													<span className="text-muted-foreground/90">{shift.notes}</span>
+												) : (
+													<span className="text-muted-foreground/30">—</span>
+												)}
 											</TableCell>
 											<TableCell>
 												<div className="flex items-center gap-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
