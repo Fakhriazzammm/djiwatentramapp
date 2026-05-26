@@ -635,10 +635,10 @@ export function ShiftReport({ range }: Props) {
 					</div>
 
 					<div className="overflow-x-auto">
-						<table className="min-w-[1720px] w-full border-collapse text-[13px]">
+						<table className="min-w-[1380px] w-full border-collapse text-[11px]">
 							<thead className="bg-muted/40 text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
 								<tr>
-									<th className="w-9 px-3 py-2.5">
+									<th className="w-6 px-1.5 py-1.5">
 										<input
 											type="checkbox"
 											checked={allSelected}
@@ -683,12 +683,12 @@ export function ShiftReport({ range }: Props) {
 											}`}
 											onClick={() => setSelectedShiftStart(shift.startTime)}
 										>
-											<td className="px-3 py-2.5" onClick={(e) => toggleRow(shift.shiftId, e)}>
+											<td className="px-1.5 py-1" onClick={(e) => toggleRow(shift.shiftId, e)}>
 												<input
 													type="checkbox"
 													checked={isChecked}
 													onChange={() => {}}
-													className="h-3.5 w-3.5 cursor-pointer rounded border-border accent-primary"
+													className="h-3 w-3 cursor-pointer rounded border-border accent-primary"
 													aria-label={`Pilih ${shift.shiftName}`}
 												/>
 											</td>
@@ -702,11 +702,11 @@ export function ShiftReport({ range }: Props) {
 											</TableCell>
 											<TableCell>
 												<span
-													className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold leading-4 ${
+													className={`inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-bold leading-3 ${
 														shift.status === "AKTIF"
 															? "bg-emerald-100 text-emerald-700"
 															: "bg-slate-100 text-slate-700"
-													}`}
+														}`}
 												>
 													{shift.status}
 												</span>
@@ -781,14 +781,14 @@ export function ShiftReport({ range }: Props) {
 												{shift.memberBonuses && shift.memberBonuses.some((m) => m.bonus > 0) ? (
 													<div className="space-y-0.5">
 														{shift.memberBonuses.filter((m) => m.bonus > 0).map((m) => (
-															<div key={m.name} className="flex items-center gap-1 text-[10px] whitespace-nowrap">
+															<div key={m.name} className="flex items-center gap-1 text-[9px] whitespace-nowrap">
 																<span className="font-bold text-emerald-700 dark:text-emerald-400">{m.name.split(" ")[0]}</span>
 																<span className="text-emerald-600 font-semibold">+{formatCurrencyIDR(m.bonus, true)}</span>
 															</div>
 														))}
 													</div>
 												) : (
-													<span className="text-[10px] text-muted-foreground/50">—</span>
+													<span className="text-[9px] text-muted-foreground/50">—</span>
 												)}
 											</TableCell>
 											<TableCell className="whitespace-nowrap text-rose-700">
@@ -797,7 +797,7 @@ export function ShiftReport({ range }: Props) {
 											<TableCell className="whitespace-nowrap text-center">
 												{shift.totalItemsSold}
 											</TableCell>
-											<TableCell className="max-w-[160px] truncate text-muted-foreground/80 text-[11px]" title={shift.notes || ""}>
+											<TableCell className="max-w-[120px] truncate text-muted-foreground/80 text-[10px]" title={shift.notes || ""}>
 												{shift.notes ? (
 													<span className="text-muted-foreground/90">{shift.notes}</span>
 												) : (
@@ -805,22 +805,22 @@ export function ShiftReport({ range }: Props) {
 												)}
 											</TableCell>
 											<TableCell>
-												<div className="flex items-center gap-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+												<div className="flex items-center gap-1 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
 													<button
 														type="button"
 														onClick={(e) => openEdit(shift, e)}
-														className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+														className="inline-flex h-6 w-6 items-center justify-center rounded border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 														title="Edit shift"
 													>
-														<Pencil className="h-3.5 w-3.5" />
+														<Pencil className="h-3 w-3" />
 													</button>
 													<button
 														type="button"
 														onClick={(e) => { e.stopPropagation(); setConfirmDeleteIds([shift.shiftId]); }}
-														className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-destructive/30 bg-destructive/8 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+														className="inline-flex h-6 w-6 items-center justify-center rounded border border-destructive/30 bg-destructive/8 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
 														title="Hapus shift"
 													>
-														<Trash2 className="h-3.5 w-3.5" />
+														<Trash2 className="h-3 w-3" />
 													</button>
 													<button
 														type="button"
@@ -829,13 +829,13 @@ export function ShiftReport({ range }: Props) {
 															void handleSendShiftEmail(shift);
 														}}
 														disabled={sendingShiftStart === shift.startTime}
-														className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+														className="inline-flex h-6 w-6 items-center justify-center rounded border border-blue-200 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
 														title="Kirim email laporan"
 													>
 														{sendingShiftStart === shift.startTime ? (
-															<Loader2 className="h-3.5 w-3.5 animate-spin" />
+															<Loader2 className="h-3 w-3 animate-spin" />
 														) : (
-															<Mail className="h-3.5 w-3.5" />
+															<Mail className="h-3 w-3" />
 														)}
 													</button>
 												</div>
@@ -1364,7 +1364,7 @@ function TableHead({
 }) {
 	return (
 		<th
-			className={`whitespace-nowrap px-3 py-2 text-[10px] font-semibold leading-4 ${className ?? ""}`}
+			className={`whitespace-nowrap px-1.5 py-1.5 text-[9px] font-semibold leading-3 tracking-[0.1em] ${className ?? ""}`}
 		>
 			{children}
 		</th>
@@ -1381,7 +1381,7 @@ function TableCell({
 	title?: string;
 }) {
 	return (
-		<td className={`whitespace-nowrap px-3 py-1.5 align-middle leading-5 ${className}`} title={title}>
+		<td className={`whitespace-nowrap px-1.5 py-1 align-middle leading-4 ${className}`} title={title}>
 			{children}
 		</td>
 	);
@@ -1451,17 +1451,17 @@ function TargetBadge({
 }) {
 	return (
 		<div
-			className={`rounded-lg border px-2 py-1.5 text-[10px] leading-4 ${
+			className={`rounded-md border px-1.5 py-1 text-[9px] leading-3 ${
 				met
 					? "border-emerald-200 bg-emerald-50 text-emerald-700"
 					: "border-rose-200 bg-rose-50 text-rose-700"
 			}`}
 		>
-			<div className="flex items-center justify-between gap-2 font-bold">
+			<div className="flex items-center justify-between gap-1.5 font-bold">
 				<span>{label}</span>
-				<span>{met ? "Tercapai" : "Tidak Tercapai"}</span>
+				<span>{met ? "✓" : "✗"}</span>
 			</div>
-			<div className="mt-0.5 text-[9px] font-medium opacity-90">
+			<div className="mt-0.5 text-[8px] font-medium opacity-90">
 				{formatCurrencyIDR(current, true)} / {formatCurrencyIDR(target, true)}
 			</div>
 		</div>
