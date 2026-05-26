@@ -232,6 +232,19 @@ export function ShiftReport({ range }: Props) {
 	const storeName = settings?.storeName || "Toko";
 	const allRows = useHybridShiftReportRows() as ShiftRow[] | undefined;
 	const allStaffUsers = useHybridStaffUsers();
+	// Derive unique roles from staff users, sorted by priority
+	// Baru=1, Chef=2, Kasir=3, Waitress=4, Manajer=5, Admin=6, other=99
+	const sortedRoles = useMemo(() => {
+		if (!allStaffUsers?.length) {
+			return ["BARISTA", "CHEF", "KASIR", "MANAGER"];
+		}
+		const priority: Record<string, number> = {
+			BARISTA: 1, CHEF: 2, KASIR: 3, WAITRESS: 4, MANAGER: 5, ADMIN: 6,
+		};
+		const unique = [...new Set(allStaffUsers.map((u: any) => u.roleName?.trim()).filter(Boolean))];
+		unique.sort((a, b) => (priority[a] ?? 99) - (priority[b] ?? 99));
+		return unique;
+	}, [allStaffUsers]);
 	const rows = useMemo(() => {
 		if (!allRows) {
 			return undefined;
@@ -651,7 +664,9 @@ export function ShiftReport({ range }: Props) {
 									<TableHead>Shift</TableHead>
 									<TableHead>Status</TableHead>
 									<TableHead>Kasir</TableHead>
-									<TableHead>Barista</TableHead><TableHead>Kitchen</TableHead><TableHead>Kasir</TableHead><TableHead>Waitress</TableHead><TableHead>Manajer</TableHead>
+									{sortedRoles.map(r => (
+										<TableHead key={r}>{r.charAt(0).toUpperCase() + r.slice(1).toLowerCase()}</TableHead>
+									))}
 									<TableHead>Modal</TableHead>
 									<TableHead>Tunai</TableHead>
 									<TableHead>Debit/QRIS</TableHead>
@@ -715,32 +730,22 @@ export function ShiftReport({ range }: Props) {
 												{shift.cashierName || "-"}
 											</TableCell>
 											{(() => {
-												if (!shift.teamMembers) return <><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell></>;
+												if (!shift.teamMembers) return sortedRoles.map(r => <TableCell key={r} className="text-muted-foreground">-</TableCell>);
 												const names = shift.teamMembers.split(",").map((n: string) => n.trim()).filter(Boolean);
-												if (!names.length) return <><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell></>;
+												if (!names.length) return sortedRoles.map(r => <TableCell key={r} className="text-muted-foreground">-</TableCell>);
 												if (!allStaffUsers?.length) {
-													// Fallback: put all names in Barista cell
-													return <><TableCell>{shift.teamMembers}</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell><TableCell className="text-muted-foreground">-</TableCell></>;
+													return sortedRoles.map((r, i) => (
+														<TableCell key={r}>{i === 0 ? shift.teamMembers : <span className="text-muted-foreground">-</span>}</TableCell>
+													));
 												}
 												const grouped = new Map<string, string[]>();
-												const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
-												// Normalize role names to match roleOrder:
-												// BARISTA→Barista, CHEF→Kitchen, KASIR→Kasir, MANAGER→Manajer
-												const roleNormalize = new Map<string, string>();
-												for (const r of roleOrder) {
-													roleNormalize.set(r.toUpperCase(), r);
-													roleNormalize.set(r.toLowerCase(), r);
-												}
-												roleNormalize.set("CHEF", "Kitchen");
-												roleNormalize.set("MANAGER", "Manajer");
 												names.forEach((name: string) => {
 													const user = allStaffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
-													const rawRole = user?.roleName?.trim() || "Lainnya";
-													const role = roleNormalize.get(rawRole.toUpperCase()) ?? rawRole;
+													const role = user?.roleName?.trim() || "Lainnya";
 													if (!grouped.has(role)) grouped.set(role, []);
 													grouped.get(role)!.push(name);
 												});
-												return roleOrder.map(role => {
+												return sortedRoles.map(role => {
 													const members = grouped.get(role) || [];
 													return (
 														<TableCell key={role}>
