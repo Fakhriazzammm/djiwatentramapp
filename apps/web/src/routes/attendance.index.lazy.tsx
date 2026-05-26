@@ -195,29 +195,31 @@ function AttendancePage() {
 		fetchLocation();
 	}, [fetchLocation]);
 
-		// Auto-select if authenticated (hanya jalankan sekali pas mount)
-		const autoSelectedRef = useRef(false);
-		useEffect(() => {
-			if (isAuthenticated && authUser && step === "select" && !autoSelectedRef.current) {
-				autoSelectedRef.current = true;
-				const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === authUser._id);
-				const staffFromList = allStaff?.find((s: any) => s._id === authUser._id);
-				setUser({
-					id: authUser._id,
-					name: authUser.name,
-					hasFace: !!authUser.hasFace,
-					isCurrentlyIn,
-					roleName: authRole?.name || staffFromList?.roleName || "",
-				});
-				if (authUser.hasFace) {
-					setIsEnrolling(false);
-					setStep("face");
-				} else {
-					setIsEnrolling(true);
-					setStep("pin");
-				}
+	// Auto-select if authenticated — tunggu currentlyIn selesai load
+	const autoSelectHandled = useRef(false);
+	useEffect(() => {
+		// Tunggu sampai currentlyIn ter-load sebelum auto-select
+		if (currentlyIn === undefined) return;
+		if (isAuthenticated && authUser && step === "select" && !autoSelectHandled.current) {
+			autoSelectHandled.current = true;
+			const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === authUser._id);
+			const staffFromList = allStaff?.find((s: any) => s._id === authUser._id);
+			setUser({
+				id: authUser._id,
+				name: authUser.name,
+				hasFace: !!authUser.hasFace,
+				isCurrentlyIn,
+				roleName: authRole?.name || staffFromList?.roleName || "",
+			});
+			if (authUser.hasFace) {
+				setIsEnrolling(false);
+				setStep("face");
+			} else {
+				setIsEnrolling(true);
+				setStep("pin");
 			}
-		}, [isAuthenticated, authUser, step, currentlyIn]);
+		}
+	}, [isAuthenticated, authUser, step, currentlyIn]);
 
 	// Preload face models when user is on select step
 	useEffect(() => {
@@ -330,7 +332,7 @@ function AttendancePage() {
 			toast.dismiss("clocking");
 			setRefreshCount(c => c + 1);
 			setStep("success");
-			$
+			
 			setTimeout(() => {
 				sessionStorage.setItem("__attendance_clockout__", "1");
 				navigate({ to: "/home" });

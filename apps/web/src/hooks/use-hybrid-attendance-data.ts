@@ -233,7 +233,8 @@ export function useHybridAdminAttendanceLogs(limit = 500, month?: number, year?:
 	const supabaseData = useSupabaseValue(
 		`attendance-admin-logs:${m}:${y}:${limit}`,
 		() => fetchAdminLogs(limit, startDate, endDate),
-		[limit, m, y]
+		[limit, m, y],
+		{ refreshMs: 30000, realtimeSchemas: ["public", "pos", "legacy_mirror"] }
 	);
 	return supabaseData as any;
 }
@@ -249,7 +250,7 @@ export function useHybridCurrentlyInStore(refreshTrigger?: number) {
 		"attendance-currently-in-store",
 		fetchCurrentlyInStore,
 		[refreshTrigger],
-		{ refreshMs: 90000 }
+		{ refreshMs: 30000, realtimeSchemas: ["public", "pos", "legacy_mirror"] }
 	);
 	return supabaseData as any;
 }
@@ -307,7 +308,8 @@ export function useHybridStaffStatsToday(userId?: string, refreshTrigger?: numbe
 	const supabaseData = useSupabaseValue(
 		`attendance-staff-stats-today:${userId ?? "skip"}`,
 		() => (userId ? fetchStaffStatsToday(userId) : Promise.resolve(null)),
-		[userId, refreshTrigger]
+		[userId, refreshTrigger],
+		{ refreshMs: 30000, realtimeSchemas: ["public", "pos", "legacy_mirror"] }
 	);
 	return supabaseData as any;
 }
