@@ -58,6 +58,107 @@ const MONTHS = [
 	"Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
+// ── Payslip Detail Card ─────────────────────────────────────────
+function PayslipDetailCard({
+	payslip,
+	onDownload,
+}: {
+	payslip: any;
+	onDownload: (p: any) => void;
+}) {
+	const b = payslip.breakdown ?? {};
+	const badgeMap: Record<string, { label: string; cls: string }> = {
+		generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
+		sent: { label: "Dikirim", cls: "bg-blue-100 text-blue-600" },
+		acknowledged: { label: "Diterima", cls: "bg-emerald-100 text-emerald-600" },
+		disputed: { label: "Dispute", cls: "bg-red-100 text-red-600" },
+	};
+	const badge = badgeMap[payslip.status] ?? badgeMap.generated;
+
+	const items: { label: string; value: number; color?: string }[] = [];
+	if ((b.monthly_fixed_salary ?? 0) > 0) items.push({ label: "Gaji Tetap", value: b.monthly_fixed_salary });
+	if ((b.total_shift_pay ?? 0) > 0) items.push({ label: `Gaji Shift (${b.shifts ?? 0} shift)`, value: b.total_shift_pay });
+	if ((b.total_allowance ?? 0) > 0) items.push({ label: "Tunjangan Transportasi", value: b.total_allowance });
+	if ((b.total_overtime_bonus ?? 0) > 0) items.push({ label: "Bonus Lembur", value: b.total_overtime_bonus, color: "text-emerald-600" });
+	if ((b.bonus_target?.total_bonus ?? 0) > 0) items.push({ label: "Bonus Target", value: b.bonus_target.total_bonus, color: "text-emerald-600" });
+	if ((b.total_penalty ?? 0) > 0) items.push({ label: "Denda Keterlambatan", value: -Math.abs(b.total_penalty), color: "text-red-600" });
+
+	return (
+		<div className="group rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02]">
+			{/* Header */}
+			<div className="flex items-start justify-between mb-3">
+				<div className="flex items-center gap-2 min-w-0">
+					<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+						<FileText className="h-4 w-4" />
+					</div>
+					<div className="min-w-0">
+						<p className="truncate font-bold text-xs">{payslip.period_name}</p>
+						<p className="truncate text-[10px] text-muted-foreground">{b.role_name ?? payslip.role_name ?? ""}</p>
+					</div>
+				</div>
+				<span className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${badge.cls}`}>
+					{badge.label}
+				</span>
+			</div>
+
+			{/* Breakdown */}
+			{items.length > 0 && (
+				<div className="space-y-1 mb-3">
+					{items.map((item, i) => (
+						<div key={i} className="flex justify-between text-[11px]">
+							<span className="text-muted-foreground">{item.label}</span>
+							<span className={`font-semibold tabular-nums ${item.color ?? ""}`}>
+								{item.value < 0
+									? `-${formatCurrency(Math.abs(item.value))}`
+									: formatCurrency(item.value)}
+							</span>
+						</div>
+					))}
+				</div>
+			)}
+
+			{/* Summaries */}
+			<div className="border-t border-border/50 my-2" />
+			<div className="space-y-1 mb-3">
+				<div className="flex justify-between text-[11px]">
+					<span className="text-muted-foreground">Total Gross</span>
+					<span className="font-semibold tabular-nums">{formatCurrency(payslip.gross_pay ?? 0)}</span>
+				</div>
+				{(payslip.deductions ?? 0) > 0 && (
+					<div className="flex justify-between text-[11px]">
+						<span className="text-muted-foreground">Potongan</span>
+						<span className="font-semibold tabular-nums text-red-600">-{formatCurrency(payslip.deductions)}</span>
+					</div>
+				)}
+				<div className="flex justify-between text-sm font-bold pt-1 border-t border-border/30">
+					<span>Net Diterima</span>
+					<span className="text-emerald-600 tabular-nums">{formatCurrency(payslip.net_pay ?? 0)}</span>
+				</div>
+			</div>
+
+			{/* Timestamps */}
+			{(payslip.sent_at || payslip.acknowledged_at) && (
+				<p className="text-[9px] text-muted-foreground/60 mb-2">
+					{payslip.sent_at && `Dikirim: ${new Date(payslip.sent_at).toLocaleDateString("id-ID")}`}
+					{payslip.sent_at && payslip.acknowledged_at && " · "}
+					{payslip.acknowledged_at && `Diterima: ${new Date(payslip.acknowledged_at).toLocaleDateString("id-ID")}`}
+				</p>
+			)}
+
+			{/* Download */}
+			<Button
+				variant="outline"
+				size="sm"
+				className="w-full rounded-lg text-[10px] font-bold h-8"
+				onClick={() => onDownload(payslip)}
+			>
+				<Download className="mr-1.5 h-3 w-3" />
+				Download PDF
+			</Button>
+		</div>
+	);
+}
+
 function StaffProfilePage() {
 	const { username } = useParams({ from: "/karyawan/$username" as any }) as { username: string };
 	const navigate = useNavigate();
@@ -432,15 +533,23 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 											{[1, 2, 3].map((i) => (
 												<div
 													key={i}
-													className="flex animate-pulse items-center justify-between rounded-xl border bg-card p-3"
+													className="animate-pulse rounded-xl border bg-card p-4 space-y-3"
 												>
-													<div className="flex items-center gap-3">
-														<div className="h-9 w-9 rounded-lg bg-muted" />
-														<div className="space-y-1.5">
+													<div className="flex items-center gap-2">
+														<div className="h-8 w-8 rounded-lg bg-muted" />
+														<div className="space-y-1 flex-1">
 															<div className="h-3 w-32 rounded bg-muted" />
 															<div className="h-2.5 w-20 rounded bg-muted" />
 														</div>
+														<div className="h-5 w-16 rounded bg-muted" />
 													</div>
+													{[1, 2, 3].map((j) => (
+														<div key={j} className="flex justify-between">
+															<div className="h-3 w-28 rounded bg-muted" />
+															<div className="h-3 w-16 rounded bg-muted" />
+														</div>
+													))}
+													<div className="h-8 w-full rounded-lg bg-muted" />
 												</div>
 											))}
 										</>
@@ -453,47 +562,14 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									) : (
 										// Payslip list
 										(myPayslips as any[])
-											.slice(0, showAllPayslips ? undefined : 3)
-											.map((payslip: any) => {
-										const statusBadge = ({
-											generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
-											sent: { label: "Dikirim", cls: "bg-blue-100 text-blue-600" },
-											acknowledged: { label: "Diterima", cls: "bg-emerald-100 text-emerald-600" },
-											disputed: { label: "Dispute", cls: "bg-red-100 text-red-600" },
-										} as any)[payslip.status] ?? { label: payslip.status, cls: "bg-gray-100 text-gray-600" };
-
-												return (
-													<div
-														key={payslip.id}
-														className="group flex items-center justify-between rounded-xl border bg-card p-3 transition-all hover:border-primary/30 hover:bg-primary/[0.02]"
-													>
-														<div className="flex items-center gap-3 min-w-0">
-															<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-																<FileText className="h-4 w-4" />
-															</div>
-															<div className="min-w-0">
-																<p className="truncate font-bold text-xs">{payslip.period_name}</p>
-																<p className="text-[10px] font-semibold text-muted-foreground">
-																	{formatCurrency(payslip.net_pay)}
-																</p>
-															</div>
-														</div>
-														<div className="flex items-center gap-2 shrink-0">
-														<span className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusBadge.cls}`}>
-																{statusBadge.label}
-															</span>
-															<Button
-																variant="ghost"
-																size="icon"
-																className="rounded-lg h-8 w-8"
-																onClick={() => handleDownloadPayslip(payslip)}
-															>
-																<Download className="h-4 w-4" />
-															</Button>
-														</div>
-													</div>
-												);
-											})
+										.slice(0, showAllPayslips ? undefined : 3)
+										.map((payslip: any) => (
+										<PayslipDetailCard
+										key={payslip.id}
+										payslip={payslip}
+										onDownload={handleDownloadPayslip}
+										/>
+										))
 									)}
 								</div>
 							</div>
