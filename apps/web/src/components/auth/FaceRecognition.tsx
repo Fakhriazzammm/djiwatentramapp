@@ -15,43 +15,40 @@ interface FaceRecognitionProps {
   className?: string;
 }
 
-const MODEL_CDN =
-  "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
-const CANDIDATES = (() => {
-  const b = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
-  return [...new Set([`${b}/models`, "/models", MODEL_CDN].map((p) =>
-    p.startsWith("http") ? p : "/" + p.replace(/\/+/g, "/").replace(/^\/*/, "")
-  ))];
-})();
+// CDN urutan prioritas: jsdelivr (cepat) > unpkg (fallback) > github raw (last resort)
+const MODEL_CDNS = [
+  "https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights",
+  "https://unpkg.com/face-api.js@0.22.2/weights",
+  "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights",
+];
 
 let preloadPromise: Promise<boolean> | null = null;
 
-async function canReach(p: string) {
+async function tryLoadFrom(cp: string, signal: AbortSignal): Promise<boolean> {
   try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 1500);
-    const r = await fetch(`${p}/tiny_face_detector_model-weights_manifest.json`, {
-      method: "GET", cache: "force-cache", signal: c.signal,
-    });
-    clearTimeout(t);
-    return r.ok;
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(cp),
+      faceapi.nets.faceLandmark68Net.loadFromUri(cp),
+      faceapi.nets.faceRecognitionNet.loadFromUri(cp),
+    ]);
+    return true;
   } catch {
     return false;
   }
 }
 
 async function loadModelsImpl(): Promise<boolean> {
-  for (const cp of CANDIDATES) {
-    if (!cp.startsWith("http") && !(await canReach(cp))) continue;
-    try {
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(cp),
-        faceapi.nets.faceLandmark68Net.loadFromUri(cp),
-        faceapi.nets.faceRecognitionNet.loadFromUri(cp),
-      ]);
-      return true;
-    } catch (e) { console.warn(`Load fail \${cp}:`, e); }
+  // AbortController with 8s total timeout
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 8000);
+
+  for (const cp of MODEL_CDNS) {
+    if (ac.signal.aborted) break;
+    const ok = await tryLoadFrom(cp, ac.signal);
+    if (ok) { clearTimeout(timer); return true; }
   }
+
+  clearTimeout(timer);
   return false;
 }
 
@@ -67,7 +64,7 @@ export function FaceRecognition({
 }: FaceRecognitionProps) {
   const wRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const afRef = useRef(0);
+  const timerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pRef = useRef(false);
   const lRef = useRef(false);
   const stableRef = useRef(0);
@@ -105,7 +102,7 @@ export function FaceRecognition({
     return () => { cancelled = true; };
   }, [r]);
 
-  // Face detection loop — requestAnimationFrame, continuous, no gaps
+  // Face detection loop — throttled, no rAF spam
   useEffect(() => {
     if (!loaded || st !== "idle") return;
     stableRef.current = 0;
@@ -152,13 +149,14 @@ export function FaceRecognition({
     const detect = async () => {
       const vid = wRef.current?.video;
       if (!vid || pRef.current || alreadyRef.current) {
-        afRef.current = requestAnimationFrame(detect);
+        timerIdRef.current = setTimeout(detect, 100);
         return;
       }
+      pRef.current = true;
       try {
         const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 96, scoreThreshold: 0.6 });
         if (stableRef.current < 1) {
-          // Phase 1: Fast detection only (no landmarks, no descriptor)
+          // Phase 1: Fast detection only (every ~150ms)
           const det = await faceapi.detectSingleFace(vid, opts);
           if (!det) {
             stableRef.current = 0;
@@ -167,9 +165,11 @@ export function FaceRecognition({
           } else {
             stableRef.current = 1;
             setFace(true);
+            // Transition to Phase 2 immediately (next tick)
           }
+          timerIdRef.current = setTimeout(detect, 150);
         } else {
-          // Phase 2: Full pipeline with descriptor (landmarks + face descriptor)
+          // Phase 2: Full pipeline with descriptor (run ONCE)
           const det = await faceapi
             .detectSingleFace(vid, opts)
             .withFaceLandmarks()
@@ -178,11 +178,11 @@ export function FaceRecognition({
             stableRef.current = 0;
             setFace(false);
             drawBox(null);
+            timerIdRef.current = setTimeout(detect, 150);
           } else {
             setFace(true);
             drawBox(det);
-            stableRef.current = 2;
-            // Direct verify on first full detection (no need for extra stable frames)
+            // Direct verify on first full detection
             if (mode === "verify" && !alreadyRef.current) {
               alreadyRef.current = true;
               const desc = Array.from(det.descriptor);
@@ -207,29 +207,30 @@ export function FaceRecognition({
                 setSt("fail");
               }
             }
+            // Phase 2 done — stop looping (alreadyRef prevents re-entry)
           }
         }
       } catch {
         stableRef.current = 0;
         setFace(false);
         drawBox(null);
+        timerIdRef.current = setTimeout(detect, 150);
       }
-      if (!alreadyRef.current) {
-        afRef.current = requestAnimationFrame(detect);
-      }
+      pRef.current = false;
     };
 
     syncCanvas();
-    afRef.current = requestAnimationFrame(detect);
+    timerIdRef.current = setTimeout(detect, 300); // initial delay for webcam warmup
     return () => {
-      cancelAnimationFrame(afRef.current);
+      if (timerIdRef.current) clearTimeout(timerIdRef.current);
     };
   }, [loaded, st, mode, onVerify, onMatch, targetDescriptor, onModelError]);
 
   const capture = useCallback(async () => {
     if (!wRef.current || !loaded || pRef.current) return;
     pRef.current = true;
-    cancelAnimationFrame(afRef.current);
+    // Clear the detection loop timer
+    if (timerIdRef.current) { clearTimeout(timerIdRef.current); timerIdRef.current = null; }
     setSt("scanning");
     try {
       const video = wRef.current.video;
