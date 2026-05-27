@@ -4841,13 +4841,22 @@ export function useHybridVerifyHomePin() {
 				if (!/^\d{6}$/.test(pin)) {
 					throw new Error("PIN harus terdiri dari 6 digit angka");
 				}
+				const userId = String(args?.userId ?? "").trim();
 				const pinFingerprint = await sha256Hex(pin);
 				const supabase = createClient();
-				const { data: user, error } = await supabase
+
+				// Fix: filter by BOTH source_id AND pin fingerprint
+				// karena multiple users bisa share PIN default (696969)
+				let query = supabase
 					.from("yumi_users")
 					.select("source_id, name, role_source_id, is_active, home_pin_fingerprint")
-					.eq("home_pin_fingerprint", pinFingerprint)
-					.maybeSingle();
+					.eq("home_pin_fingerprint", pinFingerprint);
+
+				if (userId) {
+					query = query.eq("source_id", userId);
+				}
+
+				const { data: user, error } = await query.maybeSingle();
 				if (error) throw error;
 				if (!user || user.is_active === false) {
 					throw new Error("PIN tidak valid atau pengguna tidak aktif");

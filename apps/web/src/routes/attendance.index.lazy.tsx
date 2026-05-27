@@ -350,7 +350,7 @@ function AttendancePage() {
 		setIsVerifyingPin(true);
 		try {
 			// 1. Verify PIN and get user data
-			const result = await verifyPin({ pinCode: pin });
+			const result = await verifyPin({ pinCode: pin, userId: user?.id });
 			
 			// 2. Security: Ensure the PIN belongs to the selected user (if one was selected)
 			if (user && result.userId !== user.id) {
