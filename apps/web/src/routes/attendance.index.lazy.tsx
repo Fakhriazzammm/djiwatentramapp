@@ -1,5 +1,5 @@
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,6 @@ import {
 	useHybridEnrollFace,
 	useHybridVerifyHomePin,
 } from "@/hooks/use-hybrid-write-actions";
-import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 // Helper for distance calculation
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -52,7 +51,6 @@ function AttendancePage() {
 	const navigate = useNavigate();
 	const [step, setStep] = useState<"select" | "pin" | "face" | "success">("select");
 	const [refreshCount, setRefreshCount] = useState(0);
-	const { user: authUser, isAuthenticated, role: authRole } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
 	const [user, setUser] = useState<{ id: string; name: string; hasFace?: boolean; isCurrentlyIn?: boolean; roleName?: string } | null>(null);
@@ -194,32 +192,6 @@ function AttendancePage() {
 	useEffect(() => {
 		fetchLocation();
 	}, [fetchLocation]);
-
-	// Auto-select if authenticated — tunggu currentlyIn selesai load
-	const autoSelectHandled = useRef(false);
-	useEffect(() => {
-		// Tunggu sampai currentlyIn ter-load sebelum auto-select
-		if (currentlyIn === undefined) return;
-		if (isAuthenticated && authUser && step === "select" && !autoSelectHandled.current) {
-			autoSelectHandled.current = true;
-			const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === authUser._id);
-			const staffFromList = allStaff?.find((s: any) => s._id === authUser._id);
-			setUser({
-				id: authUser._id,
-				name: authUser.name,
-				hasFace: !!authUser.hasFace,
-				isCurrentlyIn,
-				roleName: authRole?.name || staffFromList?.roleName || "",
-			});
-			if (authUser.hasFace) {
-				setIsEnrolling(false);
-				setStep("face");
-			} else {
-				setIsEnrolling(true);
-				setStep("pin");
-			}
-		}
-	}, [isAuthenticated, authUser, step, currentlyIn]);
 
 	// Preload face models when user is on select step
 	useEffect(() => {
