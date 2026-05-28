@@ -285,12 +285,14 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 			.from("employee_onboarding_applications")
 			.select("id, full_name, contract, contract_pdf_url, employment, raw, created_at")
 			.eq("approved_user_source_id", staff._id)
-			.single()
-			.then(({ data, error }) => {
+			.eq("status", "approved")
+			.maybeSingle()
+			.then((result: any) => {
+				const { data, error } = result;
 				if (data) setContractData(data);
+				else if (error) console.warn("[Kontrak] fetch error:", error);
 				setIsLoadingContract(false);
-			})
-			.catch(() => setIsLoadingContract(false));
+			});
 	}, [staff?._id]);
 	useEffect(() => {
 		if (staff && isUnlocked) {
