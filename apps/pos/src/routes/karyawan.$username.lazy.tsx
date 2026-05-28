@@ -707,8 +707,18 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										</>
 									) : (() => {
 										const all: any[] = [];
-										if (livePayslip) all.push(livePayslip);
-										if (myPayslips) myPayslips.forEach((p: any) => { if ((p.gross_pay??0) > 0 || (p.net_pay??0) > 0) all.push(p); });
+										const seenPeriods = new Set<string>();
+										if (livePayslip) {
+											all.push(livePayslip);
+											seenPeriods.add(livePayslip.period_name);
+										}
+										if (myPayslips) myPayslips.forEach((p: any) => {
+											if ((p.gross_pay??0) > 0 || (p.net_pay??0) > 0) {
+												if (!seenPeriods.has(p.period_name)) {
+													all.push(p);
+												}
+											}
+										});
 										if (all.length === 0) return (
 											<div className="rounded-xl border bg-card p-6 text-center">
 												<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
