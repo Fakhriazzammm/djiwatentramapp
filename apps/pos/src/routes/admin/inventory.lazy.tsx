@@ -37,6 +37,7 @@ import {
 	ShoppingCart,
 	Clock,
 	Download,
+	Upload,
 	Sparkles,
 	X,
 	Loader2,
@@ -46,6 +47,7 @@ import { toast } from "sonner";
 import { withSaveToast } from "@/lib/with-save-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import ImportInventoryModal from "@/components/inventory/import-inventory-modal";
 
 import {
 	useHybridAllProducts,
@@ -836,6 +838,7 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 
 function InventoryPage() {
 	const [searchQuery, setSearchQuery] = useState("");
+	const [importModalOpen, setImportModalOpen] = useState(false);
 
 	const inventory = useHybridInventory();
 	const allProducts = useHybridAllProducts();
@@ -1547,6 +1550,14 @@ function InventoryPage() {
 						<Download className="mr-1.5 inline-block h-3 w-3" />
 						Export CSV
 					</button>
+					<button
+						className="shrink-0 rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+						onClick={() => setImportModalOpen(true)}
+						type="button"
+					>
+						<Upload className="mr-1.5 inline-block h-3 w-3" />
+						Import Excel
+					</button>
 				</div>
 			</div>
 
@@ -1681,6 +1692,11 @@ function InventoryPage() {
 				onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
 				onConfirm={confirmConfig.onConfirm}
 				title={confirmConfig.title}
+			/>
+			<ImportInventoryModal
+				isOpen={importModalOpen}
+				onClose={() => setImportModalOpen(false)}
+				workspaceRows={workspace?.rows ?? []}
 			/>
 		</div>
 	);
