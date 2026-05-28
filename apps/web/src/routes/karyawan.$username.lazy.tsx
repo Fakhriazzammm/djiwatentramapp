@@ -579,7 +579,11 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													</Button>
 												)}
 											</>
-										) : null}
+										) : (
+											<div className="py-4 text-center">
+												<p className="text-[11px] font-medium text-muted-foreground">Belum ada kontrak kerja</p>
+											</div>
+										)}
 									</div>
 								</div>
 							)}
@@ -638,6 +642,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									) : (
 										// Payslip list
 										(myPayslips as any[])
+										.filter((p: any) => (p.gross_pay ?? 0) > 0 || (p.net_pay ?? 0) > 0)
 										.slice(0, showAllPayslips ? undefined : 3)
 										.map((payslip: any) => (
 										<PayslipDetailCard
