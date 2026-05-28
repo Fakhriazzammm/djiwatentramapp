@@ -722,7 +722,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												onDownload={handleDownloadPayslip}
 											/>
 										))}</>
-										})}
+										})()}
 								</div>
 							</div>
 
