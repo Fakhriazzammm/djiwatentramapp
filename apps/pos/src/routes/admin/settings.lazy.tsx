@@ -1632,6 +1632,169 @@ export function SettingsPage({
 		return storageId as string;
 	};
 
+	// === Global Logo Upload (one upload → auto-resize all variants) ===
+	const loadImageElement = (file: File): Promise<HTMLImageElement> =>
+		new Promise((resolve, reject) => {
+			const img = new Image();
+			img.onload = () => resolve(img);
+			img.onerror = () => reject(new Error("Gagal memuat gambar"));
+			img.src = URL.createObjectURL(file);
+		});
+
+	const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
+		new Promise((resolve, reject) => {
+			canvas.toBlob(
+				(b) => (b ? resolve(b) : reject(new Error("Gagal generate blob"))),
+				"image/png",
+			);
+		});
+
+	const resizeSquareCrop = (
+		img: HTMLImageElement,
+		size: number,
+	): Promise<Blob> => {
+		const canvas = document.createElement("canvas");
+		canvas.width = size;
+		canvas.height = size;
+		const ctx = canvas.getContext("2d")!;
+		const minDim = Math.min(img.naturalWidth, img.naturalHeight);
+		const sx = (img.naturalWidth - minDim) / 2;
+		const sy = (img.naturalHeight - minDim) / 2;
+		ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+		return canvasToBlob(canvas);
+	};
+
+	const resizeToFit = (
+		img: HTMLImageElement,
+		maxDim: number,
+	): Promise<Blob> => {
+		let w = img.naturalWidth;
+		let h = img.naturalHeight;
+		const scale = Math.min(maxDim / w, maxDim / h, 1);
+		w = Math.round(w * scale);
+		h = Math.round(h * scale);
+		const canvas = document.createElement("canvas");
+		canvas.width = w;
+		canvas.height = h;
+		const ctx = canvas.getContext("2d")!;
+		ctx.drawImage(img, 0, 0, w, h);
+		return canvasToBlob(canvas);
+	};
+
+	const resizeMaskable = (
+		img: HTMLImageElement,
+		size: number,
+	): Promise<Blob> => {
+		const canvas = document.createElement("canvas");
+		canvas.width = size;
+		canvas.height = size;
+		const ctx = canvas.getContext("2d")!;
+		// White background
+		ctx.fillStyle = "#ffffff";
+		ctx.fillRect(0, 0, size, size);
+		// 80% safe zone for maskable icon
+		const safeSize = Math.round(size * 0.8);
+		const padding = Math.round((size - safeSize) / 2);
+		const scale = Math.min(
+			safeSize / img.naturalWidth,
+			safeSize / img.naturalHeight,
+		);
+		const w = Math.round(img.naturalWidth * scale);
+		const h = Math.round(img.naturalHeight * scale);
+		const x = padding + Math.round((safeSize - w) / 2);
+		const y = padding + Math.round((safeSize - h) / 2);
+		ctx.drawImage(img, x, y, w, h);
+		return canvasToBlob(canvas);
+	};
+
+	const [globalLogoUploading, setGlobalLogoUploading] = useState(false);
+
+	const uploadGlobalLogo = async (file: File) => {
+		setGlobalLogoUploading(true);
+		toast.loading("Memproses logo...", { id: "global-logo" });
+		try {
+			const img = await loadImageElement(file);
+
+			// Generate all 5 variants in parallel
+			const [headerBlob, faviconBlob, pwa192Blob, pwa512Blob, maskableBlob] =
+				await Promise.all([
+					resizeToFit(img, 512),
+					resizeSquareCrop(img, 64),
+					resizeSquareCrop(img, 192),
+					resizeSquareCrop(img, 512),
+					resizeMaskable(img, 512),
+				]);
+
+			// Upload all 5 in parallel
+			const [headerUrl, faviconUrl, pwa192Url, pwa512Url, maskableUrl] =
+				await Promise.all([
+					generateUploadUrl({
+						file: headerBlob,
+						contentType: "image/png",
+						fileName: "logo-header.png",
+						folder: "site-settings",
+					}),
+					generateUploadUrl({
+						file: faviconBlob,
+						contentType: "image/png",
+						fileName: "favicon.png",
+						folder: "site-settings",
+					}),
+					generateUploadUrl({
+						file: pwa192Blob,
+						contentType: "image/png",
+						fileName: "pwa-192.png",
+						folder: "site-settings",
+					}),
+					generateUploadUrl({
+						file: pwa512Blob,
+						contentType: "image/png",
+						fileName: "pwa-512.png",
+						folder: "site-settings",
+					}),
+					generateUploadUrl({
+						file: maskableBlob,
+						contentType: "image/png",
+						fileName: "pwa-maskable-512.png",
+						folder: "site-settings",
+					}),
+				]);
+
+			const urls = {
+				headerLogoUrl: headerUrl as string,
+				faviconUrl: faviconUrl as string,
+				pwaIcon192Url: pwa192Url as string,
+				pwaIcon512Url: pwa512Url as string,
+				pwaMaskableIconUrl: maskableUrl as string,
+			};
+
+			setSettings((prev) => ({ ...prev, ...urls }));
+
+			// Show preview for all
+			const previewUrl = URL.createObjectURL(file);
+			setLocalPreviews((prev) => ({
+				...prev,
+				headerLogoUrl: previewUrl,
+				faviconUrl: previewUrl,
+				pwaIcon192Url: previewUrl,
+				pwaIcon512Url: previewUrl,
+				pwaMaskableIconUrl: previewUrl,
+			}));
+
+			toast.dismiss("global-logo");
+			toast.success(
+				"Logo global berhasil — 5 varian sudah terisi (Header, Favicon, PWA 192, PWA 512, Maskable)",
+			);
+		} catch (error) {
+			toast.dismiss("global-logo");
+			console.error(error);
+			toast.error("Gagal memproses logo global");
+			throw error;
+		} finally {
+			setGlobalLogoUploading(false);
+		}
+	};
+
 	const tabs =
 		mode === "operational-team"
 			? ([
@@ -4214,6 +4377,50 @@ export function SettingsPage({
 											value={settings.developerName}
 										/>
 									</div>
+								</div>
+
+								{/* Global Logo — one upload auto-resizes to all 5 variants */}
+								<div className="space-y-5 border-border/50 border-t pt-5">
+									<div className="space-y-2">
+										<label className="font-semibold text-foreground text-sm">
+											🚀 Logo Global
+										</label>
+										<p className="text-muted-foreground text-xs">
+											Upload satu logo — otomatis di-resize ke semua varian: Header, Favicon, PWA 192, PWA 512, dan Maskable.
+										</p>
+									</div>
+									<div className="flex flex-col gap-4 md:flex-row md:items-center">
+										{(localPreviews.headerLogoUrl || settings.headerLogoUrl) && (
+											<div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xllll border bg-background p-2">
+												<img
+													alt="Preview logo global"
+													className="max-h-full max-w-full object-contain"
+													src={localPreviews.headerLogoUrl || settings.headerLogoUrl}
+												/>
+											</div>
+										)}
+										<input
+											accept="image/*"
+											className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-xllll file:border-0 file:bg-green-600 file:px-6 file:py-2.5 file:font-bold file:text-white file:text-xs file:transition-all hover:file:opacity-90 disabled:opacity-50"
+											disabled={globalLogoUploading}
+											onChange={async (e) => {
+												const file = e.target.files?.[0];
+												if (!file) return;
+												try {
+													await uploadGlobalLogo(file);
+												} catch {
+													// toast already shown in uploadGlobalLogo
+												}
+											}}
+											type="file"
+										/>
+									</div>
+									{settings.headerLogoUrl && (
+										<div className="flex flex-wrap items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-950 dark:text-green-300">
+											<CheckCircle className="h-3.5 w-3.5 shrink-0" />
+											<span>5 varian siap: Header · Favicon 64×64 · PWA 192×192 · PWA 512×512 · Maskable</span>
+										</div>
+									)}
 								</div>
 
 								<div className="space-y-5 border-border/50 border-t pt-5">
