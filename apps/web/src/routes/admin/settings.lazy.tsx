@@ -1177,8 +1177,11 @@ export function SettingsPage({
 				seoShareTitle: settings.seoShareTitle,
 				seoShareDescription: settings.seoShareDescription,
 				seoShareImageUrl: settings.seoShareImageUrl,
-				seoCanonicalUrl: settings.seoCanonicalUrl,
-				// Mayar Payment Gateway
+								seoCanonicalUrl: settings.seoCanonicalUrl,
+								// PWA per-app
+								posPwa: settings.posPwa,
+								customerPwa: settings.customerPwa,
+								// Mayar Payment Gateway
 				mayarEnabled: paymentSettings.mayarEnabled,
 				mayarTestMode: paymentSettings.mayarTestMode,
 				// Manual Payment
