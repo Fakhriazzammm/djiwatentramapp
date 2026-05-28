@@ -109,6 +109,7 @@ async function fetchStaffStats(args: { userId: string; month: number; year: numb
 
 	const uniqueDays = new Set<string>();
 	let totalMs = 0;
+	let sessions = 0;
 
 	for (let i = 0; i < asc.length; i++) {
 		const entry = asc[i] as any;
@@ -121,6 +122,7 @@ async function fetchStaffStats(args: { userId: string; month: number; year: numb
 		}
 
 		if (entry.type === "check_in") {
+			sessions++;
 			const checkInTime = Number(entry.timestamp ?? 0);
 			if (i + 1 < asc.length) {
 				const next = asc[i + 1] as any;
@@ -149,6 +151,7 @@ async function fetchStaffStats(args: { userId: string; month: number; year: numb
 		totalHours,
 		attendanceRate,
 		daysWorked: uniqueDays.size,
+		sessionCount: sessions,
 	};
 }
 

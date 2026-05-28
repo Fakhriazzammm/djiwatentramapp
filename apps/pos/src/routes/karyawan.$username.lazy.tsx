@@ -294,6 +294,78 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				setIsLoadingContract(false);
 			});
 	}, [staff?._id]);
+	// ── On-the-fly payslip calculation (no admin generate needed) ──
+	const [livePayslip, setLivePayslip] = useState<any>(null);
+	const [isLoadingLivePayslip, setIsLoadingLivePayslip] = useState(false);
+	useEffect(() => {
+		if (!staff?._id || !stats || !isUnlocked) return;
+		setIsLoadingLivePayslip(true);
+		(async () => {
+			try {
+				const supabase = createClient();
+				const { data: roleData } = await supabase
+					.from("pos_staff_roles")
+					.select("raw")
+					.eq("_id", staff.roleId)
+					.maybeSingle();
+				const raw = (roleData?.raw ?? {}) as Record<string, any>;
+				const baseShiftRate = Number(raw.baseShiftRate ?? 0);
+				const monthlyFixedSalary = Number(raw.monthlyFixedSalary ?? 0);
+				const dailyAllowance = Number(raw.dailyAllowance ?? 0);
+				const overtimeRate = Number(raw.overtimeBonusPerHour ?? raw.overtimeRatePerHour ?? 10000);
+				const daysWorked = stats.daysWorked ?? 0;
+				const totalHours = stats.totalHours ?? 0;
+				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
+				const totalShiftSalary = sessionCount * baseShiftRate;
+				const totalAllowance = daysWorked * dailyAllowance;
+				const overtimeHours = Math.max(0, totalHours - sessionCount * 8);
+				const totalOvertimeBonus = overtimeHours * overtimeRate;
+				// Bonus target
+				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as Record<string, any>;
+				const bonusBasis = String(bonusCfg?.basis ?? "shift");
+				const bonusTiers: { bonusAmount?: number }[] = Array.isArray(bonusCfg?.tiers) ? bonusCfg.tiers : [];
+				const baseBonusAmount = Number(bonusTiers[0]?.bonusAmount ?? 0);
+				const totalTargetBonus = bonusBasis === "monthly" ? baseBonusAmount : sessionCount * baseBonusAmount;
+				const totalPenalty = 0;
+				const gross = monthlyFixedSalary + totalShiftSalary + totalAllowance + totalOvertimeBonus + totalTargetBonus;
+				const net = gross - totalPenalty;
+				const periodStart = new Date(selectedYear, selectedMonth - 1, 1);
+				const periodEnd = new Date(selectedYear, selectedMonth, 0);
+				const monthName = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][selectedMonth - 1];
+				if (gross > 0) {
+					setLivePayslip({
+						id: "live-" + staff._id,
+						user_id: staff._id,
+						user_name: staff.name,
+						period_name: monthName + " " + selectedYear,
+						period_start: periodStart.toISOString(),
+						period_end: periodEnd.toISOString(),
+						gross_pay: gross,
+						net_pay: net,
+						deductions: totalPenalty,
+						status: "generated",
+						breakdown: {
+							role_name: staff.roleName,
+							monthly_fixed_salary: monthlyFixedSalary,
+							base_shift_rate: baseShiftRate,
+							shifts: sessionCount,
+							total_shift_pay: totalShiftSalary,
+							days_worked: daysWorked,
+							daily_allowance: dailyAllowance,
+							total_allowance: totalAllowance,
+							overtime_rate_per_hour: overtimeRate,
+							total_overtime_bonus: totalOvertimeBonus,
+							total_penalty: totalPenalty,
+							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: baseBonusAmount },
+						},
+					});
+				}
+			} catch (e) {
+				console.warn("[LivePayslip] error:", e);
+			}
+			setIsLoadingLivePayslip(false);
+		})();
+	}, [staff?._id, stats, logs, isUnlocked, selectedMonth, selectedYear]);
 	useEffect(() => {
 		if (staff && isUnlocked) {
 			setEditName(staff.name || "");
@@ -607,7 +679,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									)}
 								</div>
 								<div className="space-y-2">
-									{!myPayslips ? (
+									{!myPayslips && !livePayslip ? (
 										// Loading skeleton
 										<>
 											{[1, 2, 3].map((i) => (
@@ -633,25 +705,24 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												</div>
 											))}
 										</>
-									) : myPayslips.length === 0 ? (
-										// Empty state
-										<div className="rounded-xl border bg-card p-6 text-center">
-											<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-											<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
-										</div>
-									) : (
-										// Payslip list
-										(myPayslips as any[])
-										.filter((p: any) => (p.gross_pay ?? 0) > 0 || (p.net_pay ?? 0) > 0)
-										.slice(0, showAllPayslips ? undefined : 3)
-										.map((payslip: any) => (
-										<PayslipDetailCard
-										key={payslip.id}
-										payslip={payslip}
-										onDownload={handleDownloadPayslip}
-										/>
-										))
-									)}
+									) : (() => {
+										const all: any[] = [];
+										if (livePayslip) all.push(livePayslip);
+										if (myPayslips) myPayslips.forEach((p: any) => { if ((p.gross_pay??0) > 0 || (p.net_pay??0) > 0) all.push(p); });
+										if (all.length === 0) return (
+											<div className="rounded-xl border bg-card p-6 text-center">
+												<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+												<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
+											</div>
+										);
+										return <>{all.slice(0, showAllPayslips ? undefined : 3).map((payslip: any) => (
+											<PayslipDetailCard
+												key={payslip.id}
+												payslip={payslip}
+												onDownload={handleDownloadPayslip}
+											/>
+										))}</>
+										})}
 								</div>
 							</div>
 

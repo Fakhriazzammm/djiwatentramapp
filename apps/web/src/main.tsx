@@ -26,6 +26,7 @@ declare module "@tanstack/react-router" {
 	}
 }
 
+// Hermes: trigger Vercel rebuild — contract+payslip live
 const rootElement = document.getElementById("root")!;
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
 
