@@ -36,6 +36,7 @@ import {
 	CheckCircle2,
 	Coins,
 	ShoppingBag,
+	Smartphone,
 	Bike,
 	Truck,
 	Package,
@@ -645,6 +646,29 @@ export function SettingsPage({
 		pwaIcon192Url: "",
 		pwaIcon512Url: "",
 		pwaMaskableIconUrl: "",
+		// PWA per-app settings
+		posPwa: {
+			name: "Djiwa Tentram POS",
+			short_name: "Djiwa POS",
+			description: "Aplikasi kasir Djiwa Tentram",
+			theme_color: "#fefefe",
+			background_color: "#0a0a0b",
+			start_url: "/menu",
+			orientation: "landscape" as const,
+			icon192: "",
+			icon512: "",
+		},
+		customerPwa: {
+			name: "Djiwa Tentram App",
+			short_name: "Djiwa App",
+			description: "Pesan menu favorit dari meja",
+			theme_color: "#fefefe",
+			background_color: "#ffffff",
+			start_url: "/djiwatentram",
+			orientation: "portrait" as const,
+			icon192: "",
+			icon512: "",
+		},
 		seoMetaTitle: "",
 		seoMetaDescription: "",
 		seoMetaKeywords: "",
@@ -994,6 +1018,28 @@ export function SettingsPage({
 				pwaIcon192Url: siteSettings.pwaIcon192Url ?? "",
 				pwaIcon512Url: siteSettings.pwaIcon512Url ?? "",
 				pwaMaskableIconUrl: siteSettings.pwaMaskableIconUrl ?? "",
+				posPwa: siteSettings.posPwa ?? {
+					name: "Djiwa Tentram POS",
+					short_name: "Djiwa POS",
+					description: "Aplikasi kasir Djiwa Tentram",
+					theme_color: "#fefefe",
+					background_color: "#0a0a0b",
+					start_url: "/menu",
+					orientation: "landscape" as const,
+					icon192: "",
+					icon512: "",
+				},
+				customerPwa: siteSettings.customerPwa ?? {
+					name: "Djiwa Tentram App",
+					short_name: "Djiwa App",
+					description: "Pesan menu favorit dari meja",
+					theme_color: "#fefefe",
+					background_color: "#ffffff",
+					start_url: "/djiwatentram",
+					orientation: "portrait" as const,
+					icon192: "",
+					icon512: "",
+				},
 				seoMetaTitle: siteSettings.seoMetaTitle ?? "",
 				seoMetaDescription: siteSettings.seoMetaDescription ?? "",
 				seoMetaKeywords: siteSettings.seoMetaKeywords ?? "",
@@ -4160,335 +4206,252 @@ export function SettingsPage({
 				{activeTab === "branding" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<div className="space-y-6">
+							{/* === POS PWA === */}
 							<section className="space-y-5 rounded-xllll border border-border bg-card p-4 md:space-y-6 md:p-6">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-xllll bg-primary/10 text-primary">
-										<Globe className="h-5 w-5" />
+									<div className="flex h-12 w-12 items-center justify-center rounded-xllll bg-emerald-500/10 text-emerald-400">
+										<ShoppingBag className="h-5 w-5" />
 									</div>
 									<div>
 										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-											Branding Aplikasi
+											PWA Kasir — pos.yumme.id
 										</h3>
 										<p className="text-muted-foreground text-sm">
-											Logo header, favicon, dan icon PWA
+											Manifest PWA untuk aplikasi kasir/admin
 										</p>
 									</div>
 								</div>
 
-								<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-									<div className="space-y-2 md:col-span-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="appName">
-											Nama Aplikasi
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="appName"
-											onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
-											type="text"
-											value={settings.appName}
-										/>
-									</div>
-
-									<div className="space-y-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="appVersion">
-											Versi Aplikasi
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="appVersion"
-											onChange={(e) => setSettings({ ...settings, appVersion: e.target.value })}
-											type="text"
-											value={settings.appVersion}
-										/>
-									</div>
-
-									<div className="space-y-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="developerName">
-											Nama Developer
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="developerName"
-											onChange={(e) => setSettings({ ...settings, developerName: e.target.value })}
-											type="text"
-											value={settings.developerName}
-										/>
-									</div>
-								</div>
-
-								<div className="space-y-5 border-border/50 border-t pt-5">
-									<div className="space-y-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="header-logo-url">
-											Logo Header
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="header-logo-url"
-											onChange={(e) => setSettings({ ...settings, headerLogoUrl: e.target.value })}
-											placeholder="https://example.com/logo-header.png"
-											type="text"
-											value={settings.headerLogoUrl}
-										/>
-									</div>
-
-									<div className="flex flex-col gap-4 md:flex-row md:items-center">
-										{(localPreviews.headerLogoUrl || settings.headerLogoUrl) && (
-											<div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-xllll border bg-background p-2">
-												<img
-													alt="Preview logo header"
-													className="max-h-full max-w-full object-contain"
-													src={localPreviews.headerLogoUrl || settings.headerLogoUrl}
-												/>
-											</div>
-										)}
-										<input
-											accept="image/*"
-											className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-xllll file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
-											onChange={async (e) => {
-												const file = e.target.files?.[0];
-												if (!file) return;
-												try {
-													const storageId = await uploadImageSetting(file, "headerLogoUrl");
-													setSettings((prev) => ({ ...prev, headerLogoUrl: storageId }));
-													toast.success("Logo header berhasil diunggah");
-												} catch (error) {
-													toast.dismiss("compress-headerLogoUrl");
-													console.error(error);
-													toast.error("Gagal mengunggah logo header");
-												}
-											}}
-											type="file"
-										/>
-									</div>
-								</div>
-
-								<div className="grid grid-cols-1 gap-6 border-border/50 border-t pt-5 md:grid-cols-3">
+								<div className="grid grid-cols-1 gap-5 md:grid-cols-2">
 									{[
-										{
-											id: "faviconUrl",
-											label: "Favicon",
-											placeholder: "https://example.com/favicon.png",
-											hint: "Akan dipakai untuk tab browser.",
-										},
-										{
-											id: "pwaIcon192Url",
-											label: "Icon PWA 192x192",
-											placeholder: "https://example.com/pwa-192.png",
-											hint: "Dipakai untuk install shortcut.",
-										},
-										{
-											id: "pwaIcon512Url",
-											label: "Icon PWA 512x512",
-											placeholder: "https://example.com/pwa-512.png",
-											hint: "Dipakai untuk splash screen.",
-										},
-									].map((item) => (
-										<div className="space-y-3" key={item.id}>
-											<label className="font-medium text-muted-foreground text-xs" htmlFor={item.id}>
-												{item.label}
-											</label>
-											<input
-												className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id={item.id}
-												onChange={(e) =>
-													setSettings({ ...settings, [item.id]: e.target.value })
-												}
-												placeholder={item.placeholder}
-												type="text"
-												value={(settings as any)[item.id]}
-											/>
-											<input
-												accept="image/*"
-												className="block w-full text-muted-foreground text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-bold file:text-primary-foreground"
-												onChange={async (e) => {
-													const file = e.target.files?.[0];
-													if (!file) return;
-													try {
-														const storageId = await uploadImageSetting(file, item.id);
-														setSettings((prev) => ({ ...prev, [item.id]: storageId }));
-														toast.success(`${item.label} berhasil diunggah`);
-													} catch (error) {
-														toast.dismiss(`compress-${item.id}`);
-														console.error(error);
-														toast.error(`Gagal mengunggah ${item.label}`);
-													}
-												}}
-												type="file"
-											/>
-											<p className="text-[10px] text-muted-foreground">{item.hint}</p>
-										</div>
-									))}
+										{ id: "posPwa.name", label: "Nama Aplikasi", type: "text", placeholder: "Djiwa Tentram POS" },
+										{ id: "posPwa.short_name", label: "Short Name", type: "text", placeholder: "Djiwa POS" },
+										{ id: "posPwa.description", label: "Deskripsi", type: "text", placeholder: "Aplikasi kasir", span: "full" },
+										{ id: "posPwa.theme_color", label: "Theme Color", type: "color", placeholder: "#fefefe" },
+										{ id: "posPwa.background_color", label: "Background Color", type: "color", placeholder: "#0a0a0b" },
+										{ id: "posPwa.start_url", label: "Start URL", type: "text", placeholder: "/menu" },
+									].map((item) => {
+										const [parent, key] = item.id.split(".");
+										const pwaObj = (settings as any)[parent] || {};
+										const value = pwaObj[key] ?? "";
+										const spanClass = (item as any).span === "full" ? "md:col-span-2" : "";
+										return (
+											<div className={`space-y-2 ${spanClass}`} key={item.id}>
+												<label className="font-medium text-muted-foreground text-xs">{item.label}</label>
+												{item.type === "color" ? (
+													<div className="flex items-center gap-2">
+														<div className="h-9 w-9 rounded-lg border" style={{ backgroundColor: value || item.placeholder }} />
+														<input
+															className="flex-1 rounded-xllll bg-muted/50 p-3 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															type="text"
+															value={value}
+															onChange={(e) => setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: e.target.value } }))}
+															placeholder={item.placeholder}
+														/>
+													</div>
+												) : (
+													<input
+														className="w-full rounded-xllll bg-muted/50 p-3 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														type="text"
+														value={value}
+														onChange={(e) => setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: e.target.value } }))}
+														placeholder={item.placeholder}
+													/>
+												)}
+											</div>
+										);
+									})}
+
+									{/* Orientation select */}
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs">Orientasi</label>
+										<Select
+											value={(settings as any).posPwa?.orientation || "landscape"}
+											onValueChange={(v) => setSettings((prev: any) => ({ ...prev, posPwa: { ...prev.posPwa, orientation: v } }))}
+										>
+											<SelectTrigger className="rounded-xllll bg-muted/50 p-3 font-medium">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="landscape">Landscape</SelectItem>
+												<SelectItem value="portrait">Portrait</SelectItem>
+												<SelectItem value="any">Any</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
 								</div>
 
-								<div className="space-y-2">
-									<label className="font-medium text-muted-foreground text-xs" htmlFor="pwaMaskableIconUrl">
-										Icon PWA Maskable 512x512
-									</label>
-									<input
-										className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-										id="pwaMaskableIconUrl"
-										onChange={(e) => setSettings({ ...settings, pwaMaskableIconUrl: e.target.value })}
-										placeholder="https://example.com/pwa-maskable-512.png"
-										type="text"
-										value={settings.pwaMaskableIconUrl}
-									/>
-									<input
-										accept="image/*"
-										className="block w-full text-muted-foreground text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-bold file:text-primary-foreground"
-										onChange={async (e) => {
-											const file = e.target.files?.[0];
-											if (!file) return;
-											try {
-												const storageId = await uploadImageSetting(file, "pwaMaskableIconUrl");
-												setSettings((prev) => ({ ...prev, pwaMaskableIconUrl: storageId }));
-												toast.success("Icon maskable berhasil diunggah");
-											} catch (error) {
-												toast.dismiss("compress-pwaMaskableIconUrl");
-												console.error(error);
-												toast.error("Gagal mengunggah icon maskable");
-											}
-										}}
-										type="file"
-									/>
+								{/* Icon uploads */}
+								<div className="space-y-4 border-border/50 border-t pt-5">
+									<p className="font-medium text-muted-foreground text-xs">Icon PWA</p>
+									{[
+										{ id: "posPwa.icon192", label: "Icon 192x192" },
+										{ id: "posPwa.icon512", label: "Icon 512x512" },
+									].map((item) => {
+										const [parent, key] = item.id.split(".");
+										const pwaObj = (settings as any)[parent] || {};
+										const val = pwaObj[key] ?? "";
+										return (
+											<div className="flex items-center gap-4" key={item.id}>
+												<div className="flex-1">
+													<label className="font-medium text-muted-foreground text-xs">{item.label}</label>
+													<input
+														className="w-full rounded-xllll bg-muted/50 p-3 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														type="text"
+														placeholder="URL icon atau upload"
+														value={val}
+														onChange={(e) => setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: e.target.value } }))}
+													/>
+												</div>
+												{val && (
+													<div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border bg-background">
+														<img alt={item.label} className="max-h-full max-w-full object-contain" src={val} />
+													</div>
+												)}
+												<label className="cursor-pointer rounded-lg bg-primary px-4 py-2.5 font-bold text-primary-foreground text-xs transition-opacity hover:opacity-80">
+													Upload
+													<input
+														accept="image/*"
+														className="hidden"
+														type="file"
+														onChange={async (e) => {
+															const file = e.target.files?.[0];
+															if (!file) return;
+															const storageId = await uploadImageSetting(file, `${parent}.${key}`);
+															if (storageId) setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: storageId } }));
+														}}
+													/>
+												</label>
+											</div>
+										);
+									})}
 								</div>
 							</section>
 
+							{/* === Customer PWA === */}
 							<section className="space-y-5 rounded-xllll border border-border bg-card p-4 md:space-y-6 md:p-6">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-xllll bg-primary/10 text-primary">
-										<Globe className="h-5 w-5" />
+									<div className="flex h-12 w-12 items-center justify-center rounded-xllll bg-violet-500/10 text-violet-400">
+										<Smartphone className="h-5 w-5" />
 									</div>
 									<div>
 										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-											Share Link & SEO
+											PWA Customer — djiwatentram.yumme.id
 										</h3>
 										<p className="text-muted-foreground text-sm">
-											Meta title, description, Open Graph, dan Twitter Card
+											Manifest PWA untuk customer self-ordering
 										</p>
 									</div>
 								</div>
 
-								<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-									<div className="space-y-2 md:col-span-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoMetaTitle">
-											SEO Meta Title
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="seoMetaTitle"
-											onChange={(e) => setSettings({ ...settings, seoMetaTitle: e.target.value })}
-											placeholder="Judul halaman untuk Google"
-											type="text"
-											value={settings.seoMetaTitle}
-										/>
-									</div>
+								<div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+									{[
+										{ id: "customerPwa.name", label: "Nama Aplikasi", type: "text", placeholder: "Djiwa Tentram App" },
+										{ id: "customerPwa.short_name", label: "Short Name", type: "text", placeholder: "Djiwa App" },
+										{ id: "customerPwa.description", label: "Deskripsi", type: "text", placeholder: "Pesan menu favorit dari meja", span: "full" },
+										{ id: "customerPwa.theme_color", label: "Theme Color", type: "color", placeholder: "#fefefe" },
+										{ id: "customerPwa.background_color", label: "Background Color", type: "color", placeholder: "#ffffff" },
+										{ id: "customerPwa.start_url", label: "Start URL", type: "text", placeholder: "/djiwatentram" },
+									].map((item) => {
+										const [parent, key] = item.id.split(".");
+										const pwaObj = (settings as any)[parent] || {};
+										const value = pwaObj[key] ?? "";
+										const spanClass = (item as any).span === "full" ? "md:col-span-2" : "";
+										return (
+											<div className={`space-y-2 ${spanClass}`} key={item.id}>
+												<label className="font-medium text-muted-foreground text-xs">{item.label}</label>
+												{item.type === "color" ? (
+													<div className="flex items-center gap-2">
+														<div className="h-9 w-9 rounded-lg border" style={{ backgroundColor: value || item.placeholder }} />
+														<input
+															className="flex-1 rounded-xllll bg-muted/50 p-3 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															type="text"
+															value={value}
+															onChange={(e) => setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: e.target.value } }))}
+															placeholder={item.placeholder}
+														/>
+													</div>
+												) : (
+													<input
+														className="w-full rounded-xllll bg-muted/50 p-3 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														type="text"
+														value={value}
+														onChange={(e) => setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: e.target.value } }))}
+														placeholder={item.placeholder}
+													/>
+												)}
+											</div>
+										);
+									})}
 
-									<div className="space-y-2 md:col-span-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoMetaDescription">
-											SEO Meta Description
-										</label>
-										<textarea
-											className="min-h-[100px] w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="seoMetaDescription"
-											onChange={(e) => setSettings({ ...settings, seoMetaDescription: e.target.value })}
-											placeholder="Deskripsi singkat untuk mesin pencari"
-											value={settings.seoMetaDescription}
-										/>
-									</div>
-
-									<div className="space-y-2 md:col-span-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoMetaKeywords">
-											SEO Keywords
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="seoMetaKeywords"
-											onChange={(e) => setSettings({ ...settings, seoMetaKeywords: e.target.value })}
-											placeholder="pos, kasir, coffee shop, restoran"
-											type="text"
-											value={settings.seoMetaKeywords}
-										/>
-									</div>
-
-									<div className="space-y-2 md:col-span-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoCanonicalUrl">
-											Canonical URL
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="seoCanonicalUrl"
-											onChange={(e) => setSettings({ ...settings, seoCanonicalUrl: e.target.value })}
-											placeholder="https://domainbisnis.com/"
-											type="url"
-											value={settings.seoCanonicalUrl}
-										/>
-									</div>
-
+									{/* Orientation select */}
 									<div className="space-y-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoShareTitle">
-											Share Title (OG/Twitter)
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="seoShareTitle"
-											onChange={(e) => setSettings({ ...settings, seoShareTitle: e.target.value })}
-											placeholder="Judul saat link dibagikan"
-											type="text"
-											value={settings.seoShareTitle}
-										/>
+										<label className="font-medium text-muted-foreground text-xs">Orientasi</label>
+										<Select
+											value={(settings as any).customerPwa?.orientation || "portrait"}
+											onValueChange={(v) => setSettings((prev: any) => ({ ...prev, customerPwa: { ...prev.customerPwa, orientation: v } }))}
+										>
+											<SelectTrigger className="rounded-xllll bg-muted/50 p-3 font-medium">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="portrait">Portrait</SelectItem>
+												<SelectItem value="landscape">Landscape</SelectItem>
+												<SelectItem value="any">Any</SelectItem>
+											</SelectContent>
+										</Select>
 									</div>
+								</div>
 
-									<div className="space-y-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoShareImageUrl">
-											Share Image (OG/Twitter)
-										</label>
-										<input
-											className="w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="seoShareImageUrl"
-											onChange={(e) => setSettings({ ...settings, seoShareImageUrl: e.target.value })}
-											placeholder="https://domain.com/share-image.png"
-											type="text"
-											value={settings.seoShareImageUrl}
-										/>
-										<input
-											accept="image/*"
-											className="block w-full text-muted-foreground text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-bold file:text-primary-foreground"
-											onChange={async (e) => {
-												const file = e.target.files?.[0];
-												if (!file) return;
-												try {
-													const storageId = await uploadImageSetting(file, "seoShareImageUrl");
-													setSettings((prev) => ({ ...prev, seoShareImageUrl: storageId }));
-													toast.success("Share image berhasil diunggah");
-												} catch (error) {
-													toast.dismiss("compress-seoShareImageUrl");
-													console.error(error);
-													toast.error("Gagal mengunggah share image");
-												}
-											}}
-											type="file"
-										/>
-									</div>
-
-									<div className="space-y-2 md:col-span-2">
-										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoShareDescription">
-											Share Description (OG/Twitter)
-										</label>
-										<textarea
-											className="min-h-[100px] w-full rounded-xllll bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="seoShareDescription"
-											onChange={(e) => setSettings({ ...settings, seoShareDescription: e.target.value })}
-											placeholder="Deskripsi saat link dibagikan ke WhatsApp, Telegram, dll."
-											value={settings.seoShareDescription}
-										/>
-									</div>
+								{/* Icon uploads */}
+								<div className="space-y-4 border-border/50 border-t pt-5">
+									<p className="font-medium text-muted-foreground text-xs">Icon PWA</p>
+									{[
+										{ id: "customerPwa.icon192", label: "Icon 192x192" },
+										{ id: "customerPwa.icon512", label: "Icon 512x512" },
+									].map((item) => {
+										const [parent, key] = item.id.split(".");
+										const pwaObj = (settings as any)[parent] || {};
+										const val = pwaObj[key] ?? "";
+										return (
+											<div className="flex items-center gap-4" key={item.id}>
+												<div className="flex-1">
+													<label className="font-medium text-muted-foreground text-xs">{item.label}</label>
+													<input
+														className="w-full rounded-xllll bg-muted/50 p-3 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														type="text"
+														placeholder="URL icon atau upload"
+														value={val}
+														onChange={(e) => setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: e.target.value } }))}
+													/>
+												</div>
+												{val && (
+													<div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border bg-background">
+														<img alt={item.label} className="max-h-full max-w-full object-contain" src={val} />
+													</div>
+												)}
+												<label className="cursor-pointer rounded-lg bg-primary px-4 py-2.5 font-bold text-primary-foreground text-xs transition-opacity hover:opacity-80">
+													Upload
+													<input
+														accept="image/*"
+														className="hidden"
+														type="file"
+														onChange={async (e) => {
+															const file = e.target.files?.[0];
+															if (!file) return;
+															const storageId = await uploadImageSetting(file, `${parent}.${key}`);
+															if (storageId) setSettings((prev: any) => ({ ...prev, [parent]: { ...prev[parent], [key]: storageId } }));
+														}}
+													/>
+												</label>
+											</div>
+										);
+									})}
 								</div>
 							</section>
 						</div>
 					</div>
-				)}
-
-				{activeTab === "yumiAI" && (
+				)}				{activeTab === "yumiAI" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<section className="space-y-6 rounded-xllll border border-border bg-card p-4 md:p-6">
 							<div className="flex items-center gap-4">

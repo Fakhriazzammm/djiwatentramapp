@@ -23,6 +23,19 @@ function useGlobalRefreshTrigger() {
 }
 
 type SiteSettingsRecord = Record<string, any>;
+
+type PwaSettings = {
+	name: string;
+	short_name: string;
+	description: string;
+	theme_color: string;
+	background_color: string;
+	start_url: string;
+	orientation: "portrait" | "landscape" | "any";
+	icon192: string;
+	icon512: string;
+};
+
 type CategoryRecord = Record<string, any>;
 type ProductRecord = Record<string, any>;
 type DiscountRecord = Record<string, any>;
@@ -441,6 +454,30 @@ const DEFAULT_PLATFORMS = [
 	{ id: "shopeefood", name: "ShopeeFood", icon: "ShoppingBag", commissionRate: 0.20, isActive: true, sortOrder: 4 },
 ];
 
+const DEFAULT_POS_PWA: PwaSettings = {
+	name: "Djiwa Tentram POS",
+	short_name: "Djiwa POS",
+	description: "Aplikasi kasir Djiwa Tentram",
+	theme_color: "#fefefe",
+	background_color: "#0a0a0b",
+	start_url: "/menu",
+	orientation: "landscape",
+	icon192: "/pwa-192x192.png",
+	icon512: "/pwa-512x512.png",
+};
+
+const DEFAULT_CUSTOMER_PWA: PwaSettings = {
+	name: "Djiwa Tentram App",
+	short_name: "Djiwa App",
+	description: "Pesan menu favorit dari meja",
+	theme_color: "#fefefe",
+	background_color: "#ffffff",
+	start_url: "/djiwatentram",
+	orientation: "portrait",
+	icon192: "/pwa-app-192.png",
+	icon512: "/pwa-app-512.png",
+};
+
 async function fetchSiteSettings() {
 	const supabase = createClient();
 	const { data, error } = await supabase
@@ -464,11 +501,21 @@ async function fetchSiteSettings() {
 			? raw.platforms
 			: DEFAULT_PLATFORMS;
 
+	const posPwa: PwaSettings = raw.posPwa && typeof raw.posPwa === "object"
+		? { ...DEFAULT_POS_PWA, ...(raw.posPwa as Partial<PwaSettings>) }
+		: DEFAULT_POS_PWA;
+
+	const customerPwa: PwaSettings = raw.customerPwa && typeof raw.customerPwa === "object"
+		? { ...DEFAULT_CUSTOMER_PWA, ...(raw.customerPwa as Partial<PwaSettings>) }
+		: DEFAULT_CUSTOMER_PWA;
+
 	return {
 		_id: data._id,
 		...raw,
 		orderTypes,
 		platforms,
+		posPwa,
+		customerPwa,
 	} as SiteSettingsRecord;
 }
 

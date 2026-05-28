@@ -4,6 +4,7 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vite";
+import { customerPwaSettings } from "./src/pwa-settings";
 
 export default defineConfig({
 	plugins: [
@@ -13,23 +14,23 @@ export default defineConfig({
 		VitePWA({
 			registerType: "autoUpdate",
 			manifest: {
-				name: "Djiwa Tentram App",
-				short_name: "Djiwa App",
-				description: "Pesan menu favorit dari meja.",
-				theme_color: "#fefefe",
-				background_color: "#ffffff",
+				name: customerPwaSettings.name,
+				short_name: customerPwaSettings.short_name,
+				description: customerPwaSettings.description,
+				theme_color: customerPwaSettings.theme_color,
+				background_color: customerPwaSettings.background_color,
 				display: "standalone",
-				start_url: "/djiwatentram",
+				start_url: customerPwaSettings.start_url,
 				scope: "/",
-				orientation: "portrait",
+				orientation: customerPwaSettings.orientation,
 				icons: [
 					{
-						src: "/pwa-app-192.png",
+						src: customerPwaSettings.icon192,
 						sizes: "192x192",
 						type: "image/png",
 					},
 					{
-						src: "/pwa-app-512.png",
+						src: customerPwaSettings.icon512,
 						sizes: "512x512",
 						type: "image/png",
 					},
