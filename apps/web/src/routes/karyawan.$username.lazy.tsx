@@ -273,6 +273,25 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 	const settings = useHybridSiteSettings() as any;
 	const storeName = settings?.storeName || "TENTREM KOFFIE";
 	const storeAddress = settings?.storeAddress || "";
+
+	// ── Contract data ──
+	const [contractData, setContractData] = useState<any>(null);
+	const [isLoadingContract, setIsLoadingContract] = useState(false);
+	useEffect(() => {
+		if (!staff?._id) return;
+		setIsLoadingContract(true);
+		const supabase = createClient();
+		supabase
+			.from("employee_onboarding_applications")
+			.select("id, full_name, contract, contract_pdf_url, employment, raw, created_at")
+			.eq("approved_user_source_id", staff._id)
+			.single()
+			.then(({ data, error }) => {
+				if (data) setContractData(data);
+				setIsLoadingContract(false);
+			})
+			.catch(() => setIsLoadingContract(false));
+	}, [staff?._id]);
 	useEffect(() => {
 		if (staff && isUnlocked) {
 			setEditName(staff.name || "");
@@ -506,6 +525,61 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									month={selectedMonth}
 									year={selectedYear}
 								/>
+							)}
+
+							{/* Kontrak Kerja Section */}
+							{isUnlocked && (
+								<div className="space-y-4">
+									<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
+										<FileText className="h-4 w-4 text-emerald-500" />
+										Kontrak Kerja
+									</h3>
+									<div className="rounded-2xl border bg-card p-4">
+										{isLoadingContract ? (
+											<div className="animate-pulse space-y-2">
+												<div className="h-3 w-40 rounded bg-muted" />
+												<div className="h-3 w-32 rounded bg-muted" />
+												<div className="h-8 w-full rounded-lg bg-muted mt-3" />
+											</div>
+										) : contractData ? (
+											<>
+												<div className="space-y-2">
+													<div className="flex items-center justify-between">
+														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Status</span>
+														<span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Aktif</span>
+													</div>
+													<div className="flex items-center justify-between">
+														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Jenis</span>
+														<span className="text-xs font-bold">PKWT - Full Time</span>
+													</div>
+													<div className="flex items-center justify-between">
+														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Durasi</span>
+														<span className="text-xs font-bold">6 Bulan</span>
+													</div>
+													<div className="flex items-center justify-between">
+														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mulai</span>
+														<span className="text-xs font-bold">28 Mei 2026</span>
+													</div>
+													<div className="flex items-center justify-between">
+														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
+														<span className="text-xs font-bold">28 November 2026</span>
+													</div>
+												</div>
+												{contractData.contract_pdf_url && (
+													<Button
+														variant="outline"
+														size="sm"
+														className="w-full mt-3 rounded-lg text-[10px] font-bold h-8"
+														onClick={() => window.open(contractData.contract_pdf_url, "_blank")}
+													>
+														<Download className="mr-1.5 h-3 w-3" />
+														Download Kontrak PDF
+													</Button>
+												)}
+											</>
+										) : null}
+									</div>
+								</div>
 							)}
 
 							{/* Slip Gaji Section */}

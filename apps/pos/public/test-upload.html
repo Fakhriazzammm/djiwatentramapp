@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head><title>Upload Test</title></head>
+<body>
+<h2>Test Upload Signature ke Supabase Storage</h2>
+<div>
+  <input type="file" id="fileInput" accept="image/*" />
+  <button id="uploadBtn">Upload</button>
+</div>
+<div id="result"></div>
+<script>
+const ANON_KEY = "sb_publishable_LGFL7r4JQVqG1fvwNniJ7A_ub29yf_3";
+const BASE_URL = "https://xaemykhjpkgypqqpfdcb.supabase.co";
+
+document.getElementById("uploadBtn").onclick = async () => {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) { alert("Pilih file dulu"); return; }
+  
+  const result = document.getElementById("result");
+  result.innerHTML = "Uploading...";
+  
+  try {
+    // Test 1: Direct fetch upload like the app does
+    const path = `company/signatures/test-${Date.now()}.png`;
+    const resp = await fetch(`${BASE_URL}/storage/v1/object/employee-contracts/${path}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${ANON_KEY}`,
+        "Content-Type": file.type || "image/png",
+      },
+      body: file,
+    });
+    
+    if (!resp.ok) {
+      const errText = await resp.text();
+      result.innerHTML = `<pre style="color:red">UPLOAD FAILED: ${resp.status} ${resp.statusText}\n${errText}</pre>`;
+      return;
+    }
+    
+    const data = await resp.json();
+    const publicUrl = `${BASE_URL}/storage/v1/object/public/employee-contracts/${data.Key}`;
+    
+    result.innerHTML = `
+      <pre style="color:green">✅ Upload OK!
+Key: ${data.Key}
+Public URL: ${publicUrl}</pre>
+      <p>Preview:</p>
+      <img src="${publicUrl}" style="max-width:300px;border:1px solid #ccc;padding:5px;" 
+           onload="this.style.border='2px solid green'"
+           onerror="this.style.border='2px solid red';console.error('IMAGE LOAD FAILED:', this.src)" />
+    `;
+  } catch (e) {
+    result.innerHTML = `<pre style="color:red">ERROR: ${e.message}</pre>`;
+  }
+};
+</script>
+</body>
+</html>

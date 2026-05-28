@@ -1,0 +1,16 @@
+{
+  "buildCommand": "node ../../scripts/update-version.mjs && node ../../scripts/write-version-manifest.mjs && NODE_OPTIONS=--max-old-space-size=4096 npx vite build",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && bun install",
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/:path((?!.*\\..*).*)", "destination": "/index.html" }
+  ]
+}

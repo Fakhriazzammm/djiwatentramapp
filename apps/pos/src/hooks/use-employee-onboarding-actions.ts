@@ -1,0 +1,371 @@
+import { useCallback } from "react";
+import { useMutation } from "@/lib/backend-bridge";
+import { createClient } from "@/lib/client";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { useHybridCreateUser } from "./use-hybrid-write-actions";
+import { invokeEdgeFunction, invokeDirectFetch } from "@/lib/api-helper";
+
+const api = new Proxy(
+	{},
+	{
+		get: () =>
+			new Proxy(
+				{},
+				{
+					get: () => undefined,
+				}
+			),
+	}
+) as any;
+
+const hasSupabaseConfig = Boolean(
+	import.meta.env.VITE_SUPABASE_URL &&
+		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+);
+const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+
+type HybridStorageUploadArgs = {
+	file: Blob;
+	contentType?: string;
+	fileName?: string;
+	folder?: string;
+};
+
+function getExtensionFromFileName(fileName?: string) {
+	if (!fileName) return "";
+	const match = fileName.match(/\.([a-zA-Z0-9]+)$/);
+	return match ? match[1].toLowerCase() : "";
+}
+
+function getExtensionFromContentType(contentType?: string) {
+	const type = String(contentType || "").toLowerCase();
+	if (type.includes("html")) return "html";
+	if (type.includes("pdf")) return "pdf";
+	if (type.includes("jpeg")) return "jpg";
+	if (type.includes("png")) return "png";
+	if (type.includes("webp")) return "webp";
+	return "bin";
+}
+
+function buildStoragePath(args: { folder: string; fileName?: string; contentType?: string }) {
+	const extension = getExtensionFromFileName(args.fileName) || getExtensionFromContentType(args.contentType);
+	const random =
+		typeof crypto !== "undefined" && "randomUUID" in crypto
+			? crypto.randomUUID().replace(/-/g, "")
+			: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+	return `${args.folder}/${Date.now()}-${random.slice(0, 20)}.${extension}`;
+}
+
+async function invokeYumiAiAction(action: string, payload: Record<string, unknown>) {
+	return invokeEdgeFunction("yumi-ai", { action, ...payload });
+}
+
+// ---------------------------------------------------------------------------
+// Edge Function helper for admin operations (approve, reject, delete)
+// Uses service_role key on the server side — bypasses RLS and authenticates
+// via the VITE_ADMIN_SECRET env var sent as x-admin-secret header.
+// Uses direct fetch() instead of supabase.functions.invoke to avoid
+// CORS/SDK issues with @supabase/ssr.
+// ---------------------------------------------------------------------------
+async function invokeAdminAction(action: string, payload: Record<string, unknown>) {
+	if (!adminSecret) {
+		throw new Error("VITE_ADMIN_SECRET tidak dikonfigurasi. Tambahkan ke .env");
+	}
+	const functionUrl = `${supabaseUrl}/functions/v1/onboarding-admin`;
+	return invokeDirectFetch(functionUrl, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-admin-secret": adminSecret,
+		},
+		body: JSON.stringify({ action, ...payload }),
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Public hooks (still use direct Supabase — anon key is fine for these)
+// ---------------------------------------------------------------------------
+
+export function useHybridGenerateEmployeeOnboardingUploadUrl() {
+	const fallback = useMutation((api as any).employee_onboarding?.generateUploadUrl);
+	return useCallback(
+		async (args: HybridStorageUploadArgs) => {
+			if (!args?.file) throw new Error("file is required");
+			if (!hasSupabaseConfig) {
+				const postUrl = await fallback({});
+				const result = await fetch(postUrl, {
+					method: "POST",
+					headers: { "Content-Type": args.contentType || "application/octet-stream" },
+					body: args.file,
+				});
+				if (!result.ok) throw new Error(`Upload failed: ${result.status}`);
+				const payload = await result.json();
+				return String(payload?.storageId ?? "");
+			}
+
+			const supabase = createClient();
+			const folder = String(args.folder || "employee-contracts").replace(/^\/+|\/+$/g, "") || "employee-contracts";
+			const objectPath = buildStoragePath({ folder, fileName: args.fileName, contentType: args.contentType });
+			const { error } = await supabase.storage.from("employee-contracts").upload(objectPath, args.file, {
+				contentType: args.contentType || "application/octet-stream",
+				upsert: false,
+			});
+			if (error) throw error;
+			const { data } = supabase.storage.from("employee-contracts").getPublicUrl(objectPath);
+			return data.publicUrl || objectPath;
+		},
+		[fallback]
+	);
+}
+
+export function useHybridGenerateEmployeeContract() {
+	return useCallback(async (args: any) => {
+		const data = await invokeYumiAiAction("generateEmployeeContract", args ?? {});
+		return data as {
+			title?: string;
+			plainText?: string;
+			html?: string;
+			clauses?: Array<{ title: string; body: string }>;
+		};
+	}, []);
+}
+
+export function useHybridSubmitEmployeeApplication() {
+	const fallback = useMutation((api as any).employee_onboarding?.submitApplication);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const payload = args?.payload ?? args;
+			if (!payload?.full_name || !payload?.phone) throw new Error("Data pendaftaran tidak lengkap");
+			const { data, error } = await createClient()
+				.from("employee_onboarding_applications")
+				.insert({
+					status: "pending",
+					full_name: payload.full_name,
+					email: payload.email ?? null,
+					phone: payload.phone,
+					identity_number: payload.identity_number ?? null,
+					address: payload.address ?? null,
+					birth_date: payload.birth_date ?? null,
+					birth_place: payload.birth_place ?? null,
+					emergency_contact: payload.emergency_contact ?? {},
+					employment: payload.employment ?? {},
+					contract: payload.contract ?? {},
+					signature_url: payload.signature_url ?? null,
+					contract_pdf_url: payload.contract_pdf_url ?? null,
+					cv_url: payload.cv_url ?? null,
+					photo_url: payload.photo_url ?? null,
+					attachments: payload.attachments ?? {},
+					raw: {
+						...(payload.raw ?? {}),
+						pipelineStatus: payload.raw?.pipelineStatus ?? "submitted",
+						pipelineStep: "submitted",
+					},
+				})
+				.select("id")
+				.single();
+			if (error) throw error;
+
+			// -- Fire-and-forget Telegram notification --
+			const applicationId = data?.id ?? null;
+			;(async () => {
+				try {
+					const roleName = String(payload.employment?.roleName ?? "-");
+					const now = new Date().toLocaleString("id-ID", {
+						weekday: "long",
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+						hour: "2-digit",
+						minute: "2-digit",
+					});
+					const msg = [
+						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+						"📝 PENDAFTARAN MASUK — DJIWA TENTRAM",
+						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+						"",
+						"Ada pendaftar baru yang perlu direview! 👀",
+						"",
+						`👤 Nama: ${payload.full_name}`,
+						`📞 Kontak: ${payload.phone}`,
+						`🎯 Role: ${roleName}`,
+						`⏰ Waktu: ${now}`,
+						"",
+						`🔗 Review: https://pos.yumme.id/admin/operational-team/register/onboarding`,
+						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+					].join("\n");
+					await fetch(supabaseUrl + "/functions/v1/send-telegram-report", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ text: msg, chat_id: "-1003337635075" }),
+					});
+				} catch (_e) {
+					// Silent -- jangan sampai gagal-kan registrasi
+					console.warn("[notif] Gagal kirim notifikasi registrasi:", _e);
+				}
+				return applicationId;
+			})().catch(() => {});
+
+			return applicationId;
+		},
+		[fallback]
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Admin hooks -- all go through the onboarding-admin Edge Function
+// (service_role key → bypasses RLS, authenticated via admin secret)
+// ---------------------------------------------------------------------------
+
+/**
+ * Approve application: creates yumi_users account + updates application status
+ * in a single Edge Function call (atomic, server-side).
+ */
+export function useHybridApproveApplication() {
+	return useCallback(async (args: {
+		applicationId: string;
+		username: string;
+		password?: string;
+		name: string;
+		roleId: string;
+		homePin?: string;
+		requiresPinChange?: boolean;
+		slug?: string;
+		receiveReportEmails?: boolean;
+		onboardingApplicationId?: string;
+		reviewNotes?: string;
+		reviewedBy?: string;
+		employment?: Record<string, unknown>;
+	}) => {
+		if (!hasSupabaseConfig) {
+			throw new Error("Edge Function tidak tersedia tanpa Supabase config");
+		}
+		return invokeAdminAction("approve", args);
+	}, []);
+}
+
+/**
+ * Reject application.
+ */
+export function useHybridRejectApplication() {
+	const fallback = useMutation((api as any).employee_onboarding?.updateStatus);
+	return useCallback(
+		async (args: { id: string; reviewNotes?: string; reviewedBy?: string }) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			return invokeAdminAction("reject", args);
+		},
+		[fallback]
+	);
+}
+
+/**
+ * Mark application as needs_revision.
+ */
+export function useHybridMarkRevision() {
+	const fallback = useMutation((api as any).employee_onboarding?.updateStatus);
+	return useCallback(
+		async (args: { id: string; reviewNotes?: string; reviewedBy?: string }) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			return invokeAdminAction("mark_revision", args);
+		},
+		[fallback]
+	);
+}
+
+/**
+ * Delete a single application (only allowed if not yet approved).
+ */
+export function useHybridDeleteApplication() {
+	const fallback = useMutation((api as any).employee_onboarding?.delete);
+	return useCallback(
+		async (id: string) => {
+			if (!hasSupabaseConfig) return fallback({ id });
+			return invokeAdminAction("delete", { id });
+		},
+		[fallback]
+	);
+}
+
+/**
+ * Bulk delete applications (only non-approved ones).
+ */
+export function useHybridBulkDeleteApplications() {
+	const fallback = useMutation((api as any).employee_onboarding?.bulkDelete);
+	return useCallback(
+		async (ids: string[]) => {
+			if (!hasSupabaseConfig) return fallback({ ids });
+			return invokeAdminAction("bulk_delete", { ids });
+		},
+		[fallback]
+	);
+}
+
+/**
+ * (Deprecated) Use useHybridApproveApplication + useHybridRejectApplication instead.
+ * Kept for backwards compatibility -- calls the same edge function.
+ */
+export function useHybridUpdateEmployeeApplicationStatus() {
+	const { user } = useYumiAuth();
+	return useCallback(
+		async (args: any) => {
+			const id = String(args?.id ?? "");
+			const status = String(args?.status ?? "");
+			if (!id || !["approved", "rejected", "needs_revision", "pending"].includes(status)) {
+				throw new Error("Status pendaftaran tidak valid");
+			}
+			const reviewedBy = user?.name ?? user?.username ?? "admin";
+
+			if (status === "approved") {
+				// Call the dedicated approve hook
+				throw new Error(
+					"Gunakan useHybridApproveApplication untuk approve. " +
+					"useHybridUpdateEmployeeApplicationStatus tidak support approve."
+				);
+			}
+			if (status === "rejected") {
+				return invokeAdminAction("reject", { id, reviewNotes: args?.reviewNotes ?? null, reviewedBy });
+			}
+			if (status === "needs_revision") {
+				return invokeAdminAction("mark_revision", { id, reviewNotes: args?.reviewNotes ?? null, reviewedBy });
+			}
+			return id;
+		},
+		[user?.name, user?.username]
+	);
+}
+
+/**
+ * Sign contract: uploads PDF + signature, updates application to contract_signed.
+ */
+export function useHybridSignContract() {
+	return useCallback(async (args: {
+		applicationId: string;
+		signatureUrl: string;
+		contractPdfUrl: string;
+		contractText: string;
+	}) => {
+		if (!hasSupabaseConfig) {
+			throw new Error("Edge Function tidak tersedia tanpa Supabase config");
+		}
+		return invokeAdminAction("sign_contract", args);
+	}, []);
+}
+
+/**
+ * Set status (lightweight transitions: reject, needs_revision, pending).
+ * For approve, use useHybridApproveApplication instead.
+ */
+export function useHybridSetOnboardingStatus() {
+	return useCallback(async (args: {
+		id: string;
+		status: "pending" | "rejected" | "needs_revision";
+	}) => {
+		if (!hasSupabaseConfig) {
+			throw new Error("Edge Function tidak tersedia tanpa Supabase config");
+		}
+		return invokeAdminAction("set_status", args);
+	}, []);
+}
+
+export { useHybridCreateUser };

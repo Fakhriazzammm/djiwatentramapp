@@ -1,0 +1,2 @@
+﻿Build output log is intentionally omitted after Supabase migration cleanup.
+Use `bun run build` to generate a fresh build log.
