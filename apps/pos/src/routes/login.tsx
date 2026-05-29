@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Building2, UserCircle2 } from "lucide-react";
+import { Building2, ShoppingCart, UserCircle2 } from "lucide-react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
 import { useEffect } from "react";
@@ -53,7 +53,7 @@ function LoginPage() {
 				</motion.div>
 
 				{/* Role Cards */}
-				<div className="grid w-full max-w-lg grid-cols-2 gap-4 md:gap-5">
+				<div className="grid w-full max-w-lg grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
 					{/* Admin Card */}
 					<motion.button
 						initial={{ opacity: 0, x: -20 }}
@@ -62,18 +62,40 @@ function LoginPage() {
 						whileHover={{ scale: 1.02, y: -3 }}
 						whileTap={{ scale: 0.97 }}
 						onClick={() => navigate({ to: "/admin/login" as any })}
-						className="group relative flex flex-col items-center gap-4 md:gap-5 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-6 md:p-8 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-5 md:p-7 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 					>
-						<div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 transition-transform group-hover:scale-105">
-							<Building2 className="h-8 w-8 md:h-10 md:w-10" />
+						<div className="flex h-14 w-14 md:h-18 md:w-18 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 transition-transform group-hover:scale-105">
+							<Building2 className="h-7 w-7 md:h-9 md:w-9" />
 						</div>
 						<div className="text-center">
-							<h2 className="text-lg md:text-xl font-black tracking-tight">Admin</h2>
-							<p className="mt-1 text-[10px] md:text-xs font-semibold text-muted-foreground/70">
+							<h2 className="text-base md:text-lg font-black tracking-tight">Admin</h2>
+							<p className="mt-1 text-[9px] md:text-xs font-semibold text-muted-foreground/70">
 								Dashboard &amp; Manajemen
 							</p>
 						</div>
 						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+					</motion.button>
+
+					{/* Kasir Card — langsung ke /menu tanpa login */}
+					<motion.button
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.15, type: "spring", stiffness: 300, damping: 25 }}
+						whileHover={{ scale: 1.02, y: -3 }}
+						whileTap={{ scale: 0.97 }}
+						onClick={() => navigate({ to: "/menu" as any })}
+						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border-2 border-amber-500/30 bg-card p-5 md:p-7 shadow-lg shadow-amber-500/10 transition-colors hover:border-amber-500/60 hover:bg-amber-500/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/30"
+					>
+						<div className="flex h-14 w-14 md:h-18 md:w-18 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 transition-transform group-hover:scale-105">
+							<ShoppingCart className="h-7 w-7 md:h-9 md:w-9" />
+						</div>
+						<div className="text-center">
+							<h2 className="text-base md:text-lg font-black tracking-tight">Kasir</h2>
+							<p className="mt-1 text-[9px] md:text-xs font-semibold text-muted-foreground/70">
+								Langsung ke POS
+							</p>
+						</div>
+						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 					</motion.button>
 
 					{/* Karyawan Card */}
@@ -84,14 +106,14 @@ function LoginPage() {
 						whileHover={{ scale: 1.02, y: -3 }}
 						whileTap={{ scale: 0.97 }}
 						onClick={() => navigate({ to: "/karyawan/login" as any })}
-						className="group relative flex flex-col items-center gap-4 md:gap-5 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-6 md:p-8 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-5 md:p-7 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 					>
-						<div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-sky-400 to-teal-400 text-white shadow-lg shadow-sky-400/20 transition-transform group-hover:scale-105">
-							<UserCircle2 className="h-8 w-8 md:h-10 md:w-10" />
+						<div className="flex h-14 w-14 md:h-18 md:w-18 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-sky-400 to-teal-400 text-white shadow-lg shadow-sky-400/20 transition-transform group-hover:scale-105">
+							<UserCircle2 className="h-7 w-7 md:h-9 md:w-9" />
 						</div>
 						<div className="text-center">
-							<h2 className="text-lg md:text-xl font-black tracking-tight">Karyawan</h2>
-							<p className="mt-1 text-[10px] md:text-xs font-semibold text-muted-foreground/70">
+							<h2 className="text-base md:text-lg font-black tracking-tight">Karyawan</h2>
+							<p className="mt-1 text-[9px] md:text-xs font-semibold text-muted-foreground/70">
 								Absensi &amp; Slip Gaji
 							</p>
 						</div>
