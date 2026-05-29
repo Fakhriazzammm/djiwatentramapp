@@ -359,10 +359,9 @@ function HomePage() {
 					onAvatarClick={handleAvatarClick}
 				/>
 
-			{/* 2b. Clock-Out Reminder — jika lupa absen keluar */}
+			{/* 2b. Clock-Out Reminder — deteksi shift sebelumnya lupa clock-out */}
 			<HomeClockOutBanner
-				isWorking={statsToday?.isWorking}
-				lastCheckIn={statsToday?.lastCheckIn}
+				userId={user?._id}
 			/>
 
 			{/* 3. Quick Actions */}
