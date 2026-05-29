@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -188,6 +188,21 @@ function StaffProfilePage() {
 	const [isVerifying, setIsVerifying] = useState(false);
 	
 	const now = new Date();
+	const currentTime = useMemo(() => now, []);
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => setMounted(true), []);
+	const greeting = useMemo(() => {
+		const hour = now.getHours();
+		if (hour < 11) return "Semangat Pagi";
+		if (hour < 15) return "Selamat Siang";
+		if (hour < 18) return "Selamat Sore";
+		return "Selamat Malam";
+	}, [now]);
+	const dateText = useMemo(() => {
+		const datePart = now.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+		const timePart = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+		return `${datePart} • ${timePart}`;
+	}, [now]);
 	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
 	const [showChangePin, setShowChangePin] = useState(false);
@@ -504,7 +519,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				<HomeClockOutBanner userId={authUser?._id} />
 			</div>
 
-			<main className="mx-auto max-w-2xl px-4 py-8 pb-24">
+			<main className="mx-auto max-w-2xl px-4 py-3 pb-20">
 				<AnimatePresence mode="wait">
 					{!isUnlocked ? (
 						<motion.div
@@ -563,36 +578,78 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							initial={{ opacity: 0, scale: 1.05 }}
 							animate={{ opacity: 1, scale: 1 }}
 							key="unlocked"
-							className="space-y-8"
+							className="space-y-4"
 						>
-							{/* Header Unlocked */}
-							<div className="flex items-center gap-4 rounded-2xl bg-primary/5 p-4 border border-primary/10">
-								{staff.photoUrl ? (
-									<img src={staff.photoUrl} alt={staff.name} className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-lg" />
-								) : (
-									<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-2xl font-black text-primary-foreground shadow-lg">
-										{staff.name.charAt(0)}
+							{/* Hero Card — DJIWA TENTRAM + greeting, compact */}
+							<div className="app-card glass-strong relative overflow-hidden">
+								<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_30%)]" />
+								<div className="flex items-center gap-3 px-3 pt-3 pb-2">
+									<button
+										type="button"
+										onClick={handleAvatarClick}
+										className="relative shrink-0 active:scale-95 transition-transform"
+									>
+										{staff.photoUrl ? (
+											<img src={staff.photoUrl} alt={staff.name} className="h-12 w-12 rounded-xl object-cover shadow-md" />
+										) : (
+											<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-sky-400 text-lg font-black text-white shadow-md">
+												{staff.name?.charAt(0)?.toUpperCase()}
+											</div>
+										)}
+									</button>
+									<div className="flex-1 min-w-0">
+										<p className="text-[8px] font-bold uppercase tracking-[0.18em] text-primary/60 leading-none">{storeName}</p>
+										<h2 className="text-sm font-black tracking-tight text-foreground leading-tight truncate mt-0.5">
+											{greeting}, {staff.name?.split(" ")[0] ?? staff.name}
+										</h2>
+										<div className="flex items-center gap-1.5 mt-0.5">
+											<span className="rounded-full border border-primary/20 bg-primary/10 px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-primary">{staff.roleName || "Staff"}</span>
+											{stats?.attendanceRate !== undefined && (
+												<span className="rounded-full bg-emerald-500/15 px-1.5 py-[1px] text-[7px] font-black text-emerald-600 uppercase tracking-[0.12em]">{stats.attendanceRate}% hadir</span>
+											)}
+										</div>
 									</div>
-								)}
-								<div className="flex-1">
-									<h1 className="text-xl font-black tracking-tight">{staff.name}</h1>
-									<p className="font-bold text-primary text-[10px] uppercase">{staff.roleName}</p>
-									<p className="text-[10px] text-muted-foreground leading-none">{privateData?.username}</p>
+									<Button variant="ghost" size="sm" onClick={() => setIsUnlocked(false)} className="shrink-0 rounded-lg h-7 w-7 p-0">
+										<LogOut className="h-3.5 w-3.5 text-muted-foreground" />
+									</Button>
 								</div>
-								<Button variant="ghost" size="icon" onClick={() => setIsUnlocked(false)} className="rounded-lg h-8 w-8">
-									<LogOut className="h-4 w-4 text-muted-foreground" />
-								</Button>
+								<div className="px-3 pb-3">
+									<p className="text-[8px] text-muted-foreground/60 font-medium">{dateText}</p>
+									<div className="mt-1.5 grid grid-cols-3 divide-x divide-border/40 rounded-xl border border-border/50 bg-background/60 shadow-sm overflow-hidden">
+										<div className="px-2 py-1.5 text-center">
+											<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Total Jam</p>
+											<p className="text-xs font-black">{stats?.totalHours ?? 0}<span className="text-[7px] font-normal text-muted-foreground">j</span> {stats?.totalMinutes ?? 0}<span className="text-[7px] font-normal text-muted-foreground">m</span></p>
+										</div>
+										<div className="px-2 py-1.5 text-center">
+											<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Shift</p>
+											<p className="text-xs font-black">{stats?.sessionCount ?? 0}</p>
+										</div>
+										<div className="px-2 py-1.5 text-center">
+											<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hari</p>
+											<p className="text-xs font-black">{stats?.daysWorked ?? 0}</p>
+										</div>
+									</div>
+								</div>
+								<div className="pb-3 px-3">
+									<Button
+										className="w-full h-9 rounded-xl text-[10px] font-black shadow-sm flex items-center justify-center gap-1.5"
+										onClick={() => navigate({ to: "/attendance" as any })}
+									>
+										<Camera className="h-3.5 w-3.5" />
+										ABSENSI SEKARANG
+									</Button>
+								</div>
 							</div>
 
-							{/* Period Selector */}
-							<div className="flex items-center justify-between gap-3 px-2">
-								<div className="flex items-center gap-2">
-									<Calendar className="h-4 w-4 text-primary" />
-									<span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Periode</span>
+							{/* Period Selector — compact */}
+							<div className="flex items-center justify-between gap-2 px-2">
+								<div className="flex items-center gap-1.5">
+									<Calendar className="h-3 w-3 text-primary" />
+									<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
 								</div>
-								<div className="flex items-center gap-2">
+								<div className="flex items-center gap-1.5">
 									<select 
-										className="bg-transparent text-sm font-black focus:outline-none"
+										className="bg-transparent text-xs font-black focus:outline-none py-0.5"
 										value={selectedMonth}
 										onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
 									>
@@ -601,7 +658,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										))}
 									</select>
 									<select 
-										className="bg-transparent text-sm font-black focus:outline-none"
+										className="bg-transparent text-xs font-black focus:outline-none py-0.5"
 										value={selectedYear}
 										onChange={(e) => setSelectedYear(parseInt(e.target.value))}
 									>
@@ -609,28 +666,6 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 											<option key={y} value={y}>{y}</option>
 										))}
 									</select>
-								</div>
-							</div>
-
-							{/* Dashboard Grid */}
-							<div className="grid grid-cols-2 gap-3">
-								<div className="rounded-2xl border bg-card p-4 shadow-sm">
-									<div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
-										<Clock className="h-4 w-4" />
-									</div>
-									<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Total Jam</p>
-									<p className="mt-0.5 text-xl font-black">{stats?.totalHours ?? 0} <span className="text-[10px] font-normal text-muted-foreground">jam</span></p>
-									<p className="text-[9px] text-orange-600 font-bold">{MONTHS[selectedMonth - 1]} {selectedYear}</p>
-								</div>
-								<div className="rounded-2xl border bg-card p-4 shadow-sm">
-									<div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-										<TrendingUp className="h-4 w-4" />
-									</div>
-									<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Kehadiran</p>
-									<p className="mt-0.5 text-xl font-black">{stats?.attendanceRate ?? 0}%</p>
-									<p className="text-[9px] text-emerald-600 font-bold">
-										{stats ? (stats.attendanceRate > 90 ? "Sangat Baik" : "Baik") : "..."}
-									</p>
 								</div>
 							</div>
 
@@ -643,14 +678,14 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								/>
 							)}
 
-							{/* Kontrak Kerja Section */}
+							{/* Kontrak Kerja */}
 							{isUnlocked && (
-								<div className="space-y-4">
-									<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
-										<FileText className="h-4 w-4 text-emerald-500" />
+								<div className="space-y-2">
+									<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+										<FileText className="h-3 w-3 text-emerald-500" />
 										Kontrak Kerja
 									</h3>
-									<div className="rounded-2xl border bg-card p-4">
+									<div className="rounded-xl border bg-card p-3">
 										{isLoadingContract ? (
 											<div className="animate-pulse space-y-2">
 												<div className="h-3 w-40 rounded bg-muted" />
@@ -702,11 +737,11 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								</div>
 							)}
 
-							{/* Slip Gaji Section */}
-							<div className="space-y-4">
+							{/* Slip Gaji */}
+							<div className="space-y-2">
 								<div className="flex items-center justify-between px-2">
-									<h3 className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm">
-										<FileText className="h-4 w-4 text-primary" />
+									<h3 className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
+										<FileText className="h-3 w-3 text-primary" />
 										Slip Gaji {showAllPayslips ? "" : "Terakhir"}
 									</h3>
 									{myPayslips && myPayslips.length > 3 && (
@@ -778,13 +813,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								</div>
 							</div>
 
-							{/* Riwayat Absensi */}
-							<div className="space-y-4">
-								<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
-									<History className="h-4 w-4 text-primary" />
+							{/* Log Kehadiran */}
+							<div className="space-y-2">
+								<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+									<History className="h-3 w-3 text-primary" />
 									Log Kehadiran {MONTHS[selectedMonth - 1]} {selectedYear}
 								</h3>
-								<div className="rounded-2xl border bg-card overflow-hidden">
+								<div className="rounded-xl border bg-card overflow-hidden">
 									{!logs || logs.length === 0 ? (
 										<div className="p-8 text-center text-xs text-muted-foreground">
 											Tidak ada data absensi untuk periode ini.
@@ -842,21 +877,21 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								})()
 							)}
 
-							{/* Account Settings */}
-							<div className="space-y-4">
+							{/* Data Pribadi */}
+							<div className="space-y-2">
 								<div className="flex items-center justify-between px-2">
-									<h3 className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm">
-										<User className="h-4 w-4 text-primary" />
+									<h3 className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
+										<User className="h-3 w-3 text-primary" />
 										Data Pribadi
 									</h3>
 									<div className="flex items-center gap-1">
 									<Button 
 										variant="ghost" 
 										size="sm" 
-										className="text-xs font-bold"
+										className="text-[10px] font-bold h-6 px-2"
 										onClick={() => setIsEditMode(!isEditMode)}
 									>
-										{isEditMode ? "BATAL" : "EDIT PROFIL"}
+										{isEditMode ? "BATAL" : "EDIT"}
 									</Button>
 									{showEditTooltip && (
 										<motion.div
@@ -879,72 +914,68 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									</div>
 								</div>
 								
-								<div className="rounded-2xl border bg-card p-4 space-y-4">
+								<div className="rounded-xl border bg-card p-3 space-y-2.5">
 									{!isEditMode ? (
-										<div className="space-y-3">
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Nama Lengkap</span>
-												<span className="font-bold">{staff.name}</span>
+										<div className="space-y-1.5">
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">Nama</span>
+												<span className="font-bold text-right max-w-[200px] truncate">{staff.name}</span>
 											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Email</span>
-												<span className="font-bold">{privateData?.email || privateData?.username || "---"}</span>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">Email</span>
+												<span className="font-bold text-right max-w-[200px] truncate">{privateData?.email || privateData?.username || "---"}</span>
 											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Username</span>
-												<span className="font-bold">{privateData?.username || "---"}</span>
-											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">Username Profil</span>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">Username</span>
 												<span className="font-bold">@{staff.slug}</span>
 											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">No HP / WA</span>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">No HP</span>
 												<span className="font-bold">{privateData?.raw?.phone || "---"}</span>
 											</div>
-											<div className="flex justify-between items-center text-xs">
-												<span className="text-muted-foreground font-medium">No Identitas (KTP)</span>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">KTP</span>
 												<span className="font-bold">{privateData?.raw?.identityNumber || "---"}</span>
 											</div>
-										<div className="flex justify-between items-center text-xs">
-											<span className="text-muted-foreground font-medium">Tempat, Tgl Lahir</span>
-											<span className="font-bold">{[privateData?.raw?.placeOfBirth, privateData?.raw?.birthDate].filter(Boolean).join(", ") || "---"}</span>
-										</div>
-										<div className="flex justify-between items-center text-xs">
-											<span className="text-muted-foreground font-medium">Alamat</span>
-											<span className="font-bold max-w-[180px] truncate">{privateData?.raw?.address || "---"}</span>
-										</div>
-										<div className="flex justify-between items-center text-xs">
-											<span className="text-muted-foreground font-medium">Nama Bank</span>
-											<span className="font-bold">{(privateData as any)?.raw?.bankName || "---"}</span>
-										</div>
-										<div className="flex justify-between items-center text-xs">
-											<span className="text-muted-foreground font-medium">No Rekening</span>
-											<span className="font-bold">{(privateData as any)?.raw?.bankAccount || "---"}</span>
-										</div>
-										<div className="flex justify-between items-center text-xs">
-											<span className="text-muted-foreground font-medium">Kontak Darurat</span>
-											<span className="font-bold text-right max-w-[180px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
+										<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">Tmp/Tgl Lahir</span>
+												<span className="font-bold text-right max-w-[200px]">{[privateData?.raw?.placeOfBirth, privateData?.raw?.birthDate].filter(Boolean).join(", ") || "---"}</span>
 											</div>
-											<div className="border-t pt-3 mt-3 space-y-3">
-												<p className="text-[9px] font-black text-primary uppercase">Informasi Pekerjaan</p>
-												<div className="flex justify-between items-center text-xs">
-													<span className="text-muted-foreground font-medium">Mulai Bekerja</span>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">Alamat</span>
+												<span className="font-bold text-right max-w-[200px] truncate">{privateData?.raw?.address || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">Bank</span>
+												<span className="font-bold">{(privateData as any)?.raw?.bankName || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">No Rekening</span>
+												<span className="font-bold">{(privateData as any)?.raw?.bankAccount || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-[10px]">
+												<span className="text-muted-foreground">Kontak Darurat</span>
+												<span className="font-bold text-right max-w-[200px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
+											</div>
+											<div className="border-t pt-2 mt-2 space-y-1.5">
+												<p className="text-[8px] font-black text-primary uppercase">Pekerjaan</p>
+												<div className="flex justify-between items-center text-[10px]">
+													<span className="text-muted-foreground">Mulai</span>
 													<span className="font-bold">{privateData?.raw?.startDate || "---"}</span>
 												</div>
-												<div className="flex justify-between items-center text-xs">
-													<span className="text-muted-foreground font-medium">Status Kepegawaian</span>
+												<div className="flex justify-between items-center text-[10px]">
+													<span className="text-muted-foreground">Status</span>
 													<span className="font-bold">{privateData?.raw?.employmentType === "probation" ? "Probation" : privateData?.raw?.employmentType || "---"}</span>
 												</div>
-												<div className="flex justify-between items-center text-xs">
-													<span className="text-muted-foreground font-medium">Lokasi</span>
+												<div className="flex justify-between items-center text-[10px]">
+													<span className="text-muted-foreground">Lokasi</span>
 													<span className="font-bold">{privateData?.raw?.location || "---"}</span>
 												</div>
 											</div>
 										</div>
 									) : (
 										<form 
-											className="space-y-3"
+											className="space-y-2"
 											onSubmit={async (e) => {
 												e.preventDefault();
 												if (!token) return;
@@ -1018,7 +1049,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												}
 											}}
 										>
-											<div className="space-y-2.5">
+											<div className="space-y-1.5">
 												<div className="space-y-1">
 													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
 													<Input 
@@ -1173,13 +1204,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								</div>
 							</div>
 
-							{/* Account Settings */}
-							<div className="space-y-4">
-								<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
-									<ShieldCheck className="h-4 w-4 text-primary" />
+							{/* Pengaturan Akun */}
+							<div className="space-y-2">
+								<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+									<ShieldCheck className="h-3 w-3 text-primary" />
 									Pengaturan Akun
 								</h3>
-								<div className="rounded-2xl border bg-card p-3 space-y-3">
+								<div className="rounded-xl border bg-card p-3 space-y-2.5">
 									{requiresPinChange && (
 										<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
 											<p className="text-[10px] font-black uppercase tracking-wide">PIN default masih aktif</p>
@@ -1282,13 +1313,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								</div>
 							</div>
 
-						{/* Grup Telegram — selalu tampil */}
-							<div className="space-y-4">
-								<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
-									<Bell className="h-4 w-4 text-sky-500" />
+						{/* Grup Telegram */}
+							<div className="space-y-2">
+								<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+									<Bell className="h-3 w-3 text-sky-500" />
 									Grup Telegram
 								</h3>
-								<div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
+								<div className="rounded-xl border border-sky-100 bg-sky-50 p-3">
 									<div className="flex items-start gap-3">
 										<div className="shrink-0 mt-0.5 text-lg">💬</div>
 										<div className="flex-1 min-w-0">
@@ -1310,12 +1341,12 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							</div>
 
 						{/* Quick Action Float */}
-							<div className="fixed bottom-6 left-0 right-0 px-4">
+							<div className="fixed bottom-4 left-0 right-0 px-4">
 								<Button 
-									className="h-14 w-full max-w-2xl mx-auto rounded-2xl text-base font-black shadow-2xl shadow-primary/40 flex items-center justify-center gap-2"
+									className="h-11 w-full max-w-2xl mx-auto rounded-xl text-xs font-black shadow-xl shadow-primary/30 flex items-center justify-center gap-1.5"
 									onClick={() => navigate({ to: "/attendance" as any })}
 								>
-									<Camera className="h-5 w-5" />
+									<Camera className="h-4 w-4" />
 									ABSENSI SEKARANG
 								</Button>
 							</div>
