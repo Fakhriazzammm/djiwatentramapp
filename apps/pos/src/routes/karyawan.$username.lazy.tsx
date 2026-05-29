@@ -1,4 +1,5 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+/* HERMES: rebuild trigger — live payslip + bonus target */
 import { useState, useEffect, useCallback } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
