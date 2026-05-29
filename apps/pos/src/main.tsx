@@ -80,30 +80,15 @@ async function refreshAppShellIfVersionChanged() {
 }
 
 void refreshAppShellIfVersionChanged().finally(() => {
-	updateSW = registerSW({
-		onNeedRefresh() {
-			// ── Silent SW activation ──
-			// onNeedRefresh dari registerSW bisa false-positive (byte-diff SW
-			// tanpa perubahan konten). Jangan tampilkan dialog atau reload.
-			// Cukup SKIP_WAITING di background agar SW lifecycle jalan normal.
-			// Semua notifikasi update user-facing hanya dari polling version.json.
-			if ("serviceWorker" in navigator) {
-				navigator.serviceWorker.getRegistrations().then((regs) => {
-					for (const reg of regs) {
-						if (reg.waiting) {
-							reg.waiting.postMessage({ type: "SKIP_WAITING" });
-							break;
-						}
-					}
-				});
-			}
-		},
-	});
+	// registerType: "autoUpdate" di vite.config.ts — SW auto-aktifasi + reload.
+	// JANGAN kasih onNeedRefresh karena itu masukkin "prompt mode" yang bikin
+	// SW stuck di "waiting" dan loop. Biarkan autoUpdate urus semuanya.
+	updateSW = registerSW();
 	setPwaUpdateHandler(updateSW);
 	startAppUpdatePolling();
 
 	// Force check on visibility change — panggil checkForAppUpdate langsung,
-	// bukan reg.update(). checkForAppUpdate compare version.json, bukan SW byte.
+	// bukan lewat SW lifecycle (bisa false-positive byte-diff).
 	if (typeof document !== "undefined") {
 		let lastCheck = 0;
 		const MIN_CHECK_INTERVAL = 30_000;
