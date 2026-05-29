@@ -25,6 +25,10 @@ function isNewerBuild(payload: any) {
 	const latestVersion = normalizeVersionValue(payload?.version);
 	const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
 
+	// Guard: "service-worker-update" adalah nilai fake dari catch block —
+	// bukan real build baru. Jangan trigger update dialog.
+	if (latestCommit === "service-worker-update") return false;
+
 	if (latestCommit && latestCommit !== APP_VERSION.commitHash) return true;
 	if (latestVersion && latestVersion !== APP_VERSION.semantic) return true;
 
@@ -100,6 +104,16 @@ export function startAppUpdatePolling(intervalMs = 60_000) {
 export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
+
+	// Anti-loop: jika versi sama dengan latest, tidak perlu SW skip-waiting —
+	// langsung reload. Ini mencegah update loop palsu saat SW byte-diff
+	// terdeteksi tapi konten tidak berubah.
+	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
+		window.location.replace(
+			`${window.location.pathname}?v=${encodeURIComponent(APP_VERSION.semantic)}&t=${Date.now()}`,
+		);
+		return;
+	}
 
 	// Safety net: force reload after 12 seconds no matter what
 	const FALLBACK_TIMEOUT_MS = 12_000;

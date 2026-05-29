@@ -7,7 +7,7 @@ import { CartProvider } from "@/context/cart-context";
 import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppUpdatePrompt } from "@/components/app-update-prompt";
-import { notifyAppUpdateAvailable, setPwaUpdateHandler, startAppUpdatePolling } from "@/lib/app-update";
+import { applyAppUpdate, notifyAppUpdateAvailable, setPwaUpdateHandler, startAppUpdatePolling } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import { APP_VERSION } from "@/lib/version";
 import "./index.css";
@@ -89,17 +89,34 @@ void refreshAppShellIfVersionChanged().finally(() => {
 			})
 				.then((res) => (res.ok ? res.json() : null))
 				.then((payload) => {
+					const latestVersion = payload?.version || APP_VERSION.semantic;
+					const latestCommit = payload?.commitHash || payload?.commit || APP_VERSION.commitHash;
+					const buildDate = payload?.buildDate || undefined;
+
+					// Anti-loop: jika versi sama, jangan tampilkan dialog —
+					// cukup skip waiting + reload langsung (aktivasi SW tanpa drama)
+					if (
+						latestVersion === APP_VERSION.semantic &&
+						(latestCommit === APP_VERSION.commitHash || !latestCommit)
+					) {
+						void applyAppUpdate();
+						return;
+					}
+
 					notifyAppUpdateAvailable({
-						latestVersion: payload?.version || APP_VERSION.semantic,
-						latestCommit: payload?.commitHash || payload?.commit || "service-worker-update",
-						buildDate: payload?.buildDate || undefined,
+						latestVersion,
+						latestCommit,
+						buildDate,
 					});
 				})
 				.catch(() => {
-					notifyAppUpdateAvailable({
-						latestVersion: APP_VERSION.semantic,
-						latestCommit: "service-worker-update",
-					});
+					// fetch /version.json gagal — jangan tampilkan dialog update
+					// karena kita nggak tahu apakah ada konten baru.
+					// SW mungkin berubah karena SW lifecycle (byte-diff metadata),
+					// tanpa perubahan konten. Skip waiting + reload via handler langsung.
+					if (updateSW) {
+						void updateSW(true).catch(() => window.location.reload());
+					}
 				});
 		},
 	});
