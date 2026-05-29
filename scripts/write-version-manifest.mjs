@@ -5,21 +5,26 @@ import { getBuildMetadata } from "./version-metadata.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, "..");
-const outputPath = resolve(rootDir, "apps/web/public/version.json");
 const metadata = getBuildMetadata(rootDir);
 
-writeFileSync(
-	outputPath,
-	`${JSON.stringify(
-		{
-			version: metadata.version,
-			commitHash: metadata.commitHash,
-			buildDate: metadata.buildDate,
-			generatedAt: metadata.generatedAt,
-		},
-		null,
-		2,
-	)}\n`,
-);
+// Write to all apps that serve version.json
+const apps = ["apps/web", "apps/pos", "apps/customer"];
 
-console.log(`✓ Version manifest written: ${outputPath}`);
+for (const app of apps) {
+	const outputPath = resolve(rootDir, app, "public/version.json");
+	writeFileSync(
+		outputPath,
+		`${JSON.stringify(
+			{
+				version: metadata.version,
+				commitHash: metadata.commitHash,
+				buildDate: metadata.buildDate,
+				generatedAt: metadata.generatedAt,
+			},
+			null,
+			2,
+		)}\n`,
+	);
+}
+
+console.log(`✓ Version manifest written to ${apps.length} apps (${metadata.version})`);

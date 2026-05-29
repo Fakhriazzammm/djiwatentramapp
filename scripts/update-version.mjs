@@ -38,7 +38,10 @@ export function getAppVersionInfo() {
 }
 `;
 
+// Write to all apps that use version.ts
 writeFileSync(resolve(rootDir, "apps/web/src/lib/version.ts"), versionContent);
+writeFileSync(resolve(rootDir, "apps/pos/src/lib/version.ts"), versionContent);
+writeFileSync(resolve(rootDir, "apps/customer/src/lib/version.ts"), versionContent);
 
 console.log(
 	`✓ Version updated: ${metadata.version} build:${metadata.commitCount} hash:${metadata.commitHash} (${metadata.buildDate})`,
