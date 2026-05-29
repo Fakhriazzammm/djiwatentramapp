@@ -73,6 +73,7 @@ async function fetchUserBySlug(slug: string) {
 		name: data.name,
 		slug: data.slug,
 		roleName: data.roleName || "Team",
+		roleId: data.roleId ?? null,
 		hasFace: Boolean(data.hasFace),
 		photoUrl: (data as any).photoUrl ?? null,
 		raw: (data as any).raw ?? null,
