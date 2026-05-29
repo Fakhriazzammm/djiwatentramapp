@@ -800,6 +800,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												}
 											}
 										});
+										const display = showAllPayslips ? all : all.slice(0, 3);
+										return display.map((p: any) => (
+											<PayslipDetailCard key={p.id} payslip={p} onDownload={handleDownloadPayslip} />
+										));
 									})()}
 								</div>
 							</div>
