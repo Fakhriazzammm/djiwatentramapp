@@ -653,14 +653,7 @@ export class BluetoothPrinterService {
 			printKeyValue("SHIFT", order.shiftName.toUpperCase());
 		}
 
-		const dateStr = new Date(order.createdAt).toLocaleString("id-ID", {
-			day: "2-digit",
-			month: "2-digit",
-			year: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
-			timeZone: "Asia/Jakarta",
-		});
+		const dateStr = formatDateTimeWIB(order.createdAt);
 		printKeyValue("WAKTU", dateStr);
 
 		if (mode === "paid") {

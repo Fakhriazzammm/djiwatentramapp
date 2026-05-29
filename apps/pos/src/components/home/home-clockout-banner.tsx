@@ -2,24 +2,16 @@ import { useState, useEffect } from "react";
 import { AlertCircle, CalendarClock, X, Loader2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { createClient } from "@/lib/client";
+import { WIB_OFFSET_MS_MS, isSameDayWIB, nowWIB } from "@/lib/wib-utils";
 
 const DISMISS_PREFIX = "prev_shift_clockout_dismiss_";
-const WIB_OFFSET = 7 * 60 * 60 * 1000;
 
 function getTodayKey(): string {
-  const now = new Date(Date.now() + WIB_OFFSET);
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const now = nowWIB();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
 }
 
-function isSameDay(a: number, b: number): boolean {
-  const da = new Date(a + WIB_OFFSET);
-  const db = new Date(b + WIB_OFFSET);
-  return (
-    da.getUTCFullYear() === db.getUTCFullYear() &&
-    da.getUTCMonth() === db.getUTCMonth() &&
-    da.getUTCDate() === db.getUTCDate()
-  );
-}
+const isSameDay = isSameDayWIB;
 
 function isDismissed(checkInDate: string): boolean {
   try {
@@ -71,7 +63,7 @@ export function HomeClockOutBanner({ userId }: Props) {
         }
 
         // Check-in dari hari sebelumnya! Cek dismiss
-        const checkInDate = new Date(checkInTs + WIB_OFFSET);
+        const checkInDate = new Date(checkInTs + WIB_OFFSET_MS);
         const dateKey = `${checkInDate.getUTCFullYear()}-${String(checkInDate.getUTCMonth() + 1).padStart(2, "0")}-${String(checkInDate.getUTCDate()).padStart(2, "0")}`;
 
         if (isDismissed(dateKey)) {
@@ -90,7 +82,7 @@ export function HomeClockOutBanner({ userId }: Props) {
 
   if (state !== "show") return null;
 
-  const checkInDate = new Date(checkInTime + WIB_OFFSET);
+  const checkInDate = new Date(checkInTime + WIB_OFFSET_MS);
   const dateStr = checkInDate.toLocaleDateString("id-ID", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
@@ -107,7 +99,7 @@ export function HomeClockOutBanner({ userId }: Props) {
   };
 
   const handleDismiss = () => {
-    const d = new Date(checkInTime + WIB_OFFSET);
+    const d = new Date(checkInTime + WIB_OFFSET_MS);
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     markDismissed(key);
     setState("none");

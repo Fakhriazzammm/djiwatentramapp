@@ -37,6 +37,7 @@ import {
 	isFreeRefillActive,
 } from "@/lib/utils/pricing";
 import { compressFileToLimit, dataURLtoBlob, isOversized } from "@/lib/image-compress";
+import { formatDateTimeWIB, todayStrWIB } from "@/lib/wib-utils";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
@@ -91,7 +92,7 @@ function formatDateLong(dateStr: string) {
 }
 
 function todayStr() {
-	return new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }).split("/").reverse().join("-");
+	return todayStrWIB();
 }
 
 // ─── Canvas Receipt Generator ─────────────────────────────────────────────────
@@ -334,7 +335,7 @@ function downloadReceiptJpg(
 	y += 20;
 
 	// ── Footer ──
-	const orderedAt = new Date(booking.createdAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+	const orderedAt = formatDateTimeWIB(booking.createdAt);
 	ctx.textAlign = "center";
 	ctx.fillStyle = "#9ca3af";
 	ctx.font = "11px Arial, sans-serif";

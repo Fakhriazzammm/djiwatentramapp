@@ -1,4 +1,5 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { Link, createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { todayStrWIB, formatDateTimeWIB } from "@/lib/wib-utils";
 import {
 	AlertCircle,
 	Calendar,
@@ -91,7 +92,7 @@ function formatDateLong(dateStr: string) {
 }
 
 function todayStr() {
-	return new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }).split("/").reverse().join("-");
+	return todayStrWIB();
 }
 
 // ─── Canvas Receipt Generator ─────────────────────────────────────────────────

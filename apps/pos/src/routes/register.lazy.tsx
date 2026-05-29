@@ -1,4 +1,5 @@
-import { createLazyFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { todayStrWIB } from "@/lib/wib-utils";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Camera, CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, UserPlus, XCircle } from "lucide-react";
@@ -55,7 +56,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 	employment: {
 		roleId: "",
 		roleName: "",
-		startDate: new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }).split("/").reverse().join("-"),
+		startDate: todayStrWIB(),
 		employmentType: "probation",
 		monthlySalary: 0,
 		dailyAllowance: 0,

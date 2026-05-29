@@ -6,6 +6,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
+import { formatDateWIB, formatTimeWIB, formatDayLabelWIB, getWibDayRange, isSameDayWIB, getCurrentTotalMinutesWIB } from "@/lib/wib-utils";
 import {
 	useHybridCurrentMonthProgress,
 	useHybridShiftDetails,
@@ -56,21 +57,12 @@ type ShiftRow = {
 };
 
 function formatDate(timestamp: number) {
-	return new Date(timestamp).toLocaleDateString("id-ID", {
-		day: "2-digit",
-		month: "2-digit",
-		year: "numeric",
-		timeZone: "Asia/Jakarta",
-	});
+	return formatDateWIB(timestamp);
 }
 
 function formatTime(timestamp?: number) {
 	if (!timestamp) return "Aktif";
-	return new Date(timestamp).toLocaleTimeString("id-ID", {
-		hour: "2-digit",
-		minute: "2-digit",
-		timeZone: "Asia/Jakarta",
-	});
+	return formatTimeWIB(timestamp);
 }
 
 function formatTeamMembersByRole(teamMembers: string, allStaffUsers: any[] | undefined): string {
@@ -192,7 +184,7 @@ function HomePage() {
 		// Deduplicate by (shiftName, date) — keep latest startTime
 		const seen = new Map<string, ShiftRow>();
 		for (const row of raw) {
-			const dateKey = new Date(row.startTime).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" });
+			const dateKey = formatDateWIB(row.startTime);
 			const dedupKey = `${row.shiftName}::${dateKey}`;
 			const existing = seen.get(dedupKey);
 			if (!existing || row.startTime > existing.startTime) {

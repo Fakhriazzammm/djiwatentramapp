@@ -1716,29 +1716,11 @@ export async function fetchShiftStatus() {
 	} as ShiftStatusRecord;
 }
 
-const WIB_OFFSET = 7 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function getWibDayRange(referenceTime: number) {
-	const shifted = new Date(referenceTime + WIB_OFFSET);
-	const start =
-		Date.UTC(
-			shifted.getUTCFullYear(),
-			shifted.getUTCMonth(),
-			shifted.getUTCDate()
-		) - WIB_OFFSET;
-	return {
-		start,
-		end: start + DAY_MS - 1,
-	};
-}
+import { getWibDayRange as _getWibDayRange, formatDayLabelWIB, WIB_OFFSET_MS } from "@/lib/wib-utils";
+const getWibDayRange = _getWibDayRange;
 
 function formatWibDayLabel(referenceTime: number) {
-	return new Date(referenceTime + WIB_OFFSET).toLocaleDateString("id-ID", {
-		weekday: "short",
-		day: "numeric",
-		timeZone: "UTC",
-	});
+	return formatDayLabelWIB(referenceTime);
 }
 
 function isSettledOrderRecord(order: OrderRecord) {

@@ -1,4 +1,5 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
+import { formatDateFullWIB } from "@/lib/wib-utils";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -36,7 +37,7 @@ function addPDFHeader(doc: jsPDF, title: string, period: string, storeName: stri
 	doc.setFontSize(9);
 	doc.setTextColor(100);
 	doc.text(`Periode: ${period}`, 14, 33);
-	doc.text(`Dicetak: ${new Date().toLocaleDateString("id-ID", { dateStyle: "full", timeZone: "Asia/Jakarta" })}`, 14, 38);
+	doc.text(`Dicetak: ${formatDateFullWIB(Date.now())}`, 14, 38);
 	doc.setTextColor(0);
 
 	doc.setDrawColor(200);
