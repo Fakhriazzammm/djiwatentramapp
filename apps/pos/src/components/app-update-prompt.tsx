@@ -141,15 +141,30 @@ export function AppUpdatePrompt() {
 			});
 		}, 150);
 
+		// Safety fallback: force reload if applyAppUpdate hangs
+		const fallbackTimer = window.setTimeout(() => {
+			window.clearInterval(progressInterval);
+			window.location.reload();
+		}, 10_000);
+
 		try {
 			window.localStorage.removeItem(NEXT_REMINDER_KEY);
 			await applyAppUpdate();
+			// If we reach here, applyAppUpdate resolved but page didn't reload
+			// (very unlikely with new fallback in app-update.ts, but safety first)
+			window.clearInterval(progressInterval);
+			window.clearTimeout(fallbackTimer);
+			setProgress(100);
+			// Short delay so user sees 100%, then force reload
+			window.setTimeout(() => {
+				window.location.reload();
+			}, 300);
 		} catch {
+			window.clearTimeout(fallbackTimer);
 			// If update fails, reset so user can retry
 			setIsUpdating(false);
 			isUpdatingRef.current = false;
 			setProgress(0);
-		} finally {
 			window.clearInterval(progressInterval);
 		}
 	};

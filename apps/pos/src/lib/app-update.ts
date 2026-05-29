@@ -101,6 +101,12 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
+	// Safety net: force reload after 12 seconds no matter what
+	const FALLBACK_TIMEOUT_MS = 12_000;
+	const fallbackTimer = window.setTimeout(() => {
+		window.location.reload();
+	}, FALLBACK_TIMEOUT_MS);
+
 	try {
 		if ("serviceWorker" in navigator) {
 			const registrations = await navigator.serviceWorker.getRegistrations();
@@ -108,6 +114,7 @@ export async function applyAppUpdate() {
 			if (!registeredSkipWaitingReload) {
 				registeredSkipWaitingReload = true;
 				navigator.serviceWorker.addEventListener("controllerchange", () => {
+					window.clearTimeout(fallbackTimer);
 					window.location.reload();
 				});
 			}
@@ -126,12 +133,14 @@ export async function applyAppUpdate() {
 			await pwaUpdateHandler(true).catch(() => undefined);
 		}
 
+		window.clearTimeout(fallbackTimer);
 		const cacheBust = `appUpdated=${Date.now()}`;
 		const url = new URL(window.location.href);
 		url.searchParams.set("v", APP_VERSION.semantic);
 		url.searchParams.set(cacheBust.split("=")[0], cacheBust.split("=")[1]);
 		window.location.replace(url.toString());
 	} catch (error) {
+		window.clearTimeout(fallbackTimer);
 		console.warn("Gagal apply update aplikasi:", error);
 		window.location.reload();
 	}
