@@ -64,6 +64,7 @@ const ID_TO_EN: Record<string, string> = {
 	januari:"january", februari:"february", maret:"march", april:"april",
 	mei:"may", juni:"june", juli:"july", agustus:"august",
 	september:"september", oktober:"october", november:"november", desember:"december",
+	may:"may", // English "May" → explicit passthrough
 };
 function normPeriod(p: string): string {
 	const lower = p.toLowerCase().trim();
@@ -95,7 +96,7 @@ function PayslipDetailCard({
 	if ((b.monthly_fixed_salary ?? 0) > 0) items.push({ label: "Gaji Tetap", value: b.monthly_fixed_salary });
 	if ((b.total_shift_pay ?? 0) > 0) items.push({ label: `Gaji Shift (${b.shifts ?? 0} shift)`, value: b.total_shift_pay });
 	if ((b.total_allowance ?? 0) > 0) items.push({ label: "Tunjangan Transportasi", value: b.total_allowance });
-	if ((b.total_overtime_bonus ?? 0) > 0) items.push({ label: "Bonus Lembur", value: b.total_overtime_bonus, color: "text-emerald-600" });
+	// Hapus Bonus Lembur - bonus dari target revenue per shift, bukan lembur
 	if ((b.bonus_target?.total_bonus ?? 0) > 0) items.push({ label: "Bonus Target", value: b.bonus_target.total_bonus, color: "text-emerald-600" });
 	if ((b.total_penalty ?? 0) > 0) items.push({ label: "Denda Keterlambatan", value: -Math.abs(b.total_penalty), color: "text-red-600" });
 
