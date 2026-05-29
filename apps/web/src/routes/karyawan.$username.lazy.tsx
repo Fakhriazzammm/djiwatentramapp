@@ -407,8 +407,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								0, // dailyPct
 								staffNameToRole,
 							);
+							// Cari bonus staff ini — partial match (nama di team_members bisa beda dgn staff.name)
 							const myBonus = bonuses.find(
-								(b: any) => b.name.toUpperCase().trim() === (staff.name ?? "").toUpperCase().trim()
+								(b: any) => {
+									const bn = b.name.toUpperCase().trim();
+									const sn = (staff.name ?? "").toUpperCase().trim();
+									return bn === sn || sn.includes(bn) || bn.includes(sn);
+								}
 							)?.bonus ?? 0;
 							if (myBonus > 0) {
 								totalTargetBonus += myBonus;
