@@ -159,6 +159,20 @@ function PayslipDetailCard({
 	);
 }
 
+// Normalize Indonesian month names for dedup
+const normPeriod = (name: string) => {
+	const idMonths: Record<string, string> = {
+		januari:"january",februari:"february",maret:"march",mei:"may",
+		juni:"june",juli:"july",agustus:"august",oktober:"october",
+		nopember:"november",desember:"december",
+	};
+	let n = name.toLowerCase().trim();
+	for (const [id, en] of Object.entries(idMonths)) {
+		n = n.replace(id, en);
+	}
+	return n;
+};
+
 function StaffProfilePage() {
 	const { username } = useParams({ from: "/karyawan/$username" as any }) as { username: string };
 	const navigate = useNavigate();
@@ -303,31 +317,98 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 		(async () => {
 			try {
 				const supabase = createClient();
-				const { data: roleData } = await supabase
-					.from("pos_staff_roles")
-					.select("raw")
-					.eq("_id", staff.roleId)
-					.maybeSingle();
-				const raw = (roleData?.raw ?? {}) as Record<string, any>;
+				const [roleRes, targetsRes] = await Promise.all([
+					supabase
+						.from("pos_staff_roles")
+						.select("raw")
+						.eq("_id", staff.roleId)
+						.maybeSingle(),
+					supabase
+						.schema("pos")
+						.from("financial_targets")
+						.select("month,target_revenue,target_profit")
+						.order("month", { ascending: false })
+						.limit(3),
+				]);
+				const raw = ((roleRes as any)?.data?.raw ?? {}) as Record<string, any>;
+				const targets = (targetsRes as any)?.data as any[] | undefined;
+				const targetMap = new Map<string, number>();
+				if (targets) {
+					for (const t of targets) {
+						targetMap.set(t.month, Number(t.target_revenue ?? 0));
+					}
+				}
 				const baseShiftRate = Number(raw.baseShiftRate ?? 0);
 				const monthlyFixedSalary = Number(raw.monthlyFixedSalary ?? 0);
 				const dailyAllowance = Number(raw.dailyAllowance ?? 0);
-				const overtimeRate = Number(raw.overtimeBonusPerHour ?? raw.overtimeRatePerHour ?? 10000);
 				const daysWorked = stats.daysWorked ?? 0;
-				const totalHours = stats.totalHours ?? 0;
 				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
 				const totalShiftSalary = sessionCount * baseShiftRate;
 				const totalAllowance = daysWorked * dailyAllowance;
-				const overtimeHours = Math.max(0, totalHours - sessionCount * 8);
-				const totalOvertimeBonus = overtimeHours * overtimeRate;
-				// Bonus target
+				// Bonus target dari revenue per shift (real data shift reports)
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as Record<string, any>;
 				const bonusBasis = String(bonusCfg?.basis ?? "shift");
-				const bonusTiers: { bonusAmount?: number }[] = Array.isArray(bonusCfg?.tiers) ? bonusCfg.tiers : [];
-				const baseBonusAmount = Number(bonusTiers[0]?.bonusAmount ?? 0);
-				const totalTargetBonus = bonusBasis === "monthly" ? baseBonusAmount : sessionCount * baseBonusAmount;
+				const bonusTiers: { thresholdPct?: number; bonusAmount?: number }[] = Array.isArray(bonusCfg?.tiers) ? bonusCfg.tiers : [];
+				const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+				const targetRevenue = targetMap.get(monthKey) ?? 0;
+				// Hitung total bonus dari shift-shift yang staff ini ikut serta dan target tercapai
+				let totalTargetBonus = 0;
+				let bonusShiftCount = 0;
+				if (targetRevenue > 0 && bonusTiers.length > 0 && bonusBasis !== "monthly") {
+					const monthStart = new Date(selectedYear, selectedMonth - 1, 1).getTime();
+					const monthEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999).getTime();
+					const daysInMonthVal = new Date(selectedYear, selectedMonth, 0).getDate();
+					const dailyTarget = targetRevenue / daysInMonthVal;
+					// Ambil jumlah shift per hari dari siteSettings
+					let shiftsPerDay = 2;
+					try {
+						const { data: ss } = await supabase
+							.schema("pos")
+							.from("site_settings")
+							.select("raw")
+							.order("creation_time", { ascending: false })
+							.limit(1)
+							.single();
+						if (ss?.raw) {
+							const arr = (ss as any).raw?.shiftSettings?.predefinedShifts;
+							if (Array.isArray(arr) && arr.length > 0) shiftsPerDay = arr.length;
+						}
+					} catch {}
+					const shiftTargetAmt = dailyTarget / shiftsPerDay;
+					// Query shift yang staff ini ikut di bulan ini
+					const { data: monthShifts } = await supabase
+						.schema("pos")
+						.from("shifts")
+						.select("team_members,summary")
+						.gte("start_time", monthStart)
+						.lte("start_time", monthEnd)
+						.not("end_time", "is", null);
+					const staffNameLower = (staff.name ?? "").toLowerCase().trim();
+					if (monthShifts && staffNameLower) {
+						for (const shift of monthShifts as any[]) {
+							const team = String(shift.team_members ?? "").split(",").map((n: string) => n.trim().toLowerCase());
+							if (!team.includes(staffNameLower)) continue;
+							const summary = (shift.summary ?? {}) as Record<string, any>;
+							const shiftRevenue = Number(summary.totalRevenue ?? 0);
+							if (shiftRevenue < shiftTargetAmt) continue;
+							const pct = (shiftRevenue / shiftTargetAmt) * 100;
+							let perShiftBonus = 0;
+							for (const tier of bonusTiers) {
+								if (pct >= (tier.thresholdPct ?? 0)) {
+									perShiftBonus += tier.bonusAmount ?? 0;
+								}
+							}
+							if (perShiftBonus > 0) {
+								totalTargetBonus += perShiftBonus;
+								bonusShiftCount++;
+							}
+						}
+					}
+				} else if (bonusBasis === "monthly" && bonusTiers.length > 0) {
+					totalTargetBonus = Number(bonusTiers[0]?.bonusAmount ?? 0);
+				}
 				const totalPenalty = 0;
-				const gross = monthlyFixedSalary + totalShiftSalary + totalAllowance + totalOvertimeBonus + totalTargetBonus;
+				const gross = monthlyFixedSalary + totalShiftSalary + totalAllowance + totalTargetBonus;
 				const net = gross - totalPenalty;
 				const periodStart = new Date(selectedYear, selectedMonth - 1, 1);
 				const periodEnd = new Date(selectedYear, selectedMonth, 0);
@@ -353,10 +434,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							days_worked: daysWorked,
 							daily_allowance: dailyAllowance,
 							total_allowance: totalAllowance,
-							overtime_rate_per_hour: overtimeRate,
-							total_overtime_bonus: totalOvertimeBonus,
+							overtime_rate_per_hour: 0,
+							total_overtime_bonus: 0,
 							total_penalty: totalPenalty,
-							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: baseBonusAmount },
+							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: bonusTiers.length > 0 ? (bonusTiers[0]?.bonusAmount ?? 0) : 0 },
 						},
 					});
 				}
@@ -710,28 +791,15 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										const seenPeriods = new Set<string>();
 										if (livePayslip) {
 											all.push(livePayslip);
-											seenPeriods.add(livePayslip.period_name);
+											seenPeriods.add(normPeriod(livePayslip.period_name));
 										}
 										if (myPayslips) myPayslips.forEach((p: any) => {
 											if ((p.gross_pay??0) > 0 || (p.net_pay??0) > 0) {
-												if (!seenPeriods.has(p.period_name)) {
+												if (!seenPeriods.has(normPeriod(p.period_name))) {
 													all.push(p);
 												}
 											}
 										});
-										if (all.length === 0) return (
-											<div className="rounded-xl border bg-card p-6 text-center">
-												<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-												<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
-											</div>
-										);
-										return <>{all.slice(0, showAllPayslips ? undefined : 3).map((payslip: any) => (
-										<PayslipDetailCard
-										key={payslip.id}
-										payslip={payslip}
-										onDownload={handleDownloadPayslip}
-										/>
-										))}</>
 									})()}
 								</div>
 							</div>
