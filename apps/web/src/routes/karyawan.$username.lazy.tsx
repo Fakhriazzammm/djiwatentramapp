@@ -42,7 +42,7 @@ import {
 	useHybridPayslips,
 } from "@/hooks/use-hybrid-payroll-data";
 import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
-import { useHybridSiteSettings, type StaffRoleBonusConfig, fetchShiftReports } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, type StaffRoleBonusConfig } from "@/hooks/use-hybrid-pos-data";
 import { createClient } from "@/lib/client";
 
 const formatCurrency = (amount: number) => {
@@ -345,35 +345,61 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
 				const totalShiftSalary = sessionCount * baseShiftRate;
 				const totalAllowance = daysWorked * dailyAllowance;
-				// Bonus target dari fetchShiftReports — persis sama dgn data di /admin/laporan-shift
+				// Bonus target — query shifts langsung tanpa filter timezone (pake epoch UTC)
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
 				const bonusBasis = bonusCfg?.basis ?? "shift";
 				let totalTargetBonus = 0;
 				let bonusShiftCount = 0;
 				if (bonusCfg?.tiers && bonusCfg.tiers.length > 0 && bonusBasis !== "monthly") {
 					try {
-						const allShifts = await fetchShiftReports();
+						const supabase = createClient();
+						// Query ALL shifts, filter by month via epoch UTC
+						const monthStart = Date.UTC(selectedYear, selectedMonth - 1, 1);
+						const monthEnd = Date.UTC(selectedYear, selectedMonth, 0, 23, 59, 59, 999);
+						const { data: rawShifts } = await supabase
+							.schema("pos")
+							.from("shifts")
+							.select("team_members,summary,end_time,start_time")
+							.gte("start_time", monthStart)
+							.lte("start_time", monthEnd)
+							.not("end_time", "is", null);
 						const staffNameUpper = (staff.name ?? "").toUpperCase().trim();
-						if (allShifts && Array.isArray(allShifts) && staffNameUpper) {
-							for (const shift of allShifts) {
-								// Filter: shift di bulan selected
-								const st = new Date(shift.startTime);
-								if (st.getFullYear() !== selectedYear || st.getMonth() + 1 !== selectedMonth) continue;
-								// Filter: staff ada di memberBonuses
-								const mb = shift.memberBonuses;
-								if (!Array.isArray(mb)) continue;
-								const myBonus = mb.find((b: any) => {
-									const bn = b.name.toUpperCase().trim();
-									return bn === staffNameUpper || staffNameUpper.includes(bn) || bn.includes(staffNameUpper);
-								})?.bonus ?? 0;
-								if (myBonus > 0) {
-									totalTargetBonus += myBonus;
+						const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+						const targetRevenue = targetMap.get(monthKey) ?? 0;
+						if (rawShifts && Array.isArray(rawShifts) && targetRevenue > 0) {
+							const daysInMonth = new Date(Date.UTC(selectedYear, selectedMonth, 0)).getDate();
+							const dailyTarget = targetRevenue / daysInMonth;
+							let shiftsPerDay = 2;
+							try {
+								const { data: ss } = await supabase
+									.schema("pos").from("site_settings").select("raw")
+									.order("creation_time", { ascending: false }).limit(1).single();
+								if (ss?.raw) {
+									const arr = (ss as any).raw?.shiftSettings?.predefinedShifts;
+									if (Array.isArray(arr) && arr.length > 0) shiftsPerDay = arr.length;
+								}
+							} catch {}
+							const shiftTargetAmt = dailyTarget / shiftsPerDay;
+							for (const shift of rawShifts) {
+								const team = String(shift.team_members ?? "").split(",").map((n: string) => n.trim().toUpperCase());
+								const isInTeam = team.some((t: string) => t === staffNameUpper || staffNameUpper.includes(t) || t.includes(staffNameUpper));
+								if (!isInTeam) continue;
+								const summary = (shift.summary ?? {}) as Record<string, any>;
+								const shiftRevenue = Number(summary.totalRevenue ?? 0);
+								if (shiftRevenue < shiftTargetAmt) continue;
+								const pct = (shiftRevenue / shiftTargetAmt) * 100;
+								let perShiftBonus = 0;
+								for (const tier of bonusCfg.tiers) {
+									if (pct >= tier.thresholdPct) perShiftBonus += tier.bonusAmount;
+								}
+								if (perShiftBonus > 0) {
+									totalTargetBonus += perShiftBonus;
 									bonusShiftCount++;
 								}
 							}
 						}
 					} catch (e) {
-						console.warn("[LivePayslip] fetchShiftReports error:", e);
+						console.warn("[LivePayslip] bonus error:", e);
 					}
 				} else if (bonusBasis === "monthly" && bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
 					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
