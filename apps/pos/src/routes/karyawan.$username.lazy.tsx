@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { PersonalSchedule } from "@/components/attendance/PersonalSchedule";
+import { HomeClockOutBanner } from "@/components/home/home-clockout-banner";
 import {
 	useHybridPrivateStaffData,
 	useHybridStaffBySlug,
@@ -497,6 +498,11 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 					</div>
 				</div>
 			</header>
+
+			{/* Clock-out reminder — jika lupa absen keluar dari shift sebelumnya */}
+			<div className="mx-auto max-w-2xl px-4 pt-4">
+				<HomeClockOutBanner userId={authUser?._id} />
+			</div>
 
 			<main className="mx-auto max-w-2xl px-4 py-8 pb-24">
 				<AnimatePresence mode="wait">
