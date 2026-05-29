@@ -616,18 +616,18 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								<div className="px-3 pb-3">
 									<p className="text-[8px] text-muted-foreground/60 font-medium">{dateText}</p>
 									<div className="mt-1.5 grid grid-cols-3 divide-x divide-border/40 rounded-xl border border-border/50 bg-background/60 shadow-sm overflow-hidden">
-										<div className="px-2 py-1.5 text-center">
-											<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Total Jam</p>
-											<p className="text-xs font-black">{stats?.totalHours ?? 0}<span className="text-[7px] font-normal text-muted-foreground">j</span> {stats?.totalMinutes ?? 0}<span className="text-[7px] font-normal text-muted-foreground">m</span></p>
-										</div>
-										<div className="px-2 py-1.5 text-center">
-											<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Shift</p>
-											<p className="text-xs font-black">{stats?.sessionCount ?? 0}</p>
-										</div>
-										<div className="px-2 py-1.5 text-center">
-											<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hari</p>
-											<p className="text-xs font-black">{stats?.daysWorked ?? 0}</p>
-										</div>
+									    <div className="px-2 py-1.5 text-center">
+									        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Shift</p>
+									        <p className="text-xs font-black">{stats?.sessionCount ?? 0}</p>
+									    </div>
+									    <div className="px-2 py-1.5 text-center">
+									        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hadir</p>
+									        <p className="text-xs font-black">{stats?.attendanceRate ?? 0}<span className="text-[7px] font-normal text-muted-foreground">%</span></p>
+									    </div>
+									    <div className="px-2 py-1.5 text-center">
+									        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hari</p>
+									        <p className="text-xs font-black">{stats?.daysWorked ?? 0}</p>
+									    </div>
 									</div>
 								</div>
 								<div className="pb-3 px-3">
