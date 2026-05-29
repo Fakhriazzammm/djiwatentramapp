@@ -19,6 +19,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 import { HomeSearchBar } from "@/components/home/home-search-bar";
 import { HomeHeroOperational } from "@/components/home/home-hero-operational";
+import { HomeClockOutBanner } from "@/components/home/home-clockout-banner";
 import { HomeQuickActions } from "@/components/home/home-quick-actions";
 import { HomeServiceGrid } from "@/components/home/home-service-grid";
 import { HomeStickyStrip } from "@/components/home/home-sticky-strip";
@@ -358,7 +359,13 @@ function HomePage() {
 					onAvatarClick={handleAvatarClick}
 				/>
 
-				{/* 3. Quick Actions */}
+			{/* 2b. Clock-Out Reminder — jika lupa absen keluar */}
+			<HomeClockOutBanner
+				isWorking={statsToday?.isWorking}
+				lastCheckIn={statsToday?.lastCheckIn}
+			/>
+
+			{/* 3. Quick Actions */}
 				<section className="mb-5">
 					<HomeQuickActions userSlug={user?.slug} />
 				</section>
