@@ -20,16 +20,11 @@ function normalizeVersionValue(value: unknown) {
 }
 
 function isNewerBuild(payload: any) {
+	// Hanya trigger dialog saat VERSION NUMBER benar-benar berbeda.
+	// Commit hash berbeda dengan versi sama = rebuild tanpa konten baru
+	// → bukan update yang perlu ditampilkan ke user.
 	const latestVersion = normalizeVersionValue(payload?.version);
-	const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
-
-	// Guard: "service-worker-update" adalah nilai fake dari catch block —
-	// bukan real build baru. Jangan trigger update dialog.
-	if (latestCommit === "service-worker-update") return false;
-
-	if (latestCommit && latestCommit !== APP_VERSION.commitHash) return true;
 	if (latestVersion && latestVersion !== APP_VERSION.semantic) return true;
-
 	return false;
 }
 
@@ -108,9 +103,11 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
-	// Jika versi sama — update palsu. Tidak ada yang perlu di-update.
-	// Cukup silent SKIP_WAITING + flag biar polling nggak trigger lagi.
+	// Jika versi sama — update palsu (misal commit-only rebuild di Vercel).
+	// Set inflight flag biar polling skip 1x, reset state, dan close dialog.
+	// JANGAN reload — tidak ada update baru.
 	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
+		sessionStorage.setItem("__app_update_inflight__", "1");
 		if ("serviceWorker" in navigator) {
 			navigator.serviceWorker.getRegistrations().then((regs) => {
 				regs.forEach((reg) => {

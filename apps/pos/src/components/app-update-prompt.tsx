@@ -150,15 +150,14 @@ export function AppUpdatePrompt() {
 		try {
 			window.localStorage.removeItem(NEXT_REMINDER_KEY);
 			await applyAppUpdate();
-			// If we reach here, applyAppUpdate resolved but page didn't reload
-			// (very unlikely with new fallback in app-update.ts, but safety first)
+			// applyAppUpdate() resolved tanpa reload → versi sama / update palsu.
+			// Cukup close dialog, jangan force reload.
 			window.clearInterval(progressInterval);
 			window.clearTimeout(fallbackTimer);
-			setProgress(100);
-			// Short delay so user sees 100%, then force reload
-			window.setTimeout(() => {
-				window.location.reload();
-			}, 300);
+			setIsUpdating(false);
+			isUpdatingRef.current = false;
+			setProgress(0);
+			setOpen(false);
 		} catch {
 			window.clearTimeout(fallbackTimer);
 			// If update fails, reset so user can retry
