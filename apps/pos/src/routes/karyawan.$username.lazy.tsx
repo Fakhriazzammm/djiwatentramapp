@@ -58,6 +58,20 @@ const MONTHS = [
 	"Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
+/** Normalise period name for dedup across Indonesian/English month names */
+const ID_TO_EN: Record<string, string> = {
+	januari:"january", februari:"february", maret:"march", april:"april",
+	mei:"may", juni:"june", juli:"july", agustus:"august",
+	september:"september", oktober:"october", november:"november", desember:"december",
+};
+function normPeriod(p: string): string {
+	const lower = p.toLowerCase().trim();
+	for (const [id, en] of Object.entries(ID_TO_EN)) {
+		if (lower.startsWith(id)) return en + lower.slice(id.length);
+	}
+	return lower;
+}
+
 // ── Payslip Detail Card ─────────────────────────────────────────
 function PayslipDetailCard({
 	payslip,
@@ -730,11 +744,11 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										const seenPeriods = new Set<string>();
 										if (livePayslip) {
 											all.push(livePayslip);
-											seenPeriods.add(livePayslip.period_name);
+											seenPeriods.add(normPeriod(livePayslip.period_name));
 										}
 										if (myPayslips) myPayslips.forEach((p: any) => {
 											if ((p.gross_pay??0) > 0 || (p.net_pay??0) > 0) {
-												if (!seenPeriods.has(p.period_name)) {
+												if (!seenPeriods.has(normPeriod(p.period_name))) {
 													all.push(p);
 												}
 											}
