@@ -393,7 +393,9 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 					if (monthShifts && staffNameLower) {
 						for (const shift of monthShifts as any[]) {
 							const team = String(shift.team_members ?? "").split(",").map((n: string) => n.trim().toLowerCase());
-							if (!team.includes(staffNameLower)) continue;
+							// Partial match — nama di team_members bisa pendek ("budi") sementara staff.name panjang
+							const isInTeam = team.some((t: string) => t === staffNameLower || staffNameLower.includes(t) || t.includes(staffNameLower));
+							if (!isInTeam) continue;
 							const summary = (shift.summary ?? {}) as Record<string, any>;
 							const shiftRevenue = Number(summary.totalRevenue ?? 0);
 							if (shiftRevenue < shiftTargetAmt) continue;
