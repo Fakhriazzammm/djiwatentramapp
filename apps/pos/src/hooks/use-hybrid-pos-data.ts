@@ -990,12 +990,12 @@ async function fetchDetailedShifts() {
 	})) as ShiftOperationalRecord[];
 }
 
-type StaffRoleBonusConfig = {
+export type StaffRoleBonusConfig = {
 	basis?: "shift" | "daily" | "monthly";
 	tiers?: Array<{ thresholdPct: number; bonusAmount: number }>;
 };
 
-function computeMemberBonuses(
+export function computeMemberBonuses(
 	teamMembers: string,
 	isShiftTargetMet: boolean | undefined,
 	isDailyTargetMet: boolean | undefined,
@@ -1061,7 +1061,7 @@ function computeMemberBonuses(
 	});
 }
 
-async function fetchShiftReports() {
+export async function fetchShiftReports() {
 	const supabase = createClient();
 
 	// Step 1: Ambil semua shift langsung dari pos.shifts (cepat, hindari timeout view)

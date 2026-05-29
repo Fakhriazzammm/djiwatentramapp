@@ -42,7 +42,7 @@ import {
 	useHybridPayslips,
 } from "@/hooks/use-hybrid-payroll-data";
 import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
-import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, fetchShiftReports, type StaffRoleBonusConfig } from "@/hooks/use-hybrid-pos-data";
 import { createClient } from "@/lib/client";
 
 const formatCurrency = (amount: number) => {
@@ -318,16 +318,39 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
 				const totalShiftSalary = sessionCount * baseShiftRate;
 				const totalAllowance = daysWorked * dailyAllowance;
-				const overtimeHours = Math.max(0, totalHours - sessionCount * 8);
-				const totalOvertimeBonus = overtimeHours * overtimeRate;
-				// Bonus target
-				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as Record<string, any>;
-				const bonusBasis = String(bonusCfg?.basis ?? "shift");
-				const bonusTiers: { bonusAmount?: number }[] = Array.isArray(bonusCfg?.tiers) ? bonusCfg.tiers : [];
-				const baseBonusAmount = Number(bonusTiers[0]?.bonusAmount ?? 0);
-				const totalTargetBonus = bonusBasis === "monthly" ? baseBonusAmount : sessionCount * baseBonusAmount;
+				// Bonus target dari shift reports (pake fetchShiftReports — konsisten dgn /admin/laporan-shift)
+				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
+				const bonusBasis = bonusCfg?.basis ?? "shift";
+				let totalTargetBonus = 0;
+				let bonusShiftCount = 0;
+				if (bonusCfg?.tiers && bonusCfg.tiers.length > 0 && bonusBasis !== "monthly") {
+					try {
+						const allShiftsData = await fetchShiftReports();
+						const staffNameUpper = (staff.name ?? "").toUpperCase().trim();
+						if (Array.isArray(allShiftsData) && staffNameUpper) {
+							for (const shift of allShiftsData) {
+								const sd = new Date(shift.startTime);
+								if (sd.getFullYear() !== selectedYear || sd.getMonth() + 1 !== selectedMonth) continue;
+								const mb = shift.memberBonuses;
+								if (!Array.isArray(mb)) continue;
+								const myBonus = mb.find((b: any) => {
+									const bn = (b.name ?? "").toUpperCase().trim();
+									return bn === staffNameUpper || staffNameUpper.includes(bn) || bn.includes(staffNameUpper);
+								})?.bonus ?? 0;
+								if (myBonus > 0) {
+									totalTargetBonus += myBonus;
+									bonusShiftCount++;
+								}
+							}
+						}
+					} catch (e) {
+						console.warn("[LivePayslip] bonus fetch error:", e);
+					}
+				} else if (bonusBasis === "monthly" && bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
+					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
+				}
 				const totalPenalty = 0;
-				const gross = monthlyFixedSalary + totalShiftSalary + totalAllowance + totalOvertimeBonus + totalTargetBonus;
+				const gross = monthlyFixedSalary + totalShiftSalary + totalAllowance + totalTargetBonus;
 				const net = gross - totalPenalty;
 				const periodStart = new Date(selectedYear, selectedMonth - 1, 1);
 				const periodEnd = new Date(selectedYear, selectedMonth, 0);
@@ -353,10 +376,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							days_worked: daysWorked,
 							daily_allowance: dailyAllowance,
 							total_allowance: totalAllowance,
-							overtime_rate_per_hour: overtimeRate,
-							total_overtime_bonus: totalOvertimeBonus,
+							overtime_rate_per_hour: 0,
+							total_overtime_bonus: 0,
 							total_penalty: totalPenalty,
-							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: baseBonusAmount },
+							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: (bonusCfg?.tiers?.length ?? 0) > 0 ? (bonusCfg?.tiers?.[0]?.bonusAmount ?? 0) : 0 },
 						},
 					});
 				}
