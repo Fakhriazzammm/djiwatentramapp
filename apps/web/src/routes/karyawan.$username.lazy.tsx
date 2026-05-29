@@ -42,7 +42,7 @@ import {
 	useHybridPayslips,
 } from "@/hooks/use-hybrid-payroll-data";
 import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
-import { useHybridSiteSettings, computeMemberBonuses, type StaffRoleBonusConfig } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, type StaffRoleBonusConfig, fetchShiftReports } from "@/hooks/use-hybrid-pos-data";
 import { createClient } from "@/lib/client";
 
 const formatCurrency = (amount: number) => {
@@ -345,83 +345,35 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
 				const totalShiftSalary = sessionCount * baseShiftRate;
 				const totalAllowance = daysWorked * dailyAllowance;
-				// Bonus target dari shift report — pake computeMemberBonuses (konsisten dgn /admin/laporan-shift)
+				// Bonus target dari fetchShiftReports — persis sama dgn data di /admin/laporan-shift
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
 				const bonusBasis = bonusCfg?.basis ?? "shift";
-				const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
-				const targetRevenue = targetMap.get(monthKey) ?? 0;
-				// Build staffNameToRole map untuk computeMemberBonuses
-				const staffNameToRole = new Map<string, { roleName: string; bonusTargetConfig?: StaffRoleBonusConfig | null }>();
-				if (staff?.name && bonusCfg) {
-					staffNameToRole.set(staff.name.toUpperCase().trim(), {
-						roleName: staff.roleName ?? "",
-						bonusTargetConfig: bonusCfg,
-					});
-				}
 				let totalTargetBonus = 0;
 				let bonusShiftCount = 0;
-				if (targetRevenue > 0 && bonusCfg?.tiers && bonusCfg.tiers.length > 0 && bonusBasis !== "monthly") {
-					const monthStart = new Date(selectedYear, selectedMonth - 1, 1).getTime();
-					const monthEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999).getTime();
-					const daysInMonthVal = new Date(selectedYear, selectedMonth, 0).getDate();
-					const dailyTarget = targetRevenue / daysInMonthVal;
-					// Ambil jumlah shift per hari dari siteSettings
-					let shiftsPerDay = 2;
+				if (bonusCfg?.tiers && bonusCfg.tiers.length > 0 && bonusBasis !== "monthly") {
 					try {
-						const { data: ss } = await supabase
-							.schema("pos")
-							.from("site_settings")
-							.select("raw")
-							.order("creation_time", { ascending: false })
-							.limit(1)
-							.single();
-						if (ss?.raw) {
-							const arr = (ss as any).raw?.shiftSettings?.predefinedShifts;
-							if (Array.isArray(arr) && arr.length > 0) shiftsPerDay = arr.length;
-						}
-					} catch {}
-					const shiftTargetAmt = dailyTarget / shiftsPerDay;
-					// Query shift yang staff ini ikut di bulan ini
-					const { data: monthShifts } = await supabase
-						.schema("pos")
-						.from("shifts")
-						.select("team_members,summary")
-						.gte("start_time", monthStart)
-						.lte("start_time", monthEnd)
-						.not("end_time", "is", null);
-					const staffNameLower = (staff.name ?? "").toLowerCase().trim();
-					if (monthShifts && staffNameLower) {
-						for (const shift of monthShifts as any[]) {
-							const team = String(shift.team_members ?? "").split(",").map((n: string) => n.trim().toLowerCase());
-							// Partial match — nama di team_members bisa pendek ("budi") sementara staff.name panjang
-							const isInTeam = team.some((t: string) => t === staffNameLower || staffNameLower.includes(t) || t.includes(staffNameLower));
-							if (!isInTeam) continue;
-							const summary = (shift.summary ?? {}) as Record<string, any>;
-							const shiftRevenue = Number(summary.totalRevenue ?? 0);
-							if (shiftRevenue < shiftTargetAmt) continue;
-							const pct = (shiftRevenue / shiftTargetAmt) * 100;
-							// Pake computeMemberBonuses — logic sama dgn /admin/laporan-shift
-							const bonuses = computeMemberBonuses(
-								shift.team_members ?? "",
-								true, // isShiftTargetMet (already checked above)
-								undefined, // isDailyTargetMet — not used for "shift" basis
-								pct,
-								0, // dailyPct
-								staffNameToRole,
-							);
-							// Cari bonus staff ini — partial match (nama di team_members bisa beda dgn staff.name)
-							const myBonus = bonuses.find(
-								(b: any) => {
+						const allShifts = await fetchShiftReports();
+						const staffNameUpper = (staff.name ?? "").toUpperCase().trim();
+						if (allShifts && Array.isArray(allShifts) && staffNameUpper) {
+							for (const shift of allShifts) {
+								// Filter: shift di bulan selected
+								const st = new Date(shift.startTime);
+								if (st.getFullYear() !== selectedYear || st.getMonth() + 1 !== selectedMonth) continue;
+								// Filter: staff ada di memberBonuses
+								const mb = shift.memberBonuses;
+								if (!Array.isArray(mb)) continue;
+								const myBonus = mb.find((b: any) => {
 									const bn = b.name.toUpperCase().trim();
-									const sn = (staff.name ?? "").toUpperCase().trim();
-									return bn === sn || sn.includes(bn) || bn.includes(sn);
+									return bn === staffNameUpper || staffNameUpper.includes(bn) || bn.includes(staffNameUpper);
+								})?.bonus ?? 0;
+								if (myBonus > 0) {
+									totalTargetBonus += myBonus;
+									bonusShiftCount++;
 								}
-							)?.bonus ?? 0;
-							if (myBonus > 0) {
-								totalTargetBonus += myBonus;
-								bonusShiftCount++;
 							}
 						}
+					} catch (e) {
+						console.warn("[LivePayslip] fetchShiftReports error:", e);
 					}
 				} else if (bonusBasis === "monthly" && bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
 					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);

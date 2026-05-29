@@ -1108,7 +1108,7 @@ export function computeMemberBonuses(
 	});
 }
 
-async function fetchShiftReports() {
+export async function fetchShiftReports() {
 	const supabase = createClient();
 
 	// Step 1: Ambil semua shift langsung dari pos.shifts (cepat, hindari timeout view)
