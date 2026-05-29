@@ -69,6 +69,7 @@ function PayslipDetailCard({
 	const b = payslip.breakdown ?? {};
 	const badgeMap: Record<string, { label: string; cls: string }> = {
 		generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
+		live: { label: "Realtime", cls: "bg-blue-100 text-blue-600" },
 		sent: { label: "Dikirim", cls: "bg-blue-100 text-blue-600" },
 		acknowledged: { label: "Diterima", cls: "bg-emerald-100 text-emerald-600" },
 		disputed: { label: "Dispute", cls: "bg-red-100 text-red-600" },
@@ -362,7 +363,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 						gross_pay: gross,
 						net_pay: net,
 						deductions: totalPenalty,
-						status: "generated",
+						status: "live",
 						breakdown: {
 							role_name: staff.roleName,
 							monthly_fixed_salary: monthlyFixedSalary,
