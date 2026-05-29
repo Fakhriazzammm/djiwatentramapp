@@ -59,6 +59,7 @@ function formatDate(timestamp: number) {
 		day: "2-digit",
 		month: "2-digit",
 		year: "numeric",
+		timeZone: "Asia/Jakarta",
 	});
 }
 
@@ -67,6 +68,7 @@ function formatTime(timestamp?: number) {
 	return new Date(timestamp).toLocaleTimeString("id-ID", {
 		hour: "2-digit",
 		minute: "2-digit",
+		timeZone: "Asia/Jakarta",
 	});
 }
 

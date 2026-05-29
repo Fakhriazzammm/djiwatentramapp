@@ -91,7 +91,7 @@ function formatDateLong(dateStr: string) {
 }
 
 function todayStr() {
-	return new Date().toISOString().split("T")[0];
+	return new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }).split("/").reverse().join("-");
 }
 
 // ─── Canvas Receipt Generator ─────────────────────────────────────────────────
@@ -334,7 +334,7 @@ function downloadReceiptJpg(
 	y += 20;
 
 	// ── Footer ──
-	const orderedAt = new Date(booking.createdAt).toLocaleString("id-ID");
+	const orderedAt = new Date(booking.createdAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
 	ctx.textAlign = "center";
 	ctx.fillStyle = "#9ca3af";
 	ctx.font = "11px Arial, sans-serif";

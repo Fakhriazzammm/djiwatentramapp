@@ -60,6 +60,7 @@ function formatDate(timestamp: number) {
 		day: "2-digit",
 		month: "2-digit",
 		year: "numeric",
+		timeZone: "Asia/Jakarta",
 	});
 }
 
@@ -68,6 +69,7 @@ function formatTime(timestamp?: number) {
 	return new Date(timestamp).toLocaleTimeString("id-ID", {
 		hour: "2-digit",
 		minute: "2-digit",
+		timeZone: "Asia/Jakarta",
 	});
 }
 
@@ -190,7 +192,7 @@ function HomePage() {
 		// Deduplicate by (shiftName, date) — keep latest startTime
 		const seen = new Map<string, ShiftRow>();
 		for (const row of raw) {
-			const dateKey = new Date(row.startTime).toLocaleDateString("id-ID");
+			const dateKey = new Date(row.startTime).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" });
 			const dedupKey = `${row.shiftName}::${dateKey}`;
 			const existing = seen.get(dedupKey);
 			if (!existing || row.startTime > existing.startTime) {
@@ -245,12 +247,14 @@ function HomePage() {
 			weekday: "long",
 			day: "numeric",
 			month: "long",
+			timeZone: "Asia/Jakarta",
 		}).format(currentTime);
 
 		const timePart = currentTime.toLocaleTimeString("id-ID", {
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
+			timeZone: "Asia/Jakarta",
 		});
 
 		return `${datePart} • ${timePart}`;

@@ -71,17 +71,18 @@ async function ensureExecSql(supabase: ReturnType<typeof createClient>): Promise
 // ─── Action Handlers ────────────────────────────────
 
 async function handleAutoDetect(supabase: ReturnType<typeof createClient>) {
-  const now = new Date();
+  const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+  const now = new Date(Date.now() + WIB_OFFSET_MS);
   const monthNames = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember",
   ];
-  const periodName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  const periodName = `${monthNames[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
   const startDateStr = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endDate = new Date(year, month, 0);
-  const endDateStr = `${year}-${String(month).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
+  const endDate = new Date(Date.UTC(year, month, 0));
+  const endDateStr = `${year}-${String(month).padStart(2, "0")}-${String(endDate.getUTCDate()).padStart(2, "0")}`;
 
   // Step 1: Find existing period
   const findPeriodSql = `

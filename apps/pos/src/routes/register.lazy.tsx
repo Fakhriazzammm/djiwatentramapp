@@ -55,7 +55,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 	employment: {
 		roleId: "",
 		roleName: "",
-		startDate: new Date().toISOString().slice(0, 10),
+		startDate: new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }).split("/").reverse().join("-"),
 		employmentType: "probation",
 		monthlySalary: 0,
 		dailyAllowance: 0,

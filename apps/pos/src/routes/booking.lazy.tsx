@@ -91,7 +91,7 @@ function formatDateLong(dateStr: string) {
 }
 
 function todayStr() {
-	return new Date().toISOString().split("T")[0];
+	return new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }).split("/").reverse().join("-");
 }
 
 // ─── Canvas Receipt Generator ─────────────────────────────────────────────────

@@ -223,7 +223,7 @@ async function generateBusinessBriefing(payload: JsonRecord) {
 	const localHour =
 		typeof payload.localHour === "number"
 			? payload.localHour
-			: new Date().getHours();
+			: new Date(Date.now() + 7 * 60 * 60 * 1000).getUTCHours();
 	const context =
 		typeof payload.context === "string" ? payload.context : "";
 
