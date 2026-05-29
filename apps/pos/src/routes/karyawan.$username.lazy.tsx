@@ -438,6 +438,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 		}
 	}, [staff, privateData, isUnlocked]);
 
+	const handleAvatarClick = useCallback(() => {
+		navigate({ to: "/attendance" as any });
+	}, [navigate]);
+
 	const handleDownloadPayslip = useCallback(async (payslip: any) => {
 		try {
 			const breakdown: PayslipBreakdown = payslip.breakdown ?? {};
