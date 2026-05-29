@@ -14,8 +14,6 @@ export type AppUpdateInfo = {
 
 let latestUpdateInfo: AppUpdateInfo | null = null;
 let applyingUpdate = false;
-let registeredSkipWaitingReload = false;
-let pwaUpdateHandler: ((reloadPage?: boolean) => Promise<void>) | undefined;
 
 function normalizeVersionValue(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
@@ -39,10 +37,6 @@ export function getLatestUpdateInfo() {
 	return latestUpdateInfo;
 }
 
-export function setPwaUpdateHandler(handler: ((reloadPage?: boolean) => Promise<void>) | undefined) {
-	pwaUpdateHandler = handler;
-}
-
 export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 	latestUpdateInfo = {
 		currentVersion: APP_VERSION.semantic,
@@ -57,6 +51,15 @@ export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 
 export async function checkForAppUpdate() {
 	if (typeof window === "undefined" || APP_VERSION.isDev) return null;
+
+	// Cooldown setelah applyAppUpdate: skip 1x setelah reload.
+	// SessionStorage survive refresh jadi flag ini mencegah dialog
+	// muncul kembali saat bundle baru belum ter-download.
+	const INFLIGHT_KEY = "__app_update_inflight__";
+	if (sessionStorage.getItem(INFLIGHT_KEY) === "1") {
+		sessionStorage.removeItem(INFLIGHT_KEY);
+		return null;
+	}
 
 	try {
 		const response = await fetch(`${VERSION_ENDPOINT}?t=${Date.now()}`, {
@@ -105,17 +108,13 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
-	// Anti-loop: jika versi sama dengan latest, tidak perlu SW skip-waiting
-	// atau reload — konten identik. Cukup set sessionStorage flag + silent SKIP_WAITING.
-	// `onNeedRefresh` di main.tsx sudah cek sessionStorage dan akan skip.
+	// Jika versi sama — update palsu. Tidak ada yang perlu di-update.
+	// Cukup silent SKIP_WAITING + flag biar polling nggak trigger lagi.
 	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
-		sessionStorage.setItem("__sw_handled_version__", APP_VERSION.semantic);
 		if ("serviceWorker" in navigator) {
 			navigator.serviceWorker.getRegistrations().then((regs) => {
 				regs.forEach((reg) => {
-					if (reg.waiting) {
-						reg.waiting.postMessage({ type: "SKIP_WAITING" });
-					}
+					if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
 				});
 			});
 		}
@@ -123,47 +122,43 @@ export async function applyAppUpdate() {
 		return;
 	}
 
-	// Safety net: force reload after 12 seconds no matter what
-	const FALLBACK_TIMEOUT_MS = 12_000;
-	const fallbackTimer = window.setTimeout(() => {
-		window.location.reload();
-	}, FALLBACK_TIMEOUT_MS);
+	// Tandai bahwa update sedang diproses — polling skip dialog
+	// sampai reload berikutnya selesai.
+	sessionStorage.setItem("__app_update_inflight__", "1");
 
 	try {
+		// 1. Activate waiting SW (jika ada) — biar SW baru bisa ambil alih
 		if ("serviceWorker" in navigator) {
 			const registrations = await navigator.serviceWorker.getRegistrations();
-
-			if (!registeredSkipWaitingReload) {
-				registeredSkipWaitingReload = true;
-				navigator.serviceWorker.addEventListener("controllerchange", () => {
-					window.clearTimeout(fallbackTimer);
-					window.location.reload();
-				});
+			for (const reg of registrations) {
+				if (reg.waiting) {
+					reg.waiting.postMessage({ type: "SKIP_WAITING" });
+				}
 			}
+		}
 
+		// 2. Tunggu sebentar biar controllerchange sempat fire
+		await new Promise<void>((resolve) => setTimeout(resolve, 400));
+
+		// 3. Unregister SEMUA SW + hapus SEMUA cache
+		//    Ini penting: setelah reload, halaman akan fresh install
+		//    SW baru tanpa artefak dari versi lama.
+		if ("serviceWorker" in navigator) {
+			const registrations = await navigator.serviceWorker.getRegistrations();
 			await Promise.all(
-				registrations.map(async (registration) => {
-					await registration.update().catch(() => undefined);
-					if (registration.waiting) {
-						registration.waiting.postMessage({ type: "SKIP_WAITING" });
-					}
-				})
+				registrations.map((reg) => reg.unregister().catch(() => undefined)),
 			);
 		}
-
-		if (pwaUpdateHandler) {
-			await pwaUpdateHandler(true).catch(() => undefined);
+		if ("caches" in window) {
+			const cacheNames = await caches.keys();
+			await Promise.all(cacheNames.map((name) => caches.delete(name)));
 		}
-
-		window.clearTimeout(fallbackTimer);
-		const cacheBust = `appUpdated=${Date.now()}`;
-		const url = new URL(window.location.href);
-		url.searchParams.set("v", APP_VERSION.semantic);
-		url.searchParams.set(cacheBust.split("=")[0], cacheBust.split("=")[1]);
-		window.location.replace(url.toString());
-	} catch (error) {
-		window.clearTimeout(fallbackTimer);
-		console.warn("Gagal apply update aplikasi:", error);
-		window.location.reload();
+	} catch (e) {
+		console.warn("applyAppUpdate: cleanup failed", e);
 	}
+
+	// Hard reload — bersih, tanpa query params lama, tanpa SW sisa.
+	window.location.replace(
+		`${window.location.pathname}?v=${encodeURIComponent(latestUpdateInfo?.latestVersion || APP_VERSION.semantic)}&_t=${Date.now()}`,
+	);
 }

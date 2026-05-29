@@ -7,7 +7,7 @@ import { CartProvider } from "@/context/cart-context";
 import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppUpdatePrompt } from "@/components/app-update-prompt";
-import { setPwaUpdateHandler, startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
+import { startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import { APP_VERSION } from "@/lib/version";
 import "./index.css";
@@ -28,7 +28,6 @@ declare module "@tanstack/react-router" {
 
 // Hermes: trigger Vercel rebuild — contract+payslip live
 const rootElement = document.getElementById("root")!;
-let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
 
 const APP_VERSION_STORAGE_KEY = "__app_version__";
 const APP_VERSION_REFRESH_KEY = "__app_version_refresh__";
@@ -83,8 +82,7 @@ void refreshAppShellIfVersionChanged().finally(() => {
 	// registerType: "autoUpdate" di vite.config.ts — SW auto-aktifasi + reload.
 	// JANGAN kasih onNeedRefresh karena itu masukkin "prompt mode" yang bikin
 	// SW stuck di "waiting" dan loop. Biarkan autoUpdate urus semuanya.
-	updateSW = registerSW();
-	setPwaUpdateHandler(updateSW);
+	registerSW();
 	startAppUpdatePolling();
 
 	// Force check on visibility change — panggil checkForAppUpdate langsung,
