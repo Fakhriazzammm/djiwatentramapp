@@ -322,8 +322,9 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
 				const bonusBasis = bonusCfg?.basis ?? "shift";
 				let totalTargetBonus = 0;
-				let bonusShiftCount = 0;
-				if (bonusCfg?.tiers && bonusCfg.tiers.length > 0 && bonusBasis !== "monthly") {
+				if (bonusBasis === "monthly" && bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
+					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
+				} else {
 					try {
 						const allShiftsData = await fetchShiftReports();
 						const staffNameUpper = (staff.name ?? "").toUpperCase().trim();
@@ -337,17 +338,12 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									const bn = (b.name ?? "").toUpperCase().trim();
 									return bn === staffNameUpper || staffNameUpper.includes(bn) || bn.includes(staffNameUpper);
 								})?.bonus ?? 0;
-								if (myBonus > 0) {
-									totalTargetBonus += myBonus;
-									bonusShiftCount++;
-								}
+								if (myBonus > 0) totalTargetBonus += myBonus;
 							}
 						}
 					} catch (e) {
 						console.warn("[LivePayslip] bonus fetch error:", e);
 					}
-				} else if (bonusBasis === "monthly" && bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
-					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
 				}
 				const totalPenalty = 0;
 				const gross = monthlyFixedSalary + totalShiftSalary + totalAllowance + totalTargetBonus;
