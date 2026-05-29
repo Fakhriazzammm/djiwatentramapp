@@ -24,12 +24,12 @@ import {
 	useHybridCurrentlyInStore,
 	useHybridPublicUsers,
 } from "@/hooks/use-hybrid-attendance-data";
-import {
-	useHybridClockIn,
+import { useHybridClockIn,
 	useHybridClockOut,
 	useHybridEnrollFace,
 	useHybridVerifyHomePin,
 } from "@/hooks/use-hybrid-write-actions";
+import { cacheFaceDescriptor, markModelsLoaded } from "@/lib/face-cache";
 
 // Helper for distance calculation
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -247,6 +247,9 @@ function AttendancePage() {
 				toast.success("Wajah berhasil terdaftar!", { id: "save-face" });
 				setIsEnrolling(false);
 				setUser((prev) => (prev ? { ...prev, hasFace: true } : prev));
+				// Cache descriptor ke localStorage untuk akses cepat berikutnya
+				cacheFaceDescriptor(user.id, descriptor);
+				markModelsLoaded();
 			}
 
 			// 3. Smart Toggle: In or Out?

@@ -187,6 +187,15 @@ async function verifyAttendanceIdentity(args: {
 		throw new Error("Verifikasi identitas diperlukan: PIN atau wajah");
 	}
 
+	// Fast path: face-only → cek cache dulu, skip Supabase kalau cocok
+	if (!pinCode && faceDescriptor && faceDescriptor.length > 0) {
+		try {
+			const { verifyFaceFromCache } = await import("@/lib/face-cache");
+			const result = verifyFaceFromCache(faceDescriptor, userId);
+			if (result.match) return; // ✅ cached face match — no DB needed
+		} catch { /* cache unavailable — fall through */ }
+	}
+
 	const supabase = createClient();
 	const { data: user, error } = await supabase
 		.from("yumi_users")
@@ -212,7 +221,7 @@ async function verifyAttendanceIdentity(args: {
 		}
 	}
 
-	// Verify face via euclidean distance
+	// Verify face via euclidean distance + cache update
 	let faceVerified = !faceDescriptor || faceDescriptor.length === 0;
 	if (faceDescriptor && faceDescriptor.length > 0) {
 		const raw = user.raw as Record<string, any> | null;
@@ -222,6 +231,13 @@ async function verifyAttendanceIdentity(args: {
 		} else {
 			const distance = euclideanDistance(faceDescriptor, storedDescriptor);
 			faceVerified = distance <= 0.6;
+			// Update cache dengan descriptor terverifikasi dari DB
+			if (faceVerified) {
+				try {
+					const { cacheFaceDescriptor } = await import("@/lib/face-cache");
+					cacheFaceDescriptor(userId, faceDescriptor);
+				} catch { /* silent */ }
+			}
 		}
 	}
 
@@ -4778,6 +4794,14 @@ export function useHybridClockIn() {
 						shiftOpenTimeSnapshot: args?.shiftOpenTimeSnapshot ?? null,
 					},
 				});
+				// Cache face descriptor saat clock-in untuk mempercepat clock-out berikutnya
+				try {
+					const desc = args?.faceDescriptor;
+					if (desc && Array.isArray(desc) && desc.length > 0) {
+						const { cacheFaceDescriptor } = require("@/lib/face-cache");
+						cacheFaceDescriptor(userId, desc);
+					}
+				} catch { /* silent */ }
 				return id;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-clock-in] fallback disabled", error);
@@ -4937,10 +4961,10 @@ export function useHybridEnrollFace() {
 					.eq("source_id", userId);
 				if (patchError) throw patchError;
 			} else {
-				// Branch B: skip PIN verification — hanya verifikasi user exist
+				// Branch B: skip PIN verification — verifikasi user exist + update raw juga
 				const { data: user, error: userError } = await supabase
 					.from("yumi_users")
-					.select("source_id, is_active")
+					.select("source_id, is_active, raw")
 					.eq("source_id", userId)
 					.maybeSingle();
 				if (userError) throw userError;
@@ -4952,6 +4976,10 @@ export function useHybridEnrollFace() {
 					.from("yumi_users")
 					.update({
 						face_descriptor: faceDescriptor,
+						raw: {
+							...(user.raw ?? {}),
+							faceDescriptor,
+						},
 					})
 					.eq("source_id", userId);
 				if (patchError) throw patchError;
