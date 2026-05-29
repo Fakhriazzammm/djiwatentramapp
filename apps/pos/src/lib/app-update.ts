@@ -105,13 +105,21 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
-	// Anti-loop: jika versi sama dengan latest, tidak perlu SW skip-waiting —
-	// langsung reload. Ini mencegah update loop palsu saat SW byte-diff
-	// terdeteksi tapi konten tidak berubah.
+	// Anti-loop: jika versi sama dengan latest, tidak perlu SW skip-waiting
+	// atau reload — konten identik. Cukup set sessionStorage flag + silent SKIP_WAITING.
+	// `onNeedRefresh` di main.tsx sudah cek sessionStorage dan akan skip.
 	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
-		window.location.replace(
-			`${window.location.pathname}?v=${encodeURIComponent(APP_VERSION.semantic)}&t=${Date.now()}`,
-		);
+		sessionStorage.setItem("__sw_handled_version__", APP_VERSION.semantic);
+		if ("serviceWorker" in navigator) {
+			navigator.serviceWorker.getRegistrations().then((regs) => {
+				regs.forEach((reg) => {
+					if (reg.waiting) {
+						reg.waiting.postMessage({ type: "SKIP_WAITING" });
+					}
+				});
+			});
+		}
+		applyingUpdate = false;
 		return;
 	}
 

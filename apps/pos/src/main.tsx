@@ -7,7 +7,7 @@ import { CartProvider } from "@/context/cart-context";
 import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppUpdatePrompt } from "@/components/app-update-prompt";
-import { applyAppUpdate, notifyAppUpdateAvailable, setPwaUpdateHandler, startAppUpdatePolling } from "@/lib/app-update";
+import { notifyAppUpdateAvailable, setPwaUpdateHandler, startAppUpdatePolling } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import { APP_VERSION } from "@/lib/version";
 import "./index.css";
@@ -32,6 +32,8 @@ let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
 
 const APP_VERSION_STORAGE_KEY = "__app_version__";
 const APP_VERSION_REFRESH_KEY = "__app_version_refresh__";
+
+const SW_HANDLED_KEY = "__sw_handled_version__";
 
 async function refreshAppShellIfVersionChanged() {
 	if (typeof window === "undefined") return;
@@ -81,43 +83,56 @@ async function refreshAppShellIfVersionChanged() {
 
 void refreshAppShellIfVersionChanged().finally(() => {
 	updateSW = registerSW({
-		onNeedRefresh() {
-			// Fetch actual latest version from version.json for accurate display
-			fetch(`/version.json?t=${Date.now()}`, {
-				cache: "no-store",
-				headers: { "Cache-Control": "no-cache" },
-			})
-				.then((res) => (res.ok ? res.json() : null))
-				.then((payload) => {
-					const latestVersion = payload?.version || APP_VERSION.semantic;
-					const latestCommit = payload?.commitHash || payload?.commit || APP_VERSION.commitHash;
-					const buildDate = payload?.buildDate || undefined;
+			onNeedRefresh() {
+				// SessionStorage guard: jika update spurious (sama) sudah pernah
+				// di-handle di sesi ini, skip sepenuhnya — cegah loop.
+				if (sessionStorage.getItem(SW_HANDLED_KEY) === APP_VERSION.semantic) {
+					return;
+				}
 
-					// Anti-loop: jika versi sama, jangan tampilkan dialog —
-					// cukup skip waiting + reload langsung (aktivasi SW tanpa drama)
-					if (
-						latestVersion === APP_VERSION.semantic &&
-						(latestCommit === APP_VERSION.commitHash || !latestCommit)
-					) {
-						void applyAppUpdate();
-						return;
-					}
-
-					notifyAppUpdateAvailable({
-						latestVersion,
-						latestCommit,
-						buildDate,
-					});
+				// Fetch actual latest version from version.json for accurate display
+				fetch(`/version.json?t=${Date.now()}`, {
+					cache: "no-store",
+					headers: { "Cache-Control": "no-cache" },
 				})
-				.catch(() => {
-					// fetch /version.json gagal — jangan tampilkan dialog update
-					// karena kita nggak tahu apakah ada konten baru.
-					// SW mungkin berubah karena SW lifecycle (byte-diff metadata),
-					// tanpa perubahan konten. Skip waiting + reload via handler langsung.
-					if (updateSW) {
-						void updateSW(true).catch(() => window.location.reload());
-					}
-				});
+					.then((res) => (res.ok ? res.json() : null))
+					.then((payload) => {
+						const latestVersion = payload?.version || APP_VERSION.semantic;
+						const latestCommit = payload?.commitHash || payload?.commit || APP_VERSION.commitHash;
+						const buildDate = payload?.buildDate || undefined;
+
+						// Anti-loop: jika versi sama, jangan reload —
+						// cukup SKIP_WAITING silent di background
+						if (
+							latestVersion === APP_VERSION.semantic &&
+							(latestCommit === APP_VERSION.commitHash || !latestCommit)
+						) {
+							sessionStorage.setItem(SW_HANDLED_KEY, APP_VERSION.semantic);
+							if ("serviceWorker" in navigator) {
+								navigator.serviceWorker.getRegistrations().then((regs) => {
+									regs.forEach((reg) => {
+										if (reg.waiting) {
+											reg.waiting.postMessage({ type: "SKIP_WAITING" });
+										}
+									});
+								});
+							}
+							return;
+						}
+
+						notifyAppUpdateAvailable({
+							latestVersion,
+							latestCommit,
+							buildDate,
+						});
+					})
+					.catch(() => {
+						// fetch /version.json gagal — set flag + silent SW activation
+						sessionStorage.setItem(SW_HANDLED_KEY, APP_VERSION.semantic);
+						if (updateSW) {
+							void updateSW(true).catch(() => window.location.reload());
+						}
+					});
 		},
 	});
 	setPwaUpdateHandler(updateSW);
