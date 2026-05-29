@@ -1037,12 +1037,12 @@ async function fetchDetailedShifts() {
 	})) as ShiftOperationalRecord[];
 }
 
-type StaffRoleBonusConfig = {
+export type StaffRoleBonusConfig = {
 	basis?: "shift" | "daily" | "monthly";
 	tiers?: Array<{ thresholdPct: number; bonusAmount: number }>;
 };
 
-function computeMemberBonuses(
+export function computeMemberBonuses(
 	teamMembers: string,
 	isShiftTargetMet: boolean | undefined,
 	isDailyTargetMet: boolean | undefined,

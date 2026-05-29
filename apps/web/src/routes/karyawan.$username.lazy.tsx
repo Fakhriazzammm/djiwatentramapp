@@ -42,7 +42,7 @@ import {
 	useHybridPayslips,
 } from "@/hooks/use-hybrid-payroll-data";
 import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
-import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, computeMemberBonuses, type StaffRoleBonusConfig } from "@/hooks/use-hybrid-pos-data";
 import { createClient } from "@/lib/client";
 
 const formatCurrency = (amount: number) => {
@@ -345,16 +345,22 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
 				const totalShiftSalary = sessionCount * baseShiftRate;
 				const totalAllowance = daysWorked * dailyAllowance;
-				// Bonus target dari revenue per shift (real data shift reports)
-				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as Record<string, any>;
-				const bonusBasis = String(bonusCfg?.basis ?? "shift");
-				const bonusTiers: { thresholdPct?: number; bonusAmount?: number }[] = Array.isArray(bonusCfg?.tiers) ? bonusCfg.tiers : [];
+				// Bonus target dari shift report — pake computeMemberBonuses (konsisten dgn /admin/laporan-shift)
+				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
+				const bonusBasis = bonusCfg?.basis ?? "shift";
 				const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
 				const targetRevenue = targetMap.get(monthKey) ?? 0;
-				// Hitung total bonus dari shift-shift yang staff ini ikut serta dan target tercapai
+				// Build staffNameToRole map untuk computeMemberBonuses
+				const staffNameToRole = new Map<string, { roleName: string; bonusTargetConfig?: StaffRoleBonusConfig | null }>();
+				if (staff?.name && bonusCfg) {
+					staffNameToRole.set(staff.name.toUpperCase().trim(), {
+						roleName: staff.roleName ?? "",
+						bonusTargetConfig: bonusCfg,
+					});
+				}
 				let totalTargetBonus = 0;
 				let bonusShiftCount = 0;
-				if (targetRevenue > 0 && bonusTiers.length > 0 && bonusBasis !== "monthly") {
+				if (targetRevenue > 0 && bonusCfg?.tiers && bonusCfg.tiers.length > 0 && bonusBasis !== "monthly") {
 					const monthStart = new Date(selectedYear, selectedMonth - 1, 1).getTime();
 					const monthEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999).getTime();
 					const daysInMonthVal = new Date(selectedYear, selectedMonth, 0).getDate();
@@ -392,20 +398,26 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							const shiftRevenue = Number(summary.totalRevenue ?? 0);
 							if (shiftRevenue < shiftTargetAmt) continue;
 							const pct = (shiftRevenue / shiftTargetAmt) * 100;
-							let perShiftBonus = 0;
-							for (const tier of bonusTiers) {
-								if (pct >= (tier.thresholdPct ?? 0)) {
-									perShiftBonus += tier.bonusAmount ?? 0;
-								}
-							}
-							if (perShiftBonus > 0) {
-								totalTargetBonus += perShiftBonus;
+							// Pake computeMemberBonuses — logic sama dgn /admin/laporan-shift
+							const bonuses = computeMemberBonuses(
+								shift.team_members ?? "",
+								true, // isShiftTargetMet (already checked above)
+								undefined, // isDailyTargetMet — not used for "shift" basis
+								pct,
+								0, // dailyPct
+								staffNameToRole,
+							);
+							const myBonus = bonuses.find(
+								(b: any) => b.name.toUpperCase().trim() === (staff.name ?? "").toUpperCase().trim()
+							)?.bonus ?? 0;
+							if (myBonus > 0) {
+								totalTargetBonus += myBonus;
 								bonusShiftCount++;
 							}
 						}
 					}
-				} else if (bonusBasis === "monthly" && bonusTiers.length > 0) {
-					totalTargetBonus = Number(bonusTiers[0]?.bonusAmount ?? 0);
+				} else if (bonusBasis === "monthly" && bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
+					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
 				}
 				const totalPenalty = 0;
 				const gross = monthlyFixedSalary + totalShiftSalary + totalAllowance + totalTargetBonus;
@@ -437,7 +449,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							overtime_rate_per_hour: 0,
 							total_overtime_bonus: 0,
 							total_penalty: totalPenalty,
-							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: bonusTiers.length > 0 ? (bonusTiers[0]?.bonusAmount ?? 0) : 0 },
+							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: (bonusCfg?.tiers?.length ?? 0) > 0 ? (bonusCfg?.tiers?.[0]?.bonusAmount ?? 0) : 0 },
 						},
 					});
 				}
