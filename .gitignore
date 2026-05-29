@@ -58,3 +58,4 @@ venv/
 # Temp files
 result_batch_analyze.txt
 =
+.vercel

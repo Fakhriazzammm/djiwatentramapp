@@ -1,18 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-	ChevronLeft, 
-	Delete, 
-	Fingerprint, 
-	ShieldCheck,
-	Search
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { Building2, UserCircle2 } from "lucide-react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
-import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@/lib/yumi-auth-client";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/login" as any)({
 	component: LoginPage,
@@ -20,267 +11,111 @@ export const Route = createFileRoute("/login" as any)({
 
 function LoginPage() {
 	const navigate = useNavigate();
-	const { login, isAuthenticated } = useYumiAuth();
-	const [users, setUsers] = useState<YumiPublicUser[]>([]);
-	const [isUsersLoading, setIsUsersLoading] = useState(true);
-	
-	const [selectedUser, setSelectedUser] = useState<YumiPublicUser | null>(null);
-	const [pin, setPin] = useState("");
-	const [isVerifying, setIsVerifying] = useState(false);
-	const [searchQuery, setSearchQuery] = useState("");
+	const { isAuthenticated, isAdmin } = useYumiAuth();
 
-	useEffect(() => {
-		let active = true;
-
-		void (async () => {
-			try {
-				const nextUsers = await listPublicYumiUsers();
-				if (active) {
-					setUsers(nextUsers);
-				}
-			} catch (error) {
-				console.error("Failed to load public users:", error);
-				if (active) {
-					toast.error("Gagal memuat daftar pengguna");
-				}
-			} finally {
-				if (active) {
-					setIsUsersLoading(false);
-				}
-			}
-		})();
-
-		return () => {
-			active = false;
-		};
-	}, []);
-
-	const filteredUsers = useMemo(() => {
-		const keyword = searchQuery.trim().toLowerCase();
-		if (!keyword) {
-			return users;
-		}
-
-		return users.filter((u) => {
-			const haystacks = [u.name, u.slug, u.username, u.initial]
-				.filter((value): value is string => Boolean(value))
-				.map((value) => value.toLowerCase());
-			return haystacks.some((value) => value.includes(keyword));
-		});
-	}, [users, searchQuery]);
-
-	const handlePinInput = (num: string) => {
-		if (pin.length < 6) {
-			setPin(prev => prev + num);
-		}
-	};
-
-	const handleDelete = () => {
-		setPin(prev => prev.slice(0, -1));
-	};
-
-	const handleSubmitPin = async () => {
-		if (pin.length !== 6 || !selectedUser) return;
-		
-		setIsVerifying(true);
-		try {
-			const result = await loginWithYumiPin(selectedUser._id, pin);
-			
-			login(result.token);
-			
-			toast.success(`Selamat datang, ${result.user.name}`);
-			setPin("");
-		} catch (err: any) {
-			toast.error(err.message || "PIN salah");
-			setPin("");
-		} finally {
-			setIsVerifying(false);
-		}
-	};
-
-	// Auto-submit when pin reaches 6 digits
-	useEffect(() => {
-		if (pin.length === 6 && !isVerifying) {
-			handleSubmitPin();
-		}
-	}, [pin, isVerifying]);
-
-	// Redirect when already authenticated
+	// Redirect if already logged in
 	useEffect(() => {
 		if (isAuthenticated) {
-			navigate({ to: "/home" as any, replace: true });
+			if (isAdmin) {
+				navigate({ to: "/admin" as any, replace: true });
+			} else {
+				navigate({ to: "/home" as any, replace: true });
+			}
 		}
-	}, [isAuthenticated, navigate]);
+	}, [isAuthenticated, isAdmin, navigate]);
 
 	return (
 		<div className="app-page relative min-h-screen w-full overflow-hidden text-foreground">
-			{/* Soft Light Background Bubbles */}
+			{/* Soft Background Bubbles */}
 			<div className="absolute inset-0 overflow-hidden pointer-events-none">
 				<div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[100px]" />
 				<div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[100px]" />
 			</div>
 
 			<main className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center p-4">
-				<AnimatePresence mode="wait">
-					{!selectedUser ? (
-						<motion.div
-							key="user-selection"
-							initial={{ opacity: 0, y: 15 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, scale: 0.95 }}
-							className="w-full max-w-2xl space-y-4 md:space-y-6"
-						>
-							<div className="text-center space-y-1 md:space-y-2">
-								<motion.div 
-									initial={{ scale: 0.9 }}
-									animate={{ scale: 1 }}
-									className="mx-auto mb-3 md:mb-4 flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-[1.5rem] md:rounded-[1.75rem] bg-primary text-white shadow-xl shadow-primary/20"
-								>
-									<Fingerprint className="h-7 w-7 md:h-8 md:w-8" />
-								</motion.div>
-								<h1 className="text-3xl font-black tracking-tight text-foreground md:text-5xl">Mulai Sesi</h1>
-								<p className="text-xs md:text-sm text-muted-foreground font-medium">Ketik nama untuk akses cepat atau pilih dari daftar</p>
-							</div>
+				{/* Header */}
+				<motion.div
+					initial={{ opacity: 0, y: -12 }}
+					animate={{ opacity: 1, y: 0 }}
+					className="mb-8 md:mb-12 text-center space-y-2 md:space-y-3"
+				>
+					<motion.div
+						initial={{ scale: 0.9 }}
+						animate={{ scale: 1 }}
+						className="mx-auto mb-4 md:mb-5 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-primary to-sky-400 text-white shadow-xl shadow-primary/20"
+					>
+						<Building2 className="h-8 w-8 md:h-10 md:w-10" />
+					</motion.div>
+					<h1 className="text-3xl md:text-5xl font-black tracking-tight">Djiwa Tentram</h1>
+					<p className="text-sm md:text-base text-muted-foreground font-medium max-w-md mx-auto">
+						Pilih jenis akses untuk memulai sesi
+					</p>
+				</motion.div>
 
-							<div className="relative mx-auto max-w-lg">
-								<div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-									<Search className="h-4 w-4 md:h-5 md:w-5 text-primary/70" />
-								</div>
-								<Input 
-									placeholder="Tulis nama kamu" 
-									autoFocus
-									className="h-12 md:h-14 w-full rounded-full border-border bg-card pl-12 pr-4 text-base md:text-lg font-semibold shadow-sm focus:border-primary focus:ring-primary/20 transition-all placeholder:font-medium placeholder:text-muted-foreground/60"
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-								/>
-							</div>
+				{/* Role Cards */}
+				<div className="grid w-full max-w-lg grid-cols-2 gap-4 md:gap-5">
+					{/* Admin Card */}
+					<motion.button
+						initial={{ opacity: 0, x: -20 }}
+						animate={{ opacity: 1, x: 0 }}
+						transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
+						whileHover={{ scale: 1.02, y: -3 }}
+						whileTap={{ scale: 0.97 }}
+						onClick={() => navigate({ to: "/admin/login" as any })}
+						className="group relative flex flex-col items-center gap-4 md:gap-5 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-6 md:p-8 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+					>
+						<div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 transition-transform group-hover:scale-105">
+							<Building2 className="h-8 w-8 md:h-10 md:w-10" />
+						</div>
+						<div className="text-center">
+							<h2 className="text-lg md:text-xl font-black tracking-tight">Admin</h2>
+							<p className="mt-1 text-[10px] md:text-xs font-semibold text-muted-foreground/70">
+								Dashboard &amp; Manajemen
+							</p>
+						</div>
+						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+					</motion.button>
 
-							{/* ── Dropdown hasil pencarian ── */}
-							<div className="relative mx-auto max-w-lg">
-								{isUsersLoading ? (
-									<div className="absolute z-20 mt-1 w-full rounded-2xl border border-border bg-card p-4 text-center shadow-xl">
-										<div className="flex items-center justify-center gap-1.5">
-											<div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
-											<div className="h-2 w-2 animate-bounce rounded-full bg-primary delay-75" />
-											<div className="h-2 w-2 animate-bounce rounded-full bg-primary delay-150" />
-										</div>
-									</div>
-								) : searchQuery.trim() && filteredUsers.length > 0 ? (
-									<div className="absolute z-20 mt-2 w-full rounded-2xl border border-border bg-card shadow-xl max-h-72 overflow-y-auto">
-										{filteredUsers.map((user) => (
-											<button
-												key={user._id}
-												onClick={() => setSelectedUser(user)}
-												className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 first:rounded-t-2xl last:rounded-b-2xl"
-											>
-												<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-black text-primary">
-													{user.initial}
-												</div>
-												<div className="min-w-0 flex-1">
-													<p className="text-sm font-bold text-foreground truncate">{user.name}</p>
-													<p className="text-xs font-medium text-muted-foreground truncate">{user.slug || user.username}</p>
-												</div>
-											</button>
-										))}
-									</div>
-								) : searchQuery.trim() && filteredUsers.length === 0 ? (
-									<div className="absolute z-20 mt-2 w-full rounded-2xl border border-border bg-card px-5 py-4 text-center shadow-xl">
-										<p className="text-xs font-bold text-muted-foreground">Pengguna tidak ditemukan</p>
-									</div>
-								) : null}
-							</div>
-						</motion.div>
-					) : (
-						<motion.div
-							key="pin-entry"
-							initial={{ opacity: 0, scale: 1.05 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: 0.9 }}
-							className="flex w-full max-w-sm flex-col items-center space-y-5 md:space-y-8"
-						>
-							<div className="flex flex-col items-center space-y-2 md:space-y-3">
-								<button 
-									onClick={() => {
-										setSelectedUser(null);
-										setPin("");
-									}}
-									className="group flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest text-muted-foreground shadow-sm transition-all hover:border-border/80 hover:bg-muted hover:text-foreground active:scale-95"
-								>
-									<ChevronLeft className="h-3 w-3 md:h-4 md:w-4 transition-transform group-hover:-translate-x-1" />
-									Kembali
-								</button>
-								
-								<div className="flex flex-col items-center gap-2 md:gap-3 py-2">
-									<div className="flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-primary text-2xl font-black text-white shadow-lg shadow-primary/30">
-										{selectedUser.initial}
-									</div>
-									<div className="text-center">
-										<p className="text-xl md:text-2xl font-black tracking-tight text-foreground">{selectedUser.name}</p>
-										<div className="mt-1 inline-flex items-center justify-center gap-1 md:gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 md:py-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary">
-											<ShieldCheck className="h-3 w-3 md:h-3.5 md:w-3.5" />
-											Verifikasi PIN
-										</div>
-									</div>
-								</div>
-							</div>
+					{/* Karyawan Card */}
+					<motion.button
+						initial={{ opacity: 0, x: 20 }}
+						animate={{ opacity: 1, x: 0 }}
+						transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 25 }}
+						whileHover={{ scale: 1.02, y: -3 }}
+						whileTap={{ scale: 0.97 }}
+						onClick={() => navigate({ to: "/karyawan/login" as any })}
+						className="group relative flex flex-col items-center gap-4 md:gap-5 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-6 md:p-8 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+					>
+						<div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-sky-400 to-teal-400 text-white shadow-lg shadow-sky-400/20 transition-transform group-hover:scale-105">
+							<UserCircle2 className="h-8 w-8 md:h-10 md:w-10" />
+						</div>
+						<div className="text-center">
+							<h2 className="text-lg md:text-xl font-black tracking-tight">Karyawan</h2>
+							<p className="mt-1 text-[10px] md:text-xs font-semibold text-muted-foreground/70">
+								Absensi &amp; Slip Gaji
+							</p>
+						</div>
+						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+					</motion.button>
+				</div>
 
-							{/* User PIN Display */}
-							<div className="flex gap-3">
-								{[...Array(6)].map((_, i) => (
-									<div 
-										key={i}
-										className={`h-3 w-3 rounded-full transition-all duration-300 ${
-											pin.length > i 
-												? "scale-125 bg-primary shadow-sm" 
-												: "bg-muted-foreground/20"
-										}`}
-									/>
-								))}
-							</div>
-
-							{/* Keypad */}
-							<div className="grid w-full grid-cols-3 gap-3 md:gap-4 mt-2 px-8 lg:px-0">
-								{["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-									<button
-										key={num}
-										onClick={() => handlePinInput(num)}
-										className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center mx-auto rounded-xl md:rounded-2xl border border-border bg-card text-xl md:text-2xl font-black text-foreground shadow-sm transition-all hover:bg-muted hover:shadow-md hover:-translate-y-0.5 active:scale-95 active:shadow-sm"
-									>
-										{num}
-									</button>
-								))}
-								<div />
-								<button
-									onClick={() => handlePinInput("0")}
-									className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center mx-auto rounded-xl md:rounded-2xl border border-border bg-card text-xl md:text-2xl font-black text-foreground shadow-sm transition-all hover:bg-muted hover:shadow-md hover:-translate-y-0.5 active:scale-95 active:shadow-sm"
-								>
-									0
-								</button>
-								<button
-									onClick={handleDelete}
-									className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center mx-auto rounded-xl md:rounded-2xl text-muted-foreground/60 transition-all hover:text-foreground active:scale-90"
-								>
-									<Delete className="h-6 w-6 md:h-7 md:w-7" />
-								</button>
-							</div>
-
-							{isVerifying && (
-								<motion.div 
-									initial={{ opacity: 0 }}
-									animate={{ opacity: 1 }}
-									className="flex items-center gap-3 rounded-full bg-card px-6 py-2.5 shadow-sm border border-border"
-								>
-									<div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
-									<div className="h-2 w-2 animate-bounce rounded-full bg-primary delay-75" />
-									<div className="h-2 w-2 animate-bounce rounded-full bg-primary delay-150" />
-									<span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Memproses...</span>
-								</motion.div>
-							)}
-						</motion.div>
-					)}
-				</AnimatePresence>
+				{/* Registration link */}
+				<motion.p
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					transition={{ delay: 0.4 }}
+					className="mt-8 md:mt-10 text-xs text-muted-foreground/50"
+				>
+					Belum punya akun?{" "}
+					<button
+						onClick={() => navigate({ to: "/register" as any })}
+						className="font-bold text-primary underline-offset-2 hover:underline"
+					>
+						Daftar di sini
+					</button>
+				</motion.p>
 			</main>
-			
+
 			<Footer className="absolute bottom-8 left-0 right-0 pointer-events-none" />
 		</div>
 	);

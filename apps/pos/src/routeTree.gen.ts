@@ -34,6 +34,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
 import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
@@ -212,6 +213,11 @@ const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/minigames.lazy').then((d) => d.Route),
 )
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin.login.lazy').then((d) => d.Route))
 const AdminKitchenRoute = AdminKitchenRouteImport.update({
   id: '/kitchen',
   path: '/kitchen',
@@ -522,6 +528,7 @@ export interface FileRoutesByFullPath {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
@@ -581,6 +588,7 @@ export interface FileRoutesByTo {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -639,6 +647,7 @@ export interface FileRoutesById {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
@@ -703,6 +712,7 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
+    | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
     | '/admin/operational-team'
@@ -762,6 +772,7 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
+    | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
     | '/admin/orders'
@@ -819,6 +830,7 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
+    | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
     | '/admin/operational-team'
@@ -1038,6 +1050,13 @@ declare module '@tanstack/react-router' {
       path: '/minigames'
       fullPath: '/admin/minigames'
       preLoaderRoute: typeof AdminMinigamesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/kitchen': {
@@ -1470,6 +1489,7 @@ interface AdminRouteRouteChildren {
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRouteWithChildren
@@ -1491,6 +1511,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminForecastingRoute: AdminForecastingRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,
+  AdminLoginRoute: AdminLoginRoute,
   AdminMinigamesRoute: AdminMinigamesRoute,
   AdminOnboardingRoute: AdminOnboardingRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRouteWithChildren,

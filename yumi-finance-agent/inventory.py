@@ -9,6 +9,9 @@ import re
 from datetime import datetime, timezone, timedelta
 from rapidfuzz import fuzz, process
 
+# Import alias resolver untuk matching berbasis nama kanonik
+from item_normalization import expand_item_alias, normalize_unit
+
 logger = logging.getLogger(__name__)
 WIB = timezone(timedelta(hours=7))
 
@@ -19,7 +22,7 @@ MIN_SCORE_NEW = 30        # dianggap barang baru
 
 # ── Regex: extract qty suffix ──────────────────────────────────────
 _QTY_SUFFIX_RE = re.compile(
-    r'(\d+(?:\.\d+)?)\s*(ml|liter|lt|l|kg|gram|gr|g|pcs|pack|sachet|renceng|ikat|toros|bungkus|botol|gelas)\b',
+    r'(\d+(?:[.,]\d+)?)\s*(ml|liter|lt|l|kg|gram|gr|g|pcs|pack|sachet|renceng|ikat|toros|bungkus|botol|gelas)\b',
     re.IGNORECASE,
 )
 
@@ -30,15 +33,72 @@ _UNIT_TO_BASE = {
     "ikat": 1, "toros": 1, "bungkus": 1, "botol": 1, "gelas": 1,
 }
 
+# Brand/supplier words yg sering muncul di struk tapi bukan bagian nama item
+_BRAND_NOISE_WORDS = {
+    "brand", "original", "premium", "classic", "deluxe", "special",
+    "extra", "super", "ultra", "plus", "new", "enriched", "fortified",
+    "vit", "vitamin", "dll", "etc",
+}
+
+# Multi-word brands yg perlu dilindungi (jangan distrip)
+_PROTECTED_BRANDS = [
+    "gold", "silver", "platinum", "black", "white", "red", "blue",
+    "green", "yellow", "fresh", "milk", "cream", "cheese",
+]
+
+# ── Common brand prefixes to strip (brand name as prefix of product) ──
+# e.g. "Yoa Basil" -> brand "Yoa" diketahui, cari "Basil" di DB
+# Diisi via alias system di item_normalization, bukan hardcode di sini
+
 
 def _clean_name(name: str) -> str:
-    """Bersihkan nama item: lowercase, hapus extra space, hapus qty suffix."""
+    """Bersihkan nama item: lowercase, hapus extra space, hapus qty suffix, strip brand noise."""
+    if not name:
+        return ""
     cleaned = name.lower().strip()
     # Hapus qty suffix dari nama untuk matching
     cleaned = _QTY_SUFFIX_RE.sub("", cleaned).strip()
+    # Hapus tanda baca: koma, titik, kurung, petik, dll
+    cleaned = re.sub(r'[^\w\s]', ' ', cleaned)
+    # Hapus angka berdiri sendiri (tp jaga yg menyatu kayak "2x500ml" udah dihapus di atas)
+    cleaned = re.sub(r'\b\d+\b', ' ', cleaned)
+    # Hapus "x" separator: "2x500ml" -> udah dihapus, tapi standalone "x" juga
     # Hapus multiple spaces
-    cleaned = re.sub(r'\s+', ' ', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
+
+
+def _word_overlap_score(tokens_a: set[str], tokens_b: set[str]) -> float:
+    """Hitung rasio kata yang sama antara dua set token.
+    
+    Returns: 0.0 - 1.0 (1.0 = semua token sama)
+    Berguna untuk menekan false positive dari random char overlap.
+    """
+    if not tokens_a or not tokens_b:
+        return 0.0
+    common = tokens_a & tokens_b
+    # Jaccard-like: common / union size, weighted by length
+    # Tapi untuk matching item, lebih baik common / max(len(a), len(b))
+    # karena item sering punya jumlah kata berbeda
+    return len(common) / max(len(tokens_a), len(tokens_b), 1)
+
+
+def _word_overlap_bonus(tokens_a: set[str], tokens_b: set[str]) -> int:
+    """Berikan score tambahan untuk kata-kata yang sama persis.
+    
+    Returns: 0-30, berdasarkan jumlah kata bersama.
+    """
+    if not tokens_a or not tokens_b:
+        return 0
+    common = tokens_a & tokens_b
+    if not common:
+        return 0
+    # Fokus pada kata non-trivial (>2 chars)
+    meaningful = {w for w in common if len(w) > 2}
+    if not meaningful:
+        # Trivial words only - give small bonus
+        return min(len(common) * 5, 10)
+    return min(len(meaningful) * 10, 30)
 
 
 def _extract_qty_suffix(name: str) -> tuple[float, str]:
@@ -218,9 +278,25 @@ class InventoryManager:
             ]
 
     async def fuzzy_match_item(
-        self, receipt_name: str, inventory_list: list[dict] | None = None
+        self, receipt_name: str, inventory_list: list[dict] | None = None,
+        item_price: float = 0.0, merchant: str = "",
     ) -> tuple[dict | None, int]:
-        """Fuzzy match nama item receipt ke inventory.
+        """Fuzzy match nama item receipt ke inventory — multi-strategy scoring.
+
+        Strategi (digabung):
+        1. Alias resolution via expand_item_alias (DB alias cache)
+        2. token_sort_ratio + token_set_ratio (rapidfuzz)
+        3. partial_ratio untuk substring match
+        4. Word overlap penalty/bonus untuk kurangi false positive
+        5. Substring check (satu nama ada di dalam nama lain)
+        6. Price proximity bonus (jika item_price diberikan)
+        7. Merchant history bonus (jika merchant diberikan)
+
+        Args:
+            receipt_name: nama item dari OCR
+            inventory_list: list inventory (jika None, fetch dari Supabase)
+            item_price: harga item dari OCR, untuk price-aware matching
+            merchant: nama merchant untuk history-aware matching
 
         Returns:
             (matched_item_dict or None, score)
@@ -231,24 +307,119 @@ class InventoryManager:
         if inventory_list is None:
             inventory_list = await self.get_all_inventory()
 
-        receipt_clean = _clean_name(receipt_name)
+        # Cache merchant history (kalau merchant diberikan)
+        _merchant_freq: dict[str, int] = {}
+        if merchant:
+            try:
+                _merchant_freq = await self.get_merchant_item_history(merchant)
+            except Exception:
+                pass
+
+        receipt_name = (receipt_name or "").strip()
+        if not receipt_name:
+            return None, 0
+
+        # Step 1: Resolve alias — "FM GF" → "Freshmilk Greenfield"
+        alias_name, alias_from = expand_item_alias(receipt_name)
+        receipt_for_match = alias_name or receipt_name
+
+        receipt_clean = _clean_name(receipt_for_match)
+        receipt_tokens = set(receipt_clean.split())
+
         best = None
         best_score = 0
+        best_sub_score = 0  # second-best untuk debugging
 
         for inv_item in inventory_list:
             inv_name = (inv_item.get("ingredientName") or "").strip()
             if not inv_name:
                 continue
-            # Token sort ratio — immune to word order
-            score = fuzz.token_sort_ratio(receipt_clean, _clean_name(inv_name))
-            # Partial ratio — bonus untuk partial match
-            partial = fuzz.partial_ratio(receipt_clean, _clean_name(inv_name))
-            score = max(score, partial)
-            if score > best_score:
-                best_score = score
-                best = inv_item
 
-        return best, best_score
+            inv_clean = _clean_name(inv_name)
+            inv_tokens = set(inv_clean.split())
+
+            if not receipt_clean or not inv_clean:
+                continue
+
+            # ── Multi-strategy scoring ──────────────────────────────
+            # 2a. Token sort ratio — immune to word order
+            score_ts = fuzz.token_sort_ratio(receipt_clean, inv_clean)
+            # 2b. Token set ratio — better for partial overlap
+            score_tset = fuzz.token_set_ratio(receipt_clean, inv_clean)
+            # 2c. Partial ratio — bonus jika satu nama adalah substring dari yang lain
+            score_partial = fuzz.partial_ratio(receipt_clean, inv_clean)
+            # 2d. Token sort with original (uncleaned) — kadang original punya info lebih
+            score_orig = fuzz.token_sort_ratio(
+                _clean_name(receipt_name), _clean_name(inv_name)
+            )
+
+            # 3. Word overlap — kurangi false positive dari random char overlap
+            overlap = _word_overlap_score(receipt_tokens, inv_tokens)
+            overlap_bonus = _word_overlap_bonus(receipt_tokens, inv_tokens)
+
+            # 4. Substring check — jika salah satu nama ada di dalam yang lain
+            substring_bonus = 0
+            if len(receipt_clean) >= 3:
+                if receipt_clean in inv_clean or inv_clean in receipt_clean:
+                    substring_bonus = 15
+
+            # ── Combine scores ──────────────────────────────────────
+            # Weight: token_set_ratio most reliable for partial, token_sort for reorder
+            combined = max(
+                score_tset,           # token set — best for partial word match
+                score_ts,             # token sort — good for reordered words
+                score_partial,        # partial — catches substring
+            )
+
+            # Penalty: jika tidak ada word overlap sama sekali, turunkan score
+            if overlap == 0.0 and combined >= 50:
+                # False positive: high fuzzy score with zero word overlap
+                # e.g. "Wincheez Gold" vs "Schweppes Soda" has characters in common
+                # but NO actual words match
+                combined = max(combined - 25, 20)
+
+            # Bonus: word overlap yang baik
+            if overlap >= 0.3:
+                combined = min(combined + overlap_bonus, 100)
+            elif overlap >= 0.2 and combined >= 40:
+                combined = min(combined + overlap_bonus, 100)
+
+            # Bonus: substring match
+            if substring_bonus and combined < 85:
+                combined = min(combined + substring_bonus, 100)
+
+            # ── Price proximity bonus ──────────────────────────────
+            if item_price > 0:
+                inv_price = float(inv_item.get("lastPurchasePrice") or 0)
+                if inv_price > 0:
+                    deviation = abs(item_price - inv_price) / max(item_price, inv_price, 1)
+                    if deviation <= 0.15:
+                        combined = min(combined + 20, 100)
+                    elif deviation <= 0.30:
+                        combined = min(combined + 10, 100)
+                    elif deviation <= 0.50:
+                        combined = min(combined + 5, 100)
+
+            # ── Merchant history bonus ─────────────────────────────
+            if _merchant_freq:
+                inv_name_lower = inv_name.lower()
+                freq = _merchant_freq.get(inv_name_lower, 0)
+                if freq >= 5:
+                    combined = min(combined + 15, 100)
+                elif freq >= 2:
+                    combined = min(combined + 10, 100)
+                elif freq >= 1:
+                    combined = min(combined + 5, 100)
+
+            # Ensure combined >= 0
+            combined = max(combined, 0)
+
+            if combined > best_score:
+                best_score = combined
+                best = inv_item
+                best_sub_score = score_tset
+
+        return best, int(best_score)
 
     async def restock_item(
         self, inventory_id: str, current_qty: float, add_qty: float,
@@ -286,6 +457,104 @@ class InventoryManager:
         }
         result = await self._post("pos_purchase_logs", data)
         return result is not None
+
+    async def add_alias(self, inventory_id: str, new_alias: str) -> bool:
+        """Tambah alias ke inventory item. Append ke array aliases jika belum ada.
+
+        Args:
+            inventory_id: _id dari item di pos.inventory
+            new_alias: alias name to add
+
+        Returns:
+            True jika berhasil
+        """
+        new_alias = (new_alias or "").strip()
+        if not new_alias or not inventory_id:
+            return False
+
+        # Pakai service_role_key + Accept-Profile: pos untuk akses snake_case
+        url = f"{self.supabase_url}/rest/v1/inventory?_id=eq.{inventory_id}"
+        headers = {
+            "apikey": self.supabase_key,
+            "Authorization": f"Bearer {self.service_role_key}",
+            "Accept-Profile": "pos",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        }
+
+        # Ambil aliases existing dulu
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url + "&select=aliases,ingredient_name", headers=headers)
+            if resp.status_code >= 400:
+                logger.warning("add_alias: failed to fetch item %s: %s", inventory_id, resp.text)
+                return False
+
+            data = resp.json()
+            if not data:
+                return False
+
+            existing = data[0].get("aliases") or []
+            ingredient_name = data[0].get("ingredient_name", "")
+
+            # Cek duplikat (case-insensitive)
+            alias_lower = new_alias.lower()
+            already_exists = any(e.lower() == alias_lower for e in existing)
+            if already_exists:
+                return True
+
+            # Append
+            updated = existing + [new_alias]
+
+            # PATCH
+            patch_resp = await client.patch(
+                url,
+                headers=headers,
+                json={"aliases": updated},
+            )
+
+            if patch_resp.status_code < 400:
+                logger.info("Alias added: '%s' -> '%s'", new_alias, ingredient_name or inventory_id)
+                # Refresh alias cache di item_normalization
+                from item_normalization import load_aliases_from_db  # noqa: F811
+                all_aliases = await self.get_all_inventory_aliases()
+                load_aliases_from_db(all_aliases)
+                return True
+
+            logger.warning("add_alias PATCH failed: %s", patch_resp.text)
+            return False
+
+    async def get_merchant_item_history(self, merchant: str, limit_days: int = 90) -> dict[str, int]:
+        """Ambil history pembelian per merchant — item → frequency.
+
+        Returns:
+            { "gula pasir": 5, "tepung": 3, ... }
+            (item name lowercase → count of purchases)
+        """
+        merchant = (merchant or "").strip()
+        if not merchant or merchant.lower() in ("yumi finance", ""):
+            return {}
+
+        since = (datetime.now(WIB) - timedelta(days=limit_days)).strftime("%Y-%m-%dT%H:%M:%S")
+
+        try:
+            # Gunakan ilike untuk partial match merchant name
+            safe_merchant = merchant.replace("'", "''")
+            rows = await self._fetch(
+                "pos_purchase_logs",
+                f"select=ingredient_name,merchant&merchant=ilike.*{safe_merchant}*&created_at=gte.{since}&limit=500",
+            )
+        except Exception as e:
+            logger.warning("get_merchant_item_history error: %s", e)
+            return {}
+
+        freq: dict[str, int] = {}
+        for r in rows:
+            name = (r.get("ingredient_name") or "").strip()
+            if name:
+                name_lower = name.lower()
+                freq[name_lower] = freq.get(name_lower, 0) + 1
+
+        return freq
 
     # ── Menu Stock Sync ────────────────────────────────────────────
 
@@ -445,3 +714,100 @@ class InventoryManager:
             "raw": {"created_by": "yumi_finance_agent", "created_at": datetime.now(WIB).isoformat()},
         }
         return await self._post("categories", data)
+
+
+# ── Standalone inventory matching (untuk bulk path) ─────────────────
+
+
+def _find_inventory_match(
+    receipt_name: str, inventory_list: list[dict],
+    item_price: float = 0.0,
+) -> dict | None:
+    """Cari item receipt di inventory list — SINGLE-THREAD wrapper.
+
+    Mirip fuzzy_match_item() tapi synchronous (tanpa await),
+    digunakan oleh bulk OCR path yang perlu match tanpa async.
+
+    Args:
+        receipt_name: nama item dari OCR
+        inventory_list: list inventory
+        item_price: harga item dari OCR, untuk price-aware matching
+
+    Returns dict {_id, ingredientName, quantity, score, ...} atau None.
+    score >= 60 = auto-match, >= 45 = suggest.
+    """
+    receipt_name = (receipt_name or "").strip()
+    if not receipt_name or not inventory_list:
+        return None
+
+    # Resolve alias
+    alias_name, _ = expand_item_alias(receipt_name)
+    receipt_for_match = alias_name or receipt_name
+
+    receipt_clean = _clean_name(receipt_for_match)
+    receipt_tokens = set(receipt_clean.split())
+
+    best = None
+    best_score = 0
+
+    for inv_item in inventory_list:
+        inv_name = (inv_item.get("ingredientName") or "").strip()
+        if not inv_name:
+            continue
+
+        inv_clean = _clean_name(inv_name)
+        inv_tokens = set(inv_clean.split())
+
+        if not receipt_clean or not inv_clean:
+            continue
+
+        # Multi-strategy scoring (sama dengan fuzzy_match_item)
+        score_ts = fuzz.token_sort_ratio(receipt_clean, inv_clean)
+        score_tset = fuzz.token_set_ratio(receipt_clean, inv_clean)
+        score_partial = fuzz.partial_ratio(receipt_clean, inv_clean)
+
+        overlap = _word_overlap_score(receipt_tokens, inv_tokens)
+        overlap_bonus = _word_overlap_bonus(receipt_tokens, inv_tokens)
+
+        substring_bonus = 0
+        if len(receipt_clean) >= 3:
+            if receipt_clean in inv_clean or inv_clean in receipt_clean:
+                substring_bonus = 15
+
+        combined = max(score_tset, score_ts, score_partial)
+
+        # Penalty: no word overlap = false positive
+        if overlap == 0.0 and combined >= 50:
+            combined = max(combined - 25, 20)
+
+        if overlap >= 0.3:
+            combined = min(combined + overlap_bonus, 100)
+        elif overlap >= 0.2 and combined >= 40:
+            combined = min(combined + overlap_bonus, 100)
+
+        if substring_bonus and combined < 85:
+            combined = min(combined + substring_bonus, 100)
+
+        # ── Price proximity bonus ──────────────────────────────
+        if item_price > 0:
+            inv_price = float(inv_item.get("lastPurchasePrice") or 0)
+            if inv_price > 0:
+                deviation = abs(item_price - inv_price) / max(item_price, inv_price, 1)
+                if deviation <= 0.15:
+                    combined = min(combined + 20, 100)
+                elif deviation <= 0.30:
+                    combined = min(combined + 10, 100)
+                elif deviation <= 0.50:
+                    combined = min(combined + 5, 100)
+
+        combined = max(combined, 0)
+
+        if combined > best_score:
+            best_score = combined
+            best = inv_item
+
+    if best and best_score >= MIN_SCORE_NEW:
+        result = dict(best)
+        result["score"] = int(best_score)
+        return result
+    return None

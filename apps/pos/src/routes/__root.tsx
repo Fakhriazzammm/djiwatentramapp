@@ -20,6 +20,8 @@ function RootContent() {
 
 				const isPublicPage =
 					location.pathname === "/login" ||
+					location.pathname === "/admin/login" ||
+					location.pathname === "/karyawan/login" ||
 					location.pathname === "/register" ||
 					location.pathname.startsWith("/register/selesai/");
 		
@@ -33,7 +35,12 @@ function RootContent() {
 			}
 		} else {
 			if (location.pathname === "/login") {
-				navigate({ to: "/home" as any, replace: true });
+				// Role-based redirect — login page is now a role picker
+				if (isAdmin) {
+					navigate({ to: "/admin" as any, replace: true });
+				} else {
+					navigate({ to: "/home" as any, replace: true });
+				}
 			}
 		}
 	}, [isAuthenticated, isLoading, isStaff, user, location.pathname, navigate]);

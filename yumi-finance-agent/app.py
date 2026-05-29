@@ -61,7 +61,7 @@ JPEG_QUALITY = 88
 
 # ── Inisialisasi module ────────────────────────────────────────────
 from finance import FinanceManager
-from inventory import InventoryManager
+from inventory import InventoryManager, _find_inventory_match
 from orchestrator import FinanceOrchestrator, OrchestratorResult
 from categories import auto_categorize, categorize_item, categorize_item_with_memory, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category, ai_categorize_item, auto_create_category_in_db
 from sumopod_client import SumoPodClient
@@ -1129,8 +1129,18 @@ async def _handle_edit_item_text(update: Update, context: ContextTypes.DEFAULT_T
         field = m.group(1).lower()
         value = m.group(2).strip()
         if field == "nama":
+            old_name = item.get("name", "")
             item["name"] = value
             changed.append(f"nama → {value}")
+            # Auto-learn alias: OCR name → corrected nama
+            if value and old_name and value.lower() != old_name.lower():
+                try:
+                    inv_list = await inventory.get_all_inventory()
+                    m, s = await inventory.fuzzy_match_item(value, inv_list)
+                    if m and s >= MIN_SCORE_AUTO:
+                        asyncio.ensure_future(inventory.add_alias(m["_id"], old_name))
+                except Exception:
+                    pass
         elif field == "qty":
             try:
                 item["qty"] = float(value.replace(",", "."))
@@ -1507,7 +1517,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             item_price = float(item.get("price") or 0)
             unit = item.get("unit", "").strip() or _extract_unit(item_name) or "pcs"
 
-            matched, score = await inventory.fuzzy_match_item(item_name, inventory_list)
+            matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
             if matched and score >= MIN_SCORE_AUTO:
                 inv_name = matched["ingredientName"]
                 inv_qty = float(matched.get("quantity", 0))
@@ -1519,6 +1529,8 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                     restok_lines.append(f"  ⚠️ {item_name}: {e}")
             elif matched and score >= MIN_SCORE_SUGGEST:
                 restok_lines.append(f"  🤔 {item_name} ≈ {matched['ingredientName']}? ({score}%)")
+                # Auto-learn alias: user confirm → simpan OCR name sbg alias
+                asyncio.ensure_future(inventory.add_alias(matched["_id"], item_name))
             else:
                 restok_lines.append(f"  🆕 {item_name} — belum di database")
 
@@ -1540,7 +1552,9 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
 
 def _extract_unit(name: str) -> str:
     """Extract unit dari nama item."""
-    m = re.search(r'(\d+(?:\.\d+)?)\s*(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|ctn|dus|karton)\b', name, re.IGNORECASE)
+    if not name:
+        return ""
+    m = re.search(r'(\d+(?:[.,]\d+)?)\s*(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|ctn|dus|karton)\b', name, re.IGNORECASE)
     if m:
         return normalize_unit(m.group(2))
     return ""
@@ -1713,7 +1727,7 @@ async def _manual_restock(result):
             item_price = float(item.get("price") or 0)
             unit = item.get("unit", "").strip() or _extract_unit(item_name) or "pcs"
 
-            matched, score = await inventory.fuzzy_match_item(item_name, inventory_list)
+            matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
             if matched and score >= MIN_SCORE_AUTO:
                 inv_name = matched["ingredientName"]
                 inv_qty = float(matched.get("quantity", 0))
@@ -1725,6 +1739,8 @@ async def _manual_restock(result):
                     restok_lines.append(f"  ⚠️ {item_name}: {e}")
             elif matched and score >= MIN_SCORE_SUGGEST:
                 restok_lines.append(f"  🤔 {item_name} ≈ {matched['ingredientName']}? ({score}%)")
+                # Auto-learn alias: user confirm → simpan OCR name sbg alias
+                asyncio.ensure_future(inventory.add_alias(matched["_id"], item_name))
             else:
                 restok_lines.append(f"  🆕 {item_name} — belum di database")
 
@@ -3240,10 +3256,10 @@ async def _restok_bulk_items(receipt: dict):
             item_name = item.get("name", "").strip()
             if not item_name:
                 continue
-            matched = _find_inventory_match(item_name, inventory_list)
+            item_price = float(item.get("price", 0) or 0)
+            matched = _find_inventory_match(item_name, inventory_list, item_price=item_price)
             if matched and matched.get("score", 0) >= 60:
                 inv_id = matched.get("_id")
-                item_price = float(item.get("price", 0) or 0)
                 await inventory.restock_item(
                     inv_id,
                     float(matched.get("quantity", 0)),

@@ -1,5 +1,5 @@
 {
-  "version": 453,
+  "version": 455,
   "entries": [
     {
       "id": "fc7cee30-3f76-4147-9858-fc2ce098807e",
@@ -9492,7 +9492,49 @@
       "usageCount": 1,
       "createdAt": "2026-05-25T07:26:15.628009+00:00",
       "updatedAt": "2026-05-25T07:26:15.628009+00:00"
+    },
+    {
+      "id": "3a9ebf15-2b9b-4217-8e66-05d5d102af0c",
+      "type": "expense_match",
+      "userInput": "Raja Gula (qty:2, price:17900)",
+      "parsedName": "Raja Gula (qty:2, price:17900)",
+      "matchedInventoryId": "kd736j3qatfexyvp9ehmzj5y198412vq",
+      "matchedIngredientName": "Gula Pasir Putih",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 90.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-29T07:36:47.756312+00:00",
+      "updatedAt": "2026-05-29T07:36:47.756312+00:00"
+    },
+    {
+      "id": "44c5e980-b7a6-4d06-a351-3015638a5e3f",
+      "type": "expense_match",
+      "userInput": "Garam Dolpin Besar (qty:2, price:8400)",
+      "parsedName": "Garam Dolpin Besar (qty:2, price:8400)",
+      "matchedInventoryId": "kd7d121f1j7gsr30td50e1kfp5840c97",
+      "matchedIngredientName": "Garam",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-29T07:36:48.212583+00:00",
+      "updatedAt": "2026-05-29T07:36:48.212583+00:00"
     }
   ],
-  "last_updated": "2026-05-28T13:48:09.205042+00:00"
+  "last_updated": "2026-05-29T07:36:48.214180+00:00"
 }

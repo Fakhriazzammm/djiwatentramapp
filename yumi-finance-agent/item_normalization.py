@@ -108,36 +108,68 @@ def _db_resolve(name: str) -> tuple[str, str] | None:
 
 def _programmatic_resolve(name: str) -> tuple[str, str]:
     """Generate programmatic aliases from item name (fallback).
-    
+
     Patterns:
-    - Brand prefix stripping: "Yoa Basil Leaves" → "Basil Leaves"
-    - "Freshmilk Greenfield" → "FG" (acronym)
+    - Known brand+product combinations (reverse lookup)
+    - Brand prefix stripping: "Diamond Margarin" → known "Margarin"
+    - Whole name already in DB → skip
     """
     raw = (name or "").strip()
     if not raw:
         return "", ""
-    
-    # Already a canonical name? Skip.
+
     canon_key = raw.lower()
+
+    # Already a canonical name (in DB)? Skip.
     for db_key, db_canon in _DB_ALIAS_MAP.items():
         if db_canon.lower() == canon_key:
-            # This IS the canonical name
             return "", ""
-    
-    # Check if this is a reverse alias (brand+name form)
-    # e.g. "Yoa Basil" → canonical "Basil"
-    # Reverse check: see if any token or token combo matches
+
     tokens = [t for t in re.split(r"[\s/]+", raw) if t]
-    
-    # Try reverse map: brand+VARIANT → canonical  
-    # e.g. "Yoa" + "Basil" → check if combined = alias
+    if not tokens:
+        return raw, ""
+
+    # ── Strategy 1: Try each token combo against alias map ───────
     for combo_len in range(len(tokens), 0, -1):
         for i in range(len(tokens) - combo_len + 1):
             combo = " ".join(tokens[i:i+combo_len])
             found = _DB_ALIAS_MAP.get(combo.lower())
             if found:
                 return found, raw
-    
+
+    # ── Strategy 2: Strip known single-word brand prefix ─────────
+    # Common brand prefixes that are NOT the actual item name
+    # e.g. "Diamond Margarin" -> check if "Margarin" is in aliases
+    # e.g. "Blue Band Margarin" -> if "Margarin" is known alias
+    # e.g. "Yoa Basil" -> check if "Basil" is known
+    # Only strip ONE word from front
+    if len(tokens) >= 2:
+        # Try last token(s) as the core item
+        for tail_len in range(len(tokens) - 1, 0, -1):
+            tail = " ".join(tokens[-tail_len:])
+            found = _DB_ALIAS_MAP.get(tail.lower())
+            if found:
+                return found, raw
+
+    # ── Strategy 3: Known brand prefix stripping ─────────────────
+    # Known brand names that frequently prefix product names in receipts
+    known_brands = [
+        "yoa", "diamond", "blueband", "filma", "bimoli", "sania",
+        "rosebrand", "kobe", "sasa", "mamasuka", "indofood",
+        "kraft", "prochiz", "greenfields", "dutchlady", "dancow",
+        "bearbrand", "milkuat", "frisianflag", "nestle", "carnation",
+        "capuang", "enak", "sosismeciko", "chimory", "ultra",
+        "wisj", "evoo", "sunco",
+    ]
+    first_lower = tokens[0].lower()
+    if first_lower in known_brands and len(tokens) >= 2:
+        rest = " ".join(tokens[1:])
+        # Check if rest (without brand prefix) is a known alias
+        found = _DB_ALIAS_MAP.get(rest.lower())
+        if found:
+            return found, raw
+        return rest, raw  # Return stripped name even if not in DB
+
     return raw, ""
 
 
