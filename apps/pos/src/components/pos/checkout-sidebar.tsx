@@ -297,30 +297,30 @@ export function CheckoutSidebar({
 
 	return (
 		<div className="relative flex h-full flex-col border-l border-border bg-[#f8f9fa] shadow-sm dark:bg-background">
-			<div className="flex items-center justify-between border-b border-border bg-background px-3.5 py-2.5 sm:px-4 sm:py-3 md:px-4 md:py-2.5">
+			<div className="flex items-center justify-between border-b border-border bg-background px-3 py-2">
 				<div className="flex flex-1 items-center gap-1.5 sm:gap-2 md:gap-2">
 					<div className="flex items-center gap-1.5 sm:gap-2">
 						<div className={cn(
-							"flex h-7.5 w-7.5 items-center justify-center rounded-full text-[11px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
+							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
 							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>1</div>
-						<span className={cn("text-[13px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
+						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
 					</div>
-					<ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
+					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
 					<div className="flex items-center gap-1.5 sm:gap-2">
 						<div className={cn(
-							"flex h-7.5 w-7.5 items-center justify-center rounded-full text-[11px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
+							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
 							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>2</div>
-						<span className={cn("text-[13px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
+						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
 					</div>
-					<ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
+					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
 					<div className="flex items-center gap-1.5 sm:gap-2">
 						<div className={cn(
-							"flex h-7.5 w-7.5 items-center justify-center rounded-full text-[11px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
+							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
 							activeStep === "payment" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>3</div>
-						<span className={cn("text-[13px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
+						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
 					</div>
 				</div>
 				<div className="flex items-center gap-2 text-muted-foreground">
@@ -328,7 +328,7 @@ export function CheckoutSidebar({
 						<Button
 							variant="outline"
 							size="sm"
-							className="h-9 gap-2 rounded-xl border-primary/20 bg-primary/5 px-3 text-[11px] font-black uppercase tracking-wide text-primary hover:bg-primary/10 md:h-8 md:px-2.5 md:text-[10px]"
+							className="h-8 gap-1.5 rounded-xl border-primary/20 bg-primary/5 px-2.5 text-[10px] font-black uppercase tracking-wide text-primary hover:bg-primary/10 md:h-8 md:px-2.5 md:text-[10px]"
 							onClick={onPrintLastOrder}
 						>
 							<Printer className="h-3.5 w-3.5" />
@@ -339,7 +339,7 @@ export function CheckoutSidebar({
 						<Button 
 							variant="ghost" 
 							size="sm" 
-							className="h-9 w-9 shrink-0 rounded-full p-0 md:h-8 md:w-8" 
+							className="h-8 w-8 shrink-0 rounded-full p-0 md:h-8 md:w-8" 
 							onClick={onClose}
 							aria-label="Tutup"
 						>
@@ -350,32 +350,32 @@ export function CheckoutSidebar({
 			</div>
 
 			<ScrollArea className="flex-1 min-h-0">
-				<div className={cn("space-y-5 p-3.5 sm:p-4 md:space-y-5 md:p-4", activeStep === "payment" ? "pb-24" : "pb-20")}>
+				<div className={cn("space-y-3 p-3 md:space-y-3 md:p-3", activeStep === "payment" ? "pb-24" : "pb-20")}>
 					{/* Section 1: Informasi Pelanggan */}
 					{activeStep === "customer" && (
 						<div className="fade-in animate-in space-y-3 duration-300 slide-in-from-right-4 md:space-y-3.5">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<User className="h-4 w-4 text-primary" />
-									<h3 className="text-sm font-bold uppercase tracking-wider">Informasi Pelanggan</h3>
+									<h3 className="text-xs font-bold uppercase tracking-wider">Informasi Pelanggan</h3>
 								</div>
 								<Button
 									variant="ghost"
 									size="sm"
-									className="h-7 px-2 text-[10px] text-muted-foreground font-bold"
+									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
 									onClick={() => setActiveStep("menu")}
 								>
 									<ChevronLeft className="mr-1 h-3 w-3" /> Kembali
 								</Button>
 							</div>
 
-							<div className="rounded-[1.3rem] border border-primary/10 bg-white px-3 py-2.5 shadow-[0_8px_25px_rgba(15,23,42,0.04)] md:rounded-[1.35rem] md:px-3.5 md:py-3">
+							<div className="rounded-xl border border-primary/10 bg-white px-2.5 py-2 shadow-sm md:px-3 md:py-2.5">
 								<div className="flex items-center gap-2">
-									<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-9 md:w-9">
+									<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-9 md:w-9">
 										<User className="h-4 w-4 md:h-4.5 md:w-4.5" />
 									</div>
 									<div className="min-w-0 flex-1">
-										<h3 className="text-base font-black uppercase tracking-wide text-foreground md:text-lg">
+										<h3 className="text-sm font-black uppercase tracking-wide text-foreground">
 											Informasi Pelanggan
 										</h3>
 										<p className="mt-0.5 text-[12px] leading-snug text-muted-foreground md:text-[13px]">
@@ -393,7 +393,7 @@ export function CheckoutSidebar({
 										placeholder="Masukkan nama pelanggan"
 										value={customerInfo.name}
 										onChange={(e) => updateCustomerInfo({ name: e.target.value })}
-										className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm font-semibold placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
+										className="h-9 rounded-xl border-border/70 bg-white px-3 text-sm font-semibold placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
 									/>
 								</div>
 
@@ -418,11 +418,11 @@ export function CheckoutSidebar({
 								{/* Free Refill Toggle */}
 								<div className="mt-0.5 flex items-center justify-between rounded-[1.2rem] border border-primary/15 bg-gradient-to-r from-primary/[0.06] via-sky-50/50 to-background p-2.5 shadow-sm md:rounded-[1.35rem] md:p-3">
 									<div className="flex items-center gap-2.5 md:gap-3">
-										<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-10 md:w-10 md:rounded-[1rem]">
+										<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
 											<Coffee className="h-4 w-4 md:h-4.5 md:w-4.5" />
 										</div>
 										<div className="min-w-0 flex-1">
-											<span className="block text-[13px] font-black uppercase tracking-[0.14em] text-primary md:text-sm">
+											<span className="block text-xs font-black uppercase tracking-[0.14em] text-primary md:text-sm">
 												Free Refill Minuman
 											</span>
 											<p className="text-[11px] font-medium leading-snug text-muted-foreground md:text-xs">
@@ -433,7 +433,7 @@ export function CheckoutSidebar({
 									<button
 										aria-label="Toggle free refill"
 										className={cn(
-											"relative h-6 w-11 shrink-0 rounded-full transition-all duration-300 md:h-7 md:w-12",
+											"relative h-5 w-9 shrink-0 rounded-full transition-all duration-300 md:h-7 md:w-12",
 											customerInfo.isFreeRefill
 												? "bg-primary shadow-md shadow-primary/20"
 												: "bg-muted-foreground/20"
@@ -442,7 +442,7 @@ export function CheckoutSidebar({
 										type="button"
 									>
 										<div className={cn(
-											"absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all duration-300 md:h-6 md:w-6",
+											"absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 md:h-6 md:w-6",
 											customerInfo.isFreeRefill ? "right-0.5" : "left-0.5"
 										)} />
 									</button>
@@ -503,12 +503,12 @@ export function CheckoutSidebar({
 						<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<ShoppingBag className="h-4 w-4 text-primary" />
-									<h3 className="text-sm font-bold uppercase tracking-wider">Pesanan ({totalItems})</h3>
+									<h3 className="text-xs font-bold uppercase tracking-wider">Pesanan ({totalItems})</h3>
 								</div>
 								<Button 
 									variant="ghost" 
 									size="sm" 
-									className="h-7 px-2 text-[10px] text-muted-foreground font-bold"
+									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
 									onClick={() => setActiveStep("customer")}
 								>
 									<ChevronRight className="mr-1 h-3 w-3" /> Isi Info
@@ -523,13 +523,13 @@ export function CheckoutSidebar({
 							) : (
 								<div className="space-y-3">
 									{items.map((item) => (
-										<div key={`${item.productId}-${item.variant}`} className="group relative flex gap-3 rounded-lg border border-border bg-background p-2 transition-all hover:border-primary/50">
-											<div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+										<div key={`${item.productId}-${item.variant}`} className="group relative flex gap-3 rounded-lg border border-border bg-background p-1.5 transition-all hover:border-primary/50">
+											<div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-muted">
 												{item.image && <img src={item.image} alt={item.name} className="h-full w-full object-cover" />}
 											</div>
 											<div className="flex flex-1 flex-col justify-between min-w-0">
 												<div className="flex justify-between items-start gap-1">
-													<h4 className="line-clamp-1 text-[11px] font-bold text-foreground leading-tight">{item.name}</h4>
+													<h4 className="line-clamp-1 text-[10px] font-bold text-foreground leading-tight">{item.name}</h4>
 													{customerInfo.orderType === "online" ? (
 														<input
 															type="number"
@@ -538,7 +538,7 @@ export function CheckoutSidebar({
 															className="w-16 text-right text-[11px] font-bold bg-transparent border-b border-dashed border-orange-300 focus:outline-none focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 														/>
 													) : (
-														<p className="text-[11px] font-bold shrink-0">{fmt(item.price * item.quantity)}</p>
+														<p className="text-[10px] font-bold shrink-0">{fmt(item.price * item.quantity)}</p>
 													)}
 												</div>
 												{item.variant && <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight truncate">{item.variant}</p>}
@@ -571,7 +571,7 @@ export function CheckoutSidebar({
 							)}
 
 							{/* Struk Compact */}
-							<div className="mt-4 rounded-xl border border-border/70 bg-background p-3 sm:p-4 shadow-sm">
+							<div className="mt-4 rounded-xl border border-border/70 bg-background p-2.5 shadow-sm">
 								<div className="space-y-1 text-center">
 									<p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 										Ringkasan Struk
@@ -627,7 +627,7 @@ export function CheckoutSidebar({
 
 								<div className="flex items-center justify-between font-sans">
 									<span className="text-xs sm:text-sm font-black uppercase tracking-widest">Total</span>
-									<span className="text-lg sm:text-xl font-black text-primary tracking-tight">{fmt(finalTotal)}</span>
+									<span className="text-base font-black text-primary tracking-tight">{fmt(finalTotal)}</span>
 								</div>
 							</div>
 
@@ -640,12 +640,12 @@ export function CheckoutSidebar({
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<CreditCard className="h-4 w-4 text-primary" />
-									<h3 className="text-sm font-bold uppercase tracking-wider">Pembayaran</h3>
+									<h3 className="text-xs font-bold uppercase tracking-wider">Pembayaran</h3>
 								</div>
 								<Button 
 									variant="ghost" 
 									size="sm" 
-									className="h-7 px-2 text-[10px] text-muted-foreground font-bold"
+									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
 									onClick={() => setActiveStep("customer")}
 								>
 									<ChevronLeft className="mr-1 h-3 w-3" /> Edit Info
@@ -654,7 +654,7 @@ export function CheckoutSidebar({
 
 							{/* Total Box */}
 							{customerInfo.orderType === "online" && selectedPlatform && (
-								<div className="rounded-xl border border-orange-200 bg-orange-50/70 p-3 space-y-1.5 mb-3">
+								<div className="rounded-xl border border-orange-200 bg-orange-50/70 p-2.5 space-y-1 mb-2">
 									<p className="text-[9px] font-bold uppercase tracking-widest text-orange-600 mb-1">Ringkasan {platformName}</p>
 									<div className="flex justify-between text-xs"><span>Total {platformName}</span><span className="font-bold">{fmt(platformTotal)}</span></div>
 									<div className="flex justify-between text-xs text-muted-foreground"><span>Komisi ({(selectedPlatform.commissionRate * 100).toFixed(0)}%)</span><span className="text-red-500">-{fmt(commissionAmount)}</span></div>
@@ -664,7 +664,7 @@ export function CheckoutSidebar({
 							)}
 							<div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-center">
 								<p className="text-[10px] font-bold uppercase tracking-widest text-primary/60 mb-0.5">Total Tagihan</p>
-								<p className="text-2xl font-black text-primary tracking-tighter">{fmt(finalTotal)}</p>
+								<p className="text-xl font-black text-primary tracking-tighter">{fmt(finalTotal)}</p>
 							</div>
 
 							{/* Metode Pembayaran */}
@@ -682,7 +682,7 @@ export function CheckoutSidebar({
 												key={opt.id}
 												type="button"
 												onClick={() => setSelectedPaymentMethod(opt.id)}
-												className={`flex items-center gap-2 rounded-xl border px-2 py-2 transition-all active:scale-95 ${
+												className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 transition-all active:scale-95 ${
 													isSelected
 														? "border-primary bg-primary/10 text-primary shadow-sm"
 														: "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -702,7 +702,7 @@ export function CheckoutSidebar({
 
 							{/* --- SECTION: CASH ASSISTANT --- */}
 							{selectedPaymentMethod === "tunai" && (
-								<div className="space-y-2 rounded-xl bg-muted/30 border border-border p-3">
+								<div className="space-y-2 rounded-xl bg-muted/30 border border-border p-2.5">
 									<div className="flex items-center gap-2 mb-1">
 										<Calculator className="h-3.5 w-3.5 text-primary" />
 										<h3 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Kalkulator Tunai</h3>
@@ -772,7 +772,7 @@ export function CheckoutSidebar({
 											Voucher / Diskon
 										</label>
 										<select
-											className="w-full appearance-none rounded-lg border border-border bg-background py-1.5 pr-8 pl-2.5 font-bold text-foreground text-[9px] outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5"
+											className="w-full appearance-none rounded-lg border border-border bg-background py-1 pr-7 pl-2 font-bold text-foreground text-[9px] outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5"
 											id="discount-select"
 											onChange={(e) => setSelectedDiscountId(e.target.value)}
 											value={selectedDiscountId || ""}
@@ -793,7 +793,7 @@ export function CheckoutSidebar({
 								)}
 
 								{/* Auto Complete Toggle */}
-								<div className="flex items-center justify-between p-2 rounded-lg border border-border bg-background">
+								<div className="flex items-center justify-between p-1.5 rounded-lg border border-border bg-background">
 									<div className="flex items-center gap-2">
 										<div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
 											<Zap className="h-3 w-3" />
@@ -819,12 +819,12 @@ export function CheckoutSidebar({
 				</div>
 			</ScrollArea>
 
-			<div className="border-t border-border bg-card p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+			<div className="border-t border-border bg-card p-2.5 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
 				{activeStep === "customer" && (
 					<div className="grid gap-2">
 						<Button
 							onClick={() => setActiveStep("menu")}
-							className="h-11 w-full text-xs font-bold bg-background text-foreground hover:bg-muted"
+							className="h-10 w-full text-xs font-bold bg-background text-foreground hover:bg-muted"
 							variant="outline"
 						>
 							<ChevronLeft className="mr-2 h-4 w-4" /> Kembali
@@ -839,7 +839,7 @@ export function CheckoutSidebar({
 								setActiveStep("payment");
 							}}
 							disabled={items.length === 0 || !isShiftOpen}
-							className="h-11 w-full text-xs font-bold shadow-md"
+							className="h-10 w-full text-xs font-bold shadow-md"
 						>
 							Lanjut Bayar <ChevronRight className="ml-2 h-4 w-4" />
 						</Button>
@@ -853,7 +853,7 @@ export function CheckoutSidebar({
 								<Button
 									onClick={onPrintOpenBill}
 									disabled={items.length === 0}
-									className="h-11 w-11 shrink-0 px-0"
+									className="h-10 w-10 shrink-0 px-0"
 									title="Cetak Open Bill"
 									variant="outline"
 								>

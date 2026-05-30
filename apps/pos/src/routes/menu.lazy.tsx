@@ -1303,12 +1303,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				{/* Shift Closed Overlay */}
 				{!isShiftOpen && (
 					<div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-						<div className="flex flex-col items-center justify-center p-8 text-center max-w-md bg-card rounded-3xl shadow-2xl border border-border/50">
-							<div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-100 text-rose-600 mb-6">
-								<Wallet className="h-10 w-10" />
+						<div className="flex flex-col items-center justify-center p-6 text-center max-w-md bg-card rounded-2xl shadow-xl border border-border/50">
+							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 mb-3">
+								<Wallet className="h-6 w-6" />
 							</div>
-							<h2 className="text-2xl font-black tracking-tight mb-2">Shift Kasir Tertutup</h2>
-							<p className="text-muted-foreground text-sm mb-8 leading-relaxed">
+							<h2 className="text-lg font-black tracking-tight mb-1.5">Shift Kasir Tertutup</h2>
+							<p className="text-muted-foreground text-xs mb-5 leading-relaxed">
 								Anda belum bisa menggunakan aplikasi kasir. Silakan buka shift terlebih dahulu untuk mulai melayani pelanggan dan mencatat transaksi.
 							</p>
 							<button
@@ -1316,7 +1316,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									setActiveSidebarTab("dashboard");
 									setIsSidebarOpen(true);
 								}}
-								className="flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95 w-full shadow-lg shadow-primary/20"
+								className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-xs transition-all hover:opacity-90 active:scale-95 w-full shadow-lg shadow-primary/20"
 								type="button"
 							>
 								<BarChart3 className="h-4 w-4" /> Buka Shift Sekarang
@@ -1376,7 +1376,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							"bg-background shrink-0"
 						)}
 					>
-					<div className="flex flex-col px-4 py-2 gap-1.5">
+					<div className="flex flex-col px-3 py-1.5 gap-1">
 						{/* ROW 1: Logo & Store name */}
 						<div 
 							className={cn(
@@ -1386,7 +1386,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						>
 							<div className="flex items-center gap-2.5 min-w-0">
 								<div
-									className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-white shadow-sm ring-1 ring-black/5"
+									className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg font-bold text-white shadow-sm ring-1 ring-black/5"
 									style={{ background: themeColor ?? "var(--color-primary)" }}
 								>
 									{logoUrl ? (
@@ -1396,11 +1396,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 											className="h-full w-full rounded-lg object-contain"
 										/>
 									) : (
-										<Coffee className="h-3.5 w-3.5" />
+										<Coffee className="h-3 w-3" />
 									)}
 								</div>
 								<div className="min-w-0">
-									<h1 className="truncate font-black text-foreground text-xs sm:text-sm uppercase tracking-tight leading-none">
+									<h1 className="truncate font-black text-foreground text-[11px] uppercase tracking-tight leading-none">
 										{storeName}
 									</h1>
 									<p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mt-0.5 opacity-60">POS Kasir & Inventory</p>
@@ -1413,15 +1413,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 					{/* TARGET PERFORMANCE PANEL (Below Logo) */}
 					{progress && progress.hasTarget && (
-						<div className="border-t border-border/50 bg-muted/10 px-4 py-2.5 transition-all">
-							<div className="flex items-center justify-between mb-2">
+						<div className="border-t border-border/50 bg-muted/10 px-3 py-2 transition-all">
+							<div className="flex items-center justify-between mb-1.5">
 								<div className="flex items-center gap-1.5">
 									<TrendingUp className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
 									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">Target Bonus</span>
 								</div>
 								<button 
 									onClick={() => setIsTargetExpanded(!isTargetExpanded)}
-									className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-3 py-1 hover:bg-primary/5 text-primary transition-all active:scale-95"
+									className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-2 py-0.5 hover:bg-primary/5 text-primary transition-all active:scale-95"
 									type="button"
 								>
 									<span className="text-[10px] font-bold uppercase tracking-widest">Detail</span>
@@ -1436,7 +1436,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										<span>Shift</span>
 										<span>{Math.round(shiftPct)}%</span>
 									</div>
-									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+									<div className="h-1 w-full bg-muted/40 rounded-full overflow-hidden">
 										<motion.div 
 											className="h-full bg-primary"
 											initial={{ width: 0 }}
@@ -1620,7 +1620,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								onChange={(e) => setSearchQuery(e.target.value)}
 								onFocus={() => setIsSearchFocused(true)}
 								onBlur={() => setIsSearchFocused(false)}
-								className="h-10 pl-9 pr-9 bg-background border-border/60 focus:border-primary shadow-sm rounded-xl transition-all text-sm"
+								className="h-9 pl-8 pr-8 bg-background border-border/60 focus:border-primary shadow-sm rounded-xl transition-all text-sm"
 							/>
 							{searchQuery && (
 								<button
@@ -1638,7 +1638,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					<div
 						ref={categoryScrollRef}
 						className={cn(
-							"flex gap-1.5 overflow-x-auto px-4 pb-2.5 scrollbar-none mask-fade-edges"
+							"flex gap-1 overflow-x-auto px-3 pb-1.5 scrollbar-none mask-fade-edges"
 						)}
 					>
 						{categoryTabs.map((cat, index) => {
@@ -1651,7 +1651,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									type="button"
 									onClick={() => handleCategorySelect(index)}
 									className={cn(
-										"shrink-0 rounded-lg py-2 px-4 text-xs font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-all",
+										"shrink-0 rounded-lg py-1.5 px-3 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-all",
 										isActive
 											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
 											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
@@ -1666,13 +1666,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 					{/* Local Subcategory Chips */}
 					{activeSubcategories.length > 0 && (
-						<div className="bg-muted/40 border-t border-border/40 px-3 pt-2.5 pb-2.5">
+						<div className="bg-muted/40 border-t border-border/40 px-2 pt-2 pb-2">
 							<div className="flex items-center gap-2 overflow-x-auto scrollbar-none mask-fade-edges">
 								<button
 									type="button"
 									onClick={() => setActiveCategoryId(activeParentId)}
 									className={cn(
-										"shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all shadow-sm border",
+										"shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold whitespace-nowrap transition-all shadow-sm border",
 										activeCategoryId === activeParentId
 											? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
 											: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
@@ -1686,7 +1686,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										type="button"
 										onClick={() => setActiveCategoryId(sub._id)}
 										className={cn(
-											"shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all shadow-sm border",
+											"shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold whitespace-nowrap transition-all shadow-sm border",
 											activeCategoryId === sub._id
 												? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
 												: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
@@ -1700,10 +1700,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					)}
 				</div>
 
-				<div className="pb-32">
+				<div className="pb-28">
 					<div
 						ref={productGridRef}
-						className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 p-3"
+						className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 p-2"
 					>
 						{isLoading ? (
 							// Loading skeletons
@@ -1750,7 +1750,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										)}
 									>
 										{/* Image */}
-										<div className="relative h-28 sm:h-32 w-full bg-muted shrink-0">
+										<div className="relative h-24 sm:h-28 w-full bg-muted shrink-0">
 											<MenuImageWithSkeleton
 												src={product.image}
 												alt={product.name}
@@ -1797,15 +1797,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										</div>
 
 										{/* Info */}
-										<div className="flex flex-1 flex-col justify-between p-2.5 pt-2">
-											<p className="line-clamp-2 font-bold text-foreground text-[13px] leading-tight">
+										<div className="flex flex-1 flex-col justify-between p-2 pt-1.5">
+											<p className="line-clamp-2 font-bold text-foreground text-[11px] leading-tight">
 												{product.name}
 											</p>
 
 						{/* Visual Stock Gauge Bar */}
 						{(product.quantity ?? 0) >= 0 && (
 							<div className="mt-1.5 flex items-center gap-1.5">
-								<div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden min-w-[20px]">
+								<div className="flex-1 h-1 rounded-full bg-muted/50 overflow-hidden min-w-[20px]">
 									<motion.div
 										className={cn(
 											"h-full rounded-full",
@@ -1835,7 +1835,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 						<div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
 												<p
-													className="font-black text-sm leading-none"
+													className="font-black text-[12px] leading-none"
 													style={{ color: themeColor ?? "var(--color-primary)" }}
 												>
 													{fmt(pricing.finalPrice)}
@@ -1870,7 +1870,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				</main>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
-				<div className="app-bottom-bar shrink-0 w-full pb-safe-area px-3 pt-2 sm:pt-3">
+				<div className="app-bottom-bar shrink-0 w-full pb-safe-area px-3 pt-1.5">
 					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-0.5 sm:gap-1">
 						{SIDEBAR_MENU_ITEMS.map((item, index) => {
 							const Icon = item.icon;
@@ -1893,11 +1893,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									type="button"
 								>
 									<div className={cn(
-										"flex h-9 w-9 items-center justify-center rounded-lg transition-all",
+										"flex h-8 w-8 items-center justify-center rounded-md transition-all",
 										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
 										needsAttention && "bg-rose-50 text-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.2)]"
 									)}>
-										<Icon className={cn("h-5 w-5", needsAttention && "animate-bounce")} />
+										<Icon className={cn("h-4 w-4", needsAttention && "animate-bounce")} />
 									</div>
 									<span className="text-[9px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
 										{item.label.split(' ')[0]}
@@ -1931,7 +1931,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						type="button"
 						onClick={() => setIsCartOpen(true)}
 						className={cn(
-							"flex w-full items-center justify-between rounded-2xl px-4 py-3.5 font-bold text-white shadow-lg",
+							"flex w-full items-center justify-between rounded-2xl px-3 py-2.5 font-bold text-white shadow-lg",
 							"transition-all active:opacity-90 active:scale-[0.98]",
 						)}
 						style={{ background: themeColor ?? "var(--color-primary)" }}
@@ -1939,12 +1939,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						{totalItems > 0 ? (
 							<>
 								<div className="flex items-center gap-2.5">
-									<span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-sm">
+									<span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-xs">
 										{totalItems}
 									</span>
-									<span className="text-sm">Lihat Keranjang</span>
+									<span className="text-xs">Lihat Keranjang</span>
 								</div>
-								<span className="text-base">{fmt(finalTotal)}</span>
+								<span className="text-sm">{fmt(finalTotal)}</span>
 							</>
 						) : (
 							<div className="flex w-full items-center justify-center gap-2">
@@ -2067,12 +2067,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			</div>
 			{priceDialogProduct && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPriceDialogProduct(null)}>
-					<div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-						<h3 className="text-center text-sm font-black uppercase tracking-wider text-foreground">Harga Online</h3>
+					<div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+						<h3 className="text-center text-xs font-black uppercase tracking-wider text-foreground">Harga Online</h3>
 						<p className="mb-4 text-center text-xs text-muted-foreground">{priceDialogProduct.product.name}</p>
 						<div className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 p-3 mb-3">
 							<span className="text-sm font-bold text-muted-foreground">Rp</span>
-							<input autoFocus type="text" inputMode="numeric" className="flex-1 bg-transparent text-lg font-black text-foreground outline-none"
+							<input autoFocus type="text" inputMode="numeric" className="flex-1 bg-transparent text-base font-black text-foreground outline-none"
 								value={priceDialogValue}
 								onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setPriceDialogValue(v); }}
 								onKeyDown={(e) => {
@@ -2089,7 +2089,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						</div>
 						<div className="text-center text-[11px] text-muted-foreground mb-4">Menu: {fmt(priceDialogProduct.product.price)}</div>
 						<div className="flex gap-2">
-							<button type="button" onClick={() => setPriceDialogProduct(null)} className="flex-1 rounded-xl border border-border bg-background py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted">Batal</button>
+							<button type="button" onClick={() => setPriceDialogProduct(null)} className="flex-1 rounded-xl border border-border bg-background py-2 text-xs font-bold text-muted-foreground hover:bg-muted">Batal</button>
 							<button type="button" onClick={() => {
 								const customPrice = parseInt(priceDialogValue) || priceDialogProduct.defaultPrice;
 								const p = priceDialogProduct.product;
@@ -2178,13 +2178,13 @@ function ProductDetailSheet({
 
 	return (
 		<div className="flex flex-col bg-background">
-			<div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-4 pb-4 pt-4 backdrop-blur">
+			<div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-3 pb-3 pt-3 backdrop-blur">
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
 						<p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary/80">
 							Pilih Variasi
 						</p>
-						<h2 className="mt-1 text-xl font-black leading-tight text-foreground">
+						<h2 className="mt-1 text-base font-black leading-tight text-foreground">
 							{product.name}
 						</h2>
 						{product.description && (
@@ -2196,10 +2196,10 @@ function ProductDetailSheet({
 					<button
 						type="button"
 						onClick={onClose}
-						className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-muted"
+						className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-muted"
 						aria-label="Tutup"
 					>
-						<X className="h-4 w-4" />
+						<X className="h-3.5 w-3.5" />
 					</button>
 				</div>
 
@@ -2211,7 +2211,7 @@ function ProductDetailSheet({
 									{fmt(pricing.originalPrice)}
 								</span>
 							)}
-							<span className="text-lg font-black text-primary">
+							<span className="text-sm font-black text-primary">
 								{fmt(pricing.finalPrice)}
 							</span>
 						</div>
@@ -2233,7 +2233,7 @@ function ProductDetailSheet({
 				{hasVariations && (
 					<div className="space-y-4">
 						{variationGroups.map((group: any) => (
-							<div key={group.type} className="rounded-2xl border border-border/70 bg-card p-3">
+							<div key={group.type} className="rounded-2xl border border-border/70 bg-card p-2.5">
 								<div className="mb-2 flex items-center justify-between gap-3">
 									<p className="text-sm font-bold text-foreground">{group.type}</p>
 									<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
@@ -2254,14 +2254,14 @@ function ProductDetailSheet({
 													}))
 												}
 												className={cn(
-													"rounded-2xl border px-3 py-3 text-left transition-all",
+													"rounded-2xl border px-2.5 py-2.5 text-left transition-all",
 													selected
 														? "border-primary bg-primary text-primary-foreground shadow-md"
 														: "border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/50"
 												)}
 											>
 												<div className="flex items-center justify-between gap-2">
-													<span className="text-sm font-bold leading-tight">{opt.name}</span>
+													<span className="text-xs font-bold leading-tight">{opt.name}</span>
 													<span
 														className={cn(
 															"text-[11px] font-semibold",
@@ -2292,34 +2292,34 @@ function ProductDetailSheet({
 							<button
 								type="button"
 								onClick={() => setQuantity(Math.max(1, quantity - 1))}
-								className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-foreground shadow-sm transition-colors hover:bg-muted"
+								className="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-foreground shadow-sm transition-colors hover:bg-muted"
 								aria-label="Kurangi"
 							>
-								<Minus className="h-4 w-4" />
+								<Minus className="h-3.5 w-3.5" />
 							</button>
-							<span className="min-w-[2.5rem] text-center text-lg font-black text-foreground">
+							<span className="min-w-[2rem] text-center text-base font-black text-foreground">
 								{quantity}
 							</span>
 							<button
 								type="button"
 								onClick={() => setQuantity(quantity + 1)}
-								className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
+								className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
 								aria-label="Tambah"
 							>
-								<Plus className="h-4 w-4" />
+								<Plus className="h-3.5 w-3.5" />
 							</button>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<div className="sticky bottom-0 z-10 border-t border-border/60 bg-background/95 px-4 pb-5 pt-3 backdrop-blur">
+			<div className="sticky bottom-0 z-10 border-t border-border/60 bg-background/95 px-3 pb-4 pt-2 backdrop-blur">
 				<div className="mb-3 flex items-center justify-between rounded-2xl bg-muted/40 px-3 py-2">
 					<div>
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
 							Total
 						</p>
-						<p className="text-lg font-black text-foreground">{fmt(totalPrice)}</p>
+						<p className="text-sm font-black text-foreground">{fmt(totalPrice)}</p>
 					</div>
 					<div className="text-right text-[11px] text-muted-foreground">
 						<p>{quantity} item</p>
@@ -2331,7 +2331,7 @@ function ProductDetailSheet({
 					type="button"
 					onClick={handleAdd}
 					disabled={!isSelectionComplete}
-					className="flex w-full items-center justify-between rounded-2xl bg-primary px-4 py-3.5 font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+					className="flex w-full items-center justify-between rounded-2xl bg-primary px-3 py-2.5 font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
 				>
 					<span>Tambah ke Keranjang</span>
 					<span>{fmt(totalPrice)}</span>
