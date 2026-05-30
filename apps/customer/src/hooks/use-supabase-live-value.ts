@@ -5,6 +5,10 @@ export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
 	refreshMs?: number;
 	refreshTrigger?: number;
+	/** Cache key for localStorage. When set, data is cached and rendered instantly on next load */
+	cacheKey?: string;
+	/** Cache TTL in ms (default: 5 minutes). Only used when cacheKey is set */
+	cacheTtlMs?: number;
 };
 
 const hasSupabaseConfig = Boolean(
@@ -12,13 +16,43 @@ const hasSupabaseConfig = Boolean(
 		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
 
+/** Shared channel registry — dedup WebSocket connections per schema set */
+const sharedChannels = new Map<string, { refCount: number; unsubscribe: () => void }>();
+
+function loadCache<T>(key: string, ttlMs: number): T | null {
+	try {
+		const raw = localStorage.getItem(key);
+		if (!raw) return null;
+		const entry = JSON.parse(raw);
+		if (Date.now() - entry.ts > ttlMs) {
+			localStorage.removeItem(key);
+			return null;
+		}
+		return entry.data as T;
+	} catch {
+		return null;
+	}
+}
+
+function saveCache<T>(key: string, data: T) {
+	try {
+		localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+	} catch {
+		// Silently ignore quota errors
+	}
+}
+
 export function useSupabaseLiveValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[],
 	options?: UseSupabaseLiveValueOptions
 ) {
-	const [data, setData] = useState<T | null | undefined>(undefined);
+	const [data, setData] = useState<T | null | undefined>(
+		options?.cacheKey
+			? loadCache<T>(options.cacheKey, options.cacheTtlMs ?? 300_000)
+			: undefined
+	);
 	const reloadFnRef = useRef<() => Promise<void>>(async () => {});
 
 	useEffect(() => {
@@ -31,8 +65,11 @@ export function useSupabaseLiveValue<T>(
 		const schemas = options?.realtimeSchemas?.length
 			? options.realtimeSchemas
 			: ["public", "pos"];
-		const refreshMs = Math.max(5000, options?.refreshMs ?? 30000);
-		const channelName = `hybrid-live:${key}:${Math.random().toString(36).slice(2)}`;
+		// Increase polling interval for cached data — 5 minutes instead of 30s
+		const refreshMs = options?.cacheKey
+			? Math.max(300_000, options?.refreshMs ?? 300_000)
+			: Math.max(5000, options?.refreshMs ?? 30000);
+		const channelKey = schemas.sort().join(",");
 
 		let active = true;
 		let inFlight = false;
@@ -48,7 +85,12 @@ export function useSupabaseLiveValue<T>(
 			pendingReload = false;
 			try {
 				const next = await load();
-				if (active) setData(next);
+				if (active) {
+					setData(next);
+					if (options?.cacheKey && next !== null) {
+						saveCache(options.cacheKey, next);
+					}
+				}
 			} catch (error) {
 				console.warn(`[supabase-hybrid:${key}]`, error);
 				if (active) setData(null);
@@ -59,34 +101,63 @@ export function useSupabaseLiveValue<T>(
 		};
 
 		reloadFnRef.current = reload;
-		void reload();
 
-		let channel = supabase.channel(channelName);
-		for (const schema of schemas) {
-			channel = channel.on(
-				"postgres_changes",
-				{ event: "*", schema },
-				() => {
-					void reload();
-				}
-			);
-		}
-		channel.subscribe((status: string) => {
-			if (status === "CHANNEL_ERROR") {
-				console.warn(`[supabase-hybrid:${key}] realtime channel error`);
-			}
-		});
-
-		const timer = window.setInterval(() => {
+		// Only load from server if cache didn't provide data
+		if (data === undefined) {
 			void reload();
-		}, refreshMs);
+		} else {
+			// Background refresh — don't block UI
+			setTimeout(() => void reload(), 100);
+		}
+
+		// Share Realtime channels across hooks with same schema set
+		let channelEntry = sharedChannels.get(channelKey);
+		if (!channelEntry) {
+			let channel = supabase.channel(`hybrid-shared:${channelKey}:${Math.random().toString(36).slice(2)}`);
+			for (const schema of schemas) {
+				channel = channel.on(
+					"postgres_changes",
+					{ event: "*", schema },
+					() => {
+						void reload();
+					}
+				);
+			}
+			channel.subscribe((status: string) => {
+				if (status === "CHANNEL_ERROR") {
+					console.warn(`[supabase-hybrid:${channelKey}] realtime channel error`);
+				}
+			});
+			channelEntry = {
+				refCount: 1,
+				unsubscribe: () => {
+					void supabase.removeChannel(channel);
+				},
+			};
+			sharedChannels.set(channelKey, channelEntry);
+		} else {
+			channelEntry.refCount++;
+		}
+
+		// Only poll for non-cached data (cached data uses 5 min interval above)
+		const timer = !options?.cacheKey
+			? window.setInterval(() => void reload(), refreshMs)
+			: undefined;
 
 		return () => {
 			active = false;
-			window.clearInterval(timer);
-			void supabase.removeChannel(channel);
+			if (timer) window.clearInterval(timer);
+
+			channelEntry.refCount--;
+			if (channelEntry.refCount <= 0) {
+				channelEntry.unsubscribe();
+				sharedChannels.delete(channelKey);
+			}
 		};
 	}, [key, ...deps, options?.refreshTrigger]);
 
 	return data;
 }
+
+/** Alias for backward compatibility */
+export { useSupabaseLiveValue as useSupabaseValue };

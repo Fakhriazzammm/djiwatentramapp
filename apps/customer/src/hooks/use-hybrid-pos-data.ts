@@ -2023,12 +2023,20 @@ async function fetchDashboardStats() {
 }
 
 export function useHybridSiteSettings(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("site-settings", fetchSiteSettings, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("site-settings", fetchSiteSettings, [], {
+		cacheKey: "customer:site-settings",
+		cacheTtlMs: 600_000,
+		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
+	});
 	return supabaseData as SiteSettingsRecord | undefined;
 }
 
 export function useHybridCategories(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("categories", fetchCategories, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("categories", fetchCategories, [], {
+		cacheKey: "customer:categories",
+		cacheTtlMs: 600_000,
+		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
+	});
 	return supabaseData as CategoryRecord[] | undefined;
 }
 
@@ -2037,7 +2045,11 @@ export function useHybridActiveDiscounts(refreshTrigger?: number) {
 		"active-discounts",
 		fetchActiveDiscounts,
 		[],
-		refreshTrigger !== undefined ? { refreshTrigger } : undefined
+		{
+			cacheKey: "customer:active-discounts",
+			cacheTtlMs: 300_000,
+			...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
+		}
 	);
 	return supabaseData as DiscountRecord[] | undefined;
 }
@@ -2079,7 +2091,11 @@ export function useHybridLowStockItems(refreshTrigger?: number) {
 
 export function useHybridProducts(categoryId?: string | null, refreshTrigger?: number) {
 	const categories = useHybridCategories(refreshTrigger);
-	const supabaseData = useSupabaseValue("products", fetchProducts, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("products", fetchProducts, [], {
+		cacheKey: "customer:products",
+		cacheTtlMs: 600_000,
+		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
+	});
 
 	return useMemo(() => {
 		if (!supabaseData) return undefined;

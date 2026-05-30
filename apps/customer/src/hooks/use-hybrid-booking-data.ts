@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
-import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { useSupabaseLiveValue, type UseSupabaseLiveValueOptions } from "@/hooks/use-supabase-live-value";
 
 const publicAssetBaseUrl = (
 	import.meta.env.VITE_SUPABASE_STORAGE_PUBLIC_URL as string | undefined
@@ -24,9 +24,10 @@ function toPublicAssetUrl(value?: string | null) {
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
-	deps: readonly unknown[]
+	deps: readonly unknown[],
+	options?: UseSupabaseLiveValueOptions
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, options);
 }
 
 async function fetchBookingSettings(slug: string) {
@@ -308,7 +309,8 @@ export function useHybridBookingSettings(slug: string) {
 	const supabaseData = useSupabaseValue(
 		`booking-settings:${slug}`,
 		() => fetchBookingSettings(slug),
-		[slug]
+		[slug],
+		{ cacheKey: `customer:booking:${slug}`, cacheTtlMs: 600_000 }
 	);
 	return supabaseData as any;
 }
