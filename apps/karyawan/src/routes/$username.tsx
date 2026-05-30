@@ -1,3 +1,3 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/$username" as any)({});
+export const Route = createFileRoute("/$username")({});
