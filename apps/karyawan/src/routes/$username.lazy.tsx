@@ -279,7 +279,7 @@ function PayslipDetailCard({
 }
 
 function StaffProfilePage() {
-	const { username } = useParams({ from: "/karyawan/$username" as any }) as { username: string };
+	const { username } = useParams({ from: "/$username" as any }) as { username: string };
 	const navigate = useNavigate();
 	const { user: authUser, isAdmin, isAuthenticated, token } = useYumiAuth();
 	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
@@ -1171,7 +1171,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													setIsUploadingPhoto(false);
 
 													if (editSlug !== username) {
-														navigate({ to: `/karyawan/${editSlug}` as any, replace: true });
+														navigate({ to: `/${editSlug}` as any, replace: true });
 													}
 												} catch (err: any) {
 													toast.error(err.message || "Gagal memperbarui profil");
