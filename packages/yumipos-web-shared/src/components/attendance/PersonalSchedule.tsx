@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { getDaysInMonth, getDay, format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, Users, ChevronDown } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useHybridAttendanceSchedules } from "../../hooks/use-hybrid-attendance-schedules";
 import type { AttendanceSchedule } from "../../hooks/use-hybrid-attendance-schedules";
@@ -56,7 +56,6 @@ function TeamDayView({
       if (!map[label]) map[label] = [];
       map[label].push(s);
     }
-    // Sort by SHIFT_ORDER, any unknown labels go last
     const sorted = SHIFT_ORDER.filter((k) => map[k]).map((k) => ({ shift: k, staff: map[k] }));
     const others = Object.keys(map)
       .filter((k) => !SHIFT_ORDER.includes(k))
@@ -136,6 +135,56 @@ function TeamDayView({
   );
 }
 
+// ─── WeekDayCard ──────────────────────────────────────────────
+
+function WeekDayCard({
+  day,
+  dayName,
+  isToday,
+  hasSchedule,
+  bestSchedule,
+}: {
+  day: number;
+  dayName: string;
+  isToday: boolean;
+  hasSchedule: boolean;
+  bestSchedule: AttendanceSchedule | null;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-0.5 rounded-xl border py-2 px-1 transition-all",
+        isToday && "border-primary/50 ring-1 ring-primary/20 bg-primary/[0.03]",
+        !isToday && "border-border/40",
+        hasSchedule ? "bg-card" : "bg-muted/20 opacity-55"
+      )}
+    >
+      <span className={cn(
+        "text-[8px] font-bold uppercase tracking-wider leading-none",
+        isToday ? "text-primary" : "text-muted-foreground/60"
+      )}>
+        {dayName}
+      </span>
+      <span className={cn(
+        "text-sm font-black leading-tight",
+        isToday ? "text-primary" : "text-foreground"
+      )}>
+        {day}
+      </span>
+      {bestSchedule ? (
+        <span className={cn(
+          "mt-0.5 rounded-full px-1.5 py-[2px] text-[7px] font-bold tracking-wide leading-none",
+          getShiftLabelClass(bestSchedule)
+        )}>
+          {getShiftLabel(bestSchedule)}
+        </span>
+      ) : (
+        <span className="mt-0.5 text-[8px] text-muted-foreground/25 font-medium">—</span>
+      )}
+    </div>
+  );
+}
+
 // ─── PersonalSchedule ─────────────────────────────────────────
 
 export function PersonalSchedule({
@@ -149,11 +198,12 @@ export function PersonalSchedule({
 }) {
   const [mode, setMode] = useState<"personal" | "team">("personal");
   const [teamDate, setTeamDate] = useState(() => new Date());
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const teamMonth = teamDate.getMonth() + 1;
   const teamYear = teamDate.getFullYear();
 
-  // Fetch schedules for the effective month based on mode
+  // Fetch schedules
   const effectiveMonth = mode === "personal" ? month : teamMonth;
   const effectiveYear = mode === "personal" ? year : teamYear;
   const { data: schedulesByDate, isLoading } = useHybridAttendanceSchedules(effectiveMonth, effectiveYear);
@@ -185,6 +235,55 @@ export function PersonalSchedule({
     });
   }, [schedulesByDate, userId, month, year, mode]);
 
+  // Group into weeks
+  const weeks = useMemo(() => {
+    if (mode !== "personal") return [];
+    const result: { days: typeof days; weekIndex: number; dateLabel: string }[] = [];
+    let current: (typeof days[0])[] = [];
+    let weekStartDay = 0;
+
+    for (const d of days) {
+      if (current.length === 0) weekStartDay = d.day;
+      current.push(d);
+      if (d.dayName === "Sab" || d.day === days[days.length - 1].day) {
+        const weekEndDay = d.day;
+        const startDate = new Date(year, month - 1, weekStartDay);
+        const endDate = new Date(year, month - 1, weekEndDay);
+        const dateLabel = `${startDate.getDate()} ${MONTHS_SHORT[startDate.getMonth()]}`;
+        result.push({
+          days: current,
+          weekIndex: result.length,
+          dateLabel,
+        });
+        current = [];
+      }
+    }
+    // Fill any remaining (partial last week)
+    if (current.length > 0) {
+      result.push({
+        days: current,
+        weekIndex: result.length,
+        dateLabel: `${current[0].day} ${MONTHS_SHORT[month - 1]}`,
+      });
+    }
+    return result;
+  }, [days, year, month, mode]);
+
+  // Auto-scroll to today's week on mount
+  useEffect(() => {
+    if (!scrollRef.current || weeks.length === 0) return;
+    const todayIdx = days.findIndex((d) => d.isToday);
+    if (todayIdx === -1) return;
+    // Find which week contains today
+    const weekIdx = weeks.findIndex((w) => w.days.some((d) => d.isToday));
+    if (weekIdx > 0) {
+      const child = scrollRef.current.children[weekIdx] as HTMLElement;
+      if (child) {
+        child.scrollIntoView({ behavior: "auto", inline: "start", block: "nearest" });
+      }
+    }
+  }, [weeks, days]);
+
   // Team mode: get schedules for selected date
   const teamSchedules = useMemo(() => {
     if (mode !== "team") return [];
@@ -202,9 +301,9 @@ export function PersonalSchedule({
   if (isLoading) {
     return (
       <div className="rounded-2xl border bg-card p-3">
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 28 }).map((_, i) => (
-            <div key={i} className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+        <div className="flex gap-2 overflow-hidden">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex-1 h-20 animate-pulse rounded-xl bg-muted" />
           ))}
         </div>
       </div>
@@ -252,66 +351,73 @@ export function PersonalSchedule({
       {mode === "personal" ? (
         <>
           {!hasAnySchedule && (
-            <p className="text-[10px] text-muted-foreground font-medium px-2 pb-1">
+            <p className="text-[10px] text-muted-foreground font-medium px-2">
               Belum ada jadwal di bulan ini
             </p>
           )}
-          <div className="rounded-2xl border bg-card p-2">
-            {/* Day-of-week headers */}
-            <div className="grid grid-cols-7 gap-0.5 mb-1">
-              {FULL_DAY_NAMES.map((d) => (
+          <div className="relative">
+            {/* Week-based snap scroll */}
+            <div
+              ref={scrollRef}
+              className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide pb-1"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {weeks.map((week) => (
                 <div
-                  key={d}
-                  className="text-center text-[8px] font-bold uppercase tracking-wider text-muted-foreground/60 py-1"
+                  key={week.weekIndex}
+                  className="snap-start shrink-0 min-w-full flex flex-col gap-1.5"
                 >
-                  {d}
+                  {/* Week label e.g. "26 Mei" */}
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">
+                      {week.dateLabel}
+                    </span>
+                    {week.days.some((d) => d.isToday) && (
+                      <span className="rounded-full bg-primary/10 px-2 py-[1px] text-[7px] font-bold text-primary uppercase tracking-wider">
+                        Minggu ini
+                      </span>
+                    )}
+                  </div>
+                  {/* 7-day grid */}
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {week.days.map((d) => (
+                      <WeekDayCard
+                        key={d.dateStr}
+                        day={d.day}
+                        dayName={d.dayName}
+                        isToday={d.isToday}
+                        hasSchedule={d.hasSchedule}
+                        bestSchedule={d.bestSchedule}
+                      />
+                    ))}
+                    {/* Fill remaining empty slots in last partial week */}
+                    {week.days.length < 7 &&
+                      Array.from({ length: 7 - week.days.length }).map((_, i) => (
+                        <div key={`fill-${i}`} />
+                      ))}
+                  </div>
                 </div>
               ))}
             </div>
-            {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-0.5">
-              {/* Leading empty cells for offset */}
-              {(() => {
-                const firstDay = new Date(year, month - 1, 1).getDay(); // 0=Sun
-                return Array.from({ length: firstDay }).map((_, i) => (
-                  <div key={`lead-${i}`} />
-                ));
-              })()}
-              {days.map((d) => (
-                <div
-                  key={d.dateStr}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 rounded-lg border py-1.5 px-0.5 transition-all",
-                    d.isToday && "border-primary/50 ring-1 ring-primary/20 bg-primary/[0.03]",
-                    !d.isToday && "border-border/40",
-                    d.hasSchedule ? "bg-card" : "bg-muted/20 opacity-60"
-                  )}
-                >
-                  <span
+            {/* Scroll indicators */}
+            <div className="flex justify-center gap-1 mt-1">
+              {weeks.map((week) => {
+                const isActive = false; // We'll detect active via IntersectionObserver if needed
+                return (
+                  <div
+                    key={week.weekIndex}
                     className={cn(
-                      "text-[9px] font-bold leading-tight",
-                      d.isToday ? "text-primary" : "text-foreground"
+                      "h-1 rounded-full transition-all duration-300",
+                      week.days.some((d) => d.isToday)
+                        ? "w-4 bg-primary"
+                        : "w-1 bg-muted-foreground/20"
                     )}
-                  >
-                    {d.day}
-                  </span>
-                  {d.bestSchedule ? (
-                    <span
-                      className={cn(
-                        "mt-0.5 rounded-full px-1 py-[1px] text-[6px] font-bold tracking-wide leading-none",
-                        getShiftLabelClass(d.bestSchedule)
-                      )}
-                    >
-                      {getShiftLabel(d.bestSchedule)}
-                    </span>
-                  ) : (
-                    <span className="mt-0.5 text-[7px] text-muted-foreground/30 font-medium">—</span>
-                  )}
-                </div>
-              ))}
+                  />
+                );
+              })}
             </div>
             {/* Legend */}
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 mt-2 pt-2">
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className="text-[7px] font-bold uppercase tracking-wider text-muted-foreground/50">
                 Shift:
               </span>
@@ -337,3 +443,8 @@ export function PersonalSchedule({
     </div>
   );
 }
+
+const MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+];
