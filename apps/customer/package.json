@@ -17,6 +17,7 @@
     "@tanstack/react-router": "^1.141.1",
     "@yumipos/env": "workspace:*",
     "@yumipos/web-shared": "workspace:*",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.29.0",
     "lucide-react": "^0.473.0",
