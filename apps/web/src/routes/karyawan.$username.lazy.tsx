@@ -277,7 +277,7 @@ const normPeriod = (name: string) => {
 function StaffProfilePage() {
 	const { username } = useParams({ from: "/karyawan/$username" as any }) as { username: string };
 	const navigate = useNavigate();
-	const { user: authUser, isAdmin, isAuthenticated, token } = useYumiAuth();
+	const { user: authUser, isAdmin, isAuthenticated, token, logout } = useYumiAuth();
 	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
 	
 	const [pin, setPin] = useState("");
@@ -713,7 +713,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									<p className="font-bold text-primary text-[10px] uppercase">{staff.roleName}</p>
 									<p className="text-[10px] text-muted-foreground leading-none">{privateData?.username}</p>
 								</div>
-								<Button variant="ghost" size="icon" onClick={() => setIsUnlocked(false)} className="rounded-lg h-8 w-8">
+								<Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate({ to: "/login" as any }); }} className="rounded-lg h-8 w-8">
 									<LogOut className="h-4 w-4 text-muted-foreground" />
 								</Button>
 							</div>

@@ -281,7 +281,7 @@ function PayslipDetailCard({
 function StaffProfilePage() {
 	const { username } = useParams({ from: "/karyawan/$username" as any }) as { username: string };
 	const navigate = useNavigate();
-	const { user: authUser, isAdmin, isAuthenticated, token } = useYumiAuth();
+	const { user: authUser, isAdmin, isAuthenticated, token, logout } = useYumiAuth();
 	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
 	
 	const [pin, setPin] = useState("");
@@ -740,7 +740,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 											)}
 										</div>
 									</div>
-									<Button variant="ghost" size="sm" onClick={() => setIsUnlocked(false)} className="shrink-0 rounded-lg h-7 w-7 p-0">
+									<Button variant="ghost" size="sm" onClick={async () => { await logout(); navigate({ to: "/login" as any }); }} className="shrink-0 rounded-lg h-7 w-7 p-0">
 										<LogOut className="h-3.5 w-3.5 text-muted-foreground" />
 									</Button>
 								</div>
