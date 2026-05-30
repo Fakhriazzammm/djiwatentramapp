@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { AlertCircle, CalendarClock, X, Loader2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { createClient } from "../../lib/client";
-import { WIB_OFFSET_MS as WIB_OFFSET_MS_MS, isSameDayWIB, nowWIB } from "../../lib/wib-utils";
+import { WIB_OFFSET_MS, isSameDayWIB, nowWIB } from "../../lib/wib-utils";
 
 const DISMISS_PREFIX = "prev_shift_clockout_dismiss_";
 

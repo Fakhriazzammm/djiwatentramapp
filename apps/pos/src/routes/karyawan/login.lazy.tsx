@@ -2,9 +2,9 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Search, Fingerprint, ShieldCheck } from "lucide-react";
-import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { useYumiAuth } from "@yumipos/web-shared";
 import { toast } from "sonner";
-import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@/lib/yumi-auth-client";
+import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@yumipos/web-shared";
 
 export const Route = createLazyFileRoute("/karyawan/login")({
 	component: KaryawanLoginPage,

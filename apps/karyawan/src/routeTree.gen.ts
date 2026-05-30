@@ -13,32 +13,86 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UsernameRouteImport } from './routes/$username'
-import { Route as IndexRouteImport } from './routes/index'
 
-import { Route as IndexLazyRouteImport } from './routes/index.lazy'
-import { Route as LoginLazyRouteImport } from './routes/login.lazy'
-import { Route as UsernameLazyRouteImport } from './routes/$username.lazy'
-
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+const IndexLazyRouteImport = createFileRoute('/')()
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/login.lazy').then((d) => d.Route))
-
 const UsernameRoute = UsernameRouteImport.update({
   id: '/$username',
   path: '/$username',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/$username.lazy').then((d) => d.Route))
+const IndexLazyRoute = IndexLazyRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 
-export const routeTree = rootRouteImport.addChildren([
-  IndexRoute,
-  LoginRoute,
-  UsernameRoute,
-])
+export interface FileRoutesByFullPath {
+  '/': typeof IndexLazyRoute
+  '/$username': typeof UsernameRoute
+  '/login': typeof LoginRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexLazyRoute
+  '/$username': typeof UsernameRoute
+  '/login': typeof LoginRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexLazyRoute
+  '/$username': typeof UsernameRoute
+  '/login': typeof LoginRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/$username' | '/login'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/$username' | '/login'
+  id: '__root__' | '/' | '/$username' | '/login'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexLazyRoute: typeof IndexLazyRoute
+  UsernameRoute: typeof UsernameRoute
+  LoginRoute: typeof LoginRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$username': {
+      id: '/$username'
+      path: '/$username'
+      fullPath: '/$username'
+      preLoaderRoute: typeof UsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexLazyRoute: IndexLazyRoute,
+  UsernameRoute: UsernameRoute,
+  LoginRoute: LoginRoute,
+}
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()

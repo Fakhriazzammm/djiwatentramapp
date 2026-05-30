@@ -1,10 +1,10 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useYumiAuth } from "@/hooks/useYumiAuth";
-import { Footer } from "@/components/layout/Footer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useYumiAuth } from "@yumipos/web-shared";
+import { Footer } from "@yumipos/web-shared/components/layout/Footer";
+import { Button } from "@yumipos/web-shared/components/ui/button";
+import { Input } from "@yumipos/web-shared/components/ui/input";
 import { 
 	User, 
 	Lock, 
@@ -30,24 +30,24 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
-import { PersonalSchedule } from "@/components/attendance/PersonalSchedule";
-import { HomeClockOutBanner } from "@/components/home/home-clockout-banner";
+import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
+import { HomeClockOutBanner } from "@yumipos/web-shared/components/home/home-clockout-banner";
 import {
 	useHybridPrivateStaffData,
 	useHybridStaffBySlug,
 	useHybridStaffLogs,
 	useHybridStaffStats,
-} from "@/hooks/use-hybrid-attendance-data";
+} from "@yumipos/web-shared";
 import {
 	useHybridUpdateUserPin,
 	useHybridUpdateUserProfile,
-} from "@/hooks/use-hybrid-write-actions";
+} from "@yumipos/web-shared";
 import {
 	useHybridPayslips,
-} from "@/hooks/use-hybrid-payroll-data";
-import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@/lib/payslip-pdf";
-import { useHybridSiteSettings, fetchShiftReports, type StaffRoleBonusConfig } from "@/hooks/use-hybrid-pos-data";
-import { createClient } from "@/lib/client";
+} from "@yumipos/web-shared";
+import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@yumipos/web-shared";
+import { useHybridSiteSettings, fetchShiftReports, type StaffRoleBonusConfig } from "@yumipos/web-shared";
+import { createClient } from "@yumipos/web-shared";
 
 const formatCurrency = (amount: number) => {
 	return new Intl.NumberFormat("id-ID", {

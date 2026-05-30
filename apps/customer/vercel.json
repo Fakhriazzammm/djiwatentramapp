@@ -1,0 +1,16 @@
+{
+  "buildCommand": "cd ../.. && bun install && cd apps/customer && npx vite build",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && bun install",
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/:path((?!.*\\..*).*)", "destination": "/index.html" }
+  ]
+}
