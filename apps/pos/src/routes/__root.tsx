@@ -18,12 +18,13 @@ function RootContent() {
 	useEffect(() => {
 		if (isLoading) return;
 
-				const isPublicPage =
-					location.pathname === "/login" ||
-					location.pathname === "/admin/login" ||
-					location.pathname === "/karyawan/login" ||
-					location.pathname === "/register" ||
-					location.pathname.startsWith("/register/selesai/");
+		const isPublicPage =
+			location.pathname === "/login" ||
+			location.pathname === "/admin/login" ||
+			location.pathname === "/karyawan/login" ||
+			location.pathname === "/menu" ||
+			location.pathname === "/register" ||
+			location.pathname.startsWith("/register/selesai/");
 		
 		if (!isAuthenticated) {
 			if (location.pathname === "/register" && siteSettings?.employeeOnboarding?.registrationEnabled === false) {
