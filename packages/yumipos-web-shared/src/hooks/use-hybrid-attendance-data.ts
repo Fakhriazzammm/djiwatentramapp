@@ -66,17 +66,31 @@ async function fetchUserBySlug(slug: string) {
 		.maybeSingle();
 
 	if (error) throw error;
-	if (!data) return null;
+
+	// Fallback: lookup by _id if slug lookup fails
+	let user = data;
+	if (!user) {
+		const { data: idResult, error: idError } = await supabase
+			.from("pos_users_public")
+			.select("*")
+			.eq("_id", slug)
+			.eq("isActive", true)
+			.maybeSingle();
+		if (idError) throw idError;
+		user = idResult;
+	}
+
+	if (!user) return null;
 
 	return {
-		_id: data._id,
-		name: data.name,
-		slug: data.slug,
-		roleName: data.roleName || "Team",
-		roleId: data.roleId ?? null,
-		hasFace: Boolean(data.hasFace),
-		photoUrl: (data as any).photoUrl ?? null,
-		raw: (data as any).raw ?? null,
+		_id: user._id,
+		name: user.name,
+		slug: user.slug,
+		roleName: user.roleName || "Team",
+		roleId: user.roleId ?? null,
+		hasFace: Boolean(user.hasFace),
+		photoUrl: (user as any).photoUrl ?? null,
+		raw: (user as any).raw ?? null,
 	};
 }
 

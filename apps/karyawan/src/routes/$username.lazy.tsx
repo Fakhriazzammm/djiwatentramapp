@@ -371,7 +371,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 	// Auto-unlock if current user is the owner or an admin
 	useEffect(() => {
 		if (isAuthenticated && authUser) {
-			const isOwner = authUser.slug === username;
+			const isOwner = authUser.slug === username || authUser._id === username;
 			if (isOwner || isAdmin) {
 				setIsUnlocked(true);
 			}
