@@ -417,8 +417,8 @@ async def _gather_context() -> str:
         logger.warning("Context gathering partial: %s", e)
 
     if hints:
-        return "Konteks realtime YumiPOS: " + " | ".join(hints)
-    return "Konteks: YumiPOS Djiwa Tentram Coffee (pos.yumme.id)"
+        return "Konteks realtime: " + " | ".join(hints)
+    return "Konteks: Ekosistem Djiwa Tentram — POS (pos.yumme.id), Customer (djiwatentram.yumme.id), Karyawan (karyawan.yumme.id)"
 
 
 # ===================================================================
@@ -775,14 +775,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_sessions.pop(update.effective_user.id, None)
 
     await _reply_msg(update, context, 
-        "🤖 Yumi AI — Asisten YumiPOS\n\n"
+        "🤖⭐ Yumi General Manager Agents\n\n"
+        "Saya adalah General Manager AI untuk seluruh ekosistem Djiwa Tentram.\n\n"
         "Saya bisa bantu:\n"
-        "• Ringkasan harian (omzet, produk, pengeluaran)\n"
+        "• Ringkasan harian (omzet, produk, shift, pengeluaran)\n"
         "• Top produk & stok menipis\n"
         "• Absensi & booking aktif\n"
         "• Briefing bisnis harian\n"
-        "• Chat bebas tanya apa saja\n"
-        "• 📸 Kirim foto struk untuk scan OCR\n\n"
+        "• Analisis data lintas aplikasi (POS, Karyawan, Customer)\n"
+        "• 📸 Kirim foto struk untuk scan OCR\n"
+        "• Mengarahkan ke bot spesialis jika perlu\n\n"
+        "💡 Mau detail keuangan? Tanya @YummeFinanceAIbot\n"
+        "💡 Mau restok/supplier? Tanya @YumiPurchasingBot\n\n"
         "Pilih menu atau ketik bebas 👇",
         parse_mode="Markdown",
         reply_markup=_reply_keyboard(),
@@ -794,7 +798,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _reply_msg(update, context, "Unauthorized")
         return
     await _reply_msg(update, context, 
-        "💡 Cara pakai Yumi AI\n\n"
+        "💡 Cara pakai Yumi General Manager Agents\n\n"
         "📋 Commands:\n"
         "/ringkasan — Ringkasan (default: hari ini)\n"
         "  └ Filter: /ringkasan kemarin / minggu_ini / bulan_ini\n"
@@ -806,9 +810,14 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/yumi <pesan> — Opt-in Hermes read-only\n"
         "/hermes_scope — Cek scope Hermes project agent\n"
         "/hermes_test — Test adapter Hermes read-only\n\n"
+        "🤖⭐ Orchestrator — Saya koordinasikan semua bot:\n"
+        "• @YummeFinanceAIbot — Keuangan & OCR struk\n"
+        "• @YumiPurchasingBot — Inventori & Restok\n"
+        "• @YummeSupervisorAIbot — Order Realtime\n\n"
         "💬 Chat bebas: ketik apa saja\n"
         "📸 Scan struk: kirim foto struk\n\n"
-        "Contoh: _omzet hari ini_, _produk terlaris minggu ini_, _berapa stok kopi?_",
+        "Contoh: _omzet hari ini_, _produk terlaris minggu ini_, _berapa stok kopi?_\n"
+        "Atau: _cek pengeluaran_ (saya arahkan ke Finance bot)",
         parse_mode="Markdown",
         reply_markup=_reply_keyboard(),
     )
@@ -1568,11 +1577,12 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         context_hint = await _gather_context()
         context_hint += (
-            "\nKamu adalah Yumi AI untuk YumiPOS (Djiwa Tentram Coffee, pos.yumme.id). "
-            "Jawab dalam Bahasa Indonesia, ringkas, actionable. "
+            "\nKamu adalah Yumi General Manager Agents untuk ekosistem Djiwa Tentram. "
+            "Jawab dalam Bahasa Indonesia, ringkas, actionable, dengan tone GM yang berwibawa. "
             "Jika user tanya data, berikan angka dan insight. "
-            "Jika user minta action (buat order, catat transaksi, dll), jelaskan bahwa fitur itu "
-            "tersedia di web app pos.yumme.id."
+            "Jika user minta action spesifik di luar kemampuanmu (buat order, catat transaksi, dll), "
+            "jelaskan bahwa fitur itu tersedia di web app dan arahkan ke bot yang tepat jika relevan. "
+            "Kamu adalah level tertinggi — tahu kapan harus handle sendiri dan kapan delegasi."
         )
 
         reply = await _ask_yumi_ai(
@@ -2164,7 +2174,7 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
-    logger.info("Starting Yumi AI bot with full feature parity...")
+    logger.info("Starting Yumi General Manager Agents...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
