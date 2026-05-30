@@ -349,7 +349,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
 				const bonusBasis = bonusCfg?.basis ?? "shift";
 				let totalTargetBonus = 0;
-				let bonusShiftCount = 0;
+				const bonusShifts: { shiftName: string; bonus: number; date: string }[] = [];
 				if (bonusCfg?.tiers && bonusCfg.tiers.length > 0 && bonusBasis !== "monthly") {
 					// Ambil shift data dari fetchShiftReports (sama dgn laporan shift admin)
 					try {
@@ -369,7 +369,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								})?.bonus ?? 0;
 								if (myBonus > 0) {
 									totalTargetBonus += myBonus;
-									bonusShiftCount++;
+									bonusShifts.push({
+										shiftName: shift.shiftName ?? "Shift",
+										bonus: myBonus,
+										date: shift.startTime
+											? new Date(shift.startTime).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+											: "",
+									});
 								}
 							}
 						}
@@ -409,7 +415,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							overtime_rate_per_hour: 0,
 							total_overtime_bonus: 0,
 							total_penalty: totalPenalty,
-							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: (bonusCfg?.tiers?.length ?? 0) > 0 ? (bonusCfg?.tiers?.[0]?.bonusAmount ?? 0) : 0 },
+							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: (bonusCfg?.tiers?.length ?? 0) > 0 ? (bonusCfg?.tiers?.[0]?.bonusAmount ?? 0) : 0, shifts: bonusShifts.length > 0 ? bonusShifts : undefined },
 						},
 					});
 				}
