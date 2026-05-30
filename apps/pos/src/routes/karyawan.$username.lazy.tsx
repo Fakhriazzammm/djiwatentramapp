@@ -24,7 +24,9 @@ import {
 	ChevronRight,
 	Calendar,
 	KeyRound,
-	X
+	X,
+	ChevronDown,
+	ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -83,6 +85,7 @@ function PayslipDetailCard({
 	payslip: any;
 	onDownload: (p: any) => void;
 }) {
+	const [expandedBonus, setExpandedBonus] = useState(false);
 	const b = payslip.breakdown ?? {};
 	const badgeMap: Record<string, { label: string; cls: string }> = {
 		generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
@@ -98,7 +101,8 @@ function PayslipDetailCard({
 	if ((b.total_shift_pay ?? 0) > 0) items.push({ label: `Gaji Shift (${b.shifts ?? 0} shift)`, value: b.total_shift_pay });
 	if ((b.total_allowance ?? 0) > 0) items.push({ label: "Tunjangan Transportasi", value: b.total_allowance });
 	// Hapus Bonus Lembur - bonus dari target revenue per shift, bukan lembur
-	if ((b.bonus_target?.total_bonus ?? 0) > 0) items.push({ label: "Bonus Target", value: b.bonus_target.total_bonus, color: "text-emerald-600" });
+	const bonusTarget = b.bonus_target ?? {};
+	const bonusShifts = bonusTarget.shifts ?? [];
 	if ((b.total_penalty ?? 0) > 0) items.push({ label: "Denda Keterlambatan", value: -Math.abs(b.total_penalty), color: "text-red-600" });
 
 	return (
@@ -132,6 +136,54 @@ function PayslipDetailCard({
 							</span>
 						</div>
 					))}
+				</div>
+			)}
+
+			{/* Bonus Target — clickable expandable */}
+			{(bonusTarget.total_bonus ?? 0) > 0 && (
+				<div className="space-y-1 mb-3">
+					<button
+						onClick={() => setExpandedBonus(!expandedBonus)}
+						className="flex w-full items-center justify-between text-[11px] group/collapse"
+					>
+						<span className="flex items-center gap-1 text-muted-foreground">
+							Bonus Target
+							{bonusShifts.length > 0 && (
+								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedBonus ? 'rotate-180' : ''}`} />
+							)}
+						</span>
+						<span className="font-semibold tabular-nums text-emerald-600">
+							{formatCurrency(bonusTarget.total_bonus ?? 0)}
+						</span>
+					</button>
+
+					{/* Expandable shift details */}
+					<AnimatePresence initial={false}>
+						{expandedBonus && bonusShifts.length > 0 && (
+							<motion.div
+								initial={{ height: 0, opacity: 0 }}
+								animate={{ height: "auto", opacity: 1 }}
+								exit={{ height: 0, opacity: 0 }}
+								transition={{ duration: 0.2 }}
+								className="overflow-hidden"
+							>
+								<div className="mt-1.5 pl-2 border-l-2 border-emerald-200 space-y-1">
+									{bonusShifts.map((s: any, i: number) => (
+										<div key={i} className="flex items-center justify-between text-[10px]">
+											<div className="flex items-center gap-1.5 min-w-0">
+												<span className="w-1 h-1 rounded-full bg-emerald-400 shrink-0" />
+												<span className="text-muted-foreground truncate">{s.shiftName}</span>
+												<span className="text-muted-foreground/50 shrink-0">• {s.date}</span>
+											</div>
+											<span className="font-semibold text-emerald-600 shrink-0 ml-2">
+												+{formatCurrency(s.bonus)}
+											</span>
+										</div>
+									))}
+								</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 			)}
 
@@ -355,6 +407,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
 				const bonusBasis = bonusCfg?.basis ?? "shift";
 				let totalTargetBonus = 0;
+				const bonusShifts: { shiftName: string; bonus: number; date: string }[] = [];
 				if (bonusBasis === "monthly" && bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
 					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
 				} else {
@@ -371,7 +424,16 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									const bn = (b.name ?? "").toUpperCase().trim();
 									return bn === staffNameUpper || staffNameUpper.includes(bn) || bn.includes(staffNameUpper);
 								})?.bonus ?? 0;
-								if (myBonus > 0) totalTargetBonus += myBonus;
+								if (myBonus > 0) {
+									totalTargetBonus += myBonus;
+									bonusShifts.push({
+										shiftName: shift.shiftName ?? "Shift",
+										bonus: myBonus,
+										date: shift.startTime
+											? new Date(shift.startTime).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+											: "",
+									});
+								}
 							}
 						}
 					} catch (e) {
@@ -408,7 +470,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							overtime_rate_per_hour: 0,
 							total_overtime_bonus: 0,
 							total_penalty: totalPenalty,
-							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: (bonusCfg?.tiers?.length ?? 0) > 0 ? (bonusCfg?.tiers?.[0]?.bonusAmount ?? 0) : 0 },
+							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: (bonusCfg?.tiers?.length ?? 0) > 0 ? (bonusCfg?.tiers?.[0]?.bonusAmount ?? 0) : 0, shifts: bonusShifts.length > 0 ? bonusShifts : undefined },
 						},
 					});
 				}

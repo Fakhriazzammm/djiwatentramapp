@@ -34,10 +34,16 @@ export type PayslipBreakdown = {
 	bonus_target?: {
 		basis?: string;
 		total_bonus?: number;
+		amount_per_tier?: number;
 		tiers?: Array<{
 			threshold_pct: number;
 			amount: number;
 			achieved: boolean;
+		}>;
+		shifts?: Array<{
+			shiftName: string;
+			bonus: number;
+			date: string;
 		}>;
 	};
 };
@@ -157,6 +163,7 @@ export function generatePayslipPDF(
 
 	// ── BUILD TABLE ROWS ──────────────────────────────────────────────
 	const rows: [string, string, string][] = [];
+	const bonusDetailRows: { label: string; amount: string }[] = [];
 	let rowNum = 1;
 
 	if ((breakdown.monthly_fixed_salary ?? 0) > 0) {
@@ -187,12 +194,24 @@ export function generatePayslipPDF(
 			fmt(breakdown.total_overtime_bonus!),
 		]);
 	}
-	if ((breakdown.bonus_target?.total_bonus ?? 0) > 0) {
+
+	const bonusShifts = breakdown.bonus_target?.shifts;
+	const totalBonus = breakdown.bonus_target?.total_bonus ?? 0;
+	if (totalBonus > 0) {
 		rows.push([
 			String(rowNum++),
 			"Bonus Target",
-			fmt(breakdown.bonus_target!.total_bonus!),
+			fmt(totalBonus),
 		]);
+		// Collect shift detail rows for display below the main table
+		if (bonusShifts && bonusShifts.length > 0) {
+			for (const s of bonusShifts) {
+				bonusDetailRows.push({
+					label: `${s.shiftName} • ${s.date}`,
+					amount: `+${fmt(s.bonus)}`,
+				});
+			}
+		}
 	}
 
 	// If no rows at all, add a placeholder so table renders
@@ -253,6 +272,43 @@ export function generatePayslipPDF(
 	});
 
 	y = (doc as any).lastAutoTable.finalY + 4;
+
+	// ── BONUS SHIFT DETAILS TABLE (if any) ────────────────────────────
+	if (bonusDetailRows.length > 0) {
+		const detailBody = bonusDetailRows.map((d) => [
+			{ content: "", styles: { halign: "center" as const } },
+			{
+				content: `  └ ${d.label}`,
+				styles: {
+					fontSize: 8,
+					textColor: rgb(...C.muted),
+				} as any,
+			},
+			{
+				content: d.amount,
+				styles: {
+					fontSize: 8,
+					textColor: rgb(...C.accent),
+					halign: "right" as const,
+				},
+			},
+		]);
+		autoTable(doc, {
+			startY: y,
+			body: detailBody,
+			theme: "plain",
+			bodyStyles: { fontSize: 8 },
+			columnStyles: {
+				0: { cellWidth: COL_W.no, halign: "center" },
+				1: { cellWidth: COL_W.komponen },
+				2: { cellWidth: COL_W.jumlah, halign: "right" },
+			},
+			margin: { left: MARGIN, right: MARGIN },
+			tableLineColor: rgb(...C.border),
+			tableLineWidth: 0,
+		});
+		y = (doc as any).lastAutoTable.finalY + 4;
+	}
 
 	// ── DEDUCTIONS ROW ────────────────────────────────────────────────
 	const deductions = payslip.deductions ?? 0;
