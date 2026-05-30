@@ -21,6 +21,8 @@ import {
 	Check,
 	LogOut,
 	ChevronRight,
+	ChevronDown,
+	ChevronUp,
 	Calendar,
 	KeyRound,
 	X
@@ -66,6 +68,8 @@ function PayslipDetailCard({
 	payslip: any;
 	onDownload: (p: any) => void;
 }) {
+	const [expandedShifts, setExpandedShifts] = useState(false);
+	const [expandedBonus, setExpandedBonus] = useState(false);
 	const b = payslip.breakdown ?? {};
 	const badgeMap: Record<string, { label: string; cls: string }> = {
 		generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
@@ -77,10 +81,12 @@ function PayslipDetailCard({
 
 	const items: { label: string; value: number; color?: string }[] = [];
 	if ((b.monthly_fixed_salary ?? 0) > 0) items.push({ label: "Gaji Tetap", value: b.monthly_fixed_salary });
-	if ((b.total_shift_pay ?? 0) > 0) items.push({ label: `Gaji Shift (${b.shifts ?? 0} shift)`, value: b.total_shift_pay });
+	// Gaji Shift handled separately below (expandable)
+	const shiftWorkDates = b.shift_work_dates ?? [];
 	if ((b.total_allowance ?? 0) > 0) items.push({ label: "Tunjangan Transportasi", value: b.total_allowance });
 	if ((b.total_overtime_bonus ?? 0) > 0) items.push({ label: "Bonus Lembur", value: b.total_overtime_bonus, color: "text-emerald-600" });
-	if ((b.bonus_target?.total_bonus ?? 0) > 0) items.push({ label: "Bonus Target", value: b.bonus_target.total_bonus, color: "text-emerald-600" });
+	const bonusTarget = b.bonus_target ?? {};
+	const bonusShifts = bonusTarget.shifts ?? [];
 	if ((b.total_penalty ?? 0) > 0) items.push({ label: "Denda Keterlambatan", value: -Math.abs(b.total_penalty), color: "text-red-600" });
 
 	return (
@@ -114,6 +120,101 @@ function PayslipDetailCard({
 							</span>
 						</div>
 					))}
+				</div>
+			)}
+
+			{/* Gaji Shift — clickable expandable */}
+			{(b.total_shift_pay ?? 0) > 0 && (
+				<div className="space-y-1 mb-3">
+					<button
+						onClick={() => setExpandedShifts(!expandedShifts)}
+						className="flex w-full items-center justify-between text-[11px] group/collapse"
+					>
+						<span className="flex items-center gap-1 text-muted-foreground">
+							Gaji Shift ({b.shifts ?? 0} shift)
+							{shiftWorkDates.length > 0 && (
+								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedShifts ? \'rotate-180\' : \'\'}`} />
+							)}
+						</span>
+						<span className="font-semibold tabular-nums">
+							{formatCurrency(b.total_shift_pay ?? 0)}
+						</span>
+					</button>
+
+					{/* Expandable shift date details */}
+					<AnimatePresence initial={false}>
+						{expandedShifts && shiftWorkDates.length > 0 && (
+							<motion.div
+								initial={{ height: 0, opacity: 0 }}
+								animate={{ height: "auto", opacity: 1 }}
+								exit={{ height: 0, opacity: 0 }}
+								transition={{ duration: 0.2 }}
+								className="overflow-hidden"
+							>
+								<div className="mt-1.5 pl-2 border-l-2 border-primary/30 space-y-1">
+									{shiftWorkDates.map((dateStr: string, i: number) => (
+										<div key={i} className="flex items-center justify-between text-[10px]">
+											<div className="flex items-center gap-1.5 min-w-0">
+												<span className="w-1 h-1 rounded-full bg-primary/40 shrink-0" />
+												<span className="text-muted-foreground">{dateStr}</span>
+											</div>
+											<span className="font-semibold shrink-0 ml-2">
+												{formatCurrency(b.base_shift_rate ?? 0)}/shift
+											</span>
+										</div>
+									))}
+								</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
+				</div>
+			)}
+
+			{/* Bonus Target — clickable expandable */}
+			{(bonusTarget.total_bonus ?? 0) > 0 && (
+				<div className="space-y-1 mb-3">
+					<button
+						onClick={() => setExpandedBonus(!expandedBonus)}
+						className="flex w-full items-center justify-between text-[11px] group/collapse"
+					>
+						<span className="flex items-center gap-1 text-muted-foreground">
+							Bonus Target
+							{bonusShifts.length > 0 && (
+								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedBonus ? \'rotate-180\' : \'\'}`} />
+							)}
+						</span>
+						<span className="font-semibold tabular-nums text-emerald-600">
+							{formatCurrency(bonusTarget.total_bonus ?? 0)}
+						</span>
+					</button>
+
+					{/* Expandable shift details */}
+					<AnimatePresence initial={false}>
+						{expandedBonus && bonusShifts.length > 0 && (
+							<motion.div
+								initial={{ height: 0, opacity: 0 }}
+								animate={{ height: "auto", opacity: 1 }}
+								exit={{ height: 0, opacity: 0 }}
+								transition={{ duration: 0.2 }}
+								className="overflow-hidden"
+							>
+								<div className="mt-1.5 pl-2 border-l-2 border-emerald-200 space-y-1">
+									{bonusShifts.map((s: any, i: number) => (
+										<div key={i} className="flex items-center justify-between text-[10px]">
+											<div className="flex items-center gap-1.5 min-w-0">
+												<span className="w-1 h-1 rounded-full bg-emerald-400 shrink-0" />
+												<span className="text-muted-foreground truncate">{s.shiftName}</span>
+												<span className="text-muted-foreground/50 shrink-0">• {s.date}</span>
+											</div>
+											<span className="font-semibold text-emerald-600 shrink-0 ml-2">
+												+{formatCurrency(s.bonus)}
+											</span>
+										</div>
+									))}
+								</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 			)}
 
@@ -344,6 +445,21 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const daysWorked = stats.daysWorked ?? 0;
 				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
 				const totalShiftSalary = sessionCount * baseShiftRate;
+				// Extract unique work day dates from logs
+				const shiftWorkDates: string[] = [];
+				if (logs) {
+					const seenDates = new Set<string>();
+					for (const log of logs) {
+						if (log.type === "check_in") {
+							const d = new Date(log.timestamp);
+							const dateStr = d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+							if (!seenDates.has(dateStr)) {
+								seenDates.add(dateStr);
+								shiftWorkDates.push(dateStr);
+							}
+						}
+					}
+				}
 				const totalAllowance = daysWorked * dailyAllowance;
 				// Bonus target — query shifts langsung tanpa filter timezone (pake epoch UTC)
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
@@ -408,6 +524,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							monthly_fixed_salary: monthlyFixedSalary,
 							base_shift_rate: baseShiftRate,
 							shifts: sessionCount,
+							shift_work_dates: shiftWorkDates.length > 0 ? shiftWorkDates : undefined,
 							total_shift_pay: totalShiftSalary,
 							days_worked: daysWorked,
 							daily_allowance: dailyAllowance,

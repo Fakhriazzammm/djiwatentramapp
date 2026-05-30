@@ -86,6 +86,7 @@ function PayslipDetailCard({
 	onDownload: (p: any) => void;
 }) {
 	const [expandedBonus, setExpandedBonus] = useState(false);
+	const [expandedShifts, setExpandedShifts] = useState(false);
 	const b = payslip.breakdown ?? {};
 	const badgeMap: Record<string, { label: string; cls: string }> = {
 		generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
@@ -98,7 +99,8 @@ function PayslipDetailCard({
 
 	const items: { label: string; value: number; color?: string }[] = [];
 	if ((b.monthly_fixed_salary ?? 0) > 0) items.push({ label: "Gaji Tetap", value: b.monthly_fixed_salary });
-	if ((b.total_shift_pay ?? 0) > 0) items.push({ label: `Gaji Shift (${b.shifts ?? 0} shift)`, value: b.total_shift_pay });
+	// Gaji Shift handled separately below (expandable)
+	const shiftWorkDates = b.shift_work_dates ?? [];
 	if ((b.total_allowance ?? 0) > 0) items.push({ label: "Tunjangan Transportasi", value: b.total_allowance });
 	// Hapus Bonus Lembur - bonus dari target revenue per shift, bukan lembur
 	const bonusTarget = b.bonus_target ?? {};
@@ -136,6 +138,53 @@ function PayslipDetailCard({
 							</span>
 						</div>
 					))}
+				</div>
+			)}
+
+			{/* Gaji Shift — clickable expandable */}
+			{(b.total_shift_pay ?? 0) > 0 && (
+				<div className="space-y-1 mb-3">
+					<button
+						onClick={() => setExpandedShifts(!expandedShifts)}
+						className="flex w-full items-center justify-between text-[11px] group/collapse"
+					>
+						<span className="flex items-center gap-1 text-muted-foreground">
+							Gaji Shift ({b.shifts ?? 0} shift)
+							{shiftWorkDates.length > 0 && (
+								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedShifts ? 'rotate-180' : ''}`} />
+							)}
+						</span>
+						<span className="font-semibold tabular-nums">
+							{formatCurrency(b.total_shift_pay ?? 0)}
+						</span>
+					</button>
+
+					{/* Expandable shift date details */}
+					<AnimatePresence initial={false}>
+						{expandedShifts && shiftWorkDates.length > 0 && (
+							<motion.div
+								initial={{ height: 0, opacity: 0 }}
+								animate={{ height: "auto", opacity: 1 }}
+								exit={{ height: 0, opacity: 0 }}
+								transition={{ duration: 0.2 }}
+								className="overflow-hidden"
+							>
+								<div className="mt-1.5 pl-2 border-l-2 border-primary/30 space-y-1">
+									{shiftWorkDates.map((dateStr: string, i: number) => (
+										<div key={i} className="flex items-center justify-between text-[10px]">
+											<div className="flex items-center gap-1.5 min-w-0">
+												<span className="w-1 h-1 rounded-full bg-primary/40 shrink-0" />
+												<span className="text-muted-foreground">{dateStr}</span>
+											</div>
+											<span className="font-semibold shrink-0 ml-2">
+												{formatCurrency(b.base_shift_rate ?? 0)}/shift
+											</span>
+										</div>
+									))}
+								</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 			)}
 
@@ -402,6 +451,21 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const totalHours = stats.totalHours ?? 0;
 				const sessionCount = stats.sessionCount ?? (logs ? Math.floor((logs.length ?? 0) / 2) : 0);
 				const totalShiftSalary = sessionCount * baseShiftRate;
+				// Extract unique work day dates from logs
+				const shiftWorkDates: string[] = [];
+				if (logs) {
+					const seenDates = new Set<string>();
+					for (const log of logs) {
+						if (log.type === "check_in") {
+							const d = new Date(log.timestamp);
+							const dateStr = d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+							if (!seenDates.has(dateStr)) {
+								seenDates.add(dateStr);
+								shiftWorkDates.push(dateStr);
+							}
+						}
+					}
+				}
 				const totalAllowance = daysWorked * dailyAllowance;
 				// Bonus target dari shift reports (pake fetchShiftReports — konsisten dgn /admin/laporan-shift)
 				const bonusCfg = (raw?.bonusTargetConfig ?? {}) as StaffRoleBonusConfig;
@@ -463,6 +527,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							monthly_fixed_salary: monthlyFixedSalary,
 							base_shift_rate: baseShiftRate,
 							shifts: sessionCount,
+							shift_work_dates: shiftWorkDates.length > 0 ? shiftWorkDates : undefined,
 							total_shift_pay: totalShiftSalary,
 							days_worked: daysWorked,
 							daily_allowance: dailyAllowance,

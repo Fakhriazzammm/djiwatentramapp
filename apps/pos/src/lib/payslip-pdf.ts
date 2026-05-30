@@ -26,6 +26,7 @@ export type PayslipBreakdown = {
 	daily_allowance?: number;
 	overtime_rate_per_hour?: number;
 	shifts?: number;
+	shift_work_dates?: string[];
 	days_worked?: number;
 	total_shift_pay?: number;
 	total_allowance?: number;
@@ -164,6 +165,7 @@ export function generatePayslipPDF(
 	// ── BUILD TABLE ROWS ──────────────────────────────────────────────
 	const rows: [string, string, string][] = [];
 	const bonusDetailRows: { label: string; amount: string }[] = [];
+	const shiftDetailRows: { label: string; amount: string }[] = [];
 	let rowNum = 1;
 
 	if ((breakdown.monthly_fixed_salary ?? 0) > 0) {
@@ -179,6 +181,16 @@ export function generatePayslipPDF(
 			`Gaji Shift (${breakdown.shifts ?? 0} shift)`,
 			fmt(breakdown.total_shift_pay!),
 		]);
+		// Collect shift work date details
+		const shiftDates = breakdown.shift_work_dates ?? [];
+		if (shiftDates.length > 0) {
+			for (const d of shiftDates) {
+				shiftDetailRows.push({
+					label: d,
+					amount: fmt(breakdown.base_shift_rate ?? 0),
+				});
+			}
+		}
 	}
 	if ((breakdown.total_allowance ?? 0) > 0) {
 		rows.push([
@@ -272,6 +284,43 @@ export function generatePayslipPDF(
 	});
 
 	y = (doc as any).lastAutoTable.finalY + 4;
+
+	// ── SHIFT WORK DATE DETAILS TABLE (if any)
+	if (shiftDetailRows.length > 0) {
+		const detailBody = shiftDetailRows.map((d) => [
+			{ content: "", styles: { halign: "center" as const } },
+			{
+				content: `  ${d.label}`,
+				styles: {
+					fontSize: 8,
+					textColor: rgb(...C.muted),
+				} as any,
+			},
+			{
+				content: d.amount,
+				styles: {
+					fontSize: 8,
+					textColor: rgb(...C.muted),
+					halign: "right" as const,
+				},
+			},
+		]);
+		autoTable(doc, {
+			startY: y,
+			body: detailBody,
+			theme: "plain",
+			bodyStyles: { fontSize: 8 },
+			columnStyles: {
+				0: { cellWidth: COL_W.no, halign: "center" },
+				1: { cellWidth: COL_W.komponen },
+				2: { cellWidth: COL_W.jumlah, halign: "right" },
+			},
+			margin: { left: MARGIN, right: MARGIN },
+			tableLineColor: rgb(...C.border),
+			tableLineWidth: 0,
+		});
+		y = (doc as any).lastAutoTable.finalY + 4;
+	}
 
 	// ── BONUS SHIFT DETAILS TABLE (if any) ────────────────────────────
 	if (bonusDetailRows.length > 0) {
