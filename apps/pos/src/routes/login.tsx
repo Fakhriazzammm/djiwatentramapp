@@ -25,14 +25,14 @@ function LoginPage() {
 	}, [isAuthenticated, isAdmin, navigate]);
 
 	return (
-		<div className="app-page relative min-h-screen w-full overflow-hidden text-foreground">
+		<div className="app-page relative min-h-dvh w-full text-foreground">
 			{/* Soft Background Bubbles */}
 			<div className="absolute inset-0 overflow-hidden pointer-events-none">
 				<div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[100px]" />
 				<div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[100px]" />
 			</div>
 
-			<main className="relative z-10 mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center p-4">
+			<main className="relative z-10 mx-auto flex min-h-dvh max-w-4xl flex-col items-center justify-center p-4">
 				{/* Header */}
 				<motion.div
 					initial={{ opacity: 0, y: -12 }}
@@ -55,14 +55,17 @@ function LoginPage() {
 				{/* Role Cards */}
 				<div className="grid w-full max-w-lg grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
 					{/* Admin Card */}
-					<motion.button
+					<motion.div
 						initial={{ opacity: 0, x: -20 }}
 						animate={{ opacity: 1, x: 0 }}
 						transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
 						whileHover={{ scale: 1.02, y: -3 }}
 						whileTap={{ scale: 0.97 }}
 						onClick={() => navigate({ to: "/admin/login" as any })}
-						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-5 md:p-7 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+						role="button"
+						tabIndex={0}
+						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate({ to: "/admin/login" as any }); }}
+						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-5 md:p-7 shadow-lg transition-colors cursor-pointer hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 					>
 						<div className="flex h-14 w-14 md:h-18 md:w-18 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20 transition-transform group-hover:scale-105">
 							<Building2 className="h-7 w-7 md:h-9 md:w-9" />
@@ -74,17 +77,20 @@ function LoginPage() {
 							</p>
 						</div>
 						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-					</motion.button>
+					</motion.div>
 
 					{/* Kasir Card — langsung ke /menu tanpa login */}
-					<motion.button
+					<motion.div
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.15, type: "spring", stiffness: 300, damping: 25 }}
 						whileHover={{ scale: 1.02, y: -3 }}
 						whileTap={{ scale: 0.97 }}
 						onClick={() => navigate({ to: "/menu" as any })}
-						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border-2 border-amber-500/30 bg-card p-5 md:p-7 shadow-lg shadow-amber-500/10 transition-colors hover:border-amber-500/60 hover:bg-amber-500/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/30"
+						role="button"
+						tabIndex={0}
+						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate({ to: "/menu" as any }); }}
+						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border-2 border-amber-500/30 bg-card p-5 md:p-7 shadow-lg shadow-amber-500/10 transition-colors cursor-pointer hover:border-amber-500/60 hover:bg-amber-500/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/30"
 					>
 						<div className="flex h-14 w-14 md:h-18 md:w-18 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 transition-transform group-hover:scale-105">
 							<ShoppingCart className="h-7 w-7 md:h-9 md:w-9" />
@@ -96,17 +102,20 @@ function LoginPage() {
 							</p>
 						</div>
 						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-					</motion.button>
+					</motion.div>
 
 					{/* Karyawan Card */}
-					<motion.button
+					<motion.div
 						initial={{ opacity: 0, x: 20 }}
 						animate={{ opacity: 1, x: 0 }}
 						transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 25 }}
 						whileHover={{ scale: 1.02, y: -3 }}
 						whileTap={{ scale: 0.97 }}
 						onClick={() => navigate({ to: "/karyawan/login" as any })}
-						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-5 md:p-7 shadow-lg transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+						role="button"
+						tabIndex={0}
+						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate({ to: "/karyawan/login" as any }); }}
+						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-5 md:p-7 shadow-lg transition-colors cursor-pointer hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 					>
 						<div className="flex h-14 w-14 md:h-18 md:w-18 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-sky-400 to-teal-400 text-white shadow-lg shadow-sky-400/20 transition-transform group-hover:scale-105">
 							<UserCircle2 className="h-7 w-7 md:h-9 md:w-9" />
@@ -118,7 +127,7 @@ function LoginPage() {
 							</p>
 						</div>
 						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-					</motion.button>
+					</motion.div>
 				</div>
 
 				{/* Registration link */}
@@ -130,6 +139,7 @@ function LoginPage() {
 				>
 					Belum punya akun?{" "}
 					<button
+						type="button"
 						onClick={() => navigate({ to: "/register" as any })}
 						className="font-bold text-primary underline-offset-2 hover:underline"
 					>
