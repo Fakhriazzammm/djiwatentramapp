@@ -75,7 +75,7 @@ function TeamDayView({
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-black tracking-tight">
+          <span className="text-xs font-black tracking-tight">
             {format(selectedDate, "d MMMM yyyy", { locale: id })}
           </span>
           {isToday && (
@@ -91,8 +91,8 @@ function TeamDayView({
 
       {/* Staff list */}
       {grouped.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-          <Users className="h-8 w-8 text-muted-foreground/30" />
+        <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
+          <Users className="h-6 w-6 text-muted-foreground/30" />
           <p className="text-xs font-medium text-muted-foreground">
             Tidak ada jadwal staff di tanggal ini
           </p>
@@ -100,7 +100,7 @@ function TeamDayView({
       ) : (
         <div className="divide-y divide-border/50">
           {grouped.map(({ shift, staff }) => (
-            <div key={shift} className="px-3 py-2.5">
+            <div key={shift} className="px-2.5 py-2">
               <div className="mb-2 flex items-center gap-2">
                 <span className={cn(
                   "rounded-full px-2 py-0.5 text-[9px] font-bold",
@@ -116,7 +116,7 @@ function TeamDayView({
                 {staff.map((s) => (
                   <div
                     key={s._id}
-                    className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs"
+                    className="flex items-center gap-1 rounded-lg border border-border/60 bg-background px-1.5 py-1 text-[10px]"
                   >
                     <span className="font-bold text-foreground">{s.userName}</span>
                     <span className="text-[10px] text-muted-foreground">— {s.roleName}</span>
@@ -204,7 +204,7 @@ export function PersonalSchedule({
       <div className="rounded-2xl border bg-card p-4">
         <div className="flex animate-pulse gap-1.5 overflow-hidden">
           {Array.from({ length: 15 }).map((_, i) => (
-            <div key={i} className="h-16 w-14 shrink-0 rounded-lg bg-muted" />
+            <div key={i} className="h-14 w-12 shrink-0 rounded-lg bg-muted" />
           ))}
         </div>
       </div>
@@ -219,7 +219,7 @@ export function PersonalSchedule({
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-primary" />
-          <h3 className="font-bold uppercase tracking-wider text-sm">Jadwal</h3>
+          <h3 className="font-bold uppercase tracking-wider text-xs">Jadwal</h3>
         </div>
         <div className="flex items-center rounded-lg border bg-background p-0.5">
           <button
@@ -252,17 +252,17 @@ export function PersonalSchedule({
       {mode === "personal" ? (
         <>
           {!hasAnySchedule && (
-            <p className="text-[10px] text-muted-foreground font-medium px-2">
+            <p className="text-[10px] text-muted-foreground font-medium px-2 pb-1">
               Belum ada jadwal di bulan ini
             </p>
           )}
           <div className="rounded-2xl border bg-card">
-            <div className="flex gap-1.5 overflow-x-auto p-3 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+            <div className="flex gap-1 overflow-x-auto p-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
               {days.map((d) => (
                 <div
                   key={d.dateStr}
                   className={cn(
-                    "flex w-[62px] shrink-0 flex-col items-center gap-1 rounded-xl border p-2 transition-all",
+                    "flex w-[54px] shrink-0 flex-col items-center gap-0.5 rounded-lg border p-1.5 transition-all",
                     d.isToday && "border-primary/40 ring-1 ring-primary/20 bg-primary/[0.02]",
                     !d.isToday && "border-border/60",
                     d.hasSchedule ? "bg-card" : "bg-muted/30 opacity-70"
@@ -275,7 +275,7 @@ export function PersonalSchedule({
                     {d.dayName}
                   </span>
                   <span className={cn(
-                    "text-xs font-black leading-none",
+                    "text-[10px] font-black leading-none",
                     d.isToday && "text-primary"
                   )}>
                     {d.day}
@@ -293,7 +293,7 @@ export function PersonalSchedule({
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-2 border-t border-border/50 px-3 py-2">
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/50 px-2.5 py-1.5">
               <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">Legenda:</span>
               {Object.entries(shiftLabelColors).map(([label, cls]) => (
                 <span key={label} className={cn("rounded-full px-1.5 py-0.5 text-[8px] font-bold", cls)}>
