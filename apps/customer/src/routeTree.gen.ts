@@ -9,80 +9,68 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
-import { Route as BrandSlugMinigamesRouteImport } from './routes/$brandSlug.minigames'
+import { Route as MinigamesRouteImport } from './routes/minigames'
+import { Route as IndexRouteImport } from './routes/index'
 
-const BrandSlugRoute = BrandSlugRouteImport.update({
-  id: '/$brandSlug',
-  path: '/$brandSlug',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/$brandSlug.lazy').then((d) => d.Route))
-const BrandSlugMinigamesRoute = BrandSlugMinigamesRouteImport.update({
+const MinigamesRoute = MinigamesRouteImport.update({
   id: '/minigames',
   path: '/minigames',
-  getParentRoute: () => BrandSlugRoute,
-} as any).lazy(() =>
-  import('./routes/$brandSlug.minigames.lazy').then((d) => d.Route),
-)
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/minigames.lazy').then((d) => d.Route))
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 
 export interface FileRoutesByFullPath {
-  '/$brandSlug': typeof BrandSlugRouteWithChildren
-  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
+  '/': typeof IndexRoute
+  '/minigames': typeof MinigamesRoute
 }
 export interface FileRoutesByTo {
-  '/$brandSlug': typeof BrandSlugRouteWithChildren
-  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
+  '/': typeof IndexRoute
+  '/minigames': typeof MinigamesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/$brandSlug': typeof BrandSlugRouteWithChildren
-  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
+  '/': typeof IndexRoute
+  '/minigames': typeof MinigamesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$brandSlug' | '/$brandSlug/minigames'
+  fullPaths: '/' | '/minigames'
   fileRoutesByTo: FileRoutesByTo
-  to: '/$brandSlug' | '/$brandSlug/minigames'
-  id: '__root__' | '/$brandSlug' | '/$brandSlug/minigames'
+  to: '/' | '/minigames'
+  id: '__root__' | '/' | '/minigames'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  BrandSlugRoute: typeof BrandSlugRouteWithChildren
+  IndexRoute: typeof IndexRoute
+  MinigamesRoute: typeof MinigamesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/$brandSlug': {
-      id: '/$brandSlug'
-      path: '/$brandSlug'
-      fullPath: '/$brandSlug'
-      preLoaderRoute: typeof BrandSlugRouteImport
+    '/minigames': {
+      id: '/minigames'
+      path: '/minigames'
+      fullPath: '/minigames'
+      preLoaderRoute: typeof MinigamesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$brandSlug/minigames': {
-      id: '/$brandSlug/minigames'
-      path: '/minigames'
-      fullPath: '/$brandSlug/minigames'
-      preLoaderRoute: typeof BrandSlugMinigamesRouteImport
-      parentRoute: typeof BrandSlugRoute
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface BrandSlugRouteChildren {
-  BrandSlugMinigamesRoute: typeof BrandSlugMinigamesRoute
-}
-
-const BrandSlugRouteChildren: BrandSlugRouteChildren = {
-  BrandSlugMinigamesRoute: BrandSlugMinigamesRoute,
-}
-
-const BrandSlugRouteWithChildren = BrandSlugRoute._addFileChildren(
-  BrandSlugRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
-  BrandSlugRoute: BrandSlugRouteWithChildren,
+  IndexRoute: IndexRoute,
+  MinigamesRoute: MinigamesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

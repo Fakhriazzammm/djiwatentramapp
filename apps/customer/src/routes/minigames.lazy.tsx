@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Gift, Sparkles, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -8,13 +8,12 @@ import { Input } from "@/components/ui/input";
 import { useHybridActiveMiniGameByBrand } from "@/hooks/use-hybrid-minigames-data";
 import { useHybridSpin } from "@/hooks/use-hybrid-write-actions";
 
-export const Route = createLazyFileRoute("/$brandSlug/minigames")({
-	component: BrandMiniGamesPage,
+export const Route = createLazyFileRoute("/minigames")({
+	component: MiniGamesPage,
 });
 
-function BrandMiniGamesPage() {
-	const { brandSlug } = Route.useParams();
-	const game = useHybridActiveMiniGameByBrand(brandSlug);
+function MiniGamesPage() {
+	const game = useHybridActiveMiniGameByBrand("djiwatentram");
 	const spin = useHybridSpin();
 
 	const [form, setForm] = useState({

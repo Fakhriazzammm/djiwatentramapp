@@ -7,7 +7,7 @@ const brandCustomerSearchSchema = z.object({
 	orderId: z.string().optional(),
 });
 
-export const Route = createFileRoute("/$brandSlug")({
+export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) =>
 		brandCustomerSearchSchema.parse(search),
 });
