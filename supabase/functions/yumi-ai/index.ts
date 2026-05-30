@@ -97,6 +97,7 @@ KEMAMPUAN LANGSUNG:
 - Analisis bisnis & rekomendasi
 - Briefing harian
 - OCR struk/nota
+- **Pengumuman** ke channel & grup via /sebarkan
 
 STRATEGI ORCHESTRATOR:
 - Jika user butuh detail keuangan (OCR struk, laporan expense/income) → arahkan ke @YummeFinanceAIbot
