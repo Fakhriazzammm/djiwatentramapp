@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && bun install && cd apps/customer && npx vite build",
+  "buildCommand": "NODE_OPTIONS=--max-old-space-size=4096 npx vite build",
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && bun install",
   "headers": [
