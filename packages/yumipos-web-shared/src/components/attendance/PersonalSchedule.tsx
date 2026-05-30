@@ -256,7 +256,7 @@ export function PersonalSchedule({
               Belum ada jadwal di bulan ini
             </p>
           )}
-          <div className="rounded-2xl border bg-card overflow-hidden">
+          <div className="rounded-2xl border bg-card">
             <div className="flex gap-1.5 overflow-x-auto p-3 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
               {days.map((d) => (
                 <div
