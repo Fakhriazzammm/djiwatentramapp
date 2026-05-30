@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { getDaysInMonth, getDay, format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Users, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useHybridAttendanceSchedules } from "../../hooks/use-hybrid-attendance-schedules";
 import type { AttendanceSchedule } from "../../hooks/use-hybrid-attendance-schedules";
@@ -201,10 +201,10 @@ export function PersonalSchedule({
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border bg-card p-4">
-        <div className="flex animate-pulse gap-1.5 overflow-hidden">
-          {Array.from({ length: 15 }).map((_, i) => (
-            <div key={i} className="h-14 w-12 shrink-0 rounded-lg bg-muted" />
+      <div className="rounded-2xl border bg-card p-3">
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: 28 }).map((_, i) => (
+            <div key={i} className="h-10 w-full animate-pulse rounded-lg bg-muted" />
           ))}
         </div>
       </div>
@@ -256,47 +256,70 @@ export function PersonalSchedule({
               Belum ada jadwal di bulan ini
             </p>
           )}
-          <div className="rounded-2xl border bg-card">
-            <div className="flex gap-1 overflow-x-auto p-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+          <div className="rounded-2xl border bg-card p-2">
+            {/* Day-of-week headers */}
+            <div className="grid grid-cols-7 gap-0.5 mb-1">
+              {FULL_DAY_NAMES.map((d) => (
+                <div
+                  key={d}
+                  className="text-center text-[8px] font-bold uppercase tracking-wider text-muted-foreground/60 py-1"
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-0.5">
+              {/* Leading empty cells for offset */}
+              {(() => {
+                const firstDay = new Date(year, month - 1, 1).getDay(); // 0=Sun
+                return Array.from({ length: firstDay }).map((_, i) => (
+                  <div key={`lead-${i}`} />
+                ));
+              })()}
               {days.map((d) => (
                 <div
                   key={d.dateStr}
                   className={cn(
-                    "flex w-[54px] shrink-0 flex-col items-center gap-0.5 rounded-lg border p-1.5 transition-all",
-                    d.isToday && "border-primary/40 ring-1 ring-primary/20 bg-primary/[0.02]",
-                    !d.isToday && "border-border/60",
-                    d.hasSchedule ? "bg-card" : "bg-muted/30 opacity-70"
+                    "flex flex-col items-center gap-0.5 rounded-lg border py-1.5 px-0.5 transition-all",
+                    d.isToday && "border-primary/50 ring-1 ring-primary/20 bg-primary/[0.03]",
+                    !d.isToday && "border-border/40",
+                    d.hasSchedule ? "bg-card" : "bg-muted/20 opacity-60"
                   )}
                 >
-                  <span className={cn(
-                    "text-[9px] font-bold uppercase tracking-wider",
-                    d.isToday ? "text-primary" : "text-muted-foreground"
-                  )}>
-                    {d.dayName}
-                  </span>
-                  <span className={cn(
-                    "text-[10px] font-black leading-none",
-                    d.isToday && "text-primary"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-[9px] font-bold leading-tight",
+                      d.isToday ? "text-primary" : "text-foreground"
+                    )}
+                  >
                     {d.day}
                   </span>
                   {d.bestSchedule ? (
-                    <span className={cn(
-                      "mt-1 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wide",
-                      getShiftLabelClass(d.bestSchedule)
-                    )}>
+                    <span
+                      className={cn(
+                        "mt-0.5 rounded-full px-1 py-[1px] text-[6px] font-bold tracking-wide leading-none",
+                        getShiftLabelClass(d.bestSchedule)
+                      )}
+                    >
                       {getShiftLabel(d.bestSchedule)}
                     </span>
                   ) : (
-                    <span className="mt-1 text-[9px] text-muted-foreground/40 font-medium">—</span>
+                    <span className="mt-0.5 text-[7px] text-muted-foreground/30 font-medium">—</span>
                   )}
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/50 px-2.5 py-1.5">
-              <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">Legenda:</span>
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 mt-2 pt-2">
+              <span className="text-[7px] font-bold uppercase tracking-wider text-muted-foreground/50">
+                Shift:
+              </span>
               {Object.entries(shiftLabelColors).map(([label, cls]) => (
-                <span key={label} className={cn("rounded-full px-1.5 py-0.5 text-[8px] font-bold", cls)}>
+                <span
+                  key={label}
+                  className={cn("rounded-full px-1.5 py-[1px] text-[7px] font-bold leading-none", cls)}
+                >
                   {label}
                 </span>
               ))}
