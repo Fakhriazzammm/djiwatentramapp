@@ -11,7 +11,10 @@
     "./hooks/*": "./src/hooks/*",
     "./types/*": "./src/types/*",
     "./context/*": "./src/context/*",
-    "./components/ui/*": "./src/components/ui/*"
+    "./components/ui/*": "./src/components/ui/*",
+    "./components/layout/*": "./src/components/layout/*",
+    "./components/attendance/*": "./src/components/attendance/*",
+    "./components/home/*": "./src/components/home/*"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
@@ -26,7 +29,11 @@
     "react-dom": "^19.0.0",
     "lucide-react": "^0.473.0",
     "framer-motion": "^12.0.0",
-    "@base-ui/react": "^1.0.0"
+    "@base-ui/react": "^1.0.0",
+    "date-fns": "^4.0.0",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.0",
+    "@tanstack/react-router": "^1.0.0"
   },
   "devDependencies": {
     "@yumipos/config": "workspace:*",
