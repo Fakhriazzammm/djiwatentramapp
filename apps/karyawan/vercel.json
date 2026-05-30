@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd ../.. && bun run --cwd apps/karyawan build",
+  "buildCommand": "cd ../.. && pnpm --filter @yumipos/karyawan build",
   "outputDirectory": "dist",
-  "installCommand": "cd ../.. && bun install",
+  "installCommand": "cd ../.. && pnpm install",
   "headers": [
     {
       "source": "/index.html",
