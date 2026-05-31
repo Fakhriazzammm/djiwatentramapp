@@ -20,6 +20,8 @@ import {
   useHybridVerifyHomePin,
 } from "@yumipos/web-shared";
 
+import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
+
 export const Route = createLazyFileRoute("/attendance")({
   component: KaryawanAttendancePage,
 });
@@ -342,8 +344,18 @@ function KaryawanAttendancePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="mx-auto w-full max-w-sm space-y-3"
+              className="mx-auto w-full max-w-sm space-y-4"
             >
+              {/* Mini Schedule */}
+              {user && (
+                <div className="rounded-xl border bg-card/80 p-2">
+                  <PersonalSchedule
+                    userId={user.id}
+                    month={new Date().getMonth() + 1}
+                    year={new Date().getFullYear()}
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                 <div className="space-y-1 min-w-0">
                   <h2 className={`text-base font-bold tracking-tight ${
