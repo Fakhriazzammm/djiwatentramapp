@@ -1,14 +1,13 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { getDaysInMonth, format, startOfWeek, addDays, isSameDay } from "date-fns";
+import { getDaysInMonth, format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, Users, User } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useHybridAttendanceSchedules } from "../../hooks/use-hybrid-attendance-schedules";
 import type { AttendanceSchedule } from "../../hooks/use-hybrid-attendance-schedules";
 import { Button } from "../ui/button";
 
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-const DAY_NAMES_SHORT = ["M", "S", "S", "R", "K", "J", "S"];
 const SHIFT_ORDER = ["PAGI", "SORE", "GENERAL", "OFF"];
 
 const shiftColors: Record<string, { bg: string; text: string; dot: string; border: string }> = {
@@ -93,206 +92,115 @@ const HEADER_TEXT_STYLE: React.CSSProperties = {
   color: "#9ca3af",
 };
 
-const WEEKDAY_HEADER_STYLE: React.CSSProperties = {
-  textAlign: "center",
-  fontSize: "7px",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  color: "#9ca3af",
-  paddingBottom: "4px",
-};
+// ─── TeamDayView ──────────────────────────────────────────────
 
-// ─── TeamWeekView ─────────────────────────────────────────────
-
-interface DayWithSchedules {
-  date: Date;
-  dateStr: string;
-  isToday: boolean;
-  schedules: AttendanceSchedule[];
-}
-
-function TeamWeekView({
-  schedulesByDate,
+function TeamDayView({
+  schedules,
   selectedDate,
-  onPrevWeek,
-  onNextWeek,
+  onPrevDay,
+  onNextDay,
 }: {
-  schedulesByDate: Record<string, AttendanceSchedule[]>;
+  schedules: AttendanceSchedule[];
   selectedDate: Date;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
+  onPrevDay: () => void;
+  onNextDay: () => void;
 }) {
-  const weekDays = useMemo(() => {
-    const start = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(start, i);
-      const dateStr = formatDateStr(date);
-      return {
-        date,
-        dateStr,
-        isToday: isSameDay(date, new Date()),
-        schedules: schedulesByDate?.[dateStr] ?? [],
-      };
-    });
-  }, [schedulesByDate, selectedDate]);
-
-  // Build a matrix: shift x day → staff list
-  const matrix = useMemo(() => {
-    const result: Record<string, { dayIdx: number; staff: AttendanceSchedule[] }[]> = {};
-    for (const shift of SHIFT_ORDER) {
-      result[shift] = [];
+  const grouped = useMemo(() => {
+    const map: Record<string, AttendanceSchedule[]> = {};
+    for (const s of schedules) {
+      const label = getShiftLabel(s);
+      if (!map[label]) map[label] = [];
+      map[label].push(s);
     }
-    weekDays.forEach((wd, dayIdx) => {
-      const byShift: Record<string, AttendanceSchedule[]> = {};
-      for (const s of wd.schedules) {
-        const label = getShiftLabel(s);
-        if (!byShift[label]) byShift[label] = [];
-        byShift[label].push(s);
-      }
-      for (const shift of SHIFT_ORDER) {
-        result[shift].push({ dayIdx, staff: byShift[shift] ?? [] });
-      }
-      // Handle unknown shift types
-      const unknownShifts = Object.keys(byShift).filter((k) => !SHIFT_ORDER.includes(k));
-      unknownShifts.forEach((ushift) => {
-        if (!result[ushift]) {
-          result[ushift] = Array.from({ length: 7 }, () => ({ dayIdx: 0, staff: [] }));
-        }
-        result[ushift][dayIdx] = { dayIdx, staff: byShift[ushift] };
-      });
-    });
-    return result;
-  }, [weekDays]);
+    const sorted = SHIFT_ORDER.filter((k) => map[k]).map((k) => ({
+      shift: k,
+      staff: map[k]!,
+    }));
+    const others = Object.keys(map)
+      .filter((k) => !SHIFT_ORDER.includes(k))
+      .map((k) => ({ shift: k, staff: map[k]! }));
+    return [...sorted, ...others];
+  }, [schedules]);
 
-  const weekLabel = useMemo(() => {
-    const start = weekDays[0].date;
-    const end = weekDays[6].date;
-    const startMonth = MONTHS_SHORT[start.getMonth()];
-    const endMonth = MONTHS_SHORT[end.getMonth()];
-    if (startMonth === endMonth) {
-      return `${start.getDate()}–${end.getDate()} ${startMonth}`;
-    }
-    return `${start.getDate()} ${startMonth} – ${end.getDate()} ${endMonth}`;
-  }, [weekDays]);
-
-  // Highlight selected day column
-  const selectedDayIdx = weekDays.findIndex((wd) => isSameDay(wd.date, selectedDate));
-
-  const allStaffForWeek: AttendanceSchedule[] = weekDays.flatMap((wd) => wd.schedules);
-  const hasAnySchedule = allStaffForWeek.length > 0;
-
+  const isToday = formatDateStr(selectedDate) === formatDateStr(new Date());
   return (
-    <div className="space-y-2">
-      {/* Week Navigator */}
+    <div className="space-y-1.5">
+      {/* Compact date nav */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onPrevWeek}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onPrevDay}>
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-black tracking-tight">{weekLabel}</span>
-          {weekDays.some((wd) => wd.isToday) && (
-            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[7px] font-bold text-primary uppercase">
-              Minggu ini
+        <span className="text-[11px] font-black tracking-tight text-center">
+          {format(selectedDate, "EEEE, d MMM", { locale: id })}
+          {isToday && (
+            <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary uppercase">
+              Hari ini
             </span>
           )}
-        </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onNextWeek}>
+        </span>
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onNextDay}>
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {!hasAnySchedule ? (
-        <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <Users className="h-5 w-5 text-muted-foreground/30" />
+      {grouped.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <Users className="h-6 w-6 text-muted-foreground/20" />
           <p className="text-[11px] font-medium text-muted-foreground">
-            Tidak ada jadwal minggu ini
+            Tidak ada jadwal di tanggal ini
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-          {/* Day headers */}
-          <div style={DAY_HEADER_STYLE}>
-            {weekDays.map((wd, i) => (
-              <div key={i} style={{ ...WEEKDAY_HEADER_STYLE, color: wd.isToday ? "#3b82f6" : undefined }}>
-                <div style={{ marginBottom: "1px" }}>{DAY_NAMES[i === 6 ? 0 : i + 1]}</div>
-                <span className={cn(
-                  "text-[10px] font-black mx-auto flex items-center justify-center rounded-full",
-                  wd.isToday ? "bg-primary text-primary-foreground" : "text-foreground"
-                )}
-                style={{
-                  width: "22px",
-                  height: "22px",
-                  display: "inline-flex",
-                }}
-              >
-                {wd.date.getDate()}
-              </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Shift rows */}
-          <div className="space-y-2">
-            {SHIFT_ORDER.map((shift) => {
-              const shiftCells = matrix[shift];
-              if (!shiftCells || shiftCells.every((c) => c.staff.length === 0)) return null;
-              const colors = shiftColors[shift] ?? shiftColors.GENERAL;
-              return (
-                <div key={shift} className={cn("rounded-xl border p-2", colors.bg, colors.border)}>
-                  {/* Shift label + count */}
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <div className={cn("h-1.5 w-1.5 rounded-full", colors.dot)} />
-                    <span className={cn("text-[9px] font-bold uppercase tracking-wider", colors.text)}>
-                      {shift}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground">
-                      {shiftCells.reduce((sum, c) => sum + c.staff.length, 0)} orang
-                    </span>
-                  </div>
-                  {/* 7-column staff grid */}
-                  <div style={GRID_7_STYLE}>
-                    {shiftCells.map((cell, dayIdx) => (
-                      <div
-                        key={dayIdx}
-                        className={cn(
-                          "rounded-md px-1 py-0.5 min-h-[24px]",
-                          dayIdx === selectedDayIdx && "ring-1 ring-inset ring-primary/20"
-                        )}
-                      >
-                        {cell.staff.length === 0 ? (
-                          <div className="text-[9px] text-muted-foreground/20 text-center">—</div>
-                        ) : (
-                          <div className="flex flex-col gap-0.5">
-                            {cell.staff.slice(0, 3).map((s) => (
-                              <div key={s._id} className="flex items-center gap-1">
-                                <div
-                                  className={cn(
-                                    "flex h-4 w-4 items-center justify-center rounded-full text-[7px] font-black",
-                                    colors.text,
-                                    "bg-white/70 dark:bg-black/20"
-                                  )}
-                                >
-                                  {(s.userName?.[0] ?? "?").toUpperCase()}
-                                </div>
-                                <span className="text-[8px] font-semibold text-foreground leading-none truncate">
-                                  {s.userName?.split(" ")[0]}
-                                </span>
-                              </div>
-                            ))}
-                            {cell.staff.length > 3 && (
-                              <span className="text-[7px] text-muted-foreground pl-5">
-                                +{cell.staff.length - 3}
-                              </span>
-                            )}
-                          </div>
+        <div className="space-y-1.5">
+          {grouped.map(({ shift, staff }) => {
+            const colors =
+              shiftColors[shift] ?? shiftColors.GENERAL;
+            return (
+              <div key={shift} className={cn("rounded-xl border p-2.5", colors.bg, colors.border)}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white", colors.dot)}>
+                    {shift}
+                  </span>
+                  <span className="text-[9px] font-medium text-muted-foreground">
+                    {staff.length} orang
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {staff.map((s) => (
+                    <div
+                      key={s._id}
+                      className="flex items-center gap-2 rounded-lg bg-white/60 dark:bg-black/15 px-2 py-1.5"
+                    >
+                      {/* Avatar circle */}
+                      <div className={cn(
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black",
+                        colors.text,
+                        "bg-white/80 dark:bg-black/25"
+                      )}>
+                        {(s.userName?.[0] ?? "?").toUpperCase()}
+                      </div>
+                      {/* Name + role */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-bold text-foreground leading-tight truncate">
+                          {s.userName}
+                        </p>
+                        {s.roleName && (
+                          <p className="text-[9px] text-muted-foreground leading-tight">{s.roleName}</p>
                         )}
                       </div>
-                    ))}
-                  </div>
+                      {/* Time */}
+                      {s.startTime && (
+                        <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                          {s.startTime}
+                          {s.endTime ? `–${s.endTime}` : ""}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -363,17 +271,17 @@ export function PersonalSchedule({
 
   // ── Team mode ──────────────────────────────────────────────
 
-  const handlePrevWeek = useCallback(() => {
+  const handlePrevDay = useCallback(() => {
     setSelectedDate((prev) => {
       const d = new Date(prev);
-      d.setDate(d.getDate() - 7);
+      d.setDate(d.getDate() - 1);
       return d;
     });
   }, []);
-  const handleNextWeek = useCallback(() => {
+  const handleNextDay = useCallback(() => {
     setSelectedDate((prev) => {
       const d = new Date(prev);
-      d.setDate(d.getDate() + 7);
+      d.setDate(d.getDate() + 1);
       return d;
     });
   }, []);
@@ -541,18 +449,14 @@ export function PersonalSchedule({
           </div>
         </div>
       ) : (
-        <TeamWeekView
-          schedulesByDate={schedulesByDate ?? {}}
+        <TeamDayView
+          schedules={teamSchedules}
           selectedDate={selectedDate}
-          onPrevWeek={handlePrevWeek}
-          onNextWeek={handleNextWeek}
+          onPrevDay={handlePrevDay}
+          onNextDay={handleNextDay}
         />
       )}
     </div>
   );
 }
 
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-  "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
-];
