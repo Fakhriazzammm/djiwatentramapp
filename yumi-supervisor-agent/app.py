@@ -804,10 +804,35 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 
 async def _send_transaction_notification(app, order_no: str, customer: str, totalAmount: float,
                                           payment_method: str, ts_ms: int, struk_line: str | None,
-                                          items: list[dict]):
+                                          items: list[dict], guest_count=None, notes="",
+                                          discount_amount=0.0, voucher_id=None, free_refill=None):
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
+
+    # ── Build discount/promo info ──
+    promo_parts = []
+    if discount_amount > 0:
+        if free_refill:
+            promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Free Refill)")
+        elif voucher_id:
+            promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Voucher {voucher_id})")
+        else:
+            promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Happy Hour)")
+
+    # ── Parse team members into per-role lines ──
+    team_lines = []
+    if team:
+        for tl in team.split("\n"):
+            tl = tl.strip()
+            if not tl:
+                continue
+            if tl.startswith("Barista:"):
+                team_lines.append(f"👨‍🍳 {tl}")
+            elif tl.startswith("Chef:"):
+                team_lines.append(f"👩‍🍳 {tl}")
+            else:
+                team_lines.append(f"👥 {tl}")
 
     lines = []
     if struk_line:
@@ -817,21 +842,55 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         "────────────",
         f"🆔 {order_no}",
         f"💰 Rp{totalAmount:,.0f} — {payment_method.upper() if payment_method else '-'}",
-        f"👤 {customer}",
-        f"👥 Kasir: {cashier}",
     ])
-    if team:
-        team_text = _format_team_by_role(team)  # all roles
-        if team_text:
-            lines.append(f"📋 Tim:{team_text}")
-        else:
-            lines.append(f"📋 Tim: {team}")
+    for p in promo_parts:
+        lines.append(f"🏷️ {p}")
+
+    customer_line = f"👤 {customer}"
+    if guest_count and guest_count > 0:
+        customer_line += f" — {int(guest_count)} orang"
+    lines.append(customer_line)
+    lines.append(f"👥 Kasir: {cashier}")
+    lines.extend(team_lines)
+
+    if notes:
+        lines.append("")
+        lines.append(f"📝 {notes}")
+
     lines.append("")
     lines.append("Items:")
-    for i in items:
-        pn = i.get("productName", "?").strip()
-        q = int(float(i.get("quantity", 1)))
-        lines.append(f"  • {pn} x{q}")
+
+    # ── Categorize items (reuse existing lookup) ──
+    food_items = await _get_food_items(items)
+    drink_items = await _get_beverage_items(items)
+    food_ids = {i.get("productId", "") for i in food_items}
+    drink_ids = {i.get("productId", "") for i in drink_items}
+    other_items = [i for i in items if i.get("productId", "") not in food_ids and i.get("productId", "") not in drink_ids]
+
+    item_no = 1
+    def _add_item_group(label, group):
+        nonlocal item_no
+        if group:
+            lines.append(f"{label}:")
+            for i in group:
+                pn = i.get("productName", "?").strip()
+                q = int(float(i.get("quantity", 1)))
+                price = float(i.get("price") or 0)
+                orig = i.get("originalPrice")
+                if orig is not None and float(orig) != price:
+                    lines.append(f"  {item_no}. {pn} x{q} Rp{float(orig):,.0f} → Rp{price:,.0f}")
+                else:
+                    lines.append(f"  {item_no}. {pn} x{q} @ Rp{price:,.0f}")
+                item_no += 1
+
+    _add_item_group("🍳 Makanan", food_items)
+    _add_item_group("☕ Minuman", drink_items)
+    if other_items:
+        _add_item_group("🥤 Lainnya", other_items)
+
+    # ── Footer ──
+    total_items = sum(int(float(i.get("quantity", 1))) for i in items)
+    lines.append(f"📦 {total_items} item | 💰 Rp{totalAmount:,.0f}")
 
     text = "\n".join(lines)
 
@@ -946,7 +1005,7 @@ async def _check_new_orders(app):
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items)
+        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill)
 
         _reported_order_nos.add(order_no)
 
