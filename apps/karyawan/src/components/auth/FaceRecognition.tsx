@@ -87,7 +87,7 @@ export function FaceRecognition({
       setLMsg("Memuat sistem biometrik...");
       const gt = setTimeout(() => {
         if (!cancelled) { setErr("Waktu muat habis. Gunakan PIN."); onModelError?.("Waktu muat habis. Gunakan PIN."); }
-      }, 3000);
+      }, 8000);
 
       try {
         const ok = await (preloadPromise ?? loadModelsImpl());
