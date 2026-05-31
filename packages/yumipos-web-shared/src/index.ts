@@ -17,6 +17,12 @@ export * from "./hooks/use-hybrid-minigames-data";
 export * from "./hooks/use-hybrid-attendance-data";
 export * from "./hooks/use-hybrid-payroll-data";
 export * from "./hooks/use-hybrid-attendance-schedules";
+export {
+  useHybridClockIn,
+  useHybridClockOut,
+  useHybridEnrollFace,
+  useHybridVerifyHomePin,
+} from "./hooks/use-hybrid-write-actions";
 export * from "./hooks/useYumiAuth";
 export * from "./context/cart-context";
 export * from "./context/app-data-context";
