@@ -1,6 +1,7 @@
 import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useYumiAuth, YumiAuthProvider } from "@yumipos/web-shared";
 import { useEffect, useState } from "react";
+import { preloadFaceModels } from "@/components/auth/FaceRecognition";
 
 function RootContent() {
   const navigate = useNavigate();
@@ -30,6 +31,11 @@ function RootContent() {
     }
     setInitialCheckDone(true);
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
+
+  // Preload face models in background for faster attendance
+  useEffect(() => {
+    preloadFaceModels();
+  }, []);
 
   return <Outlet />;
 }
