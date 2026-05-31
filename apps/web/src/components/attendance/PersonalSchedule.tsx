@@ -286,6 +286,12 @@ export function PersonalSchedule({
     });
   }, []);
 
+  const teamSchedules = useMemo(() => {
+    if (mode !== "team") return [];
+    const dateStr = formatDateStr(selectedDate);
+    return schedulesByDate?.[dateStr] ?? [];
+  }, [schedulesByDate, selectedDate, mode]);
+
   // ── Loading ────────────────────────────────────────────────
 
   if (isLoading) {
