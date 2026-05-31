@@ -313,7 +313,7 @@ function HomePage() {
 	};
 
 	const handleAvatarClick = () => {
-		const to = user?.slug ? (`/karyawan/${user.slug}` as any) : ("/attendance" as any);
+		const to = user?.slug ? (`/${user.slug}` as any) : ("/attendance" as any);
 		navigate({ to });
 	};
 
