@@ -398,7 +398,7 @@ def _service_headers():
     }
 
 
-def _is_allowed(update: Update) -> bool:
+def _is_allowed(update: Update, bot_username: str | None = None) -> bool:
     user = update.effective_user
     if not user:
         return False
@@ -412,6 +412,18 @@ def _is_allowed(update: Update) -> bool:
             if msg.reply_to_message and msg.reply_to_message.from_user and msg.reply_to_message.from_user.is_bot:
                 return True
             message_text = msg.text or msg.caption or ""
+            # Cek entity mention — lebih reliable dari hardcode string
+            if msg.entities:
+                for ent in msg.entities:
+                    if ent.type == "mention":
+                        mentioned = message_text[ent.offset:ent.offset + ent.length].lower()
+                        # Cocokkan dengan username bot asli (dari context) + fallback hardcode
+                        if bot_username:
+                            if f"@{bot_username.lower()}" == mentioned:
+                                return True
+                        if "@yummeaibot" in message_text.lower():
+                            return True
+            # Fallback: cek string langsung (untuk caption atau kasus entity tidak terdeteksi)
             if "@yummeaibot" in message_text.lower():
                 return True
     # DM: hanya owner
@@ -1637,7 +1649,8 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===================================================================
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not _is_allowed(update):
+    bot_username = context.bot.username if context.bot else None
+    if not _is_allowed(update, bot_username):
         await _reply_msg(update, context, "Unauthorized")
         return
 
@@ -1650,9 +1663,22 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mentioned = False
         if msg.reply_to_message and msg.reply_to_message.from_user and msg.reply_to_message.from_user.is_bot:
             mentioned = True
-        message_text = msg.text or msg.caption or ""
-        if "@YummeAIbot".lower() in message_text.lower():
-            mentioned = True
+        if not mentioned:
+            message_text = msg.text or msg.caption or ""
+            # Cek entity mention untuk bot username
+            if msg.entities:
+                for ent in msg.entities:
+                    if ent.type == "mention":
+                        mentioned_name = message_text[ent.offset:ent.offset + ent.length].lower()
+                        if bot_username and f"@{bot_username.lower()}" == mentioned_name:
+                            mentioned = True
+                            break
+                        if "@yummeaibot" in message_text.lower():
+                            mentioned = True
+                            break
+            # Fallback string check
+            if not mentioned and "@yummeaibot" in message_text.lower():
+                mentioned = True
         if not mentioned:
             return
 
