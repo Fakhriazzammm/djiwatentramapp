@@ -20,19 +20,19 @@ const shiftColors: Record<string, { bg: string; text: string; dot: string; borde
   SORE: {
     bg: "bg-sky-50 dark:bg-sky-950/30",
     text: "text-sky-700 dark:text-sky-300",
-    dot: "bg-sky-500",
+    dot: "bg-sky-600",
     border: "border-sky-200 dark:border-sky-800",
   },
   OFF: {
     bg: "bg-rose-50/50 dark:bg-rose-950/20",
     text: "text-rose-600 dark:text-rose-300",
-    dot: "bg-rose-400",
+    dot: "bg-rose-500",
     border: "border-rose-200 dark:border-rose-800",
   },
   GENERAL: {
     bg: "bg-slate-50 dark:bg-slate-800",
     text: "text-slate-600 dark:text-slate-300",
-    dot: "bg-slate-400",
+    dot: "bg-slate-600",
     border: "border-slate-200 dark:border-slate-700",
   },
 };
