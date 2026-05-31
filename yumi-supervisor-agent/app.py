@@ -823,16 +823,21 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     # ── Parse team members into per-role lines ──
     team_lines = []
     if team:
-        for tl in team.split("\n"):
-            tl = tl.strip()
-            if not tl:
-                continue
-            if tl.startswith("Barista:"):
-                team_lines.append(f"👨‍🍳 {tl}")
-            elif tl.startswith("Chef:"):
-                team_lines.append(f"👩‍🍳 {tl}")
-            else:
-                team_lines.append(f"👥 {tl}")
+        names = [n.strip() for n in team.split(",") if n.strip()]
+        if names:
+            grouped: dict[str, list[str]] = {}
+            for name in names:
+                key = name.strip().lower()
+                role = _STAFF_ROLE_MAP.get(key, "Tim")
+                role_upper = role.upper()
+                if role_upper not in grouped:
+                    grouped[role_upper] = []
+                grouped[role_upper].append(name.strip())
+            role_emoji = {"BARISTA": "☕", "CHEF": "🍳", "KASIR": "🧑‍💼", "ADMIN": "🛡️", "MANAGER": "⭐"}
+            for r in ("BARISTA", "CHEF", "KASIR", "MANAGER", "ADMIN", "Tim"):
+                if r in grouped:
+                    emoji = role_emoji.get(r, "👥")
+                    team_lines.append(f"{emoji} {r.title()}: {', '.join(grouped[r])}")
 
     lines = []
     if struk_line:

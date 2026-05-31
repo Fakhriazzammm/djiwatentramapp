@@ -178,6 +178,23 @@ async def _build_product_category_map():
     except Exception as e:
         logger.warning("build_product_category_map failed: %s", e)
 
+# Staff role map for team member labeling in notifications
+_STAFF_ROLE_MAP: dict[str, str] = {}
+
+async def _build_staff_role_map():
+    global _STAFF_ROLE_MAP
+    if _STAFF_ROLE_MAP:
+        return
+    try:
+        users = await _fetch("pos_users_public", "select=name,roleName&isActive=eq.true&limit=200")
+        _STAFF_ROLE_MAP = {
+            u.get("name", "").strip().lower(): (u.get("roleName") or "").strip().upper()
+            for u in users if u.get("name")
+        }
+        logger.info("Staff role map loaded: %d users", len(_STAFF_ROLE_MAP))
+    except Exception as e:
+        logger.warning("build_staff_role_map failed: %s", e)
+
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     level=logging.INFO,
@@ -1954,16 +1971,21 @@ async def _check_new_transactions(app):
             # ── Parse team members into per-role lines ──
             team_lines = []
             if team:
-                for tl in team.split("\n"):
-                    tl = tl.strip()
-                    if not tl:
-                        continue
-                    if tl.startswith("Barista:"):
-                        team_lines.append(f"👨‍🍳 {tl}")
-                    elif tl.startswith("Chef:"):
-                        team_lines.append(f"👩‍🍳 {tl}")
-                    else:
-                        team_lines.append(f"👥 {tl}")
+                names = [n.strip() for n in team.split(",") if n.strip()]
+                if names:
+                    grouped: dict[str, list[str]] = {}
+                    for name in names:
+                        key = name.strip().lower()
+                        role = _STAFF_ROLE_MAP.get(key, "Tim")
+                        role_upper = role.upper()
+                        if role_upper not in grouped:
+                            grouped[role_upper] = []
+                        grouped[role_upper].append(name.strip())
+                    role_emoji = {"BARISTA": "☕", "CHEF": "🍳", "KASIR": "🧑‍💼", "ADMIN": "🛡️", "MANAGER": "⭐"}
+                    for r in ("BARISTA", "CHEF", "KASIR", "MANAGER", "ADMIN", "Tim"):
+                        if r in grouped:
+                            emoji = role_emoji.get(r, "👥")
+                            team_lines.append(f"{emoji} {r.title()}: {', '.join(grouped[r])}")
 
             # ── Transaction report ──
             lines = []
@@ -2325,6 +2347,12 @@ async def _start_auto_reporter(app):
         logger.info("Product category map built")
     except Exception as e:
         logger.warning("Product category map build failed: %s", e)
+
+    # Build staff role map for team member labeling
+    try:
+        await _build_staff_role_map()
+    except Exception as e:
+        logger.warning("Staff role map build failed: %s", e)
 
     # Daily summary at 22:00 WIB (15:00 UTC)
     scheduler = AsyncIOScheduler(timezone="Asia/Jakarta")
