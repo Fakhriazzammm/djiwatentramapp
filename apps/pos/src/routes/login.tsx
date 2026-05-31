@@ -104,17 +104,17 @@ function LoginPage() {
 						<div className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 					</motion.div>
 
-					{/* Karyawan Card */}
+					{/* Karyawan Card — redirect ke karyawan.yumme.id */}
 					<motion.div
 						initial={{ opacity: 0, x: 20 }}
 						animate={{ opacity: 1, x: 0 }}
 						transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 25 }}
 						whileHover={{ scale: 1.02, y: -3 }}
 						whileTap={{ scale: 0.97 }}
-						onClick={() => navigate({ to: "/karyawan/login" as any })}
+						onClick={() => window.open("https://karyawan.yumme.id", "_blank")}
 						role="button"
 						tabIndex={0}
-						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate({ to: "/karyawan/login" as any }); }}
+						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") window.open("https://karyawan.yumme.id", "_blank"); }}
 						className="group relative flex flex-col items-center gap-3 md:gap-4 rounded-2xl md:rounded-3xl border border-border/60 bg-card p-5 md:p-7 shadow-lg transition-colors cursor-pointer hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 					>
 						<div className="flex h-14 w-14 md:h-18 md:w-18 items-center justify-center rounded-2xl md:rounded-[1.75rem] bg-gradient-to-br from-sky-400 to-teal-400 text-white shadow-lg shadow-sky-400/20 transition-transform group-hover:scale-105">
