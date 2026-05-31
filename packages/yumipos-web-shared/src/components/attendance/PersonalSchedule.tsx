@@ -214,34 +214,35 @@ function TeamDayView({
                     )}
                   />
                 </button>
-                {/* Expandable 2-column mini cards */}
+                {/* Expandable 1-column staff cards */}
                 {isExpanded && (
-                  <div className={cn("px-2.5 pb-2.5", colors.bg)}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px" }}>
+                  <div className={cn("px-2.5 pb-2", colors.bg)}>
+                    <div className="flex flex-col gap-0.5">
                       {staff.map((s) => (
                         <div
                           key={s._id}
-                          className="flex items-center gap-1.5 rounded-lg bg-white/70 dark:bg-black/20 px-2 py-1.5"
+                          className="flex items-center gap-1.5 rounded-lg bg-white/70 dark:bg-black/20 px-2 py-1"
                         >
                           <div className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black",
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[8px] font-bold",
                             colors.text,
                             "bg-white/80 dark:bg-black/25"
                           )}>
                             {(s.userName?.[0] ?? "?").toUpperCase()}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-bold text-foreground leading-tight truncate">
-                              {s.userName}
-                            </p>
-                            {s.roleName && (
-                              <p className="text-[8px] text-muted-foreground leading-tight truncate">{s.roleName}</p>
-                            )}
-                          </div>
+                          <span className="text-[10px] font-semibold text-foreground leading-tight">
+                            {s.userName}
+                          </span>
+                          {s.roleName && (
+                            <span className="text-[8px] text-muted-foreground leading-tight">
+                              · {s.roleName}
+                            </span>
+                          )}
+                          <div className="flex-1" />
                           {s.startTime && (
-                            <span className="text-[9px] font-semibold text-muted-foreground shrink-0">
-                              {s.startTime}
-                              {s.endTime ? `–${s.endTime}` : ""}
+                            <span className="text-[9px] font-semibold text-muted-foreground shrink-0 whitespace-nowrap">
+                              {s.startTime.slice(0, 5)}
+                              {s.endTime ? `–${s.endTime.slice(0, 5)}` : ""}
                             </span>
                           )}
                         </div>
