@@ -15,10 +15,9 @@ interface FaceRecognitionProps {
   className?: string;
 }
 
-// CDN urutan prioritas: jsdelivr (cepat) > unpkg (fallback) > github raw (last resort)
-const MODEL_CDNS = [
-  "https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights",
-  "https://unpkg.com/face-api.js@0.22.2/weights",
+// Model paths: self-hosted first, then CDN fallback
+const MODEL_PATHS = [
+  "/face-models",
   "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights",
 ];
 
@@ -38,11 +37,11 @@ async function tryLoadFrom(cp: string, signal: AbortSignal): Promise<boolean> {
 }
 
 async function loadModelsImpl(): Promise<boolean> {
-  // AbortController with 8s total timeout
+  // AbortController with 4s total timeout
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 8000);
+  const timer = setTimeout(() => ac.abort(), 4000);
 
-  for (const cp of MODEL_CDNS) {
+  for (const cp of MODEL_PATHS) {
     if (ac.signal.aborted) break;
     const ok = await tryLoadFrom(cp, ac.signal);
     if (ok) { clearTimeout(timer); return true; }
@@ -154,9 +153,9 @@ export function FaceRecognition({
       }
       pRef.current = true;
       try {
-        const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 96, scoreThreshold: 0.6 });
+        const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 64, scoreThreshold: 0.5 });
         if (stableRef.current < 1) {
-          // Phase 1: Fast detection only (every ~150ms)
+          // Phase 1: Fast detection only (every ~80ms)
           const det = await faceapi.detectSingleFace(vid, opts);
           if (!det) {
             stableRef.current = 0;
@@ -167,7 +166,7 @@ export function FaceRecognition({
             setFace(true);
             // Transition to Phase 2 immediately (next tick)
           }
-          timerIdRef.current = setTimeout(detect, 150);
+          timerIdRef.current = setTimeout(detect, 80);
         } else {
           // Phase 2: Full pipeline with descriptor (run ONCE)
           const det = await faceapi
@@ -178,7 +177,7 @@ export function FaceRecognition({
             stableRef.current = 0;
             setFace(false);
             drawBox(null);
-            timerIdRef.current = setTimeout(detect, 150);
+            timerIdRef.current = setTimeout(detect, 80);
           } else {
             setFace(true);
             drawBox(det);
@@ -236,7 +235,7 @@ export function FaceRecognition({
       const video = wRef.current.video;
       if (!video) throw new Error("no video");
       const det = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 96, scoreThreshold: 0.6 }))
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 64, scoreThreshold: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
       if (!det) { setSt("fail"); setFace(false); return; }
