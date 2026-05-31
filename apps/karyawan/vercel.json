@@ -1,5 +1,6 @@
 {
   "buildCommand": "cd ../.. && bun run --cwd apps/karyawan build",
+  "ignoreCommand": "bash scripts/vercel-ignore.sh apps/karyawan packages/env packages/yumipos-web-shared supabase",
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && bun install",
   "headers": [

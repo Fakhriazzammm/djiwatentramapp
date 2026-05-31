@@ -1,5 +1,6 @@
 {
   "buildCommand": "cd ../.. && bun run build:pos",
+  "ignoreCommand": "bash scripts/vercel-ignore.sh apps/pos packages/backend packages/env packages/yumipos-web-shared packages/config supabase",
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && bun install",
   "headers": [
