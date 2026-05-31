@@ -443,12 +443,6 @@ export function PersonalSchedule({
                     >
                       {d.day}
                     </span>
-                    {colors && (
-                      <div
-                        className={cn("mt-0.5", colors.dot)}
-                        style={{ width: "4px", height: "4px", borderRadius: "50%" }}
-                      />
-                    )}
                   </button>
                 );
               })}
