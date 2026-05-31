@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { getDaysInMonth, format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useHybridAttendanceSchedules } from "../../hooks/use-hybrid-attendance-schedules";
 import type { AttendanceSchedule } from "../../hooks/use-hybrid-attendance-schedules";
@@ -122,9 +122,41 @@ function TeamDayView({
     return [...sorted, ...others];
   }, [schedules]);
 
+  // Determine largest shift for default expand
+  const largestShift = useMemo(() => {
+    if (grouped.length === 0) return null;
+    return grouped.reduce((a, b) => (a.staff.length >= b.staff.length ? a : b)).shift;
+  }, [grouped]);
+
+  const [expandedShiftKeys, setExpandedShiftKeys] = useState<Set<string>>(() => {
+    if (largestShift) return new Set([largestShift]);
+    return new Set<string>();
+  });
+
+  // Sync default expand when grouped changes (e.g. navigating to new date)
+  useEffect(() => {
+    if (largestShift && expandedShiftKeys.size === 0) {
+      setExpandedShiftKeys(new Set([largestShift]));
+    }
+  }, [largestShift, expandedShiftKeys.size]);
+
+  const toggleShift = useCallback((shift: string) => {
+    setExpandedShiftKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(shift)) {
+        next.delete(shift);
+      } else {
+        next.add(shift);
+      }
+      return next;
+    });
+  }, []);
+
   const isToday = formatDateStr(selectedDate) === formatDateStr(new Date());
+  const totalStaff = grouped.reduce((sum, g) => sum + g.staff.length, 0);
+
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {/* Compact date nav */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onPrevDay}>
@@ -153,54 +185,80 @@ function TeamDayView({
       ) : (
         <div className="space-y-1.5">
           {grouped.map(({ shift, staff }) => {
-            const colors =
-              shiftColors[shift] ?? shiftColors.GENERAL;
+            const colors = (shiftColors[shift] ?? shiftColors.GENERAL)!;
+            const isExpanded = expandedShiftKeys.has(shift);
             return (
-              <div key={shift} className={cn("rounded-xl border p-2.5", colors.bg, colors.border)}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white", colors.dot)}>
+              <div key={shift} className={cn("rounded-xl border overflow-hidden", colors.border)}>
+                {/* Clickable accordion header */}
+                <button
+                  type="button"
+                  onClick={() => toggleShift(shift)}
+                  className={cn(
+                    "flex items-center gap-2 w-full px-2.5 py-2 transition-colors",
+                    isExpanded ? colors.bg : "bg-card hover:bg-muted/50"
+                  )}
+                >
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white",
+                    colors.dot
+                  )}>
                     {shift}
                   </span>
                   <span className="text-[9px] font-medium text-muted-foreground">
                     {staff.length} orang
                   </span>
-                </div>
-                <div className="space-y-1">
-                  {staff.map((s) => (
-                    <div
-                      key={s._id}
-                      className="flex items-center gap-2 rounded-lg bg-white/60 dark:bg-black/15 px-2 py-1.5"
-                    >
-                      {/* Avatar circle */}
-                      <div className={cn(
-                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black",
-                        colors.text,
-                        "bg-white/80 dark:bg-black/25"
-                      )}>
-                        {(s.userName?.[0] ?? "?").toUpperCase()}
-                      </div>
-                      {/* Name + role */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-bold text-foreground leading-tight truncate">
-                          {s.userName}
-                        </p>
-                        {s.roleName && (
-                          <p className="text-[9px] text-muted-foreground leading-tight">{s.roleName}</p>
-                        )}
-                      </div>
-                      {/* Time */}
-                      {s.startTime && (
-                        <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
-                          {s.startTime}
-                          {s.endTime ? `–${s.endTime}` : ""}
-                        </span>
-                      )}
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 ml-auto text-muted-foreground transition-transform",
+                      isExpanded && "rotate-180"
+                    )}
+                  />
+                </button>
+                {/* Expandable 2-column mini cards */}
+                {isExpanded && (
+                  <div className={cn("px-2.5 pb-2.5", colors.bg)}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px" }}>
+                      {staff.map((s) => (
+                        <div
+                          key={s._id}
+                          className="flex items-center gap-1.5 rounded-lg bg-white/70 dark:bg-black/20 px-2 py-1.5"
+                        >
+                          <div className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black",
+                            colors.text,
+                            "bg-white/80 dark:bg-black/25"
+                          )}>
+                            {(s.userName?.[0] ?? "?").toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold text-foreground leading-tight truncate">
+                              {s.userName}
+                            </p>
+                            {s.roleName && (
+                              <p className="text-[8px] text-muted-foreground leading-tight truncate">{s.roleName}</p>
+                            )}
+                          </div>
+                          {s.startTime && (
+                            <span className="text-[9px] font-semibold text-muted-foreground shrink-0">
+                              {s.startTime}
+                              {s.endTime ? `–${s.endTime}` : ""}
+                            </span>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}
+
+          {/* Total staff summary */}
+          <div className="text-center pt-0.5">
+            <span className="text-[8px] font-medium text-muted-foreground/60">
+              Total {totalStaff} staff aktif
+            </span>
+          </div>
         </div>
       )}
     </div>
