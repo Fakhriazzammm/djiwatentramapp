@@ -501,7 +501,8 @@ async def _send_with_retry(bot, chat_id: int, text: str, reply_markup=None, max_
 
 # ── Notifications with inline keyboard ───────────────────────────
 
-async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line=None):
+async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line=None,
+                                      guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None):
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -511,15 +512,20 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
     }
     type_label = type_labels.get(order_type, f"📋 {order_type}")
 
+    elapsed_min = int((_now_wib().timestamp() * 1000 - ts_ms) / 60000)
+    elapsed_text = f"🕐 {elapsed_min} menit lalu" if elapsed_min >= 1 else "🕐 Baru saja"
+
     item_lines = []
+    item_no = 1
     for item in bev_items:
         qty = int(float(item.get("quantity", 1)))
         name = (item.get("productName") or "?").strip()
         variant = item.get("variant")
         if variant:
-            item_lines.append(f"  • {qty}× {name}  ({variant})")
+            item_lines.append(f"  {item_no}. {qty}× {name}  ({variant})")
         else:
-            item_lines.append(f"  • {qty}× {name}")
+            item_lines.append(f"  {item_no}. {qty}× {name}")
+        item_no += 1
 
     lines = []
     if struk_line:
@@ -533,17 +539,32 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
     extra_lines = [
         "",
         f"{type_label}",
-        f"👤 {customer}",
     ]
+    # Promo tag
+    if discount_amount > 0:
+        if free_refill:
+            extra_lines.append("🏷️ Free Refill")
+        elif voucher_id:
+            extra_lines.append(f"🏷️ Promo {voucher_id}")
+        else:
+            extra_lines.append("🏷️ Happy Hour")
+    customer_line = f"👤 {customer}"
+    if guest_count and guest_count > 0:
+        customer_line += f" — {int(guest_count)} orang"
+    extra_lines.append(customer_line)
     barista_team_text = _format_team_by_role(team, "Barista") if team else ""
     if barista_team_text:
         extra_lines.append(f"👥 {barista_team_text}")
+    if notes:
+        extra_lines.append("")
+        extra_lines.append(f"📝 {notes}")
     extra_lines.extend([
         "",
         "Minuman:",
         *item_lines,
         "────────────",
-        "⏳ Mohon segera dibuat!",
+        f"⏳ Mohon segera dibuat! — {elapsed_text}",
+        f"📦 {len(bev_items)} minuman",
         "",
         "Tekan tombol untuk memproses pesanan",
     ])
@@ -579,7 +600,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
     except Exception as e:
         logger.error("send_barista_notification failed for %s: %s", order_no, e)
 
-async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line=None):
+async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line=None,
+                                      guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None):
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -589,15 +611,20 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
     }
     type_label = type_labels.get(order_type, f"📋 {order_type}")
 
+    elapsed_min = int((_now_wib().timestamp() * 1000 - ts_ms) / 60000)
+    elapsed_text = f"🕐 {elapsed_min} menit lalu" if elapsed_min >= 1 else "🕐 Baru saja"
+
     item_lines = []
+    item_no = 1
     for item in food_items:
         qty = int(float(item.get("quantity", 1)))
         name = (item.get("productName") or "?").strip()
         variant = item.get("variant")
         if variant:
-            item_lines.append(f"  • {qty}× {name}  ({variant})")
+            item_lines.append(f"  {item_no}. {qty}× {name}  ({variant})")
         else:
-            item_lines.append(f"  • {qty}× {name}")
+            item_lines.append(f"  {item_no}. {qty}× {name}")
+        item_no += 1
 
     lines = []
     if struk_line:
@@ -611,17 +638,31 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
     extra_lines = [
         "",
         f"{type_label}",
-        f"👤 {customer}",
     ]
+    if discount_amount > 0:
+        if free_refill:
+            extra_lines.append("🏷️ Free Refill")
+        elif voucher_id:
+            extra_lines.append(f"🏷️ Promo {voucher_id}")
+        else:
+            extra_lines.append("🏷️ Happy Hour")
+    customer_line = f"👤 {customer}"
+    if guest_count and guest_count > 0:
+        customer_line += f" — {int(guest_count)} orang"
+    extra_lines.append(customer_line)
     kitchen_team_text = _format_team_by_role(team, "Kitchen") if team else ""
     if kitchen_team_text:
         extra_lines.append(f"👥 {kitchen_team_text}")
+    if notes:
+        extra_lines.append("")
+        extra_lines.append(f"📝 {notes}")
     extra_lines.extend([
         "",
         "Makanan:",
         *item_lines,
         "────────────",
-        "⏳ Mohon segera dibuat!",
+        f"⏳ Mohon segera dibuat! — {elapsed_text}",
+        f"📦 {len(food_items)} makanan",
         "",
         "Tekan tombol untuk memproses pesanan",
     ])
@@ -809,7 +850,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind"
+            "select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -879,6 +920,13 @@ async def _check_new_orders(app):
                     customer = i["customerName"]
                     break
 
+        # Extract additional data for notifications
+        guest_count = row.get("guestCount")
+        notes = (row.get("notes") or "").strip()
+        voucher_id = row.get("voucherId")
+        discount_amount = float(row.get("discountAmount") or 0)
+        free_refill = row.get("freeRefillSelected")
+
         # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
         bev_items = await _get_beverage_items(items)
@@ -888,9 +936,9 @@ async def _check_new_orders(app):
         # Kirim kitchen + barista paralel per order
         tasks = []
         if food_items:
-            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line))
+            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill))
         if bev_items:
-            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line))
+            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill))
 
         if tasks:
             await asyncio.gather(*tasks)

@@ -142,6 +142,42 @@ _reported_expense_ids: set[str] = set()
 _last_order_check_ms = 0
 _last_expense_check_ms = 0
 
+# Product categories for item grouping in order notifications
+_PRODUCT_CATEGORY_MAP: dict[str, str] = {}
+_PRODUCT_CATEGORY_LOADED = False
+
+async def _build_product_category_map():
+    global _PRODUCT_CATEGORY_MAP, _PRODUCT_CATEGORY_LOADED
+    if _PRODUCT_CATEGORY_LOADED:
+        return
+    try:
+        cats = await _fetch("pos_categories", "select=_id,name,parentId&limit=100")
+        cat_names = {c["_id"]: c.get("name", "") for c in cats}
+        # Find Makanan and Minuman root IDs
+        makanan_root = next((c["_id"] for c in cats if c.get("name", "").strip().lower() == "makanan"), None)
+        minuman_root = next((c["_id"] for c in cats if c.get("name", "").strip().lower() == "minuman"), None)
+        # Map child categories to their parent root
+        child_to_root = {}
+        for c in cats:
+            pid = c.get("parentId")
+            if pid == makanan_root:
+                child_to_root[c["_id"]] = "Makanan"
+            elif pid == minuman_root:
+                child_to_root[c["_id"]] = "Minuman"
+        prods = await _fetch("pos_products", "select=_id,categoryId&limit=500")
+        for p in prods:
+            cid = p.get("categoryId") or ""
+            if cid in child_to_root:
+                _PRODUCT_CATEGORY_MAP[p["_id"]] = child_to_root[cid]
+            elif cid == makanan_root:
+                _PRODUCT_CATEGORY_MAP[p["_id"]] = "Makanan"
+            elif cid == minuman_root:
+                _PRODUCT_CATEGORY_MAP[p["_id"]] = "Minuman"
+        _PRODUCT_CATEGORY_LOADED = True
+        logger.info("Product category map built: %d products", len(_PRODUCT_CATEGORY_MAP))
+    except Exception as e:
+        logger.warning("build_product_category_map failed: %s", e)
+
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     level=logging.INFO,
@@ -368,6 +404,17 @@ def _is_allowed(update: Update) -> bool:
         return False
     if not ALLOWED_USERS:
         return True
+    # Di grup: izinkan jika @mention atau reply ke bot
+    chat = update.effective_chat
+    if chat and chat.type in ("group", "supergroup"):
+        msg = update.effective_message
+        if msg:
+            if msg.reply_to_message and msg.reply_to_message.from_user and msg.reply_to_message.from_user.is_bot:
+                return True
+            message_text = msg.text or msg.caption or ""
+            if "@yummeaibot" in message_text.lower():
+                return True
+    # DM: hanya owner
     return user.id in ALLOWED_USERS
 
 
@@ -1825,7 +1872,7 @@ async def _check_new_transactions(app):
 
         orders = await _fetch(
             "pos_orders",
-            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind"
+            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
             f"&status=in.(completed,paid)"
             f"&_creationTime=gt.{_last_order_check_ms - 1}"
             f"&_creationTime=lte.{now_ms}"
@@ -1844,6 +1891,11 @@ async def _check_new_transactions(app):
             customer = o.get("customerName") or "Pelanggan"
             order_type = (o.get("orderType") or "dine_in")
             items = o.get("items") or []
+            guest_count = o.get("guestCount")
+            notes = (o.get("notes") or "").strip()
+            voucher_id = o.get("voucherId")
+            discount_amount = float(o.get("discountAmount") or 0)
+            free_refill = o.get("freeRefillSelected")
 
             daily_no = o.get("daily_receipt_no")
             receipt_kind = o.get("receipt_kind")
@@ -1862,7 +1914,32 @@ async def _check_new_transactions(app):
             cashier = shift.get("cashier_name", "?")
             team = shift.get("team_members", "")
 
-            # ── Transaction report (per baris, tanpa |) ──
+            # ── Build discount/promo info ──
+            promo_parts = []
+            if discount_amount > 0:
+                if free_refill:
+                    promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Free Refill)")
+                elif voucher_id:
+                    promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Voucher {voucher_id})")
+                else:
+                    # Happy Hour or automatic discount (all items same price)
+                    promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Happy Hour)")
+
+            # ── Parse team members into per-role lines ──
+            team_lines = []
+            if team:
+                for tl in team.split("\n"):
+                    tl = tl.strip()
+                    if not tl:
+                        continue
+                    if tl.startswith("Barista:"):
+                        team_lines.append(f"👨‍🍳 {tl}")
+                    elif tl.startswith("Chef:"):
+                        team_lines.append(f"👩‍🍳 {tl}")
+                    else:
+                        team_lines.append(f"👥 {tl}")
+
+            # ── Transaction report ──
             lines = []
             if struk_line:
                 lines.append(f"📍 {struk_line}")
@@ -1872,16 +1949,63 @@ async def _check_new_transactions(app):
                 f"🆔 {order_no}",
             ])
             lines.append(f"💰 Rp{amount:,.0f} — {payment}")
-            lines.append(f"👤 {customer}")
+            for p in promo_parts:
+                lines.append(f"🏷️ {p}")
+
+            customer_line = f"👤 {customer}"
+            if guest_count and guest_count > 0:
+                customer_line += f" — {int(guest_count)} orang"
+            lines.append(customer_line)
+
             lines.append(f"👥 Kasir: {cashier}")
-            if team:
-                lines.append(f"📋 Tim: {team}")
+            lines.extend(team_lines)
+
+            if notes:
+                lines.append("")
+                lines.append(f"📝 {notes}")
+
             lines.append("")
             lines.append("Items:")
+
+            # ── Categorize items ──
+            food_items = []
+            drink_items = []
+            other_items = []
             for i in items:
-                pn = i.get("productName", "?").strip()
-                q = int(float(i.get("quantity", 1)))
-                lines.append(f"  • {pn} x{q}")
+                pid = i.get("productId", "") or ""
+                cat = _PRODUCT_CATEGORY_MAP.get(pid, "")
+                if cat == "Makanan":
+                    food_items.append(i)
+                elif cat == "Minuman":
+                    drink_items.append(i)
+                else:
+                    other_items.append(i)
+
+            item_no = 1
+            def _add_item_group(label, group):
+                nonlocal item_no
+                if group:
+                    lines.append(f"{label}:")
+                    for i in group:
+                        pn = i.get("productName", "?").strip()
+                        q = int(float(i.get("quantity", 1)))
+                        price = float(i.get("price") or 0)
+                        orig = i.get("originalPrice")
+                        if orig is not None and float(orig) != price:
+                            lines.append(f"  {item_no}. {pn} x{q} Rp{float(orig):,.0f} → Rp{price:,.0f}")
+                        else:
+                            lines.append(f"  {item_no}. {pn} x{q} @ Rp{price:,.0f}")
+                        item_no += 1
+
+            _add_item_group("🍳 Makanan", food_items)
+            _add_item_group("☕ Minuman", drink_items)
+            if other_items:
+                _add_item_group("🥤 Lainnya", other_items)
+
+            # ── Footer ──
+            total_items = sum(int(float(i.get("quantity", 1))) for i in items)
+            lines.append(f"📦 {total_items} item | 💰 Rp{amount:,.0f}")
+
             await _send_to_group(app, "\n".join(lines))
             await asyncio.sleep(0.3)
 
@@ -2168,6 +2292,13 @@ async def _start_auto_reporter(app):
         logger.info("Marketlist ingredient category lookup built")
     except Exception as e:
         logger.warning("Marketlist build_lookup failed: %s", e)
+
+    # Build product category map for order notifications
+    try:
+        await _build_product_category_map()
+        logger.info("Product category map built")
+    except Exception as e:
+        logger.warning("Product category map build failed: %s", e)
 
     # Daily summary at 22:00 WIB (15:00 UTC)
     scheduler = AsyncIOScheduler(timezone="Asia/Jakarta")
