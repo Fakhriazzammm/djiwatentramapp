@@ -21,7 +21,7 @@ import { FastStockTable } from "@/components/inventory/fast-stock-table";
 import { useHybridUpdateOrderItemStatus } from "@/hooks/use-hybrid-write-actions";
 import { createClient } from "@/lib/client";
 
-export const Route = createLazyFileRoute("/admin/bar" as any)({
+export const Route = createLazyFileRoute("/admin/bar")({
 	component: BarMonitorPage,
 });
 

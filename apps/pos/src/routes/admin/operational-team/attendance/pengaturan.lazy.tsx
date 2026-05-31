@@ -800,6 +800,6 @@ function AttendancePengaturanPage() {
 	);
 }
 
-export const Route = createLazyFileRoute("/admin/operational-team/attendance/pengaturan" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/attendance/pengaturan")({
 	component: AttendancePengaturanPage,
 });

@@ -278,6 +278,6 @@ function ContractPreviewPage() {
 	);
 }
 
-export const Route = createLazyFileRoute("/admin/operational-team/register/contract/$templateId/preview" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/register/contract/$templateId/preview")({
 	component: ContractPreviewPage,
 });

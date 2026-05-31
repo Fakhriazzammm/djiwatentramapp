@@ -678,4 +678,4 @@ function Field({ label, children, className }: { label: string; children: React.
 	);
 }
 
-export const Route = createLazyFileRoute("/register" as any)({ component: RegisterPageWrapper });
+export const Route = createLazyFileRoute("/register")({ component: RegisterPageWrapper });

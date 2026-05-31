@@ -457,6 +457,6 @@ function ContractHistoryPage() {
 
 export default ContractHistoryPage;
 
-export const Route = createLazyFileRoute("/admin/operational-team/register/riwayat" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/register/riwayat")({
 	component: ContractHistoryPage,
 });

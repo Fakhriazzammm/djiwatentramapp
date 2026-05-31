@@ -1,5 +1,3 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute(
-	"/admin/operational-team/register/application/$registrationNumber" as any
-)({});
+export const Route = createFileRoute("/admin/operational-team/register/application/$registrationNumber")({});

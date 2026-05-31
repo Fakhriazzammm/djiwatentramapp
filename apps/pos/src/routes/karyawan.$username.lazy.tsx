@@ -1679,6 +1679,6 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 	);
 }
 
-export const Route = createLazyFileRoute("/karyawan/$username" as any)({
+export const Route = createLazyFileRoute("/karyawan/$username")({
 	component: StaffProfilePage,
 });

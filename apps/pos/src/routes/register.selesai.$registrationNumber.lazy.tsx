@@ -717,8 +717,6 @@ function RegisterCompletePage() {
   );
 }
 
-export const Route = createLazyFileRoute(
-  "/register/selesai/$registrationNumber" as any,
-)({
+export const Route = createLazyFileRoute("/register/selesai/$registrationNumber")({
   component: RegisterCompletePage,
 });

@@ -5,7 +5,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
 import { useEffect } from "react";
 
-export const Route = createFileRoute("/login" as any)({
+export const Route = createFileRoute("/login")({
 	component: LoginPage,
 });
 

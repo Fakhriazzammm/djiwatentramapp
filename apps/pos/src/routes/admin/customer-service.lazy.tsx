@@ -20,7 +20,7 @@ import { useHybridCustomerServiceRequests } from "@/hooks/use-hybrid-finance-ana
 import { useHybridUpdateCustomerServiceStatus } from "@/hooks/use-hybrid-write-actions";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
-export const Route = createLazyFileRoute("/admin/customer-service" as any)({
+export const Route = createLazyFileRoute("/admin/customer-service")({
 	component: CustomerServiceRequestsPage,
 });
 

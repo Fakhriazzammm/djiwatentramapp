@@ -680,6 +680,6 @@ function DataKaryawanPage() {
 	);
 }
 
-export const Route = createLazyFileRoute("/admin/operational-team/karyawan/data" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/karyawan/data")({
 	component: DataKaryawanPage,
 });

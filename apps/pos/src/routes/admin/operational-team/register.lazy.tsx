@@ -154,6 +154,6 @@ function RegisterLanding() {
 	);
 }
 
-export const Route = createLazyFileRoute("/admin/operational-team/register" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/register")({
 	component: OperationalTeamRegisterPage,
 });

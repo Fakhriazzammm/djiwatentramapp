@@ -4,8 +4,6 @@ function PreviewLayout() {
 	return <Outlet />;
 }
 
-export const Route = createFileRoute(
-	"/admin/operational-team/register/contract/$templateId/preview" as any,
-)({
+export const Route = createFileRoute("/admin/operational-team/register/contract/$templateId/preview")({
 	component: PreviewLayout,
 });

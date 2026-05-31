@@ -1200,8 +1200,6 @@ function AttendanceJadwalPage() {
   );
 }
 
-export const Route = createLazyFileRoute(
-  "/admin/operational-team/attendance/jadwal" as any
-)({
+export const Route = createLazyFileRoute("/admin/operational-team/attendance/jadwal")({
   component: AttendanceJadwalPage,
 });

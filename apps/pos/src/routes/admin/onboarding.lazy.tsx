@@ -274,4 +274,4 @@ function Stat({ label, value }: { label: string; value: number }) {
 	);
 }
 
-export const Route = createLazyFileRoute("/admin/onboarding" as any)({ component: AdminOnboardingPage });
+export const Route = createLazyFileRoute("/admin/onboarding")({ component: AdminOnboardingPage });

@@ -655,8 +655,6 @@ function Field({ label, children, className }: { label: string; children: React.
 	);
 }
 
-export const Route = createLazyFileRoute(
-	"/admin/operational-team/register/application/$registrationNumber" as any
-)({
+export const Route = createLazyFileRoute("/admin/operational-team/register/application/$registrationNumber")({
 	component: ApplicationDetailPage,
 });

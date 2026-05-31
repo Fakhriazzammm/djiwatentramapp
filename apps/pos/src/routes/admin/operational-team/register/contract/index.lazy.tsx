@@ -302,6 +302,6 @@ function ContractLandingPage() {
 	);
 }
 
-export const Route = createLazyFileRoute("/admin/operational-team/register/contract/" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/register/contract/")({
 	component: ContractLandingPage,
 });

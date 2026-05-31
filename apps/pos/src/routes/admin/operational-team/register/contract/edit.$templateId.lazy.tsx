@@ -812,6 +812,6 @@ Pastikan body pasal 1 menyebut "${companyName} sebagai perwakilan perusahaan".`;
 	);
 }
 
-export const Route = createLazyFileRoute("/admin/operational-team/register/contract/edit/$templateId" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/register/contract/edit/$templateId")({
 	component: ContractEditPage,
 });

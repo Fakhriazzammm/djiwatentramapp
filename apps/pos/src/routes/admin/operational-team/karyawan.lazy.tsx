@@ -5,6 +5,6 @@ function KaryawanPage() {
 	return <KaryawanOverview />;
 }
 
-export const Route = createLazyFileRoute("/admin/operational-team/karyawan" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/karyawan")({
 	component: KaryawanPage,
 });

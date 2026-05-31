@@ -1,3 +1,3 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/register" as any)({});
+export const Route = createFileRoute("/register")({});

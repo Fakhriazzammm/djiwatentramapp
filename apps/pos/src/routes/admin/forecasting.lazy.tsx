@@ -26,7 +26,7 @@ import {
 } from "@/hooks/use-hybrid-finance-analytics-data";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Route = createLazyFileRoute("/admin/forecasting" as any)({
+export const Route = createLazyFileRoute("/admin/forecasting")({
 	component: ForecastingPage,
 });
 
