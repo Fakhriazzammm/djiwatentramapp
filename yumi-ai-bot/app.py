@@ -125,6 +125,14 @@ ALLOWED_USERS = {
 TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
 MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "-5288006237"))
+BROADCAST_CHANNEL_ID = int(os.getenv("BROADCAST_CHANNEL_ID", "-1003534335147"))
+
+# All registered broadcast targets
+ALL_BROADCAST_TARGETS: dict[str, int] = {
+    "channel": BROADCAST_CHANNEL_ID,
+    "transaksi": REPORT_GROUP_ID,
+    "report": int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388")),
+}
 
 # Dedup: track already-reported orders to prevent re-sending
 _reported_order_nos: set[str] = set()
@@ -389,8 +397,22 @@ def _today_wib_str() -> str:
 # ===================================================================
 
 async def _gather_context() -> str:
-    """Gather realtime operational context: low stock, pending orders, active shift."""
+    """Gather realtime operational context: low stock, pending orders, active shift, plus persistent memory."""
     hints = []
+    
+    # 0) Persistent markdown files — read all GM_*.md in the bot directory
+    bot_dir = os.path.dirname(__file__)
+    try:
+        for fname in sorted(os.listdir(bot_dir)):
+            if fname.startswith("GM_") and fname.endswith(".md") and fname != "GM_README.md":
+                fpath = os.path.join(bot_dir, fname)
+                with open(fpath, "r", encoding="utf-8") as f:
+                    text = f.read().strip()
+                if text:
+                    label = fname.replace("GM_", "").replace(".md", "").upper()
+                    hints.append(f"📄 [{label}] " + text[:2000].replace("\n", " | ").replace("---", ""))
+    except Exception as e:
+        logger.warning("Failed to read GM_*.md files: %s", e)
     try:
         now = _now_wib()
         start_ms = _start_of_day_ms(now)
@@ -809,7 +831,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/briefing_hari_ini — Briefing bisnis\n"
         "/yumi <pesan> — Opt-in Hermes read-only\n"
         "/hermes_scope — Cek scope Hermes project agent\n"
-        "/hermes_test — Test adapter Hermes read-only\n\n"
+        "/hermes_test — Test adapter Hermes read-only\n"
+        "/broadcast <pesan> — Broadcast ke semua channel & grup\n"
+        "/sebarkan <target> <pesan> — Kirim ke target tertentu\n\n"
         "🤖⭐ Orchestrator — Saya koordinasikan semua bot:\n"
         "• @YummeFinanceAIbot — Keuangan & OCR struk\n"
         "• @YumiPurchasingBot — Inventori & Restok\n"
@@ -1102,59 +1126,61 @@ async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_T
                 seen.add(key)
                 deduped.append(s)
 
-        # ── 4) Build compact report ──
-        lines = [
-            f"📊 Ringkasan {period_label}",
-            f"Djiwa Tentram Cafe & Resto",
-            f"📅 {date_str}",
-            "",
-        ]
-
-        # Shift summary — 1 line per shift
+        # ── 4) Build natural-language report ──
+        # Dynamic opening based on data
+        if total_gross == 0 and total_expense == 0:
+            opening = f"Belum ada aktivitas hari ini {date_str}."
+        elif total_revenue > 0:
+            opening = f"Hari ini {date_str} — {len(orders)} transaksi dengan total omzet Rp{total_revenue:,.0f}"
+        else:
+            opening = f"{date_str} — belum ada pendapatan tercatat."
+        
+        lines = [opening, ""]
+        
+        # Items sold
+        if total_items_sold > 0:
+            lines.append(f"📦 {total_items_sold} produk terjual")
+        
+        # Revenue breakdown
+        rev_parts = []
+        if total_cash > 0: rev_parts.append(f"Tunai Rp{total_cash:,.0f}")
+        if total_qris > 0: rev_parts.append(f"QRIS Rp{total_qris:,.0f}")
+        if total_other > 0: rev_parts.append(f"Lainnya Rp{total_other:,.0f}")
+        if rev_parts:
+            lines.append(f"💰 Omzet: {' | '.join(rev_parts)}")
+        
+        if total_discount > 0:
+            lines.append(f"🏷️ Diskon Rp{total_discount:,.0f}")
+        
+        if total_expense > 0:
+            expense_detail = " | ".join(f"{cat} Rp{amt:,.0f}" for cat, amt in expense_by_cat.most_common(5))
+            lines.append(f"💸 Biaya Rp{total_expense:,.0f} ({expense_detail})")
+        
+        lines.append(f"🏦 Bersih Rp{net_balance:,.0f}")
+        
+        # Top 3 products
+        top3 = items_by_name.most_common(3)
+        if top3:
+            lines.append(f"⭐ Terlaris: {', '.join(f'{n} ({q})' for n,q in top3)}")
+        
+        # Shift info
         if deduped:
+            shift_lines = []
             for s in deduped:
                 name = s["shift_name"]
                 status = s.get("status", "?")
                 is_active = status == "AKTIF"
                 icon = "🟢" if is_active else "⚫"
                 cashier = s.get("cashier_name") or "?"
-                start_cash = float(s.get("starting_cash") or 0)
-                rev = float(s.get("total_revenue") or 0)
-                exp = float(s.get("total_expenses") or 0)
-                gross = float(s.get("total_gross_sales") or 0)
-                items = int(s.get("total_items_sold") or 0)
                 orders_n = int(s.get("order_count") or 0)
-                collected = float(s.get("shift_collected") or 0)
-                team = s.get("team_members") or ""
-                status_badge = " [AKTIF]" if is_active else ""
-
-                lines.append(f"{icon} {name}{status_badge} — {cashier}")
-                lines.append(f"   Modal Rp{start_cash:,.0f} | {orders_n} order | {items} item | Omzet Rp{gross:,.0f} | Biaya Rp{exp:,.0f}")
-                if is_active and collected > 0:
-                    lines.append(f"   📡 Real-time: Rp{collected:,.0f}")
-                if team:
-                    lines.append(f"   Tim: {team}")
+                shift_lines.append(f"{icon} {name} — {cashier} ({orders_n} order)")
+            if shift_lines:
                 lines.append("")
-        else:
-            lines.append("👥 Belum ada shift untuk periode ini.\n")
-
-        # ── 5) Compact totals ──
-        lines.append("───")
-        lines.append(f"💰 Total Omzet: Rp{total_gross:,.0f} (Net: Rp{total_revenue:,.0f})")
-        lines.append(f"🏷️ Diskon: Rp{total_discount:,.0f}")
-        lines.append(f"📦 Produk Terjual: {total_items_sold}")
-        lines.append(f"💸 Pengeluaran: Rp{total_expense:,.0f}")
-        lines.append(f"🏦 Kas Bersih: Rp{net_balance:,.0f}")
-
-        # Top 3
-        top3 = items_by_name.most_common(3)
-        if top3:
-            lines.append(f"⭐ Top 3: {', '.join(f'{n} ({q})' for n,q in top3)}")
-
-        # Expenses summary
-        if expense_by_cat:
-            exp_lines = [f"📝 Biaya: {cat} Rp{amt:,.0f}" for cat, amt in expense_by_cat.most_common(5)]
-            lines.append(" | ".join(exp_lines))
+                lines.append(" | ".join(shift_lines))
+        
+        lines.append("")
+        lines.append("📋 Mau laporan ini dalam format PDF atau Excel? Minta ke admin atau download dari dashboard web.")
+        lines.append("💡 Butuh analisis lebih dalam? Tanya aja — saya siap breakdown.")
 
         text = "\n".join(lines)
 
@@ -1203,11 +1229,17 @@ async def cmd_top_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _reply_msg(update, context, "Belum ada order selesai hari ini.")
             return
 
-        lines = [f"{i}. {n} — {q:.0f} pcs (Rp {omzet[n]:,.0f})" for i, (n, q) in enumerate(top, 1)]
-        await _reply_msg(update, context, 
-            "🔥 Top Produk Hari Ini\n" + "\n".join(lines),
-            reply_markup=_reply_keyboard(),
-        )
+        total_pcs = sum(q for _, q in top)
+        total_omzet = sum(omzet[n] for n, _ in top)
+        
+        lines = [f"🔥 {len(top)} produk terlaris — {total_pcs:.0f} pcs, Rp {total_omzet:,.0f}"]
+        lines.append("")
+        for i, (n, q) in enumerate(top, 1):
+            lines.append(f"{i}. {n} — {q:.0f} pcs — Rp{omzet[n]:,.0f}")
+        lines.append("")
+        lines.append("📋 Mau laporan PDF/Excel? Minta ke admin atau download dashboard.")
+        
+        await _reply_msg(update, context, "\n".join(lines), parse_mode="Markdown", reply_markup=_reply_keyboard())
     except Exception as e:
         logger.exception("top_produk failed")
         await _reply_msg(update, context, f"Gagal ambil top produk: {e}")
@@ -1231,11 +1263,17 @@ async def cmd_stok_menipis(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         alerts.sort(key=lambda x: (x[1] - x[2]))
-        text = "\n".join([f"• {n}: {q:g}/{t:g} {u}" for n, q, t, u in alerts[:30]])
-        await _reply_msg(update, context, 
-            f"⚠️ Stok Menipis ({len(alerts)} item)\n{text}",
-            reply_markup=_reply_keyboard(),
-        )
+        kritis = sum(1 for _, q, _, _ in alerts if q <= 0)
+        
+        lines = [f"⚠️ {len(alerts)} bahan stok menipis — {kritis} di antaranya kritis (stok 0)"]
+        lines.append("")
+        for n, q, t, u in alerts[:20]:
+            mark = "🔴" if q <= 0 else "🟡"
+            lines.append(f"{mark} {n} — stok {q:g}/{t:g} {u}")
+        lines.append("")
+        lines.append("💡 Butuh restok? @YumiPurchasingBot bisa bantu order.\n📋 Mau laporan PDF/Excel? Minta ke admin.")
+        
+        await _reply_msg(update, context, "\n".join(lines), parse_mode="Markdown", reply_markup=_reply_keyboard())
     except Exception as e:
         logger.exception("stok_menipis failed")
         await _reply_msg(update, context, f"Gagal cek stok: {e}")
@@ -1251,20 +1289,37 @@ async def cmd_absen_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE)
         q = f"select=userName,type,timestamp,shiftName&timestamp=gte.{start_ms}&order=timestamp.desc"
         rows = await _fetch("pos_attendance_logs", q)
         if not rows:
-            await _reply_msg(update, context, "Belum ada data absensi.", reply_markup=_reply_keyboard())
+            await _reply_msg(update, context, "Belum ada absensi hari ini.", reply_markup=_reply_keyboard())
             return
 
-        lines = []
-        for r in rows[:25]:
-            ts = int(r.get("timestamp") or 0)
+        # Count check-ins per person
+        staff_log = {}
+        for r in rows:
+            name = r.get('userName', '?')
+            ts = int(r.get('timestamp') or 0)
             dt = datetime.fromtimestamp(ts / 1000, tz=WIB).strftime("%H:%M")
-            icon = "✅" if r.get("type") == "check_in" else "🔴"
-            lines.append(f"{icon} {dt} | {r.get('userName','?')} | {r.get('shiftName') or '-'}")
+            tp = "check_in" if r.get('type') == "check_in" else "check_out"
+            if name not in staff_log:
+                staff_log[name] = {"in": "-", "out": "-", "shift": "-"}
+            if tp == "check_in":
+                staff_log[name]["in"] = dt
+            else:
+                staff_log[name]["out"] = dt
+            if r.get('shiftName'):
+                staff_log[name]["shift"] = r.get('shiftName', '-')
 
-        await _reply_msg(update, context, 
-            "🕒 Absensi Hari Ini\n" + "\n".join(lines),
-            reply_markup=_reply_keyboard(),
-        )
+        total = len(rows)
+        hadir = sum(1 for s in staff_log.values() if s["in"] != "-")
+        
+        lines = [f"🕒 {hadir} dari {len(staff_log)} staff sudah absen hari ini"]
+        lines.append("")
+        for name, log in sorted(staff_log.items()):
+            icon = "✅" if log["in"] != "-" else "⏳"
+            lines.append(f"{icon} {name} — Masuk {log['in']} | Keluar {log['out']} | {log['shift']}")
+        lines.append("")
+        lines.append("📋 Mau laporan PDF/Excel absensi? Minta ke admin atau download web.")
+        
+        await _reply_msg(update, context, "\n".join(lines), parse_mode="Markdown", reply_markup=_reply_keyboard())
     except Exception as e:
         logger.exception("absen_hari_ini failed")
         await _reply_msg(update, context, f"Gagal ambil absensi: {e}")
@@ -1280,21 +1335,26 @@ async def cmd_booking_aktif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = [r for r in rows if str(r.get("bookingStatus", "")).lower() in {"confirmed", "pending", "booked"}]
 
         if not active:
-            await _reply_msg(update, context, "Tidak ada booking aktif.", reply_markup=_reply_keyboard())
+            await _reply_msg(update, context, "Tidak ada booking aktif hari ini.", reply_markup=_reply_keyboard())
             return
 
-        lines = []
-        for r in active[:15]:
-            lines.append(
-                f"• {r.get('bookingCode','-')} | {r.get('customerName','-')} | "
-                f"{r.get('bookingDate','-')} | {r.get('guestCount',0)} org | "
-                f"{r.get('bookingStatus','-')} | Rp {float(r.get('totalAmount') or 0):,.0f}"
-            )
-
-        await _reply_msg(update, context, 
-            "📅 Booking Aktif\n" + "\n".join(lines),
-            reply_markup=_reply_keyboard(),
-        )
+        total_guest = sum(int(r.get('guestCount') or 0) for r in active)
+        total_amount = sum(float(r.get('totalAmount') or 0) for r in active)
+        
+        lines = [f"📅 {len(active)} booking aktif — {total_guest} tamu, total Rp {total_amount:,.0f}"]
+        lines.append("")
+        for r in active[:10]:
+            kode = r.get('bookingCode','-') or '-'
+            nama = r.get('customerName','-') or '-'
+            tgl = r.get('bookingDate','-') or '-'
+            guest = int(r.get('guestCount') or 0)
+            status = r.get('bookingStatus','-') or '-'
+            total = float(r.get('totalAmount') or 0)
+            lines.append(f"• {kode} — {nama} — {tgl} — {guest} org — {status} — Rp{total:,.0f}")
+        lines.append("")
+        lines.append("📋 Mau laporan booking PDF/Excel? Minta ke admin.")
+        
+        await _reply_msg(update, context, "\n".join(lines), parse_mode="Markdown", reply_markup=_reply_keyboard())
     except Exception as e:
         logger.exception("booking_aktif failed")
         await _reply_msg(update, context, f"Gagal ambil booking: {e}")
@@ -1554,7 +1614,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Keyword routing to specific commands (fast path)
     keyword_map = [
-        (["omzet", "kpi", "penjualan", "revenue", "pendapatan"], cmd_ringkasan_hari_ini),
+        (["omzet", "kpi", "penjualan", "revenue", "pendapatan", "transaksi", "pemasukan", "penghasilan"], cmd_ringkasan_hari_ini),
         (["top produk", "terlaris", "best seller", "paling laku"], cmd_top_produk),
         (["stok", "menipis", "habis", "inventory", "inventori"], cmd_stok_menipis),
         (["absen", "attendance", "clock in", "clock out", "absensi"], cmd_absen_hari_ini),
@@ -1565,11 +1625,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for keywords, handler in keyword_map:
         if any(k in text_lower for k in keywords):
-            # Check if this is a direct data question or needs AI
-            if len(text_lower.split()) <= 3:
-                await handler(update, context)
-                return
-            break  # let AI handle longer queries even if they contain keywords
+            await handler(update, context)
+            return
 
     # Free-text AI chat with rich context
     try:
@@ -1612,6 +1669,79 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===================================================================
+# Broadcast: Yumi GM Agents → Channel / Grup
+# ===================================================================
+
+async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send announcement to all registered broadcast targets (/broadcast <pesan>)."""
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+    text = (update.message.text or "").strip()
+    parts = text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        target_list = "\n".join(f"• {name}" for name in ALL_BROADCAST_TARGETS)
+        await _reply_msg(update, context,
+            "📢 *Broadcast - Yumi General Manager Agents*\n\n"
+            "Kirim pengumuman ke semua channel & grup:\n"
+            "`/broadcast <pesan>` — ke semua target\n"
+            "`/sebarkan channel <pesan>` — ke channel 📣 Djiwa Tentram\n"
+            "`/sebarkan transaksi <pesan>` — ke grup Transaksi\n"
+            f"\nTarget tersedia:\n{target_list}",
+            parse_mode="Markdown",
+        )
+        return
+    message = parts[1]
+    target_ids = list(ALL_BROADCAST_TARGETS.values())
+    await _reply_msg(update, context, "📡 Mengirim broadcast...")
+    results = await _broadcast_message(
+        context.application if hasattr(context, 'application') else update.get_bot(),
+        message,
+        target_ids,
+    )
+    success = sum(1 for v in results.values() if v)
+    total = len(results)
+    await _reply_msg(update, context, f"✅ Broadcast selesai: {success}/{total} terkirim.")
+
+
+async def cmd_sebarkan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send to specific target (/sebarkan <target> <pesan>)."""
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+    text = (update.message.text or "").strip()
+    parts = text.split(maxsplit=2)
+    if len(parts) < 3:
+        target_list = "\n".join(f"• {name}" for name in ALL_BROADCAST_TARGETS)
+        await _reply_msg(update, context,
+            "📢 *Sebarkan - Yumi General Manager Agents*\n\n"
+            "Gunakan: `/sebarkan <target> <pesan>`\n"
+            f"Target: channel, transaksi, report\n"
+            f"\nAtau `/broadcast <pesan>` untuk semua target.",
+            parse_mode="Markdown",
+        )
+        return
+    target_key = parts[1].lower().strip()
+    message = parts[2]
+    
+    # Resolve target
+    cid = ALL_BROADCAST_TARGETS.get(target_key)
+    if cid is None:
+        await _reply_msg(update, context,
+            f"❌ Target \"{target_key}\" tidak dikenal.\n"
+            f"Pilihan: {', '.join(ALL_BROADCAST_TARGETS.keys())}",
+        )
+        return
+    
+    bot_instance = context.application.bot if hasattr(context, 'application') else update.get_bot()
+    try:
+        await bot_instance.send_message(chat_id=cid, text=message)
+        await _reply_msg(update, context, f"✅ Pesan terkirim ke **{target_key}**", parse_mode="Markdown")
+    except Exception as e:
+        await _reply_msg(update, context, f"❌ Gagal kirim ke {target_key}: {e}")
+
+
+# ===================================================================
 # Auto-Report: Real-time Transaction Monitor + Daily Summary
 # ===================================================================
 
@@ -1646,6 +1776,20 @@ async def _send_to_group(app, text: str):
         logger.info("Sent notification to group %s", REPORT_GROUP_ID)
     except Exception as e:
         logger.error("send_to_group failed: %s", e)
+
+
+async def _broadcast_message(app, text: str, target_ids: list[int]) -> dict[int, bool]:
+    """Send a message to multiple groups/channels. Returns {chat_id: success}."""
+    results = {}
+    for cid in target_ids:
+        try:
+            await app.bot.send_message(chat_id=cid, text=text)
+            results[cid] = True
+            logger.info("Broadcast sent to %s", cid)
+        except Exception as e:
+            results[cid] = False
+            logger.error("Broadcast to %s failed: %s", cid, e)
+    return results
 
 
 def _format_time_ms(ts_ms, fmt="%d/%m %H:%M"):
@@ -2163,6 +2307,9 @@ def main():
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
+    app.add_handler(CommandHandler("broadcast", cmd_broadcast))
+    app.add_handler(CommandHandler("sebarkan", cmd_sebarkan))
+    app.add_handler(CommandHandler("broadcast_channel", cmd_broadcast))
 
     # Alias (backward compat)
     app.add_handler(CommandHandler("kpi_hari_ini", cmd_ringkasan_hari_ini))  # deprecated
