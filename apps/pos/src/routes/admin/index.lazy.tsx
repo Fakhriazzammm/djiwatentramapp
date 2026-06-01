@@ -315,14 +315,14 @@ function DashboardAdmin() {
 					<h3 className="text-xs font-bold mb-3">Breakdown Pesanan</h3>
 					<div className="space-y-2">
 						<CompactStatusRow
-							label="Menunggu"
+							label="Open Bill"
 							count={stats.orderStatusBreakdown.pending}
 							total={stats.todayOrders + stats.pendingOrders}
 							color="yellow"
 							icon={<Clock className="w-3 h-3" />}
 						/>
 						<CompactStatusRow
-							label="Dibayar"
+							label="Lunas"
 							count={stats.orderStatusBreakdown.paid}
 							total={stats.todayOrders + stats.pendingOrders}
 							color="blue"

@@ -386,11 +386,11 @@ function AdminOrders() {
 	const getStatusLabel = (status: string) => {
 		switch (status) {
 			case "paid":
-				return "Dibayar";
+				return "Lunas";
 			case "completed":
 				return "Selesai";
 			case "pending":
-				return "Tertunda";
+				return "Open Bill";
 			case "cancelled":
 				return "Dibatalkan";
 			default:
@@ -567,8 +567,8 @@ function AdminOrders() {
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="all">Semua Status</SelectItem>
-							<SelectItem value="pending">Tertunda</SelectItem>
-							<SelectItem value="paid">Dibayar</SelectItem>
+							<SelectItem value="pending">Open Bill</SelectItem>
+							<SelectItem value="paid">Lunas</SelectItem>
 							<SelectItem value="completed">Selesai</SelectItem>
 							<SelectItem value="cancelled">Dibatalkan</SelectItem>
 						</SelectContent>
@@ -624,8 +624,8 @@ function AdminOrders() {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="all">Semua</SelectItem>
-								<SelectItem value="pending">Tertunda</SelectItem>
-								<SelectItem value="paid">Dibayar</SelectItem>
+								<SelectItem value="pending">Open Bill</SelectItem>
+								<SelectItem value="paid">Lunas</SelectItem>
 								<SelectItem value="completed">Selesai</SelectItem>
 								<SelectItem value="cancelled">Batal</SelectItem>
 							</SelectContent>

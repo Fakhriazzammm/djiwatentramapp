@@ -518,14 +518,14 @@ function OrderCard({
 	onClick: () => void;
 }) {
 	const statusColors: Record<string, string> = {
-		pending: "bg-accent text-accent-foreground",
-		paid: "bg-primary text-primary-foreground",
-		completed: "bg-primary text-primary-foreground",
-		cancelled: "bg-destructive text-destructive-foreground",
+		pending: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+		paid: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+		completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+		cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 	};
 
 	const statusLabels: Record<string, string> = {
-		pending: "Pending",
+		pending: "Open Bill",
 		paid: "Lunas",
 		completed: "Selesai",
 		cancelled: "Batal",
@@ -610,14 +610,14 @@ function OrderDetailView({
 	const [status, setStatus] = useState(order.status);
 
 	const statusColors: Record<string, string> = {
-		pending: "bg-accent text-accent-foreground",
-		paid: "bg-primary text-primary-foreground",
-		completed: "bg-primary text-primary-foreground",
-		cancelled: "bg-destructive text-destructive-foreground",
+		pending: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+		paid: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+		completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+		cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 	};
 
 	const statusLabels: Record<string, string> = {
-		pending: "Pending",
+		pending: "Open Bill",
 		paid: "Lunas",
 		completed: "Selesai",
 		cancelled: "Batal",
@@ -740,7 +740,7 @@ function OrderDetailView({
 										<SelectValue placeholder="Pilih Status" />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="pending">Pending</SelectItem>
+										<SelectItem value="pending">Open Bill</SelectItem>
 										<SelectItem value="paid">Lunas</SelectItem>
 										<SelectItem value="completed">Selesai</SelectItem>
 										<SelectItem value="cancelled">Batal</SelectItem>

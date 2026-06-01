@@ -929,12 +929,21 @@ function renderCheckoutSection(props: any) {
 
 function renderReceiptSection(props: any) {
 	const orderReference = props.currentOrder?.orderNumber || props.receipt.fallbackReference;
-	const mode = props.currentOrder?.status === "paid" || props.currentOrder?.status === "completed" ? "paid" : props.receipt.mode;
+	const orderStatus = props.currentOrder?.status;
+	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
 	const orderItems = props.currentOrder?.items ?? [];
 	const customerName = props.currentOrder?.customerName || "-";
 	const tableNumber = props.currentOrder?.tableNumber || "-";
 	const orderType = props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
 	const customerNotes = props.currentOrder?.notes || "-";
+
+	const unifiedStatusLabel = orderStatus === "paid" ? "LUNAS"
+		: orderStatus === "completed" ? "SELESAI"
+		: "OPEN BILL";
+	const unifiedStatusColor = orderStatus === "paid" ? "text-blue-600"
+		: orderStatus === "completed" ? "text-emerald-600"
+		: "text-amber-600";
+
 	return (
 		<div className="space-y-2 px-2 py-2 pb-6">
 			<div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm">
@@ -942,7 +951,7 @@ function renderReceiptSection(props: any) {
 				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{mode === "paid" ? "Payment completed" : "Payment receipt"}</p>
 				<h2 className="mt-1 text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
 				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice Mayar sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
-				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", mode === "paid" ? "text-emerald-600" : "text-orange-600")}>{mode === "paid" ? "LUNAS" : "MENUNGGU PEMBAYARAN"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
 					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
 						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>
 						<div className="mt-1.5 space-y-1">
