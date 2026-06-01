@@ -89,6 +89,7 @@ import {
 	useHybridLowStockItems,
 	useHybridOrders,
 	useHybridProducts,
+	useHybridCurrentMonthProgress,
 	useHybridShiftStatus,
 	useHybridStaffUsers,
 	useHybridSiteSettings,
@@ -1050,6 +1051,7 @@ function DashboardTab({
 	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 	const siteSettings = useHybridSiteSettings();
+	const monthProgress = useHybridCurrentMonthProgress();
 
 	const income = financialSummary?.totalIncome || 0;
 	const expense = financialSummary?.totalExpense || 0;
@@ -1281,6 +1283,15 @@ ${sTopProductsText}
 
 Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
 
+${(() => {
+  if (!monthProgress?.hasTarget) return "";
+  const shiftTarget = monthProgress.shiftTarget || 0;
+  const isMet = sRevenue >= shiftTarget;
+  const pct = shiftTarget > 0 ? Math.round((sRevenue / shiftTarget) * 100) : 0;
+  const statusIcon = isMet ? "✅" : "❌";
+  return `🎯 TARGET SHIFT:\n- Target: Rp. ${shiftTarget.toLocaleString("id-ID")}\n- Realisasi: Rp. ${sRevenue.toLocaleString("id-ID")}\n- ${statusIcon} ${isMet ? "Tercapai" : "Belum Tercapai"} (${pct}%)`;
+})()}
+
 Kasir: ${shiftObj.cashierName || "Kasir"}${teamLabel}
 ---
 `;
@@ -1308,6 +1319,25 @@ ${productsText}
 
 ⭐ TOP 3 PRODUK TERLARIS (HARIAN):
 ${topProductsText}
+${(() => {
+  if (!monthProgress?.hasTarget) return "";
+  const pct = Math.round(monthProgress.progressPct || 0);
+  const monthlyTarget = monthProgress.targetRevenue || 0;
+  const monthlyIncome = monthProgress.currentIncome || 0;
+  const dailyTarget = monthProgress.dailyTarget || 0;
+  const isDailyMet = totalRevenue >= dailyTarget;
+  return `---
+🎯 TARGET BULANAN:
+• Target: Rp. ${monthlyTarget.toLocaleString("id-ID")}
+• Realisasi: Rp. ${monthlyIncome.toLocaleString("id-ID")}
+• Progress: ${pct}% (Hari ${monthProgress.daysPassed}/${monthProgress.daysInMonth})
+• Proyeksi Akhir: Rp. ${Math.round(monthProgress.projectedMonthly || 0).toLocaleString("id-ID")}
+
+🎯 TARGET HARIAN:
+• Target: Rp. ${dailyTarget.toLocaleString("id-ID")}
+• Realisasi: Rp. ${totalRevenue.toLocaleString("id-ID")}
+• ${isDailyMet ? "✅ Tercapai" : "❌ Belum Tercapai"} (${dailyTarget > 0 ? Math.round((totalRevenue / dailyTarget) * 100) : 0}%)`;
+})()}
 ---
 📝 RINGKASAN PENGELUARAN HARIAN
 ${expensesText}
@@ -1321,7 +1351,7 @@ Total Potongan: Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
 Total Produk Terjual: ${totalItems}`;
-	}, [todayOrders, products, categoriesList, shiftStatus, siteSettings, todayTransactions, allStaffUsers]);
+	}, [todayOrders, products, categoriesList, shiftStatus, siteSettings, todayTransactions, allStaffUsers, monthProgress]);
 
 	return (
 		<div className="space-y-3">
