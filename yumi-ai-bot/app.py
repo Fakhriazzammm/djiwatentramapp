@@ -1555,9 +1555,36 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle photo upload — OCR receipt via SumoPod vision API, save to DB, show summary."""
-    if not _is_allowed(update):
-        await _reply_msg(update, context, "Unauthorized")
-        return
+    # Di grup: silent ignore jika tidak @mention atau reply ke bot
+    chat = update.effective_chat
+    if chat and chat.type in ("group", "supergroup"):
+        msg = update.effective_message
+        if msg:
+            mentioned = False
+            if msg.reply_to_message and msg.reply_to_message.from_user and msg.reply_to_message.from_user.is_bot:
+                mentioned = True
+            if not mentioned:
+                message_text = msg.caption or ""
+                if msg.entities:
+                    for ent in msg.entities:
+                        if ent.type == "mention":
+                            mentioned_name = message_text[ent.offset:ent.offset + ent.length].lower()
+                            bot_username = context.bot.username if context.bot else None
+                            if bot_username and f"@{bot_username.lower()}" == mentioned_name:
+                                mentioned = True
+                                break
+                            if "@yummeaibot" in message_text.lower():
+                                mentioned = True
+                                break
+                if not mentioned and "@yummeaibot" in message_text.lower():
+                    mentioned = True
+            if not mentioned:
+                return
+    else:
+        # DM: periksa otorisasi
+        if not _is_allowed(update):
+            await _reply_msg(update, context, "Unauthorized")
+            return
 
     try:
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -1667,11 +1694,8 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bot_username = context.bot.username if context.bot else None
-    if not _is_allowed(update, bot_username):
-        await _reply_msg(update, context, "Unauthorized")
-        return
 
-    # Di grup: harus @mention atau reply ke bot
+    # Di grup: silent ignore jika tidak @mention atau reply ke bot
     chat = update.effective_chat
     if chat and chat.type in ("group", "supergroup"):
         msg = update.effective_message
@@ -1697,6 +1721,11 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not mentioned and "@yummeaibot" in message_text.lower():
                 mentioned = True
         if not mentioned:
+            return
+    else:
+        # DM: periksa otorisasi
+        if not _is_allowed(update, bot_username):
+            await _reply_msg(update, context, "Unauthorized")
             return
 
     text = (update.message.text or "").strip()
