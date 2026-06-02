@@ -4701,17 +4701,17 @@ async function validateGeofence(location?: { lat: number; lng: number } | null):
 	const supabase = createClient();
 	const { data: settings, error } = await supabase
 		.from("pos_site_settings")
-		.select("attendance_lat, attendance_lng, attendance_radius")
+		.select("raw")
 		.maybeSingle();
 
-	if (error || !settings) {
-		// If settings don't exist yet, allow (first-time setup)
+	if (error || !settings?.raw || typeof settings.raw !== "object") {
 		return;
 	}
 
-	const storeLat = Number(settings.attendance_lat);
-	const storeLng = Number(settings.attendance_lng);
-	const radius = Number(settings.attendance_radius) || 50;
+	const raw = settings.raw as Record<string, unknown>;
+	const storeLat = Number(raw.attendanceLat);
+	const storeLng = Number(raw.attendanceLng);
+	const radius = Number(raw.attendanceRadius) || 50;
 
 	if (!storeLat || !storeLng) return; // Not configured yet
 
@@ -4755,7 +4755,7 @@ export function useHybridClockIn() {
 				if (args?.pinCode) {
 					const pinFingerprint = await sha256Hex(String(args.pinCode).trim());
 					if (
-						user.home_pin_fingerprint &&
+						!user.home_pin_fingerprint ||
 						pinFingerprint !== user.home_pin_fingerprint
 					) {
 						throw new Error("PIN tidak valid");
