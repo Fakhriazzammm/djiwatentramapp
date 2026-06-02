@@ -194,7 +194,6 @@ function KaryawanAttendancePage() {
     } catch (error: any) {
       toast.dismiss();
       const msg = error?.message || "Gagal memproses absensi";
-      toast.error(msg);
       throw new Error(msg);
     } finally {
       setIsClocking(false);
@@ -215,7 +214,7 @@ function KaryawanAttendancePage() {
       }
       await handleClock();
     } catch (error: any) {
-      toast.error(error?.message || "PIN salah.");
+      toast.error(error?.message || "Gagal memproses absensi");
     } finally {
       setIsVerifyingPin(false);
     }
