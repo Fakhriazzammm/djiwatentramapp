@@ -106,6 +106,7 @@ function KaryawanAttendancePage() {
   }, [shiftSchedules]);
 
   const isShiftActive = detectedShift && !(detectedShift as any).upcoming;
+  const isOwner = selectedUser?.roleName?.toLowerCase().includes("owner");
 
   // ── Geolocation ──
   const distance = useMemo(() => {
@@ -114,8 +115,10 @@ function KaryawanAttendancePage() {
     return haversineDistance(userLocation.lat, userLocation.lng, siteSettings.attendanceLat, siteSettings.attendanceLng);
   }, [selectedUser, userLocation, siteSettings]);
 
-  const isWithinRadius = distance !== null && distance <= (siteSettings?.attendanceRadius ?? 50);
-  const locationForClock = userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : undefined;
+  const isWithinRadius = isOwner ? true : (distance !== null && distance <= (siteSettings?.attendanceRadius ?? 50));
+  const locationForClock = isOwner && siteSettings?.attendanceLat
+    ? { lat: siteSettings.attendanceLat, lng: siteSettings.attendanceLng }
+    : userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : undefined;
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) { setLocationError("Browser tidak mendukung geolokasi."); return; }
@@ -170,15 +173,19 @@ function KaryawanAttendancePage() {
     if (!selectedUser || isClocking) return;
     setIsClocking(true);
     try {
-      if (siteSettings?.attendanceLat && !userLocation) {
+      if (siteSettings?.attendanceLat && !userLocation && !isOwner) {
         toast.error("Lokasi belum siap. Aktifkan GPS lalu coba lagi.");
         setIsClocking(false);
         return;
       }
       if (siteSettings?.attendanceLat && !isWithinRadius) {
-        toast.error("Gagal: Anda berada di luar radius kafe.");
-        setIsClocking(false);
-        return;
+        if (isOwner) {
+          // Owner bypass — allow clock without location
+        } else {
+          toast.error("Gagal: Anda berada di luar radius kafe.");
+          setIsClocking(false);
+          return;
+        }
       }
 
       toast.loading(selectedUser.isCurrentlyIn ? "Proses Keluar..." : "Proses Masuk...", { id: "clocking" });
