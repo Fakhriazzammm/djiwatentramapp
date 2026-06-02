@@ -35,6 +35,7 @@ function KaryawanAttendancePage() {
   const [selectedUser, setSelectedUser] = useState<{
     id: string;
     name: string;
+    slug: string;
     hasFace: boolean;
     isCurrentlyIn: boolean;
     roleName: string;
@@ -164,7 +165,7 @@ function KaryawanAttendancePage() {
   // ── User selection ──
   const handleUserSelect = (staff: any) => {
     const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff._id);
-    setSelectedUser({ id: staff._id, name: staff.name, hasFace: !!staff.hasFace, isCurrentlyIn: !!isCurrentlyIn, roleName: staff.roleName || "" });
+    setSelectedUser({ id: staff._id, name: staff.name, slug: staff.slug, hasFace: !!staff.hasFace, isCurrentlyIn: !!isCurrentlyIn, roleName: staff.roleName || "" });
     setStep("choose");
   };
 
@@ -203,11 +204,11 @@ function KaryawanAttendancePage() {
       toast.dismiss("clocking");
       setRefreshCount((prev) => prev + 1);
       setStep("success");
-      setTimeout(() => { navigate({ to: `/${selectedUser.id}` as any }); }, 3000);
+      setTimeout(() => { navigate({ to: `/${selectedUser?.slug}` as any }); }, 3000);
     } catch (error: any) {
       toast.dismiss();
       const msg = error?.message || "Gagal memproses absensi";
-      throw new Error(msg);
+      toast.error(msg);
     } finally {
       setIsClocking(false);
     }
@@ -228,6 +229,7 @@ function KaryawanAttendancePage() {
       await handleClock();
     } catch (error: any) {
       toast.error(error?.message || "Gagal memproses absensi");
+      setPinCode("");
     } finally {
       setIsVerifyingPin(false);
     }
@@ -472,7 +474,7 @@ function KaryawanAttendancePage() {
               ) : faceError ? (
                 <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
                   <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
-                    <Navigation className="h-7 w-7" />
+                    <Camera className="h-7 w-7" />
                   </div>
                   <p className="font-bold text-red-900 text-xs">KAMERA TIDAK TERSEDIA</p>
                   <p className="text-xs text-red-700">{faceError}</p>

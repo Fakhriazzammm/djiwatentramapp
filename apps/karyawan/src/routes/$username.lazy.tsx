@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target */
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useYumiAuth } from "@yumipos/web-shared";
 import { Footer } from "@yumipos/web-shared/components/layout/Footer";
 import { Button } from "@yumipos/web-shared/components/ui/button";
@@ -545,8 +545,11 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 			setIsLoadingLivePayslip(false);
 		})();
 	}, [staff?._id, stats, logs, isUnlocked, selectedMonth, selectedYear]);
+	const hasLoadedRef = useRef(false);
 	useEffect(() => {
+		if (hasLoadedRef.current) return;
 		if (staff && isUnlocked) {
+			hasLoadedRef.current = true;
 			setEditName(staff.name || "");
 			setEditSlug(staff.slug || "");
 		}
@@ -651,7 +654,6 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 			</div>
 
 			<main className="mx-auto max-w-2xl px-4 py-3 pb-20">
-				<AnimatePresence mode="wait">
 					{!isUnlocked ? (
 						<motion.div
 							initial={{ opacity: 0, y: 20 }}
@@ -832,19 +834,19 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													</div>
 													<div className="flex items-center justify-between">
 														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Jenis</span>
-														<span className="text-xs font-bold">PKWT - Full Time</span>
+														<span className="text-xs font-bold">{((contractData as any)?.employment?.type) || "PKWT - Full Time"}</span>
 													</div>
 													<div className="flex items-center justify-between">
 														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Durasi</span>
-														<span className="text-xs font-bold">6 Bulan</span>
+														<span className="text-xs font-bold">{((contractData as any)?.employment?.duration) ? `${(contractData as any).employment.duration} Bulan` : "—"}</span>
 													</div>
 													<div className="flex items-center justify-between">
 														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mulai</span>
-														<span className="text-xs font-bold">28 Mei 2026</span>
+														<span className="text-xs font-bold">{((contractData as any)?.employment?.startDate) ? new Date((contractData as any).employment.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
 													</div>
 													<div className="flex items-center justify-between">
 														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
-														<span className="text-xs font-bold">28 November 2026</span>
+														<span className="text-xs font-bold">{((contractData as any)?.employment?.endDate) ? new Date((contractData as any).employment.endDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
 													</div>
 												</div>
 												{contractData.contract_pdf_url && (
@@ -1117,21 +1119,24 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													let photoUrl: string | undefined;
 													if (editPhotoFile) {
 														setIsUploadingPhoto(true);
-														const supabase = createClient();
-														const ext = editPhotoFile.name.split('.').pop() || 'jpg';
-														const objectPath = `profile-photos/${staff?.slug || username}_${Date.now()}.${ext}`;
-														const { error: uploadError } = await supabase.storage
-															.from("employee-contracts")
-															.upload(objectPath, editPhotoFile, {
-																contentType: editPhotoFile.type || "image/jpeg",
-																upsert: true,
-															});
-														if (uploadError) throw uploadError;
-														const { data: publicUrlData } = supabase.storage
-															.from("employee-contracts")
-															.getPublicUrl(objectPath);
-														photoUrl = publicUrlData.publicUrl;
-														setIsUploadingPhoto(false);
+														try {
+															const supabase = createClient();
+															const ext = editPhotoFile.name.split('.').pop() || 'jpg';
+															const objectPath = `profile-photos/${staff?.slug || username}_${Date.now()}.${ext}`;
+															const { error: uploadError } = await supabase.storage
+																.from("profile-photos")
+																.upload(objectPath, editPhotoFile, {
+																	contentType: editPhotoFile.type || "image/jpeg",
+																	upsert: true,
+																});
+															if (uploadError) throw uploadError;
+															const { data: publicUrlData } = supabase.storage
+																.from("profile-photos")
+																.getPublicUrl(objectPath);
+															photoUrl = publicUrlData.publicUrl;
+														} finally {
+															setIsUploadingPhoto(false);
+														}
 													}
 
 													await updateProfileMutation({
@@ -1483,7 +1488,6 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							</div>
 						</motion.div>
 					)}
-				</AnimatePresence>
 			</main>
 
 		{/* Onboarding Overlay */}
