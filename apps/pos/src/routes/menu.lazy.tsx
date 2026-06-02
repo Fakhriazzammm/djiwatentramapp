@@ -70,6 +70,7 @@ import {
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
 import { playSuccessSound } from "@/lib/play-success-sound";
+import { createClient } from "@/lib/client";
 
 const fmt = (n: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -937,8 +938,24 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}
 			}
 
-			const order = orders?.find((candidate: any) => candidate._id === orderId);
-			if (!order) return;
+			let order = orders?.find((candidate: any) => candidate._id === orderId);
+
+			// ⚡ Fallback: order mungkin belum masuk cache (race condition setelah auto-print)
+			if (!order) {
+				const supabase = createClient();
+				const { data: freshOrder } = await supabase
+					.from("pos_orders")
+					.select("*")
+					.eq("_id", orderId)
+					.maybeSingle();
+				order = freshOrder as any;
+			}
+
+			if (!order) {
+				console.warn("[Print] Order not found:", orderId);
+				toast.error("Order tidak ditemukan untuk dicetak", { id: "printing" });
+				return;
+			}
 
 			toast.loading("Mencetak struk...", { id: "printing" });
 			
