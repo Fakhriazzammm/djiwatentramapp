@@ -60,7 +60,13 @@ function KaryawanAttendancePage() {
   useEffect(() => {
     if (step !== "select") return;
     if (!isAuthenticated || !authUser || !Array.isArray(allStaff) || allStaff.length === 0) return;
-    const matched = allStaff.find((s: any) => String(s._id) === String(authUser._id));
+    // Match by _id, slug, or username (email prefix)
+    const matched = allStaff.find((s: any) => {
+      if (authUser._id && String(s._id) === String(authUser._id)) return true;
+      if (authUser.slug && s.slug && String(s.slug) === String(authUser.slug)) return true;
+      if (authUser.username && s.username && String(s.username) === String(authUser.username)) return true;
+      return false;
+    });
     if (matched) {
       handleUserSelect(matched);
     }
