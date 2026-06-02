@@ -7,7 +7,7 @@ import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/Pers
 import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut } from "@yumipos/web-shared";
 import { useYumiAuth } from "@yumipos/web-shared";
 import { motion } from "framer-motion";
-import { Loader2, UserCheck, Navigation, Coffee, Camera, KeyRound } from "lucide-react";
+import { Loader2, UserCheck, Navigation, Coffee, Camera, KeyRound, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -44,6 +44,8 @@ function KaryawanAttendancePage() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isClocking, setIsClocking] = useState(false);
+  const [faceReady, setFaceReady] = useState(false);
+  const [faceError, setFaceError] = useState<string | null>(null);
 
   // ── Data hooks ──
   const siteSettings = useHybridSiteSettings();
@@ -138,8 +140,17 @@ function KaryawanAttendancePage() {
 
   useEffect(() => { requestLocation(); }, [requestLocation]);
 
-  // ── Preload face models when on select screen ──
-  useEffect(() => { if (step === "select") preloadFaceModels(); }, [step]);
+  // ── Preload face models on mount ──
+  useEffect(() => {
+    let cancelled = false;
+    preloadFaceModels().then((ok) => {
+      if (!cancelled) {
+        setFaceReady(ok);
+        if (!ok) setFaceError("Model wajah gagal dimuat");
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // ── User selection ──
   const handleUserSelect = (staff: any) => {
@@ -182,7 +193,9 @@ function KaryawanAttendancePage() {
       setTimeout(() => { navigate({ to: `/${selectedUser.id}` as any }); }, 3000);
     } catch (error: any) {
       toast.dismiss();
-      toast.error(error?.message || "Gagal memproses absensi");
+      const msg = error?.message || "Gagal memproses absensi";
+      toast.error(msg);
+      throw new Error(msg);
     } finally {
       setIsClocking(false);
     }
@@ -349,15 +362,32 @@ function KaryawanAttendancePage() {
             {/* Two action buttons */}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
-                onClick={() => { setStep("face"); }}
-                className="flex flex-col items-center gap-3 rounded-2xl border-2 border-blue-200 bg-blue-50 p-5 transition-all hover:border-blue-400 hover:shadow-md active:scale-[0.97]"
+                onClick={() => { setStep("face"); setFaceError(null); }}
+                disabled={!faceReady}
+                className={`flex flex-col items-center gap-3 rounded-2xl border-2 p-5 transition-all active:scale-[0.97] ${
+                  faceReady
+                    ? "border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md cursor-pointer"
+                    : faceError
+                    ? "border-red-200 bg-red-50 cursor-not-allowed opacity-60"
+                    : "border-blue-100 bg-blue-50/50 cursor-wait opacity-50"
+                }`}
               >
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-sm">
-                  <Camera className="h-7 w-7" />
+                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${
+                  faceReady ? "bg-blue-500 text-white" : faceError ? "bg-red-400 text-white" : "bg-blue-300 text-white"
+                }`}>
+                  {!faceReady && !faceError ? (
+                    <Loader2 className="h-7 w-7 animate-spin" />
+                  ) : (
+                    <Camera className="h-7 w-7" />
+                  )}
                 </div>
                 <div className="space-y-0.5 text-center">
-                  <p className="text-xs font-bold text-blue-900">Absen dengan</p>
-                  <p className="text-sm font-bold text-blue-700 uppercase tracking-wider">Wajah</p>
+                  <p className={`text-xs font-bold ${faceReady ? "text-blue-900" : faceError ? "text-red-900" : "text-blue-900/60"}`}>
+                    {faceReady ? "Absen dengan" : faceError ? "Tidak tersedia" : "Memuat..."}
+                  </p>
+                  <p className={`text-sm font-bold uppercase tracking-wider ${faceReady ? "text-blue-700" : faceError ? "text-red-700" : "text-blue-700/60"}`}>
+                    {faceReady ? "Wajah" : faceError ? "Gunakan PIN" : "Kamera"}
+                  </p>
                 </div>
               </button>
 
@@ -427,6 +457,22 @@ function KaryawanAttendancePage() {
                     Kembali
                   </Button>
                 </div>
+              ) : faceError ? (
+                <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
+                    <Navigation className="h-7 w-7" />
+                  </div>
+                  <p className="font-bold text-red-900 text-xs">KAMERA TIDAK TERSEDIA</p>
+                  <p className="text-xs text-red-700">{faceError}</p>
+                  <div className="flex gap-2 mt-1">
+                    <Button onClick={() => setStep("choose")} variant="outline" className="rounded-xl border-red-200 text-red-700 hover:bg-red-50 flex-1">
+                      Kembali
+                    </Button>
+                    <Button onClick={() => { setFaceError(null); }} variant="outline" className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 flex-1">
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Ulang
+                    </Button>
+                  </div>
+                </div>
               ) : isClocking ? (
                 <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-4 rounded-xl bg-muted">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -439,12 +485,12 @@ function KaryawanAttendancePage() {
                     onVerify={(d) => {
                       if (!isClocking) handleClock(new Float32Array(d));
                     }}
-                    onModelError={() => {
-                      toast.error("Gagal memuat kamera. Silakan gunakan PIN.");
-                      setStep("choose");
+                    onModelError={(msg) => {
+                      setFaceError(msg || "Gagal memuat kamera");
+                      toast.error("Kamera tidak tersedia. Silakan gunakan PIN.");
                     }}
                   />
-                  <div className="mt-3">
+                  <div className="mt-3 flex flex-col gap-2">
                     <Button
                       variant="secondary"
                       className="w-full h-10 rounded-xl text-[11px] font-bold"
