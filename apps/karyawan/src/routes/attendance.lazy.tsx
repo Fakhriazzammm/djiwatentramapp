@@ -5,6 +5,7 @@ import { Input } from "@yumipos/web-shared/components/ui/input";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
 import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut } from "@yumipos/web-shared";
+import { useYumiAuth } from "@yumipos/web-shared";
 import { motion } from "framer-motion";
 import { Loader2, UserCheck, Navigation, Coffee, Camera, KeyRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -51,6 +52,17 @@ function KaryawanAttendancePage() {
   const verifyPin = useHybridVerifyHomePin();
   const clockIn = useHybridClockIn();
   const clockOut = useHybridClockOut();
+  const { user: authUser, isAuthenticated } = useYumiAuth();
+
+  // ── Auto-detect user from auth session ──
+  useEffect(() => {
+    if (step !== "select") return;
+    if (!isAuthenticated || !authUser || !Array.isArray(allStaff) || allStaff.length === 0) return;
+    const matched = allStaff.find((s: any) => String(s._id) === String(authUser._id));
+    if (matched) {
+      handleUserSelect(matched);
+    }
+  }, [isAuthenticated, authUser, allStaff, step]);
 
   // ── Shift detection ──
   const shiftSchedules = siteSettings?.shiftSettings?.shiftSchedules || [];
@@ -360,6 +372,16 @@ function KaryawanAttendancePage() {
                   <p className="text-xs font-bold text-amber-900">Absen dengan</p>
                   <p className="text-sm font-bold text-amber-700 uppercase tracking-wider">PIN</p>
                 </div>
+              </button>
+            </div>
+
+            {/* Ganti identitas */}
+            <div className="text-center">
+              <button
+                onClick={handleBack}
+                className="text-[10px] font-bold text-muted-foreground/60 hover:text-muted-foreground transition-colors underline underline-offset-2"
+              >
+                Bukan {selectedUser?.name}? Ganti Identitas
               </button>
             </div>
 
