@@ -12,8 +12,13 @@ class RootErrorBoundary extends Component<
     super(props);
     this.state = { hasError: false, error: "" };
   }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error: error.message };
+  static getDerivedStateFromError(error: unknown) {
+    const message =
+      error instanceof Error ? error.message :
+      typeof error === "string" ? error :
+      error && typeof (error as any).message === "string" ? (error as any).message :
+      "Terjadi kesalahan yang tidak diketahui.";
+    return { hasError: true, error: message };
   }
   render() {
     if (this.state.hasError) {

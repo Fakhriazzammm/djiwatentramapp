@@ -70,7 +70,7 @@ function KaryawanLoginPage() {
 			const slug = result.user.slug || result.user._id;
 			navigate({ to: `/${slug}` as any, replace: true });
 		} catch (err: any) {
-			toast.error(err.message || "PIN salah");
+			toast.error(err?.message || "PIN salah");
 			setPin("");
 		} finally {
 			setIsVerifying(false);

@@ -259,7 +259,7 @@ function KaryawanAttendancePage() {
       }
       await handleClock();
     } catch (error: any) {
-      toast.error(error.message || "PIN salah.");
+      toast.error(error?.message || "PIN salah.");
     } finally {
       setIsVerifyingPin(false);
     }

@@ -600,7 +600,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 			URL.revokeObjectURL(url);
 			toast.success("PDF berhasil diunduh");
 		} catch (e: any) {
-			toast.error(`Gagal mengunduh PDF: ${e.message}`);
+			toast.error(`Gagal mengunduh PDF: ${e?.message || e}`);
 		}
 	}, [storeName, storeAddress]);
 
@@ -1174,7 +1174,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 														navigate({ to: `/${editSlug}` as any, replace: true });
 													}
 												} catch (err: any) {
-													toast.error(err.message || "Gagal memperbarui profil");
+													toast.error(err?.message || "Gagal memperbarui profil");
 												} finally {
 													setIsSavingProfile(false);
 												}
