@@ -5,7 +5,7 @@ import { Input } from "@yumipos/web-shared/components/ui/input";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
 import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut, useHybridEnrollFace } from "@yumipos/web-shared";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Loader2, UserCheck, Navigation, Coffee, CalendarClock, AlertCircle, KeyRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -303,27 +303,40 @@ function KaryawanAttendancePage() {
 
       {/* Content */}
       <main className="flex flex-1 flex-col p-3">
-        <AnimatePresence mode="wait">
-          {/* Step: Select User */}
-          {step === "select" && (
-            <motion.div
-              key="select"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mx-auto w-full max-w-sm space-y-4"
-            >
-              <div className="space-y-1">
-                <h2 className="text-base font-bold">Pilih nama</h2>
-                <p className="text-[11px] font-medium text-muted-foreground">
-                  Pilih nama Anda untuk melanjutkan.
+        {step === "select" ? (
+          <motion.div
+            key="select"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-auto w-full max-w-sm space-y-4"
+          >
+            <div className="space-y-1">
+              <h2 className="text-base font-bold">Pilih nama</h2>
+              <p className="text-[11px] font-medium text-muted-foreground">
+                Pilih nama Anda untuk melanjutkan.
+              </p>
+            </div>
+
+            {/* Staff grid */}
+            {allStaff === undefined ? (
+              <div className="grid grid-cols-3 gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : allStaff.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/50 p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+                  <AlertCircle className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-bold text-muted-foreground">Belum ada staff terdaftar</p>
+                <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                  Hubungi admin untuk mendaftarkan staff.
                 </p>
               </div>
-
-              {/* Staff grid */}
-              {allStaff ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {allStaff.map((staff: any) => {
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {allStaff.map((staff: any) => {
                     const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff._id);
                     return (
                       <motion.button
@@ -367,12 +380,6 @@ function KaryawanAttendancePage() {
                     );
                   })}
                 </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
-                  ))}
-                </div>
               )}
 
               {/* Out of area warning */}
@@ -388,17 +395,13 @@ function KaryawanAttendancePage() {
                 </div>
               )}
             </motion.div>
-          )}
-
-          {/* Step: Face Recognition */}
-          {step === "face" && (
-            <motion.div
-              key="face"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mx-auto w-full max-w-sm space-y-4"
-            >
+          ) : step === "face" ? (
+          <motion.div
+            key="face"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-auto w-full max-w-sm space-y-4"
+          >
               {/* Personal Schedule */}
               {selectedUser && (
                 <div className="rounded-xl border bg-card/80 p-2">
@@ -526,15 +529,11 @@ function KaryawanAttendancePage() {
                 )}
               </div>
             </motion.div>
-          )}
-
-          {/* Step: PIN Input */}
-          {step === "pin" && (
+          ) : step === "pin" ? (
             <motion.div
               key="pin"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
               className="mx-auto w-full max-w-sm space-y-4"
             >
               <div className="space-y-4 text-center">
@@ -585,10 +584,7 @@ function KaryawanAttendancePage() {
                 </form>
               </div>
             </motion.div>
-          )}
-
-          {/* Step: Success */}
-          {step === "success" && (
+          ) : step === "success" ? (
             <motion.div
               key="success"
               initial={{ opacity: 0, y: 20 }}
@@ -641,8 +637,7 @@ function KaryawanAttendancePage() {
                 </motion.div>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          ) : null}
       </main>
     </div>
   );
