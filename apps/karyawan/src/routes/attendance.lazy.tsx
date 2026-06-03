@@ -276,7 +276,7 @@ function KaryawanAttendancePage() {
 
       {/* Content */}
       <main className="flex flex-1 flex-col p-3">
-        {step === "choose" ? (
+        {step === "choose" && selectedUser ? (
           <motion.div
             key="choose"
             initial={{ opacity: 0, y: 20 }}
@@ -373,6 +373,14 @@ function KaryawanAttendancePage() {
               </div>
             )}
           </motion.div>
+
+        ) : step === "choose" ? (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-xs font-bold text-muted-foreground">Memuat data...</p>
+            </div>
+          </div>
 
         ) : step === "face" ? (
           <motion.div
