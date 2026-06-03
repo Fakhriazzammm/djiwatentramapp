@@ -138,6 +138,28 @@ const ShiftCard = memo(function ShiftCard({
   );
 });
 
+// ─── Shift color indicators ──────────────────────────────────
+
+const SHIFT_DOT_COLORS: Record<string, string> = {
+  PAGI: "bg-emerald-500",
+  SORE: "bg-sky-600",
+  OFF: "bg-rose-500",
+  GENERAL: "bg-slate-500",
+};
+
+function getDayShiftLabels(schedules: AttendanceSchedule[]): string[] {
+  const labels = new Set<string>();
+  for (const s of schedules) {
+    const shift = s.shiftName.toLowerCase();
+    if (s.status === "off" || shift === "off") labels.add("OFF");
+    else if (shift.includes("pagi")) labels.add("PAGI");
+    else if (shift.includes("sore")) labels.add("SORE");
+    else if (shift.includes("general")) labels.add("GENERAL");
+  }
+  // Maintain consistent order
+  return ["PAGI", "SORE", "GENERAL", "OFF"].filter((l) => labels.has(l));
+}
+
 // ─── DayColumn ────────────────────────────────────────────────
 
 const DayColumn = memo(function DayColumn({
@@ -166,6 +188,8 @@ const DayColumn = memo(function DayColumn({
     data: { date: dateStr, type: "day-column" },
   });
 
+  const shiftLabels = useMemo(() => getDayShiftLabels(schedules), [schedules]);
+
   return (
     <div
       ref={setNodeRef}
@@ -177,14 +201,30 @@ const DayColumn = memo(function DayColumn({
       )}
     >
       <div className="mb-0.5 flex items-center justify-between">
-        <span
-          className={cn(
-            "inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium",
-            isToday && "bg-primary text-primary-foreground"
+        <div className="flex items-center gap-1">
+          <span
+            className={cn(
+              "inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium",
+              isToday && "bg-primary text-primary-foreground"
+            )}
+          >
+            {format(date, "d")}
+          </span>
+          {shiftLabels.length > 0 && (
+            <div className="flex items-center gap-[2px]">
+              {shiftLabels.map((label) => (
+                <span
+                  key={label}
+                  className={cn(
+                    "inline-block h-1.5 w-1.5 rounded-full",
+                    SHIFT_DOT_COLORS[label] ?? "bg-muted-foreground"
+                  )}
+                  title={label}
+                />
+              ))}
+            </div>
           )}
-        >
-          {format(date, "d")}
-        </span>
+        </div>
         <button
           className="rounded p-0.5 text-muted-foreground opacity-0 hover:bg-muted hover:text-foreground group-hover:opacity-100"
           onClick={() => onAdd(dateStr)}

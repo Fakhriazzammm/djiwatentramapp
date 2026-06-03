@@ -286,6 +286,7 @@ export function useHybridStaffStats(args?: {
 	userId?: string;
 	month?: number;
 	year?: number;
+	refreshTrigger?: number;
 }) {
 	const supabaseData = useSupabaseValue(
 		`attendance-staff-stats:${args?.userId ?? "skip"}:${args?.month ?? ""}:${args?.year ?? ""}`,
@@ -297,7 +298,8 @@ export function useHybridStaffStats(args?: {
 						year: args.year,
 				  })
 				: Promise.resolve(null),
-		[args?.userId, args?.month, args?.year]
+		[args?.userId, args?.month, args?.year],
+		args?.refreshTrigger !== undefined ? { refreshTrigger: args.refreshTrigger } : undefined
 	);
 	return supabaseData as any;
 }
@@ -306,6 +308,7 @@ export function useHybridStaffLogs(args?: {
 	userId?: string;
 	month?: number;
 	year?: number;
+	refreshTrigger?: number;
 }) {
 	const supabaseData = useSupabaseValue(
 		`attendance-staff-logs:${args?.userId ?? "skip"}:${args?.month ?? ""}:${args?.year ?? ""}`,
@@ -317,7 +320,8 @@ export function useHybridStaffLogs(args?: {
 						year: args.year,
 				  })
 				: Promise.resolve(null),
-		[args?.userId, args?.month, args?.year]
+		[args?.userId, args?.month, args?.year],
+		args?.refreshTrigger !== undefined ? { refreshTrigger: args.refreshTrigger } : undefined
 	);
 	return supabaseData as any;
 }
