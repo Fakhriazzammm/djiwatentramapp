@@ -1,4 +1,5 @@
 import EscPosEncoder from "esc-pos-encoder";
+import { formatDateTimeWIB } from "@/lib/wib-utils";
 
 const RECEIPT_LINE_WIDTH = 32;
 const RECEIPT_HEADER_WIDTH = 24;
