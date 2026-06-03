@@ -303,7 +303,7 @@ function KaryawanAttendancePage() {
             {/* PersonalSchedule */}
             {selectedUser && (
               <div className="rounded-xl border bg-card/80 p-2">
-                <PersonalSchedule userId={selectedUser.id} month={new Date().getMonth() + 1} year={new Date().getFullYear()} />
+                <PersonalSchedule userId={selectedUser.id} userName={selectedUser.name} userRole={selectedUser.roleName} month={new Date().getMonth() + 1} year={new Date().getFullYear()} />
               </div>
             )}
 

@@ -813,6 +813,8 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							{isUnlocked && staff && (
 								<PersonalSchedule
 									userId={staff._id}
+									userName={staff.name}
+									userRole={staff.roleName}
 									month={selectedMonth}
 									year={selectedYear}
 								/>

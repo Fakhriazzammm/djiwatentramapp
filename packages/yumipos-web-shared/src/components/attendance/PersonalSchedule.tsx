@@ -1,39 +1,71 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { getDaysInMonth, format } from "date-fns";
 import { id } from "date-fns/locale";
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  Clock,
+  Sun,
+  Moon,
+  Star,
+  Zap,
+  Bed,
+  UserCheck,
+  UserX,
+  AlertTriangle,
+} from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useHybridAttendanceSchedules } from "../../hooks/use-hybrid-attendance-schedules";
 import type { AttendanceSchedule } from "../../hooks/use-hybrid-attendance-schedules";
-import { Button } from "../ui/button";
 
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const SHIFT_ORDER = ["PAGI", "SORE", "GENERAL", "OFF"];
 
-const shiftColors: Record<string, { bg: string; text: string; dot: string; border: string }> = {
+// ─── Premium Shift Theme ──────────────────────────────────
+
+const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent: string; bg: string; border: string; text: string; dot: string; badge: string }> = {
   PAGI: {
-    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    label: "Pagi",
+    icon: <Sun className="h-3.5 w-3.5" />,
+    accent: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-50/60 dark:bg-emerald-950/20",
+    border: "border-emerald-200/60 dark:border-emerald-800/40",
     text: "text-emerald-700 dark:text-emerald-300",
     dot: "bg-emerald-500",
-    border: "border-emerald-200 dark:border-emerald-800",
+    badge: "bg-emerald-500 text-white",
   },
   SORE: {
-    bg: "bg-sky-50 dark:bg-sky-950/30",
+    label: "Sore",
+    icon: <Moon className="h-3.5 w-3.5" />,
+    accent: "text-sky-600 dark:text-sky-400",
+    bg: "bg-sky-50/60 dark:bg-sky-950/20",
+    border: "border-sky-200/60 dark:border-sky-800/40",
     text: "text-sky-700 dark:text-sky-300",
     dot: "bg-sky-600",
-    border: "border-sky-200 dark:border-sky-800",
-  },
-  OFF: {
-    bg: "bg-rose-50/50 dark:bg-rose-950/20",
-    text: "text-rose-600 dark:text-rose-300",
-    dot: "bg-rose-500",
-    border: "border-rose-200 dark:border-rose-800",
+    badge: "bg-sky-500 text-white",
   },
   GENERAL: {
-    bg: "bg-slate-50 dark:bg-slate-800",
-    text: "text-slate-600 dark:text-slate-300",
-    dot: "bg-slate-600",
-    border: "border-slate-200 dark:border-slate-700",
+    label: "Cadangan",
+    icon: <Zap className="h-3.5 w-3.5" />,
+    accent: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50/60 dark:bg-amber-950/20",
+    border: "border-amber-200/60 dark:border-amber-800/40",
+    text: "text-amber-700 dark:text-amber-300",
+    dot: "bg-amber-500",
+    badge: "bg-amber-500 text-white",
+  },
+  OFF: {
+    label: "Libur",
+    icon: <Bed className="h-3.5 w-3.5" />,
+    accent: "text-slate-500 dark:text-slate-400",
+    bg: "bg-slate-50/40 dark:bg-slate-900/20",
+    border: "border-slate-200/40 dark:border-slate-700/40",
+    text: "text-slate-500 dark:text-slate-400",
+    dot: "bg-slate-400",
+    badge: "bg-slate-400 text-white",
   },
 };
 
@@ -43,15 +75,21 @@ function getShiftLabel(schedule?: AttendanceSchedule): string {
   if (schedule.status === "off" || shift === "off") return "OFF";
   if (shift.includes("pagi")) return "PAGI";
   if (shift.includes("sore")) return "SORE";
-  if (shift.includes("general")) return "GENERAL";
+  if (shift.includes("general") || shift.includes("cadangan") || shift.includes("backup")) return "GENERAL";
   return schedule.shiftName.toUpperCase();
+}
+
+function getStaffingStatus(count: number): { label: string; icon: React.ReactNode; color: string } {
+  if (count >= 3) return { label: "Tersedia", icon: <UserCheck className="h-3 w-3" />, color: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30" };
+  if (count >= 1) return { label: "Kurang", icon: <AlertTriangle className="h-3 w-3" />, color: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30" };
+  return { label: "Tidak Ada", icon: <UserX className="h-3 w-3" />, color: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/30" };
 }
 
 function formatDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Inline styles for guaranteed 7-column grid (bypasses Tailwind class scanning)
+// Inline styles for guaranteed 7-column grid
 const GRID_7_STYLE: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(7, 1fr)",
@@ -92,25 +130,197 @@ const HEADER_TEXT_STYLE: React.CSSProperties = {
   color: "#9ca3af",
 };
 
+// ─── Avatar Component ──────────────────────────────────────
+
+function Avatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" | "lg" }) {
+  const sizeMap = { sm: "h-6 w-6 text-[10px]", md: "h-8 w-8 text-xs", lg: "h-10 w-10 text-sm" };
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary font-bold text-primary-foreground",
+        sizeMap[size]
+      )}
+    >
+      {(name?.[0] ?? "?").toUpperCase()}
+    </div>
+  );
+}
+
+// ─── Employee Row ──────────────────────────────────────────
+
+function EmployeeRow({
+  schedule,
+  isSelf,
+  noBorder,
+}: {
+  schedule: AttendanceSchedule;
+  isSelf?: boolean;
+  noBorder?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2.5 px-3 py-2.5 transition-colors",
+        isSelf && "bg-primary/[0.04]",
+        !noBorder && "border-b border-border/40 last:border-b-0"
+      )}
+    >
+      {/* Avatar */}
+      <Avatar name={schedule.userName} size="md" />
+
+      {/* Name + Role */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] font-semibold text-foreground leading-tight truncate">
+            {schedule.userName}
+          </span>
+          {isSelf && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary">
+              <Star className="h-2.5 w-2.5 fill-primary" /> Anda
+            </span>
+          )}
+        </div>
+        {schedule.roleName && (
+          <span className="inline-block rounded-md bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground mt-0.5">
+            {schedule.roleName}
+          </span>
+        )}
+      </div>
+
+      {/* Shift Time */}
+      <div className="shrink-0 text-right">
+        {schedule.startTime ? (
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+            <Clock className="h-3 w-3 text-muted-foreground/60" />
+            <span>
+              {schedule.startTime.slice(0, 5)}
+              {schedule.endTime ? <span className="text-muted-foreground/50">–{schedule.endTime.slice(0, 5)}</span> : ""}
+            </span>
+          </div>
+        ) : (
+          <span className="text-[10px] font-medium text-muted-foreground/60">–</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Shift Section ─────────────────────────────────────────
+
+function ShiftSection({
+  shiftLabel,
+  staff,
+  isExpanded,
+  onToggle,
+}: {
+  shiftLabel: string;
+  staff: AttendanceSchedule[];
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const theme = (SHIFT_THEME[shiftLabel] ?? SHIFT_THEME.GENERAL)!;
+  const staffing = getStaffingStatus(staff.length);
+  const currentUserId = (staff[0] as any)?.currentUserId;
+
+  // Get shift times from first schedule with times
+  const firstWithTime = staff.find((s) => s.startTime);
+  const shiftTime = firstWithTime?.startTime
+    ? `${firstWithTime.startTime.slice(0, 5)}${firstWithTime.endTime ? `–${firstWithTime.endTime.slice(0, 5)}` : ""}`
+    : null;
+
+  const iconMap: Record<string, React.ReactNode> = {
+    PAGI: <Sun className="h-4 w-4 text-emerald-500" />,
+    SORE: <Moon className="h-4 w-4 text-sky-500" />,
+    GENERAL: <Zap className="h-4 w-4 text-amber-500" />,
+    OFF: <Bed className="h-4 w-4 text-slate-400" />,
+  };
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[0_1px_3px_0_rgba(0,0,0,0.03)]">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2.5 px-3.5 py-3 transition-colors hover:bg-muted/20 active:scale-[0.99]"
+      >
+        {/* Shift Icon */}
+        <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl", theme.bg)}>
+          {iconMap[shiftLabel] ?? <CalendarDays className="h-4 w-4" />}
+        </div>
+
+        {/* Shift Info */}
+        <div className="flex-1 text-left">
+          <div className="flex items-center gap-2">
+            <span className={cn("text-sm font-bold", theme.text)}>{theme.label}</span>
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground">
+              {staff.length}
+            </span>
+          </div>
+          {shiftTime && (
+            <p className="text-[11px] font-medium text-muted-foreground/70">{shiftTime}</p>
+          )}
+        </div>
+
+        {/* Staffing Status */}
+        <div className={cn("hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold", staffing.color)}>
+          {staffing.icon}
+          <span>{staffing.label}</span>
+        </div>
+
+        {/* Chevron */}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground/50 transition-transform duration-200",
+            isExpanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      {/* Staff List */}
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-200",
+          isExpanded ? "max-h-[999px] opacity-100" : "max-h-0 opacity-0"
+        )}
+      >
+        <div className={cn("border-t border-border/40", theme.bg)}>
+          {staff.map((s) => (
+            <EmployeeRow
+              key={s._id}
+              schedule={s}
+              isSelf={Boolean(currentUserId && s.userId === currentUserId)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── TeamDayView ──────────────────────────────────────────────
 
 function TeamDayView({
   schedules,
   selectedDate,
+  user,
   onPrevDay,
   onNextDay,
 }: {
   schedules: AttendanceSchedule[];
   selectedDate: Date;
+  user?: { id: string; name: string; role: string } | null;
   onPrevDay: () => void;
   onNextDay: () => void;
 }) {
-  const grouped = useMemo(() => {
+  const isToday = formatDateStr(selectedDate) === formatDateStr(new Date());
+
+  // ── Group by shift ──
+  const { shifts, totalStaff, workingToday, offDuty } = useMemo(() => {
     const map: Record<string, AttendanceSchedule[]> = {};
     for (const s of schedules) {
       const label = getShiftLabel(s);
       if (!map[label]) map[label] = [];
-      map[label].push(s);
+      map[label]!.push(s);
     }
     const sorted = SHIFT_ORDER.filter((k) => map[k]).map((k) => ({
       shift: k,
@@ -119,146 +329,231 @@ function TeamDayView({
     const others = Object.keys(map)
       .filter((k) => !SHIFT_ORDER.includes(k))
       .map((k) => ({ shift: k, staff: map[k]! }));
-    return [...sorted, ...others];
+
+    const all = [...sorted, ...others];
+    const working = all
+      .filter((g) => g.shift !== "OFF")
+      .reduce((sum, g) => sum + g.staff.length, 0);
+    const off = all
+      .filter((g) => g.shift === "OFF")
+      .reduce((sum, g) => sum + g.staff.length, 0);
+
+    return { shifts: all, totalStaff: schedules.length, workingToday: working, offDuty: off };
   }, [schedules]);
 
-  // Determine largest shift for default expand
-  const largestShift = useMemo(() => {
-    if (grouped.length === 0) return null;
-    return grouped.reduce((a, b) => (a.staff.length >= b.staff.length ? a : b)).shift;
-  }, [grouped]);
+  // ── User's own shift ──
+  const mySchedule = useMemo(() => {
+    if (!user) return null;
+    return schedules.find((s) => s.userId === user.id) ?? null;
+  }, [schedules, user]);
 
-  const [expandedShiftKeys, setExpandedShiftKeys] = useState<Set<string>>(() => {
-    if (largestShift) return new Set([largestShift]);
-    return new Set<string>();
+  // ── Coworkers (same shift as user) ──
+  const coworkers = useMemo(() => {
+    if (!mySchedule) return [];
+    const myLabel = getShiftLabel(mySchedule);
+    return schedules.filter(
+      (s) => getShiftLabel(s) === myLabel && s.userId !== user?.id
+    );
+  }, [schedules, mySchedule, user]);
+
+  // ── Expand state ──
+  const [expandedShifts, setExpandedShifts] = useState<Set<string>>(() => {
+    if (shifts.length === 0) return new Set();
+    // Auto-expand largest working shift, or user's shift
+    const working = shifts.filter((g) => g.shift !== "OFF");
+    if (working.length === 0 && shifts.length > 0) return new Set([shifts[0]!.shift]);
+    const largest = working.reduce((a, b) => (a.staff.length >= b.staff.length ? a : b));
+    return new Set([largest.shift]);
   });
 
-  // Sync default expand when grouped changes (e.g. navigating to new date)
-  useEffect(() => {
-    if (largestShift && expandedShiftKeys.size === 0) {
-      setExpandedShiftKeys(new Set([largestShift]));
-    }
-  }, [largestShift, expandedShiftKeys.size]);
-
   const toggleShift = useCallback((shift: string) => {
-    setExpandedShiftKeys((prev) => {
+    setExpandedShifts((prev) => {
       const next = new Set(prev);
-      if (next.has(shift)) {
-        next.delete(shift);
-      } else {
-        next.add(shift);
-      }
+      if (next.has(shift)) next.delete(shift);
+      else next.add(shift);
       return next;
     });
   }, []);
 
-  const isToday = formatDateStr(selectedDate) === formatDateStr(new Date());
-  const totalStaff = grouped.reduce((sum, g) => sum + g.staff.length, 0);
+  // Auto-expand user's shift
+  useEffect(() => {
+    if (mySchedule) {
+      const myLabel = getShiftLabel(mySchedule);
+      setExpandedShifts((prev) => {
+        if (prev.has(myLabel)) return prev;
+        const next = new Set(prev);
+        next.add(myLabel);
+        return next;
+      });
+    }
+  }, [mySchedule]);
+
+  const empty = shifts.length === 0;
 
   return (
-    <div className="space-y-2">
-      {/* Compact date nav */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onPrevDay}>
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </Button>
-        <span className="text-[11px] font-black tracking-tight text-center">
-          {format(selectedDate, "EEEE, d MMM", { locale: id })}
-          {isToday && (
-            <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary uppercase">
-              Hari ini
-            </span>
-          )}
-        </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onNextDay}>
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
+    <div className="space-y-3">
+      {/* ── Date Navigation ── */}
+      <div className="flex items-center justify-between px-1">
+        <button
+          type="button"
+          onClick={onPrevDay}
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex flex-col items-center">
+          <span className="text-[13px] font-bold text-foreground">
+            {format(selectedDate, "EEEE", { locale: id })}
+          </span>
+          <span className="text-[11px] font-medium text-muted-foreground">
+            {format(selectedDate, "d MMMM yyyy", { locale: id })}
+            {isToday && (
+              <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary uppercase">
+                Hari ini
+              </span>
+            )}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onNextDay}
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
 
-      {grouped.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
-          <Users className="h-6 w-6 text-muted-foreground/20" />
-          <p className="text-[11px] font-medium text-muted-foreground">
-            Tidak ada jadwal di tanggal ini
+      {/* ── "Shift Saya Hari Ini" Card ── */}
+      {user && (
+        <div
+          className={cn(
+            "overflow-hidden rounded-2xl border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] transition-all",
+            mySchedule
+              ? "border-emerald-200/70 dark:border-emerald-800/40"
+              : "border-border/60"
+          )}
+        >
+          {mySchedule ? (
+            <div className="relative bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/15 dark:to-card px-4 py-3.5">
+              {/* Decorative accent bar */}
+              <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-500 rounded-r" />
+
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                  <Sun className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Shift Saya Hari Ini
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3.5">
+                <Avatar name={user.name} size="lg" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">{user.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {user.role && (
+                      <span className="rounded-md bg-emerald-100/70 dark:bg-emerald-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        {user.role}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Sedang Bertugas
+                    </span>
+                  </div>
+                  {mySchedule.startTime && (
+                    <p className="flex items-center gap-1 mt-1 text-[12px] font-semibold text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {mySchedule.startTime.slice(0, 5)}
+                      {mySchedule.endTime ? ` – ${mySchedule.endTime.slice(0, 5)}` : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-900/15 dark:to-card px-4 py-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
+                  <Bed className="h-4 w-4 text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">{user.name}</p>
+                  <span className="text-[11px] font-semibold text-slate-500">Hari Ini Libur</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {empty ? (
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50">
+            <CalendarDays className="h-6 w-6 text-muted-foreground/30" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">
+            Tidak ada jadwal hari ini
           </p>
         </div>
       ) : (
-        <div className="space-y-1.5">
-          {grouped.map(({ shift, staff }) => {
-            const colors = (shiftColors[shift] ?? shiftColors.GENERAL)!;
-            const isExpanded = expandedShiftKeys.has(shift);
-            return (
-              <div key={shift} className={cn("rounded-xl border overflow-hidden", colors.border)}>
-                {/* Clickable accordion header */}
-                <button
-                  type="button"
-                  onClick={() => toggleShift(shift)}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2.5 py-2 transition-colors",
-                    isExpanded ? colors.bg : "bg-card hover:bg-muted/50"
-                  )}
-                >
-                  <span className={cn(
-                    "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white",
-                    colors.dot
-                  )}>
-                    {shift}
-                  </span>
-                  <span className="text-[9px] font-medium text-muted-foreground">
-                    {staff.length} orang
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-3 w-3 ml-auto text-muted-foreground transition-transform",
-                      isExpanded && "rotate-180"
-                    )}
-                  />
-                </button>
-                {/* Expandable 1-column staff cards */}
-                {isExpanded && (
-                  <div className={cn("px-2.5 pb-2", colors.bg)}>
-                    <div className="flex flex-col gap-0.5">
-                      {staff.map((s) => (
-                        <div
-                          key={s._id}
-                          className="flex items-center gap-1.5 rounded-lg bg-white/70 dark:bg-black/20 px-2 py-1"
-                        >
-                          <div className={cn(
-                            "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[8px] font-bold",
-                            colors.text,
-                            "bg-white/80 dark:bg-black/25"
-                          )}>
-                            {(s.userName?.[0] ?? "?").toUpperCase()}
-                          </div>
-                          <span className="text-[10px] font-semibold text-foreground leading-tight">
-                            {s.userName}
-                          </span>
-                          {s.roleName && (
-                            <span className="text-[8px] text-muted-foreground leading-tight">
-                              · {s.roleName}
-                            </span>
-                          )}
-                          <div className="flex-1" />
-                          {s.startTime && (
-                            <span className="text-[9px] font-semibold text-muted-foreground shrink-0 whitespace-nowrap">
-                              {s.startTime.slice(0, 5)}
-                              {s.endTime ? `–${s.endTime.slice(0, 5)}` : ""}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+        <div className="space-y-2.5">
+          {/* ── Daily Summary ── */}
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: "Total", value: totalStaff, icon: <Users className="h-3.5 w-3.5" />, color: "text-foreground bg-card border-border/50" },
+              { label: "Bertugas", value: workingToday, icon: <UserCheck className="h-3.5 w-3.5" />, color: "text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30" },
+              { label: "Cadangan", value: totalStaff - workingToday - offDuty, icon: <Zap className="h-3.5 w-3.5" />, color: "text-amber-600 bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30" },
+              { label: "Libur", value: offDuty, icon: <Bed className="h-3.5 w-3.5" />, color: "text-slate-500 bg-slate-50/60 dark:bg-slate-900/20 border-slate-200/40 dark:border-slate-700/30" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className={cn(
+                  "flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]",
+                  item.color
                 )}
+              >
+                <div className="flex items-center gap-1">
+                  {item.icon}
+                  <span className="text-[18px] font-black leading-none">{item.value}</span>
+                </div>
+                <span className="text-[8px] font-bold uppercase tracking-wider opacity-70">
+                  {item.label}
+                </span>
               </div>
-            );
-          })}
+            ))}
+          </div>
 
-          {/* Total staff summary */}
-          <div className="text-center pt-0.5">
-            <span className="text-[8px] font-medium text-muted-foreground/60">
-              Total {totalStaff} staff aktif
-            </span>
+          {/* ── Bekerja Bersama Anda ── */}
+          {coworkers.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[0_1px_3px_0_rgba(0,0,0,0.03)]">
+              <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border/40">
+                <Users className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[11px] font-bold text-foreground">Bekerja Bersama Anda</span>
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-1.5 text-[9px] font-bold text-primary">
+                  {coworkers.length}
+                </span>
+              </div>
+              <div>
+                {coworkers.map((s) => (
+                  <EmployeeRow key={s._id} schedule={s} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── All Shifts ── */}
+          <div className="space-y-2">
+            {shifts.map(({ shift, staff }) => (
+              <ShiftSection
+                key={shift}
+                shiftLabel={shift}
+                staff={staff.map((s) => ({ ...s, currentUserId: user?.id }))}
+                isExpanded={expandedShifts.has(shift)}
+                onToggle={() => toggleShift(shift)}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -270,10 +565,14 @@ function TeamDayView({
 
 export function PersonalSchedule({
   userId,
+  userName,
+  userRole,
   month,
   year,
 }: {
   userId: string;
+  userName?: string;
+  userRole?: string;
   month: number;
   year: number;
 }) {
@@ -288,7 +587,7 @@ export function PersonalSchedule({
   const effectiveYear = mode === "personal" ? year : teamYear;
   const { data: schedulesByDate, isLoading } = useHybridAttendanceSchedules(effectiveMonth, effectiveYear);
 
-  // ── Personal mode ──────────────────────────────────────────
+  // ── Personal mode ──
 
   const { days, firstDayOffset } = useMemo(() => {
     if (mode !== "personal") return { days: [] as any[], firstDayOffset: 0 };
@@ -328,7 +627,7 @@ export function PersonalSchedule({
     return days.find((d: any) => d.day === selectedDay) ?? null;
   }, [days, selectedDay]);
 
-  // ── Team mode ──────────────────────────────────────────────
+  // ── Team mode ──
 
   const handlePrevDay = useCallback(() => {
     setSelectedDate((prev) => {
@@ -351,7 +650,7 @@ export function PersonalSchedule({
     return schedulesByDate?.[dateStr] ?? [];
   }, [schedulesByDate, selectedDate, mode]);
 
-  // ── Loading ────────────────────────────────────────────────
+  // ── Loading ──
 
   if (isLoading) {
     return (
@@ -365,24 +664,24 @@ export function PersonalSchedule({
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────
+  // ── Render ──
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {/* Header + Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <CalendarDays className="h-3.5 w-3.5 text-primary" />
-          <h3 className="font-bold uppercase tracking-wider text-[11px]">Jadwal</h3>
+          <CalendarDays className="h-4 w-4 text-primary" />
+          <h3 className="font-bold text-[13px] tracking-tight">Jadwal</h3>
         </div>
-        <div className="flex items-center rounded-lg border bg-muted/50 p-0.5 gap-0.5">
+        <div className="flex items-center rounded-xl border bg-muted/50 p-0.5 gap-0.5 shadow-sm">
           <button
             type="button"
             onClick={() => setMode("personal")}
             className={cn(
-              "rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-all",
+              "rounded-lg px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all",
               mode === "personal"
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "bg-white dark:bg-foreground/10 text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -392,9 +691,9 @@ export function PersonalSchedule({
             type="button"
             onClick={() => setMode("team")}
             className={cn(
-              "rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-all",
+              "rounded-lg px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all",
               mode === "team"
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "bg-white dark:bg-foreground/10 text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -406,7 +705,7 @@ export function PersonalSchedule({
       {mode === "personal" ? (
         <div className="space-y-2">
           {/* Mini calendar grid */}
-          <div className="rounded-xl border bg-card p-2">
+          <div className="rounded-xl border bg-card p-2 shadow-[0_1px_3px_0_rgba(0,0,0,0.03)]">
             <div style={DAY_HEADER_STYLE}>
               {DAY_NAMES.map((d, i) => (
                 <span
@@ -422,7 +721,7 @@ export function PersonalSchedule({
                 <div key={`e-${i}`} />
               ))}
               {days.map((d: any) => {
-                const colors = d.shiftLabel ? shiftColors[d.shiftLabel] : null;
+                const colors = d.shiftLabel ? SHIFT_THEME[d.shiftLabel] : null;
                 const isSelected = selectedDay === d.day;
                 const ring = isSelected
                   ? "0 0 0 2px #3b82f6"
@@ -455,7 +754,7 @@ export function PersonalSchedule({
               className={cn(
                 "rounded-xl border px-3 py-2 flex items-center gap-3",
                 selectedDayData.schedule
-                  ? shiftColors[selectedDayData.shiftLabel]?.bg ?? "bg-card"
+                  ? SHIFT_THEME[selectedDayData.shiftLabel]?.bg ?? "bg-card"
                   : "bg-card"
               )}
             >
@@ -472,13 +771,13 @@ export function PersonalSchedule({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <div
-                      className={shiftColors[selectedDayData.shiftLabel]?.dot ?? "bg-muted"}
+                      className={SHIFT_THEME[selectedDayData.shiftLabel]?.dot ?? "bg-muted"}
                       style={{ width: "8px", height: "8px", borderRadius: "50%" }}
                     />
                     <span
                       className={cn(
                         "text-xs font-bold",
-                        shiftColors[selectedDayData.shiftLabel]?.text ?? "text-foreground"
+                        SHIFT_THEME[selectedDayData.shiftLabel]?.text ?? "text-foreground"
                       )}
                     >
                       Shift {selectedDayData.shiftLabel}
@@ -499,7 +798,7 @@ export function PersonalSchedule({
 
           {/* Legend */}
           <div className="flex items-center gap-2">
-            {Object.entries(shiftColors).map(([label, c]) => (
+            {Object.entries(SHIFT_THEME).map(([label, c]) => (
               <div key={label} className="flex items-center gap-1">
                 <div className={c.dot} style={{ width: "6px", height: "6px", borderRadius: "50%" }} />
                 <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">{label}</span>
@@ -511,6 +810,7 @@ export function PersonalSchedule({
         <TeamDayView
           schedules={teamSchedules}
           selectedDate={selectedDate}
+          user={userName ? { id: userId, name: userName, role: userRole ?? "" } : null}
           onPrevDay={handlePrevDay}
           onNextDay={handleNextDay}
         />
@@ -518,4 +818,3 @@ export function PersonalSchedule({
     </div>
   );
 }
-
