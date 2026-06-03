@@ -31,7 +31,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     label: "Pagi",
     icon: <Sun className="h-3.5 w-3.5" />,
     accent: "text-emerald-600 dark:text-emerald-400",
-    bg: "bg-emerald-50/60 dark:bg-emerald-950/20",
+    bg: "bg-emerald-100/70 dark:bg-emerald-900/30",
     border: "border-emerald-200/60 dark:border-emerald-800/40",
     text: "text-emerald-700 dark:text-emerald-300",
     dot: "bg-emerald-500",
@@ -41,7 +41,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     label: "Sore",
     icon: <Moon className="h-3.5 w-3.5" />,
     accent: "text-sky-600 dark:text-sky-400",
-    bg: "bg-sky-50/60 dark:bg-sky-950/20",
+    bg: "bg-sky-100/70 dark:bg-sky-900/30",
     border: "border-sky-200/60 dark:border-sky-800/40",
     text: "text-sky-700 dark:text-sky-300",
     dot: "bg-sky-600",
@@ -51,7 +51,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     label: "Cadangan",
     icon: <Zap className="h-3.5 w-3.5" />,
     accent: "text-amber-600 dark:text-amber-400",
-    bg: "bg-amber-50/60 dark:bg-amber-950/20",
+    bg: "bg-amber-100/70 dark:bg-amber-900/30",
     border: "border-amber-200/60 dark:border-amber-800/40",
     text: "text-amber-700 dark:text-amber-300",
     dot: "bg-amber-500",
@@ -61,7 +61,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     label: "Libur",
     icon: <Bed className="h-3.5 w-3.5" />,
     accent: "text-slate-500 dark:text-slate-400",
-    bg: "bg-slate-50/40 dark:bg-slate-900/20",
+    bg: "bg-slate-100/50 dark:bg-slate-800/40",
     border: "border-slate-200/40 dark:border-slate-700/40",
     text: "text-slate-500 dark:text-slate-400",
     dot: "bg-slate-400",
@@ -767,6 +767,14 @@ export function PersonalSchedule({
                     >
                       {d.day}
                     </span>
+                    {d.hasSchedule && colors && (
+                      <div
+                        className={cn(
+                          "mt-0.5 h-1 w-1 rounded-full",
+                          colors.dot
+                        )}
+                      />
+                    )}
                   </button>
                 );
               })}

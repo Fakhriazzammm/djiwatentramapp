@@ -140,6 +140,20 @@ const ShiftCard = memo(function ShiftCard({
 
 // ─── Shift color indicators ──────────────────────────────────
 
+const SHIFT_CELL_BG: Record<string, string> = {
+  PAGI: "bg-emerald-50/40 dark:bg-emerald-950/15",
+  SORE: "bg-sky-50/40 dark:bg-sky-950/15",
+  OFF: "bg-rose-50/30 dark:bg-rose-950/10",
+  GENERAL: "bg-slate-50/30 dark:bg-slate-900/10",
+};
+
+const SHIFT_TOP_BAR: Record<string, string> = {
+  PAGI: "bg-emerald-400 dark:bg-emerald-500",
+  SORE: "bg-sky-400 dark:bg-sky-500",
+  OFF: "bg-rose-300 dark:bg-rose-400",
+  GENERAL: "bg-slate-300 dark:bg-slate-400",
+};
+
 const SHIFT_DOT_COLORS: Record<string, string> = {
   PAGI: "bg-emerald-500",
   SORE: "bg-sky-600",
@@ -189,18 +203,29 @@ const DayColumn = memo(function DayColumn({
   });
 
   const shiftLabels = useMemo(() => getDayShiftLabels(schedules), [schedules]);
+  const primaryShift = shiftLabels[0];
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "group flex min-h-[76px] flex-col gap-0.5 rounded-md border border-border/50 bg-background/70 p-1 transition-colors sm:min-h-[86px] md:min-h-[92px]",
+        "group relative flex min-h-[76px] flex-col gap-0.5 rounded-md border border-border/50 bg-background/70 p-1 transition-colors sm:min-h-[86px] md:min-h-[92px]",
         !isCurrentMonth && "opacity-40",
         isOver && "bg-primary/5 ring-2 ring-primary/30",
-        isDragOver && !isOver && "bg-muted/50"
+        isDragOver && !isOver && "bg-muted/50",
+        primaryShift && SHIFT_CELL_BG[primaryShift]
       )}
     >
-      <div className="mb-0.5 flex items-center justify-between">
+      {/* Colored top accent bar */}
+      {primaryShift && (
+        <div
+          className={cn(
+            "absolute left-0 right-0 top-0 h-[3px] rounded-t-md",
+            SHIFT_TOP_BAR[primaryShift]
+          )}
+        />
+      )}
+      <div className="mb-0.5 mt-0.5 flex items-center justify-between">
         <div className="flex items-center gap-1">
           <span
             className={cn(
@@ -216,7 +241,7 @@ const DayColumn = memo(function DayColumn({
                 <span
                   key={label}
                   className={cn(
-                    "inline-block h-1.5 w-1.5 rounded-full",
+                    "inline-block h-2 w-2 rounded-full",
                     SHIFT_DOT_COLORS[label] ?? "bg-muted-foreground"
                   )}
                   title={label}
