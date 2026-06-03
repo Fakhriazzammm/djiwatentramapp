@@ -42,10 +42,11 @@ export function getBuildMetadata(rootDir) {
 	const buildDate = new Date().toISOString().split("T")[0];
 	const commitCount = runCommand(rootDir, "git rev-list --count HEAD", "0");
 
-	// Versi: {major}.{minor}.{commitCount}
-	// Contoh: 0.2.1144 — patch number = total commit, auto-increment tiap build
+	// Versi: {major}.{minor}.{commitCount}-{commitHash}
+	// Contoh: 0.2.1479-0388a32 — patch number = total commit, suffix = commit hash
+	// Commit hash memastikan tiap deploy punya versi unik (Vercel shallow clone bikin commitCount stabil)
 	const [major, minor] = getBaseVersion(rootDir).split(".");
-	const version = `${major}.${minor}.${commitCount}`;
+	const version = `${major}.${minor}.${commitCount}-${commitHash}`;
 
 	return {
 		version,
