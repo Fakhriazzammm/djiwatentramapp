@@ -757,22 +757,27 @@ export function PersonalSchedule({
                     key={d.day}
                     type="button"
                     onClick={() => setSelectedDay(d.day)}
-                    style={{ ...CELL_STYLE, boxShadow: ring, opacity: d.hasSchedule ? 1 : 0.4 }}
-                    className={cn(colors?.bg, "hover:bg-muted/50")}
+                    style={{ ...CELL_STYLE, boxShadow: ring }}
+                    className={cn(
+                      d.hasSchedule && colors ? "hover:opacity-80" : "opacity-40 hover:bg-muted/50",
+                    )}
                   >
-                    <span
-                      className="text-[11px] font-bold leading-none"
-                      style={{ color: d.isToday ? "#3b82f6" : undefined }}
-                    >
-                      {d.day}
-                    </span>
-                    {d.hasSchedule && colors && (
-                      <div
+                    {d.hasSchedule && colors ? (
+                      <span
                         className={cn(
-                          "mt-0.5 h-1 w-1 rounded-full",
-                          colors.dot
+                          "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white",
+                          colors.badge.split(" ")[0]
                         )}
-                      />
+                      >
+                        {d.day}
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[11px] font-bold leading-none"
+                        style={{ color: d.isToday ? "#3b82f6" : undefined }}
+                      >
+                        {d.day}
+                      </span>
                     )}
                   </button>
                 );
