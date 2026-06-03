@@ -4,7 +4,7 @@ import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
-import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut } from "@yumipos/web-shared";
+import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut, useHybridEnrollFace } from "@yumipos/web-shared";
 import { useYumiAuth } from "@yumipos/web-shared";
 import { motion } from "framer-motion";
 import { Loader2, UserCheck, Navigation, Coffee, Camera, KeyRound, RefreshCw } from "lucide-react";
@@ -29,7 +29,7 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 function KaryawanAttendancePage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<"choose" | "face" | "pin" | "success">("choose");
+  const [step, setStep] = useState<"choose" | "face" | "pin" | "enroll" | "success">("choose");
   const [refreshCount, setRefreshCount] = useState(0);
   const [pinCode, setPinCode] = useState("");
   const [selectedUser, setSelectedUser] = useState<{
@@ -55,6 +55,7 @@ function KaryawanAttendancePage() {
   const verifyPin = useHybridVerifyHomePin();
   const clockIn = useHybridClockIn();
   const clockOut = useHybridClockOut();
+  const enrollFace = useHybridEnrollFace();
   const { user: authUser, isAuthenticated, logout } = useYumiAuth();
 
   // ── Auth gate: redirect to login if not authenticated ──
@@ -352,6 +353,18 @@ function KaryawanAttendancePage() {
               </button>
             </div>
 
+            {/* Daftarkan wajah */}
+            {!selectedUser?.hasFace && (
+              <div className="text-center">
+                <button
+                  onClick={() => { setStep("enroll"); setFaceError(null); }}
+                  className="text-[10px] font-bold text-muted-foreground/60 hover:text-primary transition-colors underline underline-offset-2"
+                >
+                  Atur Data Wajah
+                </button>
+              </div>
+            )}
+
             {/* Ganti identitas */}
             <div className="text-center">
               <button
@@ -457,6 +470,62 @@ function KaryawanAttendancePage() {
                   </div>
                 </>
               )}
+            </div>
+          </motion.div>
+
+        ) : step === "enroll" ? (
+          <motion.div
+            key="enroll"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-auto w-full max-w-sm space-y-4"
+          >
+            <div className="space-y-2 text-center">
+              <h2 className="text-base font-bold">Daftarkan Wajah</h2>
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                Arahkan wajah ke kamera untuk mendaftarkan data biometrik.
+              </p>
+            </div>
+
+            {faceError ? (
+              <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
+                  <Camera className="h-7 w-7" />
+                </div>
+                <p className="font-bold text-red-900 text-xs">KAMERA TIDAK TERSEDIA</p>
+                <p className="text-xs text-red-700">{faceError}</p>
+                <Button onClick={() => setStep("choose")} variant="outline" className="rounded-xl border-red-200 text-red-700 hover:bg-red-50">
+                  Kembali
+                </Button>
+              </div>
+            ) : (
+              <FaceRecognition
+                mode="enroll"
+                onCapture={async (d) => {
+                  try {
+                    await enrollFace({ userId: selectedUser?.id, faceDescriptor: d, skipPinVerification: true });
+                    toast.success("Wajah berhasil didaftarkan!");
+                    // Update selectedUser.hasFace
+                    if (selectedUser) setSelectedUser({ ...selectedUser, hasFace: true });
+                    setTimeout(() => setStep("choose"), 2000);
+                  } catch (e: any) {
+                    toast.error(e?.message || "Gagal mendaftarkan wajah");
+                  }
+                }}
+                onModelError={(msg) => {
+                  setFaceError(msg || "Gagal memuat kamera");
+                  toast.error("Kamera tidak tersedia. Silakan gunakan PIN.");
+                }}
+              />
+            )}
+
+            <div className="text-center">
+              <button
+                onClick={() => setStep("choose")}
+                className="text-[10px] font-bold text-muted-foreground/60 hover:text-muted-foreground transition-colors underline underline-offset-2"
+              >
+                Batal
+              </button>
             </div>
           </motion.div>
 
