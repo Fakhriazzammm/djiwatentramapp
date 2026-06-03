@@ -104,7 +104,6 @@ const CELL_STYLE: React.CSSProperties = {
   height: "36px",
   borderRadius: "8px",
   border: "none",
-  background: "transparent",
   cursor: "pointer",
   transition: "all 0.15s",
   textAlign: "center",
