@@ -1,6 +1,6 @@
 {
   "buildCommand": "cd ../.. && bun run --cwd apps/customer build",
-  "ignoreCommand": "bash ../../scripts/vercel-ignore.sh apps/customer packages/env packages/yumipos-web-shared supabase",
+  "ignoreCommand": "bash ../../scripts/vercel-ignore.sh apps/customer packages/env supabase",
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && bun install",
   "headers": [
