@@ -830,7 +830,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												<div className="space-y-2">
 													{(() => {
 														const endDate = (contractData as any)?.employment?.endDate;
-														const isExpired = (endDate && new Date(endDate) < new Date()) || (contractData as any)?.status === "expired" || (contractData as any)?.status === "completed";
+														const startDate = (contractData as any)?.employment?.startDate;
+														const durationMonths = Number((contractData as any)?.employment?.contractDuration ?? 0);
+														const computedEndDate = endDate || (startDate && durationMonths > 0 ? new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + durationMonths, new Date(startDate).getDate()).toISOString() : null);
+														const isExpired = (computedEndDate && new Date(computedEndDate) < new Date()) || (contractData as any)?.status === "expired" || (contractData as any)?.status === "completed";
 														const status = (contractData as any)?.status;
 														const isActive = !isExpired && (status === "approved" || !status);
 														return (
@@ -849,7 +852,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 																</div>
 																<div className="flex items-center justify-between">
 																	<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
-																	<span className="text-xs font-bold">{endDate ? new Date(endDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : status === "expired" || status === "completed" ? "Selesai" : "—"}</span>
+																	<span className="text-xs font-bold">{computedEndDate ? new Date(computedEndDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : status === "expired" || status === "completed" ? "Selesai" : "—"}</span>
 																</div>
 															</>
 														);
