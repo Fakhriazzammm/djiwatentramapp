@@ -577,11 +577,36 @@ export function PersonalSchedule({
   year: number;
 }) {
   const [mode, setMode] = useState<"personal" | "team">("personal");
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Start from the parent's selected period so team mode matches "periode terpilih"
+    const d = new Date(year, month - 1, 1);
+    // If today is within this period, prefer today for better UX
+    const today = new Date();
+    if (today.getFullYear() === year && today.getMonth() === month - 1) {
+      return today;
+    }
+    return d;
+  });
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const teamMonth = selectedDate.getMonth() + 1;
   const teamYear = selectedDate.getFullYear();
+
+  // ── Sync selectedDate when parent's period changes ──
+  useEffect(() => {
+    setSelectedDate((prev) => {
+      // Only reset if the parent's period differs from current selectedDate's month/year
+      if (prev.getFullYear() !== year || prev.getMonth() !== month - 1) {
+        const d = new Date(year, month - 1, 1);
+        const today = new Date();
+        if (today.getFullYear() === year && today.getMonth() === month - 1) {
+          return today;
+        }
+        return d;
+      }
+      return prev;
+    });
+  }, [month, year]);
 
   const effectiveMonth = mode === "personal" ? month : teamMonth;
   const effectiveYear = mode === "personal" ? year : teamYear;
