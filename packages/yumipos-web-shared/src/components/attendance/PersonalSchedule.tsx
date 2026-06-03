@@ -163,28 +163,28 @@ function EmployeeRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-2.5 px-3 py-2.5 transition-colors",
+        "flex items-center gap-1.5 px-2.5 py-1.5 transition-colors",
         isSelf && "bg-primary/[0.04]",
         !noBorder && "border-b border-border/40 last:border-b-0"
       )}
     >
       {/* Avatar */}
-      <Avatar name={schedule.userName} size="md" />
+      <Avatar name={schedule.userName} size="sm" />
 
       {/* Name + Role */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[13px] font-semibold text-foreground leading-tight truncate">
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] font-semibold text-foreground leading-tight truncate">
             {schedule.userName}
           </span>
           {isSelf && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary">
-              <Star className="h-2.5 w-2.5 fill-primary" /> Anda
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1 py-0.5 text-[6px] font-bold text-primary">
+              <Star className="h-2 w-2 fill-primary" /> Anda
             </span>
           )}
         </div>
         {schedule.roleName && (
-          <span className="inline-block rounded-md bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground mt-0.5">
+          <span className="inline-block rounded-md bg-muted/70 px-1 py-0.5 text-[7px] font-medium text-muted-foreground mt-0.5">
             {schedule.roleName}
           </span>
         )}
@@ -193,15 +193,15 @@ function EmployeeRow({
       {/* Shift Time */}
       <div className="shrink-0 text-right">
         {schedule.startTime ? (
-          <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-            <Clock className="h-3 w-3 text-muted-foreground/60" />
+          <div className="flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground">
+            <Clock className="h-2.5 w-2.5 text-muted-foreground/60" />
             <span>
               {schedule.startTime.slice(0, 5)}
               {schedule.endTime ? <span className="text-muted-foreground/50">–{schedule.endTime.slice(0, 5)}</span> : ""}
             </span>
           </div>
         ) : (
-          <span className="text-[10px] font-medium text-muted-foreground/60">–</span>
+          <span className="text-[8px] font-medium text-muted-foreground/60">–</span>
         )}
       </div>
     </div>
@@ -232,40 +232,40 @@ function ShiftSection({
     : null;
 
   const iconMap: Record<string, React.ReactNode> = {
-    PAGI: <Sun className="h-4 w-4 text-emerald-500" />,
-    SORE: <Moon className="h-4 w-4 text-sky-500" />,
-    GENERAL: <Zap className="h-4 w-4 text-amber-500" />,
-    OFF: <Bed className="h-4 w-4 text-slate-400" />,
+    PAGI: <Sun className="h-3 w-3 text-emerald-500" />,
+    SORE: <Moon className="h-3 w-3 text-sky-500" />,
+    GENERAL: <Zap className="h-3 w-3 text-amber-500" />,
+    OFF: <Bed className="h-3 w-3 text-slate-400" />,
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[0_1px_3px_0_rgba(0,0,0,0.03)]">
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]">
       {/* Header */}
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2.5 px-3.5 py-3 transition-colors hover:bg-muted/20 active:scale-[0.99]"
+        className="flex w-full items-center gap-2 px-2.5 py-2 transition-colors hover:bg-muted/20 active:scale-[0.99]"
       >
         {/* Shift Icon */}
-        <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl", theme.bg)}>
-          {iconMap[shiftLabel] ?? <CalendarDays className="h-4 w-4" />}
+        <div className={cn("flex h-6 w-6 items-center justify-center rounded-lg", theme.bg)}>
+          {iconMap[shiftLabel] ?? <CalendarDays className="h-3 w-3" />}
         </div>
 
         {/* Shift Info */}
         <div className="flex-1 text-left">
-          <div className="flex items-center gap-2">
-            <span className={cn("text-sm font-bold", theme.text)}>{theme.label}</span>
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <span className={cn("text-[11px] font-bold", theme.text)}>{theme.label}</span>
+            <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-muted px-1 text-[8px] font-bold text-muted-foreground">
               {staff.length}
             </span>
           </div>
           {shiftTime && (
-            <p className="text-[11px] font-medium text-muted-foreground/70">{shiftTime}</p>
+            <p className="text-[9px] font-medium text-muted-foreground/70">{shiftTime}</p>
           )}
         </div>
 
         {/* Staffing Status */}
-        <div className={cn("hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold", staffing.color)}>
+        <div className={cn("hidden sm:inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[7px] font-bold", staffing.color)}>
           {staffing.icon}
           <span>{staffing.label}</span>
         </div>
@@ -273,7 +273,7 @@ function ShiftSection({
         {/* Chevron */}
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-muted-foreground/50 transition-transform duration-200",
+            "h-3 w-3 text-muted-foreground/50 transition-transform duration-200",
             isExpanded && "rotate-180"
           )}
         />
@@ -394,24 +394,24 @@ function TeamDayView({
   const empty = shifts.length === 0;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       {/* ── Date Navigation ── */}
       <div className="flex items-center justify-between px-1">
         <button
           type="button"
           onClick={onPrevDay}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3 w-3" />
         </button>
         <div className="flex flex-col items-center">
-          <span className="text-[13px] font-bold text-foreground">
+          <span className="text-[10px] font-bold text-foreground">
             {format(selectedDate, "EEEE", { locale: id })}
           </span>
-          <span className="text-[11px] font-medium text-muted-foreground">
+          <span className="text-[9px] font-medium text-muted-foreground">
             {format(selectedDate, "d MMMM yyyy", { locale: id })}
             {isToday && (
-              <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary uppercase">
+              <span className="ml-1 rounded-full bg-primary/10 px-1 py-0.5 text-[7px] font-bold text-primary uppercase">
                 Hari ini
               </span>
             )}
@@ -420,9 +420,9 @@ function TeamDayView({
         <button
           type="button"
           onClick={onNextDay}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3" />
         </button>
       </div>
 
@@ -430,44 +430,43 @@ function TeamDayView({
       {user && (
         <div
           className={cn(
-            "overflow-hidden rounded-2xl border shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] transition-all",
+            "overflow-hidden rounded-xl border shadow-[0_1px_4px_-1px_rgba(0,0,0,0.04)] transition-all",
             mySchedule
               ? "border-emerald-200/70 dark:border-emerald-800/40"
               : "border-border/60"
           )}
         >
           {mySchedule ? (
-            <div className="relative bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/15 dark:to-card px-4 py-3.5">
-              {/* Decorative accent bar */}
+            <div className="relative bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/15 dark:to-card px-2.5 py-2">
               <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-500 rounded-r" />
 
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                  <Sun className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center gap-1 mb-1">
+                <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                  <Sun className="h-2 w-2 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <span className="text-[7px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                   Shift Saya Hari Ini
                 </span>
               </div>
 
-              <div className="flex items-center gap-3.5">
-                <Avatar name={user.name} size="lg" />
+              <div className="flex items-center gap-2">
+                <Avatar name={user.name} size="sm" />
                 <div>
-                  <p className="text-sm font-bold text-foreground">{user.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[11px] font-bold text-foreground">{user.name}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
                     {user.role && (
-                      <span className="rounded-md bg-emerald-100/70 dark:bg-emerald-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-300">
+                      <span className="rounded-md bg-emerald-100/70 dark:bg-emerald-900/30 px-1 py-0.5 text-[7px] font-semibold text-emerald-700 dark:text-emerald-300">
                         {user.role}
                       </span>
                     )}
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="flex items-center gap-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
                       Sedang Bertugas
                     </span>
                   </div>
                   {mySchedule.startTime && (
-                    <p className="flex items-center gap-1 mt-1 text-[12px] font-semibold text-muted-foreground">
-                      <Clock className="h-3 w-3" />
+                    <p className="flex items-center gap-1 mt-0.5 text-[9px] font-semibold text-muted-foreground">
+                      <Clock className="h-2.5 w-2.5" />
                       {mySchedule.startTime.slice(0, 5)}
                       {mySchedule.endTime ? ` – ${mySchedule.endTime.slice(0, 5)}` : ""}
                     </p>
@@ -476,14 +475,14 @@ function TeamDayView({
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-900/15 dark:to-card px-4 py-3.5">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
-                  <Bed className="h-4 w-4 text-slate-400" />
+            <div className="bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-900/15 dark:to-card px-2.5 py-2">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
+                  <Bed className="h-3.5 w-3.5 text-slate-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{user.name}</p>
-                  <span className="text-[11px] font-semibold text-slate-500">Hari Ini Libur</span>
+                  <p className="text-[11px] font-bold text-foreground">{user.name}</p>
+                  <span className="text-[9px] font-semibold text-slate-500">Hari Ini Libur</span>
                 </div>
               </div>
             </div>
@@ -492,36 +491,36 @@ function TeamDayView({
       )}
 
       {empty ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50">
-            <CalendarDays className="h-6 w-6 text-muted-foreground/30" />
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted/50">
+            <CalendarDays className="h-4 w-4 text-muted-foreground/30" />
           </div>
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="text-[11px] font-medium text-muted-foreground">
             Tidak ada jadwal hari ini
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-1.5">
           {/* ── Daily Summary ── */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-1">
             {[
-              { label: "Total", value: totalStaff, icon: <Users className="h-3.5 w-3.5" />, color: "text-foreground bg-card border-border/50" },
-              { label: "Bertugas", value: workingToday, icon: <UserCheck className="h-3.5 w-3.5" />, color: "text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30" },
-              { label: "Cadangan", value: totalStaff - workingToday - offDuty, icon: <Zap className="h-3.5 w-3.5" />, color: "text-amber-600 bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30" },
-              { label: "Libur", value: offDuty, icon: <Bed className="h-3.5 w-3.5" />, color: "text-slate-500 bg-slate-50/60 dark:bg-slate-900/20 border-slate-200/40 dark:border-slate-700/30" },
+              { label: "Total", value: totalStaff, icon: <Users className="h-2.5 w-2.5" />, color: "text-foreground bg-card border-border/50" },
+              { label: "Bertugas", value: workingToday, icon: <UserCheck className="h-2.5 w-2.5" />, color: "text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30" },
+              { label: "Cadangan", value: totalStaff - workingToday - offDuty, icon: <Zap className="h-2.5 w-2.5" />, color: "text-amber-600 bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30" },
+              { label: "Libur", value: offDuty, icon: <Bed className="h-2.5 w-2.5" />, color: "text-slate-500 bg-slate-50/60 dark:bg-slate-900/20 border-slate-200/40 dark:border-slate-700/30" },
             ].map((item) => (
               <div
                 key={item.label}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]",
+                  "flex flex-col items-center gap-0.5 rounded-lg border px-1.5 py-1.5 shadow-[0_1px_1px_0_rgba(0,0,0,0.01)]",
                   item.color
                 )}
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   {item.icon}
-                  <span className="text-[18px] font-black leading-none">{item.value}</span>
+                  <span className="text-[12px] font-black leading-none">{item.value}</span>
                 </div>
-                <span className="text-[8px] font-bold uppercase tracking-wider opacity-70">
+                <span className="text-[6px] font-bold uppercase tracking-wider opacity-70">
                   {item.label}
                 </span>
               </div>
@@ -530,11 +529,11 @@ function TeamDayView({
 
           {/* ── Bekerja Bersama Anda ── */}
           {coworkers.length > 0 && (
-            <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[0_1px_3px_0_rgba(0,0,0,0.03)]">
-              <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border/40">
-                <Users className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[11px] font-bold text-foreground">Bekerja Bersama Anda</span>
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-1.5 text-[9px] font-bold text-primary">
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]">
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/40">
+                <Users className="h-3 w-3 text-primary" />
+                <span className="text-[9px] font-bold text-foreground">Bekerja Bersama Anda</span>
+                <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary/10 px-1 text-[7px] font-bold text-primary">
                   {coworkers.length}
                 </span>
               </div>
@@ -547,7 +546,7 @@ function TeamDayView({
           )}
 
           {/* ── All Shifts ── */}
-          <div className="space-y-2">
+          <div className="space-y-1">
             {shifts.map(({ shift, staff }) => (
               <ShiftSection
                 key={shift}
