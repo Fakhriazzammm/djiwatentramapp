@@ -145,13 +145,12 @@ async function fetchStaffStats(args: { userId: string; month: number; year: numb
 					totalMs += Number(next.timestamp ?? 0) - checkInTime;
 					i += 1;
 				} else {
-					// Bug #10: Next entry is not check_out (e.g., another check_in or
-					// check_out is in next month) — count hours to end of month
-					totalMs += Math.max(0, monthEnd - checkInTime);
+					// Next entry is not check_out — skip this session (still active)
+					sessions--;
 				}
 			} else {
-				// Last entry in month is a check_in — count hours to end of month
-				totalMs += Math.max(0, monthEnd - checkInTime);
+				// Last entry is a check_in without check_out — skip (still active)
+				sessions--;
 			}
 		}
 	}
