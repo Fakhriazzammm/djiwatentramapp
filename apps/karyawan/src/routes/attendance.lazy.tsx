@@ -29,7 +29,7 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 function KaryawanAttendancePage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<"select" | "choose" | "face" | "pin" | "success">("select");
+  const [step, setStep] = useState<"choose" | "face" | "pin" | "success">("choose");
   const [refreshCount, setRefreshCount] = useState(0);
   const [pinCode, setPinCode] = useState("");
   const [selectedUser, setSelectedUser] = useState<{
@@ -55,12 +55,15 @@ function KaryawanAttendancePage() {
   const verifyPin = useHybridVerifyHomePin();
   const clockIn = useHybridClockIn();
   const clockOut = useHybridClockOut();
-  const { user: authUser, isAuthenticated } = useYumiAuth();
+  const { user: authUser, isAuthenticated, logout } = useYumiAuth();
 
-  // ── Auto-detect user from auth session ──
+  // ── Auth gate: redirect to login if not authenticated ──
   useEffect(() => {
-    if (step !== "select") return;
-    if (!isAuthenticated || !authUser || !Array.isArray(allStaff) || allStaff.length === 0) return;
+    if (!isAuthenticated) {
+      navigate({ to: "/login" as any, replace: true });
+      return;
+    }
+    if (!authUser || !Array.isArray(allStaff) || allStaff.length === 0) return;
     // Match by _id, slug, or username (email prefix)
     const matched = allStaff.find((s: any) => {
       if (authUser._id && String(s._id) === String(authUser._id)) return true;
@@ -71,7 +74,7 @@ function KaryawanAttendancePage() {
     if (matched) {
       handleUserSelect(matched);
     }
-  }, [isAuthenticated, authUser, allStaff, step]);
+  }, [isAuthenticated, authUser, allStaff]);
 
   // ── Shift detection ──
   const shiftSchedules = siteSettings?.shiftSettings?.shiftSchedules || [];
@@ -235,11 +238,10 @@ function KaryawanAttendancePage() {
     }
   };
 
-  // ── Back to staff selection ──
+  // ── Logout & go to login to switch user ──
   const handleBack = () => {
-    setStep("select");
-    setSelectedUser(null);
-    setPinCode("");
+    logout();
+    navigate({ to: "/login" as any });
   };
 
   // ── Render ──
@@ -248,7 +250,7 @@ function KaryawanAttendancePage() {
       {/* Header */}
       <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border/30 bg-background/90 px-3 backdrop-blur-lg">
         <div className="flex items-center gap-2">
-          {step !== "select" && step !== "success" && (
+          {step !== "success" && (
             <button onClick={handleBack} className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-muted transition-colors">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
@@ -274,76 +276,7 @@ function KaryawanAttendancePage() {
 
       {/* Content */}
       <main className="flex flex-1 flex-col p-3">
-        {step === "select" ? (
-          <motion.div
-            key="select"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mx-auto w-full max-w-sm space-y-4"
-          >
-            <div className="space-y-1">
-              <h2 className="text-base font-bold">Pilih nama</h2>
-              <p className="text-[11px] font-medium text-muted-foreground">Pilih nama Anda untuk melanjutkan.</p>
-            </div>
-
-            {/* Staff grid */}
-            {allStaff === undefined ? (
-              <div className="grid grid-cols-3 gap-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
-                ))}
-              </div>
-            ) : allStaff.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/50 p-8 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
-                  <Loader2 className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-bold text-muted-foreground">Belum ada staff terdaftar</p>
-                <p className="text-[10px] text-muted-foreground/60">Hubungi admin untuk mendaftarkan staff.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {allStaff.map((staff: any) => {
-                  const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff._id);
-                  return (
-                    <motion.button
-                      key={staff._id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handleUserSelect(staff)}
-                      className={`group relative aspect-square rounded-xl border-2 p-2 text-center transition-all ${isCurrentlyIn ? "bg-emerald-50/30 border-emerald-500/20" : "bg-card border-border/50 hover:border-primary shadow-sm"}`}
-                    >
-                      <div className="flex flex-col items-center gap-1 h-full justify-center">
-                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg font-bold text-xs transition-all ${isCurrentlyIn ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-white"}`}>
-                          {staff.name.charAt(0)}
-                        </div>
-                        <p className="font-bold text-foreground text-[9px] leading-tight line-clamp-2 uppercase">{staff.name}</p>
-                        <p className={`text-[7px] font-bold uppercase tracking-wider ${isCurrentlyIn ? "text-emerald-600" : "text-muted-foreground/60"}`}>
-                          {isCurrentlyIn ? "BERTUGAS" : "OFF"}
-                        </p>
-                        {!staff.hasFace && (
-                          <span className="mt-0.5 rounded-full bg-amber-100 px-1.5 py-[1px] text-[6px] font-bold text-amber-700 uppercase tracking-wider">Baru</span>
-                        )}
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Out of area warning */}
-            {!isWithinRadius && siteSettings?.attendanceLat && (
-              <div className="flex gap-2 rounded-xl border border-red-100 bg-red-50 p-3">
-                <Navigation className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold text-red-900">Luar Area Kafe</p>
-                  <p className="text-[10px] text-red-700">Absensi hanya dalam radius {siteSettings.attendanceRadius}m dari lokasi.</p>
-                </div>
-              </div>
-            )}
-          </motion.div>
-
-        ) : step === "choose" ? (
+        {step === "choose" ? (
           <motion.div
             key="choose"
             initial={{ opacity: 0, y: 20 }}
@@ -425,7 +358,7 @@ function KaryawanAttendancePage() {
                 onClick={handleBack}
                 className="text-[10px] font-bold text-muted-foreground/60 hover:text-muted-foreground transition-colors underline underline-offset-2"
               >
-                Bukan {selectedUser?.name}? Ganti Identitas
+                Bukan {selectedUser?.name}? Login Ulang
               </button>
             </div>
 
