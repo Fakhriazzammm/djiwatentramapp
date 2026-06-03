@@ -86,12 +86,14 @@ export async function checkForAppUpdate() {
 	}
 }
 
-export function startAppUpdatePolling(intervalMs = 60_000) {
+export function startAppUpdatePolling(intervalMs = 30_000) {
 	if (typeof window === "undefined" || APP_VERSION.isDev) {
 		return () => undefined;
 	}
 
+	// Immediate check on start
 	void checkForAppUpdate();
+
 	const interval = window.setInterval(() => {
 		void checkForAppUpdate();
 	}, intervalMs);
