@@ -26,7 +26,7 @@ const SHIFT_ORDER = ["PAGI", "SORE", "GENERAL", "OFF"];
 
 // ─── Premium Shift Theme ──────────────────────────────────
 
-const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent: string; bg: string; border: string; text: string; dot: string; badge: string }> = {
+const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent: string; bg: string; border: string; text: string; dot: string; badge: string; selectedBorder: string }> = {
   PAGI: {
     label: "Pagi",
     icon: <Sun className="h-3.5 w-3.5" />,
@@ -36,6 +36,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     text: "text-emerald-700 dark:text-emerald-300",
     dot: "bg-emerald-500",
     badge: "bg-emerald-500 text-white",
+    selectedBorder: "border-emerald-500",
   },
   SORE: {
     label: "Sore",
@@ -46,6 +47,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     text: "text-sky-700 dark:text-sky-300",
     dot: "bg-sky-600",
     badge: "bg-sky-500 text-white",
+    selectedBorder: "border-sky-600",
   },
   GENERAL: {
     label: "Cadangan",
@@ -56,6 +58,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     text: "text-amber-700 dark:text-amber-300",
     dot: "bg-amber-500",
     badge: "bg-amber-500 text-white",
+    selectedBorder: "border-amber-500",
   },
   OFF: {
     label: "Libur",
@@ -66,6 +69,7 @@ const SHIFT_THEME: Record<string, { label: string; icon: React.ReactNode; accent
     text: "text-slate-500 dark:text-slate-400",
     dot: "bg-slate-400",
     badge: "bg-slate-400 text-white",
+    selectedBorder: "border-slate-400",
   },
 };
 
@@ -761,31 +765,25 @@ export function PersonalSchedule({
                           : "opacity-40 hover:bg-muted/50"
                     )}
                   >
-                    {isSelected ? (
-                      d.hasSchedule && colors ? (
-                        <span
-                          className={cn(
-                            "flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-bold leading-none",
-                            colors.text,
-                            "border-2",
-                            colors.dot.replace("bg-", "border-")
-                          )}
-                        >
+                    {d.hasSchedule && colors ? (
+                      <div className={cn(
+                        "flex flex-col items-center gap-px",
+                        isSelected && [
+                          "rounded-[7px] border-2 px-1.5 py-0.5",
+                          colors.selectedBorder
+                        ]
+                      )}>
+                        <span className={cn(
+                          "text-[11px] font-bold leading-none",
+                          isSelected ? colors.text : "text-foreground"
+                        )}>
                           {d.day}
                         </span>
-                      ) : (
-                        <span className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-bold leading-none text-blue-500 border-2 border-blue-400">
-                          {d.day}
-                        </span>
-                      )
+                        <span className={cn("h-1.5 w-1.5 rounded-full", colors.dot)} />
+                      </div>
                     ) : (
-                      d.hasSchedule && colors ? (
-                        <span
-                          className={cn(
-                            "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white",
-                            colors.badge.split(" ")[0]
-                          )}
-                        >
+                      isSelected ? (
+                        <span className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-bold leading-none text-blue-500 border-2 border-blue-400">
                           {d.day}
                         </span>
                       ) : (
