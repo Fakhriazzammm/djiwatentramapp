@@ -417,9 +417,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 		const supabase = createClient();
 		supabase
 			.from("employee_onboarding_applications")
-			.select("id, full_name, contract, contract_pdf_url, employment, raw, created_at")
+			.select("id, full_name, contract, contract_pdf_url, employment, raw, created_at, status")
 			.eq("approved_user_source_id", staff._id)
-			.eq("status", "approved")
+			.in("status", ["approved", "expired", "completed"])
+			.order("created_at", { ascending: false })
 			.maybeSingle()
 			.then((result: any) => {
 				const { data, error } = result;
@@ -510,8 +511,8 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 				const periodStart = new Date(selectedYear, selectedMonth - 1, 1);
 				const periodEnd = new Date(selectedYear, selectedMonth, 0);
 				const monthName = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][selectedMonth - 1];
-				if (gross > 0) {
-					setLivePayslip({
+				// Always set live payslip for the selected period (realtime per absensi)
+				setLivePayslip({
 						id: "live-" + staff._id,
 						user_id: staff._id,
 						user_name: staff.name,
@@ -537,8 +538,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							total_penalty: totalPenalty,
 							bonus_target: { basis: bonusBasis, total_bonus: totalTargetBonus, amount_per_tier: (bonusCfg?.tiers?.length ?? 0) > 0 ? (bonusCfg?.tiers?.[0]?.bonusAmount ?? 0) : 0, shifts: bonusShifts.length > 0 ? bonusShifts : undefined },
 						},
-					});
-				}
+				});
 			} catch (e) {
 				console.warn("[LivePayslip] error:", e);
 			}
@@ -828,26 +828,32 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										) : contractData ? (
 											<>
 												<div className="space-y-2">
-													<div className="flex items-center justify-between">
-														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Status</span>
-														<span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Aktif</span>
-													</div>
-													<div className="flex items-center justify-between">
-														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Jenis</span>
-														<span className="text-xs font-bold">{((contractData as any)?.employment?.type) || "PKWT - Full Time"}</span>
-													</div>
-													<div className="flex items-center justify-between">
-														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Durasi</span>
-														<span className="text-xs font-bold">{((contractData as any)?.employment?.duration) ? `${(contractData as any).employment.duration} Bulan` : "—"}</span>
-													</div>
-													<div className="flex items-center justify-between">
-														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mulai</span>
-														<span className="text-xs font-bold">{((contractData as any)?.employment?.startDate) ? new Date((contractData as any).employment.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
-													</div>
-													<div className="flex items-center justify-between">
-														<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
-														<span className="text-xs font-bold">{((contractData as any)?.employment?.endDate) ? new Date((contractData as any).employment.endDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
-													</div>
+													{(() => {
+														const endDate = (contractData as any)?.employment?.endDate;
+														const isExpired = endDate && new Date(endDate) < new Date();
+														const status = (contractData as any)?.status;
+														const isActive = !isExpired && (status === "approved" || !status);
+														return (
+															<>
+																<div className="flex items-center justify-between">
+																	<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Status</span>
+																	<span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{isActive ? "Aktif" : "Berakhir"}</span>
+																</div>
+																<div className="flex items-center justify-between">
+																	<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Jenis</span>
+																	<span className="text-xs font-bold">{((contractData as any)?.employment?.type) || "PKWT - Full Time"}</span>
+																</div>
+																<div className="flex items-center justify-between">
+																	<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mulai</span>
+																	<span className="text-xs font-bold">{((contractData as any)?.employment?.startDate) ? new Date((contractData as any).employment.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
+																</div>
+																<div className="flex items-center justify-between">
+																	<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
+																	<span className="text-xs font-bold">{endDate ? new Date(endDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
+																</div>
+															</>
+														);
+													})()}
 												</div>
 												{contractData.contract_pdf_url && (
 													<Button
