@@ -39,7 +39,7 @@ async function tryLoadFrom(cp: string, signal: AbortSignal): Promise<boolean> {
 
 async function loadModelsImpl(): Promise<boolean> {
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 15000);
+  const timer = setTimeout(() => ac.abort(), 30000);
 
   for (const cp of MODEL_PATHS) {
     if (ac.signal.aborted) break;
@@ -87,7 +87,7 @@ export function FaceRecognition({
       setLMsg("Memuat sistem biometrik...");
       const gt = setTimeout(() => {
         if (!cancelled) { setErr("Memuat ulang..."); }
-      }, 20000);
+      }, 30000);
 
       try {
         const ok = await (preloadPromise ?? loadModelsImpl());
