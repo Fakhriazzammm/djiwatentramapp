@@ -306,6 +306,13 @@ function StaffProfilePage() {
 	}, [now]);
 	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+	const [refreshKey, setRefreshKey] = useState(0);
+	// Auto-refresh stats/logs when page gains focus (e.g. after clock out from /attendance)
+	useEffect(() => {
+		const onFocus = () => setRefreshKey((k) => k + 1);
+		window.addEventListener("focus", onFocus);
+		return () => window.removeEventListener("focus", onFocus);
+	}, []);
 	const [showChangePin, setShowChangePin] = useState(false);
 	const [newPin, setNewPin] = useState("");
 	const [oldPin, setOldPin] = useState("");
@@ -384,13 +391,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 	const staff = useHybridStaffBySlug(username);
 	const stats = useHybridStaffStats(
 		isUnlocked && staff
-			? { userId: staff._id, month: selectedMonth, year: selectedYear }
+			? { userId: staff._id, month: selectedMonth, year: selectedYear, refreshTrigger: refreshKey }
 			: undefined
 	);
 
 	const logs = useHybridStaffLogs(
 		isUnlocked && staff
-			? { userId: staff._id, month: selectedMonth, year: selectedYear }
+			? { userId: staff._id, month: selectedMonth, year: selectedYear, refreshTrigger: refreshKey }
 			: undefined
 	);
 
