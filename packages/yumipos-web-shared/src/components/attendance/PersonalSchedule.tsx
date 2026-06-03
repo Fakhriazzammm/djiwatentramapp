@@ -747,37 +747,55 @@ export function PersonalSchedule({
               {days.map((d: any) => {
                 const colors = d.shiftLabel ? SHIFT_THEME[d.shiftLabel] : null;
                 const isSelected = selectedDay === d.day;
-                const ring = isSelected
-                  ? "0 0 0 2px #3b82f6"
-                  : d.isToday
-                    ? "0 0 0 1px rgba(59,130,246,0.3)"
-                    : "none";
                 return (
                   <button
                     key={d.day}
                     type="button"
                     onClick={() => setSelectedDay(d.day)}
-                    style={{ ...CELL_STYLE, boxShadow: ring }}
+                    style={CELL_STYLE}
                     className={cn(
-                      d.hasSchedule && colors ? "hover:opacity-80" : "opacity-40 hover:bg-muted/50",
+                      isSelected
+                        ? ""
+                        : d.hasSchedule && colors
+                          ? "hover:opacity-80"
+                          : "opacity-40 hover:bg-muted/50"
                     )}
                   >
-                    {d.hasSchedule && colors ? (
-                      <span
-                        className={cn(
-                          "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white",
-                          colors.badge.split(" ")[0]
-                        )}
-                      >
-                        {d.day}
-                      </span>
+                    {isSelected ? (
+                      d.hasSchedule && colors ? (
+                        <span
+                          className={cn(
+                            "flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-bold leading-none",
+                            colors.text,
+                            "border-2",
+                            colors.dot.replace("bg-", "border-")
+                          )}
+                        >
+                          {d.day}
+                        </span>
+                      ) : (
+                        <span className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-bold leading-none text-blue-500 border-2 border-blue-400">
+                          {d.day}
+                        </span>
+                      )
                     ) : (
-                      <span
-                        className="text-[11px] font-bold leading-none"
-                        style={{ color: d.isToday ? "#3b82f6" : undefined }}
-                      >
-                        {d.day}
-                      </span>
+                      d.hasSchedule && colors ? (
+                        <span
+                          className={cn(
+                            "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white",
+                            colors.badge.split(" ")[0]
+                          )}
+                        >
+                          {d.day}
+                        </span>
+                      ) : (
+                        <span
+                          className="text-[11px] font-bold leading-none"
+                          style={{ color: d.isToday ? "#3b82f6" : undefined }}
+                        >
+                          {d.day}
+                        </span>
+                      )
                     )}
                   </button>
                 );
@@ -789,7 +807,7 @@ export function PersonalSchedule({
           {selectedDayData && (
             <div
               className={cn(
-                "rounded-xl border px-3 py-2 flex items-center gap-3",
+                "rounded-xl border px-3.5 py-3 flex items-center gap-3.5",
                 selectedDayData.schedule
                   ? SHIFT_THEME[selectedDayData.shiftLabel]?.bg ?? "bg-card"
                   : "bg-card"
@@ -803,27 +821,20 @@ export function PersonalSchedule({
                   {DAY_NAMES[new Date(year, month - 1, selectedDayData.day).getDay()]}
                 </span>
               </div>
-              <div className="h-6 w-px bg-border/60" />
               {selectedDayData.schedule ? (
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className={SHIFT_THEME[selectedDayData.shiftLabel]?.dot ?? "bg-muted"}
-                      style={{ width: "8px", height: "8px", borderRadius: "50%" }}
-                    />
-                    <span
-                      className={cn(
-                        "text-xs font-bold",
-                        SHIFT_THEME[selectedDayData.shiftLabel]?.text ?? "text-foreground"
-                      )}
-                    >
-                      Shift {selectedDayData.shiftLabel}
-                    </span>
-                  </div>
+                  <span
+                    className={cn(
+                      "text-sm font-black tracking-tight",
+                      SHIFT_THEME[selectedDayData.shiftLabel]?.accent ?? "text-foreground"
+                    )}
+                  >
+                    Shift {selectedDayData.shiftLabel}
+                  </span>
                   {selectedDayData.schedule.startTime && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {selectedDayData.schedule.startTime}
-                      {selectedDayData.schedule.endTime ? ` – ${selectedDayData.schedule.endTime}` : ""}
+                    <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
+                      {selectedDayData.schedule.startTime.slice(0, 5)}
+                      {selectedDayData.schedule.endTime ? ` – ${selectedDayData.schedule.endTime.slice(0, 5)}` : ""}
                     </p>
                   )}
                 </div>
