@@ -20,7 +20,7 @@ import { cn } from "@yumipos/web-shared/lib/utils";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
 	User, Lock, Unlock, Clock, Download, FileText, TrendingUp,
-	UserCircle, Camera, ShieldCheck, History, Bell, Check,
+	UserCircle, Camera, ShieldCheck, Bell, Check,
 	LogOut, ChevronRight, Calendar, KeyRound, X, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
@@ -896,47 +896,6 @@ function ProfilPage() {
 								</motion.div>
 							</AnimatePresence>
 						</>
-					)}
-				</div>
-			</div>
-
-			{/* Log Kehadiran */}
-			<div className="space-y-2">
-				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
-					<History className="h-3 w-3 text-primary" />
-					Log Kehadiran {MONTHS[selectedMonth - 1]} {selectedYear}
-				</h3>
-				<div className="rounded-xl border bg-card overflow-hidden">
-					{!logs || logs.length === 0 ? (
-						<div className="p-8 text-center text-xs text-muted-foreground">
-							Tidak ada data absensi untuk periode ini.
-						</div>
-					) : (
-						<div className="divide-y divide-border">
-							{logs.map((log: any) => (
-								<div key={log._id} className="flex items-center justify-between p-3 text-sm">
-									<div className="flex items-center gap-2.5">
-										<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-[10px] font-bold flex-col leading-tight shrink-0">
-											<span>{new Date(log.timestamp).getDate()}</span>
-											<span className="text-[8px] opacity-60">{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
-										</div>
-										<div>
-											<p className="font-bold capitalize text-xs">{log.type === "check_in" ? "Masuk" : "Keluar"}</p>
-											<p className="text-[10px] text-muted-foreground mt-0.5">
-												{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-											</p>
-										</div>
-									</div>
-									<div className="text-right">
-										<div className={`flex items-center gap-1.5 font-bold text-[10px] ${log.type === "check_in" ? "text-emerald-600" : "text-orange-600"}`}>
-											<div className={`h-1.5 w-1.5 rounded-full ${log.type === "check_in" ? "bg-emerald-500" : "bg-orange-500"}`} />
-											{log.type === "check_in" ? "MASUK" : "KELUAR"}
-										</div>
-										{log.notes && <p className="text-[9px] text-muted-foreground truncate max-w-[80px] mt-0.5">{log.notes}</p>}
-									</div>
-								</div>
-							))}
-						</div>
 					)}
 				</div>
 			</div>

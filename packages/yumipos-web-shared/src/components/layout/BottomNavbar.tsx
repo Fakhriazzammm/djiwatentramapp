@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "@tanstack/react-router";
-import { Home, Camera, Calendar, User } from "lucide-react";
+import { Home, Camera, History, User } from "lucide-react";
 
 type NavItem = {
 	label: string;
@@ -23,8 +23,8 @@ function makeItems(baseRoute: string): NavItem[] {
 			isActive: (path, br) => path === `${br}/absensi`,
 		},
 		{
-			label: "Jadwal",
-			icon: Calendar,
+			label: "Log Absensi",
+			icon: History,
 			getRoute: () => "/jadwal",
 			isActive: (path, br) => path === `${br}/jadwal`,
 		},

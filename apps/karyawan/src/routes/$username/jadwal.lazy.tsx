@@ -1,9 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
+import { useState } from "react";
 import { useStaffProfile } from "../$username.lazy";
-import { Calendar } from "lucide-react";
-import { motion } from "framer-motion";
+import { useHybridStaffLogs } from "@yumipos/web-shared";
+import { History } from "lucide-react";
 
 export const Route = createLazyFileRoute("/$username/jadwal")({
 	component: JadwalPage,
@@ -15,17 +14,23 @@ const MONTHS = [
 ];
 
 function JadwalPage() {
-	const { staff } = useStaffProfile();
+	const { staff, isUnlocked, refreshKey } = useStaffProfile();
 	const now = new Date();
 	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
+	const logs = useHybridStaffLogs(
+		isUnlocked && staff
+			? { userId: staff._id, month: selectedMonth, year: selectedYear, refreshTrigger: refreshKey }
+			: undefined
+	);
 
 	return (
 		<div className="space-y-4">
 			{/* Period Selector */}
 			<div className="flex items-center justify-between gap-2 px-2">
 				<div className="flex items-center gap-1.5">
-					<Calendar className="h-3 w-3 text-primary" />
+					<History className="h-3 w-3 text-primary" />
 					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
 				</div>
 				<div className="flex items-center gap-1.5">
@@ -50,16 +55,40 @@ function JadwalPage() {
 				</div>
 			</div>
 
-			{/* Personal Schedule */}
-			{staff && (
-				<PersonalSchedule
-					userId={staff._id}
-					userName={staff.name}
-					userRole={staff.roleName}
-					month={selectedMonth}
-					year={selectedYear}
-				/>
-			)}
+			{/* Log Kehadiran */}
+			<div className="rounded-xl border bg-card overflow-hidden">
+				{!logs || logs.length === 0 ? (
+					<div className="p-8 text-center text-xs text-muted-foreground">
+						Tidak ada data absensi untuk periode ini.
+					</div>
+				) : (
+					<div className="divide-y divide-border">
+						{logs.map((log: any) => (
+							<div key={log._id} className="flex items-center justify-between p-3 text-sm">
+								<div className="flex items-center gap-2.5">
+									<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-[10px] font-bold flex-col leading-tight shrink-0">
+										<span>{new Date(log.timestamp).getDate()}</span>
+										<span className="text-[8px] opacity-60">{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
+									</div>
+									<div>
+										<p className="font-bold capitalize text-xs">{log.type === "check_in" ? "Masuk" : "Keluar"}</p>
+										<p className="text-[10px] text-muted-foreground mt-0.5">
+											{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+										</p>
+									</div>
+								</div>
+								<div className="text-right">
+									<div className={`flex items-center gap-1.5 font-bold text-[10px] ${log.type === "check_in" ? "text-emerald-600" : "text-orange-600"}`}>
+										<div className={`h-1.5 w-1.5 rounded-full ${log.type === "check_in" ? "bg-emerald-500" : "bg-orange-500"}`} />
+										{log.type === "check_in" ? "MASUK" : "KELUAR"}
+									</div>
+									{log.notes && <p className="text-[9px] text-muted-foreground truncate max-w-[80px] mt-0.5">{log.notes}</p>}
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }
