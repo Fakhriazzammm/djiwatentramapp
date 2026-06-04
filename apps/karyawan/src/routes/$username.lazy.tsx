@@ -37,7 +37,7 @@ export const Route = createLazyFileRoute("/$username")({
 function StaffProfileLayout() {
 	const { username } = useParams({ from: "/$username" as any }) as { username: string };
 	const navigate = useNavigate();
-	const { user: authUser, isAdmin, isAuthenticated, token, logout } = useYumiAuth();
+	const { user: authUser, isAdmin, isAuthenticated, token, logout, isLoading: isAuthLoading } = useYumiAuth();
 
 	const [isUnlocked, setIsUnlocked] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -68,8 +68,8 @@ function StaffProfileLayout() {
 
 	const staff = useHybridStaffBySlug(username);
 
-	// Guard: loading
-	if (staff === undefined) {
+	// Guard: loading staff OR auth not yet resolved
+	if (staff === undefined || isAuthLoading) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
 				<motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
@@ -93,10 +93,8 @@ function StaffProfileLayout() {
 		);
 	}
 
-	// Guard: locked (public view — not logged in as this user)
+	// Guard: after auth has resolved, if still locked → redirect to login
 	if (!isUnlocked) {
-		// Instead of showing a locked profile view with limited access message,
-		// immediately redirect them to login page
 		window.location.replace("/login");
 		return null;
 	}
