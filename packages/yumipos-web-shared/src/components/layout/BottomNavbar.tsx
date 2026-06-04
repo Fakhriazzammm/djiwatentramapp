@@ -1,4 +1,4 @@
-import { useLocation } from "@tanstack/react-router";
+import { useNavigate, useLocation } from "@tanstack/react-router";
 import { Home, Camera, Calendar, User } from "lucide-react";
 
 type NavItem = {
@@ -13,51 +13,54 @@ function makeItems(baseRoute: string): NavItem[] {
 		{
 			label: "Beranda",
 			icon: Home,
-			getRoute: (br) => `${br}/beranda`,
+			getRoute: () => "/beranda",
 			isActive: (path, br) => path === `${br}/beranda`,
 		},
 		{
 			label: "Absensi",
 			icon: Camera,
-			getRoute: (br) => `${br}/absensi`,
+			getRoute: () => "/absensi",
 			isActive: (path, br) => path === `${br}/absensi`,
 		},
 		{
 			label: "Jadwal",
 			icon: Calendar,
-			getRoute: (br) => `${br}/jadwal`,
+			getRoute: () => "/jadwal",
 			isActive: (path, br) => path === `${br}/jadwal`,
 		},
 		{
 			label: "Profil",
 			icon: User,
-			getRoute: (br) => `${br}/profil`,
+			getRoute: () => "/profil",
 			isActive: (path, br) => path === `${br}/profil`,
 		},
 	];
 }
 
 export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
+	const navigate = useNavigate();
 	const location = useLocation();
 	const items = makeItems(baseRoute);
 
-	const handleNav = (route: string) => {
-		// Use window.location for reliable SPA navigation
-		// TanStack Router navigate with dynamic params can be unreliable
-		window.location.href = route;
-	};
+	// Extract username from baseRoute (e.g. "/ikhsan" → "ikhsan")
+	const username = baseRoute.replace("/", "");
 
 	return (
 		<nav className="z-20 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md">
 			<div className="mx-auto flex max-w-2xl items-center justify-center gap-4 px-1 py-1">
 				{items.map((item) => {
 					const Icon = item.icon;
-					const route = item.getRoute(baseRoute);
+					const childRoute = item.getRoute(baseRoute);
 					const active = item.isActive(location.pathname, baseRoute);
 					return (
 						<button
 							key={item.label}
-							onClick={() => handleNav(route)}
+							onClick={() =>
+								navigate({
+									to: `/$username${childRoute}` as any,
+									params: { username },
+								})
+							}
 							className={`relative flex flex-col items-center gap-0.5 px-4 py-1.5 transition-all active:scale-95 ${
 								active
 									? "text-primary"

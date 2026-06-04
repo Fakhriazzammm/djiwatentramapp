@@ -1,13 +1,12 @@
 import { createLazyFileRoute, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target */
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { useYumiAuth, useHybridStaffBySlug } from "@yumipos/web-shared";
-import { Footer } from "@yumipos/web-shared/components/layout/Footer";
 import { BottomNavbar } from "@yumipos/web-shared/components/layout/BottomNavbar";
 import { HomeClockOutBanner } from "@yumipos/web-shared/components/home/home-clockout-banner";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { motion } from "framer-motion";
-import { Camera, Clock, UserCircle, ShieldCheck } from "lucide-react";
+import { Clock, UserCircle, ShieldCheck } from "lucide-react";
 
 /** Shared context for child routes */
 export interface StaffProfileContext {
@@ -37,7 +36,7 @@ export const Route = createLazyFileRoute("/$username")({
 function StaffProfileLayout() {
 	const { username } = useParams({ from: "/$username" as any }) as { username: string };
 	const navigate = useNavigate();
-	const { user: authUser, isAdmin, isAuthenticated, token, logout, isLoading: isAuthLoading } = useYumiAuth();
+	const { user: authUser, isAdmin, isAuthenticated, token, isLoading: isAuthLoading } = useYumiAuth();
 
 	const [isUnlocked, setIsUnlocked] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -67,7 +66,6 @@ function StaffProfileLayout() {
 	}, [isUnlocked]);
 
 	const staff = useHybridStaffBySlug(username);
-
 	// Guard: loading staff OR auth not yet resolved
 	if (staff === undefined || isAuthLoading) {
 		return (
@@ -141,7 +139,7 @@ function StaffProfileLayout() {
 
 				{/* Bottom Navbar — fixed at bottom */}
 				<div className="shrink-0 border-t bg-background">
-					<BottomNavbar baseRoute={`/${username}`} username={username} />
+					<BottomNavbar baseRoute={`/${username}`} />
 				</div>
 			</div>
 		</StaffProfileCtx.Provider>
