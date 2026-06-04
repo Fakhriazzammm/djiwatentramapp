@@ -393,6 +393,12 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
             ...(bonusShifts.length > 0 ? { shifts: bonusShifts } : {}),
           };
 
+          // Also populate shift_work_dates from bonus shifts
+          if (bonusShifts.length > 0) {
+            breakdown.shift_work_dates = bonusShifts.map((s) => s.date);
+            breakdown.shifts = bonusShifts.length;
+          }
+
           // Recalculate gross/net to include bonus
           const newGross = (item.gross_pay ?? 0) + totalBonus;
           const newNet = (item.net_pay ?? 0) + totalBonus;
