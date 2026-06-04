@@ -132,13 +132,15 @@ function StaffProfileLayout() {
 				</div>
 
 				{/* Scrollable content */}
-				<main className="flex-1 overflow-y-auto mx-auto w-full max-w-2xl px-4 py-3">
-					<Outlet />
+				<main className="flex-1 overflow-y-auto">
+					<div className="mx-auto w-full max-w-2xl px-4 py-3">
+						<Outlet />
+					</div>
 				</main>
 
 				{/* Bottom Navbar — fixed at bottom */}
 				<div className="shrink-0 border-t bg-background">
-					<BottomNavbar baseRoute={`/${username}`} />
+					<BottomNavbar baseRoute={`/${username}`} username={username} />
 				</div>
 			</div>
 		</StaffProfileCtx.Provider>

@@ -4,9 +4,9 @@ import { Home, Camera, Calendar, User } from "lucide-react";
 type NavItem = {
 	label: string;
 	icon: typeof Home;
-	/** Build the full route path */
+	/** Route path to navigate to (e.g. '/$username/beranda') */
 	getRoute: (baseRoute: string) => string;
-	/** Match logic for active state */
+	/** Match logic for active state (e.g. '/ikhsan/beranda') */
 	isActive: (currentPath: string, baseRoute: string) => boolean;
 };
 
@@ -15,31 +15,31 @@ function makeItems(baseRoute: string): NavItem[] {
 		{
 			label: "Beranda",
 			icon: Home,
-			getRoute: (br) => `${br}/beranda`,
+			getRoute: () => `/beranda`,
 			isActive: (path, br) => path === `${br}/beranda`,
 		},
 		{
 			label: "Absensi",
 			icon: Camera,
-			getRoute: (br) => `${br}/absensi`,
+			getRoute: () => `/absensi`,
 			isActive: (path, br) => path === `${br}/absensi`,
 		},
 		{
 			label: "Jadwal",
 			icon: Calendar,
-			getRoute: (br) => `${br}/jadwal`,
+			getRoute: () => `/jadwal`,
 			isActive: (path, br) => path === `${br}/jadwal`,
 		},
 		{
 			label: "Profil",
 			icon: User,
-			getRoute: (br) => `${br}/profil`,
+			getRoute: () => `/profil`,
 			isActive: (path, br) => path === `${br}/profil`,
 		},
 	];
 }
 
-export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
+export function BottomNavbar({ baseRoute, username }: { baseRoute: string; username?: string }) {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const items = makeItems(baseRoute);
@@ -49,13 +49,16 @@ export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 			<div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-1">
 				{items.map((item) => {
 					const Icon = item.icon;
+					const route = item.getRoute(baseRoute);
 					const active = item.isActive(location.pathname, baseRoute);
 					return (
 						<button
 							key={item.label}
-							onClick={() =>
-								navigate({ to: item.getRoute(baseRoute) as any })
-							}
+							onClick={() => {
+								if (username) {
+									navigate({ to: `/$username${route}` as any, params: { username } });
+								}
+							}}
 							className={`relative flex flex-col items-center gap-0.5 px-4 py-1.5 transition-all active:scale-95 ${
 								active
 									? "text-primary"

@@ -301,9 +301,101 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
   `;
   const result = await queryRaw(supabase, sql);
 
-  // Bonus calculation is handled by the frontend via fetchShiftReports()
-  // which computes accurate per-shift memberBonuses based on actual revenue
-  // vs targets. Backend only stores what the payroll run provides.
+  // ── Post-process: apply bonus from shift memberBonuses ──
+  try {
+    // Get period for this run
+    const periodData: any[] = await queryRaw(supabase, `
+      SELECT pp.period_name, pp.start_date, pp.end_date
+      FROM pos.payroll_periods pp
+      JOIN pos.payroll_runs pr ON pr.payroll_period_id = pp.id
+      WHERE pr.id = '${runId}'
+      LIMIT 1
+    `);
+    if (periodData && periodData.length > 0) {
+      const startTs = new Date(periodData[0].start_date).getTime();
+      const endTs = new Date(periodData[0].end_date).getTime() + 86400000;
+
+      // Get all shifts in this period that have stored memberBonuses
+      const shiftsWithBonus: any[] = await queryRaw(supabase, `
+        SELECT source_id, shift_name, start_time, team_members,
+               raw->'memberBonuses' AS member_bonuses
+        FROM pos.shifts
+        WHERE start_time >= ${startTs}
+          AND start_time <= ${endTs}
+          AND raw ? 'memberBonuses'
+      `);
+
+      if (shiftsWithBonus && shiftsWithBonus.length > 0) {
+        // Group bonus by staff name
+        const staffBonus: Record<string, { total: number; shifts: { shiftName: string; bonus: number; date: string }[] }> = {};
+
+        for (const shift of shiftsWithBonus) {
+          let bonuses: any[] = [];
+          if (typeof shift.member_bonuses === 'string') {
+            try { bonuses = JSON.parse(shift.member_bonuses); } catch {}
+          } else if (Array.isArray(shift.member_bonuses)) {
+            bonuses = shift.member_bonuses;
+          }
+          for (const mb of bonuses) {
+            const name = (mb.name ?? "").toUpperCase().trim();
+            if (!name) continue;
+            if (!staffBonus[name]) staffBonus[name] = { total: 0, shifts: [] };
+            const bonusAmount = Number(mb.bonus ?? 0);
+            if (bonusAmount > 0) {
+              staffBonus[name].total += bonusAmount;
+              staffBonus[name].shifts.push({
+                shiftName: shift.shift_name ?? "Shift",
+                bonus: bonusAmount,
+                date: shift.start_time
+                  ? new Date(shift.start_time).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+                  : "",
+              });
+            }
+          }
+        }
+
+        // Update each payslip with bonus data
+        const runItems: any[] = await queryRaw(supabase, `
+          SELECT id, user_name, gross_pay, net_pay, compensation_breakdown
+          FROM pos.payroll_run_items
+          WHERE payroll_run_id = '${runId}'
+        `);
+
+        for (const item of runItems) {
+          const name = (item.user_name ?? "").toUpperCase().trim();
+          const bonusInfo = staffBonus[name];
+          if (!bonusInfo || bonusInfo.total <= 0) continue;
+
+          const breakdown = typeof item.compensation_breakdown === 'string'
+            ? JSON.parse(item.compensation_breakdown)
+            : (item.compensation_breakdown ?? {});
+
+          breakdown.bonus_target = {
+            basis: "shift",
+            total_bonus: bonusInfo.total,
+            shifts: bonusInfo.shifts,
+          };
+          breakdown.shift_work_dates = bonusInfo.shifts.map((s) => s.date);
+          breakdown.shifts = bonusInfo.shifts.length;
+
+          const newGross = (item.gross_pay ?? 0) + bonusInfo.total;
+          const newNet = (item.net_pay ?? 0) + bonusInfo.total;
+
+          await queryRaw(supabase, `
+            UPDATE pos.payslips
+            SET
+              breakdown = '${JSON.stringify(breakdown).replace(/'/g, "''")}'::jsonb,
+              gross_pay = ${newGross},
+              net_pay = ${newNet}
+            WHERE payroll_run_item_id = '${item.id}';
+          `);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[generate-payroll] bonus post-processing failed:", e);
+    // Non-fatal — payslips still created without bonus data
+  }
 
   return result;
 }
@@ -328,6 +420,19 @@ async function handleUpdatePayslipStatus(supabase: ReturnType<typeof createClien
   `;
   const result: any[] = await queryRaw(supabase, sql);
   return result?.[0] ?? null;
+}
+
+async function handleSaveShiftBonuses(supabase: ReturnType<typeof createClient>, payload: Record<string, unknown>) {
+  const { shiftId, memberBonuses } = payload as { shiftId: string; memberBonuses: any[] };
+  if (!shiftId || !Array.isArray(memberBonuses)) throw new Error("Missing shiftId or memberBonuses array");
+
+  const sql = `
+    UPDATE pos.shifts
+    SET raw = COALESCE(raw, '{}'::jsonb) || '${JSON.stringify({ memberBonuses }).replace(/'/g, "''")}'::jsonb
+    WHERE source_id = '${shiftId}'
+    RETURNING source_id;
+  `;
+  return queryRaw(supabase, sql);
 }
 
 async function handleUpdateRunItem(supabase: ReturnType<typeof createClient>, payload: Record<string, unknown>) {
@@ -422,6 +527,9 @@ serve(async (req) => {
         break;
       case "update_payslip_status":
         result = await handleUpdatePayslipStatus(supabase, payload);
+        break;
+      case "save_shift_bonuses":
+        result = await handleSaveShiftBonuses(supabase, payload);
         break;
       case "update_run_item":
         result = await handleUpdateRunItem(supabase, payload);

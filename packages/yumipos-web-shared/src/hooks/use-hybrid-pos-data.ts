@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/client";
+import { invokeEdgeFunction } from "../lib/api-helper";
 import { useSupabaseLiveValue } from "./use-supabase-live-value";
 
 // Global refresh — call triggerHybridRefresh() after any write to
@@ -1272,18 +1273,29 @@ export async function fetchShiftReports() {
 			status: isActive ? "AKTIF" : "SELESAI",
 			startingCash: Number(s.starting_cash ?? 0),
 			...financial,
-			memberBonuses: computeMemberBonuses(
-				s.team_members ?? "",
-				financial.isShiftTargetMet,
-				financial.isDailyTargetMet,
-				financial.shiftTarget && financial.shiftTarget > 0
-					? (financial.shiftCollected ?? 0) / financial.shiftTarget * 100
-					: 0,
-				financial.dailyTarget && financial.dailyTarget > 0
-					? (financial.dailyCollected ?? 0) / financial.dailyTarget * 100
-					: 0,
-				staffNameToRole,
-			),
+			memberBonuses: (() => {
+				const bonuses = computeMemberBonuses(
+					s.team_members ?? "",
+					financial.isShiftTargetMet,
+					financial.isDailyTargetMet,
+					financial.shiftTarget && financial.shiftTarget > 0
+						? (financial.shiftCollected ?? 0) / financial.shiftTarget * 100
+						: 0,
+					financial.dailyTarget && financial.dailyTarget > 0
+						? (financial.dailyCollected ?? 0) / financial.dailyTarget * 100
+						: 0,
+					staffNameToRole,
+				);
+				// Save to DB via Edge Function (fire-and-forget)
+				if (sid && bonuses.some((b) => b.bonus > 0)) {
+					invokeEdgeFunction("generate-payroll", {
+						action: "save_shift_bonuses",
+						shiftId: sid,
+						memberBonuses: bonuses,
+					}).catch(() => {});
+				}
+				return bonuses;
+			})(),
 		} as ShiftReportRecord;
 	});
 }
