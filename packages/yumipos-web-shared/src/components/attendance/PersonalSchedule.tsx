@@ -125,16 +125,27 @@ const HEADER_TEXT_STYLE: React.CSSProperties = {
 
 // ─── Avatar Component ──────────────────────────────────────
 
-function Avatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" | "lg" }) {
+function Avatar({ name, size = "sm", avatarUrl }: { name: string; size?: "sm" | "md" | "lg"; avatarUrl?: string | null }) {
   const sizeMap = { sm: "h-6 w-6 text-[10px]", md: "h-8 w-8 text-xs", lg: "h-10 w-10 text-sm" };
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className={cn("shrink-0 rounded-full object-cover", sizeMap[size])}
+      />
+    );
+  }
+
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary font-bold text-primary-foreground",
+        "flex shrink-0 items-center justify-center rounded-full bg-muted/70 font-bold text-muted-foreground/70",
         sizeMap[size]
       )}
     >
-      {(name?.[0] ?? "?").toUpperCase()}
+      👤
     </div>
   );
 }
