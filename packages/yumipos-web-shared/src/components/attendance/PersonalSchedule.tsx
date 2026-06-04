@@ -4,19 +4,15 @@ import { getDaysInMonth, format } from "date-fns";
 import { id } from "date-fns/locale";
 import {
   CalendarDays,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Users,
   Clock,
   Sun,
   Moon,
-  Star,
   Zap,
   Bed,
   UserCheck,
-  UserX,
-  AlertTriangle,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useHybridAttendanceSchedules } from "../../hooks/use-hybrid-attendance-schedules";
@@ -84,12 +80,6 @@ function getShiftLabel(schedule?: AttendanceSchedule): string {
   return schedule.shiftName.toUpperCase();
 }
 
-function getStaffingStatus(count: number): { label: string; icon: React.ReactNode; color: string } {
-  if (count >= 3) return { label: "Tersedia", icon: <UserCheck className="h-3 w-3" />, color: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30" };
-  if (count >= 1) return { label: "Kurang", icon: <AlertTriangle className="h-3 w-3" />, color: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30" };
-  return { label: "Tidak Ada", icon: <UserX className="h-3 w-3" />, color: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/30" };
-}
-
 function formatDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -150,158 +140,7 @@ function Avatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" | "lg"
   );
 }
 
-// ─── Employee Row ──────────────────────────────────────────
-
-function EmployeeRow({
-  schedule,
-  isSelf,
-  noBorder,
-}: {
-  schedule: AttendanceSchedule;
-  isSelf?: boolean;
-  noBorder?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1.5 px-2.5 py-1.5 transition-colors",
-        isSelf && "bg-primary/[0.04]",
-        !noBorder && "border-b border-border/40 last:border-b-0"
-      )}
-    >
-      {/* Avatar */}
-      <Avatar name={schedule.userName} size="sm" />
-
-      {/* Name + Role */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] font-semibold text-foreground leading-tight truncate">
-            {schedule.userName}
-          </span>
-          {isSelf && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1 py-0.5 text-[6px] font-bold text-primary">
-              <Star className="h-2 w-2 fill-primary" /> Anda
-            </span>
-          )}
-        </div>
-        {schedule.roleName && (
-          <span className="inline-block rounded-md bg-muted/70 px-1 py-0.5 text-[7px] font-medium text-muted-foreground mt-0.5">
-            {schedule.roleName}
-          </span>
-        )}
-      </div>
-
-      {/* Shift Time */}
-      <div className="shrink-0 text-right">
-        {schedule.startTime ? (
-          <div className="flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground">
-            <Clock className="h-2.5 w-2.5 text-muted-foreground/60" />
-            <span>
-              {schedule.startTime.slice(0, 5)}
-              {schedule.endTime ? <span className="text-muted-foreground/50">–{schedule.endTime.slice(0, 5)}</span> : ""}
-            </span>
-          </div>
-        ) : (
-          <span className="text-[8px] font-medium text-muted-foreground/60">–</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Shift Section ─────────────────────────────────────────
-
-function ShiftSection({
-  shiftLabel,
-  staff,
-  isExpanded,
-  onToggle,
-}: {
-  shiftLabel: string;
-  staff: AttendanceSchedule[];
-  isExpanded: boolean;
-  onToggle: () => void;
-}) {
-  const theme = (SHIFT_THEME[shiftLabel] ?? SHIFT_THEME.GENERAL)!;
-  const staffing = getStaffingStatus(staff.length);
-  const currentUserId = (staff[0] as any)?.currentUserId;
-
-  // Get shift times from first schedule with times
-  const firstWithTime = staff.find((s) => s.startTime);
-  const shiftTime = firstWithTime?.startTime
-    ? `${firstWithTime.startTime.slice(0, 5)}${firstWithTime.endTime ? `–${firstWithTime.endTime.slice(0, 5)}` : ""}`
-    : null;
-
-  const iconMap: Record<string, React.ReactNode> = {
-    PAGI: <Sun className="h-3 w-3 text-emerald-500" />,
-    SORE: <Moon className="h-3 w-3 text-sky-500" />,
-    GENERAL: <Zap className="h-3 w-3 text-amber-500" />,
-    OFF: <Bed className="h-3 w-3 text-slate-400" />,
-  };
-
-  return (
-    <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]">
-      {/* Header */}
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-2 px-2.5 py-2 transition-colors hover:bg-muted/20 active:scale-[0.99]"
-      >
-        {/* Shift Icon */}
-        <div className={cn("flex h-6 w-6 items-center justify-center rounded-lg", theme.bg)}>
-          {iconMap[shiftLabel] ?? <CalendarDays className="h-3 w-3" />}
-        </div>
-
-        {/* Shift Info */}
-        <div className="flex-1 text-left">
-          <div className="flex items-center gap-1.5">
-            <span className={cn("text-[11px] font-bold", theme.text)}>{theme.label}</span>
-            <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-muted px-1 text-[8px] font-bold text-muted-foreground">
-              {staff.length}
-            </span>
-          </div>
-          {shiftTime && (
-            <p className="text-[9px] font-medium text-muted-foreground/70">{shiftTime}</p>
-          )}
-        </div>
-
-        {/* Staffing Status */}
-        <div className={cn("hidden sm:inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[7px] font-bold", staffing.color)}>
-          {staffing.icon}
-          <span>{staffing.label}</span>
-        </div>
-
-        {/* Chevron */}
-        <ChevronDown
-          className={cn(
-            "h-3 w-3 text-muted-foreground/50 transition-transform duration-200",
-            isExpanded && "rotate-180"
-          )}
-        />
-      </button>
-
-      {/* Staff List */}
-      <div
-        className={cn(
-          "overflow-hidden transition-all duration-200",
-          isExpanded ? "max-h-[999px] opacity-100" : "max-h-0 opacity-0"
-        )}
-      >
-        <div className={cn("border-t border-border/40", theme.bg)}>
-          {staff.map((s) => (
-            <EmployeeRow
-              key={s._id}
-              schedule={s}
-              isSelf={Boolean(currentUserId && s.userId === currentUserId)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── TeamDayView ──────────────────────────────────────────────
+// ─── TeamDayView (Mobile-First Redesign) ──────────────────────
 
 function TeamDayView({
   schedules,
@@ -351,218 +190,268 @@ function TeamDayView({
     return schedules.find((s) => s.userId === user.id) ?? null;
   }, [schedules, user]);
 
-  // ── Coworkers (same shift as user) ──
+  const myLabel = useMemo(() => (mySchedule ? getShiftLabel(mySchedule) : null), [mySchedule]);
+
+  // ── Coworkers (same shift) ──
   const coworkers = useMemo(() => {
     if (!mySchedule) return [];
-    const myLabel = getShiftLabel(mySchedule);
     return schedules.filter(
       (s) => getShiftLabel(s) === myLabel && s.userId !== user?.id
     );
-  }, [schedules, mySchedule, user]);
+  }, [schedules, mySchedule, myLabel, user]);
 
-  // ── Expand state ──
-  const [expandedShifts, setExpandedShifts] = useState<Set<string>>(() => {
-    if (shifts.length === 0) return new Set();
-    // Auto-expand largest working shift, or user's shift
-    const working = shifts.filter((g) => g.shift !== "OFF");
-    if (working.length === 0 && shifts.length > 0) return new Set([shifts[0]!.shift]);
-    const largest = working.reduce((a, b) => (a.staff.length >= b.staff.length ? a : b));
-    return new Set([largest.shift]);
-  });
+  // ── Active shift tab ──
+  const [activeShift, setActiveShift] = useState<string | null>(null);
 
-  const toggleShift = useCallback((shift: string) => {
-    setExpandedShifts((prev) => {
-      const next = new Set(prev);
-      if (next.has(shift)) next.delete(shift);
-      else next.add(shift);
-      return next;
-    });
-  }, []);
-
-  // Auto-expand user's shift
   useEffect(() => {
-    if (mySchedule) {
-      const myLabel = getShiftLabel(mySchedule);
-      setExpandedShifts((prev) => {
-        if (prev.has(myLabel)) return prev;
-        const next = new Set(prev);
-        next.add(myLabel);
-        return next;
-      });
+    // On mount or schedules change, auto-select: user's shift > largest working > first
+    if (shifts.length === 0) {
+      setActiveShift(null);
+      return;
     }
-  }, [mySchedule]);
+    if (myLabel && shifts.some((s) => s.shift === myLabel)) {
+      setActiveShift(myLabel);
+      return;
+    }
+    const working = shifts.filter((g) => g.shift !== "OFF");
+    if (working.length > 0) {
+      const largest = working.reduce((a, b) => (a.staff.length >= b.staff.length ? a : b));
+      setActiveShift(largest.shift);
+      return;
+    }
+    setActiveShift(shifts[0]!.shift);
+  }, [shifts, myLabel]);
+
+  const activeStaff = useMemo(() => {
+    const group = shifts.find((g) => g.shift === activeShift);
+    return group?.staff ?? [];
+  }, [shifts, activeShift]);
 
   const empty = shifts.length === 0;
 
   return (
-    <div className="space-y-1.5">
-      {/* ── Date Navigation ── */}
-      <div className="flex items-center justify-between px-1">
+    <div className="space-y-2">
+      {/* ── Date Navigation (compact) ── */}
+      <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={onPrevDay}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-90"
         >
           <ChevronLeft className="h-3 w-3" />
         </button>
-        <div className="flex flex-col items-center">
-          <span className="text-[10px] font-bold text-foreground">
-            {format(selectedDate, "EEEE", { locale: id })}
+
+        <div className="flex items-center gap-1.5 truncate text-center">
+          <span className="text-[11px] font-bold text-foreground truncate">
+            {format(selectedDate, "EEEE, d MMM", { locale: id })}
           </span>
-          <span className="text-[9px] font-medium text-muted-foreground">
-            {format(selectedDate, "d MMMM yyyy", { locale: id })}
-            {isToday && (
-              <span className="ml-1 rounded-full bg-primary/10 px-1 py-0.5 text-[7px] font-bold text-primary uppercase">
-                Hari ini
-              </span>
-            )}
-          </span>
+          {isToday && (
+            <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[7px] font-bold uppercase text-primary">
+              Hari ini
+            </span>
+          )}
         </div>
+
         <button
           type="button"
           onClick={onNextDay}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground shadow-sm transition-all hover:bg-muted active:scale-90"
         >
           <ChevronRight className="h-3 w-3" />
         </button>
       </div>
 
-      {/* ── "Shift Saya Hari Ini" Card ── */}
-      {user && (
-        <div
-          className={cn(
-            "overflow-hidden rounded-xl border shadow-[0_1px_4px_-1px_rgba(0,0,0,0.04)] transition-all",
-            mySchedule
-              ? "border-emerald-200/70 dark:border-emerald-800/40"
-              : "border-border/60"
-          )}
+      {empty ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-2 py-8"
         >
-          {mySchedule ? (
-            <div className="relative bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/15 dark:to-card px-2.5 py-2">
-              <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-500 rounded-r" />
-
-              <div className="flex items-center gap-1 mb-1">
-                <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                  <Sun className="h-2 w-2 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <span className="text-[7px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  Shift Saya Hari Ini
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Avatar name={user.name} size="sm" />
-                <div>
-                  <p className="text-[11px] font-bold text-foreground">{user.name}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {user.role && (
-                      <span className="rounded-md bg-emerald-100/70 dark:bg-emerald-900/30 px-1 py-0.5 text-[7px] font-semibold text-emerald-700 dark:text-emerald-300">
-                        {user.role}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                      Sedang Bertugas
-                    </span>
-                  </div>
-                  {mySchedule.startTime && (
-                    <p className="flex items-center gap-1 mt-0.5 text-[9px] font-semibold text-muted-foreground">
-                      <Clock className="h-2.5 w-2.5" />
-                      {mySchedule.startTime.slice(0, 5)}
-                      {mySchedule.endTime ? ` – ${mySchedule.endTime.slice(0, 5)}` : ""}
-                    </p>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted/50">
+            <CalendarDays className="h-5 w-5 text-muted-foreground/30" />
+          </div>
+          <p className="text-[12px] font-semibold text-muted-foreground">
+            Tidak ada jadwal
+          </p>
+        </motion.div>
+      ) : (
+        <>
+          {/* ── My Shift Chip ── */}
+          {user && (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-xl border px-2.5 py-1.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]",
+                mySchedule
+                  ? "border-emerald-200/60 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-950/15"
+                  : "border-border/60 bg-card"
+              )}
+            >
+              <Avatar name={user.name} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-bold text-foreground truncate">
+                    {user.name}
+                  </span>
+                  {mySchedule && (
+                    <span className="flex h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                   )}
                 </div>
+                <span className="text-[8px] font-semibold text-muted-foreground">
+                  {mySchedule
+                    ? `${myLabel} • ${mySchedule.startTime?.slice(0, 5) ?? ""}${mySchedule.endTime ? `–${mySchedule.endTime.slice(0, 5)}` : ""}`
+                    : "Hari ini libur"}
+                </span>
               </div>
-            </div>
-          ) : (
-            <div className="bg-gradient-to-br from-slate-50/80 to-white dark:from-slate-900/15 dark:to-card px-2.5 py-2">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                  <Bed className="h-3.5 w-3.5 text-slate-400" />
+              {mySchedule && (
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/40">
+                  {iconByShift[myLabel ?? ""] ?? <Sun className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />}
                 </div>
-                <div>
-                  <p className="text-[11px] font-bold text-foreground">{user.name}</p>
-                  <span className="text-[9px] font-semibold text-slate-500">Hari Ini Libur</span>
-                </div>
-              </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {empty ? (
-        <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted/50">
-            <CalendarDays className="h-4 w-4 text-muted-foreground/30" />
-          </div>
-          <p className="text-[11px] font-medium text-muted-foreground">
-            Tidak ada jadwal hari ini
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          {/* ── Daily Summary ── */}
-          <div className="grid grid-cols-4 gap-1">
-            {[
-              { label: "Total", value: totalStaff, icon: <Users className="h-2.5 w-2.5" />, color: "text-foreground bg-card border-border/50" },
-              { label: "Bertugas", value: workingToday, icon: <UserCheck className="h-2.5 w-2.5" />, color: "text-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30" },
-              { label: "Cadangan", value: totalStaff - workingToday - offDuty, icon: <Zap className="h-2.5 w-2.5" />, color: "text-amber-600 bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30" },
-              { label: "Libur", value: offDuty, icon: <Bed className="h-2.5 w-2.5" />, color: "text-slate-500 bg-slate-50/60 dark:bg-slate-900/20 border-slate-200/40 dark:border-slate-700/30" },
-            ].map((item) => (
+          {/* ── KPI Pills (horizontal scroll) ── */}
+          <div className="flex gap-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
+            {([
+              { label: "Total", value: totalStaff, icon: <Users className="h-3 w-3" />, color: "bg-card border-border/50 text-foreground" },
+              { label: "Tugas", value: workingToday, icon: <UserCheck className="h-3 w-3" />, color: "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400" },
+              { label: "Cdn", value: Math.max(0, totalStaff - workingToday - offDuty), icon: <Zap className="h-3 w-3" />, color: "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30 text-amber-600 dark:text-amber-400" },
+              { label: "Libur", value: offDuty, icon: <Bed className="h-3 w-3" />, color: "bg-slate-50/60 dark:bg-slate-900/20 border-slate-200/40 dark:border-slate-700/30 text-slate-500 dark:text-slate-400" },
+            ] as const).map((item) => (
               <div
                 key={item.label}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 rounded-lg border px-1.5 py-1.5 shadow-[0_1px_1px_0_rgba(0,0,0,0.01)]",
+                  "flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 shadow-[0_1px_1px_0_rgba(0,0,0,0.01)]",
                   item.color
                 )}
               >
-                <div className="flex items-center gap-0.5">
-                  {item.icon}
-                  <span className="text-[12px] font-black leading-none">{item.value}</span>
-                </div>
-                <span className="text-[6px] font-bold uppercase tracking-wider opacity-70">
-                  {item.label}
-                </span>
+                {item.icon}
+                <span className="text-[11px] font-black leading-none">{item.value}</span>
+                <span className="text-[6px] font-bold uppercase tracking-wider opacity-70">{item.label}</span>
               </div>
             ))}
           </div>
 
-          {/* ── Bekerja Bersama Anda ── */}
+          {/* ── Coworkers chip (inline compact) ── */}
           {coworkers.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]">
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/40">
-                <Users className="h-3 w-3 text-primary" />
-                <span className="text-[9px] font-bold text-foreground">Bekerja Bersama Anda</span>
-                <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary/10 px-1 text-[7px] font-bold text-primary">
-                  {coworkers.length}
-                </span>
-              </div>
-              <div>
-                {coworkers.map((s) => (
-                  <EmployeeRow key={s._id} schedule={s} />
-                ))}
-              </div>
+            <div className="flex items-center gap-1 px-0.5">
+              <Users className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
+              <span className="text-[8px] font-semibold text-muted-foreground/70">
+                {coworkers.length} rekan satu shift
+              </span>
             </div>
           )}
 
-          {/* ── All Shifts ── */}
-          <div className="space-y-1">
-            {shifts.map(({ shift, staff }) => (
-              <ShiftSection
-                key={shift}
-                shiftLabel={shift}
-                staff={staff.map((s) => ({ ...s, currentUserId: user?.id }))}
-                isExpanded={expandedShifts.has(shift)}
-                onToggle={() => toggleShift(shift)}
-              />
-            ))}
+          {/* ── Shift Tab Selector ── */}
+          <div className="flex gap-1 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
+            {shifts.map(({ shift, staff }) => {
+              const theme = SHIFT_THEME[shift] ?? SHIFT_THEME.GENERAL!;
+              const isActive = activeShift === shift;
+              return (
+                <motion.button
+                  key={shift}
+                  type="button"
+                  onClick={() => setActiveShift(shift)}
+                  whileTap={{ scale: 0.95 }}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 transition-all",
+                    isActive
+                      ? theme.bg + " " + theme.border + " shadow-sm"
+                      : "bg-card border-border/50 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {iconByShift[shift] ?? <CalendarDays className="h-3 w-3" />}
+                  <span className={cn("text-[9px] font-bold", isActive ? theme.text : "")}>
+                    {theme.label}
+                  </span>
+                  <span
+                    className={cn(
+                      "inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full text-[7px] font-bold",
+                      isActive
+                        ? "bg-white/60 dark:bg-foreground/10"
+                        : "bg-muted/60"
+                    )}
+                  >
+                    {staff.length}
+                  </span>
+                </motion.button>
+              );
+            })}
           </div>
-        </div>
+
+          {/* ── Active Shift Staff List ── */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeShift ?? "none"}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-[0_1px_2px_0_rgba(0,0,0,0.02)]"
+            >
+              {activeStaff.length === 0 ? (
+                <div className="px-3 py-3 text-center">
+                  <p className="text-[10px] font-medium text-muted-foreground">Tidak ada staff</p>
+                </div>
+              ) : (
+                <div>
+                  {activeStaff.map((s, idx) => (
+                    <div
+                      key={s._id}
+                      className={cn(
+                        "flex items-center gap-2 px-2.5 py-1.5",
+                        idx < activeStaff.length - 1 && "border-b border-border/30"
+                      )}
+                    >
+                      <Avatar name={s.userName} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] font-semibold text-foreground truncate">
+                            {s.userName}
+                          </span>
+                          {(activeShift && user?.id === s.userId) && (
+                            <span className="shrink-0 rounded-full bg-primary/10 px-1 py-0.5 text-[6px] font-bold text-primary">
+                              Anda
+                            </span>
+                          )}
+                          {s.roleName && (
+                            <span className="shrink-0 rounded-md bg-muted/70 px-1 py-0.5 text-[7px] font-medium text-muted-foreground">
+                              {s.roleName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        {s.startTime ? (
+                          <span className="flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground">
+                            <Clock className="h-2.5 w-2.5 text-muted-foreground/60" />
+                            {s.startTime.slice(0, 5)}
+                            {s.endTime && (
+                              <span className="text-muted-foreground/50">–{s.endTime.slice(0, 5)}</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-[8px] font-medium text-muted-foreground/60">–</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </>
       )}
     </div>
   );
 }
+
+const iconByShift: Record<string, React.ReactNode> = {
+  PAGI: <Sun className="h-3 w-3 text-emerald-500" />,
+  SORE: <Moon className="h-3 w-3 text-sky-500" />,
+  GENERAL: <Zap className="h-3 w-3 text-amber-500" />,
+  OFF: <Bed className="h-3 w-3 text-slate-400" />,
+};
 
 // ─── PersonalSchedule ─────────────────────────────────────────
 
