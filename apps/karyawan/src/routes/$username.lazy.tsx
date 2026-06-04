@@ -7,7 +7,7 @@ import { BottomNavbar } from "@yumipos/web-shared/components/layout/BottomNavbar
 import { HomeClockOutBanner } from "@yumipos/web-shared/components/home/home-clockout-banner";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { motion } from "framer-motion";
-import { Camera, Clock, Lock, ShieldCheck, UserCircle } from "lucide-react";
+import { Camera, Clock, UserCircle, ShieldCheck } from "lucide-react";
 
 /** Shared context for child routes */
 export interface StaffProfileContext {
@@ -95,7 +95,10 @@ function StaffProfileLayout() {
 
 	// Guard: locked (public view — not logged in as this user)
 	if (!isUnlocked) {
-		return <LockedView staff={staff} navigate={navigate} username={username} />;
+		// Instead of showing a locked profile view with limited access message,
+		// immediately redirect them to login page
+		window.location.replace("/login");
+		return null;
 	}
 
 	// Context shared with child routes
@@ -147,61 +150,4 @@ function StaffProfileLayout() {
 	);
 }
 
-// ── Locked View (public profile) ──────────────────────────────────────
-function LockedView({ staff, navigate, username }: { staff: any; navigate: ReturnType<typeof useNavigate>; username: string }) {
-	return (
-		<div className="min-h-screen bg-background">
-			<main className="mx-auto max-w-2xl px-4 py-10">
-				<motion.div
-					initial={{ opacity: 0, y: 20 }}
-					animate={{ opacity: 1, y: 0 }}
-					exit={{ opacity: 0, scale: 0.95 }}
-					className="space-y-10"
-				>
-					{/* Header Profile */}
-					<div className="flex flex-col items-center text-center">
-						<div className="relative mb-4">
-							{staff.photoUrl ? (
-								<img src={staff.photoUrl} alt={staff.name} className="h-20 w-20 rounded-2xl object-cover shadow-inner" />
-							) : (
-								<div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-3xl font-black text-primary shadow-inner">
-									{staff.name.charAt(0)}
-								</div>
-							)}
-							<div className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-lg">
-								<Lock className="h-4 w-4" />
-							</div>
-						</div>
-						<h1 className="text-2xl font-black tracking-tight">{staff.name}</h1>
-						<p className="mt-0.5 font-bold text-primary uppercase tracking-wider text-xs">{staff.roleName}</p>
-					</div>
 
-					{/* Access Restriction View */}
-					<div className="mx-auto max-w-[320px] space-y-6 text-center">
-						<div className="space-y-1">
-							<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Akses Terbatas</p>
-							<p className="text-xs text-muted-foreground">Detail riwayat absen & slip gaji hanya dapat dilihat setelah login.</p>
-						</div>
-						<div className="pt-2 space-y-2.5">
-							<Button
-								className="h-12 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/20"
-								onClick={() => navigate({ to: "/login" as any })}
-							>
-								MASUK KE SISTEM
-							</Button>
-							<Button
-								variant="outline"
-								className="h-12 w-full rounded-xl border-dashed border-primary/30 font-bold text-sm"
-								onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
-							>
-								<Camera className="mr-2 h-4 w-4" />
-								LANGSUNG ABSENSI
-							</Button>
-						</div>
-					</div>
-				</motion.div>
-			</main>
-			<Footer className="mt-6 pb-6" />
-		</div>
-	);
-}
