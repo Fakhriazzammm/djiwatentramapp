@@ -16,6 +16,7 @@ import {
 import type { StaffRoleBonusConfig, PayslipData, PayslipBreakdown } from "@yumipos/web-shared";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
+import { cn } from "@yumipos/web-shared/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	User, Lock, Unlock, Clock, Download, FileText, TrendingUp,
