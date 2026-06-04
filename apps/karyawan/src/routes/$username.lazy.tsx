@@ -113,7 +113,7 @@ function StaffProfileLayout() {
 
 	return (
 		<StaffProfileCtx.Provider value={outletContext}>
-			<div className="min-h-screen bg-background pb-16">
+			<div className="min-h-dvh bg-background pb-16">
 				{/* Navigation Header */}
 				<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
 					<div className="mx-auto flex max-w-2xl items-center justify-center">
@@ -135,12 +135,10 @@ function StaffProfileLayout() {
 				<main className="mx-auto max-w-2xl px-4 py-3 pb-4">
 					<Outlet />
 				</main>
-
-				{/* Bottom Navbar */}
-				<BottomNavbar baseRoute={`/${username}`} />
-
-				<Footer className="mt-6 pb-6" />
 			</div>
+
+			{/* Bottom Navbar — fixed to viewport bottom */}
+			<BottomNavbar baseRoute={`/${username}`} />
 		</StaffProfileCtx.Provider>
 	);
 }
