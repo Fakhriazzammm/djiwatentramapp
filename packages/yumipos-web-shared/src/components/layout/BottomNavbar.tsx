@@ -4,7 +4,7 @@ import { Home, Camera, Calendar, User } from "lucide-react";
 type NavItem = {
 	label: string;
 	icon: typeof Home;
-	/** Build the full route path from the parent base (e.g. "/ikhsan") */
+	/** Build the full route path */
 	getRoute: (baseRoute: string) => string;
 	/** Match logic for active state */
 	isActive: (currentPath: string, baseRoute: string) => boolean;
@@ -15,7 +15,8 @@ function makeItems(baseRoute: string): NavItem[] {
 		{
 			label: "Beranda",
 			icon: Home,
-			getRoute: () => baseRoute,
+			// Explicit trailing slash for index route
+			getRoute: (br) => `${br}/`,
 			isActive: (path, br) => path === br || path === `${br}/`,
 		},
 		{

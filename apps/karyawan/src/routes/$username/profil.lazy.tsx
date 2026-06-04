@@ -17,7 +17,7 @@ import type { StaffRoleBonusConfig, PayslipData, PayslipBreakdown } from "@yumip
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
 import { cn } from "@yumipos/web-shared/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
 	User, Lock, Unlock, Clock, Download, FileText, TrendingUp,
 	UserCircle, Camera, ShieldCheck, History, Bell, Check,
@@ -843,34 +843,45 @@ function ProfilPage() {
 					) : (
 						<>
 							{/* Timeline Chips */}
-							<div className="flex gap-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
-								{allPayslips.map((p: any, i: number) => {
-									const isActive = selectedPayslipIdx === i;
-									const month = (p.period_name || "").split(" ")[0]?.substring(0, 3) || "";
-									const net = p.net_pay ?? 0;
-									const netShort = net >= 1_000_000
-										? `${(net / 1_000_000).toFixed(1)}jt`
-										: net >= 1_000
-											? `${(net / 1_000).toFixed(0)}rb`
-											: `${net}`;
-									return (
-										<button
-											key={p.id || i}
-											type="button"
-											onClick={() => setSelectedPayslipIdx(i)}
-											className={cn(
-												"flex shrink-0 flex-col items-center gap-0.5 rounded-lg border px-2.5 py-1.5 transition-all",
-												isActive
-													? "bg-primary/10 border-primary/30 text-primary"
-													: "bg-card border-border/50 text-muted-foreground hover:border-border"
-											)}
-										>
-											<span className="text-[9px] font-bold uppercase">{month}</span>
-											<span className="text-[10px] font-black tabular-nums">{netShort}</span>
-										</button>
-									);
-								})}
-							</div>
+							<LayoutGroup id="payslip-chips">
+								<div className="flex gap-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
+									{allPayslips.map((p: any, i: number) => {
+										const isActive = selectedPayslipIdx === i;
+										const month = (p.period_name || "").split(" ")[0]?.substring(0, 3) || "";
+										const net = p.net_pay ?? 0;
+										const netShort = net >= 1_000_000
+											? `${(net / 1_000_000).toFixed(1)}jt`
+											: net >= 1_000
+												? `${(net / 1_000).toFixed(0)}rb`
+												: `${net}`;
+										return (
+											<motion.button
+												key={p.id || i}
+												layout
+												type="button"
+												onClick={() => setSelectedPayslipIdx(i)}
+												whileTap={{ scale: 0.92 }}
+												className={cn(
+													"relative flex shrink-0 flex-col items-center rounded-lg border px-2 py-1 transition-colors",
+													isActive
+														? "bg-primary/10 border-primary/30 text-primary"
+														: "bg-card border-border/50 text-muted-foreground hover:border-border"
+												)}
+											>
+												<span className="text-[8px] font-bold uppercase leading-tight">{month}</span>
+												<span className="text-[10px] font-black tabular-nums leading-tight">{netShort}</span>
+												{isActive && (
+													<motion.div
+														layoutId="chip-indicator"
+														className="absolute -bottom-px left-1 right-1 h-0.5 rounded-full bg-primary"
+														transition={{ type: "spring", stiffness: 500, damping: 35 }}
+													/>
+												)}
+											</motion.button>
+										);
+									})}
+								</div>
+							</LayoutGroup>
 
 							{/* Detail Card */}
 							<AnimatePresence mode="wait">
