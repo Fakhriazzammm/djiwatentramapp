@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems" | "submitEmployeeApplication" | "parseAttendanceSchedule";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems" | "submitEmployeeApplication" | "parseAttendanceSchedule" | "importAttendanceSchedule";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -885,6 +885,234 @@ ${staffHintText}${shiftHintText}`;
 	}
 }
 
+async function importAttendanceSchedule(payload: JsonRecord): Promise<Record<string, unknown>> {
+	const parsedData = payload.parsedData as Record<string, unknown> | undefined;
+	if (!parsedData || !Array.isArray(parsedData.rows)) {
+		return { error: "parsedData.rows wajib diisi" };
+	}
+
+	const rows = parsedData.rows as any[];
+	const staffColumns = (parsedData.staffColumns ?? []) as any[];
+	const month = (parsedData.month ?? 0) as number;
+	const year = (parsedData.year ?? 0) as number;
+	const sourceFile = (parsedData.source as Record<string, unknown> ?? {}).fileName as string ?? "";
+
+	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+	const supabase = createClient(supabaseUrl, supabaseKey);
+
+	// Step 1: Get all existing staff from yumi_users
+	const { data: existingStaff, error: staffError } = await supabase
+		.from("yumi_users")
+		.select("source_id, name, role_source_id, slug, username");
+
+	if (staffError) return { error: "Gagal query staff: " + staffError.message };
+
+	const existingRoles: any[] = [];
+	const { data: rolesData } = await supabase
+		.from("yumi_roles")
+		.select("source_id, name");
+	if (rolesData) existingRoles.push(...rolesData);
+
+	// Step 2: Collect unique staff names from data
+	const uniqueNames = [...new Set(rows.map((r: any) => r.rawStaffName || "").filter(Boolean))];
+
+	// Step 3: Match and create staff
+	const staffMap: Record<string, string> = {}; // rawName → source_id
+	const createdStaff: string[] = [];
+	const matchedStaff: string[] = [];
+
+	// Helper: name similarity score
+	function nameSimilarity(query: string, dbName: string): number {
+		const q = query.toLowerCase().replace(/[^a-z0-9]/g, "");
+		const d = dbName.toLowerCase().replace(/[^a-z0-9]/g, "");
+		if (q === d) return 1.0;
+		if (d.includes(q)) return 0.9;   // db name contains query (e.g. "isan" in "ikhsaneveryday")
+		if (q.includes(d)) return 0.85;  // query contains db name
+		// Subsequence check: all chars of query appear in order in db name
+		let ptr = 0;
+		for (const ch of q) {
+			const idx = d.indexOf(ch, ptr);
+			if (idx === -1) return 0.0;
+			ptr = idx + 1;
+		}
+		return 0.8; // all chars of query found in order
+	}
+
+	for (const rawName of uniqueNames) {
+		const nameClean = rawName.trim();
+		if (!nameClean) continue;
+
+		// Score all existing staff for best match
+		let bestMatch: any = null;
+		let bestScore = 0;
+
+		for (const s of existingStaff ?? []) {
+			if (!s.name) continue;
+			const score = nameSimilarity(nameClean, s.name);
+			if (score > bestScore) {
+				bestScore = score;
+				bestMatch = s;
+			}
+			// Also check slug
+			if (s.slug) {
+				const slugScore = nameSimilarity(nameClean, s.slug.replace(/-/g, " "));
+				if (slugScore > bestScore) {
+					bestScore = slugScore;
+					bestMatch = s;
+				}
+			}
+		}
+
+		// Use AI fuzzy matching if no good match found (score < 0.6)
+		if (!bestMatch || bestScore < 0.6) {
+			try {
+				const aiPrompt = `Cocokkan nama karyawan dari file Excel "${nameClean}" dengan database. Daftar nama di database: ${(existingStaff ?? []).map((s: any) => s.name).join(", ")}. Balas hanya dengan nama yang paling cocok dari database, atau "TIDAK ADA" jika tidak ada yang cocok. Jika ada kemiripan (misal "ISAN" dengan "IKHSAN EVERYDAY"), pilih yang paling mirip.`;
+
+				const aiResult = await callOpenAI([
+					{ role: "user", content: aiPrompt },
+				], openaiModelChat);
+
+				const aiMatch = (aiResult || "").trim();
+				if (aiMatch && aiMatch !== "TIDAK ADA") {
+					const found = existingStaff?.find(
+						(s: any) => s.name?.toLowerCase() === aiMatch.toLowerCase()
+					);
+					if (found) {
+						bestMatch = found;
+						bestScore = 0.85;
+					}
+				}
+			} catch {
+				// Silently fall through if AI fails
+			}
+		}
+
+		if (bestMatch && bestScore >= 0.6) {
+			staffMap[nameClean] = bestMatch.source_id;
+			matchedStaff.push(`${nameClean} → ${bestMatch.name}`);
+			continue;
+		}
+
+		// Step 3b: Try to get role from staffColumns or row data
+		let roleSourceId = "";
+		const colInfo = staffColumns.find((c: any) =>
+			c.rawName?.toLowerCase() === nameClean.toLowerCase()
+		);
+		const roleName = (colInfo?.role || "").trim().toUpperCase() || "TEAM";
+
+		// Find or create role
+		let role = existingRoles.find((r: any) => r.name?.toUpperCase() === roleName);
+		if (!role) {
+			roleSourceId = "role_" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+			const { error: roleCreateError } = await supabase.rpc("exec_sql", {
+				sql: `INSERT INTO yumi_roles (source_id, name, permissions, raw) ` +
+					`VALUES ('${roleSourceId}', '${roleName}', '[]'::jsonb, '{}'::jsonb) ` +
+					`ON CONFLICT DO NOTHING;`,
+			});
+			if (!roleCreateError) {
+				existingRoles.push({ source_id: roleSourceId, name: roleName });
+			} else {
+				// Fallback: try querying again
+				const { data: freshRole } = await supabase
+					.from("yumi_roles")
+					.select("source_id")
+					.ilike("name", roleName)
+					.single();
+				roleSourceId = (freshRole as any)?.source_id || "";
+			}
+		} else {
+			roleSourceId = role.source_id;
+		}
+
+		// Generate unique username
+		const username = nameClean.toLowerCase().replace(/[^a-z0-9]/g, "_").slice(0, 30);
+		const uniqueSuffix = crypto.randomUUID().replace(/-/g, "").slice(0, 6);
+		const finalUsername = username + "_" + uniqueSuffix;
+
+		// Create user in yumi_users
+		const newUserId = "user_" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+		const slug = nameClean.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+
+		const { error: userCreateError } = await supabase.rpc("exec_sql", {
+			sql: `INSERT INTO yumi_users (source_id, username, name, role_source_id, is_active, receive_report_emails, slug, raw) ` +
+				`VALUES ('${newUserId}', '${finalUsername}', '${nameClean.replace(/'/g, "''")}', '${roleSourceId}', true, false, '${slug}', '{}'::jsonb);`,
+		});
+
+		if (userCreateError) {
+			console.error("Failed to create user:", nameClean, userCreateError.message);
+			continue;
+		}
+
+		staffMap[nameClean] = newUserId;
+		createdStaff.push(`${nameClean} (${roleName})`);
+	}
+
+	// Step 4: Delete existing schedules for this month
+	if (month > 0 && year > 0) {
+		const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+		const endDate = `${year}-${String(month).padStart(2, "0")}-31`;
+		await supabase.rpc("exec_sql", {
+			sql: `DELETE FROM pos.attendance_schedules WHERE date >= '${startDate}'::date AND date <= '${endDate}'::date;`,
+		});
+	}
+
+	// Step 5: Bulk INSERT schedules
+	const valueParts: string[] = [];
+	let skippedCount = 0;
+
+	for (const row of rows) {
+		const staffName = (row.rawStaffName || "").trim();
+		const userId = staffMap[staffName];
+		if (!userId) {
+			skippedCount++;
+			continue;
+		}
+
+		const dateStr = row.date;
+		const shiftName = (row.shiftName || "GENERAL").replace(/'/g, "''");
+		const startTime = row.startTime ? `'${row.startTime}'::time` : "NULL";
+		const endTime = row.endTime ? `'${row.endTime}'::time` : "NULL";
+		const status = row.status === "off" ? "'off'" : "'scheduled'";
+		const sourceId = crypto.randomUUID();
+
+		valueParts.push(
+			`('${sourceId}', '${userId}', '${dateStr}'::date, '${shiftName}', ${startTime}, ${endTime}, ${status})`
+		);
+	}
+
+	if (valueParts.length > 0) {
+		const { error: insertError } = await supabase.rpc("exec_sql", {
+			sql: `INSERT INTO pos.attendance_schedules (source_id, user_id, date, shift_name, start_time, end_time, status) VALUES ` +
+				valueParts.join(",\n") + ";",
+		});
+		if (insertError) {
+			return { error: "Gagal insert jadwal: " + insertError.message };
+		}
+	}
+
+	// Step 6: Return summary
+	const uniqueDates = [...new Set(rows.map((r: any) => r.date))];
+	return {
+		success: true,
+		summary: {
+			totalRows: rows.length,
+			insertedRows: valueParts.length,
+			skippedRows: skippedCount,
+			uniqueDates: uniqueDates.length,
+			matchedStaff: matchedStaff.length,
+			createdStaff: createdStaff.length,
+			staffDetails: {
+				matched: matchedStaff,
+				created: createdStaff,
+			},
+			month,
+			year,
+			sourceFile,
+		},
+	};
+}
+
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") {
 		return new Response("ok", { headers: corsHeaders });
@@ -933,6 +1161,11 @@ Deno.serve(async (req) => {
 			case "parseAttendanceSchedule": {
 				const result = await parseAttendanceSchedule(body);
 				if (result.error) return fail("AI_PARSE_ERROR", result.error as string, 400);
+				return jsonOk(result as Record<string, unknown>);
+			}
+			case "importAttendanceSchedule": {
+				const result = await importAttendanceSchedule(body);
+				if (result.error) return fail("IMPORT_ERROR", result.error as string, 400);
 				return jsonOk(result as Record<string, unknown>);
 			}
 		default:

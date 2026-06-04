@@ -18,6 +18,8 @@ from telegram.ext import (
 from PIL import Image
 from receipt_restock import handle_restock_from_ocr
 from marketlist import generate_marketlist
+from schedule_import import parse_excel, call_import_schedule
+from schedule_export import generate_roster_excel, fetch_schedules, _month_name
 from hermes_adapter import (
     TelegramContext,
     audit_event,
@@ -134,6 +136,9 @@ ALL_BROADCAST_TARGETS: dict[str, int] = {
     "report": int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388")),
 }
 
+# Attendance notifications target
+_ATTENDANCE_REPORT_CHAT_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
+
 # Dedup: track already-reported orders to prevent re-sending
 _reported_order_nos: set[str] = set()
 _reported_expense_ids: set[str] = set()
@@ -145,6 +150,16 @@ _last_expense_check_ms = 0
 # Product categories for item grouping in order notifications
 _PRODUCT_CATEGORY_MAP: dict[str, str] = {}
 _PRODUCT_CATEGORY_LOADED = False
+
+# ── Attendance polling state ──
+_last_attendance_id: str = ""
+_reported_attendance_ids: set[str] = set()
+# Cached shift schedules (loaded from site settings)
+_SHIFT_SCHEDULES: list[dict] = []
+_SHIFT_SCHEDULES_LOADED = False
+# Cached role baseShiftRate
+_ROLE_RATES: dict[str, float] = {}
+_ROLE_RATES_LOADED = False
 
 async def _build_product_category_map():
     global _PRODUCT_CATEGORY_MAP, _PRODUCT_CATEGORY_LOADED
@@ -689,6 +704,10 @@ def _reply_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("🛒 Marketlist", callback_data="marketlist"),
+            InlineKeyboardButton("📤 Export Jadwal", callback_data="export_jadwal"),
+            InlineKeyboardButton("📥 Import Jadwal", callback_data="import_jadwal"),
+        ],
+        [
             InlineKeyboardButton("💬 Tanya Bebas", callback_data="help"),
         ],
     ])
@@ -1528,6 +1547,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "briefing": cmd_briefing_hari_ini,
         "purchaselog": cmd_purchaselog,
         "marketlist": cmd_marketlist,
+        "export_jadwal": cmd_export_jadwal,
         "help": cmd_help,
     }
 
@@ -1545,8 +1565,91 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if handler_fn:
         # _reply_msg internally checks callback_query.message when update.message is None
         await handler_fn(update, context)
+    elif data == "import_jadwal":
+        await query.edit_message_text(
+            "📥 <b>Import Jadwal</b>\n\n"
+            "Kirim file <b>Excel (.xlsx)</b> jadwal shift ke chat ini.\n\n"
+            "Format yang didukung:\n"
+            "• Baris header: <code>MINGGU KE | HARI | TANGGAL | Nama Staff | ...</code>\n"
+            "• Kolom staff: PAGI (07.30 - 14.30), SORE (13.00 - 21.00), OFF, GENERAL\n\n"
+            "Bot akan otomatis:\n"
+            "1️⃣ Parse file\n"
+            "2️⃣ Cocokkan staff ke database\n"
+            "3️⃣ Daftarkan staff baru jika belum ada\n"
+            "4️⃣ Import semua jadwal\n\n"
+            "Contoh: Kirim file <b>Jadwal Juni 2026.xlsx</b>",
+            reply_markup=_reply_keyboard(),
+            parse_mode="HTML",
+        )
     else:
         await query.edit_message_text("Menu tidak dikenal.", reply_markup=_reply_keyboard())
+
+
+# ===================================================================
+# Export Jadwal Command
+# ===================================================================
+
+async def cmd_export_jadwal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Export schedule as Excel file. Usage: /export_jadwal [bulan] [tahun]"""
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+
+    now = datetime.now(WIB)
+    bulan = now.month
+    tahun = now.year
+
+    args = context.args
+    if args:
+        try:
+            if len(args) >= 1:
+                bulan = int(args[0])
+            if len(args) >= 2:
+                tahun = int(args[1])
+        except ValueError:
+            await _reply_msg(update, context,
+                "Format: /export_jadwal <bulan> <tahun>\n"
+                "Contoh: /export_jadwal 6 2026\n"
+                "Kosongkan untuk bulan ini."
+            )
+            return
+
+    if bulan < 1 or bulan > 12 or tahun < 2000 or tahun > 2100:
+        await _reply_msg(update, context, "Bulan (1-12) atau tahun tidak valid.")
+        return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    try:
+        schedules = await fetch_schedules(httpx, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, bulan, tahun)
+
+        if not schedules:
+            month_name = _month_name(bulan)
+            await _reply_msg(update, context,
+                f"Tidak ada jadwal untuk {month_name} {tahun}.\n\n"
+                f"📎 Kirim file Excel jadwal untuk import, atau coba bulan lain."
+            )
+            return
+
+        excel_bytes = generate_roster_excel(schedules, bulan, tahun)
+        month_name = _month_name(bulan)
+
+        await context.bot.send_document(
+            chat_id=update.effective_chat.id,
+            document=io.BytesIO(excel_bytes),
+            filename=f"JADWAL {month_name.upper()} {tahun}.xlsx",
+            caption=f"📅 Jadwal {month_name} {tahun}\n"
+                    f"• {len(set(s['userName'] for s in schedules))} staff\n"
+                    f"• {len(set(s['date'] for s in schedules))} hari\n"
+                    f"• {len(schedules)} entri jadwal",
+        )
+
+    except Exception as e:
+        logger.error("Export jadwal error: %s", e, exc_info=True)
+        await _reply_msg(update, context,
+            f"❌ Gagal export jadwal: {str(e)}\n"
+            "Coba lagi atau hubungi admin."
+        )
 
 
 # ===================================================================
@@ -1889,12 +1992,12 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 
 
 async def _send_to_group(app, text: str):
-    """Send a message to the auto-report group."""
+    """Send a message to the attendance report group."""
     try:
-        await app.bot.send_message(chat_id=REPORT_GROUP_ID, text=text)
-        logger.info("Sent notification to group %s", REPORT_GROUP_ID)
+        await app.bot.send_message(chat_id=_ATTENDANCE_REPORT_CHAT_ID, text=text)
+        logger.info("Sent attendance notification to group %s", _ATTENDANCE_REPORT_CHAT_ID)
     except Exception as e:
-        logger.error("send_to_group failed: %s", e)
+        logger.error("send_attendance_report failed: %s", e)
 
 
 async def _broadcast_message(app, text: str, target_ids: list[int]) -> dict[int, bool]:
@@ -1918,6 +2021,229 @@ def _format_time_ms(ts_ms, fmt="%d/%m %H:%M"):
 def _format_time_hm(ts_ms) -> str:
     """Format timestamp to HH:MM only."""
     return datetime.fromtimestamp(ts_ms / 1000, tz=WIB).strftime("%H:%M")
+
+
+# ===================================================================
+# Attendance Monitoring
+# ===================================================================
+
+async def _load_shift_schedules():
+    """Cache shift schedules from site settings."""
+    global _SHIFT_SCHEDULES, _SHIFT_SCHEDULES_LOADED
+    if _SHIFT_SCHEDULES_LOADED:
+        return
+    try:
+        rows = await _fetch("pos_site_settings", "select=raw&limit=1")
+        if rows:
+            raw = rows[0].get("raw") or {}
+            if isinstance(raw, str):
+                raw = json.loads(raw)
+            schedules = raw.get("shiftSettings", {}).get("shiftSchedules", [])
+            _SHIFT_SCHEDULES = list(schedules)
+        _SHIFT_SCHEDULES_LOADED = True
+        logger.info("Shift schedules loaded: %d schedules", len(_SHIFT_SCHEDULES))
+    except Exception as e:
+        logger.warning("load_shift_schedules failed: %s", e)
+
+
+async def _build_role_rate_map():
+    """Cache role baseShiftRate from pos_staff_roles."""
+    global _ROLE_RATES, _ROLE_RATES_LOADED
+    if _ROLE_RATES_LOADED:
+        return
+    try:
+        roles = await _fetch("pos_staff_roles", "select=name,raw&limit=50")
+        for r in roles:
+            name = (r.get("name") or "").upper()
+            raw = r.get("raw") or {}
+            if isinstance(raw, str):
+                raw = json.loads(raw)
+            rate = float(raw.get("baseShiftRate") or 0)
+            _ROLE_RATES[name] = rate
+        _ROLE_RATES_LOADED = True
+        logger.info("Role rate map loaded: %d roles", len(_ROLE_RATES))
+    except Exception as e:
+        logger.warning("build_role_rate_map failed: %s", e)
+
+
+def _get_shift_schedule(shift_name: str) -> dict | None:
+    """Match shift name to schedule. Returns {openTime, closeTime, name} or None."""
+    name_lower = shift_name.strip().lower()
+    for s in _SHIFT_SCHEDULES:
+        s_name = (s.get("name") or "").strip().lower()
+        if s_name == name_lower:
+            return s
+    return None
+
+
+def _parse_time_to_minutes(t_str: str) -> int:
+    parts = t_str.strip().split(":")
+    return int(parts[0]) * 60 + int(parts[1])
+
+
+def _minutes_to_human(m: int) -> str:
+    if m <= 0:
+        return "0 menit"
+    hours = m // 60
+    mins = m % 60
+    if hours > 0 and mins > 0:
+        return f"{hours} jam {mins} menit"
+    elif hours > 0:
+        return f"{hours} jam"
+    else:
+        return f"{mins} menit"
+
+
+def _get_role_rate(role_name: str) -> float:
+    key = role_name.strip().upper()
+    return _ROLE_RATES.get(key, 0.0)
+
+
+async def _check_new_attendance(app):
+    """Poll for new attendance logs and report to report group."""
+    global _last_attendance_id, _reported_attendance_ids
+
+    # Ensure caches loaded
+    if not _SHIFT_SCHEDULES_LOADED:
+        await _load_shift_schedules()
+    if not _ROLE_RATES_LOADED:
+        await _build_role_rate_map()
+
+    # Periodic dedup cleanup
+    if len(_reported_attendance_ids) > 500:
+        _reported_attendance_ids.clear()
+
+    try:
+        now_ms = int(_now_wib().timestamp() * 1000)
+        # Look back 5 minutes for fresh entries
+        lookback_ms = now_ms - 300_000
+
+        logs = await _fetch(
+            "pos_attendance_logs",
+            f"select=_id,type,timestamp,userName,roleName,shiftName,shiftOpenTimeSnapshot,userId"
+            f"&timestamp=gt.{lookback_ms}"
+            f"&order=timestamp.asc&limit=20",
+        )
+
+        for log in logs:
+            log_id = log.get("_id") or ""
+            if not log_id or log_id in _reported_attendance_ids:
+                continue
+
+            log_type = log.get("type") or ""
+            if log_type not in ("check_in", "check_out"):
+                _reported_attendance_ids.add(log_id)
+                continue
+
+            ts = int(float(log.get("timestamp") or 0))
+            if ts <= 0:
+                continue
+
+            user_name = log.get("userName") or "?"
+            role_name = log.get("roleName") or ""
+            shift_name = log.get("shiftName") or ""
+            user_id = log.get("userId") or ""
+
+            date_str = _format_time_ms(ts, "%d/%m")
+            time_str = _format_time_hm(ts)
+
+            # ═══ CHECK_IN ═══
+            if log_type == "check_in":
+                lines = [
+                    f"🚶\u200d➡️ Absen Masuk — {date_str} {time_str}",
+                    "━" * 27,
+                    f"👤 {user_name}" + (f" • {role_name}" if role_name else ""),
+                    f"🕐 {time_str} WIB",
+                ]
+
+                sched = _get_shift_schedule(shift_name) if shift_name else None
+                if sched:
+                    open_t = sched.get("openTime", "")
+                    close_t = sched.get("closeTime", "")
+                    lines.append(f"📌 Shift {shift_name} ({open_t} - {close_t})")
+
+                    # Calculate lateness
+                    open_min = _parse_time_to_minutes(open_t)
+                    dt = datetime.fromtimestamp(ts / 1000, tz=WIB)
+                    check_min = dt.hour * 60 + dt.minute
+                    late_mins = check_min - open_min
+                    tolerance = 5
+
+                    if late_mins > tolerance:
+                        close_min = _parse_time_to_minutes(close_t) if close_t else open_min + 480
+                        shift_duration = close_min - open_min
+                        if shift_duration <= 0:
+                            shift_duration = 480
+
+                        penalty_mins = late_mins - tolerance
+                        rate = _get_role_rate(role_name)
+                        lines.append(f"⚠️ Terlambat {late_mins} menit")
+                        if rate > 0 and shift_duration > 0:
+                            denda = (penalty_mins / shift_duration) * rate
+                            lines.append(f"💰 Potongan shift: Rp{denda:,.0f}")
+                    elif late_mins <= 0:
+                        lines.append("✅ Tepat waktu")
+                    else:
+                        lines.append("✅ Tepat waktu (dalam batas toleransi)")
+                elif shift_name:
+                    lines.append(f"📌 Shift {shift_name}")
+                else:
+                    lines.append("📌 Tanpa shift")
+
+                await _send_to_group(app, "\n".join(lines))
+
+            # ═══ CHECK_OUT ═══
+            elif log_type == "check_out":
+                lines = [
+                    f"🚶\u200d⬅️ Absen Keluar — {date_str} {time_str}",
+                    "━" * 27,
+                    f"👤 {user_name}" + (f" • {role_name}" if role_name else ""),
+                    f"🕐 {time_str} WIB",
+                ]
+
+                sched = _get_shift_schedule(shift_name) if shift_name else None
+                if sched:
+                    open_t = sched.get("openTime", "")
+                    close_t = sched.get("closeTime", "")
+                    lines.append(f"📌 Shift {shift_name} ({open_t} - {close_t})")
+                elif shift_name:
+                    lines.append(f"📌 Shift {shift_name}")
+
+                # Find most recent check_in for this user
+                try:
+                    prev_logs = await _fetch(
+                        "pos_attendance_logs",
+                        f"select=timestamp,type"
+                        f"&userId=eq.{user_id}"
+                        f"&timestamp=lte.{ts}"
+                        f"&order=timestamp.desc&limit=10",
+                    )
+                    check_in_ts = None
+                    found_this = False
+                    for p in prev_logs:
+                        pid = p.get("_id", "")
+                        if pid == log_id:
+                            found_this = True
+                            continue
+                        if p.get("type") == "check_in":
+                            check_in_ts = int(float(p.get("timestamp") or 0))
+                            break
+                    if check_in_ts and check_in_ts > 0:
+                        duration_min = (ts - check_in_ts) // 60000
+                        if duration_min > 0:
+                            lines.append(f"⏱ Durasi: {_minutes_to_human(duration_min)}")
+                except Exception:
+                    pass
+
+                await _send_to_group(app, "\n".join(lines))
+
+            # Mark processed
+            _reported_attendance_ids.add(log_id)
+            if log_id > _last_attendance_id:
+                _last_attendance_id = log_id
+
+    except Exception as e:
+        logger.warning("check_new_attendance failed: %s", e)
 
 
 async def _check_new_transactions(app):
@@ -2415,9 +2741,16 @@ async def _start_auto_reporter(app):
             logger.info("Auto-reporter: catch-up check complete")
         except Exception as e:
             logger.warning("Auto-reporter: catch-up check failed: %s", e)
+        # Also catch up attendance on startup
+        try:
+            await _check_new_attendance(app)
+            logger.info("Auto-reporter: attendance catch-up complete")
+        except Exception as e:
+            logger.warning("Auto-reporter: attendance catch-up failed: %s", e)
         while True:
             await asyncio.sleep(30)
             await _check_new_transactions(app)
+            await _check_new_attendance(app)
 
     asyncio.create_task(_poll_loop())
     logger.info("Auto-reporter: real-time polling started (30s interval, immediate catch-up)")
@@ -2488,6 +2821,149 @@ async def _start_http_server(bot_app, port=8001):
 
 
 # ===================================================================
+# Document Handler (Excel Schedule Import)
+# ===================================================================
+
+async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle document upload — parse Excel schedule files and import to DB."""
+    # Di grup: silent ignore jika tidak @mention atau reply ke bot
+    chat = update.effective_chat
+    if chat and chat.type in ("group", "supergroup"):
+        msg = update.effective_message
+        if msg:
+            mentioned = False
+            if msg.reply_to_message and msg.reply_to_message.from_user and msg.reply_to_message.from_user.is_bot:
+                mentioned = True
+            if not mentioned:
+                message_text = msg.caption or ""
+                if msg.entities:
+                    for ent in msg.entities:
+                        if ent.type == "mention":
+                            mentioned_name = message_text[ent.offset:ent.offset + ent.length].lower()
+                            bot_username = context.bot.username if context.bot else None
+                            if bot_username and f"@{bot_username.lower()}" == mentioned_name:
+                                mentioned = True
+                                break
+                            if "@yummeaibot" in message_text.lower():
+                                mentioned = True
+                                break
+                if not mentioned and "@yummeaibot" in message_text.lower():
+                    mentioned = True
+            if not mentioned:
+                return
+    else:
+        if not _is_allowed(update):
+            await _reply_msg(update, context, "Unauthorized")
+            return
+
+    try:
+        # Get document info
+        doc = update.message.document
+        if not doc:
+            return
+
+        filename = doc.file_name or "unknown"
+        # Only handle Excel files
+        if not filename.lower().endswith((".xlsx", ".xls", ".xlsm")):
+            await _reply_msg(update, context,
+                "Maaf, saya hanya bisa memproses file Excel (.xlsx) untuk import jadwal.\n"
+                "Kirim file jadwal shift (format matrix) dan saya akan import ke sistem."
+            )
+            return
+
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+        # Download file from Telegram
+        file = await context.bot.get_file(doc.file_id)
+        file_bytes = await file.download_as_bytearray()
+        file_bytes = bytes(file_bytes)
+
+        # Parse Excel
+        logger.info("Parsing Excel schedule: %s (%d bytes)", filename, len(file_bytes))
+        parsed = parse_excel(file_bytes, filename)
+
+        if "error" in parsed:
+            await _reply_msg(update, context,
+                f"❌ Gagal parse file: {parsed['error']}\n\n"
+                "Pastikan format Excel:\n"
+                "• Baris header: MINGGU KE | HARI | TANGGAL | <nama staff> | ...\n"
+                "• Kolom staff berisi shift: PAGI (07.30 - 14.30), SORE, OFF, GENERAL"
+            )
+            return
+
+        # Send parsed data to Edge Function
+        summary = parsed.get("summary", {})
+        await _reply_msg(update, context,
+            f"📋 Memproses jadwal dari <b>{filename}</b>...\n"
+            f"• {summary.get('uniqueStaff', 0)} staff\n"
+            f"• {summary.get('uniqueDates', 0)} hari ({summary.get('dateRange', '')})\n"
+            f"• {summary.get('totalRows', 0)} entri jadwal\n"
+            f"⏳ Mengimport ke database..."
+        )
+
+        result = await call_import_schedule(
+            httpx,
+            SUPABASE_URL,
+            SUPABASE_KEY,
+            parsed,
+        )
+
+        if result.get("error"):
+            await _reply_msg(update, context,
+                f"❌ Gagal import: {result['error']}"
+            )
+            return
+
+        s = result.get("summary", {})
+        staff_detail = s.get("staffDetails", {})
+        matched_list = staff_detail.get("matched", [])
+        created_list = staff_detail.get("created", [])
+
+        msg_parts = [
+            f"✅ <b>Import jadwal selesai!</b>",
+            f"",
+            f"📊 <b>Ringkasan:</b>",
+            f"• {s.get('insertedRows', 0)} jadwal berhasil diimport",
+            f"• {s.get('uniqueDates', 0)} hari kerja",
+            f"• {s.get('totalRows', 0)} total entri diproses",
+        ]
+
+        if s.get('skippedRows', 0) > 0:
+            msg_parts.append(f"⚠️ {s['skippedRows']} entri dilewati (staff tidak dikenal)")
+
+        if matched_list:
+            msg_parts.append(f"")
+            msg_parts.append(f"✅ <b>Staff cocok:</b> {s.get('matchedStaff', 0)} orang")
+            for m in matched_list[:10]:
+                msg_parts.append(f"   • {m}")
+
+        if created_list:
+            msg_parts.append(f"")
+            msg_parts.append(f"🆕 <b>Staff baru dibuat:</b> {s.get('createdStaff', 0)} orang")
+            for c in created_list[:10]:
+                msg_parts.append(f"   • {c}")
+
+        if s.get('month') and s.get('year'):
+            month_name = [
+                "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+            ][s['month']]
+            msg_parts.append(f"")
+            msg_parts.append(f"📅 Periode: {month_name} {s['year']}")
+
+        msg_parts.append(f"")
+        msg_parts.append(f"🔄 Cek di: pos.yumme.id/admin/operational-team/attendance/jadwal")
+
+        await _reply_msg(update, context, "\n".join(msg_parts))
+
+    except Exception as e:
+        logger.error("Document handler error: %s", e, exc_info=True)
+        await _reply_msg(update, context,
+            f"❌ Terjadi error saat memproses file: {str(e)}"
+        )
+
+
+# ===================================================================
 # Main
 # ===================================================================
 
@@ -2518,6 +2994,7 @@ def main():
     app.add_handler(CommandHandler("briefing_hari_ini", cmd_briefing_hari_ini))
     app.add_handler(CommandHandler("purchaselog", cmd_purchaselog))
     app.add_handler(CommandHandler("marketlist", cmd_marketlist))
+    app.add_handler(CommandHandler("export_jadwal", cmd_export_jadwal))
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
@@ -2533,6 +3010,7 @@ def main():
 
     # Message handlers (order matters — photo before text)
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
+    app.add_handler(MessageHandler(filters.Document.ALL, on_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     logger.info("Starting Yumi General Manager Agents...")

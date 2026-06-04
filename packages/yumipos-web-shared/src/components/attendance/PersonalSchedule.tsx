@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getDaysInMonth, format } from "date-fns";
 import { id } from "date-fns/locale";
 import {
@@ -800,46 +801,86 @@ export function PersonalSchedule({
             </div>
           </div>
 
-          {/* Selected day detail */}
-          {selectedDayData && (
-            <div
-              className={cn(
-                "rounded-xl border px-3.5 py-3 flex items-center gap-3.5",
-                selectedDayData.schedule
-                  ? SHIFT_THEME[selectedDayData.shiftLabel]?.bg ?? "bg-card"
-                  : "bg-card"
-              )}
-            >
-              <div className="flex flex-col items-center min-w-[32px]">
-                <span className="text-lg font-black text-foreground leading-none">
-                  {selectedDayData.day}
-                </span>
-                <span className="text-[8px] font-bold uppercase text-muted-foreground">
-                  {DAY_NAMES[new Date(year, month - 1, selectedDayData.day).getDay()]}
-                </span>
-              </div>
-              {selectedDayData.schedule ? (
-                <div className="flex-1 min-w-0">
-                  <span
-                    className={cn(
-                      "text-sm font-black tracking-tight",
-                      SHIFT_THEME[selectedDayData.shiftLabel]?.accent ?? "text-foreground"
-                    )}
-                  >
-                    Shift {selectedDayData.shiftLabel}
-                  </span>
-                  {selectedDayData.schedule.startTime && (
-                    <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
-                      {selectedDayData.schedule.startTime.slice(0, 5)}
-                      {selectedDayData.schedule.endTime ? ` – ${selectedDayData.schedule.endTime.slice(0, 5)}` : ""}
-                    </p>
+          {/* Selected day detail — compact & responsive */}
+          <AnimatePresence mode="wait">
+            {selectedDayData && (
+              <motion.div
+                key={selectedDayData.day}
+                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className={cn(
+                  "relative overflow-hidden rounded-xl border shadow-[0_1px_3px_-1px_rgba(0,0,0,0.04)]",
+                  selectedDayData.schedule
+                    ? SHIFT_THEME[selectedDayData.shiftLabel]?.bg ?? "bg-card"
+                    : "bg-card"
+                )}
+              >
+                {/* Left accent bar */}
+                {selectedDayData.schedule && selectedDayData.shiftLabel && (
+                  <div
+                    className="absolute left-0 top-0 h-full w-[3px] rounded-r"
+                    style={{ backgroundColor: SHIFT_THEME[selectedDayData.shiftLabel]?.hex ?? "#94a3b8" }}
+                  />
+                )}
+
+                <div className="flex items-center gap-3 px-3 py-2.5">
+                  {/* Date badge */}
+                  <div className="flex shrink-0 flex-col items-center min-w-0">
+                    <span className="text-[18px] font-black text-foreground leading-none">
+                      {selectedDayData.day}
+                    </span>
+                    <span className="text-[7px] font-bold uppercase text-muted-foreground/70 tracking-wider mt-0.5">
+                      {DAY_NAMES[new Date(year, month - 1, selectedDayData.day).getDay()]}
+                    </span>
+                  </div>
+
+                  {selectedDayData.schedule ? (
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span
+                          className={cn(
+                            "text-[13px] font-black tracking-tight leading-tight block truncate",
+                            SHIFT_THEME[selectedDayData.shiftLabel]?.accent ?? "text-foreground"
+                          )}
+                        >
+                          Shift {selectedDayData.shiftLabel}
+                        </span>
+                        {selectedDayData.schedule.startTime && (
+                          <p className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground mt-0.5">
+                            <Clock className="h-2.5 w-2.5 shrink-0" />
+                            <span>
+                              {selectedDayData.schedule.startTime.slice(0, 5)}
+                              {selectedDayData.schedule.endTime
+                                ? ` — ${selectedDayData.schedule.endTime.slice(0, 5)}`
+                                : ""}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      {/* Shift icon badge */}
+                      <div
+                        className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg",
+                          SHIFT_THEME[selectedDayData.shiftLabel]?.bg ?? "bg-muted"
+                        )}
+                      >
+                        {SHIFT_THEME[selectedDayData.shiftLabel]?.icon ?? <CalendarDays className="h-3 w-3" />}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-muted/70">
+                        <CalendarDays className="h-3 w-3 text-muted-foreground/50" />
+                      </div>
+                      <p className="text-[10px] font-semibold text-muted-foreground">Tidak ada jadwal</p>
+                    </div>
                   )}
                 </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground font-medium">Tidak ada jadwal</p>
-              )}
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Legend */}
           <div className="flex items-center gap-2">
