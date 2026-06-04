@@ -113,9 +113,9 @@ function StaffProfileLayout() {
 
 	return (
 		<StaffProfileCtx.Provider value={outletContext}>
-			<div className="min-h-dvh bg-background pb-16">
+			<div className="fixed inset-0 flex flex-col bg-background">
 				{/* Navigation Header */}
-				<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
+				<header className="shrink-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
 					<div className="mx-auto flex max-w-2xl items-center justify-center">
 						<div className="flex items-center gap-2">
 							<ShieldCheck className={`h-4 w-4 ${isUnlocked ? "text-emerald-500" : "text-muted-foreground"}`} />
@@ -127,18 +127,20 @@ function StaffProfileLayout() {
 				</header>
 
 				{/* Clock-out reminder */}
-				<div className="mx-auto max-w-2xl px-4 pt-4">
+				<div className="shrink-0 mx-auto w-full max-w-2xl px-4 pt-4">
 					<HomeClockOutBanner userId={authUser?._id} />
 				</div>
 
-				{/* Child route content */}
-				<main className="mx-auto max-w-2xl px-4 py-3 pb-4">
+				{/* Scrollable content */}
+				<main className="flex-1 overflow-y-auto mx-auto w-full max-w-2xl px-4 py-3">
 					<Outlet />
 				</main>
-			</div>
 
-			{/* Bottom Navbar — fixed to viewport bottom */}
-			<BottomNavbar baseRoute={`/${username}`} />
+				{/* Bottom Navbar — fixed at bottom */}
+				<div className="shrink-0 border-t bg-background">
+					<BottomNavbar baseRoute={`/${username}`} />
+				</div>
+			</div>
 		</StaffProfileCtx.Provider>
 	);
 }

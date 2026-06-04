@@ -45,7 +45,7 @@ export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 	const items = makeItems(baseRoute);
 
 	return (
-		<nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md">
+		<nav className="z-20 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md">
 			<div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-1">
 				{items.map((item) => {
 					const Icon = item.icon;
