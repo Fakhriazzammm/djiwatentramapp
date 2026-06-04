@@ -49,7 +49,7 @@ export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 
 	return (
 		<nav className="z-20 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md">
-			<div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-1">
+			<div className="mx-auto flex max-w-2xl items-center justify-center gap-4 px-1 py-1">
 				{items.map((item) => {
 					const Icon = item.icon;
 					const route = item.getRoute(baseRoute);
