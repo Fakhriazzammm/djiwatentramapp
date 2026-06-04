@@ -1,12 +1,10 @@
-import { useNavigate, useLocation } from "@tanstack/react-router";
+import { useLocation } from "@tanstack/react-router";
 import { Home, Camera, Calendar, User } from "lucide-react";
 
 type NavItem = {
 	label: string;
 	icon: typeof Home;
-	/** Route path to navigate to (e.g. '/$username/beranda') */
 	getRoute: (baseRoute: string) => string;
-	/** Match logic for active state (e.g. '/ikhsan/beranda') */
 	isActive: (currentPath: string, baseRoute: string) => boolean;
 };
 
@@ -15,34 +13,39 @@ function makeItems(baseRoute: string): NavItem[] {
 		{
 			label: "Beranda",
 			icon: Home,
-			getRoute: () => `/beranda`,
+			getRoute: (br) => `${br}/beranda`,
 			isActive: (path, br) => path === `${br}/beranda`,
 		},
 		{
 			label: "Absensi",
 			icon: Camera,
-			getRoute: () => `/absensi`,
+			getRoute: (br) => `${br}/absensi`,
 			isActive: (path, br) => path === `${br}/absensi`,
 		},
 		{
 			label: "Jadwal",
 			icon: Calendar,
-			getRoute: () => `/jadwal`,
+			getRoute: (br) => `${br}/jadwal`,
 			isActive: (path, br) => path === `${br}/jadwal`,
 		},
 		{
 			label: "Profil",
 			icon: User,
-			getRoute: () => `/profil`,
+			getRoute: (br) => `${br}/profil`,
 			isActive: (path, br) => path === `${br}/profil`,
 		},
 	];
 }
 
-export function BottomNavbar({ baseRoute, username }: { baseRoute: string; username?: string }) {
-	const navigate = useNavigate();
+export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 	const location = useLocation();
 	const items = makeItems(baseRoute);
+
+	const handleNav = (route: string) => {
+		// Use window.location for reliable SPA navigation
+		// TanStack Router navigate with dynamic params can be unreliable
+		window.location.href = route;
+	};
 
 	return (
 		<nav className="z-20 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md">
@@ -54,11 +57,7 @@ export function BottomNavbar({ baseRoute, username }: { baseRoute: string; usern
 					return (
 						<button
 							key={item.label}
-							onClick={() => {
-								if (username) {
-									navigate({ to: `/$username${route}` as any, params: { username } });
-								}
-							}}
+							onClick={() => handleNav(route)}
 							className={`relative flex flex-col items-center gap-0.5 px-4 py-1.5 transition-all active:scale-95 ${
 								active
 									? "text-primary"
@@ -67,7 +66,7 @@ export function BottomNavbar({ baseRoute, username }: { baseRoute: string; usern
 						>
 							<Icon
 								className={`h-5 w-5 transition-all ${
-									active ? "drop-shadow-[0_0_5px_rgba(37,99,235,0.3)]" : ""
+									active ? "drop-shadow-[0_0_5px rgba(37,99,235,0.3)]" : ""
 								}`}
 							/>
 							<span
