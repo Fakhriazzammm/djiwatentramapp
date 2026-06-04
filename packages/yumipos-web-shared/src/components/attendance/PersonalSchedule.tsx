@@ -12,7 +12,6 @@ import {
   Moon,
   Zap,
   Bed,
-  UserCheck,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useHybridAttendanceSchedules } from "../../hooks/use-hybrid-attendance-schedules";
@@ -158,7 +157,7 @@ function TeamDayView({
   const isToday = formatDateStr(selectedDate) === formatDateStr(new Date());
 
   // ── Group by shift ──
-  const { shifts, totalStaff, workingToday, offDuty } = useMemo(() => {
+  const { shifts } = useMemo(() => {
     const map: Record<string, AttendanceSchedule[]> = {};
     for (const s of schedules) {
       const label = getShiftLabel(s);
@@ -173,15 +172,7 @@ function TeamDayView({
       .filter((k) => !SHIFT_ORDER.includes(k))
       .map((k) => ({ shift: k, staff: map[k]! }));
 
-    const all = [...sorted, ...others];
-    const working = all
-      .filter((g) => g.shift !== "OFF")
-      .reduce((sum, g) => sum + g.staff.length, 0);
-    const off = all
-      .filter((g) => g.shift === "OFF")
-      .reduce((sum, g) => sum + g.staff.length, 0);
-
-    return { shifts: all, totalStaff: schedules.length, workingToday: working, offDuty: off };
+    return { shifts: [...sorted, ...others] };
   }, [schedules]);
 
   // ── User's own shift ──
@@ -309,28 +300,6 @@ function TeamDayView({
               )}
             </div>
           )}
-
-          {/* ── KPI Pills (horizontal scroll) ── */}
-          <div className="flex gap-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
-            {([
-              { label: "Total", value: totalStaff, icon: <Users className="h-3 w-3" />, color: "bg-card border-border/50 text-foreground" },
-              { label: "Tugas", value: workingToday, icon: <UserCheck className="h-3 w-3" />, color: "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400" },
-              { label: "Cdn", value: Math.max(0, totalStaff - workingToday - offDuty), icon: <Zap className="h-3 w-3" />, color: "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/30 text-amber-600 dark:text-amber-400" },
-              { label: "Libur", value: offDuty, icon: <Bed className="h-3 w-3" />, color: "bg-slate-50/60 dark:bg-slate-900/20 border-slate-200/40 dark:border-slate-700/30 text-slate-500 dark:text-slate-400" },
-            ] as const).map((item) => (
-              <div
-                key={item.label}
-                className={cn(
-                  "flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 shadow-[0_1px_1px_0_rgba(0,0,0,0.01)]",
-                  item.color
-                )}
-              >
-                {item.icon}
-                <span className="text-[11px] font-black leading-none">{item.value}</span>
-                <span className="text-[6px] font-bold uppercase tracking-wider opacity-70">{item.label}</span>
-              </div>
-            ))}
-          </div>
 
           {/* ── Coworkers chip (inline compact) ── */}
           {coworkers.length > 0 && (

@@ -387,7 +387,15 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 			}
 		}
 	}, [isAuthenticated, authUser, isAdmin, username]);
-	
+
+	// Prevent browser back button from returning to /login
+	// Push a duplicate history entry so pressing back stays on $username
+	useEffect(() => {
+		if (isUnlocked) {
+			window.history.pushState(null, "", window.location.href);
+		}
+	}, [isUnlocked]);
+
 	const staff = useHybridStaffBySlug(username);
 	const stats = useHybridStaffStats(
 		isUnlocked && staff
