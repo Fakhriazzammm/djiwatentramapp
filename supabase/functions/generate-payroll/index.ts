@@ -299,7 +299,122 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
       slug = EXCLUDED.slug,
       updated_at = now();
   `;
-  return queryRaw(supabase, sql);
+  const result = await queryRaw(supabase, sql);
+
+  // ── Post-process: compute bonus_target ──
+  try {
+    // Fetch run items + staff roles for bonus calculation
+    const runItems: any[] = await queryRaw(supabase, `
+      SELECT ri.id, ri.user_id, ri.user_name, ri.role_name, ri.role_rule_id,
+             ri.total_shifts, ri.attendance_days,
+             ri.gross_pay, ri.net_pay, ri.deductions, ri.compensation_breakdown
+      FROM pos.payroll_run_items ri
+      WHERE ri.payroll_run_id = '${runId}'
+    `);
+    if (runItems && runItems.length > 0) {
+      // Fetch role rules for bonus configs
+      const roleRules: any[] = await queryRaw(supabase, `
+        SELECT id, name, raw
+        FROM pos.payroll_role_rules
+      `);
+      const roleRuleMap = new Map<string, any>();
+      if (roleRules) {
+        for (const rr of roleRules) {
+          const raw = typeof rr.raw === 'string' ? JSON.parse(rr.raw) : (rr.raw ?? {});
+          roleRuleMap.set(rr.id, { name: rr.name, ...raw });
+        }
+      }
+
+      for (const item of runItems) {
+        const breakdown = typeof item.compensation_breakdown === 'string'
+          ? JSON.parse(item.compensation_breakdown)
+          : (item.compensation_breakdown ?? {});
+        const roleRule = roleRuleMap.get(item.role_rule_id);
+        const bonusCfg = roleRule?.bonusTargetConfig;
+        let totalBonus = 0;
+        const bonusShifts: { shiftName: string; bonus: number; date: string }[] = [];
+
+        if (bonusCfg?.tiers && bonusCfg.tiers.length > 0) {
+          const basis = bonusCfg.basis ?? "shift";
+
+          if (basis === "monthly") {
+            // Monthly flat bonus — apply first tier
+            totalBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
+          } else {
+            // Shift-based: query shifts for this staff + period
+            const periodInfo: any[] = await queryRaw(supabase, `
+              SELECT pp.start_date, pp.end_date
+              FROM pos.payroll_periods pp
+              JOIN pos.payroll_runs pr ON pr.payroll_period_id = pp.id
+              WHERE pr.id = '${runId}'
+              LIMIT 1
+            `);
+            if (periodInfo && periodInfo.length > 0) {
+              const startTs = new Date(periodInfo[0].start_date).getTime();
+              const endTs = new Date(periodInfo[0].end_date).getTime() + 86400000;
+
+              // Query shifts where staff is a team member
+              const shifts: any[] = await queryRaw(supabase, `
+                SELECT source_id, shift_name, start_time, end_time, team_members, summary
+                FROM pos.shifts
+                WHERE start_time >= ${startTs / 1000}
+                  AND (end_time IS NULL OR end_time <= ${endTs / 1000})
+                  AND team_members ILIKE '%${item.user_name.replace(/'/g, "''")}%'
+                ORDER BY start_time ASC
+              `);
+
+              if (shifts) {
+                for (const shift of shifts) {
+                  // Per-shift bonus: sum of all tiers (simplified — assumes all tiers met)
+                  let shiftBonus = 0;
+                  for (const tier of bonusCfg.tiers) {
+                    shiftBonus += Number(tier.bonusAmount ?? 0);
+                  }
+                  if (shiftBonus > 0) {
+                    totalBonus += shiftBonus;
+                    bonusShifts.push({
+                      shiftName: shift.shift_name ?? "Shift",
+                      bonus: shiftBonus,
+                      date: shift.start_time
+                        ? new Date(shift.start_time * 1000).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+                        : "",
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (totalBonus > 0 || bonusShifts.length > 0) {
+          breakdown.bonus_target = {
+            basis: bonusCfg?.basis ?? "shift",
+            total_bonus: totalBonus,
+            ...(bonusShifts.length > 0 ? { shifts: bonusShifts } : {}),
+          };
+
+          // Recalculate gross/net to include bonus
+          const newGross = (item.gross_pay ?? 0) + totalBonus;
+          const newNet = (item.net_pay ?? 0) + totalBonus;
+
+          const updateSql = `
+            UPDATE pos.payslips
+            SET
+              breakdown = '${JSON.stringify(breakdown).replace(/'/g, "''")}'::jsonb,
+              gross_pay = ${newGross},
+              net_pay = ${newNet}
+            WHERE payroll_run_item_id = '${item.id}';
+          `;
+          await queryRaw(supabase, updateSql);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[generate-payroll] bonus post-processing failed:", e);
+    // Non-fatal — payslips still created without bonus data
+  }
+
+  return result;
 }
 
 async function handleUpdatePayslipStatus(supabase: ReturnType<typeof createClient>, payload: Record<string, unknown>) {
