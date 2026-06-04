@@ -382,7 +382,25 @@ function ProfilPage() {
 		})();
 	}, [staff?._id, stats, logs, isUnlocked, selectedMonth, selectedYear]);
 
-	// Init edit form
+			// ── Payslip data (merged + sorted) ──
+			const allPayslips = useMemo(() => {
+				const all: any[] = [];
+				const seenPeriods = new Set<string>();
+				if (livePayslip) { all.push(livePayslip); seenPeriods.add(normPeriod(livePayslip.period_name)); }
+				if (myPayslips) (myPayslips as any[]).forEach((p: any) => {
+					if ((p.gross_pay??0) > 0 || (p.net_pay??0) > 0) {
+						if (!seenPeriods.has(normPeriod(p.period_name))) all.push(p);
+					}
+				});
+				return all.sort((a, b) => (b.period_name || "").localeCompare(a.period_name || ""));
+			}, [livePayslip, myPayslips]);
+
+			// Clamp selected index when data changes
+			useEffect(() => {
+				setSelectedPayslipIdx((prev) => Math.min(prev, Math.max(0, allPayslips.length - 1)));
+			}, [allPayslips.length]);
+
+			// Init edit form
 	const hasLoadedRef = useRef(false);
 	useEffect(() => {
 		if (hasLoadedRef.current) return;
@@ -416,7 +434,7 @@ function ProfilPage() {
 	const [completedSteps, setCompletedSteps] = useState(0);
 	const [isCelebrating, setIsCelebrating] = useState(false);
 	const [showEditTooltip, setShowEditTooltip] = useState(false);
-	const [showAllPayslips, setShowAllPayslips] = useState(false);
+		const [selectedPayslipIdx, setSelectedPayslipIdx] = useState(0);
 
 	const dismissOnboarding = useCallback(() => {
 		setIsCelebrating(true);
@@ -802,13 +820,8 @@ function ProfilPage() {
 				<div className="flex items-center justify-between px-2">
 					<h3 className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
 						<FileText className="h-3 w-3 text-primary" />
-						Slip Gaji {showAllPayslips ? "" : "Terakhir"}
+						Slip Gaji
 					</h3>
-					{myPayslips && myPayslips.length > 3 && (
-						<Button variant="link" size="sm" className="text-xs" onClick={() => setShowAllPayslips(!showAllPayslips)}>
-							{showAllPayslips ? "Sembunyikan" : "Lihat Semua"}
-						</Button>
-					)}
 				</div>
 				<div className="space-y-2">
 					{!myPayslips && !livePayslip ? (
@@ -821,25 +834,57 @@ function ProfilPage() {
 								</div>
 							))}
 						</>
-					) : (() => {
-						const all: any[] = [];
-						const seenPeriods = new Set<string>();
-						if (livePayslip) { all.push(livePayslip); seenPeriods.add(normPeriod(livePayslip.period_name)); }
-						if (myPayslips) myPayslips.forEach((p: any) => {
-							if ((p.gross_pay??0) > 0 || (p.net_pay??0) > 0) {
-								if (!seenPeriods.has(normPeriod(p.period_name))) { all.push(p); }
-							}
-						});
-						if (all.length === 0) return (
-							<div className="rounded-xl border bg-card p-6 text-center">
-								<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-								<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
+					) : allPayslips.length === 0 ? (
+						<div className="rounded-xl border bg-card p-6 text-center">
+							<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+							<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
+						</div>
+					) : (
+						<>
+							{/* Timeline Chips */}
+							<div className="flex gap-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
+								{allPayslips.map((p: any, i: number) => {
+									const isActive = selectedPayslipIdx === i;
+									const month = (p.period_name || "").split(" ")[0]?.substring(0, 3) || "";
+									const net = p.net_pay ?? 0;
+									const netShort = net >= 1_000_000
+										? `${(net / 1_000_000).toFixed(1)}jt`
+										: net >= 1_000
+											? `${(net / 1_000).toFixed(0)}rb`
+											: `${net}`;
+									return (
+										<button
+											key={p.id || i}
+											type="button"
+											onClick={() => setSelectedPayslipIdx(i)}
+											className={cn(
+												"flex shrink-0 flex-col items-center gap-0.5 rounded-lg border px-2.5 py-1.5 transition-all",
+												isActive
+													? "bg-primary/10 border-primary/30 text-primary"
+													: "bg-card border-border/50 text-muted-foreground hover:border-border"
+											)}
+										>
+											<span className="text-[9px] font-bold uppercase">{month}</span>
+											<span className="text-[10px] font-black tabular-nums">{netShort}</span>
+										</button>
+									);
+								})}
 							</div>
-						);
-						return <>{all.slice(0, showAllPayslips ? undefined : 3).map((payslip: any) => (
-							<PayslipDetailCard key={payslip.id} payslip={payslip} onDownload={handleDownloadPayslip} />
-						))}</>;
-					})()}
+
+							{/* Detail Card */}
+							<AnimatePresence mode="wait">
+								<motion.div
+									key={selectedPayslipIdx}
+									initial={{ opacity: 0, y: 6 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -6 }}
+									transition={{ duration: 0.15 }}
+								>
+									<PayslipDetailCard payslip={allPayslips[selectedPayslipIdx]} onDownload={handleDownloadPayslip} />
+								</motion.div>
+							</AnimatePresence>
+						</>
+					)}
 				</div>
 			</div>
 
