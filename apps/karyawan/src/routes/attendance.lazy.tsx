@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { Loader2, UserCheck, Navigation, Coffee, Camera, KeyRound, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BottomNavbar } from "@yumipos/web-shared/components/layout/BottomNavbar";
 
 export const Route = createLazyFileRoute("/attendance")({
   component: KaryawanAttendancePage,
@@ -245,9 +246,21 @@ function KaryawanAttendancePage() {
     navigate({ to: "/login" as any });
   };
 
+  // ── Resolve current user slug for bottom navbar ──
+  const currentUserSlug = useMemo(() => {
+    if (!isAuthenticated || !authUser || !Array.isArray(allStaff)) return null;
+    const matched = allStaff.find((s: any) => {
+      if (authUser._id && String(s._id) === String(authUser._id)) return true;
+      if (authUser.slug && s.slug && String(s.slug) === String(authUser.slug)) return true;
+      if (authUser.username && s.username && String(s.username) === String(authUser.username)) return true;
+      return false;
+    });
+    return matched?.slug || null;
+  }, [isAuthenticated, authUser, allStaff]);
+
   // ── Render ──
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background selection:bg-primary/20 pb-safe">
+    <div className="flex min-h-screen w-full flex-col bg-background selection:bg-primary/20 pb-16">
       {/* Header */}
       <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border/30 bg-background/90 px-3 backdrop-blur-lg">
         <div className="flex items-center gap-2">
@@ -612,6 +625,9 @@ function KaryawanAttendancePage() {
           </motion.div>
         ) : null}
       </main>
+
+      {/* Bottom Navbar */}
+      {currentUserSlug && <BottomNavbar baseRoute={`/${currentUserSlug}`} />}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { BottomNavbar } from "@yumipos/web-shared/components/layout/BottomNavbar
 import { HomeClockOutBanner } from "@yumipos/web-shared/components/home/home-clockout-banner";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { motion } from "framer-motion";
-import { Camera, Clock, Lock, ShieldCheck, UserCircle, ChevronLeft } from "lucide-react";
+import { Camera, Clock, Lock, ShieldCheck, UserCircle } from "lucide-react";
 
 /** Shared context for child routes */
 export interface StaffProfileContext {
@@ -116,11 +116,7 @@ function StaffProfileLayout() {
 			<div className="min-h-screen bg-background pb-16">
 				{/* Navigation Header */}
 				<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
-					<div className="mx-auto flex max-w-2xl items-center justify-between">
-						<Button onClick={() => navigate({ to: "/attendance" as any })} variant="ghost" size="sm">
-							<ChevronLeft className="mr-1 h-4 w-4" />
-							Portal Absen
-						</Button>
+					<div className="mx-auto flex max-w-2xl items-center justify-center">
 						<div className="flex items-center gap-2">
 							<ShieldCheck className={`h-4 w-4 ${isUnlocked ? "text-emerald-500" : "text-muted-foreground"}`} />
 							<span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -153,14 +149,6 @@ function StaffProfileLayout() {
 function LockedView({ staff, navigate, username }: { staff: any; navigate: ReturnType<typeof useNavigate>; username: string }) {
 	return (
 		<div className="min-h-screen bg-background">
-			<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
-				<div className="mx-auto flex max-w-2xl items-center justify-between">
-					<Button onClick={() => navigate({ to: "/attendance" as any })} variant="ghost" size="sm">
-						<ChevronLeft className="mr-1 h-4 w-4" />
-						Portal Absen
-					</Button>
-				</div>
-			</header>
 			<main className="mx-auto max-w-2xl px-4 py-10">
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
