@@ -462,8 +462,8 @@ function ProfilPage() {
 	}, []);
 
 	const handleAvatarClick = useCallback(() => {
-		navigate({ to: "/attendance" as any });
-	}, [navigate]);
+		navigate({ to: "/$username/absensi" as any, params: { username } });
+	}, [navigate, username]);
 
 	const handleDownloadPayslip = useCallback(async (payslip: any) => {
 		try {

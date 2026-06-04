@@ -53,11 +53,10 @@ function RootContent() {
 
     const path = location.pathname;
 
-    // Public pages: /login, /attendance, and /$username (any single-segment path like /selinaapriliani)
+    // Public pages: /login and /$username (any single-segment path like /selinaapriliani)
     const isLoginPage = path === "/login";
-    const isAttendancePage = path === "/attendance";
-    const isProfilePage = path !== "/login" && path !== "/" && path !== "/attendance" && path.startsWith("/");
-    const isPublicPage = isLoginPage || isAttendancePage || isProfilePage;
+    const isProfilePage = path !== "/login" && path !== "/" && path.startsWith("/");
+    const isPublicPage = isLoginPage || isProfilePage;
 
     if (!isAuthenticated) {
       if (!isPublicPage) {

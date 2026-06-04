@@ -140,11 +140,9 @@ ALL_BROADCAST_TARGETS: dict[str, int] = {
 _ATTENDANCE_REPORT_CHAT_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
 
 # Dedup: track already-reported orders to prevent re-sending
-_reported_order_nos: set[str] = set()
 _reported_expense_ids: set[str] = set()
 
 # Polling state for real-time transaction monitoring
-_last_order_check_ms = 0
 _last_expense_check_ms = 0
 
 # Product categories for item grouping in order notifications
@@ -2247,176 +2245,16 @@ async def _check_new_attendance(app):
 
 
 async def _check_new_transactions(app):
-    """Poll for new orders and expenses, report to group."""
-    global _last_order_check_ms, _last_expense_check_ms, _reported_order_nos, _reported_expense_ids
+    """Poll for new expenses, report to group."""
+    global _last_expense_check_ms, _reported_expense_ids
     now_ms = int(_now_wib().timestamp() * 1000)
 
-    # Periodic dedup set cleanup (max 500 entries)
-    if len(_reported_order_nos) > 500:
-        _reported_order_nos.clear()
-        logger.info("Cleared reported order dedup set")
-
     # Initialize on first run
-    if _last_order_check_ms == 0:
-        _last_order_check_ms = now_ms - 60_000  # 1 min lookback
     if _last_expense_check_ms == 0:
         _last_expense_check_ms = now_ms - 60_000
 
     try:
-        # ── Check new orders (5-minute lookback to catch late-completing orders) ──
-        lookback_ms = now_ms - 300_000  # 5 minutes
-        if _last_order_check_ms < lookback_ms:
-            _last_order_check_ms = lookback_ms
-
-        orders = await _fetch(
-            "pos_orders",
-            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
-            f"&status=in.(completed,paid)"
-            f"&_creationTime=gt.{_last_order_check_ms - 1}"
-            f"&_creationTime=lte.{now_ms}"
-            f"&order=_creationTime.asc&limit=20",
-        )
-
-        for o in orders:
-            order_no = o.get("orderNumber", "???")
-            # Skip if already reported in this session
-            if order_no in _reported_order_nos:
-                continue
-
-            ts = int(float(o.get("_creationTime") or o.get("createdAt") or 0))
-            amount = float(o.get("totalAmount") or 0)
-            payment = (o.get("paymentMethod") or "-").upper()
-            customer = o.get("customerName") or "Pelanggan"
-            order_type = (o.get("orderType") or "dine_in")
-            items = o.get("items") or []
-            guest_count = o.get("guestCount")
-            notes = (o.get("notes") or "").strip()
-            voucher_id = o.get("voucherId")
-            discount_amount = float(o.get("discountAmount") or 0)
-            free_refill = o.get("freeRefillSelected")
-
-            daily_no = o.get("daily_receipt_no")
-            receipt_kind = o.get("receipt_kind")
-            receipt_kind_labels = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}
-            kind_label = receipt_kind_labels.get(receipt_kind) if receipt_kind else None
-            if daily_no and kind_label:
-                if receipt_kind == "online" and order_type not in ("online", "dine_in", "takeaway"):
-                    sub = order_type.replace("_", " ").title()
-                    struk_line = f"STRUK NO. {daily_no} - {kind_label} ({sub})"
-                else:
-                    struk_line = f"STRUK NO. {daily_no} - {kind_label}"
-            else:
-                struk_line = None
-
-            shift = await _find_shift_at_time(ts)
-            cashier = shift.get("cashier_name", "?")
-            team = shift.get("team_members", "")
-
-            # ── Build discount/promo info ──
-            promo_parts = []
-            if discount_amount > 0:
-                if free_refill:
-                    promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Free Refill)")
-                elif voucher_id:
-                    promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Voucher {voucher_id})")
-                else:
-                    # Happy Hour or automatic discount (all items same price)
-                    promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Happy Hour)")
-
-            # ── Parse team members into per-role lines ──
-            team_lines = []
-            if team:
-                names = [n.strip() for n in team.split(",") if n.strip()]
-                if names:
-                    grouped: dict[str, list[str]] = {}
-                    for name in names:
-                        key = name.strip().lower()
-                        role = _STAFF_ROLE_MAP.get(key, "Tim")
-                        role_upper = role.upper()
-                        if role_upper not in grouped:
-                            grouped[role_upper] = []
-                        grouped[role_upper].append(name.strip())
-                    role_emoji = {"BARISTA": "☕", "CHEF": "🍳", "KASIR": "🧑‍💼", "ADMIN": "🛡️", "MANAGER": "⭐"}
-                    for r in ("BARISTA", "CHEF", "KASIR", "MANAGER", "ADMIN", "Tim"):
-                        if r in grouped:
-                            emoji = role_emoji.get(r, "👥")
-                            team_lines.append(f"{emoji} {r.title()}: {', '.join(grouped[r])}")
-
-            # ── Transaction report ──
-            lines = []
-            if struk_line:
-                lines.append(f"📍 {struk_line}")
-            lines.extend([
-                f"🧾 Pesanan Baru — {_format_time_ms(ts)}",
-                "────────────",
-                f"🆔 {order_no}",
-            ])
-            lines.append(f"💰 Rp{amount:,.0f} — {payment}")
-            for p in promo_parts:
-                lines.append(f"🏷️ {p}")
-
-            customer_line = f"👤 {customer}"
-            if guest_count and guest_count > 0:
-                customer_line += f" — {int(guest_count)} orang"
-            lines.append(customer_line)
-
-            lines.append(f"👥 Kasir: {cashier}")
-            lines.extend(team_lines)
-
-            if notes:
-                lines.append("")
-                lines.append(f"📝 {notes}")
-
-            lines.append("")
-            lines.append("Items:")
-
-            # ── Categorize items ──
-            food_items = []
-            drink_items = []
-            other_items = []
-            for i in items:
-                pid = i.get("productId", "") or ""
-                cat = _PRODUCT_CATEGORY_MAP.get(pid, "")
-                if cat == "Makanan":
-                    food_items.append(i)
-                elif cat == "Minuman":
-                    drink_items.append(i)
-                else:
-                    other_items.append(i)
-
-            item_no = 1
-            def _add_item_group(label, group):
-                nonlocal item_no
-                if group:
-                    lines.append(f"{label}:")
-                    for i in group:
-                        pn = i.get("productName", "?").strip()
-                        q = int(float(i.get("quantity", 1)))
-                        price = float(i.get("price") or 0)
-                        orig = i.get("originalPrice")
-                        if orig is not None and float(orig) != price:
-                            lines.append(f"  {item_no}. {pn} x{q} Rp{float(orig):,.0f} → Rp{price:,.0f}")
-                        else:
-                            lines.append(f"  {item_no}. {pn} x{q} @ Rp{price:,.0f}")
-                        item_no += 1
-
-            _add_item_group("🍳 Makanan", food_items)
-            _add_item_group("☕ Minuman", drink_items)
-            if other_items:
-                _add_item_group("🥤 Lainnya", other_items)
-
-            # ── Footer ──
-            total_items = sum(int(float(i.get("quantity", 1))) for i in items)
-            lines.append(f"📦 {total_items} item | 💰 Rp{amount:,.0f}")
-
-            await _send_to_group(app, "\n".join(lines))
-            await asyncio.sleep(0.3)
-
-            # Mark as reported
-            _reported_order_nos.add(order_no)
-
-        # Always advance cursor to prevent re-querying same window
-        _last_order_check_ms = now_ms
+        # ── Order notifications removed — handled by Yumi Supervisor Agent ──
 
         # ── Check new expenses (look back to today's midnight for OCR receipts) ──
         today_start_ms = _start_of_day_ms(_now_wib())

@@ -88,7 +88,7 @@ function StaffProfileLayout() {
 				</div>
 				<h2 className="mb-2 text-2xl font-bold">Profil Tidak Ditemukan</h2>
 				<p className="mb-8 text-muted-foreground">Staff dengan username "{username}" tidak terdaftar atau nonaktif.</p>
-				<Button onClick={() => navigate({ to: "/attendance" as any })}>Kembali ke Portal</Button>
+				<Button onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })}>Kembali ke Portal</Button>
 			</div>
 		);
 	}
@@ -190,7 +190,7 @@ function LockedView({ staff, navigate, username }: { staff: any; navigate: Retur
 							<Button
 								variant="outline"
 								className="h-12 w-full rounded-xl border-dashed border-primary/30 font-bold text-sm"
-								onClick={() => navigate({ to: "/attendance" as any })}
+								onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
 							>
 								<Camera className="mr-2 h-4 w-4" />
 								LANGSUNG ABSENSI

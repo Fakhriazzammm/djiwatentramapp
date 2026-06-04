@@ -4,9 +4,9 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as UsernameRouteImport } from './routes/$username'
-import { Route as UsernameIndexRouteImport } from './routes/$username/index'
+import { Route as UsernameBerandaRouteImport } from './routes/$username/beranda'
+import { Route as UsernameAbsensiRouteImport } from './routes/$username/absensi'
 import { Route as UsernameProfilRouteImport } from './routes/$username/profil'
 import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
 
@@ -17,11 +17,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/login.lazy').then((d) => d.Route))
-const AttendanceRoute = AttendanceRouteImport.update({
-  id: '/attendance',
-  path: '/attendance',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/attendance.lazy').then((d) => d.Route))
 const UsernameRoute = UsernameRouteImport.update({
   id: '/$username',
   path: '/$username',
@@ -40,6 +35,20 @@ const UsernameIndexRoute = UsernameIndexRouteImport.update({
   getParentRoute: () => UsernameRoute,
 } as any).lazy(() =>
   import('./routes/$username/index.lazy').then((d) => d.Route),
+)
+const UsernameBerandaRoute = UsernameBerandaRouteImport.update({
+  id: '/beranda',
+  path: '/beranda',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/beranda.lazy').then((d) => d.Route),
+)
+const UsernameAbsensiRoute = UsernameAbsensiRouteImport.update({
+  id: '/absensi',
+  path: '/absensi',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/absensi.lazy').then((d) => d.Route),
 )
 const UsernameProfilRoute = UsernameProfilRouteImport.update({
   id: '/profil',
@@ -60,71 +69,81 @@ const UsernameJadwalRoute = UsernameJadwalRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
   '/$username': typeof UsernameRouteWithChildren
-  '/attendance': typeof AttendanceRoute
   '/login': typeof LoginRoute
+  '/$username/': typeof UsernameIndexRoute
+  '/$username/beranda': typeof UsernameBerandaRoute
+  '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/profil': typeof UsernameProfilRoute
-  '/$username/': typeof UsernameIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
-  '/attendance': typeof AttendanceRoute
   '/login': typeof LoginRoute
+  '/$username': typeof UsernameIndexRoute
+  '/$username/beranda': typeof UsernameBerandaRoute
+  '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/profil': typeof UsernameProfilRoute
-  '/$username': typeof UsernameIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexLazyRoute
   '/$username': typeof UsernameRouteWithChildren
-  '/attendance': typeof AttendanceRoute
   '/login': typeof LoginRoute
+  '/$username/': typeof UsernameIndexRoute
+  '/$username/beranda': typeof UsernameBerandaRoute
+  '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/profil': typeof UsernameProfilRoute
-  '/$username/': typeof UsernameIndexRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRouteTypes
   fullPaths:
     | '/'
     | '/$username'
-    | '/attendance'
     | '/login'
+    | '/$username/'
+    | '/$username/beranda'
+    | '/$username/absensi'
     | '/$username/jadwal'
     | '/$username/profil'
-    | '/$username/'
-  fileRoutesByTo: FileRoutesByTo
+  fileRoutesByTo: FileRouteTypes
   to:
     | '/'
-    | '/attendance'
     | '/login'
+    | '/$username'
+    | '/$username/beranda'
+    | '/$username/absensi'
     | '/$username/jadwal'
     | '/$username/profil'
-    | '/$username'
   id:
     | '__root__'
     | '/'
     | '/$username'
-    | '/attendance'
     | '/login'
+    | '/$username/'
+    | '/$username/beranda'
+    | '/$username/absensi'
     | '/$username/jadwal'
     | '/$username/profil'
-    | '/$username/'
-  fileRoutesById: FileRoutesById
+  fileRoutesById: FileRouteTypes
 }
 
 // ── Children wiring ─────────────────────────────────────────────────
 interface UsernameRouteChildren {
+  UsernameIndexRoute: typeof UsernameIndexRoute
+  UsernameBerandaRoute: typeof UsernameBerandaRoute
+  UsernameAbsensiRoute: typeof UsernameAbsensiRoute
   UsernameJadwalRoute: typeof UsernameJadwalRoute
   UsernameProfilRoute: typeof UsernameProfilRoute
-  UsernameIndexRoute: typeof UsernameIndexRoute
 }
 
 const UsernameRouteChildren: UsernameRouteChildren = {
+  UsernameIndexRoute: UsernameIndexRoute,
+  UsernameBerandaRoute: UsernameBerandaRoute,
+  UsernameAbsensiRoute: UsernameAbsensiRoute,
   UsernameJadwalRoute: UsernameJadwalRoute,
   UsernameProfilRoute: UsernameProfilRoute,
-  UsernameIndexRoute: UsernameIndexRoute,
 }
 
 const UsernameRouteWithChildren = UsernameRoute._addFileChildren(
@@ -133,7 +152,6 @@ const UsernameRouteWithChildren = UsernameRoute._addFileChildren(
 
 export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute
-  AttendanceRoute: typeof AttendanceRoute
   UsernameRoute: typeof UsernameRouteWithChildren
   LoginRoute: typeof LoginRoute
 }
@@ -145,13 +163,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/attendance': {
-      id: '/attendance'
-      path: '/attendance'
-      fullPath: '/attendance'
-      preLoaderRoute: typeof AttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$username': {
@@ -175,11 +186,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameIndexRouteImport
       parentRoute: typeof UsernameRoute
     }
-    '/$username/profil': {
-      id: '/$username/profil'
-      path: '/profil'
-      fullPath: '/$username/profil'
-      preLoaderRoute: typeof UsernameProfilRouteImport
+    '/$username/beranda': {
+      id: '/$username/beranda'
+      path: '/beranda'
+      fullPath: '/$username/beranda'
+      preLoaderRoute: typeof UsernameBerandaRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/absensi': {
+      id: '/$username/absensi'
+      path: '/absensi'
+      fullPath: '/$username/absensi'
+      preLoaderRoute: typeof UsernameAbsensiRouteImport
       parentRoute: typeof UsernameRoute
     }
     '/$username/jadwal': {
@@ -189,17 +207,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameJadwalRouteImport
       parentRoute: typeof UsernameRoute
     }
+    '/$username/profil': {
+      id: '/$username/profil'
+      path: '/profil'
+      fullPath: '/$username/profil'
+      preLoaderRoute: typeof UsernameProfilRouteImport
+      parentRoute: typeof UsernameRoute
+    }
   }
 }
 
-/* ⚠️ IMPORTANT: AttendanceRoute must come BEFORE UsernameRoute
-   for static route priority. `$username` (ASCII 36) sorts before
-   `attendance` (ASCII 97) in filesystem order, so the auto-gen
-   puts it in the wrong position. This file is NOT auto-generated
-   and preserves the correct child ordering. */
 const rootRouteChildren: RootRouteChildren = {
   IndexLazyRoute: IndexLazyRoute,
-  AttendanceRoute: AttendanceRoute, /* static first — must be before dynamic */
   UsernameRoute: UsernameRouteWithChildren,
   LoginRoute: LoginRoute,
 }

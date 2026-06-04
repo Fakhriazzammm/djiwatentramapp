@@ -12,11 +12,12 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as UsernameIndexRouteImport } from './routes/$username/index'
 import { Route as UsernameProfilRouteImport } from './routes/$username/profil'
 import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
+import { Route as UsernameBerandaRouteImport } from './routes/$username/beranda'
+import { Route as UsernameAbsensiRouteImport } from './routes/$username/absensi'
 
 const IndexLazyRouteImport = createFileRoute('/')()
 
@@ -25,11 +26,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/login.lazy').then((d) => d.Route))
-const AttendanceRoute = AttendanceRouteImport.update({
-  id: '/attendance',
-  path: '/attendance',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/attendance.lazy').then((d) => d.Route))
 const UsernameRoute = UsernameRouteImport.update({
   id: '/$username',
   path: '/$username',
@@ -61,20 +57,36 @@ const UsernameJadwalRoute = UsernameJadwalRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/jadwal.lazy').then((d) => d.Route),
 )
+const UsernameBerandaRoute = UsernameBerandaRouteImport.update({
+  id: '/beranda',
+  path: '/beranda',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/beranda.lazy').then((d) => d.Route),
+)
+const UsernameAbsensiRoute = UsernameAbsensiRouteImport.update({
+  id: '/absensi',
+  path: '/absensi',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/absensi.lazy').then((d) => d.Route),
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
   '/$username': typeof UsernameRouteWithChildren
-  '/attendance': typeof AttendanceRoute
   '/login': typeof LoginRoute
+  '/$username/absensi': typeof UsernameAbsensiRoute
+  '/$username/beranda': typeof UsernameBerandaRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/profil': typeof UsernameProfilRoute
   '/$username/': typeof UsernameIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
-  '/attendance': typeof AttendanceRoute
   '/login': typeof LoginRoute
+  '/$username/absensi': typeof UsernameAbsensiRoute
+  '/$username/beranda': typeof UsernameBerandaRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/profil': typeof UsernameProfilRoute
   '/$username': typeof UsernameIndexRoute
@@ -83,8 +95,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexLazyRoute
   '/$username': typeof UsernameRouteWithChildren
-  '/attendance': typeof AttendanceRoute
   '/login': typeof LoginRoute
+  '/$username/absensi': typeof UsernameAbsensiRoute
+  '/$username/beranda': typeof UsernameBerandaRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/profil': typeof UsernameProfilRoute
   '/$username/': typeof UsernameIndexRoute
@@ -94,16 +107,18 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$username'
-    | '/attendance'
     | '/login'
+    | '/$username/absensi'
+    | '/$username/beranda'
     | '/$username/jadwal'
     | '/$username/profil'
     | '/$username/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/attendance'
     | '/login'
+    | '/$username/absensi'
+    | '/$username/beranda'
     | '/$username/jadwal'
     | '/$username/profil'
     | '/$username'
@@ -111,8 +126,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$username'
-    | '/attendance'
     | '/login'
+    | '/$username/absensi'
+    | '/$username/beranda'
     | '/$username/jadwal'
     | '/$username/profil'
     | '/$username/'
@@ -121,7 +137,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute
   UsernameRoute: typeof UsernameRouteWithChildren
-  AttendanceRoute: typeof AttendanceRoute
   LoginRoute: typeof LoginRoute
 }
 
@@ -132,13 +147,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/attendance': {
-      id: '/attendance'
-      path: '/attendance'
-      fullPath: '/attendance'
-      preLoaderRoute: typeof AttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$username': {
@@ -176,16 +184,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameJadwalRouteImport
       parentRoute: typeof UsernameRoute
     }
+    '/$username/beranda': {
+      id: '/$username/beranda'
+      path: '/beranda'
+      fullPath: '/$username/beranda'
+      preLoaderRoute: typeof UsernameBerandaRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/absensi': {
+      id: '/$username/absensi'
+      path: '/absensi'
+      fullPath: '/$username/absensi'
+      preLoaderRoute: typeof UsernameAbsensiRouteImport
+      parentRoute: typeof UsernameRoute
+    }
   }
 }
 
 interface UsernameRouteChildren {
+  UsernameAbsensiRoute: typeof UsernameAbsensiRoute
+  UsernameBerandaRoute: typeof UsernameBerandaRoute
   UsernameJadwalRoute: typeof UsernameJadwalRoute
   UsernameProfilRoute: typeof UsernameProfilRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
 }
 
 const UsernameRouteChildren: UsernameRouteChildren = {
+  UsernameAbsensiRoute: UsernameAbsensiRoute,
+  UsernameBerandaRoute: UsernameBerandaRoute,
   UsernameJadwalRoute: UsernameJadwalRoute,
   UsernameProfilRoute: UsernameProfilRoute,
   UsernameIndexRoute: UsernameIndexRoute,
@@ -198,7 +224,6 @@ const UsernameRouteWithChildren = UsernameRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexLazyRoute: IndexLazyRoute,
   UsernameRoute: UsernameRouteWithChildren,
-  AttendanceRoute: AttendanceRoute,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport

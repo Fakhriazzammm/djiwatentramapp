@@ -15,15 +15,14 @@ function makeItems(baseRoute: string): NavItem[] {
 		{
 			label: "Beranda",
 			icon: Home,
-			// Explicit trailing slash for index route
-			getRoute: (br) => `${br}/`,
-			isActive: (path, br) => path === br || path === `${br}/`,
+			getRoute: (br) => `${br}/beranda`,
+			isActive: (path, br) => path === `${br}/beranda`,
 		},
 		{
 			label: "Absensi",
 			icon: Camera,
-			getRoute: () => "/attendance",
-			isActive: (path) => path === "/attendance",
+			getRoute: (br) => `${br}/absensi`,
+			isActive: (path, br) => path === `${br}/absensi`,
 		},
 		{
 			label: "Jadwal",
