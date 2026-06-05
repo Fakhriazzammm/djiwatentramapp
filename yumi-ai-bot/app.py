@@ -2147,9 +2147,12 @@ async def _check_new_attendance(app):
 
             # ═══ CHECK_IN ═══
             if log_type == "check_in":
+                # Hapus prefix "Shift " jika sudah ada di shift_name
+                shift_label = shift_name.removeprefix("Shift ").removeprefix("shift ") if shift_name else ""
+
                 lines = [
                     f"🚶\u200d➡️ Absen Masuk — {date_str} {time_str}",
-                    "━" * 27,
+                    "─" * 25,
                     f"👤 {user_name}" + (f" • {role_name}" if role_name else ""),
                     f"🕐 {time_str} WIB",
                 ]
@@ -2158,7 +2161,7 @@ async def _check_new_attendance(app):
                 if sched:
                     open_t = sched.get("openTime", "")
                     close_t = sched.get("closeTime", "")
-                    lines.append(f"📌 Shift {shift_name} ({open_t} - {close_t})")
+                    lines.append(f"📌 Shift {shift_label} ({open_t} - {close_t})")
 
                     # Calculate lateness
                     open_min = _parse_time_to_minutes(open_t)
@@ -2184,7 +2187,7 @@ async def _check_new_attendance(app):
                     else:
                         lines.append("✅ Tepat waktu (dalam batas toleransi)")
                 elif shift_name:
-                    lines.append(f"📌 Shift {shift_name}")
+                    lines.append(f"📌 Shift {shift_label}")
                 else:
                     lines.append("📌 Tanpa shift")
 
@@ -2192,9 +2195,12 @@ async def _check_new_attendance(app):
 
             # ═══ CHECK_OUT ═══
             elif log_type == "check_out":
+                # Hapus prefix "Shift " jika sudah ada di shift_name
+                shift_label = shift_name.removeprefix("Shift ").removeprefix("shift ") if shift_name else ""
+
                 lines = [
                     f"🚶\u200d⬅️ Absen Keluar — {date_str} {time_str}",
-                    "━" * 27,
+                    "─" * 25,
                     f"👤 {user_name}" + (f" • {role_name}" if role_name else ""),
                     f"🕐 {time_str} WIB",
                 ]
@@ -2203,9 +2209,9 @@ async def _check_new_attendance(app):
                 if sched:
                     open_t = sched.get("openTime", "")
                     close_t = sched.get("closeTime", "")
-                    lines.append(f"📌 Shift {shift_name} ({open_t} - {close_t})")
+                    lines.append(f"📌 Shift {shift_label} ({open_t} - {close_t})")
                 elif shift_name:
-                    lines.append(f"📌 Shift {shift_name}")
+                    lines.append(f"📌 Shift {shift_label}")
 
                 # Find most recent check_in for this user
                 try:
