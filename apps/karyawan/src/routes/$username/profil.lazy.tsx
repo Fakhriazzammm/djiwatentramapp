@@ -1,6 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useStaffProfile } from "../$username.lazy";
+import { useYumiAuth } from "@yumipos/web-shared";
 import {
 	useHybridStaffLogs,
 	useHybridStaffStats,
@@ -208,6 +209,7 @@ function PayslipDetailCard({
 
 function ProfilPage() {
 	const { staff, username, isUnlocked, isAdmin, authUser, isAuthenticated, token, navigate, refreshKey } = useStaffProfile();
+	const { logout: logoutYumi } = useYumiAuth();
 	const now = new Date();
 	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -1021,6 +1023,27 @@ function ProfilPage() {
 							</Button>
 						</div>
 					</div>
+				</div>
+			</div>
+
+			{/* Logout */}
+			<div className="space-y-2 pb-8">
+				<div className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-3">
+					<Button
+						variant="destructive"
+						size="sm"
+						className="w-full h-10 rounded-xl font-bold text-xs shadow-sm"
+						onClick={async () => {
+							await logoutYumi();
+							window.location.replace("/login");
+						}}
+					>
+						<LogOut className="mr-2 h-4 w-4" />
+						KELUAR / LOGOUT
+					</Button>
+					<p className="mt-1.5 text-center text-[9px] font-medium text-destructive/60">
+						Akhiri sesi dan kembali ke halaman login
+					</p>
 				</div>
 			</div>
 
