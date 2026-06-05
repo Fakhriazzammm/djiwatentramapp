@@ -2152,7 +2152,6 @@ async def _check_new_attendance(app):
 
                 lines = [
                     f"🚶\u200d➡️ Absen Masuk — {date_str} {time_str}",
-                    "─" * 25,
                     f"👤 {user_name}" + (f" • {role_name}" if role_name else ""),
                     f"🕐 {time_str} WIB",
                 ]
@@ -2200,7 +2199,6 @@ async def _check_new_attendance(app):
 
                 lines = [
                     f"🚶\u200d⬅️ Absen Keluar — {date_str} {time_str}",
-                    "─" * 25,
                     f"👤 {user_name}" + (f" • {role_name}" if role_name else ""),
                     f"🕐 {time_str} WIB",
                 ]
