@@ -4,7 +4,7 @@ import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
-import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut, useHybridEnrollFace } from "@yumipos/web-shared";
+import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut, useHybridEnrollFace, createClient } from "@yumipos/web-shared";
 import { useYumiAuth } from "@yumipos/web-shared";
 import { motion } from "framer-motion";
 import { Loader2, UserCheck, Navigation, Coffee, Camera, KeyRound, RefreshCw } from "lucide-react";
@@ -78,9 +78,52 @@ function KaryawanAttendancePage() {
     }
   }, [isAuthenticated, authUser, allStaff]);
 
-  // ── Shift detection ──
+  // ── Today's schedule for selected user ──
+  const [userTodaySchedule, setUserTodaySchedule] = useState<{ shift_name: string; start_time: string; end_time: string } | null>(null);
+  useEffect(() => {
+    if (!selectedUser?.id) { setUserTodaySchedule(null); return; }
+    let cancelled = false;
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .schema("pos")
+          .from("attendance_schedules")
+          .select("shift_name, start_time, end_time")
+          .eq("user_id", selectedUser.id)
+          .eq("date", dateStr)
+          .not("shift_name", "ilike", "%off%")
+          .maybeSingle();
+        if (!cancelled) {
+          setUserTodaySchedule(data as any);
+        }
+      } catch { if (!cancelled) setUserTodaySchedule(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedUser?.id]);
+
+  // ── Shift detection (user schedule first, then time-based fallback) ──
   const shiftSchedules = siteSettings?.shiftSettings?.shiftSchedules || [];
   const detectedShift = useMemo(() => {
+    // Priority 1: user's scheduled shift for today
+    if (userTodaySchedule?.shift_name && userTodaySchedule?.start_time) {
+      const match = shiftSchedules.find((s: any) =>
+        String(s.name ?? s.shiftName ?? "").toUpperCase() === userTodaySchedule.shift_name.toUpperCase()
+      );
+      if (match) {
+        // Use their schedule's start_time as reference
+        const [sh, sm] = String(userTodaySchedule.start_time).split(":").map(Number);
+        const refMinutes = sh * 60 + sm;
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const isEarly = currentMinutes < refMinutes;
+        return { ...match, name: match.name ?? match.shiftName, openTime: userTodaySchedule.start_time, closeTime: userTodaySchedule.end_time, upcoming: isEarly };
+      }
+    }
+
+    // Priority 2: time-based fallback
     if (!shiftSchedules.length) return null;
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
