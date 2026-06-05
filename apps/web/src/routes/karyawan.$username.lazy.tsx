@@ -298,6 +298,7 @@ function StaffProfilePage() {
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [showAllPayslips, setShowAllPayslips] = useState(false);
 	const [editName, setEditName] = useState("");
+	const [editUsername, setEditUsername] = useState("");
 	const [editEmail, setEditEmail] = useState("");
 	const [editSlug, setEditSlug] = useState("");
 	const [editNewPassword, setEditNewPassword] = useState("");
@@ -545,10 +546,12 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 	useEffect(() => {
 		if (staff && isUnlocked) {
 			setEditName(staff.name || "");
+			setEditUsername(privateData?.username || staff.slug || "");
 			setEditSlug(staff.slug || "");
 		}
 		if (privateData && isUnlocked) {
 			setEditEmail(privateData.email || privateData.username || "");
+			setEditUsername(privateData.username || editUsername || staff?.slug || "");
 			const raw = (privateData as any).raw ?? {};
 			setEditPhone(raw.phone || "");
 			setEditIdentityNumber(raw.identityNumber || "");
@@ -1102,6 +1105,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													await updateProfileMutation({
 														token,
 														name: editName !== staff?.name ? editName : undefined,
+														username: editUsername !== privateData?.username ? editUsername : undefined,
 														slug: editSlug !== staff?.slug ? editSlug : undefined,
 														phone: editPhone || undefined,
 														identityNumber: editIdentityNumber || undefined,
@@ -1183,12 +1187,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													/>
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username (login, tidak bisa diubah)</label>
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username (login)</label>
 													<Input 
-														value={privateData?.username || ""}
-														className="h-10 rounded-xl font-bold text-xs opacity-60"
-														placeholder="username"
-														disabled
+													value={editUsername}
+													onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+													onBlur={() => setEditSlug(editUsername)}
+													className="h-10 rounded-xl font-bold text-xs"
+													placeholder="username-login"
 													/>
 												</div>
 												<div className="space-y-1">
