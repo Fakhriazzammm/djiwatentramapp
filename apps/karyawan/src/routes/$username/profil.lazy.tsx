@@ -661,15 +661,44 @@ function ProfilPage() {
 									bankAccount: editBankAccount || undefined,
 									photoUrl,
 								});
-								if (editNewPassword) {
-									const { error: pwError } = await createClient().auth.updateUser({ password: editNewPassword });
-									if (pwError) throw pwError;
-								}
 								if (editEmail && editEmail !== privateData?.email && editEmail !== privateData?.username) {
-									const { error: emailError } = await createClient().functions.invoke("yumi-auth", {
-										body: { action: "updateEmail", userId: staff._id, newEmail: editEmail },
-									});
-									if (emailError) throw new Error(emailError.message || "Gagal update email");
+									const supabase = createClient();
+									// Cek apakah user sudah punya Supabase Auth account
+									const { data: yumiUser } = await supabase
+										.from("yumi_users")
+										.select("auth_user_id, email")
+										.eq("source_id", staff._id)
+										.maybeSingle();
+									const hasAuthUser = Boolean(yumiUser?.auth_user_id);
+									const existingEmail = yumiUser?.email || privateData?.email || privateData?.username;
+									if (!hasAuthUser) {
+										// First time: create Supabase Auth user
+										const authPassword = editNewPassword || Array.from({ length: 16 }, () =>
+											Math.random().toString(36).charAt(2)
+										).join("") + "Aa1!";
+										const { error: createError } = await supabase.functions.invoke("yumi-auth", {
+											body: {
+												action: "createAuthUser",
+												sourceId: staff._id,
+												email: editEmail,
+												password: authPassword,
+												name: editName || staff?.name || "",
+											},
+										});
+										if (createError) throw new Error(createError.message || "Gagal membuat akun auth");
+									} else {
+										// Already has auth
+										if (editEmail !== existingEmail) {
+											const { error: emailError } = await supabase.functions.invoke("yumi-auth", {
+												body: { action: "updateEmail", userId: staff._id, newEmail: editEmail },
+											});
+											if (emailError) throw new Error(emailError.message || "Gagal update email");
+										}
+										if (editNewPassword) {
+											const { error: pwError } = await supabase.auth.updateUser({ password: editNewPassword });
+											if (pwError) throw pwError;
+										}
+									}
 								}
 								toast.success("Profil berhasil diperbarui!");
 								setIsEditMode(false);
@@ -738,9 +767,9 @@ function ProfilPage() {
 								</div>
 
 								<div className="pt-2 border-t mt-2 space-y-2.5">
-									<p className="text-[9px] font-black text-primary uppercase ml-1">Ubah Password (Opsional)</p>
+									<p className="text-[9px] font-black text-primary uppercase ml-1">Password Akun (untuk login web)</p>
 									<div className="space-y-1">
-										<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Baru (Opsional)</label>
+										<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Baru</label>
 										<Input type="password" value={editNewPassword} onChange={(e) => setEditNewPassword(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Minimal 6 karakter" />
 									</div>
 								</div>
