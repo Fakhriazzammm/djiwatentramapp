@@ -1115,18 +1115,45 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 														photoUrl,
 													});
 
-													// Jika ada password baru, update via Supabase Auth
-													if (editNewPassword) {
-														const { error: pwError } = await createClient().auth.updateUser({ password: editNewPassword });
-														if (pwError) throw pwError;
-													}
-
 													// Jika ada email baru, update via edge function
 													if (editEmail && editEmail !== privateData?.email && editEmail !== privateData?.username) {
-														const { error: emailError } = await createClient().functions.invoke("yumi-auth", {
-															body: { action: "updateEmail", userId: staff._id, newEmail: editEmail },
-														});
-														if (emailError) throw new Error(emailError.message || "Gagal update email");
+														const supabase = createClient();
+														// Cek apakah user sudah punya Supabase Auth account
+														const { data: yumiUser } = await supabase
+															.from("yumi_users")
+															.select("auth_user_id, email")
+															.eq("source_id", staff._id)
+															.maybeSingle();
+														const hasAuthUser = Boolean(yumiUser?.auth_user_id);
+														const existingEmail = yumiUser?.email || privateData?.email || privateData?.username;
+														if (!hasAuthUser) {
+															// First time: create Supabase Auth user
+															const authPassword = editNewPassword || Array.from({ length: 16 }, () =>
+																Math.random().toString(36).charAt(2)
+															).join("") + "Aa1!";
+															const { error: createError } = await supabase.functions.invoke("yumi-auth", {
+																body: {
+																	action: "createAuthUser",
+																	sourceId: staff._id,
+																	email: editEmail,
+																	password: authPassword,
+																	name: editName || staff?.name || "",
+																},
+															});
+															if (createError) throw new Error(createError.message || "Gagal membuat akun auth");
+														} else {
+															// Already has auth
+															if (editEmail !== existingEmail) {
+																const { error: emailError } = await supabase.functions.invoke("yumi-auth", {
+																	body: { action: "updateEmail", userId: staff._id, newEmail: editEmail },
+																});
+																if (emailError) throw new Error(emailError.message || "Gagal update email");
+															}
+															if (editNewPassword) {
+																const { error: pwError } = await supabase.auth.updateUser({ password: editNewPassword });
+																if (pwError) throw pwError;
+															}
+														}
 													}
 
 													toast.success("Profil berhasil diperbarui!");
