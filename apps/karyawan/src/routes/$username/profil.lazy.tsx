@@ -1006,6 +1006,36 @@ function ProfilPage() {
 				</div>
 			</div>
 
+			{/* Scan Wajah */}
+			<div className="space-y-2">
+				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+					<Camera className="h-3 w-3 text-violet-500" />
+					Data Biometrik
+				</h3>
+				<div className="rounded-xl border bg-card p-3">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-3">
+							<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+								<Camera className="h-4 w-4" />
+							</div>
+							<div>
+								<p className="font-bold text-xs">Scan Wajah</p>
+								<p className="text-[9px] text-muted-foreground uppercase">Daftarkan / perbarui wajah untuk absensi</p>
+							</div>
+						</div>
+						<Button
+							variant="outline"
+							size="sm"
+							className="rounded-lg font-bold text-[10px] h-8 px-3 border-violet-200 text-violet-700 hover:bg-violet-50"
+							onClick={() => navigate({ to: `/${username}/absensi`, search: { enroll: 1 } } as any)}
+						>
+							<Camera className="mr-1.5 h-3 w-3" />
+							SCAN WAJAH
+						</Button>
+					</div>
+				</div>
+			</div>
+
 			{/* Grup Telegram */}
 			<div className="space-y-2">
 				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">

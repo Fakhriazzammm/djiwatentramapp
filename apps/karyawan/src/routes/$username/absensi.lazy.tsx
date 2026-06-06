@@ -30,7 +30,10 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 function KaryawanAttendancePage() {
   const navigate = useNavigate();
   const { username } = useParams({ from: "/$username/absensi" as any }) as { username: string };
-  const [step, setStep] = useState<"choose" | "face" | "pin" | "enroll" | "success">("choose");
+  // Check if navigated from profil page for face enrollment
+  const urlParams = new URLSearchParams(window.location.search);
+  const enrollParam = urlParams.get("enroll");
+  const [step, setStep] = useState<"choose" | "face" | "pin" | "enroll" | "success">(enrollParam === "1" ? "enroll" : "choose");
   const [refreshCount, setRefreshCount] = useState(0);
   const [pinCode, setPinCode] = useState("");
   const [selectedUser, setSelectedUser] = useState<{
@@ -502,14 +505,23 @@ function KaryawanAttendancePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto w-full max-w-sm space-y-4"
         >
+          {!selectedUser ? (
+            <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+                <Loader2 className="h-7 w-7 animate-spin" />
+              </div>
+              <p className="font-bold text-xs">Memuat data pengguna...</p>
+            </div>
+          ) : (
           <div className="space-y-2 text-center">
             <h2 className="text-base font-bold">Daftarkan Wajah</h2>
             <p className="text-[11px] font-semibold text-muted-foreground">
               Arahkan wajah ke kamera untuk mendaftarkan data biometrik.
             </p>
           </div>
+          )}
 
-          {faceError ? (
+          {selectedUser && (faceError ? (
             <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
                 <Camera className="h-7 w-7" />
