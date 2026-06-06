@@ -513,15 +513,15 @@ function KaryawanAttendancePage() {
               <p className="font-bold text-xs">Memuat data pengguna...</p>
             </div>
           ) : (
+            <>
           <div className="space-y-2 text-center">
             <h2 className="text-base font-bold">Daftarkan Wajah</h2>
             <p className="text-[11px] font-semibold text-muted-foreground">
               Arahkan wajah ke kamera untuk mendaftarkan data biometrik.
             </p>
           </div>
-          )}
 
-          {selectedUser && (faceError ? (
+          {faceError ? (
             <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
                 <Camera className="h-7 w-7" />
@@ -551,6 +551,8 @@ function KaryawanAttendancePage() {
                 toast.error("Kamera tidak tersedia. Silakan gunakan PIN.");
               }}
             />
+          )}
+            </>
           )}
 
           <div className="text-center">
