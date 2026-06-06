@@ -90,6 +90,8 @@ export function CustomerOrderingPage({
 
 	const { isAuthenticated, customer, login, register, logout, isLoading: authLoading } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
+	const prevAuthLoadingRef = useRef(false);
+	const prevIsAuthenticatedRef = useRef(isAuthenticated);
 	const isMenuLoading = categories === undefined || products === undefined;
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
@@ -303,6 +305,29 @@ export function CustomerOrderingPage({
 		}, 5000);
 		return () => window.clearInterval(timer);
 	}, [receipt, currentOrder, getMayarInvoiceDetail, updateOrderPaymentGateway]);
+
+	// ── Post-login/register navigation ────────────────────────
+	// Detect transition: authLoading true → false + isAuthenticated becomes true
+	// => user just finished login/register, advance from welcome to menu flow.
+	useEffect(() => {
+		const wasLoading = prevAuthLoadingRef.current;
+		const wasAuth = prevIsAuthenticatedRef.current;
+
+		// Update refs for next render
+		prevAuthLoadingRef.current = authLoading;
+		prevIsAuthenticatedRef.current = isAuthenticated;
+
+		// Trigger only on transition: loading finished AND just became authenticated
+		if (wasLoading && !authLoading && !wasAuth && isAuthenticated) {
+			if (step === "welcome") {
+				goToMenuFlow();
+			}
+			// Close modal if still open
+			if (authModalOpen) {
+				setAuthModalOpen(false);
+			}
+		}
+	}, [authLoading, isAuthenticated, authModalOpen, step]);
 
 	const addToCart = (item: CartItem) => {
 		setCart((current) => {
