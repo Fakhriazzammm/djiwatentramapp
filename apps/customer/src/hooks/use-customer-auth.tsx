@@ -241,8 +241,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 						"customer-sync",
 						{
 							body: {
-								action: "create",
-								sourceId: data.user.id,
+								action: "sync",
+								userId: data.user.id,
 								email,
 								name,
 							},

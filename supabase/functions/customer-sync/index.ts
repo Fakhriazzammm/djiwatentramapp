@@ -60,7 +60,8 @@ async function handleSync(payload: JsonRecord) {
 	customerPayload.created_at = new Date().toISOString();
 
 	const { data: existingCustomer } = await supabaseAdmin
-		.from("pos.customers")
+		.schema("pos")
+		.from("customers")
 		.select("source_id, total_points, lifetime_points")
 		.eq("source_id", userId)
 		.maybeSingle();
@@ -70,7 +71,8 @@ async function handleSync(payload: JsonRecord) {
 	if (isNew) {
 		// Insert new customer with signup bonus points
 		const { error: insertError } = await supabaseAdmin
-			.from("pos.customers")
+			.schema("pos")
+			.from("customers")
 			.insert({
 				source_id: userId,
 				email: email || null,
@@ -86,7 +88,8 @@ async function handleSync(payload: JsonRecord) {
 
 		// --- 2. Insert signup bonus ke point_ledger ---
 		const { error: ledgerError } = await supabaseAdmin
-			.from("pos.customer_point_ledger")
+			.schema("pos")
+			.from("customer_point_ledger")
 			.insert({
 				customer_id: userId,
 				points: 100,
@@ -113,7 +116,8 @@ async function handleSync(payload: JsonRecord) {
 	if (name) updates.name = name;
 
 	const { error: updateError } = await supabaseAdmin
-		.from("pos.customers")
+		.schema("pos")
+		.from("customers")
 		.update(updates)
 		.eq("source_id", userId);
 
@@ -143,6 +147,6 @@ Deno.serve(async (req) => {
 		}
 	} catch (error) {
 		console.error("customer-sync failed", error);
-		return fail("INTERNAL_ERROR", error instanceof Error ? error.message : "Unknown error", 400);
+		return fail("INTERNAL_ERROR", error instanceof Error ? error.message : typeof error === "object" && error !== null ? JSON.stringify(error) : String(error), 400);
 	}
 });
