@@ -95,6 +95,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/bar": "Bar",
 	"/admin/customer-service": "Layanan Customer",
 	"/admin/minigames": "Mini Games",
+	"/admin/customers": "Pelanggan",
 };
 
 // Bottom nav items (Yumi AI at center index 2)
@@ -127,6 +128,7 @@ const MORE_MENU_PATHS = [
 	"/admin/bar",
 	"/admin/customer-service",
 	"/admin/minigames",
+	"/admin/customers",
 	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
 	"/admin/operational-team/attendance",
@@ -176,6 +178,7 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
+			{ to: "/admin/customers", icon: Users, label: "Pelanggan" },
 		],
 	},
 	{
@@ -656,6 +659,12 @@ function AdminLayout() {
 						label="Mini Games"
 						to="/admin/minigames"
 						permission="products:manage"
+					/>
+					<DesktopNavLink
+						icon={<Users />}
+						isCollapsed={isCollapsed}
+						label="Pelanggan"
+						to="/admin/customers"
 					/>
 				</nav>
 

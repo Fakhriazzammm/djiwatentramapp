@@ -8,5 +8,5 @@ export const Route = createLazyFileRoute("/")({
 function BrandCustomerOrderingRoute() {
 	const search = Route.useSearch();
 
-	return <CustomerOrderingPage brandSlug="djiwatentram" search={search} />;
+	return <CustomerOrderingPage brandSlug={import.meta.env.VITE_BRAND_SLUG || "djiwatentram"} search={search} />;
 }

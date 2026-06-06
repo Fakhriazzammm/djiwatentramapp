@@ -22,6 +22,7 @@ import {
 	Filter,
 	Search,
 	ShoppingBag,
+	Star,
 	User,
 	XCircle,
 	Trash2,
@@ -85,6 +86,7 @@ interface Order {
 	totalAmount: number;
 	paymentMethod: string;
 	customerName?: string;
+	customer_source_id?: string;
 	items: OrderItem[];
 	createdAt: number;
 	type?: string;
@@ -703,7 +705,7 @@ function AdminOrders() {
 												</Badge>
 											</div>
 											<div className="text-[11px] text-muted-foreground">
-												{order.customerName || "Pelanggan Umum"} ·{" "}
+												{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null} ·{" "}
 												{(order.paymentMethod || "-").toUpperCase()}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
@@ -717,6 +719,11 @@ function AdminOrders() {
 											<p className="font-bold text-sm">
 												{formatrupiah(order.totalAmount)}
 											</p>
+										{order.customer_source_id && (
+											<span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0 text-[8px] font-black text-amber-700 uppercase tracking-wider">
+												<Star className="h-2.5 w-2.5 fill-amber-400" /> Member
+											</span>
+										)}
 											<p className="text-[10px] text-muted-foreground tabular-nums">
 												{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
 											</p>
@@ -787,7 +794,7 @@ function AdminOrders() {
 														</div>
 														<div className="min-w-0 leading-tight">
 															<p className="max-w-[170px] truncate font-medium text-[11px]">
-																{order.customerName || "Pelanggan Umum"}
+																{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
 															</p>
 															<p className="text-[10px] text-muted-foreground uppercase">
 																{(order.paymentMethod || "-").toUpperCase()}
@@ -954,7 +961,7 @@ function AdminOrders() {
 														Pelanggan
 													</p>
 													<p className="font-bold text-sm">
-														{selectedOrder.customerName || "Tanpa Nama"}
+														{selectedOrder.customerName || "Tanpa Nama"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
 													</p>
 												</div>
 											</div>

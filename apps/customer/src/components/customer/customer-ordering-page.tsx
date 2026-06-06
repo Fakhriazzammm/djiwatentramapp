@@ -1,24 +1,15 @@
-﻿import type { Doc, Id } from "@/types/backend-compat";
-import {
+﻿import {
 	ArrowLeft,
-	Barcode,
 	Bell,
 	CheckCircle2,
 	ChevronRight,
 	Grid2X2,
 	Loader2,
-	Minus,
 	PhoneCall,
-	Plus,
-	QrCode,
-	Search,
 	ShoppingCart,
-	Trash2,
 	Users,
-	Wallet,
 	X,
 } from "lucide-react";
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -39,81 +30,20 @@ import {
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
-import {
-	calculateEffectivePrice,
-	isFreeRefillActive,
-} from "@/lib/utils/pricing";
+import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
+import type { Doc, Id } from "@/types/backend-compat";
 
-type RouteSearch = { table?: string; session?: string; orderId?: string };
-type Step = "welcome" | "party" | "refill" | "menu" | "checkout" | "receipt";
-type MenuMode = "number" | "catalog";
-type PaymentChoice = "cashier" | "mayar";
-type ServiceRequestType = "call_staff" | "bring_dessert";
-
-type CartItem = {
-	productId: Id<"products">;
-	name: string;
-	price: number;
-	originalPrice?: number;
-	quantity: number;
-	variant?: string;
-	image?: string;
-	categoryId: Id<"categories">;
-	menuNumber?: number;
-};
-
-type ReceiptState = {
-	orderId: Id<"orders">;
-	fallbackReference: string;
-	mode: "cashier_pending" | "mayar_pending" | "paid";
-	paymentChoice: PaymentChoice;
-	invoiceId?: string;
-	invoiceUrl?: string;
-	dessertLater: boolean;
-};
-
-const CUSTOMER_ORDERING_DEFAULTS = {
-	enabled: true,
-	welcomeTitle: "Welcome",
-	welcomeSubtitle: "Pesan menu favoritmu langsung dari meja.",
-	welcomeButtonLabel: "Mulai pesan",
-	enablePartySizeSelection: true,
-	enableFreeRefillPrompt: true,
-	enableBarcodeScan: true,
-	enableMenuNumberEntry: true,
-	enableCatalogBrowsing: true,
-	enableStaffCall: true,
-	enableDessertLater: true,
-	requireTableNumber: false,
-	cashPaymentLabel: "Bayar di kasir",
-	mayarPaymentLabel: "QRIS",
-};
-
-const currency = (value: number) =>
-	new Intl.NumberFormat("id-ID", {
-		style: "currency",
-		currency: "IDR",
-		maximumFractionDigits: 0,
-	}).format(value);
-
-const normalizeMenuCode = (value: string | number | undefined | null) =>
-	String(value ?? "")
-		.replace(/\s+/g, "")
-		.trim();
-
-const getSessionId = (seed?: string) => {
-	if (seed) return seed;
-	if (typeof window === "undefined") return "server-session";
-	const storageKey = "customer-ordering-session";
-	const existing = window.localStorage.getItem(storageKey);
-	if (existing) return existing;
-	const next =
-		typeof crypto !== "undefined" && "randomUUID" in crypto
-			? crypto.randomUUID()
-			: `session-${Date.now().toString(36)}`;
-	window.localStorage.setItem(storageKey, next);
-	return next;
-};
+import type { RouteSearch, Step, MenuMode, PaymentChoice, ServiceRequestType, CartItem, ReceiptState } from "./types";
+import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, getSessionId } from "./types";
+import { BottomButton, CartRow, SummaryCardLines } from "./shared-components";
+import { BarcodeScanner } from "./barcode-scanner";
+import { ProductSheet } from "./product-sheet";
+import { renderMenuSection } from "./menu-section";
+import { renderCheckoutSection } from "./checkout-section";
+import { renderReceiptSection } from "./receipt-section";
+import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { AuthHeader } from "./auth-header";
+import { AuthModal } from "./auth-modal";
 
 export function CustomerOrderingPage({
 	brandSlug,
@@ -157,6 +87,9 @@ export function CustomerOrderingPage({
 	const [receipt, setReceipt] = useState<ReceiptState | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const sessionRef = useRef(getSessionId(search.session));
+
+	const { isAuthenticated, customer, login, register, logout, isLoading: authLoading } = useCustomerAuth();
+	const [authModalOpen, setAuthModalOpen] = useState(false);
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
 	const config = {
@@ -226,9 +159,10 @@ export function CustomerOrderingPage({
 	const promoDiscount = Math.max(0, grossSubtotal - subtotal);
 	const taxRate = siteSettings?.taxRate ?? 0;
 	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
-	const taxAmount = subtotal * (taxRate / 100);
 	const serviceChargeAmount = subtotal * (serviceChargeRate / 100);
-	const total = subtotal + taxAmount + serviceChargeAmount;
+	const taxBase = subtotal + serviceChargeAmount;
+	const taxAmount = taxBase * (taxRate / 100);
+	const total = taxBase + taxAmount;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 	const hasDessertInCart = cart.some((item) =>
 		/(dessert|cake|pudding|ice cream|gelato|tiramisu|sweet)/i.test(item.name)
@@ -271,6 +205,7 @@ export function CustomerOrderingPage({
 			mode: "mayar_pending",
 			paymentChoice: "mayar",
 			dessertLater: false,
+			cartSnapshot: [],
 		});
 		setStep("receipt");
 	}, [search.orderId, receipt]);
@@ -563,9 +498,8 @@ export function CustomerOrderingPage({
 					invoiceId: invoice?.data?.id,
 					invoiceUrl: invoice?.data?.link,
 					dessertLater,
+					cartSnapshot: cart,
 				});
-				setCart([]);
-				setStep("receipt");
 
 				if (invoice?.data?.link && typeof window !== "undefined") {
 					window.location.assign(invoice.data.link);
@@ -583,6 +517,7 @@ export function CustomerOrderingPage({
 					mode: "cashier_pending",
 					paymentChoice,
 					dessertLater,
+					cartSnapshot: cart,
 				});
 			}
 			setCart([]);
@@ -695,6 +630,24 @@ export function CustomerOrderingPage({
 						</section>
 					) : null}
 
+					<AuthHeader
+						isAuthenticated={isAuthenticated}
+						customer={(customer ?? null) as any}
+						isLoading={authLoading}
+						onOpenAuth={() => setAuthModalOpen(true)}
+						onLogout={logout}
+						className="mx-2 mb-2"
+					/>
+
+					<AuthModal
+						open={authModalOpen}
+						onOpenChange={setAuthModalOpen}
+						onLogin={login}
+						onRegister={register}
+						onSkip={() => setAuthModalOpen(false)}
+						isLoading={authLoading}
+					/>
+
 					{step === "party" ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
@@ -703,11 +656,21 @@ export function CustomerOrderingPage({
 									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
 								</div>
 								<div className="mt-2.5 grid grid-cols-3 gap-1.5">
-									{[1,2,3,4,5,6,7,8,9].map((value) => (
+									{[1,2,3,4,5,6,7,8].map((value) => (
 										<button key={value} type="button" className={cn("rounded-xl border px-2 py-2 text-sm font-black transition-all", partySize===value ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background")} onClick={() => setPartySize(value)}>
-											{value === 9 ? "9+" : value}
+											{value}
 										</button>
 									))}
+									<button key={9} type="button" className={cn("rounded-xl border px-2 py-2 text-sm font-black transition-all", partySize >= 9 ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background")} onClick={() => setPartySize(partySize >= 9 ? partySize : 9)}>
+										{partySize >= 9 ? partySize : "9+"}
+									</button>
+									{partySize >= 9 ? (
+										<div className="col-span-3">
+											<input type="number" min={9} max={999} value={partySize}
+												onChange={(e) => setPartySize(Math.max(1, Number(e.target.value) || 1))}
+												className="w-full rounded-xl border border-border bg-background px-3 py-2 text-center text-lg font-black outline-none" />
+										</div>
+									) : null}
 								</div>
 								<button type="button" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={goToMenuFlow}>
 									Lanjut dengan {partySize} orang <ChevronRight className="h-4 w-4" />
@@ -738,8 +701,8 @@ export function CustomerOrderingPage({
 					{step === "menu"
 						? renderMenuSection({ activeCategoryId, cart, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setManualCode, setMenuMode, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
 						: null}
-					{step === "checkout" ? renderCheckoutSection({ config, currency, customerName, dessertLater, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, setStep, tableNumber, taxAmount, taxRate, total, checkout, productGrossSubtotal, freeRefillCharge }) : null}
-					{step === "receipt" && receipt ? renderReceiptSection({ currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
+					{step === "checkout" ? renderCheckoutSection({ checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
+					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
 
 				{step !== "welcome" && step !== "party" && step !== "refill" ? (
@@ -788,304 +751,3 @@ export function CustomerOrderingPage({
 		</div>
 	);
 }
-
-function renderMenuSection(props: {
-	activeCategoryId: Id<"categories"> | null;
-	cart: CartItem[];
-	codeFeedback: string;
-	config: typeof CUSTOMER_ORDERING_DEFAULTS;
-	discounts: Doc<"discounts">[];
-	filteredProducts: Doc<"products">[];
-	freeRefillCharge: number;
-	handleProductSelect: (product: Doc<"products">) => void;
-	logoUrl: string;
-	manualCode: string;
-	menuMode: MenuMode;
-	orderedCategories: Doc<"categories">[];
-	partySize: number;
-	setActiveCategoryId: (value: Id<"categories"> | null) => void;
-	setCartOpen: (value: boolean) => void;
-	setManualCode: (value: string) => void;
-	setMenuMode: (value: MenuMode) => void;
-	setScannerOpen: (value: boolean) => void;
-	storeName: string;
-	tableNumber: string;
-	themeColor: string;
-	total: number;
-	totalItems: number;
-}) {
-	return (
-		<div className="space-y-3 px-3 py-3">
-			<div className="rounded-xl px-3 py-3 text-white shadow-[0_16px_40px_rgba(15,23,42,0.16)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
-				<div className="flex items-start justify-between gap-3">
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">Session aktif</p>
-						<h2 className="mt-1 text-xl font-black leading-none">Pilih menu</h2>
-						<p className="mt-1 text-xs text-white/75">Ketik nomor produk lengkap, scan barcode, atau pilih lewat katalog.</p>
-					</div>
-					<div className="rounded-xl bg-white/12 px-2.5 py-1.5 text-right backdrop-blur">
-						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">Orang</p>
-						<p className="mt-0.5 text-lg font-black">{props.partySize}</p>
-					</div>
-				</div>
-				<div className="mt-2.5 flex flex-wrap gap-1.5 text-[10px]">
-					<BadgePill label={props.tableNumber.trim() ? `Meja ${props.tableNumber.trim()}` : "Meja belum diisi"} />
-					{props.freeRefillCharge > 0 ? <BadgePill label={`Free refill ${currency(props.freeRefillCharge)}`} /> : null}
-					<BadgePill label={`${props.totalItems} item • ${currency(props.total)}`} />
-				</div>
-			</div>
-
-			<div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
-				<button type="button" className={cn("rounded-xl px-3 py-2 text-xs font-black transition-all", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("number")}>Nomor Produk</button>
-				<button type="button" className={cn("rounded-xl px-3 py-2 text-xs font-black transition-all", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("catalog")}>Katalog Menu</button>
-			</div>
-
-			{props.menuMode === "number" && props.config.enableMenuNumberEntry ? (
-				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-					<div className="flex items-center justify-between gap-2">
-						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: props.themeColor }}>Mode cepat</p><h3 className="text-sm font-black">Input nomor produk</h3></div>
-						{props.config.enableBarcodeScan ? <button type="button" className="flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[10px] font-bold text-primary" onClick={() => props.setScannerOpen(true)}><Barcode className="h-3.5 w-3.5" />Scan</button> : null}
-					</div>
-					<div className="mt-3 rounded-xl border border-border bg-background px-3 py-3 shadow-inner">
-						<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input className="w-full bg-transparent text-xl font-black tracking-[0.25em] outline-none placeholder:text-base placeholder:font-semibold placeholder:tracking-normal" inputMode="numeric" placeholder="Ketik nomor menu" value={props.manualCode} onChange={(event) => props.setManualCode(event.target.value.replace(/\\D/g, ""))} /></div>
-					</div>
-					{props.codeFeedback ? <p className="mt-2.5 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700">{props.codeFeedback}</p> : <p className="mt-2.5 text-xs text-muted-foreground">Item akan langsung masuk ke keranjang saat nomor produk lengkap cocok.</p>}
-					<div className="mt-3 grid grid-cols-3 gap-2">
-						{["1","2","3","4","5","6","7","8","9"].map((digit) => <button type="button" key={digit} className="rounded-xl border border-border bg-background px-3 py-3 text-xl font-black shadow-sm" onClick={() => props.setManualCode(`${props.manualCode}${digit}`)}>{digit}</button>)}
-						<button type="button" className="rounded-xl border border-border bg-background px-3 py-3 text-xs font-black shadow-sm" onClick={() => props.setManualCode("")}>Clear</button>
-						<button type="button" className="rounded-xl border border-border bg-background px-3 py-3 text-xl font-black shadow-sm" onClick={() => props.setManualCode(`${props.manualCode}0`)}>0</button>
-						<button type="button" className="rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={() => props.setManualCode(props.manualCode.slice(0, -1))}>Delete</button>
-					</div>
-				</div>
-			) : null}
-
-			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
-				<div className="space-y-3">
-					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
-						<div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-							<button type="button" className={chipClassName(props.activeCategoryId === null)} onClick={() => props.setActiveCategoryId(null)}>Semua</button>
-							{props.orderedCategories.filter((category) => !category.parentId).map((category) => <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>)}
-						</div>
-					</div>
-					<div className="grid grid-cols-2 gap-2.5">
-						{props.filteredProducts.map((product) => {
-							const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
-							const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
-							return (
-								<button type="button" key={product._id} className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all active:scale-[0.99]" onClick={() => props.handleProductSelect(product)}>
-									<div className="relative h-28 w-full bg-muted">{product.image ? <img alt={product.name} className="h-full w-full object-cover" src={product.image} /> : null}{product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white">#{product.menuNumber}</span> : null}{quantity > 0 ? <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">{quantity} di cart</span> : null}</div>
-									<div className="space-y-1.5 p-2.5"><p className="line-clamp-2 text-xs font-black leading-snug">{product.name}</p><div className="flex items-end justify-between gap-1.5"><div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div><div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-3.5 w-3.5" /></div></div></div>
-								</button>
-							);
-						})}
-					</div>
-				</div>
-			) : null}
-		</div>
-	);
-}
-
-function renderCheckoutSection(props: any) {
-	return (
-		<div className="space-y-2 px-2 py-2">
-			<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-				<div className="flex items-center gap-2">
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-						<Wallet className="h-4 w-4" />
-					</div>
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step akhir</p>
-						<h2 className="text-sm font-black">Checkout pesanan</h2>
-					</div>
-				</div>
-				<div className="mt-2.5 space-y-2">
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nama customer</label>
-						<input className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium outline-none" value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Opsional" type="text" />
-					</div>
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nomor meja</label>
-						<input className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium outline-none" value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^\dA-Za-z-]/g, ""))} placeholder="Contoh 12" type="text" />
-					</div>
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Catatan order</label>
-						<textarea className="min-h-[52px] w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium outline-none" value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: saus dipisah, tanpa es" />
-					</div>
-					{props.config.enableDessertLater && props.hasDessertInCart ? <label className="flex items-center justify-between rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-2"><div><p className="font-bold text-[10px] text-foreground">Bawakan dessert nanti</p><p className="text-[10px] text-muted-foreground">Bisa dipanggil saat sudah siap.</p></div><button type="button" className={cn("relative h-5 w-9 rounded-full transition-all", props.dessertLater ? "bg-primary" : "bg-muted-foreground/20")} onClick={() => props.setDessertLater((value: boolean) => !value)}><span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all", props.dessertLater ? "right-0.5" : "left-0.5")} /></button></label> : null}
-				</div>
-			</div>
-			<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-				<div className="flex items-center gap-1.5"><QrCode className="h-3.5 w-3.5 text-primary" /><h3 className="text-sm font-black">Pilih pembayaran</h3></div>
-				<div className="mt-2.5 space-y-1.5">{props.paymentOptions.map((option: any) => <button type="button" key={option.key} className={cn("flex w-full items-start justify-between rounded-lg border px-2.5 py-2.5 text-left transition-all", props.paymentChoice === option.key ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background")} onClick={() => props.setPaymentChoice(option.key)}><div><p className="font-black text-xs">{option.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{option.description}</p></div><div className={cn("mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2", props.paymentChoice === option.key ? "border-primary bg-primary" : "border-muted-foreground/30")}>{props.paymentChoice === option.key ? <div className="h-1.5 w-1.5 rounded-full bg-white" /> : null}</div></button>)}</div>
-			</div>
-			<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} taxAmount={props.taxAmount} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
-				<button type="button" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={props.checkout} disabled={props.isSubmitting}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : <>Checkout {props.currency(props.total)}</>}</button>
-			</div>
-		</div>
-	);
-}
-
-function renderReceiptSection(props: any) {
-	const orderReference = props.currentOrder?.orderNumber || props.receipt.fallbackReference;
-	const orderStatus = props.currentOrder?.status;
-	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
-	const orderItems = props.currentOrder?.items ?? [];
-	const customerName = props.currentOrder?.customerName || "-";
-	const tableNumber = props.currentOrder?.tableNumber || "-";
-	const orderType = props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
-	const customerNotes = props.currentOrder?.notes || "-";
-
-	const unifiedStatusLabel = orderStatus === "paid" ? "LUNAS"
-		: orderStatus === "completed" ? "SELESAI"
-		: "OPEN BILL";
-	const unifiedStatusColor = orderStatus === "paid" ? "text-blue-600"
-		: orderStatus === "completed" ? "text-emerald-600"
-		: "text-amber-600";
-
-	return (
-		<div className="space-y-2 px-2 py-2 pb-6">
-			<div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm">
-				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
-				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{mode === "paid" ? "Payment completed" : "Payment receipt"}</p>
-				<h2 className="mt-1 text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
-				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice Mayar sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
-				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
-					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
-						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>
-						<div className="mt-1.5 space-y-1">
-							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Nama</span>
-								<span className="font-semibold text-foreground">{customerName}</span>
-							</div>
-							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Meja</span>
-								<span className="font-semibold text-foreground">{tableNumber}</span>
-							</div>
-							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Tipe</span>
-								<span className="font-semibold text-foreground">{orderType}</span>
-							</div>
-							<div className="flex items-start justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Catatan</span>
-								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerNotes}</span>
-							</div>
-						</div>
-					</div>
-					{orderItems.length > 0 ? <div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="line-clamp-2 text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
-					<BarcodeLines value={orderReference} />
-				</div>
-				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-[10px] font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3 w-3" />Buka invoice Mayar</a> : null}
-			</div>
-			<div className="grid grid-cols-2 gap-1.5 pb-4"><button type="button" className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="rounded-lg bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Call staff / dessert" : "Call staff"}</button></div>
-		</div>
-	);
-}
-
-function BadgePill({ label }: { label: string }) {
-	return <span className="rounded-full bg-white/12 px-2 py-0.5 text-[10px] font-semibold text-white/85 backdrop-blur">{label}</span>;
-}
-
-function chipClassName(active: boolean) {
-	return cn(
-		"whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-all",
-		active ? "bg-primary text-primary-foreground shadow-sm" : "border border-border bg-background text-muted-foreground"
-	);
-}
-
-function BottomButton({ badge, disabled, icon, label, onClick, primary }: { badge?: string; disabled?: boolean; icon: ReactNode; label: string; onClick: () => void; primary?: boolean; }) {
-	return <button type="button" className={cn("relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1.5 text-[10px] font-bold transition-all", primary ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground", disabled ? "opacity-40" : "")} disabled={disabled} onClick={onClick}>{badge ? <span className="absolute right-1.5 top-0.5 flex min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] text-white">{badge}</span> : null}{icon}<span>{label}</span></button>;
-}
-
-function SummaryCardLines({ freeRefillCharge, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, taxAmount, taxRate, total }: { freeRefillCharge: number; productGrossSubtotal: number; promoDiscount: number; serviceChargeAmount: number; serviceChargeRate: number; taxAmount: number; taxRate: number; total: number; }) {
-	return <div className="space-y-1.5 rounded-xl bg-muted/35 p-3"><Line label="Subtotal produk" value={currency(productGrossSubtotal)} />{freeRefillCharge > 0 ? <Line label="Free refill minuman" value={currency(freeRefillCharge)} /> : null}{promoDiscount > 0 ? <Line label="Promo / diskon" value={`-${currency(promoDiscount)}`} className="text-orange-600" /> : null}{serviceChargeAmount > 0 ? <Line label={`Service (${serviceChargeRate}%)`} value={currency(serviceChargeAmount)} /> : null}{taxAmount > 0 ? <Line label={`Pajak (${taxRate}%)`} value={currency(taxAmount)} /> : null}<div className="flex items-center justify-between border-t border-border pt-2"><span className="text-xs font-black uppercase tracking-[0.16em] text-foreground">Total</span><span className="text-lg font-black text-foreground">{currency(total)}</span></div></div>;
-}
-
-function Line({ className, label, value }: { className?: string; label: string; value: string; }) {
-	return <div className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">{label}</span><span className={cn("font-semibold text-foreground", className)}>{value}</span></div>;
-}
-
-function CartRow({ item, onDecrease, onIncrease, onRemove }: { item: CartItem; onDecrease: () => void; onIncrease: () => void; onRemove: () => void; }) {
-	return <div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex gap-2.5"><div className="h-12 w-12 overflow-hidden rounded-xl bg-muted">{item.image ? <img alt={item.name} className="h-full w-full object-cover" src={item.image} /> : null}</div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div><p className="text-xs font-black leading-snug">{item.name}</p>{item.variant ? <p className="mt-0.5 text-[10px] text-muted-foreground">{item.variant}</p> : null}</div><button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-destructive/10 text-destructive" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></button></div><div className="mt-2.5 flex items-center justify-between"><p className="text-xs font-black text-primary">{currency(item.price * item.quantity)}</p><div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-1.5 py-0.5"><button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-muted" onClick={onDecrease}><Minus className="h-3.5 w-3.5" /></button><span className="min-w-[1.25rem] text-center text-xs font-black">{item.quantity}</span><button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground" onClick={onIncrease}><Plus className="h-3.5 w-3.5" /></button></div></div></div></div></div>;
-}
-
-function BarcodeLines({ value }: { value: string }) {
-	const pattern = Array.from(value.replace(/\s+/g, "")).map((character, index) => ((character.charCodeAt(0) + index * 7) % 4) + 1).flatMap((width) => [width, 1]);
-	return <div className="mt-4 rounded-xl border border-border bg-white px-3 py-3 shadow-inner"><div className="flex h-20 items-end justify-center gap-[2px]">{pattern.map((width, index) => <span key={`${value}-${index}`} className="bg-black" style={{ width: `${Math.max(2, width * 2)}px`, height: `${index % 2 === 0 ? 74 : 64}px` }} />)}</div><p className="mt-3 text-center font-mono text-xs font-bold tracking-[0.28em] text-foreground">{value}</p></div>;
-}
-
-function BarcodeScanner({ onClose, onDetected }: { onClose: () => void; onDetected: (rawValue: string) => void; }) {
-	const videoRef = useRef<HTMLVideoElement | null>(null);
-	const [status, setStatus] = useState("Mengaktifkan kamera...");
-
-	useEffect(() => {
-		let stream: MediaStream | null = null;
-		let frame = 0;
-		let cancelled = false;
-
-		const start = async () => {
-			if (typeof window === "undefined" || !("BarcodeDetector" in window) || !navigator.mediaDevices?.getUserMedia) {
-				setStatus("Browser ini belum mendukung scan barcode. Gunakan input nomor produk.");
-				return;
-			}
-			try {
-				stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-				if (cancelled) return;
-				if (videoRef.current) {
-					videoRef.current.srcObject = stream;
-					await videoRef.current.play();
-				}
-				setStatus("Arahkan kamera ke barcode menu.");
-				const Detector = (window as any).BarcodeDetector;
-				const detector = new Detector({ formats: ["code_128", "ean_13", "ean_8", "upc_a", "upc_e", "qr_code"] });
-				const detectLoop = async () => {
-					if (cancelled || !videoRef.current) return;
-					try {
-						const result = await detector.detect(videoRef.current);
-						const rawValue = result.find((item: any) => item.rawValue)?.rawValue;
-						if (rawValue) {
-							onDetected(rawValue);
-							return;
-						}
-					} catch {
-						// ignore frame failures
-					}
-					frame = window.requestAnimationFrame(detectLoop);
-				};
-				frame = window.requestAnimationFrame(detectLoop);
-			} catch (error) {
-				setStatus((error as Error).message || "Kamera tidak dapat diakses.");
-			}
-		};
-
-		start();
-		return () => {
-			cancelled = true;
-			window.cancelAnimationFrame(frame);
-			stream?.getTracks().forEach((track) => track.stop());
-		};
-	}, [onDetected]);
-
-	return <div className="space-y-3 px-4 py-4"><div className="flex items-start justify-between gap-2"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Barcode scanner</p><h3 className="mt-0.5 text-lg font-black">Scan nomor produk</h3></div><button type="button" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={onClose}><X className="h-3.5 w-3.5" /></button></div><div className="overflow-hidden rounded-xl bg-black"><video ref={videoRef} autoPlay className="aspect-[4/5] w-full object-cover" muted playsInline /></div><p className="rounded-xl bg-muted/35 px-3 py-2.5 text-xs text-muted-foreground">{status}</p><button type="button" className="w-full rounded-xl border border-border bg-card px-3 py-3 text-xs font-black" onClick={onClose}>Kembali ke input nomor</button></div>;
-}
-
-function ProductSheet({ discounts, onAdd, onClose, product }: { discounts: Doc<"discounts">[]; onAdd: (item: CartItem) => void; onClose: () => void; product: Doc<"products"> | null; }) {
-	const [quantity, setQuantity] = useState(1);
-	const [variants, setVariants] = useState<Record<string, string>>({});
-	useEffect(() => {
-		setQuantity(1);
-		setVariants({});
-	}, [product]);
-	if (!product) return null;
-	const groups = Array.isArray(product.variations) ? product.variations as Array<{ type: string; options: Array<{ name: string; price: number }> }> : [];
-	const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, discounts);
-	const variantPrice = Object.entries(variants).reduce((sum, [groupName, optionName]) => {
-		const group = groups.find((entry) => entry.type === groupName);
-		const option = group?.options.find((entry) => entry.name === optionName);
-		return sum + (option?.price ?? 0);
-	}, 0);
-	const unitPrice = pricing.finalPrice + variantPrice;
-	return <div className="flex max-h-[85vh] flex-col"><div className="relative h-48 bg-muted">{product.image ? <img alt={product.name} className="h-full w-full object-cover" src={product.image} /> : null}<button type="button" className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white" onClick={onClose}><X className="h-3.5 w-3.5" /></button>{product.menuNumber != null ? <span className="absolute bottom-3 left-3 rounded-full bg-black/55 px-2.5 py-0.5 text-[10px] font-bold text-white">#{product.menuNumber}</span> : null}</div><div className="flex-1 overflow-y-auto px-4 py-4"><h3 className="text-xl font-black tracking-tight">{product.name}</h3>{product.description ? <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{product.description}</p> : null}<div className="mt-3 flex items-center gap-2.5"><span className="text-xl font-black text-primary">{currency(unitPrice)}</span>{pricing.isPromo ? <span className="text-xs font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice + variantPrice)}</span> : null}</div>{groups.length > 0 ? <div className="mt-4 space-y-4">{groups.map((group) => <div key={group.type} className="space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{group.type}</p><div className="flex flex-wrap gap-1.5">{group.options.map((option) => <button type="button" key={option.name} className={cn("rounded-full border px-2.5 py-1.5 text-xs font-bold transition-all", variants[group.type] === option.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background")} onClick={() => setVariants((value) => ({ ...value, [group.type]: option.name }))}>{option.name}{option.price > 0 ? ` +${currency(option.price)}` : ""}</button>)}</div></div>)}</div> : null}</div><div className="border-t border-border px-4 py-3"><div className="flex items-center gap-2"><div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-1.5 py-0.5"><button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-muted" onClick={() => setQuantity((value) => Math.max(1, value - 1))}><Minus className="h-3.5 w-3.5" /></button><span className="min-w-[1.25rem] text-center text-xs font-black">{quantity}</span><button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground" onClick={() => setQuantity((value) => value + 1)}><Plus className="h-3.5 w-3.5" /></button></div><button type="button" className="flex flex-1 items-center justify-between rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={() => onAdd({ productId: product._id, name: product.name, price: unitPrice, originalPrice: pricing.originalPrice + variantPrice, quantity, variant: Object.values(variants).length > 0 ? Object.values(variants).join(", ") : undefined, image: product.image, categoryId: product.categoryId, menuNumber: product.menuNumber })}><span>Tambah ke keranjang</span><span>{currency(unitPrice * quantity)}</span></button></div></div></div>;
-}
-

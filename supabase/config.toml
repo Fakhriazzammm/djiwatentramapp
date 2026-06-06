@@ -21,6 +21,10 @@ verify_jwt = true
 import_map = "./functions/record-financial-transaction/deno.json"
 entrypoint = "./functions/record-financial-transaction/index.ts"
 
+[functions.customer-sync]
+enabled = true
+verify_jwt = false
+
 [functions.auto-attendance-clockout]
 enabled = true
 verify_jwt = false

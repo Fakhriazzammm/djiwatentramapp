@@ -6,6 +6,7 @@ import {
 	ChefHat,
 	Clock3,
 	Search,
+	Star,
 	UserRound,
 	XCircle,
 } from "lucide-react";
@@ -160,7 +161,7 @@ function CustomerServiceRequestsPage() {
 									<div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
 										<div className="flex items-center gap-2">
 											<UserRound className="h-4 w-4 text-primary" />
-											<span>{request.customerName || "Customer umum"}</span>
+											<span className="flex items-center gap-1">{request.customerName || "Customer umum"}{request.source === "customer_page" ? <Star className="h-3 w-3 fill-amber-400 text-amber-500" /> : null}</span>
 										</div>
 										<div className="flex items-center gap-2">
 											<ChefHat className="h-4 w-4 text-primary" />

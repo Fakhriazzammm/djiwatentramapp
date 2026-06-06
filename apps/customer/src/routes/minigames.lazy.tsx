@@ -13,7 +13,7 @@ export const Route = createLazyFileRoute("/minigames")({
 });
 
 function MiniGamesPage() {
-	const game = useHybridActiveMiniGameByBrand("djiwatentram");
+	const game = useHybridActiveMiniGameByBrand(import.meta.env.VITE_BRAND_SLUG || "djiwatentram");
 	const spin = useHybridSpin();
 
 	const [form, setForm] = useState({

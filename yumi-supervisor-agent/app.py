@@ -770,6 +770,7 @@ def _save_supervisor_cursor(ts: int, nos: set[str]):
             f.write(f"{no}\n")
 
 _last_order_check_ms, _reported_order_nos = _load_supervisor_cursor()
+_last_csr_check_ms: int = 0
 
 # ⏪ Lookback window — scan N menit ke belakang dari NOW (bukan dari cursor)
 # agar order yang baru berubah jadi paid/completed setelah cursor lewat tetap terdeteksi.
@@ -905,6 +906,59 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     except Exception as e:
         logger.error("send_transaction_notification failed for %s: %s", order_no, e)
 
+# ── Member / poin engine ────────────────────────────────────────────
+
+async def _earn_customer_points(order_id: str, customer_source_id: str, total_amount: float) -> None:
+    """Auto-calculate and award points for a member's order.
+
+    Points = 5% of total_amount (rounded down).
+    Updates total_points on the customer record and inserts a ledger entry.
+    """
+    try:
+        poin = int(total_amount * 0.05)
+        if poin <= 0:
+            logger.info("_earn_customer_points: %s -> 0 poin (total=%.0f), skipping", customer_source_id, total_amount)
+            return
+
+        # 1) Fetch current customer data (to get current total_points and name)
+        cust = await _fetch(
+            "pos_customers",
+            f"select=name,total_points&_id=eq.{customer_source_id}&limit=1",
+        )
+        if not cust:
+            logger.warning("_earn_customer_points: customer %s not found", customer_source_id)
+            return
+        curr_points = int(cust[0].get("total_points") or 0)
+        new_total = curr_points + poin
+
+        # 2) UPDATE total_points
+        updated = await _patch(
+            "pos_customers",
+            f"_id=eq.{customer_source_id}",
+            {"total_points": new_total},
+        )
+        if not updated:
+            logger.warning("_earn_customer_points: update failed for %s", customer_source_id)
+            return
+
+        # 3) INSERT into point ledger
+        ledger_entry = {
+            "customer_id": customer_source_id,
+            "order_id": order_id,
+            "points_earned": poin,
+            "points_balance": new_total,
+            "source": "order_completed",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await _post("pos_customer_point_ledger", ledger_entry)
+        logger.info(
+            "Points earned: customer=%s order=%s poin=%d balance=%d",
+            customer_source_id, order_id, poin, new_total,
+        )
+    except Exception as e:
+        logger.error("_earn_customer_points failed for %s: %s", customer_source_id, e)
+
+
 async def _check_new_orders(app):
     global _last_order_check_ms, _reported_order_nos
     now_ms = int(_now_wib().timestamp() * 1000)
@@ -914,7 +968,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -944,6 +998,22 @@ async def _check_new_orders(app):
         order_type = row.get("orderType") or "dine_in"
         items = row.get("items") or []
         total = row.get("totalAmount") or 0
+        order_id = row.get("_id") or ""
+
+        # ── Member detection ⭐ ──
+        customer_source_id = row.get("customerSourceId") or ""
+        member_name = None
+        if customer_source_id:
+            try:
+                m = await _fetch(
+                    "pos_customers",
+                    f"select=name,total_points&_id=eq.{customer_source_id}&limit=1",
+                )
+                if m:
+                    member_name = m[0].get("name", customer)
+                    logger.info("Order %s from member: %s (id=%s)", order_no, member_name, customer_source_id)
+            except Exception as e:
+                logger.warning("Failed to fetch member for order %s: %s", order_no, e)
 
         # ── DEBUG: log raw items ──
         item_pids = [i.get("productId", "NO_PID") for i in items] if items else []
@@ -976,6 +1046,14 @@ async def _check_new_orders(app):
                 struk_line = f"STRUK NO. {daily_no} - {kind_label}"
         else:
             struk_line = None
+
+        # ⭐ Tambah tag MEMBER di struk_line
+        if customer_source_id and member_name:
+            member_tag = " ⭐ MEMBER"
+            if struk_line:
+                struk_line += member_tag
+            else:
+                struk_line = member_tag.strip()
 
         # Cek ulang nama customer dari items jika kosong
         if customer in ("", "Pelanggan") and items:
@@ -1012,10 +1090,184 @@ async def _check_new_orders(app):
         payment = row.get("paymentMethod") or "-"
         await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill)
 
+        # ⭐ Award points for member orders
+        if customer_source_id:
+            await _earn_customer_points(order_id, customer_source_id, float(total))
+
         _reported_order_nos.add(order_no)
 
     _last_order_check_ms = max_creation_time
     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos)
+
+# ── Customer service request polling ──
+# ─────────────────────────────────────────
+
+async def _check_new_csr(app):
+    """Poll for new customer service requests from customer page."""
+    global _last_csr_check_ms
+    now_ms = int(_now_wib().timestamp() * 1000)
+    # Look back up to 1 hour
+    scan_from = min(_last_csr_check_ms, max(0, now_ms - 3_600_000)) if _last_csr_check_ms > 0 else (now_ms - 3_600_000)
+    try:
+        # Use direct httpx call with Accept-Profile header for legacy_mirror schema
+        url = f"{SUPABASE_URL}/rest/v1/documents"
+        q = ("select=document,creation_time"
+             "&table_name=eq.customerServiceRequests"
+             f"&creation_time=gt.{scan_from}"
+             f"&creation_time=lte.{now_ms}"
+             "&order=creation_time.asc"
+             "&limit=20")
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                f"{url}?{q}",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Accept-Profile": "legacy_mirror",
+                },
+                timeout=15,
+            )
+            r.raise_for_status()
+            rows = r.json()
+            if not isinstance(rows, list):
+                rows = []
+    except Exception as e:
+        logger.warning("check_new_csr fetch failed: %s", e)
+        return
+
+    if not rows:
+        _last_csr_check_ms = now_ms
+        return
+
+    max_ts = _last_csr_check_ms
+    for row in rows:
+        ts = int(row.get("creation_time", 0) or 0)
+        if ts > max_ts:
+            max_ts = ts
+        if ts <= _last_csr_check_ms:
+            continue
+
+        doc = row.get("document") or {}
+        status = str(doc.get("status") or "")
+        if status in ("completed", "cancelled", "notified"):
+            continue
+
+        tipe = str(doc.get("requestType") or "call_staff")
+        table = str(doc.get("tableNumber") or "-")
+        customer = str(doc.get("customerName") or "-")
+        order_id = str(doc.get("orderId") or "")
+        notes = str(doc.get("notes") or "").strip()
+        waktu = _format_time_hm(doc.get("createdAt", 0))
+
+        # Enrich: fetch order details
+        guest = ""
+        total = 0.0
+        payment = "-"
+        struk_no = "-"
+        items = []
+        csr_customer_source_id = ""
+        if order_id:
+            try:
+                o = await _fetch(
+                    "pos_orders",
+                    f"select=daily_receipt_no,orderNumber,customerSourceId,guestCount,totalAmount,paymentMethod,items,notes,freeRefillSelected,discountAmount,voucherId&_id=eq.{order_id}&limit=1",
+                )
+                if o:
+                    oo = o[0]
+                    struk_no = str(oo.get("daily_receipt_no") or oo.get("orderNumber") or "-")
+                    g = oo.get("guestCount")
+                    if g:
+                        guest = str(int(g))
+                    total = float(oo.get("totalAmount") or 0)
+                    payment = str(oo.get("paymentMethod") or "-").upper()
+                    raw_items = oo.get("items") or []
+                    if isinstance(raw_items, list):
+                        items = raw_items
+                    csr_customer_source_id = oo.get("customerSourceId") or ""
+            except Exception:
+                pass
+        else:
+            csr_customer_source_id = ""
+
+        # ⭐ Cek apakah order dari member
+        csr_is_member = bool(csr_customer_source_id) if order_id else False
+
+        # Categorize items
+        food_names = []
+        bev_names = []
+        dessert_names = []
+        for i in items:
+            pname = str(i.get("productName") or "").strip()
+            qty = int(float(i.get("quantity") or 1))
+            pid = str(i.get("productId") or "")
+            name_label = f"{qty}x {pname}" if qty > 1 else pname
+            if not pname:
+                continue
+            if await _is_beverage_item(i):
+                bev_names.append(name_label)
+            elif await _is_food_item(i):
+                food_names.append(name_label)
+            else:
+                low = pname.lower()
+                if any(k in low for k in ("dessert", "cake", "pudding", "ice cream", "gelato", "tiramisu", "sweet", "pastry")):
+                    dessert_names.append(name_label)
+                else:
+                    food_names.append(name_label)
+
+        # Build notification
+        if tipe == "bring_dessert":
+            icon = "🍰"
+            label = "BRING DESSERT"
+        else:
+            icon = "🙋"
+            label = "CALL STAFF"
+
+        lines = [
+            f"{icon} *{label}*" + (" -- ⭐ MEMBER" if csr_is_member else ""),
+            f"  📍 STRUK NO. {struk_no}",
+            "─" * 12,
+            f"  🪫 Meja: {table}",
+            f"  👤 Nama: {customer}",
+            f"  🕐 Waktu: {waktu} WIB",
+        ]
+        if guest:
+            lines.append(f"  👥 Jumlah: {guest} orang")
+        if total > 0:
+            lines.append(f"  💰 Total: Rp{total:,.0f}")
+            lines.append(f"  💳 Bayar: {payment}")
+
+        # Items by category
+        if tipe == "bring_dessert":
+            if dessert_names:
+                lines.append(f"  🍰 Dessert: {', '.join(dessert_names)}")
+            elif food_names or bev_names:
+                all_items = food_names + bev_names
+                lines.append(f"  🍰 Dessert: {', '.join(all_items)}")
+        else:
+            if food_names:
+                lines.append(f"  🍳 Kitchen: {', '.join(food_names)}")
+            if bev_names:
+                lines.append(f"  🍵 Bar: {', '.join(bev_names)}")
+
+        if notes:
+            lines.append(f"  📝 Catatan: {notes}")
+        lines.append("  🟡 Status: Menunggu")
+
+        text = "\n".join(lines)
+
+        # Send to transaction group
+        try:
+            await app.bot.send_message(
+                chat_id=TRANSACTION_GROUP_ID,
+                text=text,
+                parse_mode="Markdown",
+            )
+            logger.info("CSR notified: %s at meja %s (struk #%s)", tipe, table, struk_no)
+        except Exception as e:
+            logger.warning("Failed to send CSR notification: %s", e)
+
+    _last_csr_check_ms = max_ts
+
 
 # ── Main (sync, uses post_init for async setup) ──────────────────
 
@@ -1045,6 +1297,7 @@ async def _post_init(app):
         while True:
             await asyncio.sleep(5)
             await _check_new_orders(app)
+            await _check_new_csr(app)
 
     app.create_task(_poll_loop())
     logger.info("Polling loop started (5s interval)")

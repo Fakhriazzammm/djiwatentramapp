@@ -70,6 +70,7 @@ interface CartContextType {
 		isSubmitted: boolean;
 		platform?: string;
 		platformCommission?: number;
+		customer_source_id?: string;
 	};
 	updateCustomerInfo: (info: Partial<CartContextType["customerInfo"]>) => void;
 }
@@ -117,16 +118,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		notes: string;
 		isFreeRefill: boolean;
 		isSubmitted: boolean;
-		platform?: string;        // "grab" | "gofood" | "maxim" | "shopeefood"
-		platformCommission?: number; // commission rate (e.g. 0.20)
+		platform?: string;
+		platformCommission?: number;
+		customer_source_id?: string;
 	}>({
-		name: "",
-		orderType: "dine_in",
-		tableNumber: "",
-		notes: "",
-		isFreeRefill: false,
-		isSubmitted: false,
-	});
+			name: "",
+			orderType: "dine_in",
+			tableNumber: "",
+			notes: "",
+			isFreeRefill: false,
+			isSubmitted: false,
+		});
 
 	const updateCustomerInfo = (info: Partial<typeof customerInfo>) => {
 		setCustomerInfo((prev) => ({ ...prev, ...info }));

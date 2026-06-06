@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/client";
+import { createClient, isSupabaseConfigured } from "@/lib/client";
 
 export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
@@ -11,15 +11,6 @@ export type UseSupabaseLiveValueOptions = {
 	cacheTtlMs?: number;
 };
 
-// Runtime check — works even if VITE_ env vars weren't set at build time
-// Combined with fallback values in createClient() for resilience
-const SUPABASE_URL =
-	import.meta.env.VITE_SUPABASE_URL ||
-	"https://xaemykhjpkgypqqpfdcb.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY =
-	import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-	"sb_publishable_LGFL7r4JQVqG1fvwNniJ7A_ub29yf_3";
-const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 
 /** Shared channel registry — dedup WebSocket connections per schema set */
 const sharedChannels = new Map<string, { refCount: number; unsubscribe: () => void }>();
@@ -61,7 +52,7 @@ export function useSupabaseLiveValue<T>(
 	const reloadFnRef = useRef<() => Promise<void>>(async () => {});
 
 	useEffect(() => {
-		if (!hasSupabaseConfig) {
+		if (!isSupabaseConfigured()) {
 			setData(null);
 			return;
 		}

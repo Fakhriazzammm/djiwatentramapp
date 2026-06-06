@@ -35,61 +35,104 @@ export const Route = createLazyFileRoute("/$username")({
 });
 
 /* ── Attendance check-in reminder ───────────────── */
-const DISMISS_PREFIX_ABSEN = "checkin_remind_dismiss_";
+const DISMISS_KEY_MISSED = "checkin_remind_missed_";
+
+/* Helper: format epoch-ms timestamp → WIB date string (YYYY-MM-DD) */
+function tsToWibDateStr(ts: number): string {
+  const d = new Date(ts + 7 * 3600_000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/* Helper: today's date in WIB as YYYY-MM-DD */
+function wibTodayStr(): string {
+  const now = new Date(Date.now() + 7 * 3600_000);
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** Human-readable date in Indonesian format */
+function formatDateId(iso: string): string {
+  const m = +iso.slice(5, 7), d = +iso.slice(8, 10);
+  const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+  return `${d} ${months[m - 1]}`;
+}
 
 function AttendanceReminder({ userId, userName }: { userId?: string; userName?: string }) {
   const [state, setState] = useState<"loading" | "none" | "show">("loading");
-  const [scheduleInfo, setScheduleInfo] = useState("");
+  const [missedDates, setMissedDates] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!userId) { setState("none"); return; }
-    const todayKey = new Date().toISOString().slice(0, 10);
-    try {
-      if (localStorage.getItem(`${DISMISS_PREFIX_ABSEN}${todayKey}_${userId}`) === "1") {
-        setState("none"); return;
-      }
-    } catch { /* */ }
-
     (async () => {
       try {
         const supabase = createClient();
-        // Cek jadwal hari ini (WIB)
-        const now = new Date(Date.now() + 7 * 3600 * 1000);
-        const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+        const nowWib = new Date(Date.now() + 7 * 3600_000);
 
-        const { data: schedule } = await supabase
-          .schema("pos")
-          .from("attendance_schedules")
-          .select("shift_name, start_time")
-          .eq("user_id", userId)
-          .eq("date", todayStr)
-          .not("shift_name", "ilike", "%off%")
-          .limit(1);
+        // Rentang: 1 bulan berjalan → kemarin (WIB)
+        const startStr = `${nowWib.getUTCFullYear()}-${String(nowWib.getUTCMonth() + 1).padStart(2, "0")}-01`;
+        const yesterdayWib = new Date(nowWib.getTime() - 86400_000);
+        const endStr = `${yesterdayWib.getUTCFullYear()}-${String(yesterdayWib.getUTCMonth() + 1).padStart(2, "0")}-${String(yesterdayWib.getUTCDate()).padStart(2, "0")}`;
 
-        if (!schedule || schedule.length === 0) {
+        // Cek dismiss — simpan tanggal terakhir dismissed
+        try {
+          const stored = localStorage.getItem(`${DISMISS_KEY_MISSED}${userId}`);
+          if (stored && stored >= endStr) {
+            setState("none"); return;
+          }
+        } catch { /* */ }
+
+        // Skip jika masih 1 Juni dan belum ada hari kemarin (masih di hari pertama)
+        if (startStr === wibTodayStr()) {
           setState("none"); return;
         }
 
-        // Cek apakah sudah check-in hari ini
-        const dayStart = now.getTime() - (now.getUTCHours() * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds()) * 1000;
-        const dayEnd = dayStart + 86400000;
+        // 1. Ambil semua jadwal (non-OFF) dalam rentang
+        const { data: schedules } = await supabase
+          .schema("pos")
+          .from("attendance_schedules")
+          .select("date, shift_name")
+          .eq("user_id", userId)
+          .gte("date", startStr)
+          .lte("date", endStr)
+          .not("shift_name", "ilike", "%off%");
+
+        if (!schedules || schedules.length === 0) {
+          setState("none"); return;
+        }
+
+        // 2. Ambil semua check-in dalam rentang
+        const startTs = Date.UTC(nowWib.getUTCFullYear(), nowWib.getUTCMonth(), 1) - 7 * 3600_000;
+        const endTs = yesterdayWib.getTime() + 86400_000 - 1;
 
         const { data: logs } = await supabase
           .from("pos_attendance_logs")
-          .select("_id")
+          .select("timestamp")
           .eq("userName", userName)
           .eq("type", "check_in")
-          .gte("timestamp", dayStart)
-          .lt("timestamp", dayEnd)
-          .limit(1);
+          .gte("timestamp", startTs)
+          .lt("timestamp", endTs);
 
-        if (logs && logs.length > 0) {
+        // Set of dates where user DID check in
+        const checkedInDates = new Set<string>();
+        if (logs) {
+          for (const log of logs) {
+            checkedInDates.add(tsToWibDateStr(log.timestamp));
+          }
+        }
+
+        // 3. Cari jadwal tanpa check-in
+        const missed: string[] = [];
+        for (const s of schedules) {
+          if (!checkedInDates.has(s.date)) {
+            missed.push(s.date);
+          }
+        }
+
+        if (missed.length === 0) {
           setState("none"); return;
         }
 
-        // Ada jadwal, belum check-in → show popup
-        setScheduleInfo(schedule.map((s: any) => s.shift_name).join(", "));
+        setMissedDates(missed);
         setState("show");
       } catch {
         setState("none");
@@ -99,11 +142,18 @@ function AttendanceReminder({ userId, userName }: { userId?: string; userName?: 
 
   const dismiss = useCallback(() => {
     setState("none");
-    const todayKey = new Date().toISOString().slice(0, 10);
-    try { localStorage.setItem(`${DISMISS_PREFIX_ABSEN}${todayKey}_${userId}`, "1"); } catch { /* */ }
+    const nowWib = new Date(Date.now() + 7 * 3600_000);
+    const yesterdayWib = new Date(nowWib.getTime() - 86400_000);
+    const endStr = `${yesterdayWib.getUTCFullYear()}-${String(yesterdayWib.getUTCMonth() + 1).padStart(2, "0")}-${String(yesterdayWib.getUTCDate()).padStart(2, "0")}`;
+    try { localStorage.setItem(`${DISMISS_KEY_MISSED}${userId}`, endStr); } catch { /* */ }
   }, [userId]);
 
   if (state !== "show") return null;
+
+  const count = missedDates.length;
+  const label = count > 3
+    ? `${count} hari (${formatDateId(missedDates[0])} – ${formatDateId(missedDates[missedDates.length - 1])})`
+    : missedDates.map(formatDateId).join(", ");
 
   return (
     <AnimatePresence>
@@ -113,24 +163,24 @@ function AttendanceReminder({ userId, userName }: { userId?: string; userName?: 
         exit={{ opacity: 0, y: -20 }}
         className="mx-auto w-full max-w-2xl px-4 pt-2"
       >
-        <div className="relative flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm">
-          <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+        <div className="relative flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900 shadow-sm">
+          <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Belum Absen Masuk!</p>
-            <p className="mt-0.5 text-xs text-amber-700">
-              Kamu dijadwalkan <strong>{scheduleInfo}</strong> hari ini, tapi belum check-in. 
-              Silakan absen di halaman <strong>Absensi</strong>.
+            <p className="text-sm font-semibold">Absensi Terlewat!</p>
+            <p className="mt-0.5 text-xs text-rose-700">
+              Kamu tidak check-in sebanyak <strong>{count} hari</strong>: {label}.
+              Data absensi ini memengaruhi penggajian. Silakan hubungi atasan jika ada kendala.
             </p>
             <button
               onClick={() => navigate({ to: `/${userName}/absensi` as any, params: { userName: userName! } } as any)}
-              className="mt-2 rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
+              className="mt-2 rounded-lg bg-rose-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition-colors"
             >
-              Buka Absensi
+              Buka Riwayat Absensi
             </button>
           </div>
           <button
             onClick={dismiss}
-            className="shrink-0 rounded-full p-1 text-amber-400 hover:bg-amber-100 hover:text-amber-600 transition-colors"
+            className="shrink-0 rounded-full p-1 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>

@@ -59,6 +59,10 @@ WIB = timezone(timedelta(hours=7))
 MAX_IMAGE_SIZE = 1800
 JPEG_QUALITY = 88
 
+# Kualitas untuk penyimpanan gambar struk (lebih tinggi agar terbaca)
+STORAGE_MAX_IMAGE_SIZE = 2400
+STORAGE_JPEG_QUALITY = 95
+
 # ── Inisialisasi module ────────────────────────────────────────────
 from finance import FinanceManager
 from inventory import InventoryManager, _find_inventory_match
@@ -69,6 +73,7 @@ from memory import MemoryManager, normalize_name
 from item_normalization import expand_item_alias, normalize_unit, load_aliases_from_db
 from db_categories import build_resolver
 from analyzer import TransactionAnalyzer
+from local_ocr import local_vision_json
 # (no supplier import needed — moved to Yumi Purchasing)
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
@@ -221,8 +226,8 @@ def _period_keyboard(tx_type: str) -> InlineKeyboardMarkup:
 
 # ── Image Compression (OCR) ───────────────────────────────────────
 
-def _compress_image(image_bytes: bytes) -> str:
-    """Compress image to under ~200KB, return base64 data URI."""
+def _compress_image(image_bytes: bytes) -> tuple[bytes, str]:
+    """Compress image, return (jpeg_bytes, base64_data_uri)."""
     img = Image.open(io.BytesIO(image_bytes))
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
@@ -232,8 +237,58 @@ def _compress_image(image_bytes: bytes) -> str:
         img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
-    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-    return f"data:image/jpeg;base64,{b64}"
+    jpeg_bytes = buf.getvalue()
+    b64 = base64.b64encode(jpeg_bytes).decode("utf-8")
+    return jpeg_bytes, f"data:image/jpeg;base64,{b64}"
+
+
+async def _upload_receipt_to_storage(image_bytes: bytes, ref_id: str) -> str | None:
+    """Compress with high quality (agar terbaca) dan upload ke Supabase Storage.
+    Return public URL atau None.
+    """
+    try:
+        # Kompres dengan kualitas tinggi untuk penyimpanan
+        img = Image.open(io.BytesIO(image_bytes))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        w, h = img.size
+        if max(w, h) > STORAGE_MAX_IMAGE_SIZE:
+            ratio = STORAGE_MAX_IMAGE_SIZE / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=STORAGE_JPEG_QUALITY, optimize=True, subsampling=0)
+        jpeg_bytes = buf.getvalue()
+
+        filename = f"receipt_{datetime.now(WIB).strftime('%Y%m%d_%H%M%S')}_{ref_id}.jpg"
+        url = f"{SUPABASE_URL}/storage/v1/object/receipt-images/{filename}"
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                    "Content-Type": "image/jpeg",
+                },
+                content=jpeg_bytes,
+            )
+            resp.raise_for_status()
+        public_url = f"{SUPABASE_URL}/storage/v1/object/public/receipt-images/{filename}"
+        logger.info("Receipt image uploaded: %s", public_url)
+        return public_url
+    except Exception as e:
+        logger.warning("Failed to upload receipt image to storage: %s", e)
+        return None
+
+
+async def _download_from_storage(url: str) -> bytes | None:
+    """Download image bytes from Supabase Storage public URL."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            return resp.content
+    except Exception as e:
+        logger.warning("Failed to download from storage: %s", e)
+        return None
 
 
 # ── OCR Parser ─────────────────────────────────────────────────────
@@ -489,11 +544,17 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo = update.message.photo[-1]
         file = await context.bot.get_file(photo.file_id)
         image_bytes = bytes(await file.download_as_bytearray())
-        compressed_uri = _compress_image(image_bytes)
+        jpeg_bytes, compressed_uri = _compress_image(image_bytes)
 
         # Panggil SumoPod vision_json untuk structured OCR
         sp_client = SumoPodClient(SUMOPOD_API_KEY)
         vision_result = await sp_client.vision_json(image_base64_uri=compressed_uri, timeout=90)
+
+        if not vision_result.get("success"):
+            # Fallback ke local OCR (EasyCPU + DeepSeek parsing)
+            logger.info("Vision AI gagal, fallback ke local OCR...")
+            await msg.edit_text("🔍 Vision AI tidak tersedia, beralih ke OCR lokal...")
+            vision_result = await local_vision_json(image_bytes, sumopod_client=sp_client)
 
         if not vision_result.get("success"):
             await msg.edit_text(
@@ -568,6 +629,9 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ── Format tampilan ─────────────────────────────────────
         lines = ["📸 Struk Berhasil Dibaca!", ""]
+        if vision_result.get("_ocr_local"):
+            lines.append("⚠️ OCR Lokal (akurasi mungkin kurang)")
+            lines.append("")
 
         if merchant:
             lines.append(f"🏪 {merchant}")
@@ -653,8 +717,15 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "category": category,
             "raw_text": raw_text,
             "confidence": confidence,
+            "receipt_image_url": None,
         }
         _save_pending()
+
+        # Upload compressed image to Supabase Storage
+        receipt_image_url = await _upload_receipt_to_storage(image_bytes, ref_id)
+        if receipt_image_url:
+            _receipt_pending[ref_id]["receipt_image_url"] = receipt_image_url
+            _save_pending()
 
         keyboard = InlineKeyboardMarkup([
             [
@@ -743,10 +814,15 @@ async def _ocr_one(sp_client, photo, context, idx: int, total: int, chat_id: int
     try:
         file = await context.bot.get_file(photo.file_id)
         image_bytes = bytes(await file.download_as_bytearray())
-        compressed_uri = _compress_image(image_bytes)
+        jpeg_bytes, compressed_uri = _compress_image(image_bytes)
 
         async with _ocr_semaphore:
             vision_result = await sp_client.vision_json(image_base64_uri=compressed_uri, timeout=90)
+
+        if not vision_result.get("success"):
+            # Fallback ke local OCR untuk bulk
+            logger.info(f"Bulk OCR vision AI gagal untuk struk #{idx+1}, fallback ke local OCR...")
+            vision_result = await local_vision_json(image_bytes, sumopod_client=sp_client)
 
         done = idx + 1
         try:
@@ -792,7 +868,14 @@ async def _ocr_one(sp_client, photo, context, idx: int, total: int, chat_id: int
             data = vision_result.get("data", {})
             if isinstance(data, dict):
                 data["items"] = _normalize_ocr_items(data.get("items") or [])
-                vision_result["data"] = data
+
+            # Upload image to storage for archival
+            ref_id = f"bulk_{chat_id}_{idx}"
+            receipt_image_url = await _upload_receipt_to_storage(image_bytes, ref_id)
+            if receipt_image_url:
+                if isinstance(data, dict):
+                    data["receipt_image_url"] = receipt_image_url
+                vision_result["receipt_image_url"] = receipt_image_url
 
         return vision_result
     except Exception as e:
@@ -868,6 +951,7 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
             "raw_text": data.get("rawText") or "",
             "confidence": data.get("confidence", 0),
             "category": data.get("category") or "",
+            "receipt_image_url": data.get("receipt_image_url") or r.get("receipt_image_url") or "",
         })
 
         # ── Header receipt ────────────────────────────────────
@@ -1447,6 +1531,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             "ocr": is_ocr,
             "receipt_number": receipt.get("receipt_number", ""),
             "receipt_date": receipt.get("date", ""),
+            "receipt_image_url": receipt.get("receipt_image_url", ""),
             "item_count": len(items),
             "scanItems": [
                 {
@@ -2437,6 +2522,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _handle_receipt_callback(update, context)
         return
 
+    # Handle re-analyze callback
+    if query.data.startswith("reanalyze_"):
+        await _handle_reanalyze(update, context)
+        return
+
     # Handle edit item callbacks
     if query.data.startswith("edititem_"):
         await _handle_edit_item(update, context)
@@ -2807,6 +2897,162 @@ async def cmd_rekap(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.exception("cmd_rekap failed")
         await update.message.reply_text(f"❌ Gagal mengambil rekap: {e}", reply_markup=_finance_keyboard())
+
+
+async def cmd_struk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler /struk <source_id> — lihat gambar struk + analisis ulang."""
+    if not _can_respond(update):
+        return
+
+    args = (update.message.text or "").split()
+    if len(args) < 2:
+        await update.message.reply_text(
+            "Gunakan: /struk <source_id>\n\n"
+            "Contoh: /struk fin_abc123...",
+            reply_markup=_finance_keyboard(),
+        )
+        return
+
+    source_id = args[1].strip()
+
+    # Fetch transaction
+    try:
+        q = f"select=source_id,amount,category,description,merchant,tx_date,tx_type,metadata&source_id=eq.{source_id}"
+        rows = await finance._fetch("financial_transactions", q)
+        if not rows:
+            await update.message.reply_text(
+                f"❌ Transaksi {source_id[:20]}... tidak ditemukan.",
+                reply_markup=_finance_keyboard(),
+            )
+            return
+
+        tx = rows[0]
+        metadata = tx.get("metadata", {}) or {}
+        receipt_image_url = metadata.get("receipt_image_url", "") if isinstance(metadata, dict) else ""
+
+        if not receipt_image_url:
+            await update.message.reply_text(
+                "❌ Struk ini tidak memiliki gambar tersimpan.",
+                reply_markup=_finance_keyboard(),
+            )
+            return
+
+        # Build caption
+        lines = [
+            f"🧾 {tx.get('merchant', 'Tanpa Nama')}",
+            f"💰 {format_amount(int(tx.get('amount', 0)))}",
+            f"📁 {get_category_label(tx.get('category', 'lainnya'))}",
+            f"🔖 {tx.get('tx_type', 'income'):s}",
+        ]
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔍 Analisis Ulang", callback_data=f"reanalyze_{source_id}")],
+        ])
+
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=receipt_image_url,
+            caption="\n".join(lines),
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        logger.exception("cmd_struk failed")
+        await update.message.reply_text(f"❌ Gagal: {e}", reply_markup=_finance_keyboard())
+
+
+async def _handle_reanalyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Re-analyze stored receipt via AI vision."""
+    query = update.callback_query
+    await query.answer()
+
+    source_id = query.data[len("reanalyze_"):]
+
+    try:
+        # Get receipt image URL from transaction metadata
+        q = f"select=metadata&source_id=eq.{source_id}"
+        rows = await finance._fetch("financial_transactions", q)
+        if not rows:
+            await query.edit_message_caption(caption="❌ Transaksi tidak ditemukan.")
+            return
+
+        metadata = rows[0].get("metadata", {}) or {}
+        if isinstance(metadata, str):
+            try:
+                import json as _json
+                metadata = _json.loads(metadata)
+            except Exception:
+                metadata = {}
+        receipt_image_url = metadata.get("receipt_image_url", "") if isinstance(metadata, dict) else ""
+
+        if not receipt_image_url:
+            await query.edit_message_caption(caption="❌ Tidak ada gambar struk.")
+            return
+
+        await query.edit_message_caption(caption="🔍 Menganalisis ulang struk...")
+
+        # Download image from Storage
+        image_bytes = await _download_from_storage(receipt_image_url)
+        if not image_bytes:
+            await query.edit_message_caption(caption="❌ Gagal mengunduh gambar dari storage.")
+            return
+
+        # Compress for vision
+        jpeg_bytes, compressed_uri = _compress_image(image_bytes)
+
+        # Run AI vision again
+        sp_client = SumoPodClient(SUMOPOD_API_KEY)
+        vision_result = await sp_client.vision_json(image_base64_uri=compressed_uri, timeout=90)
+
+        if not vision_result.get("success"):
+            vision_result = await local_vision_json(image_bytes, sumopod_client=sp_client)
+
+        if not vision_result.get("success"):
+            await query.edit_message_caption(
+                caption=f"❌ Gagal analisis ulang: {vision_result.get('error', 'Unknown')}"
+            )
+            return
+
+        # Format result
+        data = vision_result.get("data", {})
+        merchant = (data.get("name") or "").strip()
+        total = float(data.get("total") or 0)
+        items = data.get("items") or []
+
+        lines = ["🔍 **Hasil Analisis Ulang:**", ""]
+        if merchant:
+            lines.append(f"🏪 Merchant: {merchant}")
+        if total > 0:
+            lines.append(f"💰 Total: {format_amount(int(total))}")
+        if receipt_image_url:
+            lines.append(f"🖼️ Gambar: {receipt_image_url[:60]}...")
+
+        # Cari perubahan signifikan dari data tersimpan
+        old_total = float(rows[0].get("amount", 0)) if rows else 0
+        if old_total > 0 and total > 0 and abs(total - old_total) > 1000:
+            diff = total - old_total
+            sign = "+" if diff > 0 else ""
+            lines.append(f"⚠️ Perubahan nominal: sebelumnya {format_amount(int(old_total))} → sekarang {format_amount(int(total))} ({sign}{format_amount(int(diff))})")
+
+        if items:
+            lines.append("")
+            lines.append(f"📋 Item ({len(items)}):")
+            for i, item in enumerate(items[:10], 1):
+                name = item.get("name", f"Item {i}")
+                qty = float(item.get("qty", 1))
+                price = float(item.get("price", 0))
+                item_sub = float(item.get("subtotal", 0)) or (price * qty)
+                lines.append(f"  {i}. {name} — {format_amount(int(item_sub))}")
+            if len(items) > 10:
+                lines.append(f"  ... dan {len(items) - 10} lainnya")
+
+        await query.edit_message_caption(caption="\n".join(lines))
+        logger.info("Re-analysis complete for %s", source_id)
+
+    except Exception as e:
+        logger.exception("reanalyze failed")
+        try:
+            await query.edit_message_caption(caption=f"❌ Gagal analisis ulang: {e}")
+        except Exception:
+            pass
 
 
 async def cmd_daftar(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3435,6 +3681,7 @@ async def _handle_bulkitem_callback(update: Update, context: ContextTypes.DEFAUL
                 "bulk_id": bulk_id,
                 "receipt_number": ri.get("receipt_number", ""),
                 "receipt_date": ri.get("date", ""),
+                "receipt_image_url": ri.get("receipt_image_url", ""),
                 "item_count": len(ri.get("items", [])),
                 "scanItems": [
                     {
@@ -4018,6 +4265,7 @@ def main():
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("rekap", cmd_rekap))
+    app.add_handler(CommandHandler("struk", cmd_struk))
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))

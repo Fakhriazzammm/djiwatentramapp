@@ -8,6 +8,10 @@ const SUPABASE_KEY =
 	import.meta.env.VITE_SUPABASE_ANON_KEY ||
 	"sb_publishable_LGFL7r4JQVqG1fvwNniJ7A_ub29yf_3";
 
+export function isSupabaseConfigured(): boolean {
+	return Boolean(SUPABASE_URL && SUPABASE_KEY);
+}
+
 let browserClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export function createClient() {

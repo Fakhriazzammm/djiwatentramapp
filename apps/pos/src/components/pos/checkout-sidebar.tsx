@@ -17,7 +17,9 @@ import {
 	Tag,
 	Coffee,
 	X,
-	Printer
+	Printer,
+	Search,
+	Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import {
 	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
 import type { Doc } from "@/types/backend-compat";
+import { CustomerSearchModal } from "./customer-search-modal";
 
 export function CheckoutSidebar({ 
 	onConfirmPayment,
@@ -94,7 +97,8 @@ export function CheckoutSidebar({
 	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
-	const [hasChosenOrderType, setHasChosenOrderType] = useState(false);
+		const [hasChosenOrderType, setHasChosenOrderType] = useState(false);
+		const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
 
 	const orderTypes = useMemo(() => {
 		const types = siteSettings?.orderTypes ?? DEFAULT_ORDER_TYPES;
@@ -388,15 +392,35 @@ export function CheckoutSidebar({
 							<div className="grid gap-2.5 md:gap-3">
 								<div className="space-y-1.5">
 									<Label htmlFor="customer-name" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Nama Pelanggan</Label>
-									<Input
-										id="customer-name"
-										placeholder="Masukkan nama pelanggan"
-										value={customerInfo.name}
-										onChange={(e) => updateCustomerInfo({ name: e.target.value })}
-										className="h-9 rounded-xl border-border/70 bg-white px-3 text-sm font-semibold placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
-									/>
+									<div className="flex gap-1.5 items-start">
+										<div className="relative flex-1">
+											<Input
+												id="customer-name"
+												placeholder="Masukkan nama pelanggan"
+												value={customerInfo.name}
+												onChange={(e) => {
+													updateCustomerInfo({ name: e.target.value });
+												}}
+												className="h-9 rounded-xl border-border/70 bg-white px-3 text-sm font-semibold placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
+											/>
+											{customerInfo.customer_source_id && (
+												<span className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[8px] font-black text-amber-700 uppercase tracking-wider shadow-sm">
+													<Star className="h-2.5 w-2.5 fill-amber-400" /> Member
+												</span>
+											)}
+										</div>
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-9 w-9 shrink-0 rounded-xl border-border/70 md:h-11 md:w-11"
+											onClick={() => setCustomerSearchOpen(true)}
+											type="button"
+											title="Cari pelanggan terdaftar"
+										>
+											<Search className="h-4 w-4" />
+										</Button>
+									</div>
 								</div>
-
 								<div className={cn(
 									"grid gap-2.5",
 									selectedOrderType?.requiresTableNumber ? "grid-cols-2" : "grid-cols-1"
@@ -908,7 +932,14 @@ export function CheckoutSidebar({
 					</Button>
 				)}
 			</div>
+
+			<CustomerSearchModal
+				open={customerSearchOpen}
+				onOpenChange={setCustomerSearchOpen}
+				onSelect={(customer) => {
+					updateCustomerInfo({ name: customer.name, customer_source_id: customer.source_id });
+				}}
+			/>
 		</div>
 	);
 }
-
