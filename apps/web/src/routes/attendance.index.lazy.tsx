@@ -30,6 +30,7 @@ import {
 	useHybridEnrollFace,
 	useHybridVerifyHomePin,
 } from "@/hooks/use-hybrid-write-actions";
+import { createClient } from "@/lib/client";
 
 // Helper for distance calculation
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -61,6 +62,9 @@ function AttendancePage() {
 	const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 	const [locationError, setLocationError] = useState<string | null>(null);
 	const [locationLoading, setLocationLoading] = useState(false);
+	
+	// User's individual schedule for today (from pos_attendance_schedules)
+	const [userSchedule, setUserSchedule] = useState<{ shiftName: string; startTime: string; endTime: string } | null>(null);
 
 	// Data Queries/Mutations
 	const siteSettings = useHybridSiteSettings();
@@ -125,6 +129,24 @@ function AttendancePage() {
 		if (!detectedShift) return false;
 		return !(detectedShift as any).upcoming;
 	}, [detectedShift]);
+	
+	// Effective shift: prefer user's individual schedule, fall back to time-based detection
+	const effectiveShift = useMemo(() => {
+		// If user has a scheduled shift for today, find matching config
+		if (userSchedule && userSchedule.shiftName && shiftSchedules.length) {
+			const schedName = userSchedule.shiftName.toLowerCase().replace("shift ", "").trim();
+			const match = shiftSchedules.find((s: any) => {
+				const configName = (s.name || "").toLowerCase().replace("shift ", "").trim();
+				return configName === schedName;
+			});
+			if (match) {
+				// Use the scheduled shift, but mark as active based on its own timing
+				return { ...match };
+			}
+		}
+		// Fall back to time-based detection
+		return detectedShift;
+	}, [userSchedule, shiftSchedules, detectedShift]);
 
 	// Check if user is in-store radius
 	const distance = useMemo(() => {
@@ -197,6 +219,34 @@ function AttendancePage() {
 	useEffect(() => {
 		if (step === "select") preloadFaceModels();
 	}, [step]);
+	
+	// Fetch user's schedule for today when user is selected
+	useEffect(() => {
+		if (!user?.id || step === "select") {
+			setUserSchedule(null);
+			return;
+		}
+		const fetchSchedule = async () => {
+			try {
+				const supabase = createClient();
+				const today = new Date().toISOString().split("T")[0];
+				const { data, error } = await supabase
+					.from("pos_attendance_schedules")
+					.select("shiftName, startTime, endTime")
+					.eq("userId", user.id)
+					.eq("date", today)
+					.maybeSingle();
+				if (!error && data && data.shiftName && data.shiftName !== "OFF") {
+					setUserSchedule(data as { shiftName: string; startTime: string; endTime: string });
+				} else {
+					setUserSchedule(null);
+				}
+			} catch {
+				setUserSchedule(null);
+			}
+		};
+		fetchSchedule();
+	}, [user?.id, step]);
 	
 	const handleUserSelect = (staff: any) => {
 		const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff._id);
@@ -273,16 +323,16 @@ function AttendancePage() {
 						location: attendanceLocation,
 						role: opnameRole,
 						userName: user.name,
-						shiftName: detectedShift?.name || "Shift",
-						shiftId: detectedShift?.id || "",
+						shiftName: effectiveShift?.name || "Shift",
+						shiftId: effectiveShift?.id || "",
 					}));
 					toast.dismiss("clocking");
 					navigate({ 
 						to: "/attendance/stock-opname",
 						search: {
 							role: opnameRole,
-							shiftId: detectedShift?.id || "",
-							shiftName: detectedShift?.name || "Shift",
+							shiftId: effectiveShift?.id || "",
+							shiftName: effectiveShift?.name || "Shift",
 							userId: user.id,
 							userName: user.name,
 						}
@@ -294,10 +344,17 @@ function AttendancePage() {
 					...verificationPayload,
 				});
 			} else {
+				// Safety check: re-verify user isn't already in store
+				if (currentlyIn?.length !== undefined && currentlyIn?.some((s: any) => s._id === user.id)) {
+					toast.error("Anda sudah absen masuk. Silakan absen keluar terlebih dahulu.");
+					toast.dismiss("clocking");
+					setStep("select");
+					return;
+				}
 				await clockIn({ 
 					...verificationPayload,
-					shiftName: detectedShift?.name || undefined,
-					shiftOpenTimeSnapshot: detectedShift?.openTime || undefined,
+					shiftName: effectiveShift?.name || undefined,
+					shiftOpenTimeSnapshot: effectiveShift?.openTime || undefined,
 				});
 			}
 			
@@ -641,20 +698,20 @@ function AttendancePage() {
 									</h2>
 									<p className="text-[11px] font-semibold text-muted-foreground truncate">
 										<span className="text-foreground">{user?.name}</span>
-										{detectedShift && !user?.isCurrentlyIn && (
-											<span className="text-muted-foreground/60"> — {detectedShift.name}</span>
+										{effectiveShift && !user?.isCurrentlyIn && (
+											<span className="text-muted-foreground/60"> — {effectiveShift.name}</span>
 										)}
 									</p>
 								</div>
 								<div className="flex items-center gap-1.5 shrink-0">
-									{detectedShift && !user?.isCurrentlyIn && (
+									{effectiveShift && !user?.isCurrentlyIn && (
 										<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[9px] font-bold ${
 											isShiftActive 
 												? "bg-blue-50 border-blue-200 text-blue-700" 
 												: "bg-amber-50 border-amber-200 text-amber-700"
 										}`}>
 											<CalendarClock className="h-3 w-3" />
-											{detectedShift.name}
+											{effectiveShift.name}
 										</div>
 									)}
 									<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[9px] font-bold uppercase tracking-wider ${
@@ -796,9 +853,9 @@ function AttendancePage() {
 									</p>
 									<p className="text-xs text-muted-foreground">
 										{user?.name} — {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-										{detectedShift && !user?.isCurrentlyIn && (
+										{effectiveShift && !user?.isCurrentlyIn && (
 											<span className="block text-xs mt-1">
-												Shift: <span className="font-bold">{detectedShift.name}</span> ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})
+												Shift: <span className="font-bold">{effectiveShift.name}</span> ({effectiveShift.openTime}{effectiveShift.closeTime ? `-${effectiveShift.closeTime}` : ""})
 											</span>
 										)}
 									</p>
