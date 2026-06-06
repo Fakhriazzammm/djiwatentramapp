@@ -11,10 +11,11 @@ export interface MenuSectionProps {
 	cart: CartItem[];
 	codeFeedback: string;
 	config: typeof CUSTOMER_ORDERING_DEFAULTS;
-	discounts: Doc<"discounts">[];
+	discounts: Doc<"discounts">[] | undefined;
 	filteredProducts: Doc<"products">[];
 	freeRefillCharge: number;
 	handleProductSelect: (product: Doc<"products">) => void;
+	isMenuLoading: boolean;
 	logoUrl: string;
 	manualCode: string;
 	menuMode: MenuMode;
@@ -85,8 +86,22 @@ export function renderMenuSection(props: MenuSectionProps) {
 						<div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
 							<button type="button" className={chipClassName(props.activeCategoryId === null)} onClick={() => props.setActiveCategoryId(null)}>Semua</button>
 							{props.orderedCategories.filter((category) => !category.parentId).map((category) => <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>)}
+							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
 						</div>
 					</div>
+					{props.isMenuLoading ? (
+						<div className="grid grid-cols-2 gap-2.5">
+							{[1,2,3,4].map((i) => (
+								<div key={i} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm animate-pulse">
+									<div className="h-28 w-full bg-muted" />
+									<div className="space-y-2 p-2.5">
+										<div className="h-3 w-3/4 rounded bg-muted" />
+										<div className="h-4 w-1/2 rounded bg-muted" />
+									</div>
+								</div>
+							))}
+						</div>
+					) : (
 					<div className="grid grid-cols-2 gap-2.5">
 						{props.filteredProducts.map((product) => {
 							const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
@@ -99,6 +114,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							);
 						})}
 					</div>
+					)}
 				</div>
 			) : null}
 		</div>

@@ -90,6 +90,7 @@ export function CustomerOrderingPage({
 
 	const { isAuthenticated, customer, login, register, logout, isLoading: authLoading } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
+	const isMenuLoading = categories === undefined || products === undefined;
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
 	const config = {
@@ -531,11 +532,7 @@ export function CustomerOrderingPage({
 
 	if (
 		siteSettings === undefined ||
-		brandSettings === undefined ||
-		categories === undefined ||
-		products === undefined ||
-		discounts === undefined ||
-		mayarConfig === undefined
+		brandSettings === undefined
 	) {
 		return (
 			<div className="flex min-h-app items-center justify-center bg-background">
@@ -699,7 +696,7 @@ export function CustomerOrderingPage({
 					) : null}
 
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, cart, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setManualCode, setMenuMode, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
+						? renderMenuSection({ activeCategoryId, cart, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setManualCode, setMenuMode, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
 						: null}
 					{step === "checkout" ? renderCheckoutSection({ checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
@@ -745,7 +742,7 @@ export function CustomerOrderingPage({
 
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
 				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-xl p-0">
-					<ProductSheet product={productSheet} discounts={discounts} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
+					<ProductSheet product={productSheet} discounts={discounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
 				</SheetContent>
 			</Sheet>
 		</div>
