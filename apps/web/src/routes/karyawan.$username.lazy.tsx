@@ -133,7 +133,7 @@ function PayslipDetailCard({
 						<span className="flex items-center gap-1 text-muted-foreground">
 							Gaji Shift ({b.shifts ?? 0} shift)
 							{shiftWorkDates.length > 0 && (
-								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedShifts ? \'rotate-180\' : \'\'}`} />
+								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedShifts ? 'rotate-180' : ''}`} />
 							)}
 						</span>
 						<span className="font-semibold tabular-nums">
@@ -180,7 +180,7 @@ function PayslipDetailCard({
 						<span className="flex items-center gap-1 text-muted-foreground">
 							Bonus Target
 							{bonusShifts.length > 0 && (
-								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedBonus ? \'rotate-180\' : \'\'}`} />
+								<ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedShifts ? 'rotate-180' : ''}`} />
 							)}
 						</span>
 						<span className="font-semibold tabular-nums text-emerald-600">

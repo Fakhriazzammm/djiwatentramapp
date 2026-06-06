@@ -481,6 +481,16 @@ async function classifyTransactionItems(payload: JsonRecord): Promise<{ ok: bool
 		return { ok: false, error: "transaction_id dan items wajib diisi" };
 	}
 
+	// ── Dedup check: skip if entries already exist for this transaction ──
+	const { data: existingEntries, count: existingCount } = await supabase
+		.from("accounting_entries")
+		.select("id", { count: "exact", head: true })
+		.eq("transaction_source_id", transactionId);
+	if (existingCount && existingCount > 0) {
+		console.log(`[DEDUP] Accounting entries already exist for ${transactionId} (${existingCount} entries), skipping`);
+		return { ok: true, classifications: [], skipped: true };
+	}
+
 	// Fetch all existing item embeddings for exact matching
 	const { data: existingMappings } = await supabase
 		.from("accounting_item_embeddings")
