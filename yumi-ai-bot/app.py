@@ -2156,6 +2156,36 @@ async def _check_new_attendance(app):
                     f"🕐 {time_str} WIB",
                 ]
 
+                # ═══ CEK JADWAL INDIVIDU ═══
+                # Cross-check dengan pos_attendance_schedules utk deteksi salah jadwal
+                try:
+                    today_str = _today_wib_str()
+                    sched_data = await _fetch(
+                        "pos_attendance_schedules",
+                        f"select=shiftName,startTime,endTime&userId=eq.{user_id}&date=eq.{today_str}&limit=1",
+                    )
+                    if sched_data and len(sched_data) > 0:
+                        sched = sched_data[0]
+                        sched_shift = (sched.get("shiftName") or "").strip().upper()
+                        sched_start = (sched.get("startTime") or "")[:5] if sched.get("startTime") else ""
+                        sched_end = (sched.get("endTime") or "")[:5] if sched.get("endTime") else ""
+                        sched_label = sched_shift
+                        if sched_start and sched_end:
+                            sched_label = f"{sched_shift} ({sched_start}-{sched_end})"
+
+                        # Bandingkan jadwal dengan shift yg terdeteksi
+                        detected_upper = shift_name.upper().replace("SHIFT ", "").strip() if shift_name else ""
+                        sched_upper = sched_shift.replace("SHIFT ", "").strip()
+
+                        if sched_shift == "OFF":
+                            # Hari ini libur — seharusnya tidak masuk
+                            lines.append(f"❌ KAMU SALAH JADWAL! Hari ini jadwalmu: {sched_label}")
+                        elif detected_upper and sched_upper and detected_upper != sched_upper:
+                            # Shift terdeteksi berbeda dengan jadwal
+                            lines.append(f"⚠️ KAMU SALAH JADWAL! Jadwalmu: {sched_label}")
+                except Exception:
+                    pass  # Jangan sampai query error menggagalkan notifikasi
+
                 sched = _get_shift_schedule(shift_name) if shift_name else None
                 if sched:
                     open_t = sched.get("openTime", "")
