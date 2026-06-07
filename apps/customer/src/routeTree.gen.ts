@@ -13,6 +13,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OrderRouteImport } from './routes/order'
 import { Route as MinigamesRouteImport } from './routes/minigames'
 import { Route as DaftarRouteImport } from './routes/daftar'
+import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ProfileRoute = ProfileRouteImport.update({
@@ -35,6 +36,11 @@ const DaftarRoute = DaftarRouteImport.update({
   path: '/daftar',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/daftar.lazy').then((d) => d.Route))
+const UsernameRoute = UsernameRouteImport.update({
+  id: '/$username',
+  path: '/$username',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/$username.lazy').then((d) => d.Route))
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$username': typeof UsernameRoute
   '/daftar': typeof DaftarRoute
   '/minigames': typeof MinigamesRoute
   '/order': typeof OrderRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$username': typeof UsernameRoute
   '/daftar': typeof DaftarRoute
   '/minigames': typeof MinigamesRoute
   '/order': typeof OrderRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$username': typeof UsernameRoute
   '/daftar': typeof DaftarRoute
   '/minigames': typeof MinigamesRoute
   '/order': typeof OrderRoute
@@ -65,14 +74,28 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/daftar' | '/minigames' | '/order' | '/profile'
+  fullPaths:
+    | '/'
+    | '/$username'
+    | '/daftar'
+    | '/minigames'
+    | '/order'
+    | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/daftar' | '/minigames' | '/order' | '/profile'
-  id: '__root__' | '/' | '/daftar' | '/minigames' | '/order' | '/profile'
+  to: '/' | '/$username' | '/daftar' | '/minigames' | '/order' | '/profile'
+  id:
+    | '__root__'
+    | '/'
+    | '/$username'
+    | '/daftar'
+    | '/minigames'
+    | '/order'
+    | '/profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  UsernameRoute: typeof UsernameRoute
   DaftarRoute: typeof DaftarRoute
   MinigamesRoute: typeof MinigamesRoute
   OrderRoute: typeof OrderRoute
@@ -109,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DaftarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$username': {
+      id: '/$username'
+      path: '/$username'
+      fullPath: '/$username'
+      preLoaderRoute: typeof UsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -121,6 +151,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  UsernameRoute: UsernameRoute,
   DaftarRoute: DaftarRoute,
   MinigamesRoute: MinigamesRoute,
   OrderRoute: OrderRoute,

@@ -30,12 +30,12 @@ function BrandCustomerIndex() {
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
-	// ── Redirect member ke /order ────────────────────────────
+	// ── Redirect member ke /{username} ────────────────────────────
 	useEffect(() => {
-		if (!isLoading && isAuthenticated) {
-			navigate({ to: "/order", search: { step: "party" } });
+		if (!isLoading && isAuthenticated && customer) {
+			navigate({ to: `/${customer.username}` });
 		}
-	}, [isLoading, isAuthenticated, navigate]);
+	}, [isLoading, isAuthenticated, customer, navigate]);
 
 	// ── Guest — tampilkan welcome page ───────────────────────
 	useEffect(() => {
