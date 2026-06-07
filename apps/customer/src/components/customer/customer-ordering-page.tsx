@@ -309,6 +309,7 @@ export function CustomerOrderingPage({
 	// ── Post-login/register navigation ────────────────────────
 	// Detect transition: authLoading true → false + isAuthenticated becomes true
 	// => user just finished login/register, advance from welcome to menu flow.
+	// Modal shows success feedback for 1.2s then closes itself.
 	useEffect(() => {
 		const wasLoading = prevAuthLoadingRef.current;
 		const wasAuth = prevIsAuthenticatedRef.current;
@@ -322,12 +323,8 @@ export function CustomerOrderingPage({
 			if (step === "welcome") {
 				goToMenuFlow();
 			}
-			// Close modal if still open
-			if (authModalOpen) {
-				setAuthModalOpen(false);
-			}
 		}
-	}, [authLoading, isAuthenticated, authModalOpen, step]);
+	}, [authLoading, isAuthenticated, step]);
 
 	const addToCart = (item: CartItem) => {
 		setCart((current) => {
