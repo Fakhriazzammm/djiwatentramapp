@@ -61,13 +61,13 @@ export function AuthModal({
       setShowSuccess(true);
 
       if (tab === "login" || !needsEmailConfirm) {
-        // Login or auto-confirm registration: auto-close after 1.2s
+        // Login or auto-confirm registration: auto-close after 400ms
         const timer = setTimeout(() => {
           setShowSuccess(false);
           setSuccessMessage("");
           submitAttemptedRef.current = false;
           onOpenChange(false);
-        }, 1200);
+        }, 400);
         return () => clearTimeout(timer);
       }
       // Email-confirm registration: keep open, let user read instructions
