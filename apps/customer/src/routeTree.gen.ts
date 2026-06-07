@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as OrderRouteImport } from './routes/order'
 import { Route as MinigamesRouteImport } from './routes/minigames'
+import { Route as DaftarRouteImport } from './routes/daftar'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ProfileRoute = ProfileRouteImport.update({
@@ -18,11 +20,21 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/profile.lazy').then((d) => d.Route))
+const OrderRoute = OrderRouteImport.update({
+  id: '/order',
+  path: '/order',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/order.lazy').then((d) => d.Route))
 const MinigamesRoute = MinigamesRouteImport.update({
   id: '/minigames',
   path: '/minigames',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/minigames.lazy').then((d) => d.Route))
+const DaftarRoute = DaftarRouteImport.update({
+  id: '/daftar',
+  path: '/daftar',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/daftar.lazy').then((d) => d.Route))
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,31 +43,39 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/daftar': typeof DaftarRoute
   '/minigames': typeof MinigamesRoute
+  '/order': typeof OrderRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/daftar': typeof DaftarRoute
   '/minigames': typeof MinigamesRoute
+  '/order': typeof OrderRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/daftar': typeof DaftarRoute
   '/minigames': typeof MinigamesRoute
+  '/order': typeof OrderRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/minigames' | '/profile'
+  fullPaths: '/' | '/daftar' | '/minigames' | '/order' | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/minigames' | '/profile'
-  id: '__root__' | '/' | '/minigames' | '/profile'
+  to: '/' | '/daftar' | '/minigames' | '/order' | '/profile'
+  id: '__root__' | '/' | '/daftar' | '/minigames' | '/order' | '/profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DaftarRoute: typeof DaftarRoute
   MinigamesRoute: typeof MinigamesRoute
+  OrderRoute: typeof OrderRoute
   ProfileRoute: typeof ProfileRoute
 }
 
@@ -68,11 +88,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/order': {
+      id: '/order'
+      path: '/order'
+      fullPath: '/order'
+      preLoaderRoute: typeof OrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/minigames': {
       id: '/minigames'
       path: '/minigames'
       fullPath: '/minigames'
       preLoaderRoute: typeof MinigamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daftar': {
+      id: '/daftar'
+      path: '/daftar'
+      fullPath: '/daftar'
+      preLoaderRoute: typeof DaftarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,7 +121,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DaftarRoute: DaftarRoute,
   MinigamesRoute: MinigamesRoute,
+  OrderRoute: OrderRoute,
   ProfileRoute: ProfileRoute,
 }
 export const routeTree = rootRouteImport
