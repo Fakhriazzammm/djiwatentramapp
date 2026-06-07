@@ -710,7 +710,54 @@ export function CustomerOrderingPage({
 								<button type="button" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={goToMenuFlow}>
 									Lanjut dengan {partySize} orang <ChevronRight className="h-4 w-4" />
 								</button>
-						</div>
+							</div>
+
+							{/* Mini catalog — produk yang tersedia */}
+							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+								<div className="flex items-center gap-2">
+									<ShoppingCart className="h-4 w-4 text-primary" />
+									<h3 className="text-sm font-black">Menu Tersedia</h3>
+								</div>
+								<div className="mt-3 grid grid-cols-2 gap-2">
+									{filteredProducts.slice(0, 8).map((product) => {
+										const pricing = calculateEffectivePrice(
+											{ _id: product._id, price: product.price, categoryId: product.categoryId },
+											discounts
+										);
+										return (
+											<button
+												key={product._id}
+												type="button"
+												className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all active:scale-[0.99]"
+												onClick={() => handleProductSelect(product)}
+											>
+												<div className="relative h-20 w-full bg-muted">
+													{product.image ? (
+														<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+													) : null}
+													{pricing.isPromo && (
+														<span className="absolute left-1.5 top-1.5 rounded-full px-1.5 py-0.5 font-bold text-[9px] text-white shadow"
+															style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>
+															{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}
+														</span>
+													)}
+												</div>
+												<div className="p-1.5">
+													<p className="line-clamp-2 text-[10px] font-black leading-snug">{product.name}</p>
+													<p className="mt-0.5 text-xs font-black text-primary">{currency(pricing.finalPrice)}</p>
+												</div>
+											</button>
+										);
+									})}
+								</div>
+								<button
+									type="button"
+									className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-background px-3 py-2 text-[10px] font-bold text-muted-foreground transition-colors hover:text-foreground"
+									onClick={() => { setStep("menu"); }}
+								>
+									Lihat semua menu <ChevronRight className="h-3 w-3" />
+								</button>
+							</div>
 						</section>
 					) : null}
 
