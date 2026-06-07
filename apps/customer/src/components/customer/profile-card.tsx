@@ -27,7 +27,7 @@ export function ProfileCard({
   onProfileClick,
   className,
 }: ProfileCardProps) {
-  const initials = customer.name
+  const initials = (customer.name || "?")
     .split(" ")
     .map((s) => s[0])
     .join("")

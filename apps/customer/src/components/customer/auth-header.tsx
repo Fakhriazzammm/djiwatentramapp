@@ -49,8 +49,8 @@ export function AuthHeader({
     );
   }
 
-  if (isAuthenticated && customer) {
-    return <ProfileCard customer={customer} onLogout={onLogout} onProfileClick={onProfileClick} className={className} />;
+  if (isAuthenticated) {
+    return <ProfileCard customer={customer ?? { name: "Pengguna", email: "" }} onLogout={onLogout} onProfileClick={onProfileClick} className={className} />;
   }
 
   return (
