@@ -618,7 +618,7 @@ export function CustomerOrderingPage({
 									{step}
 								</p>
 								<h1 className="text-sm font-black tracking-tight">{storeName}</h1>
-							</div>
+						</div>
 						</div>
 						<div className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
 							{totalItems} item
@@ -654,20 +654,21 @@ export function CustomerOrderingPage({
 									<LogIn className="h-3.5 w-3.5" />
 									{isAuthenticated ? "Profil Saya" : "Masuk / Daftar untuk poin"}
 								</button>
-							</div>
+						</div>
 						</section>
 					) : null}
 
 					{step !== "welcome" ? (
-						<AuthHeader
-							isAuthenticated={isAuthenticated}
-							customer={(customer ?? null) as any}
-							isLoading={authLoading}
-							onOpenAuth={() => setAuthModalOpen(true)}
-							onLogout={logout}
-							onProfileClick={() => navigate({ to: "/profile" })}
-							className="mx-3 mt-3 mb-2"
-						/>
+						<div className="mt-3 mb-2 px-3">
+							<AuthHeader
+								isAuthenticated={isAuthenticated}
+								customer={(customer ?? null) as any}
+								isLoading={authLoading}
+								onOpenAuth={() => setAuthModalOpen(true)}
+								onLogout={logout}
+								onProfileClick={() => navigate({ to: "/profile" })}
+							/>
+						</div>
 					) : null}
 
 					<AuthModal
@@ -709,7 +710,7 @@ export function CustomerOrderingPage({
 								<button type="button" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={goToMenuFlow}>
 									Lanjut dengan {partySize} orang <ChevronRight className="h-4 w-4" />
 								</button>
-							</div>
+						</div>
 						</section>
 					) : null}
 
@@ -728,7 +729,7 @@ export function CustomerOrderingPage({
 									<button type="button" className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => { setFreeRefillOptIn(false); setStep("menu"); }}>Tidak sekarang</button>
 									<button type="button" className="rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => { setFreeRefillOptIn(true); setStep("menu"); }}>Ya, tambahkan</button>
 								</div>
-							</div>
+						</div>
 						</section>
 					) : null}
 
