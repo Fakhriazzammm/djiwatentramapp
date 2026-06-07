@@ -149,7 +149,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange(async (_event, sbSession) => {
+		} = supabase.auth.onAuthStateChange(async (event, sbSession) => {
 			if (sbSession?.user) {
 				const cust = await fetchCustomer(sbSession.user.id);
 				if (cust) {
@@ -159,6 +159,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 						refreshToken: sbSession.refresh_token,
 						user: cust,
 					});
+
+					// Show welcome-back toast after email confirmation redirect
+					if (event === "SIGNED_IN") {
+						setRegistrationNeedsEmailConfirm(false);
+						toast.success("Email terkonfirmasi! Selamat datang kembali.");
+					}
 				}
 			} else {
 				setSession(null);
@@ -224,7 +230,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 				const { data, error } = await supabase.auth.signUp({
 					email,
 					password,
-					options: { data: { name } },
+					options: {
+						data: { name },
+						emailRedirectTo: `${window.location.origin}/${window.location.pathname.split("/").filter(Boolean)[0] || ""}`,
+					},
 				});
 
 				if (error) {
