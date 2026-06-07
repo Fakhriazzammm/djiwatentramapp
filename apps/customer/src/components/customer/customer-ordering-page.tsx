@@ -658,7 +658,7 @@ export function CustomerOrderingPage({
 						onOpenAuth={() => setAuthModalOpen(true)}
 						onLogout={logout}
 						onProfileClick={() => navigate({ to: "/profile" })}
-						className="mx-2 mb-2"
+						className="mx-2 mt-3 mb-2"
 					/>
 
 					<AuthModal
