@@ -5,6 +5,7 @@
 	ChevronRight,
 	Grid2X2,
 	Loader2,
+	LogIn,
 	PhoneCall,
 	ShoppingCart,
 	Users,
@@ -92,6 +93,7 @@ export function CustomerOrderingPage({
 
 	const { isAuthenticated, customer, login, register, logout, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
+	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const prevAuthLoadingRef = useRef(false);
 	const prevIsAuthenticatedRef = useRef(isAuthenticated);
 	const isMenuLoading = categories === undefined || products === undefined;
@@ -647,28 +649,35 @@ export function CustomerOrderingPage({
 								<button type="button" className="mt-3 rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => setStep(config.enablePartySizeSelection ? "party" : config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : "menu")}>
 									{config.welcomeButtonLabel}
 								</button>
+								<button type="button" className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => setAuthModalOpen(true)}>
+									<LogIn className="h-3.5 w-3.5" />
+									{isAuthenticated ? "Profil Saya" : "Masuk / Daftar untuk poin"}
+								</button>
 							</div>
 						</section>
 					) : null}
 
-					<AuthHeader
-						isAuthenticated={isAuthenticated}
-						customer={(customer ?? null) as any}
-						isLoading={authLoading}
-						onOpenAuth={() => setAuthModalOpen(true)}
-						onLogout={logout}
-						onProfileClick={() => navigate({ to: "/profile" })}
-						className="mx-2 mt-3 mb-2"
-					/>
+					{step !== "welcome" ? (
+						<AuthHeader
+							isAuthenticated={isAuthenticated}
+							customer={(customer ?? null) as any}
+							isLoading={authLoading}
+							onOpenAuth={() => setAuthModalOpen(true)}
+							onLogout={logout}
+							onProfileClick={() => navigate({ to: "/profile" })}
+							className="mx-2 mt-3 mb-2"
+						/>
+					) : null}
 
 					<AuthModal
 						open={authModalOpen}
-						onOpenChange={setAuthModalOpen}
-						onLogin={login}
-						onRegister={register}
+						onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
+						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
+						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 						onSkip={() => setAuthModalOpen(false)}
 						isLoading={authLoading}
 						needsEmailConfirm={registrationNeedsEmailConfirm}
+						error={authError}
 					/>
 
 					{step === "party" ? (
