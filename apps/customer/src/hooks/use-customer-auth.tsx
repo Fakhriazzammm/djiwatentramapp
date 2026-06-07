@@ -17,6 +17,7 @@ export type CustomerUser = {
 	name: string | null;
 	phone: string | null;
 	photoUrl: string | null;
+	username: string;
 	totalPoints: number;
 	lifetimePoints: number;
 	totalOrders: number;
@@ -48,6 +49,15 @@ interface CustomerAuthContextType {
 
 // ── Helpers ────────────────────────────────────────────────────
 
+function emailToUsername(email: string | null): string {
+	if (!email) return "user";
+	return email
+		.split("@")[0]
+		.replace(/[^a-zA-Z0-9._-]/g, "")
+		.toLowerCase()
+		.slice(0, 32);
+}
+
 function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
 	return {
 		sourceId: String(row.source_id ?? ""),
@@ -55,6 +65,7 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
 		name: (row.name as string) ?? null,
 		phone: (row.phone as string) ?? null,
 		photoUrl: (row.photo_url as string) ?? null,
+		username: emailToUsername((row.email as string) ?? null),
 		totalPoints: Number(row.total_points ?? 0),
 		lifetimePoints: Number(row.lifetime_points ?? 0),
 		totalOrders: Number(row.total_orders ?? 0),

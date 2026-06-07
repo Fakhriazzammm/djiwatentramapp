@@ -17,12 +17,14 @@ type CustomerData = {
 type ProfileCardProps = {
   customer: CustomerData;
   onLogout: () => void;
+  onProfileClick?: () => void;
   className?: string;
 };
 
 export function ProfileCard({
   customer,
   onLogout,
+  onProfileClick,
   className,
 }: ProfileCardProps) {
   const initials = customer.name
@@ -33,9 +35,11 @@ export function ProfileCard({
     .slice(0, 2);
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onProfileClick}
       className={cn(
-        "rounded-xl border border-border bg-card p-3 shadow-sm",
+        "w-full rounded-xl border border-border bg-card p-3 shadow-sm text-left transition-all hover:border-primary/30 hover:shadow-md",
         className
       )}
     >
@@ -88,7 +92,7 @@ export function ProfileCard({
           value={currency(customer.total_spent ?? 0)}
         />
       </div>
-    </div>
+    </button>
   );
 }
 

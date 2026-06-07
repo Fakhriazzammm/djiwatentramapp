@@ -12,6 +12,7 @@
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	useHybridActiveDiscounts,
@@ -52,6 +53,7 @@ export function CustomerOrderingPage({
 	brandSlug: string;
 	search: RouteSearch;
 }) {
+	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
 	const brandSettings = useHybridBookingSettings(brandSlug);
 	const categories = useHybridCategories();
@@ -655,6 +657,7 @@ export function CustomerOrderingPage({
 						isLoading={authLoading}
 						onOpenAuth={() => setAuthModalOpen(true)}
 						onLogout={logout}
+						onProfileClick={() => navigate({ to: "/profile" })}
 						className="mx-2 mb-2"
 					/>
 

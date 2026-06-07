@@ -19,6 +19,7 @@ type AuthHeaderProps = {
   customer: CustomerData | null;
   onOpenAuth: () => void;
   onLogout: () => void;
+  onProfileClick?: () => void;
   isLoading?: boolean;
   className?: string;
 };
@@ -28,6 +29,7 @@ export function AuthHeader({
   customer,
   onOpenAuth,
   onLogout,
+  onProfileClick,
   isLoading = false,
   className,
 }: AuthHeaderProps) {
@@ -48,7 +50,7 @@ export function AuthHeader({
   }
 
   if (isAuthenticated && customer) {
-    return <ProfileCard customer={customer} onLogout={onLogout} className={className} />;
+    return <ProfileCard customer={customer} onLogout={onLogout} onProfileClick={onProfileClick} className={className} />;
   }
 
   return (
