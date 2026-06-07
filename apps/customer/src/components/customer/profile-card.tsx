@@ -78,7 +78,7 @@ export function ProfileCard({
       <div className="mt-2.5 grid grid-cols-3 gap-1.5">
         <Stat
           icon={<Star className="h-3 w-3 text-amber-500" />}
-          label="Poin"
+          label="Yumi Poin"
           value={String(customer.total_points ?? 0)}
         />
         <Stat

@@ -2518,6 +2518,7 @@ export function useHybridCreateOrder() {
 					payment_gateway: args?.paymentGateway ?? null,
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
+					customer_source_id: args?.customerSourceId ?? null,
 					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
 				};
 

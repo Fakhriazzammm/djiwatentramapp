@@ -69,7 +69,6 @@ async function handleSync(payload: JsonRecord) {
 	const isNew = !existingCustomer;
 
 	if (isNew) {
-		// Insert new customer with signup bonus points
 		const { error: insertError } = await supabaseAdmin
 			.schema("pos")
 			.from("customers")
@@ -77,8 +76,6 @@ async function handleSync(payload: JsonRecord) {
 				source_id: userId,
 				email: email || null,
 				name: name || null,
-				total_points: 100,
-				lifetime_points: 100,
 				is_active: true,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
@@ -86,25 +83,10 @@ async function handleSync(payload: JsonRecord) {
 
 		if (insertError) throw insertError;
 
-		// --- 2. Insert signup bonus ke point_ledger ---
-		const { error: ledgerError } = await supabaseAdmin
-			.schema("pos")
-			.from("customer_point_ledger")
-			.insert({
-				customer_id: userId,
-				points: 100,
-				balance_after: 100,
-				reason: "signup_bonus",
-				note: "Bonus pendaftaran 100 poin",
-			});
-
-		if (ledgerError) throw ledgerError;
-
 		return {
-			message: "Customer berhasil dibuat dengan bonus 100 poin",
+			message: "Customer berhasil dibuat",
 			isNew: true,
 			customerId: userId,
-			bonusPoints: 100,
 		};
 	}
 

@@ -182,7 +182,7 @@ function ProfilePage() {
 				<div className="mt-2.5 grid grid-cols-3 gap-1.5">
 					<ProfileStat
 						icon={<Star className="h-4 w-4 text-amber-500" />}
-						label="Poin"
+						label="Yumi Poin"
 						value={String(customer.totalPoints ?? 0)}
 					/>
 					<ProfileStat

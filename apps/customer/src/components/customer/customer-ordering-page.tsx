@@ -445,6 +445,7 @@ export function CustomerOrderingPage({
 				dessertLater,
 				notes: normalizedNotes,
 				discountAmount: promoDiscount,
+				customerSourceId: customer?.sourceId || null,
 				receiptMeta:
 					freeRefillOptIn && activeFreeRefillPromo
 						? {
