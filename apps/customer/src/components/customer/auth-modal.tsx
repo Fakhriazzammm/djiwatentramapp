@@ -56,21 +56,16 @@ export function AuthModal({
     prevLoadingRef.current = isLoading;
 
     if (wasLoading && !isLoading && !error) {
-      const msg = tab === "login" ? "Berhasil masuk!" : "Akun berhasil dibuat!";
-      setSuccessMessage(msg);
-      setShowSuccess(true);
-
+      // For login or auto-confirm: close modal immediately (goToMenuFlow runs in parent)
       if (tab === "login" || !needsEmailConfirm) {
-        // Login or auto-confirm registration: auto-close after 400ms
-        const timer = setTimeout(() => {
-          setShowSuccess(false);
-          setSuccessMessage("");
-          submitAttemptedRef.current = false;
-          onOpenChange(false);
-        }, 400);
-        return () => clearTimeout(timer);
+        submitAttemptedRef.current = false;
+        onOpenChange(false);
+      } else {
+        // Email-confirm registration: show instructions
+        const msg = "Akun berhasil dibuat!";
+        setSuccessMessage(msg);
+        setShowSuccess(true);
       }
-      // Email-confirm registration: keep open, let user read instructions
     }
   }, [isLoading, error, tab, onOpenChange, needsEmailConfirm]);
 
