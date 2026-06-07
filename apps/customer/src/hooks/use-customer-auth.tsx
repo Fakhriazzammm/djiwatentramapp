@@ -256,7 +256,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 					password,
 					options: {
 						data: { name },
-						emailRedirectTo: `${window.location.origin}/${window.location.pathname.split("/").filter(Boolean)[0] || ""}`,
+						emailRedirectTo: window.location.origin,
 					},
 				});
 
