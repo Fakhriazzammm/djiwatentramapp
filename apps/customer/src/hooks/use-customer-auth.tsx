@@ -36,6 +36,7 @@ interface CustomerAuthContextType {
 	isAuthenticated: boolean;
 	session: CustomerSession | null;
 	customer: CustomerUser | undefined;
+	registrationNeedsEmailConfirm: boolean;
 	login: (email: string, password: string) => Promise<void>;
 	register: (
 		email: string,
@@ -94,6 +95,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 	const [customer, setCustomer] = useState<CustomerUser | undefined>(
 		undefined,
 	);
+	const [registrationNeedsEmailConfirm, setRegistrationNeedsEmailConfirm] =
+		useState(false);
 	const isAuthenticated = !!session;
 
 	// ── Session recovery on mount ──────────────────────────────
@@ -201,6 +204,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 				});
 			}
 
+			setRegistrationNeedsEmailConfirm(false);
 			toast.success("Berhasil masuk!");
 		} catch (error) {
 			console.error("[customer-auth] Login error:", error);
@@ -274,9 +278,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 							user: cust,
 						});
 					}
+					setRegistrationNeedsEmailConfirm(false);
 					toast.success("Akun berhasil dibuat!");
 				} else {
 					// Email confirmation required
+					setRegistrationNeedsEmailConfirm(true);
 					toast.success(
 						"Pendaftaran berhasil! Cek email untuk konfirmasi.",
 					);
@@ -316,6 +322,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 				isAuthenticated,
 				session,
 				customer,
+				registrationNeedsEmailConfirm,
 				login,
 				register,
 				logout,

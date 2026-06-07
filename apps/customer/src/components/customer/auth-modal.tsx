@@ -21,6 +21,7 @@ type AuthModalProps = {
   onSkip: () => void;
   isLoading?: boolean;
   error?: string;
+  needsEmailConfirm?: boolean;
 };
 
 export function AuthModal({
@@ -31,6 +32,7 @@ export function AuthModal({
   onSkip,
   isLoading = false,
   error,
+  needsEmailConfirm = false,
 }: AuthModalProps) {
   const [tab, setTab] = useState<Tab>("login");
 
@@ -57,16 +59,20 @@ export function AuthModal({
       const msg = tab === "login" ? "Berhasil masuk!" : "Akun berhasil dibuat!";
       setSuccessMessage(msg);
       setShowSuccess(true);
-      // Auto-close after 1.2s
-      const timer = setTimeout(() => {
-        setShowSuccess(false);
-        setSuccessMessage("");
-        submitAttemptedRef.current = false;
-        onOpenChange(false);
-      }, 1200);
-      return () => clearTimeout(timer);
+
+      if (tab === "login" || !needsEmailConfirm) {
+        // Login or auto-confirm registration: auto-close after 1.2s
+        const timer = setTimeout(() => {
+          setShowSuccess(false);
+          setSuccessMessage("");
+          submitAttemptedRef.current = false;
+          onOpenChange(false);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+      // Email-confirm registration: keep open, let user read instructions
     }
-  }, [isLoading, error, tab, onOpenChange]);
+  }, [isLoading, error, tab, onOpenChange, needsEmailConfirm]);
 
   const handleSubmit = () => {
     if (!email.trim() || !password.trim()) return;
@@ -87,15 +93,45 @@ export function AuthModal({
     <Dialog open={open} onOpenChange={(value) => { if (!showSuccess) onOpenChange(value); }}>
       <DialogContent className="p-0 sm:max-w-sm">
         {showSuccess ? (
-          /* ── Success state ─────────────────────────────────── */
-          <div className="flex flex-col items-center justify-center px-5 py-8">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950">
-              <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+          needsEmailConfirm ? (
+            /* ── Email confirmation instructions ─────────────── */
+            <div className="flex flex-col items-center px-5 py-8 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950">
+                <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <p className="mt-3 text-base font-black">Akun berhasil dibuat!</p>
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                Cek email <span className="font-bold text-foreground">{email}</span> untuk klik tautan konfirmasi pendaftaran.
+              </p>
+              <div className="mt-3 w-full rounded-xl bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                <p className="font-bold">📧 Setelah konfirmasi email:</p>
+                <p className="mt-1 ml-0.5">Kembali ke halaman ini lalu masuk (login) menggunakan email dan password yang sudah didaftarkan.</p>
+              </div>
+              <button
+                type="button"
+                className="mt-4 w-full rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-white shadow-sm"
+                onClick={() => {
+                  setShowSuccess(false);
+                  setSuccessMessage("");
+                  setTab("login");
+                  submitAttemptedRef.current = false;
+                  setPassword("");
+                }}
+              >
+                OK, saya mengerti
+              </button>
             </div>
-            <p className="mt-3 text-base font-black">{successMessage}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">Mengalihkan ke menu...</p>
-            <Loader2 className="mt-3 h-4 w-4 animate-spin text-muted-foreground/60" />
-          </div>
+          ) : (
+            /* ── Success state (auto-confirm) ────────────────── */
+            <div className="flex flex-col items-center justify-center px-5 py-8">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950">
+                <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <p className="mt-3 text-base font-black">{successMessage}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Mengalihkan ke menu...</p>
+              <Loader2 className="mt-3 h-4 w-4 animate-spin text-muted-foreground/60" />
+            </div>
+          )
         ) : (
           <>
             <div className="px-5 pt-5">

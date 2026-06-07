@@ -88,7 +88,7 @@ export function CustomerOrderingPage({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const sessionRef = useRef(getSessionId(search.session));
 
-	const { isAuthenticated, customer, login, register, logout, isLoading: authLoading } = useCustomerAuth();
+	const { isAuthenticated, customer, login, register, logout, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const prevAuthLoadingRef = useRef(false);
 	const prevIsAuthenticatedRef = useRef(isAuthenticated);
@@ -665,6 +665,7 @@ export function CustomerOrderingPage({
 						onRegister={register}
 						onSkip={() => setAuthModalOpen(false)}
 						isLoading={authLoading}
+						needsEmailConfirm={registrationNeedsEmailConfirm}
 					/>
 
 					{step === "party" ? (
