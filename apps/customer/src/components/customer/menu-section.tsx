@@ -60,6 +60,19 @@ export function renderMenuSection(props: MenuSectionProps) {
 				<button type="button" className={cn("rounded-xl px-3 py-2 text-xs font-black transition-all", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("catalog")}>Katalog Menu</button>
 			</div>
 
+			{/* Happy Hour banner */}
+			{props.discounts?.some((d) => d.isHappyHour) ? (
+				<div className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-2.5 text-white shadow-sm">
+					<div className="flex items-center gap-2">
+						<span className="text-lg">🎉</span>
+						<div>
+							<p className="text-xs font-black">Happy Hour Sedang Berlangsung!</p>
+							<p className="text-[10px] text-white/80">Produk tertentu memiliki harga spesial — lihat badge <span className="font-bold">HAPPY HOUR</span> di card produk.</p>
+						</div>
+					</div>
+				</div>
+			) : null}
+
 			{props.menuMode === "number" && props.config.enableMenuNumberEntry ? (
 				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 					<div className="flex items-center justify-between gap-2">
