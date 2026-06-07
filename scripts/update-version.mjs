@@ -38,11 +38,17 @@ export function getAppVersionInfo() {
 }
 `;
 
-// Write to all apps that use version.ts
-writeFileSync(resolve(rootDir, "apps/web/src/lib/version.ts"), versionContent);
-writeFileSync(resolve(rootDir, "apps/pos/src/lib/version.ts"), versionContent);
-writeFileSync(resolve(rootDir, "apps/customer/src/lib/version.ts"), versionContent);
-writeFileSync(resolve(rootDir, "apps/karyawan/src/lib/version.ts"), versionContent);
+// Write to all apps that use version.ts (skip dirs that don't exist)
+const appDirs = ["apps/web", "apps/pos", "apps/customer", "apps/karyawan"];
+for (const dir of appDirs) {
+	const targetPath = resolve(rootDir, `${dir}/src/lib/version.ts`);
+	try {
+		writeFileSync(targetPath, versionContent);
+	} catch {
+		// Directory may not exist (e.g. monorepo sub-app deployed individually on Vercel)
+		console.warn(`⚠ Skipping ${dir}/src/lib/version.ts (not available)`);
+	}
+}
 
 console.log(
 	`✓ Version updated: ${metadata.version} build:${metadata.commitCount} hash:${metadata.commitHash} (${metadata.buildDate})`,
