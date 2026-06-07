@@ -25,16 +25,26 @@ function DaftarPage() {
 			return;
 		}
 
+		// Generate unique guest username: {nama-slug}-{4digit}
+		const slug = trimmedName
+			.toLowerCase()
+			.replace(/[^a-z0-9]/g, "-")
+			.replace(/-+/g, "-")
+			.replace(/^-|-$/g, "");
+		const random = Math.floor(1000 + Math.random() * 9000);
+		const guestUsername = `${slug}-${random}`;
+
 		localStorage.setItem(
 			"guest-data",
 			JSON.stringify({
 				name: trimmedName,
 				email: email.trim() || "",
 				phone: phone.trim() || "",
+				username: guestUsername,
 			}),
 		);
 
-		navigate({ to: "/order", search: { step: "party" } });
+		navigate({ to: `/${guestUsername}` });
 	};
 
 	return (
