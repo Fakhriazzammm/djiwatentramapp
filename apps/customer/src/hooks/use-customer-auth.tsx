@@ -92,6 +92,25 @@ async function fetchCustomer(sourceId: string): Promise<CustomerUser | null> {
 	return mapCustomerRow(data as Record<string, unknown>);
 }
 
+/** Build a minimal CustomerUser from Supabase Auth user (fallback when DB record missing) */
+function fallbackCustomer(user: { id: string; email?: string | null; user_metadata?: { name?: string } }): CustomerUser {
+	const email = user.email ?? null;
+	return {
+		sourceId: user.id,
+		email,
+		name: user.user_metadata?.name ?? email?.split("@")[0] ?? "User",
+		phone: null,
+		photoUrl: null,
+		username: emailToUsername(email),
+		totalPoints: 0,
+		lifetimePoints: 0,
+		totalOrders: 0,
+		totalSpent: 0,
+		lastOrderAt: null,
+		createdAt: null,
+	};
+}
+
 // ── Context ────────────────────────────────────────────────────
 
 const CustomerAuthContext = createContext<CustomerAuthContextType | undefined>(
@@ -129,17 +148,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 					return;
 				}
 
-				const cust = await fetchCustomer(sbSession.user.id);
+				const cust = await fetchCustomer(sbSession.user.id) ?? fallbackCustomer(sbSession.user);
 				if (cancelled) return;
 
-				if (cust) {
-					setCustomer(cust);
-					setSession({
-						accessToken: sbSession.access_token,
-						refreshToken: sbSession.refresh_token,
-						user: cust,
-					});
-				}
+				setCustomer(cust);
+				setSession({
+					accessToken: sbSession.access_token,
+					refreshToken: sbSession.refresh_token,
+					user: cust,
+				});
 			} catch (error) {
 				console.error("[customer-auth] Session recovery error:", error);
 			} finally {
@@ -162,22 +179,20 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange(async (event, sbSession) => {
 			if (sbSession?.user) {
-				const cust = await fetchCustomer(sbSession.user.id);
-				if (cust) {
-					setCustomer(cust);
-					setSession({
-						accessToken: sbSession.access_token,
-						refreshToken: sbSession.refresh_token,
-						user: cust,
-					});
+				const cust = await fetchCustomer(sbSession.user.id) ?? fallbackCustomer(sbSession.user);
+				setCustomer(cust);
+				setSession({
+					accessToken: sbSession.access_token,
+					refreshToken: sbSession.refresh_token,
+					user: cust,
+				});
 
 					// Show welcome-back toast after email confirmation redirect
 					if (event === "SIGNED_IN") {
 						setRegistrationNeedsEmailConfirm(false);
 						toast.success("Email terkonfirmasi! Selamat datang kembali.");
 					}
-				}
-			} else {
+				} else {
 				setSession(null);
 				setCustomer(undefined);
 			}
@@ -211,15 +226,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 				throw new Error("No session after login");
 			}
 
-			const cust = await fetchCustomer(data.session.user.id);
-			if (cust) {
-				setCustomer(cust);
-				setSession({
-					accessToken: data.session.access_token,
-					refreshToken: data.session.refresh_token,
-					user: cust,
-				});
-			}
+			const cust = await fetchCustomer(data.session.user.id) ?? fallbackCustomer(data.session.user);
+			setCustomer(cust);
+			setSession({
+				accessToken: data.session.access_token,
+				refreshToken: data.session.refresh_token,
+				user: cust,
+			});
 
 			setRegistrationNeedsEmailConfirm(false);
 			toast.success("Berhasil masuk!");
@@ -289,15 +302,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
 				// If session is returned immediately (auto-confirm), set state
 				if (data.session) {
-					const cust = await fetchCustomer(data.user.id);
-					if (cust) {
-						setCustomer(cust);
-						setSession({
-							accessToken: data.session.access_token,
-							refreshToken: data.session.refresh_token,
-							user: cust,
-						});
-					}
+					const cust = await fetchCustomer(data.user.id) ?? fallbackCustomer(data.user);
+					setCustomer(cust);
+					setSession({
+						accessToken: data.session.access_token,
+						refreshToken: data.session.refresh_token,
+						user: cust,
+					});
 					setRegistrationNeedsEmailConfirm(false);
 					toast.success("Akun berhasil dibuat!");
 				} else {
