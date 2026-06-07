@@ -45,6 +45,7 @@ interface CustomerAuthContextType {
 		name: string,
 	) => Promise<void>;
 	logout: () => Promise<void>;
+	resetPassword: (email: string) => Promise<void>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -345,6 +346,21 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 		}
 	}, []);
 
+	// ── resetPassword ─────────────────────────────────────────
+	const resetPassword = useCallback(async (email: string) => {
+		const supabase = createClient();
+		const { error } = await supabase.auth.resetPasswordForEmail(email, {
+			redirectTo: window.location.origin,
+		});
+
+		if (error) {
+			toast.error(error.message);
+			throw error;
+		}
+
+		toast.success("Link reset password sudah dikirim ke email.");
+	}, []);
+
 	// ── Render ─────────────────────────────────────────────────
 	return (
 		<CustomerAuthContext.Provider
@@ -357,6 +373,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 				login,
 				register,
 				logout,
+				resetPassword,
 			}}
 		>
 			{children}

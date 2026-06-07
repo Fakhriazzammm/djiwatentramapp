@@ -91,7 +91,7 @@ export function CustomerOrderingPage({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const sessionRef = useRef(getSessionId(search.session));
 
-	const { isAuthenticated, customer, login, register, logout, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const { isAuthenticated, customer, login, register, resetPassword, logout, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const prevAuthLoadingRef = useRef(false);
@@ -676,6 +676,7 @@ export function CustomerOrderingPage({
 						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
 						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 						onSkip={() => setAuthModalOpen(false)}
+						onResetPassword={async (email) => { try { await resetPassword(email); } catch { } }}
 						isLoading={authLoading}
 						needsEmailConfirm={registrationNeedsEmailConfirm}
 						error={authError}

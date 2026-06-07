@@ -18,6 +18,7 @@ type AuthModalProps = {
   onOpenChange: (open: boolean) => void;
   onLogin: (email: string, password: string) => void;
   onRegister: (email: string, password: string, name: string) => void;
+  onResetPassword: (email: string) => void;
   onSkip: () => void;
   isLoading?: boolean;
   error?: string;
@@ -29,6 +30,7 @@ export function AuthModal({
   onOpenChange,
   onLogin,
   onRegister,
+  onResetPassword,
   onSkip,
   isLoading = false,
   error,
@@ -39,6 +41,10 @@ export function AuthModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+
+  // ── Forgot password state ─────────────────────────────────
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   // ── Success feedback ──────────────────────────────────────
   const [showSuccess, setShowSuccess] = useState(false);
@@ -172,6 +178,53 @@ export function AuthModal({
                 </div>
               ) : null}
 
+              {showForgotPassword ? (
+                <div className="mt-4">
+                  <p className="text-[11px] text-muted-foreground">
+                    Masukkan email kamu untuk menerima link reset password.
+                  </p>
+                  <div className="relative mt-3">
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading || forgotSent}
+                      className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                    />
+                  </div>
+                  {forgotSent ? (
+                    <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                      ✅ Link reset password sudah dikirim ke <span className="font-bold">{email}</span>. Cek inbox atau folder spam.
+                    </div>
+                  ) : (
+                    <Button
+                      className="mt-3 w-full"
+                      size="default"
+                      disabled={!email.trim() || isLoading}
+                      loading={isLoading}
+                      onClick={() => {
+                        onResetPassword(email.trim());
+                        setForgotSent(true);
+                      }}
+                    >
+                      Kirim Link Reset
+                    </Button>
+                  )}
+                  <button
+                    type="button"
+                    className="mt-3 w-full text-[11px] text-muted-foreground hover:underline"
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setForgotSent(false);
+                    }}
+                  >
+                    ← Kembali ke Masuk
+                  </button>
+                </div>
+              ) : (
+                <>
               {/* Form */}
               <div className="mt-4 space-y-2.5">
                 {tab === "register" ? (
@@ -222,7 +275,8 @@ export function AuthModal({
                   type="button"
                   className="mt-2 text-[11px] font-semibold text-primary hover:underline"
                   onClick={() => {
-                    /* handle forgot password */
+                    setShowForgotPassword(true);
+                    setForgotSent(false);
                   }}
                 >
                   Lupa password?
@@ -239,6 +293,8 @@ export function AuthModal({
               >
                 {tab === "login" ? "Masuk" : "Daftar"}
               </Button>
+                </>
+              )}
             </div>
 
             {/* Skip section */}
