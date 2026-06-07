@@ -85,7 +85,11 @@ function AttendancePage() {
 		const now = new Date();
 		const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-		// Try to find current shift (time is within openTime-closeTime range)
+		// Try to find current shift (time is within openTime-closeTime range,
+		// with 60-minute pre-grace period). Pick closest to open time among matches.
+		let bestMatch: typeof shiftSchedules[number] | null = null;
+		let bestScore = Infinity;
+
 		for (const schedule of shiftSchedules) {
 			if (!schedule.openTime || !schedule.closeTime) continue;
 			const [oH, oM] = schedule.openTime.split(":").map(Number);
@@ -93,17 +97,33 @@ function AttendancePage() {
 			const openMin = oH * 60 + oM;
 			const closeMin = cH * 60 + cM;
 
+			let isInRange = false;
 			if (openMin <= closeMin) {
 				// Same day shift (e.g. 07:00 - 15:00)
-				if (currentMinutes >= openMin && currentMinutes < closeMin) {
-					return schedule;
+				if (currentMinutes >= (openMin - 60) && currentMinutes < closeMin) {
+					isInRange = true;
 				}
 			} else {
 				// Overnight shift (e.g. 22:00 - 06:00)
-				if (currentMinutes >= openMin || currentMinutes < closeMin) {
-					return schedule;
+				if (currentMinutes >= (openMin - 60) || currentMinutes < closeMin) {
+					isInRange = true;
 				}
 			}
+
+			if (isInRange) {
+				const diff = currentMinutes - openMin;
+				// Before start: lower score = closer to start time
+				// After start: always worse than any pre-start shift
+				const score = diff < 0 ? -diff : diff + 1440;
+				if (score < bestScore) {
+					bestScore = score;
+					bestMatch = schedule;
+				}
+			}
+		}
+
+		if (bestMatch) {
+			return bestMatch;
 		}
 
 		// No active shift found - find nearest upcoming shift

@@ -2180,9 +2180,39 @@ async def _check_new_attendance(app):
                         if sched_shift == "OFF":
                             # Hari ini libur — seharusnya tidak masuk
                             lines.append(f"❌ KAMU SALAH JADWAL! Hari ini jadwalmu: {sched_label}")
+                            shift_name = None  # Skip lateness calculation
                         elif detected_upper and sched_upper and detected_upper != sched_upper:
-                            # Shift terdeteksi berbeda dengan jadwal
-                            lines.append(f"⚠️ KAMU SALAH JADWAL! Jadwalmu: {sched_label}")
+                            # Cek grace period: absen dalam 1 jam sebelum shift dimulai?
+                            early_for_shift = False
+                            if sched_start:
+                                try:
+                                    sh, sm = sched_start.split(":")
+                                    sched_start_min = int(sh) * 60 + int(sm)
+                                    dt_gp = datetime.fromtimestamp(ts / 1000, tz=WIB)
+                                    check_min_gp = dt_gp.hour * 60 + dt_gp.minute
+                                    early_min = sched_start_min - check_min_gp
+                                    if 0 <= early_min <= 60:
+                                        early_for_shift = True
+                                except Exception:
+                                    pass
+                            if early_for_shift:
+                                # Early check-in for scheduled shift — override shift info
+                                # Use bare shift name (e.g. "Sore") so _get_shift_schedule() matches cache
+                                sched_bare = sched.get("shiftName", "").strip()
+                                shift_name = None  # Skip duplicate handling below
+                                shift_label = sched_bare
+                                sched_obj = _get_shift_schedule(sched_bare)
+                                if sched_obj:
+                                    open_t = sched_obj.get("openTime", "")
+                                    close_t = sched_obj.get("closeTime", "")
+                                    lines.append(f"📌 Shift {sched_bare} ({open_t} - {close_t})")
+                                    lines.append(f"✅ Masuk awal — shift dimulai {sched_start} WIB")
+                                else:
+                                    lines.append(f"✅ Masuk awal untuk shift {sched_label}")
+                            else:
+                                lines.append(f"⚠️ KAMU SALAH JADWAL! Jadwalmu: {sched_label}")
+                                # Skip lateness calculation — jangan hitung denda dari shift yg salah
+                                shift_name = None
                 except Exception:
                     pass  # Jangan sampai query error menggagalkan notifikasi
 
@@ -2217,6 +2247,8 @@ async def _check_new_attendance(app):
                         lines.append("✅ Tepat waktu (dalam batas toleransi)")
                 elif shift_name:
                     lines.append(f"📌 Shift {shift_label}")
+                elif shift_label:
+                    pass  # Already handled in early_for_shift or SALAH JADWAL above
                 else:
                     lines.append("📌 Tanpa shift")
 
