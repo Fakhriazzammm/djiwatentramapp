@@ -495,7 +495,7 @@ async function fetchProducts() {
 	const { data, error } = await supabase
 		.from("pos_products")
 		.select("*")
-		.eq("is_available", true)
+		.eq("isAvailable", true)
 		.order("menuNumber", { ascending: true, nullsFirst: false });
 
 	if (error) throw error;
