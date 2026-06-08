@@ -60,6 +60,33 @@ export function CustomerOrderingPage({
 	const categories = useHybridCategories();
 	const products = useHybridProducts();
 	const discounts = useHybridActiveDiscounts();
+	const memberDiscounts = useMemo(() => {
+		if (!discounts) return undefined;
+		if (!isAuthenticated) {
+			return discounts.filter((d: any) => !d.isHappyHour);
+		}
+		return discounts;
+	}, [discounts, isAuthenticated]);
+
+	const hasActiveHappyHour = useMemo(() => {
+		if (!discounts) return false;
+		const now = new Date();
+		const currentDay = now.getDay();
+		const currentTimeVal = now.getHours() * 60 + now.getMinutes();
+		return discounts.some((d: any) => {
+			if (!d.isHappyHour) return false;
+			if (Array.isArray(d.days) && d.days.length > 0 && !d.days.includes(currentDay)) return false;
+			if (d.startTime) {
+				const [h, m] = d.startTime.split(':').map(Number);
+				if (currentTimeVal < h * 60 + m) return false;
+			}
+			if (d.endTime) {
+				const [h, m] = d.endTime.split(':').map(Number);
+				if (currentTimeVal > h * 60 + m) return false;
+			}
+			return true;
+		});
+	}, [discounts]);
 	const createOrder = useHybridCreateOrder();
 	const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
 	const updateOrderStatus = useHybridUpdateOrderStatus();
@@ -368,7 +395,7 @@ export function CustomerOrderingPage({
 		}
 		const pricing = calculateEffectivePrice(
 			{ _id: product._id, price: product.price, categoryId: product.categoryId },
-			discounts
+			memberDiscounts
 		);
 		addToCart({
 			productId: product._id,
@@ -734,7 +761,7 @@ export function CustomerOrderingPage({
 					) : null}
 
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, cart, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setManualCode, setMenuMode, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
+						? renderMenuSection({ activeCategoryId, cart, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setManualCode, setMenuMode, setScannerOpen, showHappyHourBanner: hasActiveHappyHour && !isAuthenticated, storeName, tableNumber, themeColor, total, totalItems, onOpenAuth: () => setAuthModalOpen(true) })
 						: null}
 					{step === "checkout" ? renderCheckoutSection({ checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
@@ -780,7 +807,7 @@ export function CustomerOrderingPage({
 
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
 				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-xl p-0">
-					<ProductSheet product={productSheet} discounts={discounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
+					<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} isHappyHourLocked={hasActiveHappyHour && !isAuthenticated} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
 				</SheetContent>
 			</Sheet>
 		</div>
