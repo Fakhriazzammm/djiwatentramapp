@@ -82,9 +82,9 @@ export function ProductSheet({
 						</span>
 					) : null}
 				</div>
-				{isHappyHourLocked && pricing.isPromo ? (
+				{isHappyHourLocked ? (
 					<p className="mt-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-						🔒 Harga spesial {currency(pricing.finalPrice + variantPrice)} untuk member
+						🔒 Login untuk harga Happy Hour spesial
 					</p>
 				) : null}
 				{groups.length > 0 ? (
