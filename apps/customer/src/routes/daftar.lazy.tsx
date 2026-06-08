@@ -92,7 +92,7 @@ function DaftarPage() {
 						{/* Email */}
 						<div>
 							<label className="text-xs font-bold text-foreground">
-								Email <span className="text-muted-foreground text-[10px]">(opsional)</span>
+								Email
 							</label>
 							<input
 								type="email"
@@ -106,7 +106,7 @@ function DaftarPage() {
 						{/* No WhatsApp */}
 						<div>
 							<label className="text-xs font-bold text-foreground">
-								No. WhatsApp <span className="text-muted-foreground text-[10px]">(opsional)</span>
+								No. WhatsApp
 							</label>
 							<input
 								type="tel"
@@ -120,7 +120,7 @@ function DaftarPage() {
 						{/* No Meja */}
 						<div>
 							<label className="text-xs font-bold text-foreground">
-								No. Meja <span className="text-muted-foreground text-[10px]">(opsional)</span>
+								No. Meja
 							</label>
 							<input
 								type="text"
