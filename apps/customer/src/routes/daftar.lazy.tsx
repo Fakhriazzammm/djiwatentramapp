@@ -16,6 +16,8 @@ function DaftarPage() {
 		setGuestEmail: setEmail,
 		guestPhone: phone,
 		setGuestPhone: setPhone,
+		tableNumber,
+		setTableNumber,
 	} = useOrderContext();
 
 	const handleSubmit = () => {
@@ -41,10 +43,16 @@ function DaftarPage() {
 				email: email.trim() || "",
 				phone: phone.trim() || "",
 				username: guestUsername,
+				table: tableNumber.trim() || "",
 			}),
 		);
 
-		navigate({ to: `/${guestUsername}` });
+		navigate({
+			to: `/${guestUsername}`,
+			search: tableNumber.trim()
+				? { table: tableNumber.trim() }
+				: undefined,
+		});
 	};
 
 	return (
@@ -105,6 +113,20 @@ function DaftarPage() {
 								value={phone}
 								onChange={(e) => setPhone(e.target.value)}
 								placeholder="08xxxx"
+								className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+							/>
+						</div>
+
+						{/* No Meja */}
+						<div>
+							<label className="text-xs font-bold text-foreground">
+								No. Meja <span className="text-muted-foreground text-[10px]">(opsional)</span>
+							</label>
+							<input
+								type="text"
+								value={tableNumber}
+								onChange={(e) => setTableNumber(e.target.value)}
+								placeholder="Contoh: 5"
 								className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>
