@@ -66,9 +66,9 @@ function MemberHomePage() {
 	}, [resolved, isLoading, isAuthenticated, customer, username, navigate]);
 
 	// ── Loading ────────────────────────────────────
-	// Guest match → skip loading (resolved=true sejak awal)
+	// Guest match → skip loading (resolved=true sejak awal, tanpa network)
 	// Non-guest → nunggu auth baru resolve
-	if (isLoading || !resolved) {
+	if (!resolved || (!guestData && isLoading)) {
 		return (
 			<div className="flex min-h-app items-center justify-center bg-background">
 				<div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
