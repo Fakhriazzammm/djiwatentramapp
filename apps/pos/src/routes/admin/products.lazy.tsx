@@ -24,6 +24,8 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Edit,
+	Eye,
+	EyeOff,
 	LayoutGrid,
 	List,
 	Plus,
@@ -2098,10 +2100,27 @@ function SettingsTab({
 				<div className="space-y-2">
 					{filteredCategories.filter(c => !c.parentId).map((c) => (
 						<div key={c._id} className="space-y-2">
-							<div
-								className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
-							>
-								<span className="font-medium text-sm">{c.name}</span>
+														<div
+															className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
+														>
+															<div className="flex items-center gap-2 min-w-0">
+																<button
+																	className={"rounded-md p-1.5 shrink-0 " + (c.track === "hidden" ? "text-muted-foreground hover:text-foreground" : "text-green-600 hover:text-green-700")}
+																	onClick={async () => {
+																		const newTrack = c.track === "hidden" ? null : "hidden";
+																		try {
+																			await updateCategory({ id: c._id, track: newTrack });
+																			toast.success(newTrack === "hidden" ? `Kategori "${c.name}" disembunyikan` : `Kategori "${c.name}" ditampilkan`);
+																			triggerHybridRefresh();
+																		} catch { toast.error("Gagal mengubah visibilitas"); }
+																	}}
+																	title={c.track === "hidden" ? "Tampilkan" : "Sembunyikan"}
+																	type="button"
+																>
+																	{c.track === "hidden" ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+																</button>
+																<span className={"font-medium text-sm truncate " + (c.track === "hidden" ? "text-muted-foreground line-through" : "")}>{c.name}</span>
+															</div>
 								<div className="flex gap-1">
 									<button
 										className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"

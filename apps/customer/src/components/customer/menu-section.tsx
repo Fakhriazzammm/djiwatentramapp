@@ -102,7 +102,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
 						<div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
 							<button type="button" className={chipClassName(props.activeCategoryId === null)} onClick={() => props.setActiveCategoryId(null)}>Semua</button>
-							{props.orderedCategories.filter((category) => !category.parentId).map((category) => <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>)}
+							{props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden").map((category) => <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>)}
 							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
 						</div>
 					</div>

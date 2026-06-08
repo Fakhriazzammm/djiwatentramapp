@@ -13,7 +13,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as MenuRouteImport } from './routes/menu'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
@@ -23,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
+import { Route as KasirLoginRouteImport } from './routes/kasir/login'
 import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$username'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
@@ -88,11 +88,6 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -141,6 +136,13 @@ const KaryawanLoginRoute = KaryawanLoginRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() =>
   import('./routes/karyawan/login.lazy').then((d) => d.Route),
+)
+const KasirLoginRoute = KasirLoginRouteImport.update({
+  id: '/kasir/login',
+  path: '/kasir/login',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/kasir/login.lazy').then((d) => d.Route),
 )
 const KaryawanUsernameRoute = KaryawanUsernameRouteImport.update({
   id: '/karyawan/$username',
@@ -516,7 +518,6 @@ export interface FileRoutesByFullPath {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
-  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
@@ -541,6 +542,7 @@ export interface FileRoutesByFullPath {
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
   '/karyawan/login': typeof KaryawanLoginRoute
+  '/kasir/login': typeof KasirLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -577,7 +579,6 @@ export interface FileRoutesByTo {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
-  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -599,6 +600,7 @@ export interface FileRoutesByTo {
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
   '/karyawan/login': typeof KaryawanLoginRoute
+  '/kasir/login': typeof KasirLoginRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -635,7 +637,6 @@ export interface FileRoutesById {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
-  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
@@ -660,6 +661,7 @@ export interface FileRoutesById {
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
   '/karyawan/login': typeof KaryawanLoginRoute
+  '/kasir/login': typeof KasirLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -700,7 +702,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/home'
-    | '/login'
     | '/menu'
     | '/register'
     | '/admin/finance'
@@ -725,6 +726,7 @@ export interface FileRouteTypes {
     | '/home/$section'
     | '/karyawan/$username'
     | '/karyawan/login'
+    | '/kasir/login'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -761,7 +763,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/home'
-    | '/login'
     | '/menu'
     | '/register'
     | '/admin/ai-chat'
@@ -783,6 +784,7 @@ export interface FileRouteTypes {
     | '/home/$section'
     | '/karyawan/$username'
     | '/karyawan/login'
+    | '/kasir/login'
     | '/admin'
     | '/attendance'
     | '/admin/finance/accounting'
@@ -818,7 +820,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/home'
-    | '/login'
     | '/menu'
     | '/register'
     | '/admin/finance'
@@ -843,6 +844,7 @@ export interface FileRouteTypes {
     | '/home/$section'
     | '/karyawan/$username'
     | '/karyawan/login'
+    | '/kasir/login'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -882,11 +884,11 @@ export interface RootRouteChildren {
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
   HomeRoute: typeof HomeRouteWithChildren
-  LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   RegisterRoute: typeof RegisterRouteWithChildren
   KaryawanUsernameRoute: typeof KaryawanUsernameRoute
   KaryawanLoginRoute: typeof KaryawanLoginRoute
+  KasirLoginRoute: typeof KasirLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -903,13 +905,6 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -973,6 +968,13 @@ declare module '@tanstack/react-router' {
       path: '/karyawan/login'
       fullPath: '/karyawan/login'
       preLoaderRoute: typeof KaryawanLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kasir/login': {
+      id: '/kasir/login'
+      path: '/kasir/login'
+      fullPath: '/kasir/login'
+      preLoaderRoute: typeof KasirLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/karyawan/$username': {
@@ -1571,11 +1573,11 @@ const rootRouteChildren: RootRouteChildren = {
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
   HomeRoute: HomeRouteWithChildren,
-  LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   RegisterRoute: RegisterRouteWithChildren,
   KaryawanUsernameRoute: KaryawanUsernameRoute,
   KaryawanLoginRoute: KaryawanLoginRoute,
+  KasirLoginRoute: KasirLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

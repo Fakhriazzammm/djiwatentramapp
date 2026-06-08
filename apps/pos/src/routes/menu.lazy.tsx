@@ -657,7 +657,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const { categoryTabs, activeSubcategories, activeParentName } = useMemo(() => {
 		if (!categories) return { categoryTabs: [{ _id: "all", name: "Semua" }], activeSubcategories: [], activeParentName: "" };
 		
-		const parents = categories.filter((c: any) => !c.parentId);
+			const parents = categories.filter((c: any) => !c.parentId && c.track !== "hidden");
 		const tabs = [{ _id: "all", name: "Semua" }, ...parents];
 		
 		let subs: any[] = [];

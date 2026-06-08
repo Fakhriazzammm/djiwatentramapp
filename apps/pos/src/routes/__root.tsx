@@ -19,29 +19,19 @@ function RootContent() {
 		if (isLoading) return;
 
 		const isPublicPage =
-			location.pathname === "/login" ||
 			location.pathname === "/admin/login" ||
 			location.pathname === "/karyawan/login" ||
-			location.pathname === "/menu" ||
+			location.pathname === "/kasir/login" ||
 			location.pathname === "/register" ||
 			location.pathname.startsWith("/register/selesai/");
 		
 		if (!isAuthenticated) {
 			if (location.pathname === "/register" && siteSettings?.employeeOnboarding?.registrationEnabled === false) {
-				navigate({ to: "/login" as any, replace: true });
+				navigate({ to: "/kasir/login" as any, replace: true });
 				return;
 			}
 			if (!isPublicPage) {
-				navigate({ to: "/login" as any, replace: true });
-			}
-		} else {
-			if (location.pathname === "/login") {
-				// Role-based redirect — login page is now a role picker
-				if (isAdmin) {
-					navigate({ to: "/admin" as any, replace: true });
-				} else {
-					navigate({ to: "/home" as any, replace: true });
-				}
+				navigate({ to: "/kasir/login" as any, replace: true });
 			}
 		}
 	}, [isAuthenticated, isLoading, isStaff, user, location.pathname, navigate]);
