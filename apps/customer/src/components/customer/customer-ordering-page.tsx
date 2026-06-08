@@ -69,7 +69,10 @@ export function CustomerOrderingPage({
 	}, [discounts, isAuthenticated]);
 
 	const hasActiveHappyHour = useMemo(() => {
-		if (!discounts) return false;
+		// Masih loading - belum tahu
+		if (discounts === undefined) return undefined;
+		// Udah load tapi kosong/tidak ada
+		if (!discounts || discounts.length === 0) return false;
 		const now = new Date();
 		const currentDay = now.getDay();
 		const currentTimeVal = now.getHours() * 60 + now.getMinutes();
