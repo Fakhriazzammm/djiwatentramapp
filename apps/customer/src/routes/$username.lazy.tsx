@@ -37,12 +37,18 @@ function MemberHomePage() {
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
-	// ── Detect: member vs guest vs unknown ──────────
-	const [guestData, setGuestData] = useState<GuestData | null>(null);
-	const [resolved, setResolved] = useState(false);
+	// ── Guest data dari localStorage (synchronous, no network) ──
+	// Langsung resolve kalau guest match — tanpa nunggu auth check
+	const [guestData, setGuestData] = useState<GuestData | null>(() => loadGuestData());
+	const [resolved, setResolved] = useState(() => {
+		const g = loadGuestData();
+		return g?.username === username;
+	});
 
+	// ── Detect: member vs unknown (guest sudah ter-resolve di atas) ──
 	useEffect(() => {
-		if (isLoading) return;
+		if (resolved) return; // Already guest match
+		if (isLoading) return; // Auth still loading
 
 		// Member authenticated + username cocok
 		if (isAuthenticated && customer) {
@@ -55,19 +61,13 @@ function MemberHomePage() {
 			return;
 		}
 
-		// Guest — cek localStorage
-		const guest = loadGuestData();
-		if (guest && guest.username === username) {
-			setGuestData(guest);
-			setResolved(true);
-			return;
-		}
-
 		// Tidak cocok → redirect ke landing
 		navigate({ to: "/" });
-	}, [isLoading, isAuthenticated, customer, username, navigate]);
+	}, [resolved, isLoading, isAuthenticated, customer, username, navigate]);
 
 	// ── Loading ────────────────────────────────────
+	// Guest match → skip loading (resolved=true sejak awal)
+	// Non-guest → nunggu auth baru resolve
 	if (isLoading || !resolved) {
 		return (
 			<div className="flex min-h-app items-center justify-center bg-background">

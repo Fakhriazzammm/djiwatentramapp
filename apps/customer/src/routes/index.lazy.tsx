@@ -25,38 +25,18 @@ function BrandCustomerIndex() {
 
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
-	const [welcomeReady, setWelcomeReady] = useState(false);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
 	// ── Redirect member ke /{username} ────────────────────────────
+	// Auth berjalan di background; langsung render, redirect otomatis
+	// jika ternyata user sudah login.
 	useEffect(() => {
-		if (!isLoading && isAuthenticated && customer) {
+		if (isAuthenticated && customer) {
 			navigate({ to: `/${customer.username}` });
 		}
-	}, [isLoading, isAuthenticated, customer, navigate]);
-
-	// ── Guest — tampilkan welcome page ───────────────────────
-	useEffect(() => {
-		if (!isLoading && !isAuthenticated) {
-			setWelcomeReady(true);
-		}
-	}, [isLoading, isAuthenticated]);
-
-	// ── Loading state ────────────────────────────────────────
-	if (isLoading || !welcomeReady) {
-		return (
-			<div className="flex min-h-app items-center justify-center bg-background">
-				<div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
-					<Loader2 className="h-4 w-4 animate-spin text-primary" />
-					<span className="text-xs font-medium text-muted-foreground">
-						Menyiapkan halaman...
-					</span>
-				</div>
-			</div>
-		);
-	}
+	}, [isAuthenticated, customer, navigate]);
 
 	// ── Guest welcome page ───────────────────────────────────
 	return (
