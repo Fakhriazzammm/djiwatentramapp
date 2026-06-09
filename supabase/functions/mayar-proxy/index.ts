@@ -29,7 +29,7 @@ async function createInvoice(payload: Record<string, unknown>) {
 		name: payload.name,
 		email: payload.email || "no-reply@restaurant.local",
 		mobile: payload.mobile || "085000000000",
-		redirectUrl: payload.redirectUrl || "",
+		redirectUrl: (payload.redirectUrl as string)?.trim() || "https://zantara.myr.id",
 		description: payload.description || "",
 		expiredAt: payload.expiredAt || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		items: payload.items || [],
@@ -47,8 +47,9 @@ async function createInvoice(payload: Record<string, unknown>) {
 	const result = await resp.json();
 
 	if (!resp.ok || result?.statusCode !== 200) {
+		const detail = JSON.stringify(result);
 		const msg = result?.messages || result?.message || `Mayar API error ${resp.status}`;
-		throw new Error(msg);
+		throw new Error(`${msg} — ${detail}`);
 	}
 
 	return result;
