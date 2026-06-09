@@ -2460,7 +2460,9 @@ export function useHybridCreateOrder() {
 			// Daily receipt numbering
 			const kind = args?.source === "pos"
 				? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
-				: "online";
+				: args?.source === "customer_self_service"
+					? "dine_in"
+					: "online";
 			let dailyReceiptNo = null;
 			try {
 				const { data: rpcData, error: rpcErr } = await supabase.rpc(
