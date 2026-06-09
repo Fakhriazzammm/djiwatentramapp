@@ -283,7 +283,7 @@ function KasirLoginPage() {
 				</AnimatePresence>
 			</main>
 			
-			<Footer className="absolute bottom-8 left-0 right-0 pointer-events-none" />
+			<Footer compact className="absolute top-1.5 left-0 right-0 pointer-events-none" />
 		</div>
 	);
 }
