@@ -967,12 +967,12 @@ async def _check_new_orders(app):
 
     try:
         rows = await _fetch(
-            "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
-            "&status=in.(completed,paid)"
-            f"&_creationTime=gt.{scan_from}"
-            f"&_creationTime=lte.{now_ms}"
-            "&order=_creationTime.asc&limit=50",
+        	"pos_orders",
+        	"select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
+        	"&or=(status.in.(completed,paid),and(status.eq.pending,source.eq.customer_self_service))"
+        	f"&_creationTime=gt.{scan_from}"
+        	f"&_creationTime=lte.{now_ms}"
+        	"&order=_creationTime.asc&limit=50",
         )
     except Exception as e:
         logger.error("check_new_orders fetch failed: %s", e)
