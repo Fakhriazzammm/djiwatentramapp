@@ -1,0 +1,3 @@
+-- Add KANIA DILLA FAIRUZ to active shift (SQL langsung via Management API)
+-- Tidak perlu dijalankan ulang — sudah di-update manual.
+-- File ini sebagai dokumentasi.
