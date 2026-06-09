@@ -28,6 +28,16 @@ TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-5044633519"))
 
 WIB = timezone(timedelta(hours=7))
 logger = logging.getLogger(__name__)
+
+def _payment_label(raw: str) -> str:
+    """Convert stored payment method to display label."""
+    labels = {
+        "djiwaapp": "DjiwaApp",
+        "cash": "Tunai",
+        "qris_mayar": "QRIS",
+        "mayar": "DjiwaApp",
+    }
+    return labels.get(raw.lower().strip(), raw.upper() if raw else "-")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -847,7 +857,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         f"🧾 Pesanan Baru — {_format_time_hm(ts_ms)}",
         "────────────",
         f"🆔 {order_no}",
-        f"💰 Rp{totalAmount:,.0f} — {payment_method.upper() if payment_method else '-'}",
+        f"💰 Rp{totalAmount:,.0f} — {_payment_label(payment_method)}",
     ])
     for p in promo_parts:
         lines.append(f"🏷️ {p}")
@@ -1179,7 +1189,7 @@ async def _check_new_csr(app):
                     if g:
                         guest = str(int(g))
                     total = float(oo.get("totalAmount") or 0)
-                    payment = str(oo.get("paymentMethod") or "-").upper()
+                    payment = _payment_label(str(oo.get("paymentMethod") or "-"))
                     raw_items = oo.get("items") or []
                     if isinstance(raw_items, list):
                         items = raw_items

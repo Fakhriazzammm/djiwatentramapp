@@ -472,7 +472,7 @@ export function CustomerOrderingPage({
 				totalAmount: total,
 				taxAmount,
 				serviceChargeAmount,
-				paymentMethod: paymentChoice === "mayar" ? "qris" : "cash",
+				paymentMethod: paymentChoice === "mayar" ? "djiwaapp" : "cash",
 				customerName: normalizedCustomerName,
 				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
@@ -967,7 +967,7 @@ function renderReceiptSection(props: any) {
 					{orderItems.length > 0 ? <div className="mt-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detail item</p><div className="mt-2 space-y-1.5">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-xs" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="line-clamp-2 text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
 					<BarcodeLines value={orderReference} />
 				</div>
-				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3.5 w-3.5" />Bayar QRIS</a> : null}
+				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3.5 w-3.5" />Bayar via DjiwaApp</a> : null}
 			</div>
 			<div className="grid grid-cols-2 gap-2 pb-6"><button type="button" className="rounded-xl border border-border bg-card px-3 py-3 text-xs font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Call staff / dessert" : "Call staff"}</button></div>
 		</div>
