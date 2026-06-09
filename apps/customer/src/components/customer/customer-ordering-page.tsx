@@ -119,6 +119,25 @@ export function CustomerOrderingPage({
 	const [dessertLater, setDessertLater] = useState(false);
 	const [receipt, setReceipt] = useState<ReceiptState | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	// Auto-fill customer name from auth or guest data
+	useEffect(() => {
+		if (customerName) return; // already filled
+		if (customer?.name) {
+			setCustomerName(customer.name);
+			return;
+		}
+		try {
+			const guestRaw = window.localStorage.getItem("guest-data");
+			if (guestRaw) {
+				const guestData = JSON.parse(guestRaw);
+				if (guestData?.name) setCustomerName(guestData.name);
+			}
+		} catch {
+			// ignore parse errors
+		}
+	}, [customer?.name, customerName]);
+
 	const sessionRef = useRef(getSessionId(search.session));
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
