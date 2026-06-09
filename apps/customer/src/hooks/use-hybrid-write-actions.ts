@@ -3,7 +3,6 @@ import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
-import { mayarCreateInvoiceViaItems, mayarGetTransaction } from "@/lib/mayarGateway";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -5805,7 +5804,8 @@ export function useHybridMayarCreateInvoice() {
 	return useCallback(
 		async (args: any) => {
 			try {
-				const result = await mayarCreateInvoiceViaItems({
+				const data = await invokeEdgeFunction<any>("mayar-proxy", {
+					action: "create-invoice",
 					name: args.name,
 					email: args.email,
 					mobile: args.mobile,
@@ -5814,18 +5814,15 @@ export function useHybridMayarCreateInvoice() {
 					expiredAt: args.expiredAt,
 					items: args.items,
 				});
-				if (result.success) {
-					return {
-						statusCode: 200,
-						messages: "success",
-						data: {
-							id: result.id,
-							transactionId: result.transactionId,
-							link: result.link,
-						},
-					};
-				}
-				throw new Error(result.message || "Gagal membuat invoice Mayar");
+				return {
+					statusCode: 200,
+					messages: "success",
+					data: {
+						id: data?.data?.id,
+						transactionId: data?.data?.transactionId,
+						link: data?.data?.link,
+					},
+				};
 			} catch (err: any) {
 				throw new Error(err?.message || "Gagal membuat invoice Mayar");
 			}
@@ -5838,8 +5835,11 @@ export function useHybridMayarGetInvoiceDetail() {
 	return useCallback(
 		async (args: any) => {
 			try {
-				const result = await mayarGetTransaction(args.invoiceId);
-				return { data: result?.data };
+				const data = await invokeEdgeFunction<any>("mayar-proxy", {
+					action: "get-invoice-detail",
+					invoiceId: args.invoiceId,
+				});
+				return { data: data?.data || null };
 			} catch (err: any) {
 				throw new Error(err?.message || "Gagal cek status Mayar");
 			}
