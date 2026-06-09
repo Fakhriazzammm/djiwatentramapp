@@ -28,3 +28,7 @@ verify_jwt = false
 [functions.auto-attendance-clockout]
 enabled = true
 verify_jwt = false
+
+[functions.mayar-proxy]
+enabled = true
+verify_jwt = false
