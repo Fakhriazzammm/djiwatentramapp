@@ -1,6 +1,7 @@
 import {
 	createContext,
 	useContext,
+	useEffect,
 	useRef,
 	useState,
 	type ReactNode,
@@ -160,6 +161,18 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
 	// Bootstrap client (side-effect-free instantiation at provider mount)
 	createClient();
+
+	// Auto-fill customerName & tableNumber from guest-data (filled at /daftar)
+	useEffect(() => {
+		try {
+			const raw = window.localStorage.getItem("guest-data");
+			if (raw) {
+				const data = JSON.parse(raw);
+				if (data?.name && !customerName) setCustomerName(data.name);
+				if (data?.table && !tableNumber) setTableNumber(data.table);
+			}
+		} catch { /* ignore parse errors */ }
+	}, []);
 
 	// ── Helpers ──────────────────────────────────────────────
 
