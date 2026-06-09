@@ -483,7 +483,7 @@ export function CustomerOrderingPage({
 				totalAmount: total,
 				taxAmount,
 				serviceChargeAmount,
-				paymentMethod: paymentChoice === "mayar" ? "mayar" : "cash",
+				paymentMethod: paymentChoice === "mayar" ? "qris" : "cash",
 				customerName: normalizedCustomerName,
 				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
