@@ -3,6 +3,7 @@ import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
+import { mayarCreateInvoiceViaItems, mayarGetTransaction } from "@/lib/mayarGateway";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -5801,34 +5802,49 @@ export function useHybridProduceBaseRecipeBatch() {
 }
 
 export function useHybridMayarCreateInvoice() {
-	const fallback = useAction(api.mayar.createInvoice);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
 			try {
-				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase Mayar function not configured");
-			} catch {
-				return fallback(args);
+				const result = await mayarCreateInvoiceViaItems({
+					name: args.name,
+					email: args.email,
+					mobile: args.mobile,
+					redirectUrl: args.redirectUrl,
+					description: args.description,
+					expiredAt: args.expiredAt,
+					items: args.items,
+				});
+				if (result.success) {
+					return {
+						statusCode: 200,
+						messages: "success",
+						data: {
+							id: result.id,
+							transactionId: result.transactionId,
+							link: result.link,
+						},
+					};
+				}
+				throw new Error(result.message || "Gagal membuat invoice Mayar");
+			} catch (err: any) {
+				throw new Error(err?.message || "Gagal membuat invoice Mayar");
 			}
 		},
-		[fallback]
+		[]
 	);
 }
 
 export function useHybridMayarGetInvoiceDetail() {
-	const fallback = useAction(api.mayar.getInvoiceDetail);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
 			try {
-				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase Mayar function not configured");
-			} catch {
-				return fallback(args);
+				const result = await mayarGetTransaction(args.invoiceId);
+				return { data: result?.data };
+			} catch (err: any) {
+				throw new Error(err?.message || "Gagal cek status Mayar");
 			}
 		},
-		[fallback]
+		[]
 	);
 }
 

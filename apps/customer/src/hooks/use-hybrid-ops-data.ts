@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { isMayarConfigured } from "@/lib/mayarGateway";
 
 function useSupabaseValue<T>(
 	key: string,
@@ -20,8 +21,10 @@ function resolveMayarConfig() {
 	if (!baseUrl) missing.push("MAYAR_BASE_URL");
 	if (!apiKey) missing.push("MAYAR_API_KEY");
 
+	const gatewayConfigured = isMayarConfigured();
+
 	return {
-		configured: missing.length === 0,
+		configured: missing.length === 0 && gatewayConfigured,
 		missing,
 		baseUrl,
 	};
