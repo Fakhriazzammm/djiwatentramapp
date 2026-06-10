@@ -9,11 +9,12 @@ import { useEffect } from "react";
 function RootContent() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, isLoading, isStaff, isAdmin, user } = useYumiAuth();
+	const { isAuthenticated, isLoading, isStaff, isAdmin, user, role } = useYumiAuth();
 	const siteSettings = useHybridSiteSettings();
 
 	// Demo mode — client viewer: mask all numbers
-	useDemoMode();
+	const isDemoViewer = role?.name === "CLIENT_VIEWER";
+	useDemoMode(isDemoViewer);
 
 	useGlobalKeyboardNavigation();
 	useSiteBrandingMetadata();

@@ -45,7 +45,7 @@ class RootErrorBoundary extends Component<
 function RootContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading } = useYumiAuth();
+  const { isAuthenticated, isLoading, role } = useYumiAuth();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   useEffect(() => {
@@ -77,7 +77,8 @@ function RootContent() {
   }, []);
 
   // Demo mode — client viewer: mask all numbers
-  useDemoMode();
+  const isDemoViewer = role?.name === "CLIENT_VIEWER";
+  useDemoMode(isDemoViewer);
 
   return <Outlet />;
 }
