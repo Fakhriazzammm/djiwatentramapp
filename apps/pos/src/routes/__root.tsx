@@ -3,7 +3,8 @@ import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigatio
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
 import { preloadFaceModels } from "../components/auth/FaceRecognition";
-import { useYumiAuth, YumiAuthProvider, useDemoMode } from "@yumipos/web-shared";
+import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
+import { useDemoMode } from "@yumipos/web-shared";
 import { useEffect } from "react";
 
 function RootContent() {
