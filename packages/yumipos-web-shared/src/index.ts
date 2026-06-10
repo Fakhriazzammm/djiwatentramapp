@@ -24,5 +24,8 @@ export {
   useHybridVerifyHomePin,
 } from "./hooks/use-hybrid-write-actions";
 export * from "./hooks/useYumiAuth";
+export * from "./hooks/useDemoMode";
+export * from "./lib/utils/demo-mask";
+export * from "./components/ui/masked-value";
 export * from "./context/cart-context";
 export * from "./context/app-data-context";

@@ -3,7 +3,7 @@ import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigatio
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
 import { preloadFaceModels } from "../components/auth/FaceRecognition";
-import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
+import { useYumiAuth, YumiAuthProvider, useDemoMode } from "@yumipos/web-shared";
 import { useEffect } from "react";
 
 function RootContent() {
@@ -11,6 +11,9 @@ function RootContent() {
 	const location = useLocation();
 	const { isAuthenticated, isLoading, isStaff, isAdmin, user } = useYumiAuth();
 	const siteSettings = useHybridSiteSettings();
+
+	// Demo mode — client viewer: mask all numbers
+	useDemoMode();
 
 	useGlobalKeyboardNavigation();
 	useSiteBrandingMetadata();

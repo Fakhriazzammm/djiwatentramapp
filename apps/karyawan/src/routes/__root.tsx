@@ -1,5 +1,5 @@
 import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
-import { useYumiAuth, YumiAuthProvider } from "@yumipos/web-shared";
+import { useYumiAuth, YumiAuthProvider, useDemoMode } from "@yumipos/web-shared";
 import { Component, type ReactNode, useEffect, useState } from "react";
 import { preloadFaceModels } from "@/components/auth/FaceRecognition";
 
@@ -75,6 +75,9 @@ function RootContent() {
   useEffect(() => {
     preloadFaceModels();
   }, []);
+
+  // Demo mode — client viewer: mask all numbers
+  useDemoMode();
 
   return <Outlet />;
 }

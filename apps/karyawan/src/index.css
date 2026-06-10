@@ -3,3 +3,15 @@
 @import "./lib/tw-animate.css";
 @import "shadcn/tailwind.css";
 @import "@yumipos/web-shared/theme.css";
+
+/* ── Demo Mode (Client Viewer) ── */
+.demo-mode [data-mask] {
+	filter: blur(6px);
+	user-select: none;
+	pointer-events: none;
+}
+
+.demo-mode [data-mask-number] {
+	filter: blur(6px);
+	user-select: none;
+}

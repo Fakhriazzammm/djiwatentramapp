@@ -149,3 +149,15 @@ body.admin-shell[data-admin-density="compact"] [data-admin-modal-backdrop] {
 		font-size: 0.72rem;
 	}
 }
+
+/* ── Demo Mode (Client Viewer) ── */
+.demo-mode [data-mask] {
+	filter: blur(6px);
+	user-select: none;
+	pointer-events: none;
+}
+
+.demo-mode [data-mask-number] {
+	filter: blur(6px);
+	user-select: none;
+}
