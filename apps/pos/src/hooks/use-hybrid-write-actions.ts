@@ -42,15 +42,23 @@ function getOrderSourcePrefix(source?: "pos" | "customer_self_service" | "bookin
 	return "ORD";
 }
 
-function getOrderTypeCode(orderType?: "dine_in" | "takeaway") {
+function getOrderTypeCode(orderType?: string, platform?: string) {
 	if (orderType === "dine_in") return "D";
 	if (orderType === "takeaway") return "T";
+	if (orderType === "online") {
+		if (platform === "grab") return "OG";
+		if (platform === "gofood") return "OF";
+		if (platform === "maxim") return "OM";
+		if (platform === "shopeefood") return "OS";
+		return "O";
+	}
 	return "X";
 }
 
 function generateOrderNumber(args: {
 	source?: "pos" | "customer_self_service" | "booking";
-	orderType?: "dine_in" | "takeaway";
+	orderType?: string;
+	platform?: string;
 	createdAt: number;
 	customerName?: string;
 	receiptNo?: number;
@@ -60,13 +68,13 @@ function generateOrderNumber(args: {
 	const mm = String(d.getMonth() + 1).padStart(2, "0");
 	const yy = String(d.getFullYear()).slice(-2);
 	const dateCode = `${dd}${mm}${yy}`;
-	const typeCode = getOrderTypeCode(args.orderType);
+	const typeCode = getOrderTypeCode(args.orderType, args.platform);
 	const custCode = (args.customerName || "UMUM")
 		.replace(/[^a-zA-Z0-9]/g, "")
 		.toUpperCase()
 		.slice(0, 5) || "UMUM";
 	const noCode = args.receiptNo != null ? String(args.receiptNo).padStart(3, "0") : "000";
-	return `ORD-${typeCode}-${custCode}${noCode}${dateCode}`;
+	return `ORD${noCode}-${typeCode}-${custCode}${dateCode}`;
 }
 
 function generateBookingCode(timestamp: number) {
@@ -2491,6 +2499,7 @@ export function useHybridCreateOrder() {
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
+				platform: args?.platform,
 				createdAt: orderCreatedAt,
 				customerName: args?.customerName || undefined,
 				receiptNo: dailyReceiptNo ?? undefined,
