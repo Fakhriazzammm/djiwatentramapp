@@ -514,7 +514,7 @@ function ShiftSummarySection({ shiftStatus }: { shiftStatus: any }) {
 						}
 					/>
 					<InfoItem
-						label="Modal Awal"
+						label="Modal Kasir"
 						value={formatCurrency(latestShift.modalAwal ?? 0)}
 					/>
 					<InfoItem

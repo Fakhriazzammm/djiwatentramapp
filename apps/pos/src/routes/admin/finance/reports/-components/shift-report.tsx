@@ -1212,7 +1212,7 @@ export function ShiftReport({ range }: Props) {
 							{ key: "shiftName", label: "Nama Shift", type: "text", placeholder: "" },
 							{ key: "cashierName", label: "Kasir", type: "text", placeholder: "" },
 							{ key: "teamMembers", label: "Tim (pisah koma)", type: "text", placeholder: "Rian, Yusrina, ..." },
-							{ key: "startingCash", label: "Modal Awal (Rp)", type: "number", placeholder: "" },
+							{ key: "startingCash", label: "Modal Kasir (Rp)", type: "number", placeholder: "" },
 						].map(({ key, label, type, placeholder }) => (
 							<div key={key} className="space-y-1">
 								<label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</label>
@@ -1282,7 +1282,7 @@ export function ShiftReport({ range }: Props) {
 							{ key: "shiftName", label: "Nama Shift *", type: "text", placeholder: "Shift Pagi" },
 							{ key: "cashierName", label: "Kasir", type: "text", placeholder: "Nama kasir" },
 							{ key: "teamMembers", label: "Tim (pisah koma)", type: "text", placeholder: "Rian, Yusrina, ..." },
-							{ key: "startingCash", label: "Modal Awal (Rp)", type: "number", placeholder: "" },
+							{ key: "startingCash", label: "Modal Kasir (Rp)", type: "number", placeholder: "" },
 						].map(({ key, label, type, placeholder }) => (
 							<div key={key} className="space-y-1">
 								<label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</label>

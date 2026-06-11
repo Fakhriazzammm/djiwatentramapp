@@ -2710,6 +2710,38 @@ async def _handle_send_report(request):
     return web.json_response({"ok": True, "message_ids": sent}, headers=cors_headers)
 
 
+async def _handle_send_document(request):
+    from aiohttp import web
+
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+    }
+
+    if request.method == "OPTIONS":
+        return web.Response(status=204, headers=cors_headers)
+
+    try:
+        data = await request.post()
+        chat_id = data.get("chat_id") or TELEGRAM_REPORT_CHAT_ID
+        document = data.get("document")
+        caption = str(data.get("caption", "") or "").strip()
+
+        if not document:
+            return web.json_response({"ok": False, "error": "document is required"}, status=400, headers=cors_headers)
+
+        msg = await request.app["bot"].send_document(
+            chat_id=int(chat_id),
+            document=document.file,
+            caption=caption,
+        )
+        return web.json_response({"ok": True, "message_id": msg.message_id}, headers=cors_headers)
+    except Exception as exc:
+        logger.error("Failed to send document: %s", exc)
+        return web.json_response({"ok": False, "error": str(exc)}, status=502, headers=cors_headers)
+
+
 async def _start_http_server(bot_app, port=8001):
     from aiohttp import web
 
@@ -2717,6 +2749,8 @@ async def _start_http_server(bot_app, port=8001):
     app["bot"] = bot_app.bot
     app.router.add_post("/send-report", _handle_send_report)
     app.router.add_route("OPTIONS", "/send-report", _handle_send_report)
+    app.router.add_post("/send-document", _handle_send_document)
+    app.router.add_route("OPTIONS", "/send-document", _handle_send_document)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)

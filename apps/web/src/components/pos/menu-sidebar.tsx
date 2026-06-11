@@ -2642,7 +2642,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							)}
 						</div>
 						<div className="space-y-1.5">
-							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Modal Awal (Rp) <span className="text-destructive">*</span></Label>
+							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Modal Kasir (Rp) <span className="text-destructive">*</span></Label>
 							<div className="relative">
 								<span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
 								<Input

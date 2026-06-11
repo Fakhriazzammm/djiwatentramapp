@@ -25,6 +25,9 @@ import {
 	Sparkles,
 	SquarePlay,
 	SquarePower,
+	CheckCircle2,
+	ArrowDownCircle,
+	ArrowUpCircle,
 	Trash2,
 	TrendingDown,
 	TrendingUp,
@@ -33,6 +36,7 @@ import {
 	Copy,
 	RefreshCw,
 	ChefHat,
+	ChevronDown,
 	CupSoda,
 	FileText,
 	Receipt
@@ -74,6 +78,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
 import {
 	bluetoothPrinter,
@@ -114,6 +119,7 @@ import {
 	useHybridSyncMenuStockFromInventory,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/client";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import {
 	buildReceiptMetaFromCart,
@@ -2392,6 +2398,13 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		if (total > 0) setCashInRegister(total.toString());
 	}, [breakdown]);
 
+	// Auto-fill nonCashConfirmed from shiftQris
+	useEffect(() => {
+		if (shiftQris > 0 && !nonCashConfirmed) {
+			setNonCashConfirmed(shiftQris.toString());
+		}
+	}, [shiftQris]);
+
 	const handleAutofill = () => {
 		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense;
 		if (expectedTotal <= 0) return;
@@ -2410,6 +2423,48 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		toast.info("Pecahan diisi otomatis sesuai estimasi laci");
 	};
 
+	// ── Helper: Format team per-role ──
+	const formatTeamByRole = useCallback((members: string[], allStaff: any[]): string => {
+		if (!members.length) return "-";
+		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+		const normalize = new Map<string, string>();
+		for (const r of roleOrder) { normalize.set(r.toUpperCase(), r); normalize.set(r.toLowerCase(), r); }
+		normalize.set("CHEF", "Kitchen"); normalize.set("MANAGER", "Manajer");
+		const grouped = new Map<string, string[]>();
+		members.forEach((name) => {
+			const user = allStaff.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
+			const rawRole = user?.roleName?.trim() || "Lainnya";
+			const role = normalize.get(rawRole.toUpperCase()) ?? rawRole;
+			if (!grouped.has(role)) grouped.set(role, []);
+			grouped.get(role)!.push(name);
+		});
+		const sorted = [...grouped.keys()].sort((a, b) => {
+			const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
+			const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
+			return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+		});
+		return sorted.map(r => `${r.charAt(0).toUpperCase() + r.slice(1).toLowerCase()}: ${grouped.get(r)!.join(", ")}`).join("\n");
+	}, []);
+
+	// ── Helper: Kirim notifikasi Telegram ──
+	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>) => {
+		const supabase = createClient();
+		const lines = [
+			`📋 *${title}*`,
+			`━━━━━━━━━━━━━━━`,
+			...Object.entries(details).map(([k, v]) => `${k} ${v}`),
+			`━━━━━━━━━━━━━━━`,
+			`🕐 ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" })}`,
+		];
+		try {
+			await supabase.functions.invoke("send-telegram-report", {
+				body: { text: lines.join("\n"), chat_id: -1003991897388 }
+			});
+		} catch (e) {
+			console.error("[shift-notif] Gagal kirim notifikasi:", e);
+		}
+	}, []);
+
 	const handleEndShift = async () => {
 		if (!shiftStatus?.shiftInfo?.shiftId) {
 			// Fallback if it's a legacy shift without ID
@@ -2422,13 +2477,16 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		try {
 			const completedShiftStartTime =
 				shiftStatus?.ongoingShift?.startTime || Date.now();
-			await endShift({
+			const result = await endShift({
 				shiftId: shiftStatus.shiftInfo.shiftId as Id<"shifts">,
 				endingCashPhysical: Number(cashInRegister),
 				nonCashConfirmed: Number(nonCashConfirmed),
 				cashBreakdown: breakdown as any,
 				notes,
 			});
+			
+			const shiftInfo = result?.shift;
+			const summary = result?.summary;
 			if (siteSettings?.shiftSettings?.autoSendShiftReportEmail) {
 				try {
 					await sendShiftReportEmail({
@@ -2446,6 +2504,98 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				}
 			} else {
 				toast.success("Shift berhasil diakhiri");
+			}
+			
+			// Kirim notifikasi text ke grup Report
+			if (summary && shiftInfo) {
+				const { summary: s, shift: si } = { summary, shiftInfo };
+				
+				// Format non-tunai breakdown
+				const pb = s.paymentBreakdown || {};
+				const ntLines = [
+					`   ├ QRIS: Rp ${(pb.qris ?? 0).toLocaleString("id-ID")}`,
+					`   ├ EDC: Rp ${((pb.debit ?? 0) + (pb.credit ?? 0)).toLocaleString("id-ID")}`,
+					...(pb.onlineFoodPlatforms && Object.keys(pb.onlineFoodPlatforms).length > 0
+						? [
+							`   ├ Online Food:`,
+							...Object.entries(pb.onlineFoodPlatforms as Record<string, number>)
+								.filter(([_, v]) => Number(v) > 0)
+								.map(([platform, val], i, arr) => {
+									const isLast = i === arr.length - 1;
+									const prefix = isLast ? "   │  └" : "   │  ├";
+									const label = platform === "grab" ? "GrabFood" : platform === "gofood" ? "GoFood" : platform === "maxim" ? "Maxim" : platform === "shopeefood" ? "ShopeeFood" : platform;
+									return `${prefix} ${label}: Rp ${Number(val).toLocaleString("id-ID")}`;
+								}),
+						]
+						: []),
+					`   └ Transfer: Rp ${(pb.transfer ?? 0).toLocaleString("id-ID")}`,
+				];
+				
+				const pecahanTxt = Object.entries(breakdown)
+					.filter(([_, c]) => Number(c) > 0)
+					.sort(([a], [b]) => Number(b.replace("bill","")) - Number(a.replace("bill","")))
+					.map(([key, count]) => {
+						const nominal = Number(key.replace("bill",""));
+						return `Rp ${nominal.toLocaleString("id-ID")} × ${count} = Rp ${(nominal * Number(count)).toLocaleString("id-ID")}`;
+					});
+				
+				const teamFmt = formatTeamByRole(teamMembers.length ? teamMembers : (si.teamMembers?.split(", ").filter(Boolean) || []), staffUsers);
+				const diffCash = Number(cashInRegister || 0) - s.cashRevenue;
+				const selisih = diffCash === 0 ? "✅ Rp 0" : diffCash > 0 ? `⬆️ Rp ${diffCash.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(diffCash).toLocaleString("id-ID")}`;
+				
+				sendTelegramNotif("📊 LAPORAN SHIFT", {
+					"🏪": "Djiwa Tentram",
+					"🔄 Shift": si.shiftName || shiftName || "-",
+					"👥 Tim": `\n${teamFmt}`,
+					"━━━ DI SISTEM ━━━": "━━━",
+					"💰 Modal Kasir": `Rp ${Number(si.startingCash ?? 0).toLocaleString("id-ID")}`,
+					"💵 Penjualan Tunai": `Rp ${s.cashRevenue.toLocaleString("id-ID")}`,
+					"💳 Non-Tunai": `\n${ntLines.join("\n")}`,
+					"💸 Pengeluaran": `Rp ${s.totalExpenses.toLocaleString("id-ID")}`,
+					"📦 Item Terjual": `${s.totalItemsSold}`,
+					"🏷️ Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
+					"━━━ DI LACI ━━━": "━━━",
+					"💰 Modal Kasir": `Rp ${Number(si.startingCash ?? 0).toLocaleString("id-ID")}`,
+					"💵 Uang Fisik": `Rp ${Number(cashInRegister || 0).toLocaleString("id-ID")}`,
+					"🔢 Pecahan": pecahanTxt.length ? `\n${pecahanTxt.join("\n")}` : "(tidak diisi)",
+					"━━━ SELISIH ━━━": "━━━",
+					"Modal": "✅ Rp 0",
+					"Penjualan vs Uang Fisik": selisih,
+					"📝 Catatan": notes || "-",
+				});
+				
+				// Generate & kirim PDF (best-effort, async)
+				import("@/lib/shift-report-pdf").then(({ generateShiftReportPDF }) => {
+					const pbData = s.paymentBreakdown || {};
+					generateShiftReportPDF({
+						shiftName: si.shiftName || shiftName || "-",
+						cashierName: si.cashierName || cashierName || "-",
+						teamMembers: teamMembers.join(", ") || si.teamMembers || "",
+						startTime: si.startTime || Date.now(),
+						endTime: Date.now(),
+						startingCash: Number(si.startingCash ?? 0),
+						cashRevenue: s.cashRevenue,
+						paymentBreakdown: pbData,
+						totalExpenses: s.totalExpenses,
+						totalDiscount: s.totalDiscount,
+						totalItemsSold: s.totalItemsSold,
+						cashInRegister: Number(cashInRegister || 0),
+						cashBreakdown: breakdown,
+						notes: notes || "",
+					}).then((pdfBlob) => {
+						const formData = new FormData();
+						formData.append("document", pdfBlob, `laporan-shift-${Date.now()}.pdf`);
+						formData.append("caption", `📊 Laporan Shift — ${si.shiftName || shiftName}`);
+						formData.append("chat_id", "-1003991897388");
+						fetch("http://localhost:8001/send-document", { method: "POST", body: formData }).catch((e) => {
+							console.error("[shift-pdf] Gagal kirim PDF:", e);
+						});
+					}).catch((e) => {
+						console.error("[shift-pdf] Gagal generate PDF:", e);
+					});
+				}).catch((e) => {
+					console.error("[shift-pdf] Gagal load module:", e);
+				});
 			}
 			
 			setAmount("");
@@ -2485,6 +2635,14 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					notes,
 				});
 				toast.success("Shift berhasil dimulai");
+				// Kirim notifikasi ke grup Report
+				const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
+				sendTelegramNotif("✅ SHIFT DIBUKA", {
+					"🏪": "Djiwa Tentram",
+					"🔄 Shift": shiftName,
+					"💰 Modal Kasir": `Rp ${Number(amount).toLocaleString("id-ID")}`,
+					"👥 Tim": `\n${teamFormatted}`,
+				});
 				setShiftRefreshTrigger((c) => c + 1);
 			} else {
 				// "akhiri" — open confirmation dialog instead of direct submit
@@ -2528,6 +2686,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
 					}`}
 					type="button"
+					title={shiftType === "mulai" ? "Buka shift baru" : "Tutup shift aktif terlebih dahulu"}
 				>
 					Mulai Shift
 				</button>
@@ -2549,21 +2708,29 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
 								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Kasir <span className="text-destructive">*</span></Label>
-								<Select
-									value={cashierName}
-									onValueChange={(value) => setCashierName(value ?? "")}
-								>
-									<SelectTrigger className="h-9 text-xs">
-										<SelectValue placeholder="Pilih Kasir" />
-									</SelectTrigger>
-									<SelectContent className="z-[9999]">
-										{staffUsers.map((u: any) => (
-											<SelectItem key={u._id} value={u.name}>
-												{u.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								{cashierName === currentUser?.name ? (
+									<div className="flex items-center justify-between h-9 px-3 rounded-md border bg-muted/30">
+										<span className="text-xs font-bold">{cashierName}</span>
+										<span className="text-[9px] text-muted-foreground">· diri sendiri</span>
+										<button type="button" onClick={() => setCashierName("")} className="text-[9px] text-primary font-bold hover:underline ml-auto">Ganti</button>
+									</div>
+								) : (
+									<Select
+										value={cashierName}
+										onValueChange={(value) => setCashierName(value ?? "")}
+									>
+										<SelectTrigger className="h-9 text-xs">
+											<SelectValue placeholder="Pilih Kasir" />
+										</SelectTrigger>
+										<SelectContent className="z-[9999]">
+											{staffUsers.map((u: any) => (
+												<SelectItem key={u._id} value={u.name}>
+													{u.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								)}
 							</div>
 							<div className="space-y-1.5">
 								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Shift <span className="text-destructive">*</span></Label>
@@ -2672,7 +2839,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							)}
 						</div>
 						<div className="space-y-1.5">
-							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Modal Awal (Rp) <span className="text-destructive">*</span></Label>
+							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Modal Kasir (Rp) <span className="text-destructive">*</span></Label>
 							<div className="relative">
 								<span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
 								<Input
@@ -2682,6 +2849,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 									placeholder="0"
 									required
 									type="number"
+									inputMode="numeric"
 									value={amount}
 								/>
 							</div>
@@ -2749,23 +2917,59 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 									Auto-fill
 								</button>
 							</div>
-							<div className="grid grid-cols-2 gap-1">
-								{Object.keys(breakdown).map((val) => (
-									<div key={val} className="flex items-center gap-1 group">
-										<div className="w-10 text-[9px] font-black text-muted-foreground shrink-0">
-											{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
+							{(() => {
+								const billKeys = Object.keys(breakdown).filter(k => Number(k.replace('bill', '')) >= 1000);
+								const coinKeys = Object.keys(breakdown).filter(k => Number(k.replace('bill', '')) < 1000);
+								return (
+									<>
+										<div className="space-y-1">
+											<p className="text-[8px] font-bold uppercase text-muted-foreground/70">Kertas</p>
+											<div className="grid grid-cols-2 gap-1">
+												{billKeys.map((val) => (
+													<div key={val} className="flex items-center gap-1 group">
+														<div className="w-10 text-[9px] font-black text-muted-foreground shrink-0">
+															{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
+														</div>
+														<Input
+															type="number"
+															min={0}
+															placeholder="0"
+															className="h-7 text-[10px] font-bold text-center group-hover:border-primary/50"
+															value={breakdown[val] || ""}
+															onChange={(e) => setBreakdown({...breakdown, [val]: Number(e.target.value)})}
+														/>
+													</div>
+												))}
+											</div>
 										</div>
-										<Input
-											type="number"
-											min={0}
-											placeholder="0"
-											className="h-7 text-[10px] font-bold text-center group-hover:border-primary/50"
-											value={breakdown[val] || ""}
-											onChange={(e) => setBreakdown({...breakdown, [val]: Number(e.target.value)})}
-										/>
-									</div>
-								))}
-							</div>
+										<Collapsible className="space-y-1">
+											<CollapsibleTrigger className="flex items-center gap-1 text-[8px] font-bold uppercase text-muted-foreground/70 hover:text-muted-foreground transition-colors">
+												<ChevronDown className="h-3 w-3" />
+												Logam / Koin
+											</CollapsibleTrigger>
+											<CollapsibleContent>
+												<div className="grid grid-cols-2 gap-1 pt-1">
+													{coinKeys.map((val) => (
+														<div key={val} className="flex items-center gap-1 group">
+															<div className="w-10 text-[9px] font-black text-muted-foreground shrink-0">
+																{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
+															</div>
+															<Input
+																type="number"
+																min={0}
+																placeholder="0"
+																className="h-7 text-[10px] font-bold text-center group-hover:border-primary/50"
+																value={breakdown[val] || ""}
+																onChange={(e) => setBreakdown({...breakdown, [val]: Number(e.target.value)})}
+															/>
+														</div>
+													))}
+												</div>
+											</CollapsibleContent>
+										</Collapsible>
+									</>
+								);
+							})()}
 						</div>
 
 						{/* Actual Inputs */}
@@ -2779,6 +2983,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 										min={0}
 										placeholder="0"
 										type="number"
+										inputMode="numeric"
 										value={cashInRegister}
 										onChange={(e) => setCashInRegister(e.target.value)}
 									/>
@@ -2792,7 +2997,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 								const isExact = diff === 0;
 								const absDiff = Math.abs(diff);
 								const statusColor = isExact ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : absDiff > 50000 ? 'text-rose-600 bg-rose-50 border-rose-200' : 'text-amber-600 bg-amber-50 border-amber-200';
-								const icon = isExact ? '✅' : diff > 0 ? '⬆️' : '⬇️';
+								const icon = isExact ? <CheckCircle2 className="h-3 w-3 inline-block" /> : diff > 0 ? <ArrowUpCircle className="h-3 w-3 inline-block" /> : <ArrowDownCircle className="h-3 w-3 inline-block" />;
 								const label = isExact ? 'Pas' : diff > 0 ? `Lebih Rp ${absDiff.toLocaleString('id-ID')}` : `Kurang Rp ${absDiff.toLocaleString('id-ID')}`;
 								return (
 									<div className={`mt-2 flex items-center justify-between rounded-lg border px-3 py-1.5 text-[10px] font-bold ${statusColor}`}>
@@ -2813,6 +3018,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 										onChange={(e) => setNonCashConfirmed(e.target.value)}
 										placeholder="Input sesuai EDC/Dashboard"
 										type="number"
+										inputMode="numeric"
 										value={nonCashConfirmed}
 									/>
 								</div>
@@ -2849,7 +3055,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					{isSubmitting ? (
 						<Loader2 className="mr-2 h-3 w-3 animate-spin text-white" />
 					) : (
-						shiftType === "mulai" ? <div className="flex items-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : <div className="flex items-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Cetak Laporan</div>
+						shiftType === "mulai" ? <div className="flex items-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : <div className="flex items-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
 					)}
 				</Button>
 			</form>
@@ -2965,6 +3171,7 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 						placeholder="0"
 						required
 						type="number"
+						inputMode="numeric"
 						value={amount}
 					/>
 				</div>
@@ -3320,6 +3527,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 						placeholder="0"
 						required
 						type="number"
+						inputMode="numeric"
 						value={amount}
 					/>
 				</div>

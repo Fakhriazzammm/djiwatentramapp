@@ -374,7 +374,7 @@ function AttendancePengaturanPage() {
 						<div className="space-y-4 pt-6 border-t border-border">
 							<div className="space-y-1">
 								<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
-									Modal Awal Default
+									Modal Kasir Default
 								</h4>
 								<p className="text-muted-foreground text-xs">
 									Jumlah modal awal otomatis yang terisi saat kasir membuka shift baru.

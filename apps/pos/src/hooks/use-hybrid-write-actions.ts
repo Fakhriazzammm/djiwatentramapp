@@ -4450,6 +4450,10 @@ export function useHybridEndShift() {
 				let qrisRevenue = 0;
 				let totalRevenue = 0;
 				let totalExpenses = 0;
+				const paymentBreakdown: Record<string, number | Record<string, number>> = {
+					cash: 0, qris: 0, debit: 0, credit: 0, transfer: 0,
+					onlineFoodPlatforms: {} as Record<string, number>,
+				};
 				for (const row of completed) {
 					const amount = Number(row.amount ?? 0);
 					if (String(row.type) === "income") {
@@ -4458,8 +4462,17 @@ export function useHybridEndShift() {
 						}
 						totalRevenue += amount;
 						const method = String(row.paymentMethod ?? "").toLowerCase();
-						if (method === "cash" || method === "tunai") cashRevenue += amount;
-						else qrisRevenue += amount;
+						if (method === "cash" || method === "tunai") {
+							cashRevenue += amount;
+							paymentBreakdown.cash = (paymentBreakdown.cash as number) + amount;
+						} else {
+							qrisRevenue += amount;
+							if (paymentBreakdown[method] !== undefined) {
+								paymentBreakdown[method] = (paymentBreakdown[method] as number) + amount;
+							} else {
+								paymentBreakdown[method] = amount;
+							}
+						}
 					} else {
 						totalExpenses += amount;
 					}
@@ -4473,17 +4486,36 @@ export function useHybridEndShift() {
 					const { data: shiftOrders } = await supabase
 						.schema("pos")
 						.from("orders")
-						.select("total_amount, discount_amount")
+						.select("total_amount, discount_amount, order_type, raw")
 						.gte("creation_time", Number(shift.startTime))
 						.lt("creation_time", endTime)
 						.in("status", ["completed", "paid"])
-						.limit(1000);
+						.limit(10000);
 					if (shiftOrders && shiftOrders.length > 0) {
 						totalDiscountFromOrders = shiftOrders.reduce(
 							(sum: number, o: any) => sum + Number(o.discount_amount ?? 0), 0
 						);
 						totalItemsSold = shiftOrders.length;
 						totalGrossSales = totalRevenue + totalDiscountFromOrders;
+
+						const onlineFoodPlatforms: Record<string, number> = {};
+						shiftOrders.forEach((o: any) => {
+							const orderType = String(o.order_type ?? "").toLowerCase();
+							if (orderType === "online") {
+								const platform = String((o.raw as any)?.platform ?? "").toLowerCase();
+								const totalAmount = Number(o.total_amount ?? 0);
+								if (platform && totalAmount > 0) {
+									onlineFoodPlatforms[platform] = (onlineFoodPlatforms[platform] ?? 0) + totalAmount;
+								}
+							}
+						});
+						paymentBreakdown.onlineFoodPlatforms = onlineFoodPlatforms;
+						const totalOnlineFood = Object.values(onlineFoodPlatforms).reduce((sum, v) => sum + v, 0);
+						const transferVal = paymentBreakdown.transfer as number;
+						if (transferVal > 0 && totalOnlineFood > 0) {
+							const actualTransfer = transferVal - totalOnlineFood;
+							paymentBreakdown.transfer = Math.max(0, actualTransfer);
+						}
 					}
 				} catch (e) {
 					console.warn("[supabase-hybrid:write-end-shift] failed to query orders for discount", e);
@@ -4493,13 +4525,13 @@ export function useHybridEndShift() {
 					Number(shift.startingCash ?? 0) + cashRevenue - totalExpenses;
 				const nonCashExpected = qrisRevenue;
 				const summary = {
-					totalRevenue,
-					totalGrossSales,
+					cashRevenue, qrisRevenue, totalRevenue, totalGrossSales,
 					totalDiscount: totalDiscountFromOrders,
 					totalExpenses,
 					totalItemsSold: Math.max(Number((shift.summary as any)?.totalItemsSold ?? 0), totalItemsSold),
-					cashRevenue,
-					qrisRevenue,
+					endingCashExpected, endingCashPhysical: Number(args?.endingCashPhysical ?? 0),
+					nonCashExpected, nonCashConfirmed: Number(args?.nonCashConfirmed ?? 0),
+					paymentBreakdown,
 				};
 
 				const { error: updateError } = await supabase
@@ -4512,7 +4544,11 @@ export function useHybridEndShift() {
 						non_cash_confirmed: Number(args?.nonCashConfirmed ?? 0),
 						non_cash_expected: nonCashExpected,
 						cash_breakdown: args?.cashBreakdown ?? null,
-						notes: args?.notes ?? shift.notes ?? null,
+						notes: args?.notes
+			? (shift.notes
+				? shift.notes + "\n\n[TUTUP SHIFT] " + args.notes
+				: args.notes)
+			: (shift.notes ?? null),
 						summary,
 						raw: {
 							...(shift.raw ?? {}),
@@ -4560,7 +4596,25 @@ export function useHybridEndShift() {
 				if (closingTxError) {
 					console.warn("[supabase-hybrid:write-end-shift] failed to insert closing transaction", closingTxError);
 				}
-				return shiftId;
+				return {
+					shiftId,
+					summary: {
+						cashRevenue, qrisRevenue, totalRevenue, totalGrossSales,
+						totalDiscount: totalDiscountFromOrders,
+						totalExpenses,
+						totalItemsSold: Math.max(Number((shift.summary as any)?.totalItemsSold ?? 0), totalItemsSold),
+						endingCashExpected, endingCashPhysical: Number(args?.endingCashPhysical ?? 0),
+						nonCashExpected, nonCashConfirmed: Number(args?.nonCashConfirmed ?? 0),
+						paymentBreakdown,
+					},
+					shift: {
+						shiftName: shift.shiftName,
+						cashierName: shift.cashierName,
+						startingCash: shift.startingCash,
+						startTime: shift.startTime,
+						teamMembers: shift.teamMembers ?? "",
+					},
+				};
 			} catch (error) {
 				console.error("[supabase-hybrid:write-end-shift] fallback disabled", error);
 				throw error;
