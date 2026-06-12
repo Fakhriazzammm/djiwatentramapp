@@ -2544,8 +2544,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				
 				const teamFmt = formatTeamByRole(teamMembers.length ? teamMembers : (si.teamMembers?.split(", ").filter(Boolean) || []), staffUsers);
 				const cashInRegister = Number(cashInRegister || 0);
-				const saranSetoran = Number(si.startingCash ?? 0) + Number(s.cashRevenue || 0) - Number(s.totalExpenses || 0);
-				const diffSaran = cashInRegister - saranSetoran;
+				const modalKasir = Number(si.startingCash ?? 0);
+				const diffModal = cashInRegister - modalKasir;
 				const diffCash = cashInRegister - Number(s.cashRevenue || 0);
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
@@ -2561,11 +2561,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					"📦 Item Terjual": `${s.totalItemsSold}`,
 					"🏷️ Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
 					"━━━ DI LACI ━━━": "━━━",
-					"💰 Saran Setoran": `Rp ${(Number(si.startingCash ?? 0) + Number(s.cashRevenue || 0) - Number(s.totalExpenses || 0)).toLocaleString("id-ID")}`,
+					"💰 Modal Kasir": `Rp ${modalKasir.toLocaleString("id-ID")}`,
 					"💵 Uang Fisik": `Rp ${Number(cashInRegister || 0).toLocaleString("id-ID")}`,
 					"🔢 Pecahan": pecahanTxt.length ? `\n${pecahanTxt.join("\n")}` : "(tidak diisi)",
 					"━━━ SELISIH ━━━": "━━━",
-					"Saran vs Fisik": fmtSelisih(diffSaran),
+					"💰 Fisik vs Modal": fmtSelisih(diffModal),
 					"Penjualan vs Fisik": fmtSelisih(diffCash),
 					"📝 Catatan": notes || "-",
 				});
