@@ -2450,7 +2450,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>) => {
 		const supabase = createClient();
 		const lines = [
-			`📋 *${title}*`,
+			`📋 ${title}`,
 			`━━━━━━━━━━━━━━━`,
 			...Object.entries(details).map(([k, v]) => `${k} ${v}`),
 			`━━━━━━━━━━━━━━━`,
