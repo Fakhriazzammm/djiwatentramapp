@@ -10,7 +10,7 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
-const GRACE_PERIOD_MS = 30 * 60 * 1000;
+const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 jam grace period
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -38,6 +38,26 @@ function getScheduledCloseEpoch(startMs: number, closeTime: string): number {
     0,
     0,
   );
+}
+
+function fmtWIB(ms: number): string {
+  const d = new Date(ms + WIB_OFFSET_MS);
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  const months = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  ];
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  const dd = d.getUTCDate();
+  const m = months[d.getUTCMonth()];
+  const y = d.getUTCFullYear();
+  const day = days[d.getUTCDay()];
+  return `${day}, ${dd} ${m} ${y} pukul ${hh}.${mm}`;
+}
+
+function fmtRp(n: number): string {
+  return `Rp ${Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -90,7 +110,7 @@ Deno.serve(async (req: Request) => {
     // 2. Get all active shifts
     const { data: activeShifts, error: shiftsError } = await supabaseAdmin
       .from("pos_shift_reports")
-      .select("shift_id, shift_name, cashier_name, start_time, starting_cash, total_revenue, cash_revenue, qris_revenue, total_expenses, order_count, total_items_sold, total_discount")
+      .select("shift_id, shift_name, cashier_name, team_members, start_time, starting_cash, total_revenue, cash_revenue, qris_revenue, total_expenses, order_count, total_items_sold, total_discount")
       .eq("status", "AKTIF");
 
     if (shiftsError) throw shiftsError;
@@ -121,7 +141,7 @@ Deno.serve(async (req: Request) => {
       const scheduledClose = getScheduledCloseEpoch(startTime, schedule.closeTime);
       const deadline = scheduledClose + GRACE_PERIOD_MS;
       const overdueMs = now - deadline;
-      log(`  Scheduled close: ${scheduledClose} (${new Date(scheduledClose).toISOString()}), deadline: ${deadline}, overdue: ${overdueMs > 0 ? Math.round(overdueMs / 60000) + 'min' : 'not yet'}`);
+      log(`  Scheduled close: ${new Date(scheduledClose).toISOString()}, deadline: ${new Date(deadline).toISOString()}, overdue: ${overdueMs > 0 ? Math.round(overdueMs / 60000) + 'min' : 'not yet'}`);
 
       if (now < deadline) continue;
 
@@ -140,7 +160,7 @@ Deno.serve(async (req: Request) => {
       const { data: shiftOrders, error: ordersError } = await supabaseAdmin
         .schema("pos")
         .from("orders")
-        .select("total_amount, discount_amount")
+        .select("total_amount, discount_amount, payment_method")
         .gte("creation_time", startTime)
         .lt("creation_time", deadline)
         .limit(1000);
@@ -158,7 +178,7 @@ Deno.serve(async (req: Request) => {
       const endingCashExpected = startingCash + cashRevenue - totalExpenses;
       const nonCashExpected = qrisRevenue;
 
-      const summary = {
+      const summary: Record<string, unknown> = {
         totalRevenue: totalRevenueFromOrders || Number(cashRevenue + qrisRevenue),
         totalGrossSales,
         totalExpenses,
@@ -167,6 +187,50 @@ Deno.serve(async (req: Request) => {
         qrisRevenue,
         totalDiscount: totalDiscountFromOrders,
       };
+
+      // Build notification text
+      const teamStr = String(shift.team_members || "").replace(/,/g, ", ");
+      const startWIB = new Date(startTime + WIB_OFFSET_MS);
+      const endWIB = new Date(endTime + WIB_OFFSET_MS);
+      const startFmt = `${String(startWIB.getUTCHours()).padStart(2, "0")}.${String(startWIB.getUTCMinutes()).padStart(2, "0")}`;
+      const endFmt = `${String(endWIB.getUTCHours()).padStart(2, "0")}.${String(endWIB.getUTCMinutes()).padStart(2, "0")}`;
+      const startDateFmt = `${String(startWIB.getUTCDate()).padStart(2, "0")}/${String(startWIB.getUTCMonth() + 1).padStart(2, "0")}`;
+      const endDateFmt = `${String(endWIB.getUTCDate()).padStart(2, "0")}/${String(endWIB.getUTCMonth() + 1).padStart(2, "0")}`;
+
+      // Hitung non-tunai breakdown dari orders
+      const nonCashBreakdown: Record<string, number> = {};
+      if (shiftOrders && shiftOrders.length > 0) {
+        for (const o of shiftOrders) {
+          const pm = String((o as any).payment_method || "").toLowerCase();
+          if (pm && pm !== "cash") {
+            const label = pm === "qris" ? "QRIS" : pm === "edc" ? "EDC" : pm === "transfer" ? "Transfer" : pm;
+            nonCashBreakdown[label] = (nonCashBreakdown[label] || 0) + Number(o.total_amount || 0);
+          }
+        }
+      }
+
+      const nonCashLines = Object.entries(nonCashBreakdown)
+        .map(([k, v]) => `  ${k}: ${fmtRp(v)}`)
+        .join("\n") || "  (tidak ada)";
+
+      const notifText = `📋 📊 LAPORAN SHIFT (AUTO CLOSE)
+━━━━━━━━━━━━━━━
+🏪 Djiwa Tentram
+🔄 Shift ${shiftName}
+👤 Kasir: ${shift.cashier_name || "-"}
+${teamStr ? `👥 Tim: ${teamStr}` : ""}
+━━━ DI SISTEM ━━━
+💰 Modal Kasir: ${fmtRp(startingCash)}
+💵 Penjualan Tunai: ${fmtRp(cashRevenue)}
+💳 Non-Tunai:\n${nonCashLines}
+💸 Pengeluaran: ${fmtRp(totalExpenses)}
+📦 Item Terjual: ${totalItemsSoldCalc}
+🏷️ Diskon: ${fmtRp(totalDiscountFromOrders)}
+━━━━━
+💵 Uang Fisik: (tidak dihitung — auto close)
+━━━━━
+🕐 ${startDateFmt} ${startFmt} sd ${endDateFmt} ${endFmt} WIB
+⚠️ Shift ditutup otomatis karena melewati batas waktu`;
 
       // Update via pos schema
       const { error: updateError } = await supabaseAdmin
@@ -182,7 +246,24 @@ Deno.serve(async (req: Request) => {
           raw: {
             auto_closed: true,
             auto_closed_at: now,
-            auto_close_reason: `Shift "${shiftName}" ditutup otomatis: melewati jadwal ${schedule.closeTime} WIB + 30 menit grace period.`,
+            auto_close_reason: `Shift "${shiftName}" ditutup otomatis: melewati jadwal ${schedule.closeTime} WIB + 2 jam grace period.`,
+            notification_pending: true,
+            notification_text: notifText,
+            notification_data: {
+              shiftName,
+              cashierName: shift.cashier_name || "",
+              teamMembers: teamStr,
+              startTime,
+              endTime,
+              startingCash,
+              cashRevenue,
+              totalExpenses,
+              totalDiscount: totalDiscountFromOrders,
+              totalItemsSold: totalItemsSoldCalc,
+              paymentBreakdown: nonCashBreakdown,
+              non_cash_expected: nonCashExpected,
+              ending_cash_expected: endingCashExpected,
+            },
           },
         })
         .eq("source_id", shift.shift_id);

@@ -2731,9 +2731,11 @@ async def _handle_send_document(request):
         if not document:
             return web.json_response({"ok": False, "error": "document is required"}, status=400, headers=cors_headers)
 
+        filename = document.filename or "laporan-shift.pdf"
         msg = await request.app["bot"].send_document(
             chat_id=int(chat_id),
             document=document.file,
+            filename=filename,
             caption=caption,
         )
         return web.json_response({"ok": True, "message_id": msg.message_id}, headers=cors_headers)
