@@ -36,6 +36,7 @@
     "ocr:install": "cd packages/ocr-service && pip install -r requirements.txt"
   },
   "dependencies": {
+    "@radix-ui/react-collapsible": "^1.1.13",
     "@yumipos/env": "workspace:*",
     "dotenv": "^17.2.3",
     "zod": "^3.25.76"

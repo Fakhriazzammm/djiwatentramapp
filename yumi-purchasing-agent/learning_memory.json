@@ -1698,9 +1698,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 15,
+      "usageCount": 16,
       "createdAt": "2026-05-19T08:05:15.151868+00:00",
-      "updatedAt": "2026-06-08T01:52:01.176390+00:00"
+      "updatedAt": "2026-06-10T13:28:30.712358+00:00"
     },
     {
       "id": "16004d96-5940-4199-8b5e-a4d071f3c066",
@@ -3168,9 +3168,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 17,
+      "usageCount": 18,
       "createdAt": "2026-05-19T08:05:15.329117+00:00",
-      "updatedAt": "2026-06-09T13:50:49.748888+00:00"
+      "updatedAt": "2026-06-11T07:10:46.999511+00:00"
     },
     {
       "id": "dd9d5eb0-1abd-4f72-9071-f382485cd34e",
@@ -9536,5 +9536,5 @@
       "updatedAt": "2026-05-29T07:36:48.212583+00:00"
     }
   ],
-  "last_updated": "2026-06-10T08:08:29.847696+00:00"
+  "last_updated": "2026-06-11T07:10:46.999548+00:00"
 }

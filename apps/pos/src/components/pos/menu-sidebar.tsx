@@ -2555,14 +2555,15 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					"📦 Item Terjual": `${s.totalItemsSold}`,
 					"🏷️ Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
 					"━━━ DI LACI ━━━": "━━━",
-					"💰 Modal Kasir": `Rp ${Number(si.startingCash ?? 0).toLocaleString("id-ID")}`,
+					"💰 Saran Setoran": `Rp ${(Number(si.startingCash ?? 0) + Number(s.cashRevenue || 0) - Number(s.totalExpenses || 0)).toLocaleString("id-ID")}`,
 					"💵 Uang Fisik": `Rp ${Number(cashInRegister || 0).toLocaleString("id-ID")}`,
 					"🔢 Pecahan": pecahanTxt.length ? `\n${pecahanTxt.join("\n")}` : "(tidak diisi)",
 					"━━━ SELISIH ━━━": "━━━",
-					"Modal": "✅ Rp 0",
+					"Saran vs Fisik": selisih,
 					"Penjualan vs Uang Fisik": selisih,
 					"📝 Catatan": notes || "-",
 				});
+				console.log("[shift-notif] End shift notification sent successfully");
 				
 				// Generate & kirim PDF (best-effort, async)
 				import("@/lib/shift-report-pdf").then(({ generateShiftReportPDF }) => {
@@ -2637,6 +2638,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				toast.success("Shift berhasil dimulai");
 				// Kirim notifikasi ke grup Report
 				const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
+				console.log("[shift-notif] Sending open shift notification...");
 				sendTelegramNotif("✅ SHIFT DIBUKA", {
 					"🏪": "Djiwa Tentram",
 					"🔄 Shift": shiftName,
