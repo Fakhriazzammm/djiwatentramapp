@@ -2545,8 +2545,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				const teamFmt = formatTeamByRole(teamMembers.length ? teamMembers : (si.teamMembers?.split(", ").filter(Boolean) || []), staffUsers);
 				const cashInRegister = Number(cashInRegister || 0);
 				const modalKasir = Number(si.startingCash ?? 0);
-				const diffModal = cashInRegister - modalKasir;
-				const diffCash = cashInRegister - Number(s.cashRevenue || 0);
+				const totalNonTunai = (pb.qris ?? 0) + (pb.debit ?? 0) + (pb.credit ?? 0) + (pb.transfer ?? 0) +
+					Object.values(pb.onlineFoodPlatforms || {}).reduce((sum: number, v: any) => sum + Number(v), 0);
+				const diffNT = cashInRegister - totalNonTunai;
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
 				sendTelegramNotif("📊 LAPORAN SHIFT", {
@@ -2562,11 +2563,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					"🏷️ Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
 					"━━━ DI LACI ━━━": "━━━",
 					"💰 Modal Kasir": `Rp ${modalKasir.toLocaleString("id-ID")}`,
-					"💵 Uang Fisik": `Rp ${Number(cashInRegister || 0).toLocaleString("id-ID")}`,
+					"💵 Uang Fisik": `Rp ${cashInRegister.toLocaleString("id-ID")}`,
 					"🔢 Pecahan": pecahanTxt.length ? `\n${pecahanTxt.join("\n")}` : "(tidak diisi)",
 					"━━━ SELISIH ━━━": "━━━",
-					"💰 Fisik vs Modal": fmtSelisih(diffModal),
-					"Penjualan vs Fisik": fmtSelisih(diffCash),
+					"💳 Non-Tunai": `Rp ${totalNonTunai.toLocaleString("id-ID")}`,
+					"💵 Uang Fisik": `Rp ${cashInRegister.toLocaleString("id-ID")}`,
+					"📊 Selisih": fmtSelisih(diffNT),
 					"📝 Catatan": notes || "-",
 				});
 				console.log("[shift-notif] End shift notification sent successfully");
