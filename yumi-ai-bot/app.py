@@ -2723,24 +2723,71 @@ async def _handle_send_document(request):
         return web.Response(status=204, headers=cors_headers)
 
     try:
-        data = await request.post()
-        chat_id = data.get("chat_id") or TELEGRAM_REPORT_CHAT_ID
-        document = data.get("document")
-        caption = str(data.get("caption", "") or "").strip()
+        body = await request.json()
+        chat_id = body.get("chat_id") or TELEGRAM_REPORT_CHAT_ID
+        caption = str(body.get("caption", "") or "").strip()
+        filename = body.get("filename", "laporan-shift.pdf")
+        b64 = body.get("document_base64", "")
 
-        if not document:
-            return web.json_response({"ok": False, "error": "document is required"}, status=400, headers=cors_headers)
+        if not b64:
+            return web.json_response({"ok": False, "error": "document_base64 is required"}, status=400, headers=cors_headers)
 
-        filename = document.filename or "laporan-shift.pdf"
+        doc_bytes = base64.b64decode(b64)
         msg = await request.app["bot"].send_document(
             chat_id=int(chat_id),
-            document=document.file,
+            document=io.BytesIO(doc_bytes),
             filename=filename,
             caption=caption,
         )
         return web.json_response({"ok": True, "message_id": msg.message_id}, headers=cors_headers)
     except Exception as exc:
         logger.error("Failed to send document: %s", exc)
+        return web.json_response({"ok": False, "error": str(exc)}, status=502, headers=cors_headers)
+
+
+async def _handle_save_report(request):
+    """Save HTML report to disk and return public URL."""
+    from aiohttp import web
+
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+    }
+
+    if request.method == "OPTIONS":
+        return web.Response(status=204, headers=cors_headers)
+
+    try:
+        body = await request.json()
+        html_content = body.get("html", "")
+        shift_name = body.get("shift_name", "shift")
+
+        if not html_content:
+            return web.json_response({"ok": False, "error": "html is required"}, status=400, headers=cors_headers)
+
+        reports_dir = os.path.join(os.path.dirname(__file__), "shift-reports")
+        os.makedirs(reports_dir, exist_ok=True)
+
+        ts = int(datetime.now().timestamp())
+        safe_name = re.sub(r"[^a-zA-Z0-9]", "_", shift_name)
+        filename = f"laporan-{safe_name}-{ts}.html"
+        filepath = os.path.join(reports_dir, filename)
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        # Use nip.io for public access
+        public_url = f"http://43.129.54.5.nip.io:8001/reports/{filename}"
+        logger.info("Report saved: %s -> %s", filepath, public_url)
+
+        return web.json_response({
+            "ok": True,
+            "filename": filename,
+            "url": public_url,
+        }, headers=cors_headers)
+    except Exception as exc:
+        logger.error("Failed to save report: %s", exc)
         return web.json_response({"ok": False, "error": str(exc)}, status=502, headers=cors_headers)
 
 
@@ -2753,6 +2800,12 @@ async def _start_http_server(bot_app, port=8001):
     app.router.add_route("OPTIONS", "/send-report", _handle_send_report)
     app.router.add_post("/send-document", _handle_send_document)
     app.router.add_route("OPTIONS", "/send-document", _handle_send_document)
+    app.router.add_post("/save-report", _handle_save_report)
+    app.router.add_route("OPTIONS", "/save-report", _handle_save_report)
+    # Serve laporan shift HTML dari direktori shift-reports/
+    reports_dir = os.path.join(os.path.dirname(__file__), "shift-reports")
+    os.makedirs(reports_dir, exist_ok=True)
+    app.router.add_static("/reports", path=reports_dir, name="reports")
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)

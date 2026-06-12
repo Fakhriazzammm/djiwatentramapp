@@ -7,6 +7,7 @@ export type ShiftPDFData = {
   shiftName: string;
   cashierName: string;
   teamMembers: string;
+  teamFormatted?: string;
   startTime: number;
   endTime: number;
   startingCash: number;
@@ -83,9 +84,9 @@ function buildChartSVG(
 
 // ─── HTML builder – Complete & Professional ──────────────────────────────────
 
-function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
+export function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
   const {
-    shiftName, cashierName, teamMembers, startingCash, cashRevenue,
+    shiftName, cashierName, teamMembers, teamFormatted, startingCash, cashRevenue,
     paymentBreakdown, totalExpenses, totalItemsSold, totalDiscount,
     cashInRegister, cashBreakdown, notes, startTime, endTime,
   } = data;
@@ -123,7 +124,8 @@ function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
   // ── Selisih ──
   const selisih = cashInRegister - cashRevenue;
   const selisihUp = selisih >= 0;
-  const selisihTxt = selisih === 0 ? "Rp 0" : `${selisihUp ? "⬆ Naik" : "⬇ Turun"} Rp ${fmtRibuan(Math.abs(selisih))}`;
+  const selisihAbs = Math.abs(Math.round(selisih));
+  const selisihFmt = `Rp ${fmtRibuan(selisihAbs)}`;
 
   // ── Pecahan ──
   const pecahanEntries = Object.entries(cashBreakdown)
@@ -139,28 +141,53 @@ function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
   const jamRange = `${mulai} - ${selesai} WIB`;
 
   // ── Team members with roles ──
-  const teamArr = teamMembers
-    ? teamMembers.split(",").map(s => s.trim()).filter(Boolean)
-    : [];
-  const teamHtml = teamArr.length
-    ? teamArr.map(name => `<div style="font-size:6.5px;color:#1f2937;padding:0.5px 0;">${name}</div>`).join("")
-    : '<div style="font-size:6px;color:#9ca3af;">-</div>';
+  let teamHtml = "";
+  if (teamFormatted) {
+    // Parse role-formatted: "Barista: Alice, Bob\nKitchen: Charlie"
+    const roleLines = teamFormatted.split("\n");
+    teamHtml = roleLines.map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return "";
+      if (trimmed.includes(":")) {
+        const [role, ...rest] = trimmed.split(":");
+        const names = rest.join(":").trim();
+        return `<div style="display:flex;align-items:baseline;gap:4px;margin-bottom:2px;">
+          <span style="font-size:7px;font-weight:700;color:#059669;min-width:52px;">${role.trim()}</span>
+          <span style="font-size:7px;color:#374151;">${names}</span>
+        </div>`;
+      }
+      return `<div style="font-size:7px;color:#374151;padding-left:56px;">${trimmed}</div>`;
+    }).join("");
+  } else if (teamMembers) {
+    const arr = teamMembers.split(",").map(s => s.trim()).filter(Boolean);
+    teamHtml = arr.map(name =>
+      `<div style="font-size:7px;color:#374151;padding:1px 0;">${name}</div>`
+    ).join("");
+  } else {
+    teamHtml = '<div style="font-size:7px;color:#9ca3af;">-</div>';
+  }
 
   // ── Chart ──
   const chartHtml = buildChartSVG(chartItems, maxVal);
 
   // ── Styles ──
   const S = {
-    page: "width:400px;background:#fff;margin:0 auto;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding-bottom:12px;",
+    page: "width:400px;background:#fff;margin:0 auto;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:0 0 12px 0;",
     hdrBg: "linear-gradient(135deg,#059669,#10b981)",
-    secTxt: "font-size:7px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;",
-    secGreen: "font-size:7px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:1px;",
-    sep: "height:1px;background:#e5e7eb;",
+    secTxt: "font-size:7px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1.2px;",
+    secGreen: "font-size:7px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:1.2px;",
+    sep: "height:1px;background:#e5e7eb;margin:0 16px;",
     lbl: "font-size:7px;color:#6b7280;",
     val: "font-size:8px;font-weight:700;color:#1f2937;",
     valG: "font-size:8px;font-weight:700;color:#059669;",
     valR: "font-size:8px;font-weight:700;color:#dc2626;",
+    cellL: "padding:2px 16px;",
+    cellR: "padding:2px 16px;text-align:right;",
   };
+
+  // Helper untuk satu baris label-value
+  const row = (label: string, value: string, valStyle = S.val) =>
+    `<tr><td style="${S.cellL}${S.lbl}">${label}</td><td style="${S.cellR}${valStyle}">${value}</td></tr>`;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" /></head>
@@ -175,7 +202,7 @@ function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
     }
     <div style="flex:1;">
       <div style="font-size:14px;font-weight:800;color:#fff;">Djiwa Tentram</div>
-      <div style="font-size:6.5px;color:rgba(255,255,255,0.7);">Kopi &amp; Eatery</div>
+      <div style="font-size:6.5px;color:rgba(255,255,255,0.7);">Kopi & Eatery</div>
     </div>
     <div style="text-align:right;">
       <div style="font-size:11px;font-weight:800;color:#fff;">LAPORAN SHIFT</div>
@@ -184,38 +211,38 @@ function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
   </div>
 
   <!-- ═══ INFO BADGES ═══ -->
-  <table style="width:100%;border-collapse:collapse;">
+  <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
     <tr>
-      <td style="width:25%;border:1px solid #e5e7eb;padding:6px 4px;text-align:center;">
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;">
         <div style="font-size:5.5px;color:#9ca3af;">Kasir</div>
-        <div style="font-size:8px;font-weight:700;color:#1f2937;">${cashierName}</div>
+        <div style="font-size:7.5px;font-weight:700;color:#1f2937;">${cashierName}</div>
       </td>
-      <td style="width:25%;border:1px solid #e5e7eb;padding:6px 4px;text-align:center;">
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;">
         <div style="font-size:5.5px;color:#9ca3af;">Shift</div>
-        <div style="font-size:8px;font-weight:700;color:#1f2937;">${shiftName}</div>
+        <div style="font-size:7.5px;font-weight:700;color:#1f2937;">${shiftName}</div>
       </td>
-      <td style="width:25%;border:1px solid #e5e7eb;padding:6px 4px;text-align:center;">
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;">
         <div style="font-size:5.5px;color:#9ca3af;">Jam</div>
-        <div style="font-size:8px;font-weight:700;color:#1f2937;">${jamRange}</div>
+        <div style="font-size:7.5px;font-weight:700;color:#1f2937;">${jamRange}</div>
       </td>
-      <td style="width:25%;border:1px solid #e5e7eb;padding:6px 4px;text-align:center;">
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;">
         <div style="font-size:5.5px;color:#9ca3af;">Hari</div>
-        <div style="font-size:8px;font-weight:700;color:#1f2937;">${dayName}</div>
+        <div style="font-size:7.5px;font-weight:700;color:#1f2937;">${dayName}</div>
       </td>
     </tr>
   </table>
 
-  <!-- ═══ TIM ═══ -->
-  <div style="padding:6px 16px 2px;">
+  <!-- ═══ TIM BERTUGAS ═══ -->
+  <div style="padding:8px 16px 3px;">
     <div style="${S.secTxt}">Tim Bertugas</div>
   </div>
-  <div style="${S.sep};margin:0 16px;"></div>
-  <div style="padding:4px 16px;display:flex;flex-wrap:wrap;gap:2px 16px;">
+  <div style="${S.sep}"></div>
+  <div style="padding:6px 16px;">
     ${teamHtml}
   </div>
 
   <!-- ═══ CHART ═══ -->
-  <div style="padding:8px 16px 2px;">
+  <div style="padding:8px 16px 3px;">
     <div style="${S.secTxt}">Grafik Pendapatan</div>
   </div>
   <div style="padding:4px 16px;">
@@ -223,51 +250,53 @@ function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
   </div>
 
   <!-- ═══ DI SISTEM ═══ -->
-  <div style="padding:6px 16px 2px;margin-top:4px;">
+  <div style="padding:8px 16px 3px;margin-top:2px;">
     <div style="${S.secTxt}">Ringkasan Sistem</div>
   </div>
-  <div style="${S.sep};margin:0 16px;"></div>
+  <div style="${S.sep}"></div>
   <table style="width:100%;border-collapse:collapse;">
-    <tr><td style="padding:2px 16px;${S.lbl}">Modal Kasir</td><td style="padding:2px 16px;text-align:right;${S.val}">${fmtNb(startingCash)}</td></tr>
-    <tr><td style="padding:2px 16px;${S.lbl}">Penjualan Tunai</td><td style="padding:2px 16px;text-align:right;${S.valG}">${fmtNb(cashRevenue)}</td></tr>
-    <tr><td style="padding:2px 16px;${S.lbl}">Non-Tunai</td><td style="padding:2px 16px;text-align:right;${S.val}">${fmtNb(totalNonTunai)}</td></tr>
+    ${row("Modal Kasir", fmtNb(startingCash))}
+    ${row("Penjualan Tunai", fmtNb(cashRevenue), S.valG)}
+    ${row("Non-Tunai", fmtNb(totalNonTunai))}
     ${nonTunaiRows.map(r =>
-      `<tr><td style="padding:1.5px 24px;font-size:6.5px;color:#9ca3af;">${r.label}</td><td style="padding:1.5px 16px;text-align:right;font-size:7px;font-weight:600;color:#6b7280;">${fmtNb(r.value)}</td></tr>`
+      `<tr><td style="padding:1.5px 28px;font-size:6.5px;color:#9ca3af;">${r.label}</td><td style="padding:1.5px 16px;text-align:right;font-size:7px;font-weight:600;color:#6b7280;">${fmtNb(r.value)}</td></tr>`
     ).join("")}
-    <tr><td style="padding:2px 16px;${S.lbl};border-top:1px dashed #e5e7eb;font-weight:700;">Total Penjualan</td><td style="padding:2px 16px;text-align:right;border-top:1px dashed #e5e7eb;font-size:9px;font-weight:800;color:#059669;">${fmtNb(totalPenjualan)}</td></tr>
-    <tr><td style="padding:2px 16px;${S.lbl}">Pengeluaran</td><td style="padding:2px 16px;text-align:right;${S.valR}">${fmtNb(totalExpenses)}</td></tr>
-    ${totalDiscount > 0 ? `<tr><td style="padding:2px 16px;${S.lbl}">Diskon</td><td style="padding:2px 16px;text-align:right;${S.valR}">-${fmtNb(totalDiscount)}</td></tr>` : ""}
-    <tr><td style="padding:2px 16px;${S.lbl}">Item Terjual</td><td style="padding:2px 16px;text-align:right;${S.val}">${totalItemsSold}</td></tr>
-    <tr><td style="padding:2px 16px;${S.lbl};border-top:1px dashed #e5e7eb;font-weight:700;">Pendapatan Bersih</td>
-      <td style="padding:2px 16px;text-align:right;border-top:1px dashed #e5e7eb;font-size:9px;font-weight:800;${netIncome >= 0 ? 'color:#059669;' : 'color:#dc2626;'}">${netIncome >= 0 ? '' : '-'}${fmtNb(Math.abs(netIncome))}</td></tr>
+    <tr><td style="padding:3px 16px;font-size:7px;font-weight:700;color:#1f2937;border-top:1px dashed #e5e7eb;">Total Penjualan</td>
+      <td style="padding:3px 16px;text-align:right;border-top:1px dashed #e5e7eb;font-size:9px;font-weight:800;color:#059669;">${fmtNb(totalPenjualan)}</td></tr>
+    ${row("Pengeluaran", fmtNb(totalExpenses), S.valR)}
+    ${totalDiscount > 0 ? row("Diskon", `-${fmtNb(totalDiscount)}`, S.valR) : ""}
+    ${row("Item Terjual", `${totalItemsSold}`)}
+    <tr><td style="padding:3px 16px;font-size:7px;font-weight:700;color:#1f2937;border-top:1px dashed #e5e7eb;">Pendapatan Bersih</td>
+      <td style="padding:3px 16px;text-align:right;border-top:1px dashed #e5e7eb;font-size:9px;font-weight:800;${netIncome >= 0 ? 'color:#059669;' : 'color:#dc2626;'}">${netIncome >= 0 ? '' : '-'}${fmtNb(Math.abs(netIncome))}</td></tr>
   </table>
 
   <!-- ═══ DI LACI ═══ -->
-  <div style="padding:8px 16px 2px;">
+  <div style="padding:8px 16px 3px;">
     <div style="${S.secGreen}">Rekonsiliasi Laci</div>
   </div>
-  <div style="${S.sep};margin:0 16px;"></div>
+  <div style="${S.sep}"></div>
   <table style="width:100%;border-collapse:collapse;">
-    <tr><td style="padding:2px 16px;${S.lbl}">Modal Kasir</td><td style="padding:2px 16px;text-align:right;${S.val}">${fmtNb(startingCash)}</td></tr>
-    <tr><td style="padding:2px 16px;${S.lbl}">Penjualan Tunai</td><td style="padding:2px 16px;text-align:right;${S.valG}">${fmtNb(cashRevenue)}</td></tr>
-    <tr><td style="padding:2px 16px;${S.lbl}">Non-Tunai</td><td style="padding:2px 16px;text-align:right;${S.val}">${fmtNb(totalNonTunai)}</td></tr>
+    ${row("Modal Kasir", fmtNb(startingCash))}
+    ${row("Penjualan Tunai", fmtNb(cashRevenue), S.valG)}
+    ${row("Non-Tunai", fmtNb(totalNonTunai))}
   </table>
 
   <!-- Pecahan -->
-  <div style="padding:4px 16px 0;">
-    <div style="font-size:6.5px;font-weight:700;color:#059669;margin-bottom:2px;">Pecahan Uang</div>
-    ${pecahanEntries.length ? pecahanEntries.map(([k, c]) => {
-      const nominal = Number(k.replace("bill", ""));
-      return `<div style="display:flex;justify-content:space-between;padding:1px 16px;">
-        <span style="font-size:6.5px;color:#9ca3af;">${fmtNb(nominal)}</span>
-        <span style="font-size:6.5px;color:#9ca3af;">× ${c}</span>
-        <span style="font-size:7px;font-weight:700;color:#1f2937;text-align:right;">= ${fmtNb(nominal * Number(c))}</span>
-      </div>`;
-    }).join("") : '<div style="padding:1px 16px;font-size:6.5px;color:#9ca3af;">(tidak diisi)</div>'}
+  <div style="padding:4px 16px 2px;">
+    <div style="font-size:7px;font-weight:700;color:#059669;">Pecahan Uang</div>
   </div>
+  ${pecahanEntries.length ? pecahanEntries.map(([k, c]) => {
+    const nominal = Number(k.replace("bill", ""));
+    return `<div style="display:flex;justify-content:space-between;padding:1px 16px;">
+      <span style="font-size:6.5px;color:#6b7280;min-width:60px;">${fmtNb(nominal)}</span>
+      <span style="font-size:6.5px;color:#9ca3af;">× ${c}</span>
+      <span style="font-size:7px;font-weight:700;color:#1f2937;">= ${fmtNb(nominal * Number(c))}</span>
+    </div>`;
+  }).join("")
+  : '<div style="padding:1px 16px;font-size:6.5px;color:#9ca3af;">(tidak diisi)</div>'}
 
   <!-- Total Laci -->
-  <div style="margin:4px 16px 0;padding:3px 12px;background:#f0fdf4;border-radius:4px;display:flex;justify-content:space-between;">
+  <div style="margin:4px 16px 0;padding:4px 12px;background:#f0fdf4;border-radius:4px;display:flex;justify-content:space-between;">
     <span style="font-size:8px;font-weight:700;color:#059669;">Total Uang Fisik</span>
     <span style="font-size:9px;font-weight:800;color:#059669;">${fmtNb(totalPecahan || cashInRegister)}</span>
   </div>
@@ -275,24 +304,24 @@ function buildReportHTML(data: ShiftPDFData, logoBase64: string): string {
   <div style="${S.sep};margin:8px 16px;"></div>
 
   <!-- ═══ SELISIH ═══ -->
-  <div style="padding:4px 16px 2px;">
+  <div style="padding:4px 16px 3px;">
     <div style="${S.secGreen}">Selisih</div>
   </div>
-  <div style="${S.sep};margin:0 16px;"></div>
+  <div style="${S.sep}"></div>
   <table style="width:100%;border-collapse:collapse;">
-    <tr><td style="padding:2px 16px;${S.lbl}">Penjualan Tunai</td><td style="padding:2px 16px;text-align:right;${S.val}">${fmtNb(cashRevenue)}</td></tr>
-    <tr><td style="padding:2px 16px;${S.lbl}">Uang Fisik</td><td style="padding:2px 16px;text-align:right;${S.valG}">${fmtNb(cashInRegister)}</td></tr>
+    ${row("Penjualan Tunai", fmtNb(cashRevenue))}
+    ${row("Uang Fisik", fmtNb(cashInRegister), S.valG)}
   </table>
   <div style="margin:4px 16px;padding:5px 12px;background:${selisih >= 0 ? '#f0fdf4' : '#fef2f2'};border-radius:5px;display:flex;justify-content:space-between;">
     <span style="font-size:9px;font-weight:700;color:${selisih >= 0 ? '#059669' : '#dc2626'};">Selisih</span>
-    <span style="font-size:10px;font-weight:800;color:${selisih >= 0 ? '#059669' : '#dc2626'};">${selisihTxt}</span>
+    <span style="font-size:10px;font-weight:800;color:${selisih >= 0 ? '#059669' : '#dc2626'};">${selisih === 0 ? 'Rp 0' : `${selisihUp ? '⬆ Naik' : '⬇ Turun'} ${selisihFmt}`}</span>
   </div>
 
   ${notes ? `<div style="padding:4px 16px;font-size:6.5px;color:#6b7280;font-style:italic;">Catatan: ${notes}</div>` : ""}
 
   <!-- ═══ FOOTER ═══ -->
   <div style="padding:8px 16px 4px;text-align:center;font-size:6px;color:#9ca3af;">
-    Djiwa Tentram · Kopi &amp; Eatery
+    Djiwa Tentram · Kopi & Eatery · ${tgl}
   </div>
 
 </div>
@@ -334,7 +363,7 @@ export async function generateShiftReportPDF(data: ShiftPDFData): Promise<Blob> 
   }
 }
 
-async function loadLogoBase64(): Promise<string> {
+export async function loadLogoBase64(): Promise<string> {
   try {
     const res = await fetch("/logo.png");
     if (!res.ok) return "";

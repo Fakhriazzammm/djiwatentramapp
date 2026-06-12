@@ -2450,14 +2450,27 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, []);
 
 	// ── Helper: Kirim notifikasi Telegram ──
-	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>) => {
+	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }) => {
 		const supabase = createClient();
+		const fmtTime3 = (ms?: number) => {
+			if (!ms) return "";
+			const d = new Date(ms);
+			return d.toLocaleTimeString("en-US", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false });
+		};
+		const fmtDate3 = (ms?: number) => {
+			if (!ms) return "";
+			const d = new Date(ms);
+			return d.toLocaleDateString("en-US", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "long", year: "numeric" });
+		};
+		const timeLine = timeExtras?.startTime
+			? `🕐 ${fmtDate3(timeExtras.startTime)} — ${fmtTime3(timeExtras.startTime)} sd ${fmtTime3(timeExtras.endTime || Date.now())} WIB`
+			: `🕐 ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" })}`;
 		const lines = [
 			`📋 ${title}`,
 			`━━━━━━━━━━━━━━━`,
 			...Object.entries(details).map(([k, v]) => `${k} ${v}`),
 			`━━━━━━━━━━━━━━━`,
-			`🕐 ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" })}`,
+			timeLine,
 		];
 		try {
 			await supabase.functions.invoke("send-telegram-report", {
@@ -2543,68 +2556,96 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					});
 				
 				const teamFmt = formatTeamByRole(teamMembers.length ? teamMembers : (si.teamMembers?.split(", ").filter(Boolean) || []), staffUsers);
-				const cashInRegister = Number(cashInRegister || 0);
+				const teamIndented = teamFmt.split("\n").map((ln: string) => ln.trim() ? `   ${ln}` : "").filter(Boolean).join("\n");
+				const cashInRegisterVal = Number(cashInRegister || 0);
 				const modalKasir = Number(si.startingCash ?? 0);
 				const totalNonTunai = (pb.qris ?? 0) + (pb.debit ?? 0) + (pb.credit ?? 0) + (pb.transfer ?? 0) +
 					Object.values(pb.onlineFoodPlatforms || {}).reduce((sum: number, v: any) => sum + Number(v), 0);
-				const diffTunai = cashInRegister - s.cashRevenue;
+				const ntLabelParts2: string[] = [];
+				if (pb.qris) ntLabelParts2.push("QRIS");
+				if ((pb.debit ?? 0) + (pb.credit ?? 0) > 0) ntLabelParts2.push("EDC");
+				if (pb.transfer) ntLabelParts2.push("Transfer");
+				const ofp2 = pb.onlineFoodPlatforms || {};
+				const pfLabels2: Record<string, string> = { grab: "GrabFood", gofood: "GoFood", maxim: "Maxim", shopeefood: "ShopeeFood" };
+				Object.entries(ofp2).filter(([_, v]) => Number(v) > 0).forEach(([p]) => ntLabelParts2.push(pfLabels2[p] || p));
+				const ntLabel2 = ntLabelParts2.length ? ` (${ntLabelParts2.join(" + ")})` : "";
+				const totalNonTunaiStr = `Rp ${totalNonTunai.toLocaleString("id-ID")}${ntLabel2}`;
+				const diffTunai = cashInRegisterVal - s.cashRevenue;
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
 				sendTelegramNotif("📊 LAPORAN SHIFT", {
 					"🏪": "Djiwa Tentram",
 					"🔄 Shift": si.shiftName || shiftName || "-",
-					"👥 Tim": `\n${teamFmt}`,
+					"👥 Tim": `\n${teamIndented}`,
 					"━━━ DI SISTEM ━━━": "━━━",
 					"💰 Modal Kasir": `Rp ${Number(si.startingCash ?? 0).toLocaleString("id-ID")}`,
 					"💵 Penjualan Tunai": `Rp ${s.cashRevenue.toLocaleString("id-ID")}`,
-					"💳 Non-Tunai": `\n${ntLines.join("\n")}`,
+					"💳 Non-Tunai:": totalNonTunaiStr,
 					"💸 Pengeluaran": `Rp ${s.totalExpenses.toLocaleString("id-ID")}`,
 					"📦 Item Terjual": `${s.totalItemsSold}`,
-					"🏷️ Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
+					"🏷 Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
 					"━━━ DI LACI ━━━": "━━━",
 					"💰 Modal Kasir": `Rp ${modalKasir.toLocaleString("id-ID")}`,
-					"💵 Uang Fisik": `Rp ${cashInRegister.toLocaleString("id-ID")}`,
-					"🔢 Pecahan": pecahanTxt.length ? `\n${pecahanTxt.join("\n")}` : "(tidak diisi)",
+					"💵 Uang Fisik": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
+					"🔢 Pecahan:": `
+${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					"━━━ SELISIH ━━━": "━━━",
 					"💵 Penjualan Tunai": `Rp ${s.cashRevenue.toLocaleString("id-ID")}`,
-					"💵 Uang Fisik": `Rp ${cashInRegister.toLocaleString("id-ID")}`,
-					"📊 Selisih": fmtSelisih(diffTunai),
-					"📝 Catatan": notes || "-",
-				});
+					"💵 Uang Fisik": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
+					"📊 Selisih:": fmtSelisih(diffTunai),
+					"📝 Catatan:": notes || "-",
+				}, { startTime: si.startTime || undefined, endTime: Date.now() });
 				console.log("[shift-notif] End shift notification sent successfully");
 				
-				// Generate & kirim PDF (best-effort, async)
-				import("@/lib/shift-report-pdf").then(({ generateShiftReportPDF }) => {
-					const pbData = s.paymentBreakdown || {};
-					generateShiftReportPDF({
-						shiftName: si.shiftName || shiftName || "-",
-						cashierName: si.cashierName || cashierName || "-",
-						teamMembers: teamMembers.join(", ") || si.teamMembers || "",
-						startTime: si.startTime || Date.now(),
-						endTime: Date.now(),
-						startingCash: Number(si.startingCash ?? 0),
-						cashRevenue: s.cashRevenue,
-						paymentBreakdown: pbData,
-						totalExpenses: s.totalExpenses,
-						totalDiscount: s.totalDiscount,
-						totalItemsSold: s.totalItemsSold,
-						cashInRegister: Number(cashInRegister || 0),
-						cashBreakdown: breakdown,
-						notes: notes || "",
-					}).then((pdfBlob) => {
-						const formData = new FormData();
-						formData.append("document", pdfBlob, `laporan-shift-${Date.now()}.pdf`);
-						formData.append("caption", `📊 Laporan Shift — ${si.shiftName || shiftName}`);
-						formData.append("chat_id", "-1003991897388");
-						fetch("http://localhost:8001/send-document", { method: "POST", body: formData }).catch((e) => {
-							console.error("[shift-pdf] Gagal kirim PDF:", e);
+				// Generate HTML laporan & upload ke Supabase Storage (best-effort)
+				import("@/lib/shift-report-pdf").then(async ({ buildReportHTML, loadLogoBase64 }) => {
+					try {
+						const pbData = s.paymentBreakdown || {};
+						const [logoB64] = await Promise.all([loadLogoBase64()]);						const html = buildReportHTML({
+							shiftName: si.shiftName || shiftName || "-",
+							cashierName: si.cashierName || cashierName || "-",
+							teamMembers: teamMembers.join(", ") || si.teamMembers || "",
+							teamFormatted: teamFmt,
+							startTime: si.startTime || Date.now(),
+							endTime: Date.now(),
+							startingCash: Number(si.startingCash ?? 0),
+							cashRevenue: s.cashRevenue,
+							paymentBreakdown: pbData,
+							totalExpenses: s.totalExpenses,
+							totalDiscount: s.totalDiscount,
+							totalItemsSold: s.totalItemsSold,
+							cashInRegister: Number(cashInRegister || 0),
+							cashBreakdown: breakdown,
+							notes: notes || "",
+						}, logoB64);
+						
+												// Kirim HTML ke bot - simpan di VPS + kirim link ke grup
+						fetch("http://localhost:8001/save-report", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								html: html,
+								shift_name: si.shiftName || shiftName || "shift",
+							}),
+						}).then(async (res) => {
+							const data = await res.json();
+							if (data.ok && data.url) {
+								const supabase4 = createClient();
+								supabase4.functions.invoke("send-telegram-report", {
+									body: {
+										text: "\xf0\x9f\x93\x8a Laporan: " + data.url,
+										chat_id: -1003991897388,
+									}
+								}).catch(() => {});
+							}
+						}).catch((e) => {
+							console.error("[shift-html] Gagal simpan HTML:", e);
 						});
-					}).catch((e) => {
-						console.error("[shift-pdf] Gagal generate PDF:", e);
-					});
-				}).catch((e) => {
-					console.error("[shift-pdf] Gagal load module:", e);
+					} catch (e) {
+						console.error("[shift-html] Gagal generate HTML:", e);
+					}
 				});
+
 			}
 			
 			setAmount("");
