@@ -2540,8 +2540,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					});
 				
 				const teamFmt = formatTeamByRole(teamMembers.length ? teamMembers : (si.teamMembers?.split(", ").filter(Boolean) || []), staffUsers);
-				const diffCash = Number(cashInRegister || 0) - s.cashRevenue;
-				const selisih = diffCash === 0 ? "✅ Rp 0" : diffCash > 0 ? `⬆️ Rp ${diffCash.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(diffCash).toLocaleString("id-ID")}`;
+				const cashInRegister = Number(cashInRegister || 0);
+				const saranSetoran = Number(si.startingCash ?? 0) + Number(s.cashRevenue || 0) - Number(s.totalExpenses || 0);
+				const diffSaran = cashInRegister - saranSetoran;
+				const diffCash = cashInRegister - Number(s.cashRevenue || 0);
+				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
 				sendTelegramNotif("📊 LAPORAN SHIFT", {
 					"🏪": "Djiwa Tentram",
@@ -2559,8 +2562,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					"💵 Uang Fisik": `Rp ${Number(cashInRegister || 0).toLocaleString("id-ID")}`,
 					"🔢 Pecahan": pecahanTxt.length ? `\n${pecahanTxt.join("\n")}` : "(tidak diisi)",
 					"━━━ SELISIH ━━━": "━━━",
-					"Saran vs Fisik": selisih,
-					"Penjualan vs Uang Fisik": selisih,
+					"Saran vs Fisik": fmtSelisih(diffSaran),
+					"Penjualan vs Fisik": fmtSelisih(diffCash),
 					"📝 Catatan": notes || "-",
 				});
 				console.log("[shift-notif] End shift notification sent successfully");
