@@ -2443,7 +2443,10 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
 			return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
 		});
-		return sorted.map(r => `${r.charAt(0).toUpperCase() + r.slice(1).toLowerCase()}: ${grouped.get(r)!.join(", ")}`).join("\n");
+		return sorted.map(r => {
+			if (r === "Lainnya") return `  ${grouped.get(r)!.join(", ")}`;
+			return `${r.charAt(0).toUpperCase() + r.slice(1).toLowerCase()}: ${grouped.get(r)!.join(", ")}`;
+		}).join("\n");
 	}, []);
 
 	// ── Helper: Kirim notifikasi Telegram ──
