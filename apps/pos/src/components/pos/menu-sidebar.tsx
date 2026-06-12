@@ -2642,8 +2642,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				sendTelegramNotif("✅ SHIFT DIBUKA", {
 					"🏪": "Djiwa Tentram",
 					"🔄 Shift": shiftName,
-					"💰 Modal Kasir": `Rp ${Number(amount).toLocaleString("id-ID")}`,
+					"👤 Kasir": cashierName,
 					"👥 Tim": `\n${teamFormatted}`,
+					"💰 Modal Kasir": `Rp ${Number(amount).toLocaleString("id-ID")}`,
 				});
 				setShiftRefreshTrigger((c) => c + 1);
 			} else {
