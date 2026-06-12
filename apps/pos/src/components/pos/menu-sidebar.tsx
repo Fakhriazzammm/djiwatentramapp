@@ -2429,7 +2429,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
 		const normalize = new Map<string, string>();
 		for (const r of roleOrder) { normalize.set(r.toUpperCase(), r); normalize.set(r.toLowerCase(), r); }
-		normalize.set("CHEF", "Kitchen"); normalize.set("MANAGER", "Manajer");
+		normalize.set("CHEF", "Kitchen"); normalize.set("MANAGER", "Manajer"); normalize.set("WAITERS", "Waitress");
 		const grouped = new Map<string, string[]>();
 		members.forEach((name) => {
 			const user = allStaff.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
