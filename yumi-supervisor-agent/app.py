@@ -979,7 +979,7 @@ async def _check_new_orders(app):
         rows = await _fetch(
         	"pos_orders",
         	"select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
-        	"&or=(status.in.(completed,paid),and(status.eq.pending,source.eq.customer_self_service))"
+        	"&status=in.(completed,paid)"
         	f"&_creationTime=gt.{scan_from}"
         	f"&_creationTime=lte.{now_ms}"
         	"&order=_creationTime.asc&limit=50",
