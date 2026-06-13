@@ -3147,7 +3147,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								<p className="text-[8px] text-muted-foreground italic font-medium">* Otomatis dari input pecahan</p>
 							{/* Selisih Real-time */}
 							{cashInRegister && Number(cashInRegister) > 0 && (() => {
-								const expected = (shiftStatus?.ongoingShift?.startingCash ?? 0) + shiftCash - shiftExpense;
+								const expected = shiftCash;
 								const actual = Number(cashInRegister);
 								const diff = actual - expected;
 								const isExact = diff === 0;
@@ -3229,7 +3229,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							<div className="flex justify-between"><span className="text-muted-foreground">💰 Uang Fisik</span><span className="font-bold">Rp {Number(cashInRegister || 0).toLocaleString('id-ID')}</span></div>
 							<div className="flex justify-between"><span className="text-muted-foreground">💳 QRIS/EDC</span><span className="font-bold">Rp {Number(nonCashConfirmed || 0).toLocaleString('id-ID')}</span></div>
 							{(() => {
-								const expected = (shiftStatus?.ongoingShift?.startingCash ?? 0) + shiftCash - shiftExpense;
+								const expected = shiftCash;
 								const actual = Number(cashInRegister || 0);
 								const diff = actual - expected;
 								return (
