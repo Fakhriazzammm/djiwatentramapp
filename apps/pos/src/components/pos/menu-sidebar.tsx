@@ -2284,6 +2284,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const startShift = useHybridStartShift();
 	const endShift = useHybridEndShift();
 	const sendShiftReportEmail = useHybridSendShiftReportEmail();
+	const createTransaction = useHybridCreateTransaction();
 
 	const [shiftType, setShiftType] = useState<"mulai" | "akhiri">("mulai");
 
@@ -2491,6 +2492,20 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		setIsSubmitting(true);
 		setSubmitError(null);
 		try {
+			// Record any end-of-shift expenses first
+			for (const exp of endShiftExpenses) {
+				const amt = Number(exp.amount);
+				if (amt <= 0) continue;
+				await createTransaction({
+					type: "expense",
+					amount: amt,
+					category: exp.category || "Lainnya",
+					description: exp.description || "",
+					date: Date.now(),
+					status: "completed",
+					paymentMethod: "tunai",
+				});
+			}
 			const completedShiftStartTime =
 				shiftStatus?.ongoingShift?.startTime || Date.now();
 			const result = await endShift({
@@ -2652,6 +2667,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			setCashInRegister("");
 			setNonCashConfirmed("");
 			setNotes("");
+			setEndShiftExpenses([]);
 			setCashierName("");
 			setTeamMembers([]);
 			onClose();
@@ -2956,6 +2972,92 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								</CardContent>
 							</Card>
 						)}
+
+						{/* ── Pengeluaran Tambahan Saat Tutup Shift ── */}
+						<Collapsible className="border border-border/50 rounded-lg overflow-hidden">
+							<CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors">
+								<div className="flex items-center gap-2">
+									<TrendingDown className="h-3.5 w-3.5 text-rose-500" />
+									<span className="text-[10px] font-black uppercase tracking-widest text-foreground">Input Pengeluaran</span>
+								</div>
+								<div className="flex items-center gap-2">
+									{endShiftExpenses.length > 0 && (
+										<span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full">{endShiftExpenses.length}</span>
+									)}
+									<ChevronDown className="h-3 w-3 text-muted-foreground" />
+								</div>
+							</CollapsibleTrigger>
+							<CollapsibleContent className="px-3 pb-3 space-y-2.5">
+								<p className="text-[9px] text-muted-foreground font-medium">Catat pengeluaran langsung saat tutup shift (token listrik, dll).</p>
+								{endShiftExpenses.length === 0 ? (
+									<div className="rounded-lg border border-dashed border-border p-4 text-center">
+										<p className="text-[10px] text-muted-foreground">Belum ada pengeluaran. Klik "+ Tambah" untuk menambah.</p>
+									</div>
+								) : (
+									<div className="space-y-2">
+										{endShiftExpenses.map((exp, idx) => (
+											<div key={exp.id} className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-2">
+												<div className="flex items-center justify-between">
+													<span className="text-[9px] font-bold uppercase text-muted-foreground">Pengeluaran #{idx + 1}</span>
+													<button
+														type="button"
+														onClick={() => setEndShiftExpenses(prev => prev.filter(e => e.id !== exp.id))}
+														className="text-[9px] font-bold text-destructive hover:underline"
+													>
+														Hapus
+													</button>
+												</div>
+												<div className="grid grid-cols-5 gap-1.5">
+													<div className="col-span-2 space-y-1">
+														<Label className="text-[8px] font-bold uppercase text-muted-foreground">Kategori</Label>
+														<select
+															className="w-full rounded-md border border-border bg-background px-1.5 py-1.5 text-[10px] font-medium"
+															value={exp.category}
+															onChange={(ev) => setEndShiftExpenses(prev => prev.map(x => x.id === exp.id ? {...x, category: ev.target.value} : x))}
+														>
+															<option value="Token Listrik">⚡ Token Listrik</option>
+															<option value="Bahan Baku">Bahan Baku</option>
+															<option value="Operasional">Operasional</option>
+															<option value="Lainnya">Lainnya</option>
+														</select>
+													</div>
+													<div className="col-span-1 space-y-1">
+														<Label className="text-[8px] font-bold uppercase text-muted-foreground">Jumlah</Label>
+														<div className="relative">
+															<span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">Rp</span>
+															<input
+																type="number"
+																min={0}
+																placeholder="0"
+																className="w-full rounded-md border border-border bg-background pl-6 pr-1.5 py-1.5 text-[10px] font-black text-right"
+																value={exp.amount}
+																onChange={(ev) => setEndShiftExpenses(prev => prev.map(x => x.id === exp.id ? {...x, amount: ev.target.value} : x))}
+															/>
+														</div>
+													</div>
+													<div className="col-span-2 space-y-1">
+														<Label className="text-[8px] font-bold uppercase text-muted-foreground">Keterangan</Label>
+														<input
+															placeholder="Misal: token 200rb..."
+															className="w-full rounded-md border border-border bg-background px-1.5 py-1.5 text-[10px] font-medium"
+															value={exp.description}
+															onChange={(ev) => setEndShiftExpenses(prev => prev.map(x => x.id === exp.id ? {...x, description: ev.target.value} : x))}
+														/>
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
+								)}
+								<button
+									type="button"
+									onClick={() => setEndShiftExpenses(prev => [...prev, {id: Date.now(), category: "Token Listrik", amount: "", description: ""}])}
+									className="w-full rounded-lg border border-dashed border-border py-2 text-[10px] font-bold text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-1"
+								>
+									<Plus className="h-3 w-3" /> Tambah Pengeluaran
+								</button>
+							</CollapsibleContent>
+						</Collapsible>
 
 						{/* Pecahan Uang Section */}
 						<div className="space-y-1.5">
