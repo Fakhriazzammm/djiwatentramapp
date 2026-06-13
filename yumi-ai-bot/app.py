@@ -2210,9 +2210,29 @@ async def _check_new_attendance(app):
                                 else:
                                     lines.append(f"✅ Masuk awal untuk shift {sched_label}")
                             else:
-                                lines.append(f"⚠️ KAMU SALAH JADWAL! Jadwalmu: {sched_label}")
-                                # Skip lateness calculation — jangan hitung denda dari shift yg salah
-                                shift_name = None
+                                # Cek apakah user telat untuk jadwal shift yg sudah dimulai
+                                late_for_scheduled = False
+                                if sched_start and sched_end:
+                                    try:
+                                        sh, sm = sched_start.split(":")
+                                        sched_start_min = int(sh) * 60 + int(sm)
+                                        dt_late = datetime.fromtimestamp(ts / 1000, tz=WIB)
+                                        check_min_late = dt_late.hour * 60 + dt_late.minute
+                                        late_min = check_min_late - sched_start_min
+                                        if late_min > 0:
+                                            # Absen setelah shift dimulai — telat untuk jadwal
+                                            late_for_scheduled = True
+                                    except Exception:
+                                        pass
+                                if late_for_scheduled:
+                                    # Late check-in for scheduled shift — pakai jadwal asli, hitung keterlambatan
+                                    sched_bare = sched.get("shiftName", "").strip()
+                                    shift_name = sched_bare  # Biar downstream hitung lateness
+                                    shift_label = sched_bare
+                                else:
+                                    lines.append(f"⚠️ KAMU SALAH JADWAL! Jadwalmu: {sched_label}")
+                                    # Skip lateness calculation — jangan hitung denda dari shift yg salah
+                                    shift_name = None
                 except Exception:
                     pass  # Jangan sampai query error menggagalkan notifikasi
 
