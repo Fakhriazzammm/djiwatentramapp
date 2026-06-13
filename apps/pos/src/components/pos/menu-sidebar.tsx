@@ -2299,6 +2299,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [cashInRegister, setCashInRegister] = useState("");
 	const [nonCashConfirmed, setNonCashConfirmed] = useState("");
 	const [notes, setNotes] = useState("");
+	// Pengeluaran saat tutup shift
+	const [endShiftExpenses, setEndShiftExpenses] = useState<{id: number; category: string; amount: string; description: string}[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [showEndConfirm, setShowEndConfirm] = useState(false);
