@@ -18,3 +18,4 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+/* trigger rebuild with self-hosted supabase */
