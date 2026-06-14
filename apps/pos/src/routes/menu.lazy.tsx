@@ -729,7 +729,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						image: product.image,
 						category: product.categoryId,
 					});
-					toast.success(`${product.name} ditambahkan ke keranjang`); triggerHybridRefresh();
+					toast.success(`${product.name} ditambahkan ke keranjang`);
 				}
 			}
 		},
@@ -911,7 +911,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				image: product.image,
 				category: product.categoryId,
 			});
-			toast.success(`${product.name} ditambahkan ke keranjang`); triggerHybridRefresh();
+			toast.success(`${product.name} ditambahkan ke keranjang`);
 		}
 	};
 
@@ -1982,7 +1982,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						onAddToCart={(item) => {
 							addToCart(item);
 							setSelectedProduct(null);
-							toast.success(`${item.name} ditambahkan ke keranjang`); triggerHybridRefresh();
+							toast.success(`${item.name} ditambahkan ke keranjang`);
 						}}
 					/>
 				</SheetContent>

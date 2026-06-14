@@ -31,11 +31,10 @@ import { Separator } from "@/components/ui/separator";
 import { ShimmerSkeleton } from "@/components/ui/loading-state";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
 import {
-	useHybridActiveDiscounts,
 	useHybridShiftStatus,
-	useHybridSiteSettings,
 	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
+import { useAppData } from "@/context/app-data-context";
 import type { Doc } from "@/types/backend-compat";
 import { CustomerSearchModal } from "./customer-search-modal";
 
@@ -92,8 +91,7 @@ export function CheckoutSidebar({
 		netRevenue,
 	} = useCart();
 
-	const siteSettings = useHybridSiteSettings();
-	const allActiveDiscounts = useHybridActiveDiscounts();
+	const { siteSettings, activeDiscounts: allActiveDiscounts } = useAppData();
 	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 

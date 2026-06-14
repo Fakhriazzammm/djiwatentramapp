@@ -195,7 +195,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 			// Remove if no active promo, no other items, or customerInfo.isFreeRefill is false
 			setItems((prev) => prev.filter((i) => i.productId !== refillId));
 		}
-	}, [activeDiscounts, items, customerInfo.isFreeRefill]);
+		}, [activeDiscounts, items.length, customerInfo.isFreeRefill]);
 
 	const addToCart = (newItem: CartItem) => {
 		setItems((prev) => {

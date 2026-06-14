@@ -330,7 +330,7 @@ function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[],
-	options?: { refreshTrigger?: number; refreshMs?: number }
+	options?: { refreshTrigger?: number; refreshMs?: number; tables?: string[] }
 ) {
 	const globalTick = useGlobalRefreshTrigger();
 	const mergedTrigger = options?.refreshTrigger !== undefined
@@ -2024,12 +2024,20 @@ async function fetchDashboardStats() {
 }
 
 export function useHybridSiteSettings(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("site-settings", fetchSiteSettings, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("site-settings", fetchSiteSettings, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_site_settings'] } 
+			: { tables: ['pos_site_settings'] }
+	);
 	return supabaseData as SiteSettingsRecord | undefined;
 }
 
 export function useHybridCategories(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("categories", fetchCategories, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("categories", fetchCategories, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_categories'] } 
+			: { tables: ['pos_categories'] }
+	);
 	return supabaseData as CategoryRecord[] | undefined;
 }
 
@@ -2038,13 +2046,19 @@ export function useHybridActiveDiscounts(refreshTrigger?: number) {
 		"active-discounts",
 		fetchActiveDiscounts,
 		[],
-		refreshTrigger !== undefined ? { refreshTrigger } : undefined
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_active_discounts'] } 
+			: { tables: ['pos_active_discounts'] }
 	);
 	return supabaseData as DiscountRecord[] | undefined;
 }
 
 export function useHybridAllDiscounts(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("all-discounts", fetchAllDiscounts, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("all-discounts", fetchAllDiscounts, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_discounts'] } 
+			: { tables: ['pos_discounts'] }
+	);
 	return supabaseData as DiscountRecord[] | undefined;
 }
 
@@ -2053,13 +2067,19 @@ export function useHybridOrders(options?: { status?: string; limit?: number; ref
 		`orders:${options?.status ?? "all"}:${options?.limit ?? "default"}`,
 		() => fetchOrders(options),
 		[options?.status, options?.limit],
-		options?.refreshTrigger !== undefined ? { refreshTrigger: options.refreshTrigger } : undefined
+		options?.refreshTrigger !== undefined 
+			? { refreshTrigger: options.refreshTrigger, tables: ['pos_orders'] } 
+			: { tables: ['pos_orders'] }
 	);
 	return supabaseData as OrderRecord[] | undefined;
 }
 
 export function useHybridInventory(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("inventory", fetchInventory, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("inventory", fetchInventory, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_inventory'] } 
+			: { tables: ['pos_inventory'] }
+	);
 	return supabaseData as InventoryRecord[] | undefined;
 }
 
@@ -2080,7 +2100,11 @@ export function useHybridLowStockItems(refreshTrigger?: number) {
 
 export function useHybridProducts(categoryId?: string | null, refreshTrigger?: number) {
 	const categories = useHybridCategories(refreshTrigger);
-	const supabaseData = useSupabaseValue("products", fetchProducts, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("products", fetchProducts, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_products'] } 
+			: { tables: ['pos_products'] }
+	);
 
 	return useMemo(() => {
 		if (!supabaseData) return undefined;
@@ -2099,12 +2123,20 @@ export function useHybridProducts(categoryId?: string | null, refreshTrigger?: n
 }
 
 export function useHybridAllProducts(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("products-all", fetchAllProducts, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("products-all", fetchAllProducts, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_products_all'] } 
+			: { tables: ['pos_products_all'] }
+	);
 	return supabaseData as ProductRecord[] | undefined;
 }
 
 export function useHybridHppProductMap(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("hpp-product-map", fetchHppProductMap, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("hpp-product-map", fetchHppProductMap, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_hpp_calculations'] } 
+			: { tables: ['pos_hpp_calculations'] }
+	);
 	return supabaseData as HppProductMapRecord | undefined;
 }
 
@@ -2113,7 +2145,9 @@ export function useHybridLatestInventoryCosts(refreshTrigger?: number) {
 		"inventory-latest-costs",
 		fetchLatestInventoryCosts,
 		[],
-		refreshTrigger !== undefined ? { refreshTrigger } : undefined
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_inventory_latest_costs'] } 
+			: { tables: ['pos_inventory_latest_costs'] }
 	);
 	return supabaseData as InventoryCostMapRecord | undefined;
 }
@@ -2124,7 +2158,7 @@ export function useHybridShiftReportRows(refreshTrigger?: number) {
 		"shift-reports",
 		fetchShiftReports,
 		[],
-		{ refreshMs: 10_000, ...(refreshTrigger !== undefined ? { refreshTrigger } : {}) }
+		{ refreshMs: 10_000, tables: ['pos_shifts'], ...(refreshTrigger !== undefined ? { refreshTrigger } : {}) }
 	);
 	return supabaseData as ShiftReportRecord[] | undefined;
 }
@@ -2134,7 +2168,9 @@ export function useHybridCurrentMonthProgress(refreshTrigger?: number) {
 		"current-month-progress",
 		fetchCurrentMonthProgress,
 		[],
-		refreshTrigger !== undefined ? { refreshTrigger } : undefined
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_current_month_progress'] } 
+			: { tables: ['pos_current_month_progress'] }
 	);
 	return supabaseData as CurrentMonthProgressRecord | undefined;
 }
@@ -2161,17 +2197,29 @@ export function useHybridShiftDetails(
 }
 
 export function useHybridStaffRoles(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("staff-roles", fetchStaffRoles, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("staff-roles", fetchStaffRoles, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_staff_roles'] } 
+			: { tables: ['pos_staff_roles'] }
+	);
 	return supabaseData as StaffRoleRecord[] | undefined;
 }
 
 export function useHybridStaffUsers(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("staff-users", fetchStaffUsers, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("staff-users", fetchStaffUsers, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_staff_users'] } 
+			: { tables: ['pos_staff_users'] }
+	);
 	return supabaseData as StaffUserRecord[] | undefined;
 }
 
 export function useHybridShiftStatus(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("shift-status", fetchShiftStatus, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	const supabaseData = useSupabaseValue("shift-status", fetchShiftStatus, [], 
+		refreshTrigger !== undefined 
+			? { refreshTrigger, tables: ['pos_shifts'] } 
+			: { tables: ['pos_shifts'] }
+	);
 	return supabaseData as ShiftStatusRecord | undefined;
 }
 
@@ -2179,7 +2227,8 @@ export function useHybridDashboardStats() {
 	const supabaseData = useSupabaseValue(
 		"dashboard-stats",
 		fetchDashboardStats,
-		[]
+		[],
+		{ tables: ['pos_shifts','pos_orders','pos_financial_transactions','pos_booking_orders','pos_inventory','pos_products_all'] }
 	);
 	return supabaseData as DashboardStatsRecord | undefined;
 }
