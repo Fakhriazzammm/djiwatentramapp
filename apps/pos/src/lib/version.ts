@@ -2,9 +2,9 @@
 // Last updated: 2026-06-14
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_NUMBER-COMMIT_HASH
-	semantic: "0.2.1663-0a6fc68",
+	semantic: "0.2.1664-059d5b4",
 	// Git/deploy commit hash (short)
-	commitHash: "0a6fc68",
+	commitHash: "059d5b4",
 	// Build timestamp
 	buildDate: "2026-06-14",
 	// Full version string for display

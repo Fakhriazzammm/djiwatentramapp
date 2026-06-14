@@ -5,6 +5,8 @@ export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
 	refreshMs?: number;
 	refreshTrigger?: number;
+	/** If provided, only listen to changes on these specific tables instead of all tables in the schema. */
+	tables?: string[];
 };
 
 const hasSupabaseConfig = Boolean(
@@ -62,14 +64,25 @@ export function useSupabaseLiveValue<T>(
 		void reload();
 
 		let channel = supabase.channel(channelName);
+		const tables = options?.tables;
+
 		for (const schema of schemas) {
-			channel = channel.on(
-				"postgres_changes",
-				{ event: "*", schema },
-				() => {
-					void reload();
+			if (tables?.length) {
+				// Listen only to specific tables — prevents cascade reloads from unrelated table changes
+				for (const table of tables) {
+					channel = channel.on(
+						"postgres_changes",
+						{ event: "*", schema, table },
+						() => { void reload(); }
+					);
 				}
-			);
+			} else {
+				channel = channel.on(
+					"postgres_changes",
+					{ event: "*", schema },
+					() => { void reload(); }
+				);
+			}
 		}
 		channel.subscribe((status: string) => {
 			if (status === "CHANNEL_ERROR") {
