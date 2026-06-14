@@ -186,51 +186,106 @@ async function fetchPublicUsersViaRestApi() {
 	return mapPublicUsers(data ?? []);
 }
 
-export async function listPublicYumiUsers() {
+const USERS_CACHE_KEY = "yumi_users_cache";
+const USERS_CACHE_TTL = 5 * 60 * 1000; // 5 menit
+
+function getCachedUsers(): YumiPublicUser[] | null {
+	if (typeof window === "undefined") return null;
 	try {
-		const supabase = createClient();
-		const { data, error } = await supabase
-			.from("pos_users_public")
-			.select("_id,name,slug,username,initial,hasFace,isActive,roleName")
-			.eq("isActive", true)
-			.order("name", { ascending: true });
-
-		if (error) {
-			throw new Error(error.message || "Gagal memuat daftar pengguna");
+		const raw = localStorage.getItem(USERS_CACHE_KEY);
+		if (!raw) return null;
+		const cached = JSON.parse(raw) as { timestamp: number; users: YumiPublicUser[] };
+		if (Date.now() - cached.timestamp > USERS_CACHE_TTL) {
+			localStorage.removeItem(USERS_CACHE_KEY);
+			return null;
 		}
+		return cached.users;
+	} catch {
+		return null;
+	}
+}
 
-		const publicUsers = mapPublicUsers((data ?? []) as PublicUserRow[]);
-
-		if (publicUsers.length > 0) {
-			return publicUsers;
-		}
-	} catch (viewError) {
-		console.warn(
-			"[yumi-auth] listPublicUsers via pos_users_public failed, falling back to edge function",
-			viewError
+function setCachedUsers(users: YumiPublicUser[]) {
+	if (typeof window === "undefined") return;
+	try {
+		localStorage.setItem(
+			USERS_CACHE_KEY,
+			JSON.stringify({ timestamp: Date.now(), users })
 		);
+	} catch {
+		// Silakan — storage mungkin penuh
+	}
+}
+
+const FETCH_INFLIGHT_KEY = "__yumi_users_fetch_inflight";
+let inflightPromise: Promise<YumiPublicUser[]> | null = null;
+
+export async function listPublicYumiUsers({ forceRefresh }: { forceRefresh?: boolean } = {}) {
+	// Cek cache dulu
+	if (!forceRefresh) {
+		const cached = getCachedUsers();
+		if (cached) return cached;
 	}
 
-	try {
-		const restUsers = await fetchPublicUsersViaRestApi();
-		if (restUsers.length > 0) {
-			return restUsers;
+	// Dedup concurrent fetch: hanya 1 request berjalan
+	if (inflightPromise) return inflightPromise;
+
+	inflightPromise = (async (): Promise<YumiPublicUser[]> => {
+		try {
+			const supabase = createClient();
+			const { data, error } = await supabase
+				.from("pos_users_public")
+				.select("_id,name,slug,username,initial,hasFace,isActive,roleName")
+				.eq("isActive", true)
+				.order("name", { ascending: true });
+
+			if (error) {
+				throw new Error(error.message || "Gagal memuat daftar pengguna");
+			}
+
+			const publicUsers = mapPublicUsers((data ?? []) as PublicUserRow[]);
+
+			if (publicUsers.length > 0) {
+				setCachedUsers(publicUsers);
+				return publicUsers;
+			}
+		} catch (viewError) {
+			console.warn(
+				"[yumi-auth] listPublicUsers via pos_users_public failed, falling back to edge function",
+				viewError
+			);
 		}
-	} catch (restError) {
-		console.warn("[yumi-auth] listPublicUsers via REST API failed", restError);
-	}
+
+		try {
+			const restUsers = await fetchPublicUsersViaRestApi();
+			if (restUsers.length > 0) {
+				setCachedUsers(restUsers);
+				return restUsers;
+			}
+		} catch (restError) {
+			console.warn("[yumi-auth] listPublicUsers via REST API failed", restError);
+		}
+
+		try {
+			const data = await invokeAuth<{ users: YumiPublicUser[] }>({
+				action: "listPublicUsers",
+			});
+			const users = (data.users ?? []).filter((user) => {
+				if (!user?._id || !user?.name) return false;
+				return String(user.name).trim().toLowerCase() !== "admin";
+			});
+			if (users.length > 0) setCachedUsers(users);
+			return users;
+		} catch (invokeError) {
+			console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
+			throw new Error("Gagal memuat daftar pengguna");
+		}
+	})();
 
 	try {
-		const data = await invokeAuth<{ users: YumiPublicUser[] }>({
-			action: "listPublicUsers",
-		});
-		return (data.users ?? []).filter((user) => {
-			if (!user?._id || !user?.name) return false;
-			return String(user.name).trim().toLowerCase() !== "admin";
-		});
-	} catch (invokeError) {
-		console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
-		throw new Error("Gagal memuat daftar pengguna");
+		return await inflightPromise;
+	} finally {
+		inflightPromise = null;
 	}
 }
 

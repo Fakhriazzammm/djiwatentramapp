@@ -186,51 +186,107 @@ async function fetchPublicUsersViaRestApi() {
 	return mapPublicUsers(data ?? []);
 }
 
-export async function listPublicYumiUsers() {
-	try {
-		const supabase = createClient();
-		const { data, error } = await supabase
-			.from("pos_users_public")
-			.select("_id,name,slug,username,initial,hasFace,isActive,roleName")
-			.eq("isActive", true)
-			.order("name", { ascending: true });
+const YUMI_USERS_CACHE_KEY = "yumi_users_cache";
+const YUMI_USERS_CACHE_TTL = 5 * 60 * 1000; // 5 menit
 
-		if (error) {
-			throw new Error(error.message || "Gagal memuat daftar pengguna");
+type CacheEntry = {
+	data: YumiPublicUser[];
+	timestamp: number;
+};
+
+let pendingFetch: Promise<YumiPublicUser[]> | null = null;
+
+export async function listPublicYumiUsers({
+	forceRefresh,
+}: { forceRefresh?: boolean } = {}) {
+	// 1. Cek localStorage cache (kecuali forceRefresh)
+	if (!forceRefresh && typeof window !== "undefined") {
+		try {
+			const raw = localStorage.getItem(YUMI_USERS_CACHE_KEY);
+			if (raw) {
+				const cached: CacheEntry = JSON.parse(raw);
+				if (Date.now() - cached.timestamp < YUMI_USERS_CACHE_TTL) {
+					return cached.data;
+				}
+			}
+		} catch {
+			// Abaikan error baca cache
 		}
-
-		const publicUsers = mapPublicUsers((data ?? []) as PublicUserRow[]);
-
-		if (publicUsers.length > 0) {
-			return publicUsers;
-		}
-	} catch (viewError) {
-		console.warn(
-			"[yumi-auth] listPublicUsers via pos_users_public failed, falling back to edge function",
-			viewError
-		);
 	}
 
-	try {
-		const restUsers = await fetchPublicUsersViaRestApi();
-		if (restUsers.length > 0) {
-			return restUsers;
-		}
-	} catch (restError) {
-		console.warn("[yumi-auth] listPublicUsers via REST API failed", restError);
+	// 2. Dedup concurrent fetch — jika sudah ada request berjalan, pakai yang sama
+	if (pendingFetch) {
+		return pendingFetch;
 	}
 
+	// 3. Lakukan fetch asli
+	pendingFetch = (async (): Promise<YumiPublicUser[]> => {
+		try {
+			const supabase = createClient();
+			const { data, error } = await supabase
+				.from("pos_users_public")
+				.select("_id,name,slug,username,initial,hasFace,isActive,roleName")
+				.eq("isActive", true)
+				.order("name", { ascending: true });
+
+			if (error) {
+				throw new Error(error.message || "Gagal memuat daftar pengguna");
+			}
+
+			const publicUsers = mapPublicUsers((data ?? []) as PublicUserRow[]);
+
+			if (publicUsers.length > 0) {
+				return publicUsers;
+			}
+		} catch (viewError) {
+			console.warn(
+				"[yumi-auth] listPublicUsers via pos_users_public failed, falling back to edge function",
+				viewError
+			);
+		}
+
+		try {
+			const restUsers = await fetchPublicUsersViaRestApi();
+			if (restUsers.length > 0) {
+				return restUsers;
+			}
+		} catch (restError) {
+			console.warn("[yumi-auth] listPublicUsers via REST API failed", restError);
+		}
+
+		try {
+			const data = await invokeAuth<{ users: YumiPublicUser[] }>({
+				action: "listPublicUsers",
+			});
+			return (data.users ?? []).filter((user) => {
+				if (!user?._id || !user?.name) return false;
+				return String(user.name).trim().toLowerCase() !== "admin";
+			});
+		} catch (invokeError) {
+			console.warn(
+				"[yumi-auth] listPublicUsers edge function fallback failed",
+				invokeError
+			);
+			throw new Error("Gagal memuat daftar pengguna");
+		}
+	})();
+
 	try {
-		const data = await invokeAuth<{ users: YumiPublicUser[] }>({
-			action: "listPublicUsers",
-		});
-		return (data.users ?? []).filter((user) => {
-			if (!user?._id || !user?.name) return false;
-			return String(user.name).trim().toLowerCase() !== "admin";
-		});
-	} catch (invokeError) {
-		console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
-		throw new Error("Gagal memuat daftar pengguna");
+		const result = await pendingFetch;
+
+		// 4. Simpan hasil ke localStorage cache
+		if (typeof window !== "undefined") {
+			try {
+				const entry: CacheEntry = { data: result, timestamp: Date.now() };
+				localStorage.setItem(YUMI_USERS_CACHE_KEY, JSON.stringify(entry));
+			} catch {
+				// Abaikan error tulis cache (misal storage penuh)
+			}
+		}
+
+		return result;
+	} finally {
+		pendingFetch = null;
 	}
 }
 

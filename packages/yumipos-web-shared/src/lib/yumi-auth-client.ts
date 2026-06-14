@@ -186,51 +186,102 @@ async function fetchPublicUsersViaRestApi() {
 	return mapPublicUsers(data ?? []);
 }
 
-export async function listPublicYumiUsers() {
-	try {
-		const supabase = createClient();
-		const { data, error } = await supabase
-			.from("pos_users_public")
-			.select("_id,name,slug,username,initial,hasFace,isActive,roleName")
-			.eq("isActive", true)
-			.order("name", { ascending: true });
+const YUMI_USERS_CACHE_KEY = "yumi_users_cache";
+const YUMI_USERS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-		if (error) {
-			throw new Error(error.message || "Gagal memuat daftar pengguna");
+const inFlightPromises = new Map<string, Promise<YumiPublicUser[]>>();
+
+export async function listPublicYumiUsers({ forceRefresh }: { forceRefresh?: boolean } = {}) {
+	// Check localStorage cache first (skip if forceRefresh)
+	if (!forceRefresh && typeof window !== "undefined") {
+		try {
+			const cached = localStorage.getItem(YUMI_USERS_CACHE_KEY);
+			if (cached) {
+				const { data, timestamp } = JSON.parse(cached);
+				if (Date.now() - timestamp < YUMI_USERS_CACHE_TTL) {
+					return data as YumiPublicUser[];
+				}
+			}
+		} catch {
+			// Ignore parse errors, refetch
 		}
-
-		const publicUsers = mapPublicUsers((data ?? []) as PublicUserRow[]);
-
-		if (publicUsers.length > 0) {
-			return publicUsers;
-		}
-	} catch (viewError) {
-		console.warn(
-			"[yumi-auth] listPublicUsers via pos_users_public failed, falling back to edge function",
-			viewError
-		);
 	}
 
-	try {
-		const restUsers = await fetchPublicUsersViaRestApi();
-		if (restUsers.length > 0) {
-			return restUsers;
-		}
-	} catch (restError) {
-		console.warn("[yumi-auth] listPublicUsers via REST API failed", restError);
+	// Dedup concurrent fetch — if a fetch is already in-flight, reuse the promise
+	const dedupKey = "listPublicYumiUsers";
+	const existing = inFlightPromises.get(dedupKey);
+	if (existing) {
+		return existing;
 	}
 
+	const promise = (async (): Promise<YumiPublicUser[]> => {
+		try {
+			const supabase = createClient();
+			const { data, error } = await supabase
+				.from("pos_users_public")
+				.select("_id,name,slug,username,initial,hasFace,isActive,roleName")
+				.eq("isActive", true)
+				.order("name", { ascending: true });
+
+			if (error) {
+				throw new Error(error.message || "Gagal memuat daftar pengguna");
+			}
+
+			const publicUsers = mapPublicUsers((data ?? []) as PublicUserRow[]);
+
+			if (publicUsers.length > 0) {
+				return publicUsers;
+			}
+		} catch (viewError) {
+			console.warn(
+				"[yumi-auth] listPublicUsers via pos_users_public failed, falling back to edge function",
+				viewError
+			);
+		}
+
+		try {
+			const restUsers = await fetchPublicUsersViaRestApi();
+			if (restUsers.length > 0) {
+				return restUsers;
+			}
+		} catch (restError) {
+			console.warn("[yumi-auth] listPublicUsers via REST API failed", restError);
+		}
+
+		try {
+			const data = await invokeAuth<{ users: YumiPublicUser[] }>({
+				action: "listPublicUsers",
+			});
+			return (data.users ?? []).filter((user) => {
+				if (!user?._id || !user?.name) return false;
+				return String(user.name).trim().toLowerCase() !== "admin";
+			});
+		} catch (invokeError) {
+			console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
+			throw new Error("Gagal memuat daftar pengguna");
+		}
+	})();
+
+	inFlightPromises.set(dedupKey, promise);
+
 	try {
-		const data = await invokeAuth<{ users: YumiPublicUser[] }>({
-			action: "listPublicUsers",
-		});
-		return (data.users ?? []).filter((user) => {
-			if (!user?._id || !user?.name) return false;
-			return String(user.name).trim().toLowerCase() !== "admin";
-		});
-	} catch (invokeError) {
-		console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
-		throw new Error("Gagal memuat daftar pengguna");
+		const result = await promise;
+
+		// Cache result in localStorage
+		if (typeof window !== "undefined") {
+			try {
+				localStorage.setItem(
+					YUMI_USERS_CACHE_KEY,
+					JSON.stringify({ data: result, timestamp: Date.now() })
+				);
+			} catch {
+				// localStorage full or unavailable — ignore
+			}
+		}
+
+		return result;
+	} finally {
+		inFlightPromises.delete(dedupKey);
 	}
 }
 

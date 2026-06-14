@@ -186,7 +186,41 @@ async function fetchPublicUsersViaRestApi() {
 	return mapPublicUsers(data ?? []);
 }
 
-export async function listPublicYumiUsers() {
+const CACHE_KEY = "yumi_users_cache";
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+let inflightFetch: Promise<YumiPublicUser[]> | null = null;
+
+function getCachedUsers(): YumiPublicUser[] | null {
+	if (typeof window === "undefined") return null;
+	try {
+		const raw = localStorage.getItem(CACHE_KEY);
+		if (!raw) return null;
+		const parsed = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object") return null;
+		if (Date.now() > parsed.expiresAt) {
+			localStorage.removeItem(CACHE_KEY);
+			return null;
+		}
+		return parsed.data as YumiPublicUser[];
+	} catch {
+		return null;
+	}
+}
+
+function setCachedUsers(users: YumiPublicUser[]): void {
+	if (typeof window === "undefined") return;
+	try {
+		localStorage.setItem(
+			CACHE_KEY,
+			JSON.stringify({ data: users, expiresAt: Date.now() + CACHE_TTL })
+		);
+	} catch {
+		// Storage full or unavailable — silently ignore
+	}
+}
+
+async function fetchUsersFromAllSources(): Promise<YumiPublicUser[]> {
 	try {
 		const supabase = createClient();
 		const { data, error } = await supabase
@@ -232,6 +266,28 @@ export async function listPublicYumiUsers() {
 		console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
 		throw new Error("Gagal memuat daftar pengguna");
 	}
+}
+
+export async function listPublicYumiUsers(
+	{ forceRefresh }: { forceRefresh?: boolean } = {}
+): Promise<YumiPublicUser[]> {
+	if (!forceRefresh) {
+		const cached = getCachedUsers();
+		if (cached) return cached;
+	}
+
+	if (inflightFetch) return inflightFetch;
+
+	inflightFetch = fetchUsersFromAllSources()
+		.then((users) => {
+			setCachedUsers(users);
+			return users;
+		})
+		.finally(() => {
+			inflightFetch = null;
+		});
+
+	return inflightFetch;
 }
 
 export async function loginWithYumiPin(userId: string, pin: string) {
