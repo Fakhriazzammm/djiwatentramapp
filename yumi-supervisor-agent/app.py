@@ -755,7 +755,7 @@ async def _handle_callback(update: Update, context):
 
 # ── Order polling ────────────────────────────────────────────────
 
-_CURSOR_FILE = "/tmp/yumi_supervisor_cursor.txt"
+_CURSOR_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".yumi_supervisor_cursor.txt")
 
 def _load_supervisor_cursor() -> tuple[int, set[str]]:
     """Load last check timestamp and reported order numbers from file."""
@@ -764,23 +764,35 @@ def _load_supervisor_cursor() -> tuple[int, set[str]]:
             lines = [l.strip() for l in f if l.strip()]
         if lines:
             ts = int(lines[0])
-            nos = set(lines[1:])
-            return ts, nos
+            nos: set[str] = set()
+            csr_ts: int = 0
+            mode = "orders"  # 'orders' or 'csr'
+            for l in lines[1:]:
+                if l == "---":
+                    mode = "csr"
+                    continue
+                if mode == "orders":
+                    nos.add(l)
+                else:
+                    csr_ts = int(l)
+                    break
+            return ts, nos, csr_ts
     except (FileNotFoundError, ValueError, IndexError):
         pass
     # Default: look back 24 hours on first run
     ts = int((_now_wib() - timedelta(hours=24)).timestamp() * 1000)
-    return ts, set()
+    return ts, set(), 0
 
-def _save_supervisor_cursor(ts: int, nos: set[str]):
+def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0):
     """Persist cursor and reported order numbers."""
     with open(_CURSOR_FILE, "w") as f:
         f.write(f"{ts}\n")
         for no in sorted(nos):
             f.write(f"{no}\n")
+        f.write("---\n")
+        f.write(f"{csr_ts}\n")
 
-_last_order_check_ms, _reported_order_nos = _load_supervisor_cursor()
-_last_csr_check_ms: int = 0
+_last_order_check_ms, _reported_order_nos, _last_csr_check_ms = _load_supervisor_cursor()
 
 # ⏪ Lookback window — scan N menit ke belakang dari NOW (bukan dari cursor)
 # agar order yang baru berubah jadi paid/completed setelah cursor lewat tetap terdeteksi.
@@ -991,11 +1003,10 @@ async def _check_new_orders(app):
     if not rows:
         # Advance cursor to now so we don't re-scan stale window
         _last_order_check_ms = now_ms
-        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos)
+        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
         return
 
     max_creation_time = _last_order_check_ms
-
     for row in rows:
         order_no = row.get("orderNumber", "???")
         ts = int(float(row.get("_creationTime") or 0))
@@ -1107,10 +1118,9 @@ async def _check_new_orders(app):
         _reported_order_nos.add(order_no)
 
     _last_order_check_ms = max_creation_time
-    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos)
+    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
 
 # ── Customer service request polling ──
-# ─────────────────────────────────────────
 
 async def _check_new_csr(app):
     """Poll for new customer service requests from customer page."""
@@ -1147,6 +1157,7 @@ async def _check_new_csr(app):
 
     if not rows:
         _last_csr_check_ms = now_ms
+        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
         return
 
     max_ts = _last_csr_check_ms
@@ -1277,6 +1288,7 @@ async def _check_new_csr(app):
             logger.warning("Failed to send CSR notification: %s", e)
 
     _last_csr_check_ms = max_ts
+    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
 
 
 # ── Main (sync, uses post_init for async setup) ──────────────────

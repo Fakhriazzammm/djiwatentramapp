@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8" />
+<style>
+  body { margin: 0; padding: 0; background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .page { width: 400px; background: #fff; margin: 0 auto; overflow: hidden; padding: 0 0 12px 0; }
+  .hdr { background: linear-gradient(135deg,#059669,#10b981); padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .hdr-title { font-size: 14px; font-weight: 800; color: #fff; }
+  .section { font-size: 7px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 1.2px; }
+  .sec-green { font-size: 7px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 1.2px; }
+  .sep { height: 1px; background: #e5e7eb; margin: 0 16px; }
+  .lbl { font-size: 7px; color: #6b7280; }
+  .val { font-size: 8px; font-weight: 700; color: #1f2937; }
+  .valG { font-size: 8px; font-weight: 700; color: #059669; }
+  .valR { font-size: 8px; font-weight: 700; color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 2px 16px; }
+  .tr { text-align: right; }
+</style></head>
+<body><div class="page">
+  <div class="hdr">
+    <div style="width:26px;height:26px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#059669;">DT</div>
+    <div style="flex:1;"><div class="hdr-title">Djiwa Tentram</div><div style="font-size:6.5px;color:rgba(255,255,255,0.7);">Kopi &amp; Eatery</div></div>
+    <div style="text-align:right;"><div style="font-size:11px;font-weight:800;color:#fff;">LAPORAN SHIFT</div><div style="font-size:6px;color:rgba(255,255,255,0.7);">12 Juni 2026</div></div>
+  </div>
+
+  <table style="table-layout:fixed;">
+    <tr>
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;"><div style="font-size:5.5px;color:#9ca3af;">Kasir</div><div style="font-size:7.5px;font-weight:700;color:#1f2937;">Wiwit Ayuningtyas</div></td>
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;"><div style="font-size:5.5px;color:#9ca3af;">Shift</div><div style="font-size:7.5px;font-weight:700;color:#1f2937;">Shift Pagi</div></td>
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;"><div style="font-size:5.5px;color:#9ca3af;">Jam</div><div style="font-size:7.5px;font-weight:700;color:#1f2937;">07.26 - 14.27 WIB</div></td>
+      <td style="width:25%;border:1px solid #e5e7eb;padding:5px 4px;text-align:center;"><div style="font-size:5.5px;color:#9ca3af;">Hari</div><div style="font-size:7.5px;font-weight:700;color:#1f2937;">Jumat</div></td>
+    </tr>
+  </table>
+
+  <div style="padding:8px 16px 3px;"><div class="section">Tim Bertugas</div></div>
+  <div class="sep"></div>
+  <div style="padding:6px 16px;">
+    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:2px;"><span style="font-size:7px;font-weight:700;color:#059669;min-width:52px;">Barista</span><span style="font-size:7px;color:#374151;">Ayunda Putri</span></div>
+    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:2px;"><span style="font-size:7px;font-weight:700;color:#059669;min-width:52px;">Kitchen</span><span style="font-size:7px;color:#374151;">Yusrina Nur Adzhani, Dafina Sayyida</span></div>
+    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:2px;"><span style="font-size:7px;font-weight:700;color:#059669;min-width:52px;">Waitress</span><span style="font-size:7px;color:#374151;">Wiwit Ayuningtyas</span></div>
+  </div>
+
+  <div style="padding:8px 16px 3px;"><div class="section">Grafik Pendapatan</div></div>
+  <svg width="380" height="28" xmlns="http://www.w3.org/2000/svg" style="padding:4px 16px;">
+    <text x="2" y="10" font-size="6.5" fill="#6b7280" font-family="sans-serif">Tunai</text>
+    <rect x="70" y="2" width="165" height="14" rx="3" fill="#059669" opacity="0.85"/>
+    <text x="243" y="10" font-size="7" font-weight="700" fill="#1f2937" font-family="sans-serif">Rp 315.000</text>
+  </svg>
+  <svg width="380" height="18" xmlns="http://www.w3.org/2000/svg" style="padding:0px 16px 8px;">
+    <text x="2" y="10" font-size="6.5" fill="#6b7280" font-family="sans-serif">QRIS</text>
+    <rect x="70" y="2" width="200" height="14" rx="3" fill="#3b82f6" opacity="0.85"/>
+    <text x="278" y="10" font-size="7" font-weight="700" fill="#1f2937" font-family="sans-serif">Rp 383.000</text>
+  </svg>
+
+  <div style="padding:8px 16px 3px;"><div class="section">Ringkasan Sistem</div></div>
+  <div class="sep"></div>
+  <table>
+    <tr><td class="lbl">Modal Kasir</td><td class="tr val">Rp 150.000</td></tr>
+    <tr><td class="lbl">Penjualan Tunai</td><td class="tr valG">Rp 315.000</td></tr>
+    <tr><td class="lbl">Non-Tunai</td><td class="tr val">Rp 383.000</td></tr>
+    <tr><td style="padding:1.5px 28px;font-size:6.5px;color:#9ca3af;">QRIS</td><td style="padding:1.5px 16px;text-align:right;font-size:7px;font-weight:600;color:#6b7280;">Rp 383.000</td></tr>
+    <tr><td style="padding:3px 16px;font-size:7px;font-weight:700;color:#1f2937;border-top:1px dashed #e5e7eb;">Total Penjualan</td><td style="padding:3px 16px;text-align:right;border-top:1px dashed #e5e7eb;font-size:9px;font-weight:800;color:#059669;">Rp 698.000</td></tr>
+    <tr><td class="lbl">Pengeluaran</td><td class="tr valR">Rp 900.000</td></tr>
+    <tr><td class="lbl">Item Terjual</td><td class="tr val">8</td></tr>
+    <tr><td class="lbl" style="font-weight:700;border-top:1px dashed #e5e7eb;">Pendapatan Bersih</td><td class="tr" style="font-size:9px;font-weight:800;color:#dc2626;border-top:1px dashed #e5e7eb;">-Rp 202.000</td></tr>
+  </table>
+
+  <div style="padding:8px 16px 3px;"><div class="sec-green">Rekonsiliasi Laci</div></div>
+  <div class="sep"></div>
+  <table>
+    <tr><td class="lbl">Modal Kasir</td><td class="tr val">Rp 150.000</td></tr>
+    <tr><td class="lbl">Penjualan Tunai</td><td class="tr valG">Rp 315.000</td></tr>
+  </table>
+
+  <div style="margin:4px 16px 0;padding:4px 12px;background:#f0fdf4;border-radius:4px;display:flex;justify-content:space-between;">
+    <span style="font-size:8px;font-weight:700;color:#059669;">Total Uang Fisik</span>
+    <span style="font-size:9px;font-weight:800;color:#059669;">Rp 380.000</span>
+  </div>
+
+  <div style="margin:8px 16px 0;height:1px;background:#e5e7eb;"></div>
+
+  <div style="padding:8px 16px 3px;"><div class="sec-green">Selisih</div></div>
+  <div class="sep"></div>
+  <table>
+    <tr><td class="lbl">Penjualan Tunai</td><td class="tr val">Rp 315.000</td></tr>
+    <tr><td class="lbl">Uang Fisik</td><td class="tr valG">Rp 380.000</td></tr>
+  </table>
+  <div style="margin:4px 16px;padding:5px 12px;background:#f0fdf4;border-radius:5px;display:flex;justify-content:space-between;">
+    <span style="font-size:9px;font-weight:700;color:#059669;">Selisih</span>
+    <span style="font-size:10px;font-weight:800;color:#059669;">⬆ Naik Rp 65.000</span>
+  </div>
+
+  <div style="padding:8px 16px 4px;text-align:center;font-size:6px;color:#9ca3af;">Djiwa Tentram · Kopi &amp; Eatery · 12 Juni 2026</div>
+</div></body></html>

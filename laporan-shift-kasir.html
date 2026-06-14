@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Laporan Shift Kasir — Djiwa Tentram</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #f1f5f9;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    padding: 12px 8px;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 360px;
+    width: 100%;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+    overflow: hidden;
+    padding: 0 0 14px 0;
+  }
+
+  /* ── Header ── */
+  .hdr {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    padding: 14px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hdr-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #fff;
+    flex-shrink: 0;
+  }
+  .hdr-left { flex: 1; }
+  .hdr-title { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
+  .hdr-sub { font-size: 8px; color: rgba(255,255,255,.65); margin-top: 1px; }
+  .hdr-right { text-align: right; }
+  .hdr-badge {
+    display: inline-block;
+    background: rgba(255,255,255,.2);
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 7px; font-weight: 600; color: #fff;
+    letter-spacing: .3px; text-transform: uppercase;
+  }
+  .hdr-time { font-size: 8px; color: rgba(255,255,255,.7); margin-top: 3px; white-space: nowrap; }
+
+  .hdr-shift {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,.18);
+    padding: 3px 10px; border-radius: 12px;
+    font-size: 9px; font-weight: 700; color: #fff;
+    margin-top: 6px;
+  }
+  .hdr-shift-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #86efac;
+    display: inline-block;
+  }
+
+  /* ── Info Grid ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-collapse: collapse;
+  }
+  .info-cell {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    border-right: 1px solid #f3f4f6;
+  }
+  .info-cell:nth-child(even) { border-right: none; }
+  .info-cell:last-child, .info-cell:nth-last-child(2) { border-bottom: none; }
+  .info-label { font-size: 7px; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+  .info-value { font-size: 9px; font-weight: 700; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info-value-sm { font-size: 8px; }
+
+  /* ── Team per-role ── */
+  .team-section { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; }
+  .team-label { font-size: 7px; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .team-role { display: flex; align-items: baseline; gap: 4px; margin-bottom: 1px; }
+  .team-role-name { font-size: 7px; font-weight: 700; color: #059669; min-width: 44px; }
+  .team-role-members { font-size: 7px; color: #374151; }
+
+  /* ── Summary Badges ── */
+  .summary-row {
+    display: flex; gap: 6px; padding: 10px 12px;
+  }
+  .summary-card {
+    flex: 1; border-radius: 8px; padding: 8px 6px; text-align: center;
+  }
+  .summary-card .val { font-size: 13px; font-weight: 800; margin-top: 2px; white-space: nowrap; }
+  .summary-card .lbl { font-size: 6.5px; text-transform: uppercase; letter-spacing: .3px; opacity: .7; }
+
+  .sc-green { background: #f0fdf4; color: #059669; }
+  .sc-blue  { background: #eff6ff; color: #2563eb; }
+  .sc-red   { background: #fef2f2; color: #dc2626; }
+
+  /* ── Section Header ── */
+  .sec {
+    padding: 10px 12px 4px;
+    font-size: 7px; font-weight: 700; color: #6b7280;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .sec-green { color: #059669; }
+  .sep { height: 1px; background: #e5e7eb; margin: 0 12px; }
+
+  /* ── Revenue Table ── */
+  .rt { width: 100%; border-collapse: collapse; font-size: 8px; }
+  .rt td { padding: 3px 12px; }
+  .rt .l { color: #6b7280; }
+  .rt .r { text-align: right; font-weight: 700; color: #1f2937; white-space: nowrap; }
+  .rt .g { color: #059669; }
+  .rt .r { color: #dc2626; }
+  .rt .sub { padding-left: 24px; font-size: 7px; color: #9ca3af; }
+  .rt .sub-r { text-align: right; padding-right: 12px; font-size: 7px; font-weight: 600; color: #6b7280; white-space: nowrap; }
+  .rt .tree { color: #d1d5db; font-size: 6px; }
+  .rt .total { border-top: 1px dashed #e5e7eb; font-weight: 800; font-size: 9px; color: #059669; }
+  .rt .net { border-top: 1px dashed #e5e7eb; font-weight: 800; font-size: 9px; }
+
+  /* ── Chart ── */
+  .chart-wrap {
+    padding: 6px 12px 10px;
+    display: flex; justify-content: center;
+  }
+  .chart-wrap canvas { max-height: 110px; max-width: 220px; }
+
+  /* ── Reconciliation (Yellow Box) ── */
+  .recon-box {
+    margin: 6px 12px; padding: 10px 12px;
+    background: #fffbeb; border-radius: 8px;
+    border: 1px solid #fde68a;
+  }
+  .recon-title { font-size: 7px; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .recon-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 8px; }
+  .recon-row .l { color: #92400e; }
+  .recon-row .r { font-weight: 700; color: #1f2937; white-space: nowrap; }
+  .recon-row .g { font-weight: 700; color: #059669; }
+  .recon-divider { height: 1px; background: #fde68a; margin: 4px 0; }
+  .recon-selisih {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 6px; padding-top: 6px;
+    border-top: 2px solid #f59e0b;
+  }
+  .recon-selisih .l { font-size: 9px; font-weight: 700; color: #92400e; }
+  .recon-selisih .r {
+    font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px;
+  }
+  .badge-pas {
+    display: inline-block; background: #059669; color: #fff;
+    font-size: 7px; font-weight: 700; padding: 1px 8px; border-radius: 8px;
+    text-transform: uppercase;
+  }
+  .badge-more {
+    display: inline-block; background: #f59e0b; color: #fff;
+    font-size: 7px; font-weight: 700; padding: 1px 8px; border-radius: 8px;
+  }
+  .badge-less {
+    display: inline-block; background: #dc2626; color: #fff;
+    font-size: 7px; font-weight: 700; padding: 1px 8px; border-radius: 8px;
+  }
+
+  /* ── Pecahan Grid ── */
+  .pecahan-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px;
+    padding: 4px 12px 8px;
+  }
+  .pecahan-item {
+    display: flex; justify-content: space-between; font-size: 7px;
+    padding: 2px 0;
+  }
+  .pecahan-item .nom { color: #6b7280; white-space: nowrap; }
+  .pecahan-item .sub { color: #9ca3af; }
+  .pecahan-item .tot { font-weight: 700; color: #1f2937; white-space: nowrap; }
+
+  /* ── Footer ── */
+  .footer {
+    padding: 10px 12px 0;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 6.5px; color: #9ca3af;
+  }
+  .footer-notes { font-style: italic; color: #6b7280; flex: 1; }
+  .footer-time { white-space: nowrap; text-align: right; }
+  .footer-divider { height: 1px; background: #e5e7eb; margin: 6px 12px 0; }
+
+  /* ── Utility ── */
+  .txt-green { color: #059669; }
+  .txt-red { color: #dc2626; }
+  .fw700 { font-weight: 700; }
+  .nowrap { white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ════ HEADER ════ -->
+  <div class="hdr">
+    <div class="hdr-logo">DT</div>
+    <div class="hdr-left">
+      <div class="hdr-title">Djiwa Tentram</div>
+      <div class="hdr-sub">Kopi &amp; Eatery</div>
+      <div class="hdr-shift"><span class="hdr-shift-dot"></span> Shift Pagi</div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-badge">Selesai</div>
+      <div class="hdr-time">Jumat, 12/06/2026</div>
+    </div>
+  </div>
+
+  <!-- ════ INFO GRID ════ -->
+  <div class="info-grid">
+    <div class="info-cell">
+      <div class="info-label">Kasir</div>
+      <div class="info-value">Wiwit Ayuningtyas</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Jam Kerja</div>
+      <div class="info-value info-value-sm">07:26 – 14:27 WIB</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Modal Awal</div>
+      <div class="info-value txt-green">Rp&nbsp;150.000</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Item Terjual</div>
+      <div class="info-value">8 item</div>
+    </div>
+  </div>
+
+  <!-- ════ TEAM ════ -->
+  <div class="team-section">
+    <div class="team-label">Tim Bertugas</div>
+    <div class="team-role">
+      <span class="team-role-name">Barista</span>
+      <span class="team-role-members">Ayunda Putri</span>
+    </div>
+    <div class="team-role">
+      <span class="team-role-name">Kitchen</span>
+      <span class="team-role-members">Yusrina Nur Adzhani, Dafina Sayyida</span>
+    </div>
+    <div class="team-role">
+      <span class="team-role-name">Waitress</span>
+      <span class="team-role-members">Wiwit Ayuningtyas</span>
+    </div>
+  </div>
+
+  <!-- ════ SUMMARY BADGES ════ -->
+  <div class="summary-row">
+    <div class="summary-card sc-green">
+      <div class="lbl">Penjualan</div>
+      <div class="val">Rp&nbsp;698.000</div>
+    </div>
+    <div class="summary-card sc-blue">
+      <div class="lbl">Item</div>
+      <div class="val">8</div>
+    </div>
+    <div class="summary-card sc-red">
+      <div class="lbl">Biaya</div>
+      <div class="val">Rp&nbsp;900.000</div>
+    </div>
+  </div>
+
+  <!-- ════ RINGKASAN PENDAPATAN ════ -->
+  <div class="sec">Ringkasan Pendapatan</div>
+  <div class="sep"></div>
+  <table class="rt">
+    <tr><td class="l">Modal Kasir</td><td class="r" style="color:#6b7280;">Rp&nbsp;150.000</td></tr>
+    <tr><td class="l g">Penjualan Tunai</td><td class="r g">Rp&nbsp;315.000</td></tr>
+    <tr><td class="l">Non-Tunai</td><td class="r">Rp&nbsp;383.000</td></tr>
+    <tr><td class="sub"><span class="tree">├ </span>QRIS</td><td class="sub-r">Rp&nbsp;383.000</td></tr>
+    <tr><td class="sub"><span class="tree">├ </span>EDC</td><td class="sub-r">Rp&nbsp;0</td></tr>
+    <tr><td class="sub"><span class="tree">└ </span>Transfer</td><td class="sub-r">Rp&nbsp;0</td></tr>
+    <tr><td class="l total">Total Penjualan</td><td class="r total">Rp&nbsp;698.000</td></tr>
+    <tr><td class="l" style="color:#dc2626;">Diskon</td><td class="r" style="color:#dc2626;">−Rp&nbsp;90.000</td></tr>
+    <tr><td class="l" style="color:#dc2626;">Pengeluaran</td><td class="r" style="color:#dc2626;">−Rp&nbsp;900.000</td></tr>
+    <tr><td class="l net" style="color:#dc2626;">Pendapatan Bersih</td><td class="r net" style="color:#dc2626;">−Rp&nbsp;202.000</td></tr>
+  </table>
+
+  <!-- ════ DOUGHNUT CHART ════ -->
+  <div class="sec">Distribusi Pembayaran</div>
+  <div class="sep"></div>
+  <div class="chart-wrap">
+    <canvas id="paymentChart"></canvas>
+  </div>
+
+  <!-- ════ REKONSILIASI LACI ════ -->
+  <div class="sec sec-green">Rekonsiliasi Laci</div>
+  <div class="sep"></div>
+  <div class="recon-box">
+    <div class="recon-title">🏦 Perhitungan Kas</div>
+    <div class="recon-row">
+      <span class="l">Modal Kasir</span>
+      <span class="r">Rp&nbsp;150.000</span>
+    </div>
+    <div class="recon-row">
+      <span class="l">Penjualan Tunai</span>
+      <span class="r g">Rp&nbsp;315.000</span>
+    </div>
+    <div class="recon-divider"></div>
+    <div class="recon-row">
+      <span class="l">Sistem</span>
+      <span class="r">Rp&nbsp;465.000</span>
+    </div>
+    <div class="recon-row">
+      <span class="l">Uang Fisik (Laci)</span>
+      <span class="r g">Rp&nbsp;380.000</span>
+    </div>
+    <div class="recon-selisih">
+      <span class="l">Selisih</span>
+      <span class="r" style="color:#059669;">
+        <span class="badge-pas">Pas</span> Rp&nbsp;0
+      </span>
+    </div>
+  </div>
+
+  <!-- ════ PECAHAN UANG ════ -->
+  <div class="sec sec-green">Pecahan Uang</div>
+  <div class="sep"></div>
+  <div class="pecahan-grid">
+    <div class="pecahan-item"><span class="nom">Rp100.000</span><span class="sub">×1</span><span class="tot">Rp100.000</span></div>
+    <div class="pecahan-item"><span class="nom">Rp50.000</span><span class="sub">×5</span><span class="tot">Rp250.000</span></div>
+    <div class="pecahan-item"><span class="nom">Rp20.000</span><span class="sub">×1</span><span class="tot">Rp20.000</span></div>
+    <div class="pecahan-item"><span class="nom">Rp10.000</span><span class="sub">×1</span><span class="tot">Rp10.000</span></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;padding:4px 12px;background:#f0fdf4;border-radius:6px;margin:2px 12px 0;font-size:8px;font-weight:700;color:#059669;white-space:nowrap;">
+    <span>Total Uang Fisik</span>
+    <span>Rp&nbsp;380.000</span>
+  </div>
+
+  <!-- ════ FOOTER ════ -->
+  <div class="footer-divider"></div>
+  <div class="footer">
+    <div class="footer-notes"><em>Catatan: —</em></div>
+    <div class="footer-time">12/06/2026 14:27 WIB</div>
+  </div>
+
+</div><!-- /.page -->
+
+<script>
+  // ── Doughnut Chart ──
+  (function(){
+    const ctx = document.getElementById('paymentChart');
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Tunai', 'QRIS'],
+        datasets: [{
+          data: [315000, 383000],
+          backgroundColor: ['#059669', '#3b82f6'],
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '65%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 8,
+              boxHeight: 8,
+              padding: 6,
+              font: { size: 7, family: "'Inter', system-ui, sans-serif" },
+              color: '#374151',
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                var total = ctx.dataset.data.reduce(function(a,b){return a+b},0);
+                var pct = ((ctx.parsed / total) * 100).toFixed(1);
+                return 'Rp ' + ctx.parsed.toLocaleString('id-ID') + ' (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  })();
+</script>
+</body>
+</html>

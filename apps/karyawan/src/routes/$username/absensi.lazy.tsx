@@ -81,6 +81,13 @@ function KaryawanAttendancePage() {
     }
   }, [isAuthenticated, authUser, allStaff]);
 
+  // ── Sync isCurrentlyIn when currentlyIn data loads/changes ──
+  useEffect(() => {
+    if (!selectedUser?.id || !currentlyIn) return;
+    const isIn = currentlyIn.some((s: any) => s._id === selectedUser.id);
+    setSelectedUser((prev) => (prev && prev.isCurrentlyIn !== isIn ? { ...prev, isCurrentlyIn: isIn } : prev));
+  }, [selectedUser?.id, currentlyIn]);
+
   // ── Today's schedule for selected user ──
   const [userTodaySchedule, setUserTodaySchedule] = useState<{ shift_name: string; start_time: string; end_time: string } | null>(null);
   useEffect(() => {
