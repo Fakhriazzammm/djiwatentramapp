@@ -2338,10 +2338,17 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 	// Auto-fill cashier name from current authenticated user
 	useEffect(() => {
-		if (currentUser?.name && !cashierName) {
-			setCashierName(currentUser.name);
+		if (currentUser?.name) {
+			setCashierName((prev) => prev || currentUser.name);
 		}
 	}, [currentUser?.name]);
+
+	// Fallback: jika user tidak ada name, ambil dari staffUsers pertama
+	useEffect(() => {
+		if (!cashierName && staffUsers.length > 0) {
+			setCashierName(staffUsers[0].name);
+		}
+	}, [cashierName, staffUsers]);
 
 	// Auto-fill default starting cash and first predefined shift
 	useEffect(() => {
