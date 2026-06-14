@@ -27,6 +27,7 @@ function RootContent() {
 			location.pathname === "/admin/login" ||
 			location.pathname === "/karyawan/login" ||
 			location.pathname === "/kasir/login" ||
+			location.pathname === "/menu" ||
 			location.pathname === "/register" ||
 			location.pathname.startsWith("/register/selesai/");
 		
