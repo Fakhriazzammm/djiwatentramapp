@@ -27,3 +27,10 @@ DROP POLICY IF EXISTS shopper_reviews_select_public ON shopper_reviews;
 CREATE POLICY shopper_reviews_select_public ON shopper_reviews
   FOR SELECT
   USING (true);
+
+-- Step 6: Re-add FK constraint with ON DELETE SET NULL
+-- (so Supabase schema cache can still resolve shopper_reviews -> profiles join)
+ALTER TABLE shopper_reviews
+  ADD CONSTRAINT shopper_reviews_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES profiles(id)
+  ON DELETE SET NULL;
