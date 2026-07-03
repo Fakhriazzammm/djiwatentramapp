@@ -3975,22 +3975,27 @@ export function useHybridRecordExpenseIntake() {
 					transactionId = existingId;
 				} else {
 					// ── Create via API Gateway ──────────────────────
-					const gwResult = await invokeEdgeFunction(
-						"record-financial-transaction",
-						{
-							tx_type: type,
-							amount,
-							category,
-							description: effectiveDescription || undefined,
-							merchant: tx?.merchant || undefined,
-							tx_date: date,
-							payment_method: tx?.paymentMethod || "cash",
-							status: tx?.status || "completed",
-							source_fingerprint: args?.sourceFingerprint || undefined,
-							metadata,
-						}
-					);
-					const gwSourceId = gwResult?.sourceId;
+					let gwSourceId: string | undefined;
+					try {
+						const gwResult = await invokeEdgeFunction(
+							"record-financial-transaction",
+							{
+								tx_type: type,
+								amount,
+								category,
+								description: effectiveDescription || undefined,
+								merchant: tx?.merchant || undefined,
+								tx_date: date,
+								payment_method: tx?.paymentMethod || "cash",
+								status: tx?.status || "completed",
+								source_fingerprint: args?.sourceFingerprint || undefined,
+								metadata,
+							}
+						);
+						gwSourceId = (gwResult as any)?.sourceId as string | undefined;
+					} catch (gwError) {
+						console.warn("[supabase-hybrid:write-record-expense-intake] gateway error, falling back to direct insert", gwError);
+					}
 					if (!gwSourceId) {
 						console.warn("[supabase-hybrid:write-record-expense-intake] gateway failed");
 						const directSourceId =
