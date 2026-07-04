@@ -95,9 +95,6 @@ function getStatusTransitionLabel(status: string): string | null {
 	return null;
 }
 
-// ─── Relative Path ──────────────────────────────────────────────────
-const relativePath = "/admin/operational-team/payroll/slip" as any;
-
 // ─── Main Component ─────────────────────────────────────────────────
 function PayslipAdminPage() {
 	// ── Data Hooks ──────────────────────────────────────────────────
@@ -853,6 +850,6 @@ function PayslipAdminPage() {
 	);
 }
 
-export const Route = createLazyFileRoute(relativePath)({
+export const Route = createLazyFileRoute("/admin/operational-team/payroll/slip")({
 	component: PayslipAdminPage,
 });
