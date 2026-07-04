@@ -1717,7 +1717,7 @@ export async function fetchShiftStatus() {
 	} as ShiftStatusRecord;
 }
 
-import { getWibDayRange as _getWibDayRange, formatDayLabelWIB, WIB_OFFSET_MS } from "@/lib/wib-utils";
+import { getWibDayRange as _getWibDayRange, formatDayLabelWIB, WIB_OFFSET_MS, DAY_MS } from "@/lib/wib-utils";
 const getWibDayRange = _getWibDayRange;
 
 function formatWibDayLabel(referenceTime: number) {
