@@ -114,6 +114,7 @@ def _cat_icon(cat_key: str) -> str:
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_EDGE_URL = os.getenv("SUPABASE_EDGE_URL", "").rstrip("/") or SUPABASE_URL
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 SUMOPOD_API_KEY = os.getenv("SUMOPOD_API_KEY", "")
@@ -384,7 +385,7 @@ async def _save_ocr_receipt_to_db(ocr_data: dict) -> dict:
         "creation_time": now_ms,
     }
 
-    url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+    url = f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai"
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
             url,
@@ -608,7 +609,7 @@ async def _ask_yumi_ai(
     action: str = "yumiChat",
 ) -> str:
     """Forward chat to Supabase Edge Function yumi-ai with full context."""
-    url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+    url = f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai"
     history = _get_session(user_id)
 
     # Add user message to session
@@ -642,7 +643,7 @@ async def _ask_yumi_ai(
 
 async def _ask_yumi_ai_readonly(user_id: int, message: str) -> str:
     """Ask the existing Yumi AI endpoint without saving chat memory from the bot."""
-    url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+    url = f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai"
     context_hint = await _gather_context()
     scoped_message = (
         "Mode Hermes project-scoped read-only. Jawab hanya berdasarkan konteks "
@@ -833,7 +834,7 @@ async def _handle_ocr_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 )
             return
         # Send to yumi-ai Edge Function (which has pos schema access)
-        url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+        url = f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai"
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
                 url,
@@ -1460,7 +1461,7 @@ async def cmd_briefing_hari_ini(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
         date_str = _today_wib_str()
-        url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+        url = f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai"
         payload = {
             "action": "generateBusinessBriefing",
             "localHour": _now_wib().hour,

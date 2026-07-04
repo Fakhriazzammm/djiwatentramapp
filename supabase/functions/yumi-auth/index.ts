@@ -1,6 +1,3 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import bcrypt from "npm:bcryptjs@2.4.3";
 
@@ -22,12 +19,122 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 	throw new Error("Missing Supabase function secrets");
 }
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-	auth: {
-		autoRefreshToken: false,
-		persistSession: false,
-	},
-});
+// Raw fetch helper — avoids supabase-js Authorization header bug in edge-runtime
+async function restQuery(table: string, select: string, options?: { eq?: { column: string; value: unknown }; order?: { column: string; ascending: boolean }; limit?: number }) {
+	const params = new URLSearchParams();
+	params.set("select", select);
+	if (options?.order) params.set("order", `${options.order.column}.${options.order.ascending ? "asc" : "desc"}`);
+	if (options?.limit) params.set("limit", String(options.limit));
+	if (options?.eq) params.set(`${options.eq.column}`, `eq.${options.eq.value}`);
+
+	const url = `${supabaseUrl}/rest/v1/${table}?${params.toString()}`;
+	const res = await fetch(url, {
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Accept": "application/json",
+		},
+	});
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(`DB query failed (${res.status}): ${errBody}`);
+	}
+	return res.json();
+}
+
+// Raw RPC call (for PostgreSQL functions)
+async function restRpc(fn: string, body: JsonRecord) {
+	const url = `${supabaseUrl}/rest/v1/rpc/${fn}`;
+	const res = await fetch(url, {
+		method: "POST",
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(`RPC failed (${res.status}): ${errBody}`);
+	}
+	return res.json();
+}
+
+// Raw INSERT — POST to /rest/v1/<table>
+async function restInsert(table: string, body: Record<string, unknown>) {
+	const url = `${supabaseUrl}/rest/v1/${table}`;
+	const res = await fetch(url, {
+		method: "POST",
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+			"Prefer": "return=minimal",
+		},
+		body: JSON.stringify(body),
+	});
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(`DB insert failed (${res.status}): ${errBody}`);
+	}
+}
+
+// Raw UPDATE — PATCH to /rest/v1/<table> with eq filter
+async function restUpdate(table: string, body: Record<string, unknown>, eqColumn: string, eqValue: string) {
+	const url = `${supabaseUrl}/rest/v1/${table}?${eqColumn}=eq.${encodeURIComponent(eqValue)}`;
+	const res = await fetch(url, {
+		method: "PATCH",
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+			"Prefer": "return=minimal",
+		},
+		body: JSON.stringify(body),
+	});
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(`DB update failed (${res.status}): ${errBody}`);
+	}
+}
+
+// Raw DELETE — DELETE from /rest/v1/<table> with eq filter
+async function restDelete(table: string, eqColumn: string, eqValue: string) {
+	const url = `${supabaseUrl}/rest/v1/${table}?${eqColumn}=eq.${encodeURIComponent(eqValue)}`;
+	const res = await fetch(url, {
+		method: "DELETE",
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Accept": "application/json",
+		},
+	});
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(`DB delete failed (${res.status}): ${errBody}`);
+	}
+}
+
+// GoTrue Admin API — POST to http://auth:8081/admin/<path>
+const gotrueUrl = Deno.env.get("SUPABASE_URL")?.replace("kong:8000", "auth:8081") ?? "http://auth:8081";
+async function gotrueAdmin(path: string, body?: Record<string, unknown>): Promise<Record<string, unknown>> {
+	const url = `${gotrueUrl}/admin/${path}`;
+	const res = await fetch(url, {
+		method: body ? "POST" : "GET",
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Authorization": `Bearer ${supabaseServiceRoleKey}`,
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+		},
+		body: body ? JSON.stringify(body) : undefined,
+	});
+	if (!res.ok) {
+		const errBody = await res.text();
+		throw new Error(`GoTrue admin failed (${res.status}): ${errBody}`);
+	}
+	const text = await res.text();
+	return text ? JSON.parse(text) : {};
+}
 
 function json(body: JsonRecord, status = 200) {
 	return new Response(JSON.stringify({ success: true, ...body }), {
@@ -83,23 +190,20 @@ async function sha256Hex(input: string): Promise<string> {
 }
 
 async function listPublicUsers() {
-	const { data, error } = await supabaseAdmin
-		.from("yumi_users")
-		.select("source_id, name, slug, face_descriptor, is_active")
-		.eq("is_active", true)
-		.order("name", { ascending: true });
-
-	if (error) throw error;
+	const data = await restQuery("yumi_users", "source_id, name, slug, face_descriptor, is_active", {
+		eq: { column: "is_active", value: true },
+		order: { column: "name", ascending: true },
+	});
 
 	return {
-		users: (data ?? []).map((user) => {
+		users: (data ?? []).map((user: Record<string, unknown>) => {
 			const name = toTrimmedString(user.name);
 			return {
 				_id: user.source_id,
 				name,
 				slug: toTrimmedString(user.slug) || undefined,
 				initial: name.charAt(0).toUpperCase(),
-				hasFace: Array.isArray(user.face_descriptor) && user.face_descriptor.length > 0,
+				hasFace: Array.isArray(user.face_descriptor) && (user.face_descriptor as unknown[]).length > 0,
 			};
 		}),
 	};
@@ -112,15 +216,11 @@ async function loginWithPin(payload: JsonRecord) {
 	if (!userId) throw new Error("User ID wajib diisi");
 	if (!/^\d{6}$/.test(pin)) throw new Error("PIN harus terdiri dari 6 digit angka");
 
-	const { data: user, error } = await supabaseAdmin
-		.from("yumi_users")
-		.select(
-			"source_id, name, slug, home_pin_hash, home_pin_fingerprint, is_active, role_source_id, face_descriptor, raw"
-		)
-		.eq("source_id", userId)
-		.maybeSingle();
-
-	if (error) throw error;
+	const users = await restQuery("yumi_users", "source_id, name, slug, home_pin_hash, home_pin_fingerprint, is_active, role_source_id, face_descriptor, raw", {
+		eq: { column: "source_id", value: userId },
+		limit: 1,
+	});
+	const user = users?.[0];
 	if (!user || !user.is_active) {
 		throw new Error("User tidak ditemukan atau nonaktif");
 	}
@@ -138,39 +238,33 @@ async function loginWithPin(payload: JsonRecord) {
 	const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
 	const token = buildSessionToken();
 
-	const { error: sessionError } = await supabaseAdmin.from("yumi_sessions").insert({
+	await restInsert("yumi_sessions", {
 		token,
 		user_source_id: user.source_id,
 		expires_at: new Date(expiresAt).toISOString(),
 	});
 
-	if (sessionError) throw sessionError;
-
-	await supabaseAdmin
-		.from("yumi_users")
-		.update({ last_login_at: new Date().toISOString() })
-		.eq("source_id", user.source_id);
+	await restUpdate("yumi_users", { last_login_at: new Date().toISOString() }, "source_id", user.source_id);
 
 	// --- START: Supabase Auth dual session ---
 	let supabaseAccessToken: string | null = null;
 	let supabaseRefreshToken: string | null = null;
 
 	try {
-		const { data: userRecord } = await supabaseAdmin
-			.from("yumi_users")
-			.select("auth_user_id")
-			.eq("source_id", user.source_id)
-			.single();
+		const authUsers = await restQuery("yumi_users", "auth_user_id", {
+			eq: { column: "source_id", value: user.source_id },
+			limit: 1,
+		});
+		const userRecord = authUsers?.[0];
 
 		if (userRecord?.auth_user_id) {
-			const { data: sessionData, error: sessionError } =
-				await supabaseAdmin.auth.admin.createSession({
-					user_id: userRecord.auth_user_id,
-				});
+			const sessionData = await gotrueAdmin("sessions", {
+				user_id: userRecord.auth_user_id,
+			}) as any;
 
-			if (!sessionError && sessionData) {
-				supabaseAccessToken = sessionData.access_token;
-				supabaseRefreshToken = sessionData.refresh_token;
+			if (sessionData) {
+				supabaseAccessToken = sessionData.access_token ?? null;
+				supabaseRefreshToken = sessionData.refresh_token ?? null;
 			}
 		}
 	} catch (sessionErr) {
@@ -187,7 +281,7 @@ async function loginWithPin(payload: JsonRecord) {
 			name: toTrimmedString(user.name),
 			slug: toTrimmedString(user.slug) || undefined,
 			hasFace:
-				Array.isArray(user.face_descriptor) && user.face_descriptor.length > 0,
+				Array.isArray(user.face_descriptor) && (user.face_descriptor as unknown[]).length > 0,
 			requiresPinChange: Boolean(user.raw?.requiresPinChange),
 		},
 		supabaseAccessToken,
@@ -201,49 +295,40 @@ async function validateSession(payload: JsonRecord) {
 		return { session: null };
 	}
 
-	const { data: session, error: sessionError } = await supabaseAdmin
-		.from("yumi_sessions")
-		.select("token, user_source_id, expires_at")
-		.eq("token", token)
-		.maybeSingle();
+	const sessions = await restQuery("yumi_sessions", "token, user_source_id, expires_at", {
+		eq: { column: "token", value: token },
+		limit: 1,
+	});
+	const session = sessions?.[0];
 
-	if (sessionError) throw sessionError;
 	if (!session) {
 		return { session: null };
 	}
 
 	const expiresAt = new Date(session.expires_at).getTime();
 	if (Date.now() > expiresAt) {
-		await supabaseAdmin.from("yumi_sessions").delete().eq("token", token);
+		await restDelete("yumi_sessions", "token", token);
 		return { session: null };
 	}
 
-	const { data: user, error: userError } = await supabaseAdmin
-		.from("yumi_users")
-		.select(
-			"source_id, username, name, slug, role_source_id, is_active, face_descriptor, raw"
-		)
-		.eq("source_id", session.user_source_id)
-		.maybeSingle();
+	const users = await restQuery("yumi_users", "source_id, username, name, slug, role_source_id, is_active, face_descriptor, raw", {
+		eq: { column: "source_id", value: session.user_source_id },
+		limit: 1,
+	});
+	const user = users?.[0];
 
-	if (userError) throw userError;
 	if (!user || !user.is_active) {
-		await supabaseAdmin.from("yumi_sessions").delete().eq("token", token);
+		await restDelete("yumi_sessions", "token", token);
 		return { session: null };
 	}
 
-	const { data: role, error: roleError } = await supabaseAdmin
-		.from("yumi_roles")
-		.select("source_id, name, permissions")
-		.eq("source_id", user.role_source_id)
-		.maybeSingle();
+	const roles = await restQuery("yumi_roles", "source_id, name, permissions", {
+		eq: { column: "source_id", value: user.role_source_id },
+		limit: 1,
+	});
+	const role = roles?.[0];
 
-	if (roleError) throw roleError;
-
-	await supabaseAdmin
-		.from("yumi_sessions")
-		.update({ last_seen_at: new Date().toISOString() })
-		.eq("token", token);
+	await restUpdate("yumi_sessions", { last_seen_at: new Date().toISOString() }, "token", token);
 
 	return {
 		session: {
@@ -254,7 +339,7 @@ async function validateSession(payload: JsonRecord) {
 				slug: toTrimmedString(user.slug) || undefined,
 				roleId: user.role_source_id,
 				hasFace:
-					Array.isArray(user.face_descriptor) && user.face_descriptor.length > 0,
+					Array.isArray(user.face_descriptor) && (user.face_descriptor as unknown[]).length > 0,
 				requiresPinChange: Boolean(user.raw?.requiresPinChange),
 			},
 			role: {
@@ -271,35 +356,30 @@ async function logoutSession(payload: JsonRecord) {
 	const token = normalizeToken(payload.token);
 	if (!token) return { success: true };
 
-	const { error } = await supabaseAdmin.from("yumi_sessions").delete().eq("token", token);
-	if (error) throw error;
+	await restDelete("yumi_sessions", "token", token);
 
 	return { success: true };
 }
 
-async function handleUpdateEmail(
-	supabaseAdmin: ReturnType<typeof createClient>,
-	payload: JsonRecord
-) {
+async function handleUpdateEmail(payload: JsonRecord) {
 	const userId = normalizeUserId(payload.userId);
 	const newEmail = normalizeToken(payload.newEmail);
 	if (!userId || !newEmail) throw new Error("userId dan newEmail wajib");
 	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) throw new Error("Format email tidak valid");
 
-	const { data: user } = await supabaseAdmin
-		.from("yumi_users")
-		.select("auth_user_id")
-		.eq("source_id", userId)
-		.single();
+	const users = await restQuery("yumi_users", "auth_user_id", {
+		eq: { column: "source_id", value: userId },
+		limit: 1,
+	});
+	const user = users?.[0];
 	if (!user?.auth_user_id) throw new Error("User tidak memiliki Supabase Auth account");
 
-	const { error } = await supabaseAdmin.auth.admin.updateUserById(user.auth_user_id, {
+	await gotrueAdmin(`users/${user.auth_user_id}`, {
 		email: newEmail,
 		email_confirm: true,
 	});
-	if (error) throw error;
 
-	await supabaseAdmin.from("yumi_users").update({ email: newEmail }).eq("source_id", userId);
+	await restUpdate("yumi_users", { email: newEmail }, "source_id", userId);
 
 	return { success: true };
 }
@@ -312,41 +392,38 @@ async function handleCreateAuthUser(payload: JsonRecord) {
 
 	if (!sourceId || !email || !password) throw new Error("sourceId, email, password wajib");
 
-	const { data, error } = await supabaseAdmin.auth.admin.createUser({
+	const data = await gotrueAdmin("users", {
 		email,
 		password,
 		email_confirm: true,
 		user_metadata: { source_id: sourceId, name },
-	});
-	if (error) throw error;
+	}) as any;
 
 	// Update yumi_users.auth_user_id
-	await supabaseAdmin.from("yumi_users").update({ auth_user_id: data.user.id }).eq("source_id", sourceId);
+	await restUpdate("yumi_users", { auth_user_id: data.user?.id ?? data.id }, "source_id", sourceId);
 
-	return { authUserId: data.user.id };
+	return { authUserId: data.user?.id ?? data.id };
 }
 
 async function handleBackfillAuthUsers() {
-	const { data: users, error } = await supabaseAdmin
-		.from("yumi_users")
-		.select("source_id, username, name, raw")
-		.is("auth_user_id", null);
+	const users = await restQuery("yumi_users", "source_id, username, name, raw", {
+		eq: { column: "auth_user_id", value: null },
+	});
 
-	if (error) throw error;
 	if (!users?.length) return { message: "Semua user sudah punya auth_user_id", count: 0 };
 
 	// Fetch all auth.users and map by user_metadata->source_id
-	const { data: allAuthUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-	if (authError) throw authError;
+	const allAuthUsers = await gotrueAdmin("users") as any;
+	const authUsersList = allAuthUsers?.users ?? [];
 
 	const authBySourceId = new Map<string, string>();
-	for (const au of allAuthUsers.users || []) {
+	for (const au of authUsersList) {
 		const sid = au.user_metadata?.source_id;
 		if (sid) authBySourceId.set(sid, au.id);
 	}
 
 	let created = 0;
-	let details_list: string[] = [];
+	const details_list: string[] = [];
 
 	for (const user of users) {
 		try {
@@ -356,10 +433,7 @@ async function handleBackfillAuthUsers() {
 				continue;
 			}
 
-			await supabaseAdmin
-				.from("yumi_users")
-				.update({ auth_user_id: authUserId })
-				.eq("source_id", user.source_id);
+			await restUpdate("yumi_users", { auth_user_id: authUserId }, "source_id", user.source_id);
 
 			created++;
 			details_list.push(`${user.username}: mapped`);
@@ -390,7 +464,7 @@ Deno.serve(async (req) => {
 			case "logoutSession":
 				return json(await logoutSession(body));
 			case "updateEmail":
-				return json(await handleUpdateEmail(supabaseAdmin, body));
+				return json(await handleUpdateEmail(body));
 			case "backfillAuthUsers":
 				return json(await handleBackfillAuthUsers());
 			case "createAuthUser":

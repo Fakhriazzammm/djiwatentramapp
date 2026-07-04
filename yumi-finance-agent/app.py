@@ -42,6 +42,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 FINANCE_GROUP_ID = int(os.getenv("FINANCE_GROUP_ID", "-1003916990045"))
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_EDGE_URL = os.getenv("SUPABASE_EDGE_URL", "").rstrip("/") or SUPABASE_URL
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 SUPABASE_ACCESS_TOKEN = os.getenv("SUPABASE_ACCESS_TOKEN", "")
@@ -76,7 +77,7 @@ from analyzer import TransactionAnalyzer
 from local_ocr import local_vision_json
 # (no supplier import needed — moved to Yumi Purchasing)
 
-finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
+finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai")
 inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ACCESS_TOKEN)
 orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY, SUPABASE_URL, SUPABASE_KEY)
 memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
@@ -1979,7 +1980,7 @@ async def _write_accounting_entries(
             "tx_type": tx_type,
         }
 
-        url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+        url = f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai"
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
                 url,
@@ -3909,7 +3910,6 @@ async def _handle_batch_analyze(request):
             FROM pos.financial_transactions ft
             LEFT JOIN pos.transaction_analytics ta ON ft.source_id = ta.source_id
             WHERE ta.source_id IS NULL
-              AND ft.tx_date >= {start_of_day}
             LIMIT 50
         """)
 

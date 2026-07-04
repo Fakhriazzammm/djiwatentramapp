@@ -189,7 +189,9 @@ Berikan analisis JSON sesuai format yang ditentukan."""
         all_anomalies = rule_anomalies + ai_result.get("anomalies", [])
         confidence = ai_result.get("confidence", 0.5)
         suggested_category = ai_result.get("suggested_category")
-        suggested_conf = ai_result.get("suggested_category_confidence", 0)
+        suggested_conf = ai_result.get("suggested_category_confidence")
+        if suggested_conf is None:
+            suggested_conf = 0
         insight = ai_result.get("insight_summary", "Transaction analyzed")
 
         # 5. Save to database — use dollar-quoting for safe JSONB embedding

@@ -14,7 +14,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const PROJECT_REF = "xaemykhjpkgypqqpfdcb";
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY");
@@ -41,26 +40,22 @@ function fail(code: string, message: string, status = 400) {
 
 // ─── Helpers ────────────────────────────────────────
 
-async function queryRaw(supabase: ReturnType<typeof createClient>, sql: string) {
-  // Execute SQL via Management API (Postgres query endpoint)
-  const url = `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`;
-  const mgmtToken = Deno.env.get("MGMT_ACCESS_TOKEN") ?? "";
-  if (!mgmtToken) {
-    throw new Error("MGMT_ACCESS_TOKEN not configured");
+// Direct PostgreSQL connection — replaces Supabase Management API for self-host
+async function queryRaw(sql: string) {
+  const dbUrl = Deno.env.get("SUPABASE_DB_URL") ?? "";
+  if (!dbUrl) {
+    throw new Error("SUPABASE_DB_URL not configured");
   }
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${mgmtToken}`,
-    },
-    body: JSON.stringify({ query: sql }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Management API error (${res.status}): ${text.slice(0, 200)}`);
+  // Use pg via npm for self-host, fallback to supabase-js for cloud
+  const { default: { Client } } = await import("npm:pg@8.11.3");
+  const client = new Client(dbUrl);
+  try {
+    await client.connect();
+    const result = await client.query(sql);
+    return result.rows ?? [];
+  } finally {
+    await client.end().catch(() => {});
   }
-  return res.json();
 }
 
 // Check if exec_sql RPC exists; if not, create it on first invocation
@@ -91,7 +86,7 @@ async function handleAutoDetect(supabase: ReturnType<typeof createClient>) {
     WHERE period_name = '${periodName}'
     LIMIT 1;
   `;
-  const existingPeriods: any[] = await queryRaw(supabase, findPeriodSql);
+  const existingPeriods: any[] = await queryRaw(findPeriodSql);
   let periodId: string | undefined;
 
   if (!existingPeriods || existingPeriods.length === 0) {
@@ -101,7 +96,7 @@ async function handleAutoDetect(supabase: ReturnType<typeof createClient>) {
       VALUES ('${periodName}', '${startDateStr}', '${endDateStr}', 'open')
       RETURNING id;
     `;
-    const created: any[] = await queryRaw(supabase, createSql);
+    const created: any[] = await queryRaw(createSql);
     periodId = created?.[0]?.id;
     if (!periodId) throw new Error("Failed to create payroll period");
 
@@ -126,7 +121,7 @@ async function handleAutoDetect(supabase: ReturnType<typeof createClient>) {
     ORDER BY run_date DESC
     LIMIT 1;
   `;
-  const existingRuns: any[] = await queryRaw(supabase, findRunSql);
+  const existingRuns: any[] = await queryRaw(findRunSql);
 
   if (!existingRuns || existingRuns.length === 0) {
     // No runs yet — generate one
@@ -263,7 +258,7 @@ async function generatePayrollRun(supabase: ReturnType<typeof createClient>, per
     WHERE id = (SELECT run_id FROM new_run)
     RETURNING *;
   `;
-  const result: any[] = await queryRaw(supabase, sql);
+  const result: any[] = await queryRaw(sql);
   return result?.[0] ?? null;
 }
 
@@ -299,12 +294,12 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
       slug = EXCLUDED.slug,
       updated_at = now();
   `;
-  const result = await queryRaw(supabase, sql);
+  const result = await queryRaw(sql);
 
   // ── Post-process: apply bonus from shift memberBonuses ──
   try {
     // Get period for this run
-    const periodData: any[] = await queryRaw(supabase, `
+    const periodData: any[] = await queryRaw(`
       SELECT pp.period_name, pp.start_date, pp.end_date
       FROM pos.payroll_periods pp
       JOIN pos.payroll_runs pr ON pr.payroll_period_id = pp.id
@@ -316,7 +311,7 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
       const endTs = new Date(periodData[0].end_date).getTime() + 86400000;
 
       // Get all shifts in this period that have stored memberBonuses
-      const shiftsWithBonus: any[] = await queryRaw(supabase, `
+      const shiftsWithBonus: any[] = await queryRaw(`
         SELECT source_id, shift_name, start_time, team_members,
                raw->'memberBonuses' AS member_bonuses
         FROM pos.shifts
@@ -355,7 +350,7 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
         }
 
         // Update each payslip with bonus data
-        const runItems: any[] = await queryRaw(supabase, `
+        const runItems: any[] = await queryRaw(`
           SELECT id, user_name, gross_pay, net_pay, compensation_breakdown
           FROM pos.payroll_run_items
           WHERE payroll_run_id = '${runId}'
@@ -381,7 +376,7 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
           const newGross = (item.gross_pay ?? 0) + bonusInfo.total;
           const newNet = (item.net_pay ?? 0) + bonusInfo.total;
 
-          await queryRaw(supabase, `
+          await queryRaw(`
             UPDATE pos.payslips
             SET
               breakdown = '${JSON.stringify(breakdown).replace(/'/g, "''")}'::jsonb,
@@ -418,7 +413,7 @@ async function handleUpdatePayslipStatus(supabase: ReturnType<typeof createClien
     WHERE id = '${payslipId}'
     RETURNING *;
   `;
-  const result: any[] = await queryRaw(supabase, sql);
+  const result: any[] = await queryRaw(sql);
   return result?.[0] ?? null;
 }
 
@@ -432,7 +427,7 @@ async function handleSaveShiftBonuses(supabase: ReturnType<typeof createClient>,
     WHERE source_id = '${shiftId}'
     RETURNING source_id;
   `;
-  return queryRaw(supabase, sql);
+  return queryRaw(sql);
 }
 
 async function handleUpdateRunItem(supabase: ReturnType<typeof createClient>, payload: Record<string, unknown>) {
@@ -445,7 +440,7 @@ async function handleUpdateRunItem(supabase: ReturnType<typeof createClient>, pa
     WHERE id = '${runItemId}'
     RETURNING *;
   `;
-  return queryRaw(supabase, sql);
+  return queryRaw(sql);
 }
 
 async function handleSyncPayslipFromRunItem(supabase: ReturnType<typeof createClient>, payload: Record<string, unknown>) {
@@ -464,7 +459,7 @@ async function handleSyncPayslipFromRunItem(supabase: ReturnType<typeof createCl
     WHERE id = '${payslipId}'
     RETURNING *;
   `;
-  return queryRaw(supabase, sql);
+  return queryRaw(sql);
 }
 
 async function handleApproveRun(supabase: ReturnType<typeof createClient>, payload: Record<string, unknown>) {
@@ -484,13 +479,13 @@ async function handleApproveRun(supabase: ReturnType<typeof createClient>, paylo
     WHERE id = '${runId}'
     RETURNING *;
   `;
-  return queryRaw(supabase, sql);
+  return queryRaw(sql);
 }
 
 async function handleRawSql(supabase: ReturnType<typeof createClient>, payload: Record<string, unknown>) {
   const { query } = payload as { query: string };
   if (!query) throw new Error("Missing query");
-  return queryRaw(supabase, query);
+  return queryRaw(query);
 }
 
 // ─── Main Handler ────────────────────────────────────

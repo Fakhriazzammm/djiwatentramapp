@@ -18,6 +18,15 @@ SURL = environ.get('SUPABASE_URL', '')
 SKEY = environ.get('SUPABASE_KEY', '')
 SROLE = environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
 
+# Ambil key dari runtime env, bukan hardcode palsu
+SUMOPOD_KEY = environ.get('SUMOPOD_API_KEY', '')
+SUMOPOD_URL = environ.get('SUMOPOD_BASE_URL', 'http://127.0.0.1:20128/v1')
+SUMOPOD_VISION = environ.get('SUMOPOD_VISION_MODEL', 'ag/gemini-3-flash')
+SUMOPOD_TEXT = environ.get('SUMOPOD_TEXT_MODEL', 'ag/gemini-3-flash')
+NINEROUTER_URL = environ.get('NINEROUTER_BASE_URL', 'http://127.0.0.1:20128/v1')
+NINEROUTER_VISION = environ.get('NINEROUTER_VISION_MODEL', 'ag/gemini-3-flash')
+NINEROUTER_TEXT = environ.get('NINEROUTER_TEXT_MODEL', 'ds/deepseek-v4-flash')
+
 env_content = f"""TELEGRAM_BOT_TOKEN={TOKEN}
 FINANCE_GROUP_ID={GROUP}
 
@@ -25,14 +34,22 @@ SUPABASE_URL={SURL}
 SUPABASE_KEY={SKEY}
 SUPABASE_SERVICE_ROLE_KEY={SROLE}
 
-# SumoPod API — AI chat (kimi-k2.6) & vision/OCR (gpt-4o-mini)
-SUMOPOD_API_KEY=sk-UfA-KXloOB3ZLHSQWxb0Cw
+# SumoPod API — AI chat & vision/OCR
+SUMOPOD_API_KEY={SUMOPOD_KEY}
+SUMOPOD_BASE_URL={SUMOPOD_URL}
+SUMOPOD_VISION_MODEL={SUMOPOD_VISION}
+SUMOPOD_TEXT_MODEL={SUMOPOD_TEXT}
+
+# Local 9Router
+NINEROUTER_BASE_URL={NINEROUTER_URL}
+NINEROUTER_VISION_MODEL={NINEROUTER_VISION}
+NINEROUTER_TEXT_MODEL={NINEROUTER_TEXT}
 """
 
 with open('/opt/djiwatentramapp/yumi-finance-agent/.env', 'w') as f:
     f.write(env_content)
 
-print("✅ .env written successfully")
+print("✅ .env written successfully (all keys from runtime)")
 print(f"  TOKEN len: {len(TOKEN)}")
 print(f"  SROLE len: {len(SROLE)}")
-print(f"  SUMOPOD_API_KEY: sk-UfA...")
+print(f"  SUMOPOD_API_KEY len: {len(SUMOPOD_KEY)}")

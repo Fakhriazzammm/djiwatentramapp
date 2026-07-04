@@ -270,9 +270,13 @@ PENTING:
             return {"success": False, "error": "Format URI gambar tidak valid."}
 
         model_candidates = []
-        for candidate in [model, TEXT_MODEL, VISION_MODEL]:
+        for candidate in [model, VISION_MODEL]:
             if candidate and candidate not in model_candidates:
                 model_candidates.append(candidate)
+        # Skip known text-only models that don't support vision
+        _no_vision_prefixes = ("ds/", "ag/claude", "sumopod/claude", "sumopod/deepseek")
+        model_candidates = [m for m in model_candidates
+                           if not any(m.startswith(p) for p in _no_vision_prefixes)]
 
         last_error: Exception | None = None
         import json

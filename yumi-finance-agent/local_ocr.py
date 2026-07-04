@@ -395,9 +395,9 @@ PENTING:
         model = os.getenv("NINEROUTER_TEXT_MODEL") or "ds/deepseek-v4-flash"
         payload["model"] = model
 
-        # Fix empty auth header — 9router doesn't need auth
-        if not headers.get("Authorization") or headers["Authorization"] in ("Bearer ", "Bearer"):
-            headers["Authorization"] = "Bearer skip"  # 9router ignores auth
+        # Fix auth header for 9router — always skip since 9router ignores auth
+        # (bearer *** or empty bearer would fail httpx validation)
+        headers["Authorization"] = "Bearer skip"  # 9router ignores auth
 
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
