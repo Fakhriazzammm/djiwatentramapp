@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "@tanstack/react-router";
-import { Home, Camera, History, User } from "lucide-react";
+import { Home, CalendarDays, Camera, Bell, User } from "lucide-react";
 
 type NavItem = {
 	label: string;
@@ -17,16 +17,22 @@ function makeItems(baseRoute: string): NavItem[] {
 			isActive: (path, br) => path === `${br}/beranda`,
 		},
 		{
+			label: "Jadwal",
+			icon: CalendarDays,
+			getRoute: () => "/jadwal",
+			isActive: (path, br) => path === `${br}/jadwal`,
+		},
+		{
 			label: "Absensi",
 			icon: Camera,
 			getRoute: () => "/absensi",
 			isActive: (path, br) => path === `${br}/absensi`,
 		},
 		{
-			label: "Log Absensi",
-			icon: History,
-			getRoute: () => "/jadwal",
-			isActive: (path, br) => path === `${br}/jadwal`,
+			label: "Notifikasi",
+			icon: Bell,
+			getRoute: () => "/notifikasi",
+			isActive: (path, br) => path === `${br}/notifikasi`,
 		},
 		{
 			label: "Profil",
@@ -41,13 +47,11 @@ export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const items = makeItems(baseRoute);
-
-	// Extract username from baseRoute (e.g. "/ikhsan" → "ikhsan")
 	const username = baseRoute.replace("/", "");
 
 	return (
-		<nav className="z-20 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md">
-			<div className="mx-auto flex max-w-2xl items-center justify-center gap-4 px-1 py-1">
+		<nav className="z-20 border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+			<div className="mx-auto flex max-w-2xl items-center justify-around px-1 py-1">
 				{items.map((item) => {
 					const Icon = item.icon;
 					const childRoute = item.getRoute(baseRoute);
@@ -61,26 +65,26 @@ export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 									params: { username },
 								})
 							}
-							className={`relative flex flex-col items-center gap-0.5 px-4 py-1.5 transition-all active:scale-95 ${
+							className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all duration-200 active:scale-95 ${
 								active
-									? "text-primary"
-									: "text-muted-foreground/50 hover:text-muted-foreground"
+									? "text-blue-600"
+									: "text-gray-400 hover:text-gray-600"
 							}`}
 						>
 							<Icon
-								className={`h-5 w-5 transition-all ${
-									active ? "drop-shadow-[0_0_5px rgba(37,99,235,0.3)]" : ""
+								className={`h-6 w-6 transition-all ${
+									active ? "drop-shadow-[0_0_5px_rgba(37,99,235,0.3)]" : ""
 								}`}
 							/>
 							<span
-								className={`text-[9px] font-bold uppercase tracking-wider ${
+								className={`text-[9px] font-bold uppercase tracking-wider leading-none ${
 									active ? "opacity-100" : "opacity-60"
 								}`}
 							>
 								{item.label}
 							</span>
 							{active && (
-								<div className="absolute -bottom-[1px] h-0.5 w-10 rounded-full bg-primary" />
+								<div className="absolute top-0 w-8 h-1 bg-blue-600 rounded-b-lg" />
 							)}
 						</button>
 					);

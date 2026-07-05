@@ -45,7 +45,7 @@ export function MenuGrid({ baseRoute }: MenuGridProps) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => handleClick(item)}
-          className="flex h-20 w-full flex-col items-center justify-center gap-1 rounded-xl border bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+          className="flex h-20 w-full flex-col items-center justify-center gap-0.5 rounded-2xl border border-gray-50 bg-white p-2 shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all hover:shadow-lg hover:border-gray-100"
         >
           <span className="text-2xl">{item.emoji}</span>
           <span className="text-center text-[10px] font-bold text-gray-700 leading-tight">
