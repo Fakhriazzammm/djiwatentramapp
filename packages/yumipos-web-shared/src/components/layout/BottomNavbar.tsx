@@ -51,7 +51,7 @@ export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 
 	return (
 		<nav className="z-20 border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-			<div className="mx-auto flex max-w-2xl items-center justify-around px-1 py-1">
+			<div className="mx-auto flex max-w-2xl px-1 py-1">
 				{items.map((item) => {
 					const Icon = item.icon;
 					const childRoute = item.getRoute(baseRoute);
@@ -65,7 +65,7 @@ export function BottomNavbar({ baseRoute }: { baseRoute: string }) {
 									params: { username },
 								})
 							}
-							className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all duration-200 active:scale-95 ${
+							className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-all duration-200 active:scale-95 ${
 								active
 									? "text-blue-600"
 									: "text-gray-400 hover:text-gray-600"
