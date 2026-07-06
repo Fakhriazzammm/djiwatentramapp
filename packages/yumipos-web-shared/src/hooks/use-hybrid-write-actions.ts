@@ -4761,7 +4761,7 @@ export function useHybridClockIn() {
 
 				const { data: user, error: userError } = await createClient()
 					.from("yumi_users")
-					.select("source_id,is_active,home_pin_fingerprint")
+					.select("source_id,is_active,home_pin_fingerprint,raw")
 					.eq("source_id", userId)
 					.maybeSingle();
 				if (userError) throw userError;
@@ -4776,6 +4776,13 @@ export function useHybridClockIn() {
 					) {
 						throw new Error("PIN tidak valid");
 					}
+				}
+				// Verify face if provided (same as clockOut)
+				if (args?.faceDescriptor && args.faceDescriptor.length > 0) {
+					await verifyAttendanceIdentity({
+						userId,
+						faceDescriptor: args.faceDescriptor,
+					});
 				}
 				const id = makeSourceId("attendance");
 				const timestamp = Date.now();

@@ -3,7 +3,6 @@ import { useHybridCurrentlyInStore, useHybridPublicUsers, useHybridSiteSettings 
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
-import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
 import { useHybridVerifyHomePin, useHybridClockIn, useHybridClockOut, useHybridEnrollFace, createClient } from "@yumipos/web-shared";
 import { useYumiAuth } from "@yumipos/web-shared";
 import { motion } from "framer-motion";
@@ -355,13 +354,6 @@ function KaryawanAttendancePage() {
             </div>
           </div>
 
-          {/* PersonalSchedule */}
-          {selectedUser && (
-            <div className="rounded-xl border bg-card/80 p-2">
-              <PersonalSchedule userId={selectedUser.id} userName={selectedUser.name} userRole={selectedUser.roleName} month={new Date().getMonth() + 1} year={new Date().getFullYear()} />
-            </div>
-          )}
-
           {/* Two action buttons */}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
@@ -495,8 +487,8 @@ function KaryawanAttendancePage() {
               <>
                 <FaceRecognition
                   mode="verify"
-                  onVerify={(d) => {
-                    if (!isClocking) handleClock(new Float32Array(d));
+                  onVerify={async (d) => {
+                    if (!isClocking) await handleClock(new Float32Array(d));
                   }}
                   onModelError={(msg) => {
                     setFaceError(msg || "Gagal memuat kamera");

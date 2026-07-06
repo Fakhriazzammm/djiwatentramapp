@@ -2,7 +2,8 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStaffProfile } from "../$username.lazy";
 import { useHybridStaffLogs } from "@yumipos/web-shared";
-import { History } from "lucide-react";
+import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
+import { History, CalendarDays } from "lucide-react";
 
 export const Route = createLazyFileRoute("/$username/jadwal")({
 	component: JadwalPage,
@@ -27,7 +28,20 @@ function JadwalPage() {
 
 	return (
 		<div className="space-y-4">
-			{/* Period Selector */}
+			{/* Kalender Jadwal Shift */}
+			{staff && (
+				<div className="space-y-2">
+					<div className="flex items-center gap-1.5 px-2">
+						<CalendarDays className="h-3 w-3 text-primary" />
+						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Jadwal Shift</span>
+					</div>
+					<div className="rounded-xl border bg-card/80 p-2">
+						<PersonalSchedule userId={staff._id} userName={staff.name} userRole={staff.roleName} month={new Date().getMonth() + 1} year={new Date().getFullYear()} />
+					</div>
+				</div>
+			)}
+
+			{/* Log Kehadiran */}
 			<div className="flex items-center justify-between gap-2 px-2">
 				<div className="flex items-center gap-1.5">
 					<History className="h-3 w-3 text-primary" />
@@ -55,7 +69,7 @@ function JadwalPage() {
 				</div>
 			</div>
 
-			{/* Log Kehadiran */}
+			{/* Log Kehadiran List */}
 			<div className="rounded-xl border bg-card overflow-hidden">
 				{!logs || logs.length === 0 ? (
 					<div className="p-8 text-center text-xs text-muted-foreground">
