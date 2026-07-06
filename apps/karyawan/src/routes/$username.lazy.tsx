@@ -294,7 +294,18 @@ function StaffProfileLayout() {
 			<div className="fixed inset-0 flex flex-col bg-background">
 				{/* Navigation Header */}
 				<header className="shrink-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
-					<div className="mx-auto flex max-w-2xl items-center justify-center">
+					<div className="mx-auto flex max-w-2xl items-center justify-between">
+						{/* Logo + brand */}
+						<div className="flex items-center gap-2">
+							<img
+								src="/logo-djiwa.png"
+								alt="Djiwa Tentram"
+								className="h-7 w-7 shrink-0 rounded-lg object-cover shadow-sm"
+							/>
+							<span className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+								Djiwa Tentram
+							</span>
+						</div>
 						<div className="flex items-center gap-2">
 							<ShieldCheck className={`h-4 w-4 ${isUnlocked ? "text-emerald-500" : "text-muted-foreground"}`} />
 							<span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
