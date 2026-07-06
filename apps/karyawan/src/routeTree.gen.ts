@@ -20,6 +20,7 @@ import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
 import { Route as UsernameIzinRouteImport } from './routes/$username/izin'
 import { Route as UsernameBerandaRouteImport } from './routes/$username/beranda'
 import { Route as UsernameAbsensiRouteImport } from './routes/$username/absensi'
+import { Route as UsernameLeaderboardRouteImport } from './routes/$username/leaderboard'
 
 const IndexLazyRouteImport = createFileRoute('/')()
 
@@ -87,6 +88,13 @@ const UsernameAbsensiRoute = UsernameAbsensiRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/absensi.lazy').then((d) => d.Route),
 )
+const UsernameLeaderboardRoute = UsernameLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/leaderboard.lazy').then((d) => d.Route),
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
@@ -96,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/$username/beranda': typeof UsernameBerandaRoute
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
+  '/$username/leaderboard': typeof UsernameLeaderboardRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/profil': typeof UsernameProfilRoute
   '/$username/': typeof UsernameIndexRoute
@@ -107,6 +116,7 @@ export interface FileRoutesByTo {
   '/$username/beranda': typeof UsernameBerandaRoute
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
+  '/$username/leaderboard': typeof UsernameLeaderboardRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/profil': typeof UsernameProfilRoute
   '/$username': typeof UsernameIndexRoute
@@ -120,6 +130,7 @@ export interface FileRoutesById {
   '/$username/beranda': typeof UsernameBerandaRoute
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
+  '/$username/leaderboard': typeof UsernameLeaderboardRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/profil': typeof UsernameProfilRoute
   '/$username/': typeof UsernameIndexRoute
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/$username/beranda'
     | '/$username/izin'
     | '/$username/jadwal'
+    | '/$username/leaderboard'
     | '/$username/notifikasi'
     | '/$username/profil'
     | '/$username/'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
     | '/$username/beranda'
     | '/$username/izin'
     | '/$username/jadwal'
+    | '/$username/leaderboard'
     | '/$username/notifikasi'
     | '/$username/profil'
     | '/$username'
@@ -157,6 +170,7 @@ export interface FileRouteTypes {
     | '/$username/beranda'
     | '/$username/izin'
     | '/$username/jadwal'
+    | '/$username/leaderboard'
     | '/$username/notifikasi'
     | '/$username/profil'
     | '/$username/'
@@ -240,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameAbsensiRouteImport
       parentRoute: typeof UsernameRoute
     }
+    '/$username/leaderboard': {
+      id: '/$username/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/$username/leaderboard'
+      preLoaderRoute: typeof UsernameLeaderboardRouteImport
+      parentRoute: typeof UsernameRoute
+    }
   }
 }
 
@@ -248,6 +269,7 @@ interface UsernameRouteChildren {
   UsernameBerandaRoute: typeof UsernameBerandaRoute
   UsernameIzinRoute: typeof UsernameIzinRoute
   UsernameJadwalRoute: typeof UsernameJadwalRoute
+  UsernameLeaderboardRoute: typeof UsernameLeaderboardRoute
   UsernameNotifikasiRoute: typeof UsernameNotifikasiRoute
   UsernameProfilRoute: typeof UsernameProfilRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
@@ -258,6 +280,7 @@ const UsernameRouteChildren: UsernameRouteChildren = {
   UsernameBerandaRoute: UsernameBerandaRoute,
   UsernameIzinRoute: UsernameIzinRoute,
   UsernameJadwalRoute: UsernameJadwalRoute,
+  UsernameLeaderboardRoute: UsernameLeaderboardRoute,
   UsernameNotifikasiRoute: UsernameNotifikasiRoute,
   UsernameProfilRoute: UsernameProfilRoute,
   UsernameIndexRoute: UsernameIndexRoute,

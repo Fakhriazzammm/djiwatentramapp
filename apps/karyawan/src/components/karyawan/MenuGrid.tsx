@@ -23,7 +23,7 @@ const menuItems: MenuItem[] = [
   { label: "Slip Gaji", emoji: "💰", menuId: "slip-gaji", route: "/$username/profil", action: "navigate" },
   { label: "Kontrak", emoji: "📄", menuId: "kontrak", route: "/$username/profil", action: "navigate" },
   { label: "Grup Telegram", emoji: "💬", menuId: "telegram", action: "external" },
-  { label: "Pusat Bantuan", emoji: "🆘", menuId: "bantuan", action: "external" },
+  { label: "Leaderboard Bonus", emoji: "🏆", menuId: "leaderboard", route: "/$username/leaderboard", action: "navigate" },
 ];
 
 export function MenuGrid({ baseRoute }: MenuGridProps) {
