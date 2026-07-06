@@ -220,14 +220,11 @@ function KaryawanAttendancePage() {
 
   useEffect(() => { requestLocation(); }, [requestLocation]);
 
-  // ── Preload face models on mount ──
+  // ── Preload face models on mount (no blocking UI if fails) ──
   useEffect(() => {
     let cancelled = false;
     preloadFaceModels().then((ok) => {
-      if (!cancelled) {
-        setFaceReady(ok);
-        if (!ok) setFaceError("Model wajah gagal dimuat");
-      }
+      if (!cancelled) setFaceReady(ok);
     });
     return () => { cancelled = true; };
   }, []);
@@ -358,17 +355,16 @@ function KaryawanAttendancePage() {
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               onClick={() => { setStep("face"); setFaceError(null); }}
-              disabled={!faceReady}
               className={`flex flex-col items-center gap-3 rounded-2xl border-2 p-5 transition-all active:scale-[0.97] ${
                 faceReady
                   ? "border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md cursor-pointer"
                   : faceError
-                  ? "border-red-200 bg-red-50 cursor-not-allowed opacity-60"
+                  ? "border-red-200 bg-red-50 opacity-60"
                   : "border-blue-100 bg-blue-50/50 cursor-wait opacity-50"
               }`}
             >
               <div className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${
-                faceReady ? "bg-blue-500 text-white" : faceError ? "bg-red-400 text-white" : "bg-blue-300 text-white"
+                faceReady ? "bg-blue-500 text-white" : faceError ? "bg-blue-400 text-white" : "bg-blue-300 text-white"
               }`}>
                 {!faceReady && !faceError ? (
                   <Loader2 className="h-7 w-7 animate-spin" />
@@ -378,10 +374,10 @@ function KaryawanAttendancePage() {
               </div>
               <div className="space-y-0.5 text-center">
                 <p className={`text-xs font-bold ${faceReady ? "text-blue-900" : faceError ? "text-red-900" : "text-blue-900/60"}`}>
-                  {faceReady ? "Absen dengan" : faceError ? "Tidak tersedia" : "Memuat..."}
+                  {faceReady ? "Absen dengan" : faceError ? "Coba Lagi" : "Memuat..."}
                 </p>
                 <p className={`text-sm font-bold uppercase tracking-wider ${faceReady ? "text-blue-700" : faceError ? "text-red-700" : "text-blue-700/60"}`}>
-                  {faceReady ? "Wajah" : faceError ? "Gunakan PIN" : "Kamera"}
+                  {faceReady ? "Wajah" : faceError ? "Wajah" : "Kamera"}
                 </p>
               </div>
             </button>
@@ -462,22 +458,9 @@ function KaryawanAttendancePage() {
                   Kembali
                 </Button>
               </div>
-            ) : faceError ? (
-              <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
-                  <Camera className="h-7 w-7" />
-                </div>
-                <p className="font-bold text-red-900 text-xs">KAMERA TIDAK TERSEDIA</p>
-                <p className="text-xs text-red-700">{faceError}</p>
-                <div className="flex gap-2 mt-1">
-                  <Button onClick={() => setStep("choose")} variant="outline" className="rounded-xl border-red-200 text-red-700 hover:bg-red-50 flex-1">
-                    Kembali
-                  </Button>
-                  <Button onClick={() => { setFaceError(null); }} variant="outline" className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 flex-1">
-                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Ulang
-                  </Button>
-                </div>
-              </div>
+            ) : false ? (
+              // Note: faceError inside FaceRecognition is handled by the component itself
+              <div />
             ) : isClocking ? (
               <div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-4 rounded-xl bg-muted">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -570,9 +553,9 @@ function KaryawanAttendancePage() {
           <div className="text-center">
             <button
               onClick={() => setStep("choose")}
-              className="text-[10px] font-bold text-muted-foreground/60 hover:text-muted-foreground transition-colors underline underline-offset-2"
+              className="text-[10px] font-bold text-muted-foreground/60 hover:text-primary transition-colors underline underline-offset-2"
             >
-              Batal
+              Kembali
             </button>
           </div>
         </motion.div>
@@ -584,78 +567,100 @@ function KaryawanAttendancePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto w-full max-w-sm space-y-4"
         >
-          <div className="space-y-4 text-center">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
-              <KeyRound className="h-6 w-6" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-bold tracking-tight">Masukkan PIN</h2>
-              <p className="text-xs text-muted-foreground">
-                {selectedUser?.isCurrentlyIn
-                  ? `Halo ${selectedUser.name}, masukkan PIN untuk keluar.`
-                  : `Halo ${selectedUser?.name}, masukkan PIN 6 digit untuk ${selectedUser?.isCurrentlyIn ? "keluar" : "masuk"}.`}
-              </p>
-            </div>
-            <form onSubmit={handlePinSubmit} className="space-y-4">
-              <Input
-                autoFocus
-                className="h-14 rounded-xl border-2 text-center text-xl font-bold tracking-[0.4em] transition-all focus:border-primary focus:ring-4 focus:ring-primary/5"
-                maxLength={6}
-                onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="••••••"
-                type="password"
-                value={pinCode}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant="outline" className="h-12 rounded-xl font-bold" onClick={() => setStep("choose")}>
-                  KEMBALI
-                </Button>
-                <Button className="h-12 rounded-xl font-bold" disabled={pinCode.length !== 6 || isVerifyingPin} type="submit">
-                  {isVerifyingPin ? <Loader2 className="h-5 w-5 animate-spin" /> : "LANJUT"}
-                </Button>
+          <div className="text-center space-y-2">
+            <div className="flex justify-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                <KeyRound className="h-7 w-7" />
               </div>
-            </form>
+            </div>
+            <h2 className="text-base font-bold">Masukkan PIN</h2>
+            <p className="text-[11px] font-semibold text-muted-foreground">
+              {selectedUser?.name} — {selectedUser?.isCurrentlyIn ? "Absen Keluar" : "Absen Masuk"}
+            </p>
           </div>
+
+          <form onSubmit={handlePinSubmit} className="space-y-4">
+            <div className="flex justify-center gap-2">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className={`flex h-12 w-9 items-center justify-center rounded-xl border-2 text-lg font-black transition-all ${
+                    pinCode.length > i
+                      ? "border-primary bg-primary/5 text-primary"
+                      : pinCode.length === i
+                      ? "border-primary/50 bg-primary/[0.02]"
+                      : "border-border bg-muted/30"
+                  }`}
+                >
+                  {pinCode.length > i ? "●" : pinCode.length === i ? "|" : ""}
+                </div>
+              ))}
+            </div>
+
+            {/* Numpad */}
+            <div className="grid grid-cols-3 gap-3 max-w-[240px] mx-auto">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "⌫"].map((key) => (
+                <button
+                  key={String(key)}
+                  type="button"
+                  disabled={key === ""}
+                  onClick={() => {
+                    if (key === "⌫") {
+                      setPinCode((prev) => prev.slice(0, -1));
+                    } else if (pinCode.length < 6) {
+                      setPinCode((prev) => prev + String(key));
+                    }
+                  }}
+                  className={`flex h-12 items-center justify-center rounded-xl font-bold text-base transition-all active:scale-90 ${
+                    key === ""
+                      ? "invisible"
+                      : key === "⌫"
+                      ? "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      : "bg-card border border-border hover:bg-muted/50 shadow-sm"
+                  }`}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex-1 h-10 rounded-xl text-[10px] font-bold"
+                onClick={() => setStep("choose")}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="flex-1 h-10 rounded-xl text-[10px] font-bold shadow-sm"
+                disabled={pinCode.length !== 6 || isVerifyingPin}
+              >
+                {isVerifyingPin ? <Loader2 className="h-4 w-4 animate-spin" /> : "KONFIRMASI"}
+              </Button>
+            </div>
+          </form>
         </motion.div>
 
       ) : step === "success" ? (
         <motion.div
           key="success"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto w-full max-w-sm"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center py-16 space-y-4"
         >
-          <div className="flex flex-col items-center space-y-5 text-center bg-card border border-border/50 rounded-2xl p-6 shadow-lg">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-            >
-              <UserCheck className="h-12 w-12" />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="space-y-3"
-            >
-              <div className={`rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] shadow-sm ${selectedUser?.isCurrentlyIn ? "bg-amber-100 text-amber-600 border border-amber-200" : "bg-emerald-100 text-emerald-600 border border-emerald-200"}`}>
-                {selectedUser?.isCurrentlyIn ? "Berhasil Absen Keluar" : "Berhasil Absen Masuk"}
-              </div>
-              <h2 className="text-2xl font-bold text-emerald-600">Berhasil!</h2>
-              <p className="text-sm font-semibold">{selectedUser?.isCurrentlyIn ? "Hati-hati di jalan!" : "Semangat bekerja!"}</p>
-              <p className="text-xs text-muted-foreground">{selectedUser?.name} — {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="flex items-center gap-2 rounded-xl border bg-muted/50 px-4 py-3 w-full"
-            >
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Mengalihkan ke Beranda...</p>
-            </motion.div>
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30">
+            <UserCheck className="h-10 w-10 text-white" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-lg font-black">Berhasil!</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {selectedUser?.isCurrentlyIn ? "Absen Keluar" : "Absen Masuk"} — {selectedUser?.name}
+            </p>
           </div>
         </motion.div>
       ) : null}
