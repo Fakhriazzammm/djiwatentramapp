@@ -157,8 +157,7 @@ function aggregateBonuses(shifts: ShiftRow[]): BonusEntry[] {
   }
 
   return [...memberMap.values()]
-    .sort((a, b) => b.totalBonus - a.totalBonus)
-    .slice(0, 15);
+    .sort((a, b) => b.totalBonus - a.totalBonus);
 }
 
 // ── Sub-components ────────────────────────────────────────────────────
@@ -247,13 +246,13 @@ function LeaderboardRow({ entry, rank, maxBonus, isMe }: {
   return (
     <motion.div
       variants={itemVariants}
-      className={`rounded-lg border p-2 transition-all cursor-pointer ${
+      className={`rounded-lg border p-2 transition-all cursor-pointer group ${
         isMe
           ? "border-primary/30 bg-primary/[0.04]"
           : top3
           ? "border-primary/10 bg-primary/[0.02]"
           : "border-border bg-card"
-      } hover:bg-muted/50`}
+      } hover:bg-muted/50 hover:border-primary/20`}
       onClick={() => setExpanded(!expanded)}
     >
       <div className="flex items-center gap-2">
@@ -272,6 +271,7 @@ function LeaderboardRow({ entry, rank, maxBonus, isMe }: {
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-bold text-foreground truncate leading-tight">
             {entry.name}
+            {isMe && <span className="ml-1 text-[8px] bg-primary/10 text-primary font-bold px-1 py-0.5 rounded">Kamu</span>}
           </p>
           <p className="text-[8px] text-muted-foreground truncate">{entry.roleName}</p>
         </div>
@@ -293,9 +293,10 @@ function LeaderboardRow({ entry, rank, maxBonus, isMe }: {
           </motion.p>
         </div>
 
-        <button className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+        <div className="shrink-0 flex items-center gap-1 text-muted-foreground group-hover:text-primary transition-colors">
+          <span className="text-[8px] hidden group-hover:inline text-primary/60">Detail</span>
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-        </button>
+        </div>
       </div>
 
       <div className="mt-1.5 w-full h-1 rounded-full bg-muted overflow-hidden">
@@ -487,11 +488,11 @@ function LeaderboardPage() {
             ))}
           </motion.div>
 
-          {/* Rank outside top 15 */}
+          {/* Rank outside leaderboard */}
           {currentUserRank < 0 && !loading && (
             <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center">
               <p className="text-[10px] font-medium text-muted-foreground">
-                Kamu belum masuk 15 besar bulan ini. Terus semangat! 💪
+                Kamu belum memiliki bonus bulan ini. Tetap semangat! 💪
               </p>
             </div>
           )}
