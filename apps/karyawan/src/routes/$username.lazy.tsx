@@ -56,7 +56,7 @@ function formatDateId(iso: string): string {
   return `${d} ${months[m - 1]}`;
 }
 
-function AttendanceReminder({ userId, userName }: { userId?: string; userName?: string }) {
+function AttendanceReminder({ userId, userName, slug }: { userId?: string; userName?: string; slug?: string }) {
   const [state, setState] = useState<"loading" | "none" | "show">("loading");
   const [missedDates, setMissedDates] = useState<string[]>([]);
   const navigate = useNavigate();
@@ -172,7 +172,7 @@ function AttendanceReminder({ userId, userName }: { userId?: string; userName?: 
               Data absensi ini memengaruhi penggajian. Silakan hubungi atasan jika ada kendala.
             </p>
             <button
-              onClick={() => navigate({ to: "/$username/absensi" as any, params: { username: userName! } })}
+              onClick={() => navigate({ to: "/$username/absensi" as any, params: { username: slug! } })}
               className="mt-2 rounded-lg bg-rose-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition-colors"
             >
               Buka Riwayat Absensi
@@ -307,7 +307,7 @@ function StaffProfileLayout() {
 				</div>
 
 				{/* Attendance check-in reminder */}
-				<AttendanceReminder userId={staff?._id ?? authUser?._id} userName={staff?.name ?? authUser?.name} />
+				<AttendanceReminder userId={staff?._id ?? authUser?._id} userName={staff?.name ?? authUser?.name} slug={username} />
 
 				{/* Scrollable content */}
 				<main className="flex-1 overflow-y-auto">
