@@ -1136,17 +1136,18 @@ function ProfilPage() {
 								<p className="text-[8px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">Tombol Cepat</p>
 								<div className="flex flex-wrap gap-1.5">
 									{[
-										{ label: "Absen Masuk", emoji: "✅" },
-										{ label: "Absen Keluar", emoji: "📤" },
-										{ label: "Status Saya", emoji: "📋" },
+										{ label: "Absen Masuk", emoji: "✅", action: "https://t.me/yumihrdbot?start=checkin" },
+										{ label: "Absen Keluar", emoji: "📤", action: "https://t.me/yumihrdbot?start=checkout" },
+										{ label: "Status Saya", emoji: "📋", action: "https://t.me/yumihrdbot?start=status" },
 									].map((btn) => (
-										<span
+										<button
 											key={btn.label}
-											className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary shadow-sm"
+											onClick={() => window.open(btn.action, "_blank")}
+											className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary shadow-sm hover:bg-primary/20 transition-colors cursor-pointer border-0"
 										>
 											<span>{btn.emoji}</span>
 											<span>{btn.label}</span>
-										</span>
+										</button>
 									))}
 								</div>
 							</div>
@@ -1185,10 +1186,21 @@ function ProfilPage() {
 								<p className="text-[9px] font-black uppercase tracking-wider text-amber-800 mb-1.5">Cara Hubungkan:</p>
 								<ol className="space-y-1 text-[11px] text-amber-900 list-decimal list-inside">
 									<li>Buka bot Telegram di bawah</li>
-									<li>Ketik <code className="rounded bg-amber-100 px-1 py-0.5 font-mono font-bold text-[10px]">/daftar {telegramCode || "DT-XXXX"}</code></li>
-									<li>Kirim perintah di atas untuk menghubungkan akun</li>
+									<li>Klik tombol <b>🔑 Daftar / Hubungkan</b> di bot</li>
+									<li>Masukkan kode: <code className="rounded bg-amber-100 px-1 py-0.5 font-mono font-bold text-[10px]">{telegramCode || "DT-XXXX"}</code></li>
 								</ol>
 							</div>
+							{telegramCode && (
+								<Button
+									variant="default"
+									size="sm"
+									className="w-full rounded-lg text-[10px] font-bold h-8 mb-3 bg-gradient-to-r from-sky-500 to-blue-600 text-white hover:from-sky-600 hover:to-blue-700 shadow-sm"
+									onClick={() => window.open("https://t.me/yumihrdbot", "_blank")}
+								>
+									<ExternalLink className="mr-1.5 h-3 w-3" />
+									Hubungkan Bot Telegram
+								</Button>
+							)}
 							<Button
 								variant="outline"
 								size="sm"

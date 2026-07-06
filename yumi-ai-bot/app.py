@@ -714,31 +714,29 @@ async def _reply_msg(update, context, text, **kwargs):
 
 
 def _reply_keyboard() -> InlineKeyboardMarkup:
-    """Quick action inline keyboard for /start and fallback."""
+    """Quick action inline keyboard (tombol, bukan slash command)."""
     return InlineKeyboardMarkup([
         [
+            InlineKeyboardButton("📊 Ringkasan", callback_data="ringkasan"),
+            InlineKeyboardButton("🔥 Top Produk", callback_data="top"),
+            InlineKeyboardButton("📅 Booking", callback_data="booking"),
+        ],
+        [
+            InlineKeyboardButton("🕒 Absensi", callback_data="absen"),
+            InlineKeyboardButton("📋 Briefing", callback_data="briefing"),
             InlineKeyboardButton("👤 Status Saya", callback_data="status_saya"),
         ],
         [
-            InlineKeyboardButton("📊 Ringkasan Hari Ini", callback_data="ringkasan"),
-            InlineKeyboardButton("🔥 Top Produk", callback_data="top"),
-        ],
-        [
-            InlineKeyboardButton("⚠️ Stok Menipis", callback_data="stok"),
-            InlineKeyboardButton("🕒 Absensi", callback_data="absen"),
-        ],
-        [
-            InlineKeyboardButton("📅 Booking Aktif", callback_data="booking"),
-            InlineKeyboardButton("📋 Briefing", callback_data="briefing"),
+            InlineKeyboardButton("⚠️ Stok", callback_data="stok"),
+            InlineKeyboardButton("🛒 Marketlist", callback_data="marketlist"),
             InlineKeyboardButton("📝 Purchaselog", callback_data="purchaselog"),
         ],
         [
-            InlineKeyboardButton("🛒 Marketlist", callback_data="marketlist"),
             InlineKeyboardButton("📤 Export Jadwal", callback_data="export_jadwal"),
             InlineKeyboardButton("📥 Import Jadwal", callback_data="import_jadwal"),
         ],
         [
-            InlineKeyboardButton("💬 Tanya Bebas", callback_data="help"),
+            InlineKeyboardButton("💬 Tanya AI", callback_data="help"),
         ],
     ])
 
@@ -945,19 +943,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         greeting = ""
 
     await _reply_msg(update, context, 
-        f"{greeting}🤖⭐ Yumi General Manager Agents\n\n"
-        "Saya adalah General Manager AI untuk seluruh ekosistem Djiwa Tentram.\n\n"
-        "Saya bisa bantu:\n"
-        "• Ringkasan harian (omzet, produk, shift, pengeluaran)\n"
-        "• Top produk & stok menipis\n"
-        "• Absensi & booking aktif\n"
-        "• Briefing bisnis harian\n"
-        "• Analisis data lintas aplikasi (POS, Karyawan, Customer)\n"
-        "• 📸 Kirim foto struk untuk scan OCR\n"
-        "• Mengarahkan ke bot spesialis jika perlu\n\n"
-        "💡 Mau detail keuangan? Tanya @YummeFinanceAIbot\n"
-        "💡 Mau restok/supplier? Tanya @YumiPurchasingBot\n\n"
-        "Pilih menu atau ketik bebas 👇",
+        f"{greeting}🤖⭐ Yumi General Manager Agents\\n\\n"
+        "Saya asisten AI untuk ekosistem Djiwa Tentram.\\n"
+        "Gunakan tombol di bawah 👇 atau ketik bebas.\\n\\n"
+        "💡 Detail keuangan → @YummeFinanceAIbot\\n"
+        "💡 Restok/supplier → @YumiPurchasingBot\\n"
+        "💡 Absensi/HR  → @yumihrdbot",
         parse_mode="Markdown",
         reply_markup=_reply_keyboard(),
     )
