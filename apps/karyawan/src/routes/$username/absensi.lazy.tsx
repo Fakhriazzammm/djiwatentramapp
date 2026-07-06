@@ -52,7 +52,7 @@ function KaryawanAttendancePage() {
   };
 
   const openBotTelegram = useCallback(() => {
-    window.open("https://t.me/yumihrdagents", "_blank");
+    window.open("https://t.me/yumihrdbot", "_blank");
   }, []);
 
   return (

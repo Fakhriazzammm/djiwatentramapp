@@ -1154,7 +1154,7 @@ function ProfilPage() {
 								variant="outline"
 								size="sm"
 								className="w-full rounded-lg text-[10px] font-bold h-8"
-								onClick={() => window.open("https://t.me/yumihrdagents", "_blank")}
+								onClick={() => window.open("https://t.me/yumihrdbot", "_blank")}
 							>
 								<ExternalLink className="mr-1.5 h-3 w-3" />
 								Buka Bot Telegram
@@ -1193,7 +1193,7 @@ function ProfilPage() {
 								variant="outline"
 								size="sm"
 								className="w-full rounded-lg text-[10px] font-bold h-8"
-								onClick={() => window.open("https://t.me/yumihrdagents", "_blank")}
+								onClick={() => window.open("https://t.me/yumihrdbot", "_blank")}
 							>
 								<ExternalLink className="mr-1.5 h-3 w-3" />
 								Buka Bot Telegram
