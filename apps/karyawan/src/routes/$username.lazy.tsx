@@ -172,7 +172,7 @@ function AttendanceReminder({ userId, userName }: { userId?: string; userName?: 
               Data absensi ini memengaruhi penggajian. Silakan hubungi atasan jika ada kendala.
             </p>
             <button
-              onClick={() => navigate({ to: `/${userName}/absensi` as any, params: { userName: userName! } } as any)}
+              onClick={() => navigate({ to: "/$username/absensi" as any, params: { username: userName! } })}
               className="mt-2 rounded-lg bg-rose-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition-colors"
             >
               Buka Riwayat Absensi
