@@ -6,11 +6,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: [karyawan, pos, customer]
     steps:
-      - name: Deploy to VPS via SSH
+      - name: Deploy all apps to VPS
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: 43.129.54.5
@@ -19,4 +16,4 @@ jobs:
           script: |
             cd /opt/djiwatentramapp
             git pull origin main
-            bash scripts/deploy-vps.sh ${{ matrix.app }}
+            bash scripts/deploy-vps.sh all
