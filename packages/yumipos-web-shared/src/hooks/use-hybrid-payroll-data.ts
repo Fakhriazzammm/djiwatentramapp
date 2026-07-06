@@ -16,7 +16,7 @@ function useSupabaseValue<T>(
 }
 
 // ─── Constants ──────────────────────────────────────
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://supabase.43-129-54-5.nip.io";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://supabase.yumme.id";
 
 // ─── Edge Function Helper ────────────────────────────
 // Replaces the broken executeSql() which used Node.js fs/promises in the browser.

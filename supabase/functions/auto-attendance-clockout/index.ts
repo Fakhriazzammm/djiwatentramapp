@@ -97,12 +97,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const autoClockOutTime = getEndOfDayTimestamp(now);
-    const clockOutDate = new Date(autoClockOutTime + WIB_OFFSET_MS)
-      .toISOString()
-      .split("T")[0];
-    log(`Auto clock-out timestamp: ${autoClockOutTime} (date: ${clockOutDate})`);
-
     const sourceIds: string[] = [];
     const names: string[] = [];
 
@@ -125,12 +119,21 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Check if there's already an auto-check_out for today
-      const todayStart = new Date(
+      // 🛠 FIX: Use checkInTime to determine the correct day's end
+      // Previously used `now` — caused auto clock-out to always show today's date
+      // even when the user checked in yesterday (e.g. check-in 03/07 → timestamp 04/07 23:59)
+      const refTime = checkInTime > 0 ? checkInTime : now;
+      const userClockOutTime = getEndOfDayTimestamp(refTime);
+      const userClockOutDate = new Date(userClockOutTime + WIB_OFFSET_MS)
+        .toISOString()
+        .split("T")[0];
+
+      // Check if there's already an auto-check_out for the check-in day
+      const checkInDayStart = new Date(
         Date.UTC(
-          new Date(autoClockOutTime + WIB_OFFSET_MS).getUTCFullYear(),
-          new Date(autoClockOutTime + WIB_OFFSET_MS).getUTCMonth(),
-          new Date(autoClockOutTime + WIB_OFFSET_MS).getUTCDate(),
+          new Date(refTime + WIB_OFFSET_MS).getUTCFullYear(),
+          new Date(refTime + WIB_OFFSET_MS).getUTCMonth(),
+          new Date(refTime + WIB_OFFSET_MS).getUTCDate(),
           0, 0, 0, 0,
         ),
       ).getTime() - WIB_OFFSET_MS;
@@ -140,8 +143,8 @@ Deno.serve(async (req: Request) => {
         .select("_id")
         .eq("userId", userId)
         .eq("type", "check_out")
-        .gte("timestamp", todayStart)
-        .lt("timestamp", todayStart + 86400000)
+        .gte("timestamp", checkInDayStart)
+        .lt("timestamp", checkInDayStart + 86400000)
         .limit(1);
 
       if (checkError) {
@@ -151,13 +154,15 @@ Deno.serve(async (req: Request) => {
 
       if (existingToday && existingToday.length > 0) {
         log(
-          `  SKIP: ${userName} already has check_out today`,
+          `  SKIP: ${userName} already has check_out on ${userClockOutDate}`,
         );
         continue;
       }
 
       // Generate document ID
       const id = `att_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+
+      log(`Auto clock-out for ${userName}: refTime=${refTime} → timestamp=${userClockOutTime} (date: ${userClockOutDate})`);
 
       const { error: insertError } = await supabaseAdmin
         .schema("legacy_mirror")
@@ -169,10 +174,10 @@ Deno.serve(async (req: Request) => {
           document: {
             userId,
             type: "check_out",
-            timestamp: autoClockOutTime,
+            timestamp: userClockOutTime,
             location: null,
             notes:
-              `Auto clock-out: lupa absen keluar pada ${clockOutDate}`,
+              `Auto clock-out: lupa absen keluar pada ${userClockOutDate}`,
           },
         });
 
@@ -181,7 +186,7 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      log(`  ✅ Auto clocked out: ${userName}`);
+      log(`  ✅ Auto clocked out: ${userName} (clocked out at ${userClockOutDate} 23:59 WIB)`);
       sourceIds.push(userId);
       names.push(userName);
     }
@@ -196,8 +201,6 @@ Deno.serve(async (req: Request) => {
         autoClockOut: names.length,
         users: names,
         userIds: sourceIds,
-        timestamp: autoClockOutTime,
-        date: clockOutDate,
         logs: debugLogs,
       }),
       {

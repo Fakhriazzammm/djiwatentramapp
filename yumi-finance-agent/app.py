@@ -116,6 +116,42 @@ def _save_pending():
         logger.warning("Failed to save pending sessions: %s", e)
 
 
+# ── Supabase helpers (shared auth via employee_telegram_links) ────
+
+
+def _headers():
+    return {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+    }
+
+
+async def _fetch(view: str, query: str = "") -> list[dict]:
+    url = f"{SUPABASE_URL}/rest/v1/{view}"
+    if query:
+        url = f"{url}?{query}"
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url, headers=_headers(), timeout=15)
+        r.raise_for_status()
+        return r.json() if isinstance(r.json(), list) else []
+
+
+async def _find_employee_by_telegram(telegram_id: int) -> dict | None:
+    rows = await _fetch("employee_telegram_links",
+        f"select=employee_user_id,employee_name,is_active"
+        f"&telegram_user_id=eq.{telegram_id}"
+        f"&is_active=eq.true&limit=1")
+    return rows[0] if rows else None
+
+
+async def _require_employee(update: Update) -> dict | None:
+    """Cek apakah user terdaftar di employee_telegram_links.
+    Returns dict {employee_user_id, employee_name} atau None."""
+    if not update.effective_user:
+        return None
+    return await _find_employee_by_telegram(update.effective_user.id)
+
+
 # ── Helpers ────────────────────────────────────────────────────────
 
 
@@ -537,6 +573,13 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _can_respond(update):
         return
 
+    # ── Employee auth ────────────────────────────────────────
+    # Auto-recognize user (fallback jika belum diset via on_text)
+    if "emp" not in context.user_data:
+        emp = await _require_employee(update)
+        if emp:
+            context.user_data["emp"] = emp
+
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     msg = await update.message.reply_text("🔍 Memproses struk...")
 
@@ -703,6 +746,11 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Simpan data untuk callback
         ref_id = f"rcpt_{len(_receipt_pending)}"
+
+        # Tag employee name ke notes jika terdaftar
+        emp = context.user_data.get("emp")
+        notes = f"Diproses oleh: {emp['employee_name']}" if emp else ""
+
         _receipt_pending[ref_id] = {
             "merchant": merchant,
             "date": receipt_date,
@@ -719,6 +767,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "raw_text": raw_text,
             "confidence": confidence,
             "receipt_image_url": None,
+            "notes": notes,
         }
         _save_pending()
 
@@ -1533,6 +1582,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             "receipt_number": receipt.get("receipt_number", ""),
             "receipt_date": receipt.get("date", ""),
             "receipt_image_url": receipt.get("receipt_image_url", ""),
+            "notes": receipt.get("notes", ""),
             "item_count": len(items),
             "scanItems": [
                 {
@@ -1588,6 +1638,9 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
         # Accounting badge jika ada entries
         if items:
             lines.append(f"📊 Entri akuntansi dibuat")
+        notes = receipt.get("notes", "")
+        if notes:
+            lines.append(f"👤 {notes}")
     else:
         lines.append(f"⚠️ Gagal: {tx_result.get('error', '?')}")
 
@@ -2267,6 +2320,12 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not text:
         return
 
+    # ── Employee auth ────────────────────────────────────────
+    # Auto-recognize user dari employee_telegram_links
+    emp = await _require_employee(update)
+    if emp:
+        context.user_data["emp"] = emp
+
     # Pending edit replies are plain text in the group, so accept them without
     # requiring @mention/reply to the bot.
     user_id = update.effective_user.id if update.effective_user else None
@@ -2798,8 +2857,17 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Bot ini hanya untuk grup keuangan khusus.")
         return
 
+    # ── Cek registrasi employee ──────────────────────────────
+    emp = await _require_employee(update)
+    if emp:
+        context.user_data["emp"] = emp
+        greeting = f"Halo {emp['employee_name']}! 👋"
+    else:
+        greeting = "Halo! 👋"
+
     await update.message.reply_text(
-        "🤖 Yumi Finance AI Agent\n\n"
+        f"🤖 Yumi Finance AI Agent\n\n"
+        f"{greeting}\n\n"
         "Asisten keuangan untuk bisnis kamu.\n\n"
         "Fitur:\n"
         "💰 Catat pemasukan & pengeluaran\n"

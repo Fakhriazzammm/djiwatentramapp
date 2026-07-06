@@ -906,6 +906,7 @@ async function importAttendanceSchedule(payload: JsonRecord): Promise<Record<str
 	const month = (parsedData.month ?? 0) as number;
 	const year = (parsedData.year ?? 0) as number;
 	const sourceFile = (parsedData.source as Record<string, unknown> ?? {}).fileName as string ?? "";
+	const skipDelete = payload.skipDelete === true; // skip DELETE for chunked import (chunk 2+, N)
 
 	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -932,21 +933,116 @@ async function importAttendanceSchedule(payload: JsonRecord): Promise<Record<str
 	const createdStaff: string[] = [];
 	const matchedStaff: string[] = [];
 
+	// Helper: Jaro-Winkler similarity for fuzzy name matching
+	function jaroWinkler(s1: string, s2: string): number {
+		if (s1 === s2) return 1.0;
+		const len1 = s1.length, len2 = s2.length;
+		if (len1 === 0 || len2 === 0) return 0.0;
+
+		const matchDist = Math.floor(Math.max(len1, len2) / 2) - 1;
+		const matches1 = new Array(len1).fill(false);
+		const matches2 = new Array(len2).fill(false);
+		let matches = 0;
+
+		for (let i = 0; i < len1; i++) {
+			const start = Math.max(0, i - matchDist);
+			const end = Math.min(len2, i + matchDist + 1);
+			for (let j = start; j < end; j++) {
+				if (matches2[j] || s1[i] !== s2[j]) continue;
+				matches1[i] = true;
+				matches2[j] = true;
+				matches++;
+				break;
+			}
+		}
+
+		if (matches === 0) return 0.0;
+
+		// Count transpositions
+		let transpositions = 0, k = 0;
+		for (let i = 0; i < len1; i++) {
+			if (!matches1[i]) continue;
+			while (!matches2[k]) k++;
+			if (s1[i] !== s2[k]) transpositions++;
+			k++;
+		}
+
+		const jaro = (
+			matches / len1 +
+			matches / len2 +
+			(matches - transpositions / 2) / matches
+		) / 3;
+
+		// Winkler boost: common prefix up to 4 chars
+		let prefix = 0;
+		for (let i = 0; i < Math.min(len1, len2, 4); i++) {
+			if (s1[i] === s2[i]) prefix++;
+			else break;
+		}
+		return jaro + prefix * 0.1 * (1 - jaro);
+	}
+
 	// Helper: name similarity score
 	function nameSimilarity(query: string, dbName: string): number {
 		const q = query.toLowerCase().replace(/[^a-z0-9]/g, "");
 		const d = dbName.toLowerCase().replace(/[^a-z0-9]/g, "");
 		if (q === d) return 1.0;
-		if (d.includes(q)) return 0.9;   // db name contains query (e.g. "isan" in "ikhsaneveryday")
-		if (q.includes(d)) return 0.85;  // query contains db name
-		// Subsequence check: all chars of query appear in order in db name
+
+		// ── Stage 1: Word-boundary matching ──
+		// Check each word in the DB name individually
+		// e.g., "DILLA" matches word "DILLA" in "KANIA DILLA FAIRUZ"
+		// e.g., "ANIDA" does NOT match any word in "KANIA DILLA FAIRUZ"
+		const dbWords = dbName.toLowerCase().split(/[\s,.-]+/).filter(Boolean);
+		for (const word of dbWords) {
+			const w = word.replace(/[^a-z0-9]/g, "");
+			if (!w) continue;
+			if (q === w) return 0.95;  // exact word match
+			if (w.includes(q) && q.length >= w.length * 0.4) return 0.9;  // partial word
+			if (q.includes(w)) return 0.85;
+		}
+
+		// ── Stage 2: Subsequence per word ──
+		// "ISAN" is a subsequence of "IKHSAN" → should match
+		// "YUSUF" is a subsequence of "YUSUF" within "MUHAMMAD YUSUF"
+		for (const word of dbWords) {
+			const w = word.replace(/[^a-z0-9]/g, "");
+			if (!w) continue;
+			let ptr = 0;
+			for (const ch of q) {
+				const idx = w.indexOf(ch, ptr);
+				if (idx === -1) { ptr = -1; break; }
+				ptr = idx + 1;
+			}
+			if (ptr > 0 && q.length >= w.length * 0.5) {
+				return 0.8;  // subsequence within a word
+			}
+		}
+
+		// ── Stage 3: Jaro-Winkler fuzzy match per word ──
+		// Handles typos, abbreviations, and transpositions
+		// e.g., "TAOFIK" vs "TAOFIKUROHMAN" → high similarity
+		let bestJW = 0;
+		for (const word of dbWords) {
+			const w = word.replace(/[^a-z0-9]/g, "");
+			if (!w) continue;
+			const jw = jaroWinkler(q, w);
+			if (jw > bestJW) bestJW = jw;
+		}
+		if (bestJW >= 0.88) return 0.75;
+
+		// ── Stage 4: Full-string fallback ──
+		// Check the entire concatenated name
+		if (d.includes(q) && q.length >= d.length * 0.33) return 0.7;
+		if (q.includes(d)) return 0.65;
+
+		// ── Stage 5: Subsequence on full string ──
 		let ptr = 0;
 		for (const ch of q) {
 			const idx = d.indexOf(ch, ptr);
 			if (idx === -1) return 0.0;
 			ptr = idx + 1;
 		}
-		return 0.8; // all chars of query found in order
+		return q.length >= d.length * 0.5 ? 0.6 : 0.0;
 	}
 
 	for (const rawName of uniqueNames) {
@@ -998,7 +1094,7 @@ async function importAttendanceSchedule(payload: JsonRecord): Promise<Record<str
 			}
 		}
 
-		if (bestMatch && bestScore >= 0.6) {
+		if (bestMatch && bestScore >= 0.7) {
 			staffMap[nameClean] = bestMatch.source_id;
 			matchedStaff.push(`${nameClean} → ${bestMatch.name}`);
 			continue;
@@ -1058,8 +1154,8 @@ async function importAttendanceSchedule(payload: JsonRecord): Promise<Record<str
 		createdStaff.push(`${nameClean} (${roleName})`);
 	}
 
-	// Step 4: Delete existing schedules for this month
-	if (month > 0 && year > 0) {
+	// Step 4: Delete existing schedules for this month (skip if chunked import)
+	if (!skipDelete && month > 0 && year > 0) {
 		const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
 		const endDate = `${year}-${String(month).padStart(2, "0")}-31`;
 		await supabase.rpc("exec_sql", {

@@ -18,6 +18,7 @@ select
     nullif(d.document->>'timestamp', '')::bigint,
     floor(d.creation_time)::bigint
   ) as timestamp,
+  floor(d.creation_time)::bigint as "creationTime",
   nullif(d.document->>'photoUrl', '') as "photoUrl",
   nullif(d.document->>'notes', '') as notes,
   case

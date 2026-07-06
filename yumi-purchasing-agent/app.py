@@ -227,6 +227,37 @@ async def _fetch_fn(view: str, query: str = "select=*"):
         resp.raise_for_status()
         return resp.json()
 
+# ── Shared Auth: Employee Telegram Links ─────────────────────────
+async def _find_employee_by_telegram(telegram_id: int) -> dict | None:
+    """Cari employee dari tabel shared employee_telegram_links."""
+    rows = await _fetch_fn(
+        "employee_telegram_links",
+        f"select=employee_user_id,employee_name,is_active"
+        f"&telegram_user_id=eq.{telegram_id}"
+        f"&is_active=eq.true&limit=1",
+    )
+    return rows[0] if rows else None
+
+async def _require_employee(update: Update) -> dict | None:
+    """Cek apakah user Telegram terdaftar sebagai karyawan. Kirim pesan error jika belum."""
+    if not update.effective_user:
+        if update.message:
+            await update.message.reply_text("❌ Tidak dapat mengidentifikasi user.")
+        return None
+    emp = await _find_employee_by_telegram(update.effective_user.id)
+    if not emp:
+        if update.message:
+            await update.message.reply_text(
+                "❌ *Kamu belum terdaftar!*\n\n"
+                "Untuk menggunakan bot ini, kamu harus terdaftar sebagai karyawan.\n\n"
+                "1️⃣ Buka *profil karyawan* di website\n"
+                "2️⃣ Cari *Kode Registrasi* (contoh: `DT-6MOI`)\n"
+                "3️⃣ Ketik `/daftar KODE-UNIK`\n\n"
+                "Contoh: `/daftar DT-6MOI`\n\n"
+                "Kalau sudah daftar, ketik `/start` lagi.",
+                parse_mode="Markdown",
+            )
+    return emp
 
 
 # ── Expense Matching: Konstanta ───────────────────────────────
@@ -798,6 +829,11 @@ async def cmd_start(update: Update, _context):
         reply_markup=_keyboard(),
         parse_mode="Markdown",
     )
+    # Cek employee registration — sapa jika terdaftar
+    emp = await _require_employee(update)
+    if emp:
+        name = emp.get("employee_name", "Karyawan")
+        await update.message.reply_text(f"👋 Halo {name}! Kamu terdeteksi sebagai karyawan terdaftar.")
 
 
 
@@ -1144,6 +1180,11 @@ async def handle_message(update: Update, context):
         await msg.reply_text("Ketik perintah atau tanya bebas.", reply_markup=_keyboard())
         return
 
+    # ── Employee recognition — simpan ke user_data jika terdaftar ──
+    emp = await _require_employee(update)
+    if emp:
+        context.user_data['emp'] = emp
+
     # ── Check for 🔴/🟡 stock reaction ──
     reaction = await _parse_stock_reaction(text)
     if reaction:
@@ -1265,6 +1306,11 @@ async def handle_callback(update: Update, context):
     }
     text = action_map.get(data)
     if text:
+        # Log employee action if recognized
+        emp = context.user_data.get('emp')
+        if emp:
+            emp_name = emp.get("employee_name", "unknown")
+            logger.info("Action by employee %s: %s", emp_name, text)
         result = await orchestrator.orchestrate(text)
         await _execute_action(query, result, is_callback=True)
     else:
@@ -1880,6 +1926,12 @@ async def _handle_stock_reaction(update: Update, context, reaction: dict):
     if not msg:
         return
     
+    # Log employee info if recognized
+    emp = context.user_data.get('emp')
+    if emp:
+        emp_name = emp.get("employee_name", "unknown")
+        logger.info("Stock reaction by employee: %s (items: %d)", emp_name, len(reaction.get("items", [])))
+    
     items = reaction["items"]  # list of {name, type}
     
     # Fetch current inventory
@@ -1965,6 +2017,11 @@ async def _handle_stock_reaction(update: Update, context, reaction: dict):
 async def _handle_undo_callback(update: Update, context, ts_str: str):
     """Handle undo button click - restore previous quantities."""
     query = update.callback_query
+    # Log employee undo action
+    emp = context.user_data.get('emp')
+    if emp:
+        emp_name = emp.get("employee_name", "unknown")
+        logger.info("Undo action by employee: %s", emp_name)
     try:
         ts = float(ts_str)
     except ValueError:

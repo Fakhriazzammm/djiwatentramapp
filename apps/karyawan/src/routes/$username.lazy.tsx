@@ -1,6 +1,6 @@
 import { createLazyFileRoute, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target + attendance reminder */
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useYumiAuth, useHybridStaffBySlug } from "@yumipos/web-shared";
 import { createClient } from "@yumipos/web-shared/lib/client";
 import { BottomNavbar } from "@yumipos/web-shared/components/layout/BottomNavbar";
@@ -198,8 +198,9 @@ function StaffProfileLayout() {
 
 	const [isUnlocked, setIsUnlocked] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const [notifCount, setNotifCount] = useState(0);
 
-	// Auto-refresh when page gains focus
+		// Auto-refresh when page gains focus
 	useEffect(() => {
 		const onFocus = () => setRefreshKey((k) => k + 1);
 		window.addEventListener("focus", onFocus);
@@ -224,6 +225,23 @@ function StaffProfileLayout() {
 	}, [isUnlocked]);
 
 	const staff = useHybridStaffBySlug(username);
+
+	// Read notification unread count from localStorage
+	useEffect(() => {
+		const readCount = () => {
+			try {
+				const stored = localStorage.getItem(`yumi_notif_count_${staff?._id || username}`);
+				setNotifCount(stored ? parseInt(stored, 10) : 0);
+			} catch { setNotifCount(0); }
+		};
+		readCount();
+		window.addEventListener("storage", readCount);
+		const iv = setInterval(readCount, 30000);
+		return () => {
+			window.removeEventListener("storage", readCount);
+			clearInterval(iv);
+		};
+	}, [staff?._id, username]);
 	// Guard: loading staff OR auth not yet resolved
 	if (staff === undefined || isAuthLoading) {
 		return (
@@ -300,7 +318,10 @@ function StaffProfileLayout() {
 
 				{/* Bottom Navbar — fixed at bottom */}
 				<div className="shrink-0 border-t bg-background">
-					<BottomNavbar baseRoute={`/${username}`} />
+					<BottomNavbar
+						baseRoute={`/${username}`}
+						unreadCounts={{ notifikasi: notifCount }}
+					/>
 				</div>
 			</div>
 		</StaffProfileCtx.Provider>

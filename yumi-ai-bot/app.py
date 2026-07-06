@@ -18,7 +18,7 @@ from telegram.ext import (
 from PIL import Image
 from receipt_restock import handle_restock_from_ocr
 from marketlist import generate_marketlist
-from schedule_import import parse_excel, call_import_schedule
+from schedule_import import parse_excel, call_import_schedule, is_google_sheets_link, download_google_sheet
 from schedule_export import generate_roster_excel, fetch_schedules, _month_name
 from hermes_adapter import (
     TelegramContext,
@@ -461,10 +461,38 @@ def _is_allowed(update: Update, bot_username: str | None = None) -> bool:
     return user.id in ALLOWED_USERS
 
 
+async def _require_employee(update: Update) -> dict | None:
+    """Look up employee linked to this Telegram user via employee_telegram_links.
+    Returns dict with employee_user_id, employee_name, is_active or None if not found."""
+    if not update.effective_user:
+        return None
+    try:
+        rows = await _fetch_svc(
+            "employee_telegram_links",
+            f"select=employee_user_id,employee_name,is_active"
+            f"&telegram_user_id=eq.{update.effective_user.id}"
+            f"&is_active=eq.true"
+            f"&limit=1",
+        )
+        return rows[0] if rows else None
+    except Exception as e:
+        logger.warning("_require_employee failed for user %s: %s", update.effective_user.id, e)
+        return None
+
+
 async def _fetch(view: str, query: str = "select=*"):
     url = f"{SUPABASE_URL}/rest/v1/{view}?{query}"
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.get(url, headers=_headers())
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _fetch_svc(view: str, query: str = "select=*"):
+    """Fetch from Supabase using SERVICE_ROLE_KEY for cross-schema access."""
+    url = f"{SUPABASE_URL}/rest/v1/{view}?{query}"
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get(url, headers=_service_headers())
         resp.raise_for_status()
         return resp.json()
 
@@ -689,6 +717,9 @@ def _reply_keyboard() -> InlineKeyboardMarkup:
     """Quick action inline keyboard for /start and fallback."""
     return InlineKeyboardMarkup([
         [
+            InlineKeyboardButton("👤 Status Saya", callback_data="status_saya"),
+        ],
+        [
             InlineKeyboardButton("📊 Ringkasan Hari Ini", callback_data="ringkasan"),
             InlineKeyboardButton("🔥 Top Produk", callback_data="top"),
         ],
@@ -890,8 +921,31 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Reset session on start
     user_sessions.pop(update.effective_user.id, None)
 
+    # Shared auth: sambut employee yang terdaftar
+    emp = await _require_employee(update)
+    if emp:
+        emp_name = emp.get("employee_name") or ""
+        emp_user_id = emp.get("employee_user_id") or ""
+        role = ""
+        if emp_user_id:
+            try:
+                urows = await _fetch(
+                    "pos_users_public",
+                    f"select=roleName&_id=eq.{emp_user_id}&limit=1",
+                )
+                if urows:
+                    role = urows[0].get("roleName") or ""
+            except Exception:
+                pass
+        greeting = f"👋 Halo {emp_name}!"
+        if role:
+            greeting += f" Kamu terdaftar sebagai *{role}*."
+        greeting += "\n\n"
+    else:
+        greeting = ""
+
     await _reply_msg(update, context, 
-        "🤖⭐ Yumi General Manager Agents\n\n"
+        f"{greeting}🤖⭐ Yumi General Manager Agents\n\n"
         "Saya adalah General Manager AI untuk seluruh ekosistem Djiwa Tentram.\n\n"
         "Saya bisa bantu:\n"
         "• Ringkasan harian (omzet, produk, shift, pengeluaran)\n"
@@ -907,6 +961,102 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
         reply_markup=_reply_keyboard(),
     )
+
+
+async def cmd_status_saya(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show employee's personal attendance status today."""
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Maaf, Anda tidak diizinkan menggunakan bot ini.")
+        return
+
+    emp = await _require_employee(update)
+    if not emp:
+        await _reply_msg(
+            update, context,
+            "❌ Kamu belum terdaftar sebagai karyawan.\n\n"
+            "Daftar dulu di @YumiHRDBot untuk menggunakan fitur ini.",
+        )
+        return
+
+    emp_name = emp.get("employee_name") or "?"
+    emp_user_id = emp.get("employee_user_id") or ""
+
+    if not emp_user_id:
+        await _reply_msg(update, context, "❌ Data karyawan tidak lengkap.")
+        return
+
+    try:
+        today_start = _start_of_day_ms(_now_wib())
+        today_end = today_start + 86_400_000  # +24 jam
+
+        logs = await _fetch(
+            "pos_attendance_logs",
+            f"select=type,timestamp,shiftName"
+            f"&userId=eq.{emp_user_id}"
+            f"&timestamp=gte.{today_start}"
+            f"&timestamp=lt.{today_end}"
+            f"&order=timestamp.asc&limit=20",
+        )
+
+        lines = [f"👤 *Status Saya* — {emp_name}", ""]
+
+        if not logs:
+            lines.append("📭 Belum ada absensi hari ini.")
+        else:
+            check_in_time = ""
+            check_out_time = ""
+            shift_name = ""
+
+            for log in logs:
+                tp = log.get("type", "")
+                ts = int(float(log.get("timestamp") or 0))
+                time_str = datetime.fromtimestamp(ts / 1000, tz=WIB).strftime("%H:%M")
+                if tp == "check_in":
+                    check_in_time = time_str
+                    if log.get("shiftName"):
+                        shift_name = log.get("shiftName", "")
+                elif tp == "check_out":
+                    check_out_time = time_str
+                    if not shift_name and log.get("shiftName"):
+                        shift_name = log.get("shiftName", "")
+
+            if check_in_time:
+                lines.append(f"✅ *Masuk:* {check_in_time} WIB")
+            else:
+                lines.append("⏳ *Masuk:* Belum absen")
+
+            if check_out_time:
+                lines.append(f"✅ *Keluar:* {check_out_time} WIB")
+            else:
+                lines.append("⏳ *Keluar:* Belum absen")
+
+            if shift_name:
+                lines.append(f"📌 Shift: {shift_name}")
+
+            # Durasi jika sudah check-in dan check-out
+            if check_in_time and check_out_time:
+                ci = int(
+                    datetime.strptime(check_in_time, "%H:%M")
+                    .replace(year=2000, month=1, day=1)
+                    .timestamp()
+                )
+                co = int(
+                    datetime.strptime(check_out_time, "%H:%M")
+                    .replace(year=2000, month=1, day=1)
+                    .timestamp()
+                )
+                dur_min = (co - ci) // 60
+                if dur_min > 0:
+                    h = dur_min // 60
+                    m = dur_min % 60
+                    dur_str = f"{h} jam {m} menit" if h > 0 else f"{m} menit"
+                    lines.append(f"⏱ Durasi: {dur_str}")
+
+        await _reply_msg(update, context, "\n".join(lines), parse_mode="Markdown")
+
+    except Exception as e:
+        logger.exception("cmd_status_saya failed")
+        await _reply_msg(update, context, f"Gagal mengambil status: {e}")
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1547,6 +1697,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "purchaselog": cmd_purchaselog,
         "marketlist": cmd_marketlist,
         "export_jadwal": cmd_export_jadwal,
+        "status_saya": cmd_status_saya,
         "help": cmd_help,
     }
 
@@ -1849,6 +2000,63 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await handler(update, context)
             return
 
+    # Google Sheets link → import jadwal
+    sheet_id = is_google_sheets_link(text)
+    if sheet_id:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        try:
+            await _reply_msg(update, context,
+                f"📥 Mendownload Google Sheet...\n"
+                f"🔗 ID: {sheet_id}"
+            )
+            file_bytes = await download_google_sheet(sheet_id)
+            parsed = parse_excel(file_bytes, f"google_sheet_{sheet_id}.xlsx")
+
+            if "error" in parsed:
+                await _reply_msg(update, context,
+                    f"❌ Gagal parse sheet: {parsed['error']}\n\n"
+                    "Pastikan format sheet:\n"
+                    "• Baris header: MINGGU KE | HARI | TANGGAL | <nama staff> | ...\n"
+                    "• Kolom staff berisi shift: PAGI (07.30 - 14.30), SORE, OFF, GENERAL"
+                )
+                return
+
+            summary = parsed.get("summary", {})
+            await _reply_msg(update, context,
+                f"📋 Memproses jadwal dari Google Sheet...\n"
+                f"• {summary.get('uniqueStaff', 0)} staff\n"
+                f"• {summary.get('uniqueDates', 0)} hari ({summary.get('dateRange', '')})\n"
+                f"• {summary.get('totalRows', 0)} entri jadwal\n"
+                f"⏳ Mengimport ke database..."
+            )
+
+            result = await call_import_schedule(httpx, SUPABASE_URL, SUPABASE_KEY, parsed)
+
+            if result.get("error"):
+                await _reply_msg(update, context,
+                    f"❌ Gagal import: {result['error']}"
+                )
+                return
+
+            s = result.get("summary", {})
+            msg_parts = [
+                f"✅ <b>Import jadwal selesai!</b>",
+                f"",
+                f"📊 <b>Ringkasan:</b>",
+                f"• {s.get('insertedRows', 0)} jadwal berhasil diimport",
+                f"• {s.get('uniqueDates', 0)} hari kerja",
+                f"• {s.get('totalRows', 0)} total entri diproses",
+            ]
+            if s.get('skippedRows', 0) > 0:
+                msg_parts.append(f"⚠️ {s['skippedRows']} entri dilewati (staff tidak dikenal)")
+            await _reply_msg(update, context, "\n".join(msg_parts))
+        except Exception as e:
+            logger.error("Google Sheets import error: %s", e, exc_info=True)
+            await _reply_msg(update, context,
+                f"❌ Gagal download/import Google Sheet: {str(e)}"
+            )
+        return
+
     # Free-text AI chat with rich context
     try:
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -1990,10 +2198,26 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
     return {}
 
 
-async def _send_to_group(app, text: str):
-    """Send a message to the attendance report group."""
+async def _send_to_group(app, text: str, photo_url: str = None):
+    """Send a message or photo to the attendance report group."""
     try:
-        await app.bot.send_message(chat_id=_ATTENDANCE_REPORT_CHAT_ID, text=text)
+        if photo_url:
+            # Download photo bytes and send as file to avoid URL accessibility issues
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.get(photo_url)
+                    if resp.status_code == 200:
+                        await app.bot.send_photo(
+                            chat_id=_ATTENDANCE_REPORT_CHAT_ID,
+                            photo=resp.content,
+                            caption=text,
+                        )
+                    else:
+                        await app.bot.send_message(chat_id=_ATTENDANCE_REPORT_CHAT_ID, text=text)
+            except Exception:
+                await app.bot.send_message(chat_id=_ATTENDANCE_REPORT_CHAT_ID, text=text)
+        else:
+            await app.bot.send_message(chat_id=_ATTENDANCE_REPORT_CHAT_ID, text=text)
         logger.info("Sent attendance notification to group %s", _ATTENDANCE_REPORT_CHAT_ID)
     except Exception as e:
         logger.error("send_attendance_report failed: %s", e)
@@ -2119,9 +2343,9 @@ async def _check_new_attendance(app):
 
         logs = await _fetch(
             "pos_attendance_logs",
-            f"select=_id,type,timestamp,userName,roleName,shiftName,shiftOpenTimeSnapshot,userId"
-            f"&timestamp=gt.{lookback_ms}"
-            f"&order=timestamp.asc&limit=20",
+            f"select=_id,type,timestamp,userName,roleName,shiftName,shiftOpenTimeSnapshot,userId,notes"
+            f"&creationTime=gt.{lookback_ms}"
+            f"&order=creationTime.asc&limit=20",
         )
 
         for log in logs:
@@ -2273,7 +2497,17 @@ async def _check_new_attendance(app):
                 else:
                     lines.append("📌 Tanpa shift")
 
-                await _send_to_group(app, "\n".join(lines))
+                # Extract photo URL from notes for check_in
+                photo_url = None
+                notes = log.get("notes") or ""
+                if "foto:" in notes:
+                    for part in notes.split("|"):
+                        part = part.strip()
+                        if part.startswith("foto:"):
+                            photo_url = part[5:].strip()
+                            break
+
+                await _send_to_group(app, "\n".join(lines), photo_url=photo_url if log_type == "check_in" else None)
 
             # ═══ CHECK_OUT ═══
             elif log_type == "check_out":
@@ -2798,8 +3032,8 @@ async def _handle_save_report(request):
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        # Use nip.io for public access
-        public_url = f"http://43.129.54.5.nip.io:8001/reports/{filename}"
+        # Use supabase.yumme.id for public access
+        public_url = f"https://supabase.yumme.id/reports/{filename}"
         logger.info("Report saved: %s -> %s", filepath, public_url)
 
         return web.json_response({
@@ -3009,6 +3243,7 @@ def main():
     app.add_handler(CommandHandler("purchaselog", cmd_purchaselog))
     app.add_handler(CommandHandler("marketlist", cmd_marketlist))
     app.add_handler(CommandHandler("export_jadwal", cmd_export_jadwal))
+    app.add_handler(CommandHandler("status_saya", cmd_status_saya))
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))

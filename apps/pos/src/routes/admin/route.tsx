@@ -27,6 +27,7 @@ import {
 	Grid3X3,
 	LayoutDashboard,
 	LogOut,
+	Monitor,
 	MoreHorizontal,
 	Package,
 	Percent,
@@ -715,6 +716,30 @@ function AdminLayout() {
 						to="/admin/settings"
 						permission="settings:manage"
 					/>
+
+					{/* System Monitor - external link */}
+					<a
+						href="https://supabase.yumme.id/monitor/"
+						target="_blank"
+						rel="noopener noreferrer"
+						className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 font-medium text-sm transition-all hover:bg-muted hover:text-foreground ${isCollapsed ? "justify-center px-0" : "text-muted-foreground"
+						}`}
+						title={isCollapsed ? "System Monitor" : undefined}
+					>
+						<Monitor className="h-5 w-5 shrink-0" />
+						<AnimatePresence>
+							{!isCollapsed && (
+								<motion.span
+									animate={{ opacity: 1, x: 0 }}
+									className="truncate"
+									exit={{ opacity: 0, x: -5 }}
+									initial={{ opacity: 0, x: -5 }}
+								>
+									System Monitor
+								</motion.span>
+							)}
+						</AnimatePresence>
+					</a>
 
 					{/* Keluar */}
 					<button

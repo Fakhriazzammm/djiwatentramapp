@@ -133,11 +133,13 @@ function KaryawanAttendancePage() {
       }
     }
 
-    // Priority 2: time-based fallback
+    // Priority 2: time-based fallback — find best shift
     if (!shiftSchedules.length) return null;
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
+    // Collect ALL matching shifts (there may be overlap, e.g. Pagi 07:30-14:30 & Sore 13:00-21:00)
+    const matchingShifts: any[] = [];
     for (const shift of shiftSchedules) {
       if (!shift.openTime || !shift.closeTime) continue;
       const [openHour, openMin] = String(shift.openTime).split(":").map(Number);
@@ -146,10 +148,21 @@ function KaryawanAttendancePage() {
       const closeMinutes = closeHour * 60 + closeMin;
 
       if (openMinutes <= closeMinutes) {
-        if (currentMinutes >= openMinutes && currentMinutes < closeMinutes) return shift;
+        if (currentMinutes >= openMinutes && currentMinutes < closeMinutes) matchingShifts.push(shift);
       } else {
-        if (currentMinutes >= openMinutes || currentMinutes < closeMinutes) return shift;
+        if (currentMinutes >= openMinutes || currentMinutes < closeMinutes) matchingShifts.push(shift);
       }
+    }
+
+    // When multiple shifts match (overlap), pick the LATEST openTime (most recently started)
+    // This ensures Shift Sore (13:00) is chosen over Shift Pagi (07:30) during overlap
+    if (matchingShifts.length > 0) {
+      matchingShifts.sort((a: any, b: any) => {
+        const aOpen = parseInt(String(a.openTime).split(":")[0]) * 60 + parseInt(String(a.openTime).split(":")[1]);
+        const bOpen = parseInt(String(b.openTime).split(":")[0]) * 60 + parseInt(String(b.openTime).split(":")[1]);
+        return bOpen - aOpen;
+      });
+      return matchingShifts[0];
     }
 
     let closest: any = null;

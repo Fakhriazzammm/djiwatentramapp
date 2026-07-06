@@ -21,8 +21,8 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
 import { Route as KasirLoginRouteImport } from './routes/kasir/login'
+import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
 import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$username'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
@@ -39,6 +39,7 @@ import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
+import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
 import { Route as AdminBookingRouteImport } from './routes/admin/booking'
 import { Route as AdminBarRouteImport } from './routes/admin/bar'
@@ -130,19 +131,17 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
+const KasirLoginRoute = KasirLoginRouteImport.update({
+  id: '/kasir/login',
+  path: '/kasir/login',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/kasir/login.lazy').then((d) => d.Route))
 const KaryawanLoginRoute = KaryawanLoginRouteImport.update({
   id: '/karyawan/login',
   path: '/karyawan/login',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() =>
   import('./routes/karyawan/login.lazy').then((d) => d.Route),
-)
-const KasirLoginRoute = KasirLoginRouteImport.update({
-  id: '/kasir/login',
-  path: '/kasir/login',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() =>
-  import('./routes/kasir/login.lazy').then((d) => d.Route),
 )
 const KaryawanUsernameRoute = KaryawanUsernameRouteImport.update({
   id: '/karyawan/$username',
@@ -245,6 +244,13 @@ const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/discounts.lazy').then((d) => d.Route),
+)
+const AdminCustomersRoute = AdminCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/customers.lazy').then((d) => d.Route),
 )
 const AdminCustomerServiceRoute = AdminCustomerServiceRouteImport.update({
   id: '/customer-service',
@@ -525,6 +531,7 @@ export interface FileRoutesByFullPath {
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -585,6 +592,7 @@ export interface FileRoutesByTo {
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -644,6 +652,7 @@ export interface FileRoutesById {
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -709,6 +718,7 @@ export interface FileRouteTypes {
     | '/admin/bar'
     | '/admin/booking'
     | '/admin/customer-service'
+    | '/admin/customers'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/inventory'
@@ -769,6 +779,7 @@ export interface FileRouteTypes {
     | '/admin/bar'
     | '/admin/booking'
     | '/admin/customer-service'
+    | '/admin/customers'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/inventory'
@@ -827,6 +838,7 @@ export interface FileRouteTypes {
     | '/admin/bar'
     | '/admin/booking'
     | '/admin/customer-service'
+    | '/admin/customers'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/inventory'
@@ -963,18 +975,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/karyawan/login': {
-      id: '/karyawan/login'
-      path: '/karyawan/login'
-      fullPath: '/karyawan/login'
-      preLoaderRoute: typeof KaryawanLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/kasir/login': {
       id: '/kasir/login'
       path: '/kasir/login'
       fullPath: '/kasir/login'
       preLoaderRoute: typeof KasirLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/karyawan/login': {
+      id: '/karyawan/login'
+      path: '/karyawan/login'
+      fullPath: '/karyawan/login'
+      preLoaderRoute: typeof KaryawanLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/karyawan/$username': {
@@ -1087,6 +1099,13 @@ declare module '@tanstack/react-router' {
       path: '/discounts'
       fullPath: '/admin/discounts'
       preLoaderRoute: typeof AdminDiscountsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/customer-service': {
@@ -1487,6 +1506,7 @@ interface AdminRouteRouteChildren {
   AdminBarRoute: typeof AdminBarRoute
   AdminBookingRoute: typeof AdminBookingRoute
   AdminCustomerServiceRoute: typeof AdminCustomerServiceRoute
+  AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
@@ -1509,6 +1529,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminBarRoute: AdminBarRoute,
   AdminBookingRoute: AdminBookingRoute,
   AdminCustomerServiceRoute: AdminCustomerServiceRoute,
+  AdminCustomersRoute: AdminCustomersRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminInventoryRoute: AdminInventoryRoute,

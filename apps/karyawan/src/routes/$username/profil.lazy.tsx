@@ -21,7 +21,7 @@ import { cn } from "@yumipos/web-shared/lib/utils";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
 	User, Lock, Unlock, Clock, Download, FileText, TrendingUp,
-	UserCircle, Camera, ShieldCheck, Bell, Check,
+	UserCircle, Camera, ShieldCheck, Bell, Check, Send, ExternalLink,
 	LogOut, ChevronRight, Calendar, KeyRound, X, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
@@ -277,9 +277,46 @@ function ProfilPage() {
 			});
 	}, [staff?._id]);
 
-	// Live payslip calculation
-	const [livePayslip, setLivePayslip] = useState<any>(null);
-	const [isLoadingLivePayslip, setIsLoadingLivePayslip] = useState(false);
+	// Telegram Bot status
+	const [telegramStatus, setTelegramStatus] = useState<any>(null);
+	const [loadingTelegram, setLoadingTelegram] = useState(false);
+
+	useEffect(() => {
+		if (!staff?._id) return;
+		setLoadingTelegram(true);
+		const supabase = createClient();
+		supabase
+			.from("employee_telegram_status")
+			.select("*")
+			.eq("employee_user_id", staff._id)
+			.maybeSingle()
+			.then(({ data }) => {
+				setTelegramStatus(data);
+				setLoadingTelegram(false);
+			});
+		}, [staff?._id]);
+
+		// Telegram Bot registration code
+		const [telegramCode, setTelegramCode] = useState<string | null>(null);
+
+		useEffect(() => {
+			if (!staff?._id) return;
+			const supabase = createClient();
+			supabase
+				.from("pos_staff_users")
+				.select("telegram_code")
+				.eq("_id", staff._id)
+				.maybeSingle()
+				.then(({ data }) => {
+					if (data?.telegram_code) {
+						setTelegramCode(data.telegram_code);
+					}
+				});
+		}, [staff?._id]);
+
+		// Live payslip calculation
+		const [livePayslip, setLivePayslip] = useState<any>(null);
+		const [isLoadingLivePayslip, setIsLoadingLivePayslip] = useState(false);
 	useEffect(() => {
 		if (!staff?._id || !stats || !isUnlocked) return;
 		setIsLoadingLivePayslip(true);
@@ -1053,6 +1090,116 @@ function ProfilPage() {
 							</Button>
 						</div>
 					</div>
+				</div>
+			</div>
+
+			{/* Telegram Bot */}
+			<div className="space-y-2">
+				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+					<Send className="h-3 w-3 text-sky-500" />
+					Telegram Bot
+				</h3>
+				<div className="rounded-xl border bg-card p-3">
+					{loadingTelegram ? (
+						<div className="animate-pulse space-y-2">
+							<div className="flex items-center gap-3">
+								<div className="h-9 w-9 rounded-lg bg-muted" />
+								<div className="space-y-1 flex-1">
+									<div className="h-3 w-28 rounded bg-muted" />
+									<div className="h-2.5 w-20 rounded bg-muted" />
+								</div>
+							</div>
+							<div className="h-3 w-48 rounded bg-muted" />
+							<div className="h-3 w-32 rounded bg-muted" />
+						</div>
+					) : telegramStatus ? (
+						<>
+							<div className="flex items-center gap-3 mb-3">
+								<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+									<Send className="h-4 w-4" />
+								</div>
+								<div>
+									<p className="font-bold text-xs">Telegram Bot</p>
+									<p className="text-[9px] text-muted-foreground uppercase">Absensi via Telegram</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-1.5 mb-2">
+								<span className="h-2 w-2 rounded-full bg-emerald-500" />
+								<span className="text-xs font-bold text-emerald-700">Terhubung sebagai {telegramStatus.employee_name || staff.name}</span>
+							</div>
+							{telegramStatus.registered_at && (
+								<p className="text-[10px] text-muted-foreground mb-3">
+									Tergabung sejak {new Date(telegramStatus.registered_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+								</p>
+							)}
+							<div className="rounded-lg bg-muted/50 p-2.5 mb-3">
+								<p className="text-[8px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">Tombol Cepat</p>
+								<div className="flex flex-wrap gap-1.5">
+									{[
+										{ label: "Absen Masuk", emoji: "✅" },
+										{ label: "Absen Keluar", emoji: "📤" },
+										{ label: "Status Saya", emoji: "📋" },
+									].map((btn) => (
+										<span
+											key={btn.label}
+											className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary shadow-sm"
+										>
+											<span>{btn.emoji}</span>
+											<span>{btn.label}</span>
+										</span>
+									))}
+								</div>
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								className="w-full rounded-lg text-[10px] font-bold h-8"
+								onClick={() => window.open("https://t.me/yumihrdbot", "_blank")}
+							>
+								<ExternalLink className="mr-1.5 h-3 w-3" />
+								Buka Bot Telegram
+							</Button>
+						</>
+					) : (
+						<>
+							<div className="flex items-center gap-3 mb-3">
+								<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+									<Send className="h-4 w-4" />
+								</div>
+								<div>
+									<p className="font-bold text-xs">Telegram Bot</p>
+									<p className="text-[9px] text-muted-foreground uppercase">Absensi via Telegram</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-1.5 mb-3">
+								<span className="h-2 w-2 rounded-full bg-red-500" />
+								<span className="text-xs font-bold text-red-600">Belum terhubung</span>
+							</div>
+							{telegramCode && (
+								<div className="rounded-lg bg-sky-50 border border-sky-200 p-3 mb-3 text-center">
+									<p className="text-[9px] font-black uppercase tracking-wider text-sky-700 mb-1.5">🔑 Kode Registrasi</p>
+									<p className="text-2xl font-black font-mono tracking-widest text-sky-900 select-all">{telegramCode}</p>
+								</div>
+							)}
+							<div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 mb-3">
+								<p className="text-[9px] font-black uppercase tracking-wider text-amber-800 mb-1.5">Cara Hubungkan:</p>
+								<ol className="space-y-1 text-[11px] text-amber-900 list-decimal list-inside">
+									<li>Buka bot Telegram di bawah</li>
+									<li>Ketik <code className="rounded bg-amber-100 px-1 py-0.5 font-mono font-bold text-[10px]">/daftar {telegramCode || "DT-XXXX"}</code></li>
+									<li>Kirim perintah di atas untuk menghubungkan akun</li>
+								</ol>
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								className="w-full rounded-lg text-[10px] font-bold h-8"
+								onClick={() => window.open("https://t.me/yumihrdbot", "_blank")}
+							>
+								<ExternalLink className="mr-1.5 h-3 w-3" />
+								Buka Bot Telegram
+							</Button>
+						</>
+					)}
 				</div>
 			</div>
 

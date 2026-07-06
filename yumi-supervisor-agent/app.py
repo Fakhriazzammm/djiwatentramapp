@@ -22,6 +22,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5182004468"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
 TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-5044633519"))
@@ -84,7 +85,332 @@ async def _patch(table: str, query: str, payload: dict) -> dict:
         data = r.json()
         return data[0] if isinstance(data, list) and data else {}
 
-# ── Time helpers ─────────────────────────────────────────────────
+def _service_role_headers():
+    return {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+async def _post_legacy_mirror(payload: dict) -> dict:
+    """Insert a document into legacy_mirror.documents using service_role key."""
+    url = f"{SUPABASE_URL}/rest/v1/documents"
+    headers = {**_service_role_headers(), "Accept-Profile": "legacy_mirror", "Content-Profile": "legacy_mirror", "Prefer": "return=representation"}
+    async with httpx.AsyncClient() as client:
+        r = await client.post(url, json=payload, headers=headers, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        return data[0] if isinstance(data, list) and data else {}
+
+# ── Attendance helpers (Telegram Clock In/Out) ──────────────────
+
+def _start_of_day_ms(dt: datetime) -> int:
+    """Return epoch ms for start of day (00:00:00 WIB)."""
+    return int(datetime(dt.year, dt.month, dt.day, tzinfo=WIB).timestamp() * 1000)
+
+def _minutes_to_human(mins: int) -> str:
+    h = mins // 60
+    m = mins % 60
+    if h > 0:
+        return f"{h} jam {m} menit"
+    return f"{m} menit"
+
+async def _find_employee_by_telegram(telegram_id: int) -> dict | None:
+    """Find employee linked to this Telegram user ID."""
+    rows = await _fetch("employee_telegram_links",
+        f"select=employee_user_id,employee_name,is_active"
+        f"&telegram_user_id=eq.{telegram_id}"
+        f"&is_active=eq.true&limit=1")
+    return rows[0] if rows else None
+
+async def _require_employee(update: Update) -> dict | None:
+    """Middleware: cek apakah Telegram user sudah terdaftar sebagai karyawan."""
+    if not update.effective_user:
+        if update.message:
+            await update.message.reply_text("❌ Tidak dapat mengidentifikasi user.")
+        return None
+    emp = await _find_employee_by_telegram(update.effective_user.id)
+    if not emp:
+        if update.message:
+            await update.message.reply_text(
+                "❌ Kamu belum terdaftar.\n"
+                "Ketik `/daftar Nama Lengkap` untuk mendaftar.",
+                parse_mode="Markdown")
+    return emp
+
+async def _has_today_attendance(employee_user_id: str, att_type: str) -> tuple[bool, dict | None]:
+    """Cek apakah user sudah check_in/check_out hari ini. Return (ada, data_log)."""
+    today_start = _start_of_day_ms(_now_wib())
+    today_end = today_start + 86400000
+    rows = await _fetch("pos_attendance_logs",
+        f"select=timestamp,type"
+        f"&userId=eq.{employee_user_id}"
+        f"&type=eq.{att_type}"
+        f"&timestamp=gte.{today_start}"
+        f"&timestamp=lt.{today_end}"
+        f"&order=timestamp.desc&limit=1")
+    if rows:
+        return True, rows[0]
+    return False, None
+
+async def _insert_attendance(employee_user_id: str, att_type: str, notes: str = "",
+                              shift_name: str = "", shift_open_time: str = "") -> bool:
+    """Insert attendance record into legacy_mirror.documents."""
+    now = int(_now_wib().timestamp() * 1000)
+    import uuid
+    doc_id = f"att_tele_{uuid.uuid4().hex[:20]}"
+    doc = {
+        "userId": employee_user_id,
+        "type": att_type,
+        "timestamp": now,
+        "source": "telegram",
+        "notes": notes,
+    }
+    if shift_name:
+        doc["shiftName"] = shift_name
+    if shift_open_time:
+        doc["shiftOpenTimeSnapshot"] = shift_open_time
+    try:
+        await _post_legacy_mirror({
+            "table_name": "attendance",
+            "document_id": doc_id,
+            "creation_time": now,
+            "document": doc,
+        })
+        return True
+    except Exception as e:
+        logger.error("insert_attendance failed: %s", e)
+        return False
+
+async def _update_last_clockin(employee_user_id: str, ts_ms: int):
+    """Update last_clockin_at field in employee_telegram_links."""
+    try:
+        await _patch("employee_telegram_links",
+            f"employee_user_id=eq.{employee_user_id}",
+            {"last_clockin_at": ts_ms})
+    except Exception as e:
+        logger.warning("update_last_clockin failed: %s", e)
+
+# ── Telegram Attendance Commands ────────────────────────────────
+
+async def cmd_daftar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Register Telegram account to employee account."""
+    if not context.args:
+        await update.message.reply_text(
+            "📝 *Cara Daftar:*\n"
+            "Ketik: `/daftar Nama Lengkap`\n\n"
+            "Contoh: `/daftar AYUNDA PUTRI`\n\n"
+            "Gunakan nama sesuai data kepegawaian kamu.",
+            parse_mode="Markdown")
+        return
+    name = " ".join(context.args).strip()
+    telegram_id = update.effective_user.id if update.effective_user else 0
+    if not telegram_id:
+        await update.message.reply_text("❌ Tidak dapat mengidentifikasi user.")
+        return
+    # Cari staff
+    staff = await _fetch("pos_staff_users",
+        f"select=_id,name,\"roleName\"&isActive=eq.true&name=like.{name}&limit=5")
+    if not staff:
+        await update.message.reply_text(
+            f"❌ Nama \"{name}\" tidak ditemukan.\n"
+            "Pastikan nama sesuai dengan data kepegawaian.")
+        return
+    if len(staff) > 1:
+        await update.message.reply_text(
+            f"⚠️ Ditemukan beberapa karyawan dengan nama \"{name}\".\n"
+            "Hubungi admin untuk bantuan registrasi.")
+        return
+    emp = staff[0]
+    emp_id = emp.get("_id")
+    emp_name = emp.get("name", "")
+    emp_role = emp.get("roleName", "")
+    # Cek sudah terdaftar
+    existing = await _fetch("employee_telegram_links",
+        f"select=_id&employee_user_id=eq.{emp_id}&limit=1")
+    if existing:
+        await update.message.reply_text(
+            f"⚠️ Akun {emp_name} sudah terdaftar di Telegram.\n"
+            "Hubungi admin jika ingin mengganti akun Telegram.")
+        return
+    # Cek telegram_id sudah dipakai
+    existing_tg = await _fetch("employee_telegram_links",
+        f"select=_id&telegram_user_id=eq.{telegram_id}&limit=1")
+    if existing_tg:
+        await update.message.reply_text(
+            f"⚠️ Akun Telegram ini sudah terdaftar dengan karyawan lain.")
+        return
+    # Simpan mapping
+    now = int(_now_wib().timestamp() * 1000)
+    try:
+        await _post("employee_telegram_links", {
+            "telegram_user_id": telegram_id,
+            "employee_user_id": emp_id,
+            "employee_name": emp_name,
+            "registered_at": now,
+            "is_active": True,
+        })
+    except Exception as e:
+        logger.error("daftar insert failed: %s", e)
+        await update.message.reply_text("❌ Gagal mendaftar. Coba lagi.")
+        return
+    await update.message.reply_text(
+        f"✅ *Registrasi Berhasil!*\n\n"
+        f"👤 *{emp_name}*\n"
+        f"📌 *{emp_role}*\n\n"
+        f"Sekarang kamu bisa:\n"
+        f"• `/clockin` — Absen Masuk\n"
+        f"• `/clockout` — Absen Keluar\n"
+        f"• `/status` — Cek status absensi\n\n"
+        f"Selamat bekerja! 🎯",
+        parse_mode="Markdown")
+
+async def cmd_clockin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Absen masuk via Telegram."""
+    emp = await _require_employee(update)
+    if not emp:
+        return
+    emp_id = emp["employee_user_id"]
+    emp_name = emp["employee_name"]
+    # Cek double check-in
+    exists, log = await _has_today_attendance(emp_id, "check_in")
+    if exists and log:
+        ts = int(float(log.get("timestamp", 0)))
+        t = _format_time_hm(ts) if ts else "?"
+        await update.message.reply_text(
+            f"⚠️ *{emp_name}*, kamu sudah absen masuk hari ini jam {t} WIB.\n\n"
+            f"Gunakan `/clockout` untuk absen keluar.",
+            parse_mode="Markdown")
+        return
+    # Tentukan shift
+    now = _now_wib()
+    now_ms = int(now.timestamp() * 1000)
+    shift = await _find_shift_at_time(now_ms)
+    shift_name = shift.get("shift_name", "")
+    # Insert attendance
+    ok = await _insert_attendance(emp_id, "check_in",
+                                   notes="Absen via Telegram",
+                                   shift_name=shift_name)
+    if not ok:
+        await update.message.reply_text("❌ Gagal absen masuk. Coba lagi.")
+        return
+    await _update_last_clockin(emp_id, now_ms)
+    date_str = now.strftime("%d/%m")
+    time_str = now.strftime("%H:%M")
+    await update.message.reply_text(
+        f"✅ *Absen Masuk — {date_str} {time_str}*\n\n"
+        f"👤 *{emp_name}*\n"
+        f"🕐 {time_str} WIB\n"
+        f"{f'📌 Shift {shift_name}' if shift_name else ''}\n\n"
+        f"Gunakan `/clockout` untuk absen keluar nanti.",
+        parse_mode="Markdown")
+
+async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Absen keluar via Telegram."""
+    emp = await _require_employee(update)
+    if not emp:
+        return
+    emp_id = emp["employee_user_id"]
+    emp_name = emp["employee_name"]
+    # Cek sudah check_in hari ini
+    exists_in, log_in = await _has_today_attendance(emp_id, "check_in")
+    if not exists_in:
+        await update.message.reply_text(
+            f"⚠️ *{emp_name}*, kamu belum absen masuk hari ini.\n\n"
+            f"Gunakan `/clockin` untuk absen masuk.",
+            parse_mode="Markdown")
+        return
+    # Cek double check-out
+    exists_out, _ = await _has_today_attendance(emp_id, "check_out")
+    if exists_out:
+        await update.message.reply_text(
+            f"⚠️ *{emp_name}*, kamu sudah absen keluar hari ini.",
+            parse_mode="Markdown")
+        return
+    # Grace period: minimal 30 menit sejak check-in
+    check_in_ts = int(float(log_in.get("timestamp", 0)))
+    now_ms = int(_now_wib().timestamp() * 1000)
+    elapsed = (now_ms - check_in_ts) // 60000
+    if elapsed < 30:
+        await update.message.reply_text(
+            f"⏳ Minimal 30 menit sejak absen masuk. ({elapsed} menit sejak check-in)\n"
+            f"Coba lagi nanti.")
+        return
+    # Insert check-out
+    ok = await _insert_attendance(emp_id, "check_out",
+                                   notes="Absen via Telegram")
+    if not ok:
+        await update.message.reply_text("❌ Gagal absen keluar. Coba lagi.")
+        return
+    # Hitung durasi
+    duration_min = (now_ms - check_in_ts) // 60000
+    now = _now_wib()
+    date_str = now.strftime("%d/%m")
+    time_str = now.strftime("%H:%M")
+    await update.message.reply_text(
+        f"✅ *Absen Keluar — {date_str} {time_str}*\n\n"
+        f"👤 *{emp_name}*\n"
+        f"🕐 {time_str} WIB\n"
+        f"⏱️ Durasi: {_minutes_to_human(duration_min)}\n\n"
+        f"Shift selesai! Selamat istirahat 🎉",
+        parse_mode="Markdown")
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Cek status absensi hari ini."""
+    emp = await _require_employee(update)
+    if not emp:
+        return
+    emp_id = emp["employee_user_id"]
+    emp_name = emp["employee_name"]
+    # Cari roleName
+    staff_rows = await _fetch("pos_staff_users",
+        f"select=name,\"roleName\"&_id=eq.{emp_id}&limit=1")
+    role = staff_rows[0].get("roleName", "") if staff_rows else ""
+    role_line = f" • {role}" if role else ""
+    # Cari data absensi hari ini
+    today_start = _start_of_day_ms(_now_wib())
+    today_end = today_start + 86400000
+    logs = await _fetch("pos_attendance_logs",
+        f"select=type,timestamp"
+        f"&userId=eq.{emp_id}"
+        f"&timestamp=gte.{today_start}"
+        f"&timestamp=lt.{today_end}"
+        f"&order=timestamp.asc&limit=10")
+    now = _now_wib()
+    date_str = now.strftime("%d/%m/%Y")
+    lines = [f"📋 *Status Absensi — {date_str}*",
+             "────────────────────",
+             f"👤 *{emp_name}*{role_line}",
+             ""]
+    check_in_ts = None
+    check_out_ts = None
+    for log in logs:
+        if log.get("type") == "check_in":
+            check_in_ts = int(float(log.get("timestamp", 0)))
+        elif log.get("type") == "check_out":
+            check_out_ts = int(float(log.get("timestamp", 0)))
+    if check_in_ts:
+        lines.append(f"✅ Absen Masuk: *{_format_time_hm(check_in_ts)} WIB*")
+    else:
+        lines.append("⏳ *Belum absen masuk*")
+        lines.append("")
+        lines.append("Gunakan `/clockin` untuk absen masuk.")
+        await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+        return
+    if check_out_ts:
+        lines.append(f"✅ Absen Keluar: *{_format_time_hm(check_out_ts)} WIB*")
+        dur = (check_out_ts - check_in_ts) // 60000
+        lines.append(f"⏱️ Durasi: *{_minutes_to_human(dur)}*")
+        lines.append("")
+        lines.append("Shift selesai! 🎉")
+    else:
+        now_ms = int(_now_wib().timestamp() * 1000)
+        dur = (now_ms - check_in_ts) // 60000
+        lines.append(f"⏳ Absen Keluar: *Belum*")
+        lines.append(f"⏱️ Durasi: *{_minutes_to_human(dur)}* (berjalan)")
+        lines.append("")
+        lines.append("Gunakan `/clockout` untuk absen keluar.")
+    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 def _now_wib() -> datetime:
     return datetime.now(timezone.utc).astimezone(WIB)
@@ -212,12 +538,28 @@ async def _lazy_fetch_product_category(pid: str) -> str:
         if not rows:
             return "other"
         cat_id = rows[0].get("categoryId", "")
+        # Fast path: check cached category sets
         if cat_id in _BEVERAGE_CATEGORY_IDS:
             _BEVERAGE_PRODUCT_IDS.add(pid)
             return "beverage"
-        elif cat_id in _FOOD_CATEGORY_IDS:
+        if cat_id in _FOOD_CATEGORY_IDS:
             _FOOD_PRODUCT_IDS.add(pid)
             return "food"
+        # Fallback: fetch category name directly (works even if lookups never built)
+        try:
+            cat_rows = await _fetch("pos_categories", f"select=name&_id=eq.{cat_id}&limit=1")
+            if cat_rows:
+                cat_name = (cat_rows[0].get("name") or "").strip().lower()
+                if cat_name == "minuman":
+                    _BEVERAGE_CATEGORY_IDS.add(cat_id)
+                    _BEVERAGE_PRODUCT_IDS.add(pid)
+                    return "beverage"
+                elif cat_name == "makanan":
+                    _FOOD_CATEGORY_IDS.add(cat_id)
+                    _FOOD_PRODUCT_IDS.add(pid)
+                    return "food"
+        except Exception:
+            pass
         return "other"
     except Exception as e:
         logger.warning("lazy_fetch failed for %s: %s", pid, e)
@@ -661,6 +1003,9 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         customer_line += f" — {int(guest_count)} orang"
     extra_lines.append(customer_line)
     kitchen_team_text = _format_team_by_role(team, "Kitchen") if team else ""
+    # Chef staff juga masuk tim dapur (roleName = 'CHEF' di DB)
+    if not kitchen_team_text:
+        kitchen_team_text = _format_team_by_role(team, "CHEF") if team else ""
     if kitchen_team_text:
         extra_lines.append(f"👥 {kitchen_team_text}")
     if notes:
@@ -1316,10 +1661,21 @@ async def _post_init(app):
 
     # Background polling every 5s
     async def _poll_loop():
+        refresh_counter = 0
         while True:
             await asyncio.sleep(5)
             await _check_new_orders(app)
             await _check_new_csr(app)
+            # Refresh lookups every ~30 minutes (360 * 5s = 1800s)
+            refresh_counter += 1
+            if refresh_counter >= 360:
+                refresh_counter = 0
+                logger.info("Periodic lookup refresh starting...")
+                await _build_beverage_lookup()
+                await _build_food_lookup()
+                await _build_staff_lookup()
+                logger.info("Periodic lookup refresh done: %d beverage, %d food products",
+                            len(_BEVERAGE_PRODUCT_IDS), len(_FOOD_PRODUCT_IDS))
 
     app.create_task(_poll_loop())
     logger.info("Polling loop started (5s interval)")
@@ -1408,6 +1764,10 @@ def main():
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
+    app.add_handler(CommandHandler("daftar", cmd_daftar))
+    app.add_handler(CommandHandler("clockin", cmd_clockin))
+    app.add_handler(CommandHandler("clockout", cmd_clockout))
+    app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CallbackQueryHandler(_handle_callback, pattern=r"^(dibuat|selesai)\|"))
     app.run_polling(timeout=1, drop_pending_updates=True)
 
