@@ -214,6 +214,7 @@ function KaryawanLoginPage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }}
         className="w-full max-w-sm"
       >
         <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-lg">

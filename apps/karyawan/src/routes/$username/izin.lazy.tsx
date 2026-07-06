@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+
+const spring = { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 };
 import { ArrowLeft, Calendar, Check, AlertCircle, Clock } from "lucide-react";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
@@ -59,7 +61,7 @@ function IzinCutiSakitPage() {
   }, [canSubmit, staff, leaveType, startDate, endDate, reason, navigate, username]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/80 px-0 py-3 backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })} className="h-8 w-8">
@@ -102,11 +104,11 @@ function IzinCutiSakitPage() {
               Tipe Pengajuan
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {LEAVE_TYPES.map((lt) => (
-                <button
-                  key={lt.value}
-                  type="button"
-                  onClick={() => setLeaveType(lt.value)}
+              {LEAVE_TYPES.map((lt, i) => (
+                <motion.button key={lt.value} type="button"
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...spring, delay: i * 0.05 }} whileTap={{ scale: 0.95 }}
+                onClick={() => setLeaveType(lt.value)}
                   className={`flex flex-col items-center gap-1 rounded-xl border-2 p-3 transition-all ${
                     leaveType === lt.value
                       ? "border-primary bg-primary/5 shadow-sm"
@@ -118,7 +120,7 @@ function IzinCutiSakitPage() {
                     {lt.label}
                   </span>
                   <span className="text-[8px] text-muted-foreground">{lt.desc}</span>
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -154,6 +156,6 @@ function IzinCutiSakitPage() {
           </Button>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }

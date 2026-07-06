@@ -345,7 +345,7 @@ function NotifikasiPage() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25, mass: 0.8 }}
                 className="group relative rounded-xl border bg-card p-3 overflow-hidden"
               >
                 <button

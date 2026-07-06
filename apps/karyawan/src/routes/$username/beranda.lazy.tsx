@@ -45,6 +45,7 @@ function BerandaPage() {
 			<motion.div
 				initial={{ opacity: 0, y: -10 }}
 				animate={{ opacity: 1, y: 0 }}
+				transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }}
 				className="flex items-start justify-between"
 			>
 				<div className="flex items-center gap-2.5 min-w-0">
@@ -93,15 +94,15 @@ function BerandaPage() {
 
 			{/* ─── Quick Stats ─── */}
 			<div className="grid grid-cols-3 gap-2">
-				<div className="rounded-xl border bg-card px-2 py-2 text-center">
+				<div whileHover={{ scale: 1.03 }} transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }} className="rounded-xl border bg-card px-2 py-2 text-center">
 					<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Shift</p>
 					<p className="text-sm font-black">{stats?.sessionCount ?? 0}</p>
 				</div>
-				<div className="rounded-xl border bg-card px-2 py-2 text-center">
+				<div whileHover={{ scale: 1.03 }} transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }} className="rounded-xl border bg-card px-2 py-2 text-center">
 					<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hadir</p>
 					<p className="text-sm font-black">{stats?.attendanceRate ?? 0}<span className="text-[7px] font-normal text-muted-foreground">%</span></p>
 				</div>
-				<div className="rounded-xl border bg-card px-2 py-2 text-center">
+				<div whileHover={{ scale: 1.03 }} transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }} className="rounded-xl border bg-card px-2 py-2 text-center">
 					<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hari</p>
 					<p className="text-sm font-black">{stats?.daysWorked ?? 0}</p>
 				</div>
@@ -119,7 +120,7 @@ function BerandaPage() {
 			<motion.div
 				initial={{ opacity: 0, y: 10 }}
 				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.3 }}
+				transition={{ delay: 0.3, ...{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 } }}
 			>
 				<Button
 					className={`h-11 w-full rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 ${
@@ -127,7 +128,7 @@ function BerandaPage() {
 							? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
 							: "bg-primary hover:bg-primary/90 shadow-primary/20"
 					}`}
-					onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
+					whileTap={{ scale: 0.96 }} onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
 				>
 					{isCurrentlyIn ? (
 						<>

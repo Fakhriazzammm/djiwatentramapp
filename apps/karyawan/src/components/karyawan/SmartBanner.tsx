@@ -78,6 +78,7 @@ export function SmartBanner() {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25, mass: 0.8 }}
       className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 h-28"
     >
       {/* Decorative stones pattern */}
