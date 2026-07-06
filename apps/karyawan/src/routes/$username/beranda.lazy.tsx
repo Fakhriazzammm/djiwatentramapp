@@ -48,9 +48,11 @@ function BerandaPage() {
 			>
 				<div className="flex items-center gap-2.5 min-w-0">
 					{/* Logo Djiwa Tentram */}
-					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-200">
-						<span className="text-lg">🌳</span>
-					</div>
+					<img
+						src="/logo-djiwa.png"
+						alt="Djiwa Tentram"
+						className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm"
+					/>
 					<div className="min-w-0">
 						<p className="text-[8px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
 							{storeName}
