@@ -16,11 +16,11 @@ import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as UsernameIndexRouteImport } from './routes/$username/index'
 import { Route as UsernameProfilRouteImport } from './routes/$username/profil'
 import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
+import { Route as UsernameLeaderboardRouteImport } from './routes/$username/leaderboard'
 import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
 import { Route as UsernameIzinRouteImport } from './routes/$username/izin'
 import { Route as UsernameBerandaRouteImport } from './routes/$username/beranda'
 import { Route as UsernameAbsensiRouteImport } from './routes/$username/absensi'
-import { Route as UsernameLeaderboardRouteImport } from './routes/$username/leaderboard'
 
 const IndexLazyRouteImport = createFileRoute('/')()
 
@@ -60,6 +60,13 @@ const UsernameNotifikasiRoute = UsernameNotifikasiRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/notifikasi.lazy').then((d) => d.Route),
 )
+const UsernameLeaderboardRoute = UsernameLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/leaderboard.lazy').then((d) => d.Route),
+)
 const UsernameJadwalRoute = UsernameJadwalRouteImport.update({
   id: '/jadwal',
   path: '/jadwal',
@@ -87,13 +94,6 @@ const UsernameAbsensiRoute = UsernameAbsensiRouteImport.update({
   getParentRoute: () => UsernameRoute,
 } as any).lazy(() =>
   import('./routes/$username/absensi.lazy').then((d) => d.Route),
-)
-const UsernameLeaderboardRoute = UsernameLeaderboardRouteImport.update({
-  id: '/leaderboard',
-  path: '/leaderboard',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/leaderboard.lazy').then((d) => d.Route),
 )
 
 export interface FileRoutesByFullPath {
@@ -226,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameNotifikasiRouteImport
       parentRoute: typeof UsernameRoute
     }
+    '/$username/leaderboard': {
+      id: '/$username/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/$username/leaderboard'
+      preLoaderRoute: typeof UsernameLeaderboardRouteImport
+      parentRoute: typeof UsernameRoute
+    }
     '/$username/jadwal': {
       id: '/$username/jadwal'
       path: '/jadwal'
@@ -252,13 +259,6 @@ declare module '@tanstack/react-router' {
       path: '/absensi'
       fullPath: '/$username/absensi'
       preLoaderRoute: typeof UsernameAbsensiRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/leaderboard': {
-      id: '/$username/leaderboard'
-      path: '/leaderboard'
-      fullPath: '/$username/leaderboard'
-      preLoaderRoute: typeof UsernameLeaderboardRouteImport
       parentRoute: typeof UsernameRoute
     }
   }
