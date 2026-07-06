@@ -24,8 +24,11 @@ deploy_app() {
 		bun run "build:$name" 2>&1 | tail -3
 	fi
 	
+	# Hapus dulu file lama, lalu copy yang baru
+	sudo rm -rf "/var/www/$domain/"*
 	echo "📁 Copying to /var/www/$domain/..."
 	sudo cp -r "apps/$name/dist/"* "/var/www/$domain/"
+	sudo chown -R www-data:www-data "/var/www/$domain/"
 	echo "✅ $name deployed to https://$domain/"
 }
 
@@ -47,5 +50,4 @@ case "$APP" in
 esac
 
 echo ""
-echo "✅ All done! Versi: $(cat scripts/BUILD_NUMBER)"
-echo "   $(cat apps/pos/src/lib/version.ts | grep semantic | head -1)"
+echo "✅ All done! $(date)"
