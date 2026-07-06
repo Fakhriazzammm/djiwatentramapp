@@ -7,17 +7,5 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H 43.129.54.5 >> ~/.ssh/known_hosts
-
-      - name: Deploy all apps to VPS
-        run: |
-          ssh ubuntu@43.129.54.5 '
-            cd /opt/djiwatentramapp
-            git pull origin main
-            bash scripts/deploy-vps.sh all
-          '
+      - name: Deploy to VPS
+        run: echo "Deploy handled by VPS cron — push only triggers notifications"
