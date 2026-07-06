@@ -832,148 +832,35 @@ function ProfilPage() {
 				</div>
 			</div>
 
-			{/* Kontrak Kerja */}
+			{/* Kontrak Kerja — pindah ke halaman /$username/kontrak */}
 			<div className="space-y-2">
 				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
 					<FileText className="h-3 w-3 text-emerald-500" />
 					Kontrak Kerja
 				</h3>
 				<div className="rounded-xl border bg-card p-3">
-					{isLoadingContract ? (
-						<div className="animate-pulse space-y-2">
-							<div className="h-3 w-40 rounded bg-muted" />
-							<div className="h-3 w-32 rounded bg-muted" />
-							<div className="h-8 w-full rounded-lg bg-muted mt-3" />
-						</div>
-					) : contractData ? (
-						<>
-							<div className="space-y-2">
-								{(() => {
-									const endDate = (contractData as any)?.employment?.endDate;
-									const startDate = (contractData as any)?.employment?.startDate;
-									const durationMonths = Number((contractData as any)?.employment?.contractDuration ?? 0);
-									const computedEndDate = endDate || (startDate && durationMonths > 0 ? new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + durationMonths, new Date(startDate).getDate()).toISOString() : null);
-									const isExpired = (computedEndDate && new Date(computedEndDate) < new Date()) || (contractData as any)?.status === "expired" || (contractData as any)?.status === "completed";
-									const status = (contractData as any)?.status;
-									const isActive = !isExpired && (status === "approved" || !status);
-									return (
-										<>
-											<div className="flex items-center justify-between">
-												<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Status</span>
-												<span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{isActive ? "Aktif" : "Berakhir"}</span>
-											</div>
-											<div className="flex items-center justify-between">
-												<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Jenis</span>
-												<span className="text-xs font-bold">{((contractData as any)?.employment?.type) || "PKWT - Full Time"}</span>
-											</div>
-											<div className="flex items-center justify-between">
-												<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mulai</span>
-												<span className="text-xs font-bold">{((contractData as any)?.employment?.startDate) ? new Date((contractData as any).employment.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
-											</div>
-											<div className="flex items-center justify-between">
-												<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
-												<span className="text-xs font-bold">{computedEndDate ? new Date(computedEndDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : status === "expired" || status === "completed" ? "Selesai" : "—"}</span>
-											</div>
-										</>
-									);
-								})()}
-							</div>
-							{contractData.contract_pdf_url && (
-								<Button variant="outline" size="sm" className="w-full mt-3 rounded-lg text-[10px] font-bold h-8" onClick={() => window.open(contractData.contract_pdf_url, "_blank")}>
-									<Download className="mr-1.5 h-3 w-3" />
-									Download Kontrak PDF
-								</Button>
-							)}
-						</>
-					) : (
-						<div className="py-4 text-center">
-							<p className="text-[11px] font-medium text-muted-foreground">Belum ada kontrak kerja</p>
-						</div>
-					)}
+					<div className="flex items-center justify-between">
+						<p className="text-[10px] font-medium text-muted-foreground">Lihat detail kontrak kerja kamu</p>
+						<Button variant="outline" size="sm" className="rounded-lg text-[10px] font-bold h-8" onClick={() => navigate({ to: "/$username/kontrak" as any, params: { username } })}>
+							BUKA
+						</Button>
+					</div>
 				</div>
 			</div>
 
-			{/* Slip Gaji */}
+			{/* Slip Gaji — pindah ke halaman /$username/slip-gaji */}
 			<div className="space-y-2">
-				<div className="flex items-center justify-between px-2">
-					<h3 className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
-						<FileText className="h-3 w-3 text-primary" />
-						Slip Gaji
-					</h3>
-				</div>
-				<div className="space-y-2">
-					{!myPayslips && !livePayslip ? (
-						<>
-							{[1, 2, 3].map((i) => (
-								<div key={i} className="animate-pulse rounded-xl border bg-card p-4 space-y-3">
-									<div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-muted" /><div className="space-y-1 flex-1"><div className="h-3 w-32 rounded bg-muted" /><div className="h-2.5 w-20 rounded bg-muted" /></div><div className="h-5 w-16 rounded bg-muted" /></div>
-									{[1, 2, 3].map((j) => <div key={j} className="flex justify-between"><div className="h-3 w-28 rounded bg-muted" /><div className="h-3 w-16 rounded bg-muted" /></div>)}
-									<div className="h-8 w-full rounded-lg bg-muted" />
-								</div>
-							))}
-						</>
-					) : allPayslips.length === 0 ? (
-						<div className="rounded-xl border bg-card p-6 text-center">
-							<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-							<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
-						</div>
-					) : (
-						<>
-							{/* Timeline Chips */}
-							<LayoutGroup id="payslip-chips">
-								<div className="flex gap-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
-									{allPayslips.map((p: any, i: number) => {
-										const isActive = selectedPayslipIdx === i;
-										const month = (p.period_name || "").split(" ")[0]?.substring(0, 3) || "";
-										const net = p.net_pay ?? 0;
-										const netShort = net >= 1_000_000
-											? `${(net / 1_000_000).toFixed(1)}jt`
-											: net >= 1_000
-												? `${(net / 1_000).toFixed(0)}rb`
-												: `${net}`;
-										return (
-											<motion.button
-												key={p.id || i}
-												layout
-												type="button"
-												onClick={() => setSelectedPayslipIdx(i)}
-												whileTap={{ scale: 0.92 }}
-												className={cn(
-													"relative flex shrink-0 flex-col items-center rounded-lg border px-2 py-1 transition-colors",
-													isActive
-														? "bg-primary/10 border-primary/30 text-primary"
-														: "bg-card border-border/50 text-muted-foreground hover:border-border"
-												)}
-											>
-												<span className="text-[8px] font-bold uppercase leading-tight">{month}</span>
-												<span className="text-[10px] font-black tabular-nums leading-tight">{netShort}</span>
-												{isActive && (
-													<motion.div
-														layoutId="chip-indicator"
-														className="absolute -bottom-px left-1 right-1 h-0.5 rounded-full bg-primary"
-														transition={{ type: "spring", stiffness: 500, damping: 35 }}
-													/>
-												)}
-											</motion.button>
-										);
-									})}
-								</div>
-							</LayoutGroup>
-
-							{/* Detail Card */}
-							<AnimatePresence mode="wait">
-								<motion.div
-									key={selectedPayslipIdx}
-									initial={{ opacity: 0, y: 6 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -6 }}
-									transition={{ duration: 0.15 }}
-								>
-									<PayslipDetailCard payslip={allPayslips[selectedPayslipIdx]} onDownload={handleDownloadPayslip} />
-								</motion.div>
-							</AnimatePresence>
-						</>
-					)}
+				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+					<FileText className="h-3 w-3 text-primary" />
+					Slip Gaji
+				</h3>
+				<div className="rounded-xl border bg-card p-3">
+					<div className="flex items-center justify-between">
+						<p className="text-[10px] font-medium text-muted-foreground">Lihat slip gaji & download PDF</p>
+						<Button variant="outline" size="sm" className="rounded-lg text-[10px] font-bold h-8" onClick={() => navigate({ to: "/$username/slip-gaji" as any, params: { username } })}>
+							BUKA
+						</Button>
+					</div>
 				</div>
 			</div>
 

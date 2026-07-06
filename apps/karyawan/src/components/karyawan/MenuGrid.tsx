@@ -16,12 +16,12 @@ interface MenuGridProps {
 const menuItems: MenuItem[] = [
   // Row 1
   { label: "Absensi", emoji: "🕐", menuId: "absensi", route: "/$username/absensi", action: "navigate" },
-  { label: "Rekap Absensi", emoji: "📒", menuId: "rekap", route: "/$username/profil", action: "navigate" },
+  { label: "Rekap Absensi", emoji: "📒", menuId: "rekap", route: "/$username/rekap-absensi", action: "navigate" },
   { label: "Jadwal", emoji: "📅", menuId: "jadwal", route: "/$username/jadwal", action: "navigate" },
   { label: "Izin/Cuti/Sakit", emoji: "🏝️", menuId: "izin", route: "/$username/izin", action: "navigate" },
   // Row 2
-  { label: "Slip Gaji", emoji: "💰", menuId: "slip-gaji", route: "/$username/profil", action: "navigate" },
-  { label: "Kontrak", emoji: "📝", menuId: "kontrak", route: "/$username/profil", action: "navigate" },
+  { label: "Slip Gaji", emoji: "💰", menuId: "slip-gaji", route: "/$username/slip-gaji", action: "navigate" },
+  { label: "Kontrak", emoji: "📝", menuId: "kontrak", route: "/$username/kontrak", action: "navigate" },
   { label: "Grup Telegram", emoji: "💬", menuId: "telegram", action: "external" },
   { label: "Leaderboard Bonus", emoji: "🏆", menuId: "leaderboard", route: "/$username/leaderboard", action: "navigate" },
 ];

@@ -1,0 +1,95 @@
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useStaffProfile } from "../$username.lazy";
+import { createClient } from "@yumipos/web-shared";
+import { Button } from "@yumipos/web-shared/components/ui/button";
+import { FileText, Download } from "lucide-react";
+import { toast } from "sonner";
+
+function KontrakPage() {
+	const { staff, isUnlocked } = useStaffProfile();
+	const [contractData, setContractData] = useState<any>(null);
+	const [isLoadingContract, setIsLoadingContract] = useState(false);
+
+	useEffect(() => {
+		if (!staff?._id) return;
+		setIsLoadingContract(true);
+		const supabase = createClient();
+		supabase
+			.from("employee_onboarding_applications")
+			.select("id, full_name, contract, contract_pdf_url, employment, raw, created_at, status")
+			.eq("approved_user_source_id", staff._id)
+			.in("status", ["approved", "expired", "completed"])
+			.order("created_at", { ascending: false })
+			.maybeSingle()
+			.then((result: any) => {
+				const { data, error } = result;
+				if (data) setContractData(data);
+				else if (error) console.warn("[Kontrak] fetch error:", error);
+				setIsLoadingContract(false);
+			});
+	}, [staff?._id]);
+
+	const endDate = (contractData as any)?.employment?.endDate;
+	const startDate = (contractData as any)?.employment?.startDate;
+	const durationMonths = Number((contractData as any)?.employment?.contractDuration ?? 0);
+	const computedEndDate = endDate || (startDate && durationMonths > 0 ? new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + durationMonths, new Date(startDate).getDate()).toISOString() : null);
+	const isExpired = (computedEndDate && new Date(computedEndDate) < new Date()) || (contractData as any)?.status === "expired" || (contractData as any)?.status === "completed";
+	const status = (contractData as any)?.status;
+	const isActive = !isExpired && (status === "approved" || !status);
+
+	return (
+		<div className="mx-auto max-w-lg px-4 py-8">
+			<div className="space-y-2">
+				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
+					<FileText className="h-3 w-3 text-emerald-500" />
+					Kontrak Kerja
+				</h3>
+				<div className="rounded-xl border bg-card p-3">
+					{isLoadingContract ? (
+						<div className="animate-pulse space-y-2">
+							<div className="h-3 w-40 rounded bg-muted" />
+							<div className="h-3 w-32 rounded bg-muted" />
+							<div className="h-8 w-full rounded-lg bg-muted mt-3" />
+						</div>
+					) : contractData ? (
+						<>
+							<div className="space-y-2">
+								<div className="flex items-center justify-between">
+									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Status</span>
+									<span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{isActive ? "Aktif" : "Berakhir"}</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Jenis</span>
+									<span className="text-xs font-bold">{((contractData as any)?.employment?.type) || "PKWT - Full Time"}</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mulai</span>
+									<span className="text-xs font-bold">{((contractData as any)?.employment?.startDate) ? new Date((contractData as any).employment.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
+									<span className="text-xs font-bold">{computedEndDate ? new Date(computedEndDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : status === "expired" || status === "completed" ? "Selesai" : "—"}</span>
+								</div>
+							</div>
+							{contractData.contract_pdf_url && (
+								<Button variant="outline" size="sm" className="w-full mt-3 rounded-lg text-[10px] font-bold h-8" onClick={() => window.open(contractData.contract_pdf_url, "_blank")}>
+									<Download className="mr-1.5 h-3 w-3" />
+									Download Kontrak PDF
+								</Button>
+							)}
+						</>
+					) : (
+						<div className="py-4 text-center">
+							<p className="text-[11px] font-medium text-muted-foreground">Belum ada kontrak kerja</p>
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+export const Route = createLazyFileRoute("/$username/kontrak")({
+	component: KontrakPage,
+});
