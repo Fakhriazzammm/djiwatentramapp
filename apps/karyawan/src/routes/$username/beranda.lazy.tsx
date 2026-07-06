@@ -1,10 +1,10 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useHybridStaffStats, useHybridSiteSettings } from "@yumipos/web-shared";
+import { useHybridCurrentlyInStore, useHybridStaffStats, useHybridSiteSettings } from "@yumipos/web-shared";
 import { useStaffProfile } from "../$username.lazy";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { motion } from "framer-motion";
-import { Camera } from "lucide-react";
+import { Camera, LogOut } from "lucide-react";
 import { SmartBanner } from "@/components/karyawan/SmartBanner";
 import { MenuGrid } from "@/components/karyawan/MenuGrid";
 
@@ -35,6 +35,8 @@ function BerandaPage() {
 			? { userId: staff._id, month: now.getMonth() + 1, year: now.getFullYear() }
 			: undefined
 	);
+	const currentlyIn = useHybridCurrentlyInStore();
+	const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff?._id) ?? false;
 
 	return (
 		<div className="space-y-5">
@@ -114,11 +116,24 @@ function BerandaPage() {
 				transition={{ delay: 0.3 }}
 			>
 				<Button
-					className="h-11 w-full rounded-xl text-xs font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-1.5"
+					className={`h-11 w-full rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 ${
+						isCurrentlyIn
+							? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
+							: "bg-primary hover:bg-primary/90 shadow-primary/20"
+					}`}
 					onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
 				>
-					<Camera className="h-4 w-4" />
-					ABSENSI SEKARANG
+					{isCurrentlyIn ? (
+						<>
+							<LogOut className="h-4 w-4" />
+							ABSEN KELUAR
+						</>
+					) : (
+						<>
+							<Camera className="h-4 w-4" />
+							ABSEN MASUK
+						</>
+					)}
 				</Button>
 			</motion.div>
 		</div>
