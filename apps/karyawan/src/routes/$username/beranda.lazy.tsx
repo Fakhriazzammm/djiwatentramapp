@@ -6,6 +6,7 @@ import { Button } from "@yumipos/web-shared/components/ui/button";
 import { motion } from "framer-motion";
 import { Camera, LogOut } from "lucide-react";
 import { SmartBanner } from "@/components/karyawan/SmartBanner";
+import { SaldoCard } from "@/components/karyawan/SaldoCard";
 import { MenuGrid } from "@/components/karyawan/MenuGrid";
 
 export const Route = createLazyFileRoute("/$username/beranda")({
@@ -86,6 +87,9 @@ function BerandaPage() {
 
 			{/* ─── Smart Banner ─── */}
 			<SmartBanner />
+
+			{/* ─── Saldo ─── */}
+			<SaldoCard staffId={staff?._id ?? ""} />
 
 			{/* ─── Quick Stats ─── */}
 			<div className="grid grid-cols-3 gap-2">
