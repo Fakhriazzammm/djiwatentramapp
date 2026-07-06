@@ -9,6 +9,9 @@ import { Button } from "@yumipos/web-shared/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, UserCircle, ShieldCheck, BellRing, X } from "lucide-react";
 
+/* Force Vite code-split untuk leaderboard */
+void import("./$username/leaderboard.lazy");
+
 /** Shared context for child routes */
 export interface StaffProfileContext {
 	username: string;
