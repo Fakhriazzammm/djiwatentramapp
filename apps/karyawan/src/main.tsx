@@ -6,6 +6,8 @@ import { AppUpdatePrompt } from "@/components/app-update-prompt";
 import { startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
+/* vitesplit: keep notifikasi lazy chunk synced with route tree */
+import("./routes/$username/notifikasi.lazy");
 
 const router = createRouter({ routeTree });
 
