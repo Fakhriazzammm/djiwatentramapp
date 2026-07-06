@@ -106,19 +106,6 @@ function LoadingSkeleton() {
   );
 }
 
-function EmptyState() {
-  return (
-    <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-4 text-center">
-      <Wallet className="mx-auto h-5 w-5 text-muted-foreground/30 mb-1" />
-      <p className="text-[10px] font-medium text-muted-foreground">
-        Belum ada data gaji bulan ini
-      </p>
-      <p className="text-[8px] text-muted-foreground/50 mt-0.5">
-        Data akan muncul setelah checkout shift pertama
-      </p>
-    </div>
-  );
-}
 
 // ── Main Component ────────────────────────────────────────────
 
@@ -188,7 +175,9 @@ export function SaldoCard({ staffId }: SaldoCardProps) {
   // ── Render ──────────────────────────────────────────────────
 
   if (loading) return <LoadingSkeleton />;
-  if (!saldo || saldo.total === 0) return <EmptyState />;
+
+  // Fallback: jika belum ada data, tampilkan 0 semua (bukan empty)
+  const display = saldo ?? { gaji: 0, tunjangan: 0, bonus: 0, total: 0 };
 
   const monthLabel = new Date().toLocaleDateString("id-ID", {
     month: "long",
@@ -197,7 +186,7 @@ export function SaldoCard({ staffId }: SaldoCardProps) {
 
   // Progress: total vs 4.5jt default target
   const target = 4_500_000;
-  const progress = Math.min((saldo.total / target) * 100, 100);
+  const progress = Math.min((display.total / target) * 100, 100);
   const progressColor =
     progress > 70
       ? "bg-emerald-500"
@@ -241,21 +230,21 @@ export function SaldoCard({ staffId }: SaldoCardProps) {
         <SaldoItem
           emoji="💵"
           label="Gaji"
-          value={saldo.gaji}
+          value={display.gaji}
           visible={visible}
           accentClass="text-emerald-600"
         />
         <SaldoItem
           emoji="🎁"
           label="Tunjangan"
-          value={saldo.tunjangan}
+          value={display.tunjangan}
           visible={visible}
           accentClass="text-blue-600"
         />
         <SaldoItem
           emoji="🏆"
           label="Bonus"
-          value={saldo.bonus}
+          value={display.bonus}
           visible={visible}
           accentClass="text-amber-600"
         />
@@ -269,7 +258,7 @@ export function SaldoCard({ staffId }: SaldoCardProps) {
             Progress target
           </span>
           <span className="font-bold tabular-nums">
-            {visible ? fmtIDR(saldo.total) : "****"} / {fmtIDR(target)}
+            {visible ? fmtIDR(display.total) : "****"} / {fmtIDR(target)}
           </span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
