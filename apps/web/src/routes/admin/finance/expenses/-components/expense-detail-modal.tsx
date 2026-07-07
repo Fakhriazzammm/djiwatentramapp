@@ -125,18 +125,6 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 						</div>
 					</div>
 
-					{/* Source info */}
-					{(tx as any).sourceFingerprint && (
-						<div className="rounded-xl bg-slate-50 p-4">
-							<div className="flex justify-between items-start">
-								<span className="text-xs text-slate-400">No. Struk</span>
-								<span className="text-xs font-mono text-slate-500">
-									{(tx as any).metadata?.receipt_number || (tx as any).sourceFingerprint?.slice(0, 12) || "-"}
-								</span>
-							</div>
-						</div>
-					)}
-
 					{/* Receipt Image */}
 					{receiptUrl && (
 						<div className="space-y-2">
@@ -171,23 +159,6 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 						</div>
 					)}
 
-					{/* Additional metadata (if any non-receipt metadata) */}
-					{(tx as any).metadata &&
-						Object.keys((tx as any).metadata).filter((k: string) => k !== "receipt_image_url" && k !== "receipt_number").length > 0 && (
-							<div className="rounded-xl bg-slate-50 p-4 space-y-2">
-								<p className="text-xs font-semibold text-slate-400 uppercase">Metadata</p>
-								{Object.entries((tx as any).metadata)
-									.filter(([k]) => k !== "receipt_image_url" && k !== "receipt_number")
-									.map(([key, value]) => (
-										<div key={key} className="flex justify-between items-start text-xs">
-											<span className="text-slate-400">{key}</span>
-											<span className="text-slate-600 max-w-[60%] text-right">
-												{typeof value === "object" ? JSON.stringify(value) : String(value)}
-											</span>
-										</div>
-									))}
-							</div>
-						)}
 				</div>
 
 				{/* Footer */}
