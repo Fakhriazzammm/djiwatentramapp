@@ -37,6 +37,7 @@ import {
 	Users,
 	Wallet,
 	X,
+	Receipt,
 	ArrowLeft,
 	BarChart3,
 	CalendarDays,
@@ -74,6 +75,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/shift-reports": "Laporan Shift",
 	"/admin/finance/transactions": "Riwayat Transaksi",
 	"/admin/finance/accounting": "Chart of Accounts",
+	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
 	"/admin/ai-chat": "Yumi AI",
@@ -157,6 +159,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/finance", icon: Wallet, label: "Keuangan", permission: "finance:view" },
 			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi", permission: "finance:view" },
 			{ to: "/admin/finance/accounting", icon: BookOpen, label: "Akuntansi", permission: "finance:view" },
+			{ to: "/admin/finance/expenses", icon: Receipt, label: "Pengeluaran", permission: "finance:view" },
 			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan", permission: "finance:view" },
 			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift", permission: "finance:view" },
 			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP", permission: "finance:view" },
@@ -202,6 +205,7 @@ const FINANCE_PATHS = [
 	"/admin/finance/shift-reports",
 	"/admin/finance/transactions",
 	"/admin/finance/accounting",
+	"/admin/finance/expenses",
 ];
 
 const OPERATIONAL_TEAM_PATHS = [
@@ -611,12 +615,18 @@ function AdminLayout() {
 										permission="finance:view"
 									/>
 									<DesktopSubNavLink
-										icon={<BookOpen />}
-										label="Akuntansi"
-										to="/admin/finance/accounting"
-										permission="finance:view"
-									/>
-											<DesktopSubNavLink
+											icon={<BookOpen />}
+											label="Akuntansi"
+											to="/admin/finance/accounting"
+											permission="finance:view"
+										/>
+										<DesktopSubNavLink
+											icon={<Receipt />}
+											label="Pengeluaran"
+											to="/admin/finance/expenses"
+											permission="finance:view"
+										/>
+										<DesktopSubNavLink
 												icon={<FileBarChart />}
 												label="Laporan"
 												to="/admin/finance/reports"
