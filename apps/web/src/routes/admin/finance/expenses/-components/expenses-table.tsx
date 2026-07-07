@@ -344,7 +344,7 @@ export function ExpensesTable() {
 										</th>
 										<th className="px-4 py-3">Metode</th>
 										<th className="px-4 py-3">Status</th>
-										<th className="px-4 py-3 w-10"></th>
+										<th className="px-4 py-3 text-center">Struk</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100">
@@ -398,9 +398,16 @@ export function ExpensesTable() {
 																: tx.status}
 													</span>
 												</td>
-												<td className="px-4 py-3">
-													{hasReceipt && (
-														<Receipt className="h-4 w-4 text-slate-400" />
+												<td className="px-4 py-3 text-center">
+													{hasReceipt ? (
+														<img
+															alt="Struk"
+															className="h-9 w-9 rounded object-cover border border-slate-200 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
+															onClick={(e) => { e.stopPropagation(); setSelectedTx(tx); }}
+															src={(tx as any).metadata.receipt_image_url}
+														/>
+													) : (
+														<span className="text-xs text-slate-300">—</span>
 													)}
 												</td>
 											</tr>
