@@ -16,6 +16,8 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+# Group where attendance notifications are broadcast (overrides yumi-ai-bot behavior)
+REPORT_CHAT_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
 
 WIB = timezone(timedelta(hours=7))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -159,10 +161,125 @@ async def _insert_attendance(employee_user_id: str, att_type: str, notes: str = 
         logger.error("insert_attendance failed: %s", e)
         return False
 
-async def _find_shift_at_time(timestamp_ms: int) -> dict:
-    """Find the best-matching shift using shift schedules from site settings.
-    
-    Uses time-based detection from shiftSchedules config (same logic as web app).
+
+async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
+                                   shift_name: str = "", notes: str = "") -> None:
+    """Broadcast an attendance event to the [Report] Djiwa Tentram group.
+
+    Format (matches the HR report style):
+        🚶‍➡️ Absen Masuk — 08/07 12:43
+        👤 Muhamad Taofikurohman • BARISTA
+        🕐 12:43 WIB
+        📌 Shift Pagi (07:30 - 14:30)
+        ⚠️ Terlambat 313 menit
+        💰 Potongan shift: Rp36,667
+
+    Includes photo (if any) + late penalty calculation.
+    """
+    if not REPORT_CHAT_ID:
+        return
+
+    emp_name = emp.get("employee_name", "Karyawan")
+    emp_id = emp.get("employee_user_id", "")
+    role_name = ""
+
+    # Fetch role + rate for penalty calculation
+    base_shift_rate = 0
+    try:
+        staff = await _fetch("pos_staff_users",
+            f"select=roleName,roleId&_id=eq.{emp_id}&limit=1")
+        if staff:
+            role_name = staff[0].get("roleName", "")
+            role_id = staff[0].get("roleId", "")
+            if role_id:
+                roles = await _fetch("pos_staff_roles",
+                    f"select=raw&_id=eq.{role_id}&limit=1")
+                if roles:
+                    raw = roles[0].get("raw")
+                    if isinstance(raw, dict):
+                        base_shift_rate = int(raw.get("baseShiftRate", 0))
+    except Exception as e:
+        logger.warning("notify role fetch: %s", e)
+
+    date_str = now_dt.strftime("%d/%m")
+    time_str = now_dt.strftime("%H:%M")
+    icon = "🚶‍➡️" if att_type == "check_in" else "📤"
+    label = "Absen Masuk" if att_type == "check_in" else "Absen Keluar"
+
+    lines = [
+        f"{icon} {label} — {date_str} {time_str}",
+        f"👤 {emp_name}" + (f" • {role_name}" if role_name else ""),
+        f"🕐 {time_str} WIB",
+    ]
+
+    # Shift schedule + lateness (only meaningful for check-in)
+    if shift_name and att_type == "check_in":
+        try:
+            ss = await _fetch("pos.site_settings", "select=raw&limit=1")
+            if ss:
+                raw = ss[0].get("raw", {})
+                schedules = raw.get("shiftSettings", {}).get("shiftSchedules", []) if isinstance(raw, dict) else []
+                sched = next((s for s in schedules
+                              if s.get("name") == shift_name or s.get("shiftName") == shift_name), None)
+                if sched:
+                    open_t = sched.get("openTime", "")
+                    close_t = sched.get("closeTime", "")
+                    lines.append(f"📌 {shift_name} ({open_t} - {close_t})")
+
+                    # Lateness
+                    oh, om = int(open_t.split(":")[0]), int(open_t.split(":")[1])
+                    ch, cm = int(close_t.split(":")[0]), int(close_t.split(":")[1]) if close_t else (oh + 8, om)
+                    open_min = oh * 60 + om
+                    close_min = ch * 60 + cm
+                    check_min = now_dt.hour * 60 + now_dt.minute
+                    late_mins = check_min - open_min
+                    tolerance = 5
+                    if late_mins > tolerance:
+                        shift_duration = close_min - open_min or 480
+                        penalty_mins = late_mins - tolerance
+                        lines.append(f"⚠️ Terlambat {late_mins} menit")
+                        if base_shift_rate > 0 and shift_duration > 0:
+                            denda = int((penalty_mins / shift_duration) * base_shift_rate)
+                            lines.append(f"💰 Potongan shift: Rp{denda:,}")
+                    else:
+                        lines.append("✅ Tepat waktu")
+        except Exception as e:
+            logger.warning("notify shift calc: %s", e)
+    elif shift_name:
+        lines.append(f"📌 {shift_name}")
+
+    msg = "\n".join(lines)
+
+    # Photo (if present in notes)
+    photo_bytes = None
+    if notes:
+        import re
+        m = re.search(r"foto:\s*(\S+)", notes)
+        if m:
+            foto_url = m.group(1)
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(foto_url, timeout=15)
+                    if resp.status_code == 200:
+                        photo_bytes = resp.content
+            except Exception as e:
+                logger.warning("notify photo fetch: %s", e)
+
+    try:
+        from telegram import Bot as _Bot
+        bot = _Bot(token=BOT_TOKEN)
+        if photo_bytes:
+            await bot.send_photo(chat_id=REPORT_CHAT_ID, photo=photo_bytes,
+                                 caption=msg, parse_mode="Markdown")
+        else:
+            await bot.send_message(chat_id=REPORT_CHAT_ID, text=msg, parse_mode="Markdown")
+        logger.info("Attendance broadcast sent to group %s for %s", REPORT_CHAT_ID, emp_name)
+    except Exception as e:
+        logger.error("attendance group notify failed: %s", e)
+
+
+async def _post_legacy_mirror(payload: dict) -> dict:
+    """Uses time-based detection from shiftSchedules config (same logic as web app).
     When shifts overlap, picks the one with the LATEST openTime (most recently started).
     This fixes the bug where Shift Pagi (07:30-14:30) was always returned 
     instead of Shift Sore (13:00-21:00) during overlap 13:00-14:30.
@@ -550,6 +667,10 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Gagal absen keluar. Coba lagi.",
             reply_markup=_main_keyboard())
         return
+
+    # Broadcast to report group
+    now_dt = _now_wib()
+    await _notify_attendance_group(emp, "check_out", now_dt)
 
     duration_min = (now_ms - check_in_ts) // 60000
     now = _now_wib()
@@ -1001,6 +1122,9 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Gagal absen. Coba lagi.",
             reply_markup=_main_keyboard())
         return
+
+    # Broadcast to report group (intent is "check_in" here)
+    await _notify_attendance_group(emp, intent, now, shift_name, notes)
 
     date_str = now.strftime("%d/%m")
     time_str = now.strftime("%H:%M")
