@@ -283,7 +283,6 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
                 lines.append(f"📌 {shift_name}")
         except Exception as e:
             logger.warning("notify shift calc: %s", e)
-        lines.append(f"📌 {shift_name}")
 
     msg = "\n".join(lines)
 
