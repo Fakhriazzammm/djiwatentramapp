@@ -206,17 +206,6 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
     icon = "🚶‍➡️" if att_type == "check_in" else "📤"
     label = "Absen Masuk" if att_type == "check_in" else "Absen Keluar"
 
-    # Auto-detect shift from check-in time if not provided (Telegram check-ins
-    # often leave shiftName empty in DB)
-    if not shift_name and att_type == "check_in":
-        try:
-            ts_ms = int(now_dt.timestamp() * 1000)
-            detected = await _find_shift_at_time(ts_ms)
-            if detected:
-                shift_name = detected.get("shift_name", "")
-        except Exception as e:
-            logger.warning("notify shift detect: %s", e)
-
     lines = [
         f"{icon} {label} — {date_str} {time_str}",
         f"👤 {emp_name}" + (f" • {role_name}" if role_name else ""),
@@ -224,12 +213,45 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
     ]
 
     # Shift schedule + lateness (only meaningful for check-in)
-    if shift_name and att_type == "check_in":
+    if att_type == "check_in":
         try:
-            ss = await _fetch("pos.site_settings", "select=raw&limit=1")
+            ss = await _fetch("pos_site_settings", "select=raw&limit=1")
+            schedules = []
             if ss:
                 raw = ss[0].get("raw", {})
-                schedules = raw.get("shiftSettings", {}).get("shiftSchedules", []) if isinstance(raw, dict) else []
+                if isinstance(raw, dict):
+                    schedules = raw.get("shiftSettings", {}).get("shiftSchedules", [])
+            if not shift_name and schedules:
+                # Auto-detect shift from check-in time
+                check_min = now_dt.hour * 60 + now_dt.minute
+                matches = []
+                for s in schedules:
+                    ot = s.get("openTime", "")
+                    ct = s.get("closeTime", "")
+                    name = s.get("name", s.get("shiftName", ""))
+                    if not ot or not ct or not name:
+                        continue
+                    try:
+                        oh, om = int(ot.split(":")[0]), int(ot.split(":")[1])
+                        ch, cm = int(ct.split(":")[0]), int(ct.split(":")[1])
+                    except (ValueError, IndexError):
+                        continue
+                    open_min = oh * 60 + om
+                    close_min = ch * 60 + cm
+                    in_window = False
+                    if open_min <= close_min:
+                        if open_min <= check_min < close_min:
+                            in_window = True
+                    else:
+                        if check_min >= open_min or check_min < close_min:
+                            in_window = True
+                    if in_window:
+                        matches.append({"name": name, "open_min": open_min})
+                if matches:
+                    matches.sort(key=lambda x: x["open_min"], reverse=True)
+                    shift_name = matches[0]["name"]
+
+            if shift_name and schedules:
                 sched = next((s for s in schedules
                               if s.get("name") == shift_name or s.get("shiftName") == shift_name), None)
                 if sched:
@@ -238,25 +260,29 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
                     lines.append(f"📌 {shift_name} ({open_t} - {close_t})")
 
                     # Lateness
-                    oh, om = int(open_t.split(":")[0]), int(open_t.split(":")[1])
-                    ch, cm = int(close_t.split(":")[0]), int(close_t.split(":")[1]) if close_t else (oh + 8, om)
-                    open_min = oh * 60 + om
-                    close_min = ch * 60 + cm
-                    check_min = now_dt.hour * 60 + now_dt.minute
-                    late_mins = check_min - open_min
-                    tolerance = 5
-                    if late_mins > tolerance:
-                        shift_duration = close_min - open_min or 480
-                        penalty_mins = late_mins - tolerance
-                        lines.append(f"⚠️ Terlambat {late_mins} menit")
-                        if base_shift_rate > 0 and shift_duration > 0:
-                            denda = int((penalty_mins / shift_duration) * base_shift_rate)
-                            lines.append(f"💰 Potongan shift: Rp{denda:,}")
-                    else:
-                        lines.append("✅ Tepat waktu")
+                    if open_t and close_t:
+                        oh, om = int(open_t.split(":")[0]), int(open_t.split(":")[1])
+                        ch, cm = int(close_t.split(":")[0]), int(close_t.split(":")[1])
+                        open_min = oh * 60 + om
+                        close_min = ch * 60 + cm
+                        check_min = now_dt.hour * 60 + now_dt.minute
+                        late_mins = check_min - open_min
+                        tolerance = 5
+                        if late_mins > tolerance:
+                            shift_duration = close_min - open_min or 480
+                            penalty_mins = late_mins - tolerance
+                            lines.append(f"⚠️ Terlambat {late_mins} menit")
+                            if base_shift_rate > 0 and shift_duration > 0:
+                                denda = int((penalty_mins / shift_duration) * base_shift_rate)
+                                lines.append(f"💰 Potongan shift: Rp{denda:,}")
+                        else:
+                            lines.append("✅ Tepat waktu")
+                else:
+                    lines.append(f"📌 {shift_name}")
+            elif shift_name:
+                lines.append(f"📌 {shift_name}")
         except Exception as e:
             logger.warning("notify shift calc: %s", e)
-    elif shift_name:
         lines.append(f"📌 {shift_name}")
 
     msg = "\n".join(lines)
