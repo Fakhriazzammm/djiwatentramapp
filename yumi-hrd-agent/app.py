@@ -206,6 +206,17 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
     icon = "🚶‍➡️" if att_type == "check_in" else "📤"
     label = "Absen Masuk" if att_type == "check_in" else "Absen Keluar"
 
+    # Auto-detect shift from check-in time if not provided (Telegram check-ins
+    # often leave shiftName empty in DB)
+    if not shift_name and att_type == "check_in":
+        try:
+            ts_ms = int(now_dt.timestamp() * 1000)
+            detected = await _find_shift_at_time(ts_ms)
+            if detected:
+                shift_name = detected.get("shift_name", "")
+        except Exception as e:
+            logger.warning("notify shift detect: %s", e)
+
     lines = [
         f"{icon} {label} — {date_str} {time_str}",
         f"👤 {emp_name}" + (f" • {role_name}" if role_name else ""),
