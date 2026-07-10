@@ -1291,6 +1291,140 @@ async def _send_order_recap(bot: Bot, tg_id: int, emp_name: str):
         logger.warning("Failed to send order recap for %s: %s", emp_name, e)
 
 
+# ── Background: 30-min shift-end reminder ──
+
+_reminded_today: set[tuple[str, str, str]] = set()  # {(user_id, shift_name, date)}
+
+
+async def _shift_end_reminder_loop(app: Application):
+    """Remind employees 30 min before their shift ends (runs inside bot process)."""
+    await asyncio.sleep(30)  # Give bot time to start
+    logger.info("Shift-end reminder loop started (every 60s)")
+    while True:
+        try:
+            now = datetime.now(WIB)
+            date_str = now.strftime("%Y-%m-%d")
+            now_min = now.hour * 60 + now.minute
+
+            # 1. Get shift schedules
+            rows = await _fetch("pos_site_settings", "select=raw&limit=1")
+            schedules = []
+            if rows and isinstance(rows[0].get("raw"), dict):
+                ss = rows[0]["raw"].get("shiftSettings", {})
+                if isinstance(ss, dict):
+                    schedules = ss.get("shiftSchedules", [])
+
+            if not schedules:
+                await asyncio.sleep(60)
+                continue
+
+            # 2. Get today's attendance
+            today_start = int(now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
+            today_end = today_start + 86400000
+            checkins = await _fetch("pos_attendance_logs",
+                f"select=userId,timestamp&type=eq.check_in&timestamp=gte.{today_start}&timestamp=lt.{today_end}")
+            checkouts = await _fetch("pos_attendance_logs",
+                f"select=userId&type=eq.check_out&timestamp=gte.{today_start}&timestamp=lt.{today_end}")
+            checked_out_ids = {co["userId"] for co in checkouts}
+
+            # 3. For each shift, check if we're within 30 min of closeTime
+            for sched in schedules:
+                ct = sched.get("closeTime", "")
+                name = sched.get("name", sched.get("shiftName", ""))
+                ot = sched.get("openTime", "")
+                if not ct or not name or not ot:
+                    continue
+                try:
+                    oh, om = int(ot.split(":")[0]), int(ot.split(":")[1])
+                    ch, cm = int(ct.split(":")[0]), int(ct.split(":")[1])
+                except (ValueError, IndexError):
+                    continue
+
+                open_min = oh * 60 + om
+                close_min = ch * 60 + cm
+                time_remaining = close_min - now_min
+
+                # Handle overnight shifts (close_min < open_min)
+                if close_min < open_min:
+                    if now_min >= open_min:
+                        time_remaining = (1440 - now_min) + close_min
+                    elif now_min < close_min:
+                        time_remaining = close_min - now_min
+                    else:
+                        continue
+                else:
+                    if now_min < open_min or now_min >= close_min:
+                        continue  # Not in this shift's range
+                    time_remaining = close_min - now_min
+
+                # Only remind if 0-30 minutes remaining
+                if not (0 <= time_remaining <= 30):
+                    continue
+
+                # 4. Find employees on this shift (based on check-in time window)
+                for ci in checkins:
+                    uid = ci["userId"]
+                    if uid in checked_out_ids:
+                        continue
+
+                    # Check if user was on this shift based on check-in time
+                    ci_ts = int(float(ci["timestamp"]))
+                    ci_dt = datetime.fromtimestamp(ci_ts / 1000, tz=WIB)
+                    ci_min = ci_dt.hour * 60 + ci_dt.minute
+
+                    # Check if check-in falls within shift window (with tolerance)
+                    in_window = False
+                    if open_min <= close_min:
+                        if (open_min - 60) <= ci_min < close_min:
+                            in_window = True
+                    else:
+                        if ci_min >= open_min or ci_min < close_min:
+                            in_window = True
+
+                    if not in_window:
+                        continue
+
+                    reminder_key = (uid, name, date_str)
+                    if reminder_key in _reminded_today:
+                        continue
+
+                    # 5. Send reminder
+                    emp = await _fetch("employee_telegram_links",
+                        f"select=employee_name,telegram_user_id&employee_user_id=eq.{uid}&is_active=eq.true&limit=1")
+                    if not emp:
+                        continue
+
+                    tg_id = emp[0]["telegram_user_id"]
+                    emp_name = emp[0]["employee_name"]
+                    ci_str = ci_dt.strftime("%H:%M")
+
+                    msg = (
+                        f"⏰ 30 Menit Lagi!\n\n"
+                        f"Halo *{emp_name}*, tinggal 30 menit lagi nih\n"
+                        f"shift (*{name}*) kamu selesai.\n\n"
+                        f"🕐 {ci_str} → ⏳ {ct}\n\n"
+                        f"📝 Sebelum pulang, jangan lupa:\n"
+                        f"  ✅ Isi Stock Opname\n"
+                        f"  ✅ Cek kebersihan area\n\n"
+                        f"Makasih ya udah kerja keras hari ini!\n"
+                        f"Istirahat yang cukup, sampai ketemu besok! 🙌✨"
+                    )
+
+                    await app.bot.send_message(chat_id=tg_id, text=msg, parse_mode="Markdown")
+                    _reminded_today.add(reminder_key)
+                    logger.info("Shift-end reminder sent to %s (%s — %s)", emp_name, name, ct)
+                    await asyncio.sleep(0.3)  # Rate limit
+
+            # 6. Clean up old day entries
+            _reminded_today.difference_update({k for k in _reminded_today if k[2] != date_str})
+
+        except Exception as e:
+            logger.warning("Shift-end reminder loop error: %s", e)
+            await asyncio.sleep(5)
+
+        await asyncio.sleep(60)
+
+
 # ── Text Message Handlers (buttons) ──
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1429,6 +1563,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def post_init(app):
     me = await app.bot.get_me()
     logger.info("Yumi HRD Agent started: @%s", me.username)
+    # Start background shift-end reminder loop
+    asyncio.create_task(_shift_end_reminder_loop(app))
 
 def main():
     req = HTTPXRequest(read_timeout=10.0, write_timeout=10.0, connect_timeout=10.0, pool_timeout=5.0)
