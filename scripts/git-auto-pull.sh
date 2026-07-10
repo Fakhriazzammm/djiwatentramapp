@@ -36,9 +36,12 @@ if [ "$LOCAL" != "$REMOTE" ]; then
         BUN_CONFIG_REGISTRY=https://registry.npmjs.org ~/.bun/bin/bun install >> "$LOG_FILE" 2>&1
     fi
     
-    # Restart services jika perlu (sesuaikan dengan systemd service kamu)
-    # systemctl restart djiwatentramapp.service >> "$LOG_FILE" 2>&1
-    
+    # Restart services jika perlu
+    export PATH="$PATH:/home/ubuntu/.bun/bin"
+    cd /opt/djiwatentramapp
+    bun run build:karyawan >> "$LOG_FILE" 2>&1
+    sudo systemctl restart yumi-hrd-agent.service >> "$LOG_FILE" 2>&1
+
     echo "Pull berhasil pada $(date)" >> "$LOG_FILE"
 else
     echo "Tidak ada update baru." >> "$LOG_FILE"
