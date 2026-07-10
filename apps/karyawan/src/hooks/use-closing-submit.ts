@@ -261,17 +261,26 @@ export async function recordCheckOut(params: {
 }): Promise<void> {
   const supabase = createClient();
   const now = Date.now();
+  const docId = makeSourceId("att");
 
-  const { error } = await supabase.from("pos_attendance_logs").insert({
-    userId: params.userId,
-    type: "check_out",
-    timestamp: now,
-    creationTime: now,
-    shiftName: params.shiftName,
-    userName: params.userName,
-    roleName: params.roleName,
-    notes: params.notes || "Check-out via absen keluar",
-  });
+  // pos_attendance_logs adalah VIEW — INSERT langsung tidak bisa.
+  // Gunakan legacy_mirror.documents seperti bot & POS app.
+  const { error } = await supabase
+    .schema("legacy_mirror")
+    .from("documents")
+    .insert({
+      table_name: "attendance",
+      document_id: docId,
+      creation_time: now,
+      document: {
+        userId: params.userId,
+        type: "check_out",
+        timestamp: now,
+        source: "karyawan_web",
+        shiftName: params.shiftName,
+        notes: params.notes || "Check-out via absen keluar",
+      },
+    });
 
   if (error) throw error;
 }
