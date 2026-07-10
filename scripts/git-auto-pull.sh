@@ -40,6 +40,8 @@ if [ "$LOCAL" != "$REMOTE" ]; then
     export PATH="$PATH:/home/ubuntu/.bun/bin"
     cd /opt/djiwatentramapp
     bun run build:karyawan >> "$LOG_FILE" 2>&1
+    # Deploy ke nginx (copy dist → /var/www/)
+    bash scripts/deploy-vps.sh karyawan >> "$LOG_FILE" 2>&1
     sudo systemctl restart yumi-hrd-agent.service >> "$LOG_FILE" 2>&1
 
     echo "Pull berhasil pada $(date)" >> "$LOG_FILE"
