@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 import httpx
 from dotenv import load_dotenv
-from telegram import Update, Bot, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
+from telegram import Update, Bot, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from telegram.request import HTTPXRequest
 
@@ -678,16 +678,17 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
             rn = staff[0].get("roleName") or ""
             role = rn.lower()
             if "bar" in role or "kitchen" in role:
+                # Telegram Mini App for stock opname
+                ts = int(_now_wib().timestamp() * 1000)
+                mini_url = f"https://karyawan.yumme.id/absen-keluar-mini?uid={emp_id}&t={ts}"
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📝 Isi Stock Opname", web_app=WebAppInfo(url=mini_url))]
+                ])
                 await update.message.reply_text(
                     f"⚠️ *{emp_name}*, absen keluar via bot tidak bisa untuk role {rn}.\n\n"
-                    f"📌 *Langkah yang benar:*\n"
-                    f"1️⃣ Buka *karyawan.yumme.id*\n"
-                    f"2️⃣ Masuk ke halaman *Absensi*\n"
-                    f"3️⃣ Isi *Stock Opname* & *Kebersihan*\n"
-                    f"4️⃣ Setelah itu absen keluar otomatis terproses.\n\n"
-                    f"Bot ini hanya untuk absen masuk & status.",
+                    f"📌 Klik tombol di bawah untuk isi *Stock Opname* langsung di Telegram:",
                     parse_mode="Markdown",
-                    reply_markup=_main_keyboard())
+                    reply_markup=keyboard)
                 return
     except Exception:
         pass
