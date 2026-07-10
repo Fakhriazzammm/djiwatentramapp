@@ -240,7 +240,7 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
                     close_min = ch * 60 + cm
                     in_window = False
                     if open_min <= close_min:
-                        if open_min <= check_min < close_min:
+                        if (open_min - 60) <= check_min < close_min:
                             in_window = True
                     else:
                         if check_min >= open_min or check_min < close_min:
@@ -354,7 +354,7 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 
             in_window = False
             if open_min <= close_min:
-                if current_minutes >= open_min and current_minutes < close_min:
+                if current_minutes >= (open_min - 60) and current_minutes < close_min:
                     in_window = True
             else:
                 # Overnight shift (e.g., 21:00 - 05:00)
