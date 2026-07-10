@@ -314,14 +314,14 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
         logger.error("attendance group notify failed: %s", e)
 
 
-async def _post_legacy_mirror(payload: dict) -> dict:
+async def _find_shift_at_time(timestamp_ms: int) -> dict:
     """Uses time-based detection from shiftSchedules config (same logic as web app).
     When shifts overlap, picks the one with the LATEST openTime (most recently started).
     This fixes the bug where Shift Pagi (07:30-14:30) was always returned 
     instead of Shift Sore (13:00-21:00) during overlap 13:00-14:30.
     """
     try:
-        rows = await _fetch("pos.site_settings", "select=raw&limit=1")
+        rows = await _fetch("pos_site_settings", "select=raw&limit=1")
         if not rows:
             return {}
         raw = rows[0].get("raw", {})
