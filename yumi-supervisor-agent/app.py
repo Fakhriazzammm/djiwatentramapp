@@ -626,7 +626,7 @@ async def _insert_order_status(key: str, order: dict):
     except Exception as e:
         logger.error("[%s] Failed to insert order_status: %s", key, e)
 
-async def _update_order_status(key: str, status: str, by: str | None = None):
+async def _update_order_status(key: str, status: str, by: str | None = None, tg_user_id: int | None = None):
     """Update order status record in Supabase."""
     try:
         order_no, group_type = key.split("|")
@@ -637,8 +637,10 @@ async def _update_order_status(key: str, status: str, by: str | None = None):
         elif status == "selesai":
             payload["selesai_by"] = by
             payload["selesai_at"] = datetime.now(timezone.utc).isoformat()
+        if tg_user_id is not None:
+            payload["telegram_user_id"] = tg_user_id
         await _patch("pos_order_status", f"order_no=eq.{order_no}&group_type=eq.{group_type}", payload)
-        logger.info("[%s] Updated order_status to %s by %s", key, status, by)
+        logger.info("[%s] Updated order_status to %s by %s (tg=%s)", key, status, by, tg_user_id)
     except Exception as e:
         logger.error("[%s] Failed to update order_status: %s", key, e)
 
@@ -736,7 +738,7 @@ async def _update_message_id(order: dict):
     except Exception:
         pass
 
-async def _do_dibuat(key: str, by: str = "auto"):
+async def _do_dibuat(key: str, by: str = "Otomatis", tg_user_id: int | None = None):
     order = _active_orders.get(key)
     if not order or order["status"] != "new":
         return
@@ -746,18 +748,19 @@ async def _do_dibuat(key: str, by: str = "auto"):
     order["dibuat_by"] = by
     order["dibuat_at"] = _now_wib()
 
+    order_no, group_type = key.split("|")
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🏁 Selesai", callback_data=f"selesai|{key}")]
+        [InlineKeyboardButton("🏁 Selesai", callback_data=f"selesai|{order_no}|{group_type}")]
     ])
     text = _build_status_text(order)
     await _update_message(order, text, kb)
-    await _update_order_status(key, "dibuat", by)
+    await _update_order_status(key, "dibuat", by, tg_user_id)
     logger.info("[%s] Status: DIBUAT oleh %s", key, by)
 
     # Auto selesai setelah 30 menit (1800 detik)
     order["auto_selesai_task"] = asyncio.create_task(_auto_selesai(key, 1800))
 
-async def _do_selesai(key: str, by: str = "auto"):
+async def _do_selesai(key: str, by: str = "Otomatis", tg_user_id: int | None = None):
     order = _active_orders.get(key)
     if not order or order["status"] == "selesai":
         return
@@ -770,8 +773,8 @@ async def _do_selesai(key: str, by: str = "auto"):
 
     text = _build_status_text(order)
     await _update_message(order, text, None)
-    await _update_order_status(key, "selesai", by)
-    logger.info("[%s] Status: SELESAI oleh %s", key, by)
+    await _update_order_status(key, "selesai", by, tg_user_id)
+    logger.info("[%s] Status: SELESAI oleh %s (tg=%s)", key, by, tg_user_id)
 
     # Bersihkan setelah 30 menit agar dict tidak membesar
     asyncio.create_task(_cleanup_order(key, 1800))
@@ -1064,6 +1067,7 @@ async def _handle_callback(update: Update, context):
         action, order_no, group_type = data.split("|")
         key = f"{order_no}|{group_type}"
         user = query.from_user.username or query.from_user.first_name or "Staff"
+        tg_user_id = query.from_user.id
 
         # Lazy-load from Supabase if not in memory
         order = _active_orders.get(key)
@@ -1092,9 +1096,9 @@ async def _handle_callback(update: Update, context):
                 return
 
         if action == "dibuat":
-            await _do_dibuat(key, by=user)
+            await _do_dibuat(key, by=user, tg_user_id=tg_user_id)
         elif action == "selesai":
-            await _do_selesai(key, by=user)
+            await _do_selesai(key, by=user, tg_user_id=tg_user_id)
     except Exception as e:
         logger.error("Callback error for data=%s: %s", data, e)
 
@@ -1138,6 +1142,36 @@ def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0):
         f.write(f"{csr_ts}\n")
 
 _last_order_check_ms, _reported_order_nos, _last_csr_check_ms = _load_supervisor_cursor()
+
+# ── Shift recap cursor ──
+_SHIFT_RECAP_CURSOR_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".shift_recap_cursor.txt")
+
+def _load_shift_recap_cursor() -> int:
+    try:
+        with open(_SHIFT_RECAP_CURSOR_FILE) as f:
+            return int(f.read().strip())
+    except:
+        return 0
+
+def _save_shift_recap_cursor(ts: int):
+    with open(_SHIFT_RECAP_CURSOR_FILE, "w") as f:
+        f.write(str(ts))
+
+def _ms_to_iso(ms: int) -> str:
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+def _fmt_epoch_wib(ms: int) -> str:
+    dt = datetime.fromtimestamp(ms / 1000, tz=WIB)
+    return dt.strftime("%d/%m %H:%M")
+
+def _fmt_iso_wib(iso_str: str) -> str:
+    if not iso_str:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        return dt.astimezone(WIB).strftime("%H:%M")
+    except:
+        return iso_str[:16]
 
 # ⏪ Lookback window — scan N menit ke belakang dari NOW (bukan dari cursor)
 # agar order yang baru berubah jadi paid/completed setelah cursor lewat tetap terdeteksi.
@@ -1636,6 +1670,97 @@ async def _check_new_csr(app):
     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
 
 
+# ── Auto shift recap ──
+
+async def _check_closed_shifts(bot: Bot):
+    cursor = _load_shift_recap_cursor()
+    now_ms = int(datetime.now().timestamp() * 1000)
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/shifts"
+        q = (f"select=source_id,shift_name,cashier_name,team_members,start_time,end_time"
+             f"&end_time=gt.{cursor}"
+             f"&end_time=lte.{now_ms}"
+             f"&order=end_time.asc")
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"{url}?{q}", headers={**_headers(), "Accept-Profile": "pos"}, timeout=15)
+            r.raise_for_status()
+            rows = r.json() if isinstance(r.json(), list) else []
+    except Exception as e:
+        logger.warning("shift_recap fetch error: %s", e)
+        return
+    if not rows:
+        return
+    logger.info("shift_recap: %d newly closed shift(s)", len(rows))
+    last_ts = cursor
+    for shift in rows:
+        s_id = shift.get("source_id", "?")
+        s_name = shift.get("shift_name", "Shift")
+        s_start = shift.get("start_time", 0)
+        s_end = shift.get("end_time", 0)
+        if not s_end or s_end <= last_ts:
+            continue
+        start_iso = _ms_to_iso(s_start)
+        end_iso = _ms_to_iso(s_end)
+        try:
+            orders = await _fetch("pos_order_status",
+                f"select=order_no,group_type,status,dibuat_by,selesai_by,dibuat_at,selesai_at,created_at"
+                f"&created_at=gte.{start_iso}"
+                f"&created_at=lt.{end_iso}"
+                f"&order=created_at.asc")
+        except Exception as e:
+            logger.warning("shift_recap order fetch %s: %s", s_id, e)
+            continue
+        barista_orders = [o for o in orders if o.get("group_type") == "barista"]
+        kitchen_orders = [o for o in orders if o.get("group_type") == "kitchen"]
+        cashier = shift.get("cashier_name", "")
+        start_t = _fmt_epoch_wib(s_start)
+        end_t = _fmt_epoch_wib(s_end)
+        base_header = f"📊 *Rekap*\n\n🕐 Shift: *{s_name}*\n👤 Kasir: {cashier}\n📅 {start_t} \u2014 {end_t}"
+        for gt, chat_id in [("barista", BARISTA_GROUP_ID), ("kitchen", KITCHEN_GROUP_ID)]:
+            group_orders = barista_orders if gt == "barista" else kitchen_orders
+            if not group_orders:
+                continue
+            dibuat_by = {}
+            selesai_by = {}
+            for o in group_orders:
+                b = o.get("dibuat_by")
+                s = o.get("selesai_by")
+                if b: dibuat_by[b] = dibuat_by.get(b, 0) + 1
+                if s: selesai_by[s] = selesai_by.get(s, 0) + 1
+            lines = [f"{base_header}\n📋 Total: {len(group_orders)}"]
+            if dibuat_by:
+                rank = sorted(dibuat_by.items(), key=lambda x: -x[1])
+                medals = ["🥇", "🥈", "🥉"]
+                bk = [f"   {medals[i] if i < 3 else f'{i+1}. '}{n}: {c}x" for i, (n, c) in enumerate(rank)]
+                lines.append(f"\n✅ *Dibuat:* {sum(dibuat_by.values())}")
+                lines.extend(bk)
+            if selesai_by:
+                rank = sorted(selesai_by.items(), key=lambda x: -x[1])
+                medals = ["🥇", "🥈", "🥉"]
+                sk = [f"   {medals[i] if i < 3 else f'{i+1}. '}{n}: {c}x" for i, (n, c) in enumerate(rank)]
+                lines.append(f"\n🏁 *Selesai:* {sum(selesai_by.values())}")
+                lines.extend(sk)
+            recent = group_orders[-5:]
+            lines.append(f"\n📝 *Terbaru:*")
+            for o in reversed(recent):
+                no = o.get("order_no", "?")
+                st = o.get("status", "?")
+                emoji = "✅" if st == "dibuat" else "🏁"
+                by = o.get("dibuat_by") or o.get("selesai_by") or "—"
+                tm = _fmt_iso_wib(o.get("selesai_at") or o.get("dibuat_at") or o.get("created_at"))
+                lines.append(f"   {emoji} {no} \u2014 {by} {tm}")
+            msg = "\n".join(lines)
+            try:
+                await bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                logger.info("shift_recap: sent to %s for shift %s", gt, s_id)
+            except Exception as e:
+                logger.warning("shift_recap send %s: %s", gt, e)
+        if s_end > last_ts:
+            last_ts = s_end
+    _save_shift_recap_cursor(last_ts)
+    logger.info("shift_recap: cursor updated to %d", last_ts)
+
+
 # ── Main (sync, uses post_init for async setup) ──────────────────
 
 async def _post_init(app):
@@ -1659,6 +1784,9 @@ async def _post_init(app):
     # First poll check (catch up with any orders since start)
     await _check_new_orders(app)
 
+    # Initial shift recap check
+    await _check_closed_shifts(app.bot)
+
     # Background polling every 5s
     async def _poll_loop():
         refresh_counter = 0
@@ -1666,6 +1794,7 @@ async def _post_init(app):
             await asyncio.sleep(5)
             await _check_new_orders(app)
             await _check_new_csr(app)
+            await _check_closed_shifts(app.bot)
             # Refresh lookups every ~30 minutes (360 * 5s = 1800s)
             refresh_counter += 1
             if refresh_counter >= 360:

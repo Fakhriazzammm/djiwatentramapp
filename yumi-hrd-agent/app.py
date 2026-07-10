@@ -750,6 +750,13 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
         reply_markup=_main_keyboard())
 
+    # Personal order recap
+    if update.effective_user:
+        try:
+            await _send_order_recap(context.bot, update.effective_user.id, emp_name)
+        except Exception:
+            pass
+
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     emp = await _require_employee(update)
     if not emp:
@@ -1214,6 +1221,53 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Shift selesai! Selamat istirahat 🎉",
             parse_mode="Markdown",
             reply_markup=_main_keyboard())
+
+    # ── Send personal order recap after check-out ──
+    if intent == "check_out":
+        try:
+            await _send_order_recap(context.bot, tg_id, emp_name)
+        except Exception:
+            pass
+
+
+# ── Personal order recap (after clock-out) ──
+
+async def _send_order_recap(bot: Bot, tg_id: int, emp_name: str):
+    """Query today's Dibuat/Selesai by this staff and send personal recap."""
+    try:
+        now = datetime.now(timezone.utc)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        start_iso = today_start.isoformat().replace("+00:00", "Z")
+        end_iso = today_end.isoformat().replace("+00:00", "Z")
+
+        rows = await _fetch("pos_order_status",
+            f"select=status,order_no,dibuat_by,selesai_by"
+            f"&telegram_user_id=eq.{tg_id}"
+            f"&created_at=gte.{start_iso}"
+            f"&created_at=lt.{end_iso}"
+            f"&order=created_at.asc")
+
+        if not rows:
+            return
+
+        total = len(rows)
+        dibuat = sum(1 for r in rows if r.get("dibuat_by") and r.get("status") in ("dibuat", "selesai"))
+        selesai = sum(1 for r in rows if r.get("selesai_by") and r.get("status") == "selesai")
+
+        msg = (
+            f"📊 *Rekap Order Hari Ini \u2014 {emp_name}*\n\n"
+            f"📋 Total order: {total}\n"
+            f"✅ Dibuat: {dibuat}\n"
+            f"🏁 Selesai: {selesai}\n\n"
+            f"Terima kasih kerja kerasnya hari ini! 🙌"
+        )
+
+        await bot.send_message(chat_id=tg_id, text=msg, parse_mode="Markdown")
+        logger.info("Order recap sent to %s (tg=%s): %d orders", emp_name, tg_id, total)
+    except Exception as e:
+        logger.warning("Failed to send order recap for %s: %s", emp_name, e)
+
 
 # ── Text Message Handlers (buttons) ──
 
