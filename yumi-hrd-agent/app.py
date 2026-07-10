@@ -1241,6 +1241,7 @@ async def _send_order_recap(bot: Bot, tg_id: int, emp_name: str):
         start_iso = today_start.isoformat().replace("+00:00", "Z")
         end_iso = today_end.isoformat().replace("+00:00", "Z")
 
+        # 1st attempt: query by telegram_user_id
         rows = await _fetch("pos_order_status",
             f"select=status,order_no,dibuat_by,selesai_by"
             f"&telegram_user_id=eq.{tg_id}"
@@ -1248,7 +1249,28 @@ async def _send_order_recap(bot: Bot, tg_id: int, emp_name: str):
             f"&created_at=lt.{end_iso}"
             f"&order=created_at.asc")
 
+        # 2nd attempt (fallback): query by normalized name
+        if not rows and emp_name:
+            name_norm = emp_name.lower().replace(" ", "")
+            rows = await _fetch("pos_order_status",
+                f"select=status,order_no,dibuat_by,selesai_by"
+                f"&or=(dibuat_by.eq.{name_norm},selesai_by.eq.{name_norm})"
+                f"&created_at=gte.{start_iso}"
+                f"&created_at=lt.{end_iso}"
+                f"&order=created_at.asc")
+
         if not rows:
+            # Still no rows — send friendly zero message
+            await bot.send_message(
+                chat_id=tg_id,
+                text=(
+                    f"📊 *Rekap Order Hari Ini \u2014 {emp_name}*\n\n"
+                    f"Belum ada order yang tercatat atas nama kamu hari ini.\n"
+                    f"Kalau ada yang perlu dibantu, tanya aja ya! 🙌"
+                ),
+                parse_mode="Markdown",
+            )
+            logger.info("Order recap (zero) sent to %s (tg=%s)", emp_name, tg_id)
             return
 
         total = len(rows)
