@@ -1194,7 +1194,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ *Absen Masuk — {date_str} {time_str}*\n\n"
             f"👤 *{emp_name}*\n"
             f"🕐 {time_str} WIB\n"
-            f"{f'📌 Shift {shift_name}' if shift_name else ''}\n"
+            f"{f'📌 {shift_name}' if shift_name else ''}\n"
             f"{loc_line}\n"
             f"{'📸 Foto tersimpan ✅' if photo_url else ''}\n\n"
             f"Jangan lupa 📤 Absen Keluar nanti.",
