@@ -670,6 +670,28 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     emp_id = emp["employee_user_id"]
     emp_name = emp["employee_name"]
 
+    # ponytail: bar/kitchen must do stock opname via web app, not bot
+    try:
+        staff = await _fetch("pos_staff_users",
+            f"select=roleName&_id=eq.{emp_id}&limit=1")
+        if staff:
+            rn = staff[0].get("roleName") or ""
+            role = rn.lower()
+            if "bar" in role or "kitchen" in role:
+                await update.message.reply_text(
+                    f"⚠️ *{emp_name}*, absen keluar via bot tidak bisa untuk role {rn}.\n\n"
+                    f"📌 *Langkah yang benar:*\n"
+                    f"1️⃣ Buka *karyawan.yumme.id*\n"
+                    f"2️⃣ Masuk ke halaman *Absensi*\n"
+                    f"3️⃣ Isi *Stock Opname* & *Kebersihan*\n"
+                    f"4️⃣ Setelah itu absen keluar otomatis terproses.\n\n"
+                    f"Bot ini hanya untuk absen masuk & status.",
+                    parse_mode="Markdown",
+                    reply_markup=_main_keyboard())
+                return
+    except Exception:
+        pass
+
     exists_in, log_in = await _has_today_attendance(emp_id, "check_in")
     if not exists_in:
         await update.message.reply_text(
