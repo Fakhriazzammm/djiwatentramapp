@@ -1405,7 +1405,8 @@ async def _shift_end_reminder_loop(app: Application):
                         f"🕐 {ci_str} → ⏳ {ct}\n\n"
                         f"📝 Sebelum pulang, jangan lupa:\n"
                         f"  ✅ Isi Stock Opname\n"
-                        f"  ✅ Cek kebersihan area\n\n"
+                        f"  ✅ Cek kebersihan area\n"
+                        f"  ✅ Jangan lupa absen keluar!\n\n"
                         f"Makasih ya udah kerja keras hari ini!\n"
                         f"Istirahat yang cukup, sampai ketemu besok! 🙌✨"
                     )
