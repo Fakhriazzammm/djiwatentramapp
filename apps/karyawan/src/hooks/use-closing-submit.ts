@@ -1,0 +1,385 @@
+import { createClient } from "@yumipos/web-shared";
+
+// ─── Types ──────────────────────────────────────────────────
+
+export interface OpnameItem {
+  inventoryId: string;
+  name: string;
+  unit: string;
+  qtyBefore: number;
+  qtyAfter: number;
+  isChanged: boolean;
+}
+
+export interface KebersihanPhoto {
+  url: string;
+  area: string;
+  uploadedAt: number;
+}
+
+export interface ClosingArgs {
+  shiftSourceId: string;
+  opnameItems: OpnameItem[];
+  kebersihan: Record<string, unknown>;
+  photoUrls: KebersihanPhoto[];
+  notes: string;
+}
+
+// ─── Ingredient sets ────────────────────────────────────────
+
+const BAR_INGREDIENTS = new Set([
+  "Air Galon", "Apple Juice", "Arabica Beans", "Beans Robusta",
+  "C1000 Apple", "Es Batu", "Fresh Milk Greenfield", "Gula Aren",
+  "Le Mineral", "Lemon Tea Max Tea", "Matcha Powder", "Peach Tea Max Tea",
+  "Richgold Label", "Robusta Beans", "SKM Carnation 488gr", "Sirup Green Apple",
+  "Sirup Peach", "Soda Water Schweppes", "Sprite", "Sunquick Lemon",
+  "Susu Coconut", "Susu Kental Manis", "White Cream",
+]);
+
+const KITCHEN_INGREDIENTS = new Set([
+  "Barbeque Sauce", "Baso Sapi", "Bawang Daun", "Bawang Goreng",
+  "Beras", "Biji Wijen", "Bubur Base", "Butter", "Coklat Powder",
+  "Daging Ayam", "Fla", "Garam", "Gula Pasir Putih", "Kecap Asin",
+  "Kecap Ikan", "Kecap Manis", "Kemangi Instant", "Kentang", "Kerupuk",
+  "Kulit Pangsit (Cap Jempol)", "Mayonaise", "Merica", "Micin",
+  "Minyak Bawang Putih", "Mix Vegetable", "Nasi Ayam Chasiu Sauce",
+  "Nasi Ayam Mentega Sauce", "Nasi Ayam Rempah Kemangi  Sauce",
+  "Nasi Goreng Sauce", "Nasi Telor Omega Pontianak Sauce",
+  "Patty Hamburg", "Pisang", "Roti (Bread Co)",
+  "Saus Sambel (Del Monte)", "Saus Tiram (Mahsuri)",
+  "Saus Tomat (Del Monte)", "Selada (Ibu Teti Pasar)", "Sosis (Salam)",
+  "Telor Ayam (Yogya)", "Telor Omega (Happy Egg)", "Telur Ayam",
+  "Tepung Terigu", "Timun", "Tongcai", "Ubi Cilembu", "Yamin Base",
+]);
+
+function getIngredientSet(role: "bar" | "kitchen"): Set<string> {
+  return role === "bar" ? BAR_INGREDIENTS : KITCHEN_INGREDIENTS;
+}
+
+// ─── Helpers ────────────────────────────────────────────────
+
+function makeSourceId(prefix: string): string {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replace(/-/g, "")
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${random.slice(0, 24)}`;
+}
+
+/** Today's start in WIB epoch ms */
+function getTodayStartMs(): number {
+  const now = Date.now();
+  const wibOffset = 7 * 60 * 60 * 1000;
+  const wibNow = new Date(now + wibOffset);
+  const ws = `${wibNow.getUTCFullYear()}-${String(wibNow.getUTCMonth() + 1).padStart(2, "0")}-${String(wibNow.getUTCDate()).padStart(2, "0")}T00:00:00+07:00`;
+  return new Date(ws).getTime();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PUBLIC API
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Fetch inventory items filtered by role ingredient set.
+ */
+export async function fetchOpnameItems(
+  role: "bar" | "kitchen",
+): Promise<OpnameItem[]> {
+  const supabase = createClient().schema("pos");
+  const ingredients = getIngredientSet(role);
+
+  const { data, error } = await supabase
+    .from("inventory")
+    .select("source_id, ingredient_name, quantity, unit")
+    .limit(500);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((item) => ingredients.has(item.ingredient_name))
+    .map((item) => ({
+      inventoryId: item.source_id,
+      name: item.ingredient_name,
+      unit: item.unit ?? "pcs",
+      qtyBefore: Number(item.quantity ?? 0),
+      qtyAfter: Number(item.quantity ?? 0),
+      isChanged: false,
+    }));
+}
+
+// ────────────────────────────────────────────────────────────
+//  1. Save per-person opname to stock_opname_logs
+//     (inventory TIDAK berubah — hanya log)
+// ────────────────────────────────────────────────────────────
+
+export async function submitOpnamePerPerson(
+  items: OpnameItem[],
+  params: {
+    userId: string;
+    staffName: string;
+    role: "bar" | "kitchen";
+    shiftSourceId: string;
+    shiftName: string;
+    notes?: string;
+  },
+): Promise<string> {
+  const supabase = createClient().schema("pos");
+  const sourceId = makeSourceId("opn");
+  const now = Date.now();
+
+  const { error } = await supabase.from("stock_opname_logs").insert({
+    source_id: sourceId,
+    shift_source_id: params.shiftSourceId || null,
+    staff_source_id: params.userId,
+    staff_name: params.staffName,
+    role: params.role,
+    attendance_type: "check_out",
+    is_final: false,
+    items: items.map((i) => ({
+      inventoryId: i.inventoryId,
+      name: i.name,
+      unit: i.unit,
+      qtyBefore: i.qtyBefore,
+      qtyAfter: i.qtyAfter,
+    })),
+    notes: params.notes || `Opname by ${params.staffName} (${params.role})`,
+    creation_time: now,
+    raw: { staffName: params.staffName, shiftName: params.shiftName, role: params.role },
+  });
+
+  if (error) throw error;
+  return sourceId;
+}
+
+// ────────────────────────────────────────────────────────────
+//  2. Check if current person is the LAST for shift+role today
+// ────────────────────────────────────────────────────────────
+
+export async function checkIsLastPerson(
+  userId: string,
+  shiftName: string,
+  role: string,
+): Promise<{ isLast: boolean; remainingCount: number }> {
+  const supabase = createClient();
+  const todayStart = getTodayStartMs();
+  const todayEnd = todayStart + 86400000;
+
+  // All check-ins today for this shift+role
+  const { data: checkIns, error: ciErr } = await supabase
+    .from("pos_attendance_logs")
+    .select("userId")
+    .eq("type", "check_in")
+    .eq("shiftName", shiftName)
+    .eq("roleName", role)
+    .gte("timestamp", todayStart)
+    .lt("timestamp", todayEnd);
+
+  if (ciErr) throw ciErr;
+  if (!checkIns || checkIns.length === 0) {
+    return { isLast: true, remainingCount: 0 };
+  }
+
+  // All check-outs today for this shift+role
+  const { data: checkOuts, error: coErr } = await supabase
+    .from("pos_attendance_logs")
+    .select("userId")
+    .eq("type", "check_out")
+    .eq("shiftName", shiftName)
+    .eq("roleName", role)
+    .gte("timestamp", todayStart)
+    .lt("timestamp", todayEnd);
+
+  if (coErr) throw coErr;
+
+  const checkedInIds = new Set(checkIns.map((r) => r.userId));
+  const checkedOutIds = new Set((checkOuts || []).map((r) => r.userId));
+
+  // Still working = checked in but NOT yet checked out (excluding current user)
+  const stillWorking = [...checkedInIds].filter(
+    (id) => !checkedOutIds.has(id) && id !== userId,
+  );
+
+  return {
+    isLast: stillWorking.length === 0,
+    remainingCount: stillWorking.length,
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+//  3. Apply FINAL opname to inventory (only when last person)
+// ────────────────────────────────────────────────────────────
+
+export async function applyFinalOpname(
+  items: OpnameItem[],
+  staffName: string,
+  userId: string,
+): Promise<void> {
+  const supabase = createClient().schema("pos");
+  const changed = items.filter((i) => i.isChanged);
+  if (changed.length === 0) return;
+
+  const now = Date.now();
+
+  for (const item of changed) {
+    const qtyDiff = item.qtyAfter - item.qtyBefore;
+
+    // Insert inventory transaction (tx_type = stock_opname_final)
+    const { error: txError } = await supabase
+      .from("inventory_transactions")
+      .insert({
+        source_id: makeSourceId("invtx"),
+        inventory_source_id: item.inventoryId,
+        quantity: qtyDiff,
+        tx_type: "stock_opname_final",
+        remaining_quantity: item.qtyAfter,
+        tx_timestamp: now,
+        notes: `[FINAL] Shift closing opname by ${staffName}: ${item.qtyBefore} → ${item.qtyAfter}`,
+        creation_time: now,
+        raw: { userId, staffName, qtyBefore: item.qtyBefore, qtyAfter: item.qtyAfter, type: "final" },
+      });
+    if (txError) throw txError;
+
+    // Update inventory quantity
+    const { error: invError } = await supabase
+      .from("inventory")
+      .update({ quantity: item.qtyAfter })
+      .eq("source_id", item.inventoryId);
+    if (invError) throw invError;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  4. Record check-out in pos_attendance_logs
+// ────────────────────────────────────────────────────────────
+
+export async function recordCheckOut(params: {
+  userId: string;
+  userName: string;
+  roleName: string;
+  shiftName: string;
+  notes?: string;
+}): Promise<void> {
+  const supabase = createClient();
+  const now = Date.now();
+
+  const { error } = await supabase.from("pos_attendance_logs").insert({
+    userId: params.userId,
+    type: "check_out",
+    timestamp: now,
+    creationTime: now,
+    shiftName: params.shiftName,
+    userName: params.userName,
+    roleName: params.roleName,
+    notes: params.notes || "Check-out via absen keluar",
+  });
+
+  if (error) throw error;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DEPRECATED — use submitOpnamePerPerson + applyFinalOpname
+//  instead. This function directly updates inventory per-person.
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * @deprecated Gunakan submitOpnamePerPerson() + applyFinalOpname().
+ *   Fungsi ini langsung update inventory — tidak sesuai flow
+ *   "last person only".
+ */
+export async function submitOpname(
+  items: OpnameItem[],
+  userId: string,
+  staffName: string,
+): Promise<void> {
+  const supabase = createClient().schema("pos");
+  const changed = items.filter((i) => i.isChanged);
+  if (changed.length === 0) return;
+
+  const now = Date.now();
+
+  for (const item of changed) {
+    const qtyDiff = item.qtyAfter - item.qtyBefore;
+
+    const { error: txError } = await supabase
+      .from("inventory_transactions")
+      .insert({
+        source_id: makeSourceId("invtx"),
+        inventory_source_id: item.inventoryId,
+        quantity: qtyDiff,
+        tx_type: "stock_opname",
+        remaining_quantity: item.qtyAfter,
+        tx_timestamp: now,
+        notes: `Stock opname by ${staffName} (${userId}): ${item.qtyBefore} → ${item.qtyAfter}`,
+        creation_time: now,
+        raw: { userId, staffName, qtyBefore: item.qtyBefore, qtyAfter: item.qtyAfter },
+      });
+
+    if (txError) throw txError;
+
+    const { error: invError } = await supabase
+      .from("inventory")
+      .update({ quantity: item.qtyAfter })
+      .eq("source_id", item.inventoryId);
+
+    if (invError) throw invError;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  5. Kebersihan photo upload (unchanged)
+// ────────────────────────────────────────────────────────────
+
+export async function uploadKebersihanPhoto(
+  file: File,
+  userId: string,
+  area: string,
+): Promise<string | null> {
+  const ext = file.name.split(".").pop() ?? "jpg";
+  const path = `${userId}/${Date.now()}_${area}.${ext}`;
+
+  const { error } = await createClient()
+    .storage.from("shift-closing-photos")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) throw error;
+
+  const { data: publicUrl } = createClient()
+    .storage.from("shift-closing-photos")
+    .getPublicUrl(path);
+
+  return publicUrl?.publicUrl ?? null;
+}
+
+// ────────────────────────────────────────────────────────────
+//  6. Save closing data to shift raw JSONB (unchanged)
+// ────────────────────────────────────────────────────────────
+
+export async function submitClosing(args: ClosingArgs): Promise<void> {
+  const supabase = createClient().schema("pos");
+
+  const { data: shift, error: fetchError } = await supabase
+    .from("shifts")
+    .select("raw")
+    .eq("source_id", args.shiftSourceId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const updatedRaw = {
+    ...(shift?.raw ?? {}),
+    closingTasks: {
+      opname: args.opnameItems,
+      kebersihan: args.kebersihan,
+      photos: args.photoUrls,
+      notes: args.notes,
+      closedAt: Date.now(),
+    },
+  };
+
+  const { error: updateError } = await supabase
+    .from("shifts")
+    .update({ raw: updatedRaw })
+    .eq("source_id", args.shiftSourceId);
+
+  if (updateError) throw updateError;
+}
