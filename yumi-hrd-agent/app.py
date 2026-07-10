@@ -440,7 +440,13 @@ def _haversine_km(lat1, lon1, lat2, lon2):
 async def _get_attendance_radius() -> tuple[float, float, float] | None:
     """Return (lat, lng, radius_m) from site settings, or None."""
     try:
-        rows = await _fetch("pos.site_settings", "select=raw&limit=1")
+        url = f"{SUPABASE_URL}/rest/v1/site_settings?select=raw&limit=1"
+        headers = _headers()
+        headers["Accept-Profile"] = "pos"
+        async with httpx.AsyncClient() as client:
+            r = await client.get(url, headers=headers, timeout=15)
+            r.raise_for_status()
+            rows = r.json()
         if rows:
             raw = rows[0].get("raw", {})
             lat = raw.get("attendanceLat")
