@@ -49,12 +49,13 @@ import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
 
-export const Route = createLazyFileRoute("/order")({
+export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
 });
 
 function OrderPage() {
 	const navigate = useNavigate();
+	const { username } = Route.useParams();
 	const search = Route.useSearch();
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
 
@@ -233,7 +234,7 @@ function OrderPage() {
 		if (search.table) {
 			params.table = search.table;
 		}
-		navigate({ to: "/order", search: params, replace: true });
+		navigate({ to: "/$username/order", params: { username }, search: params, replace: true });
 	}, [step]);
 
 	// Sync: table from URL on mount
@@ -598,8 +599,8 @@ function OrderPage() {
 							<button
 								type="button"
 								className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
-								onClick={() => {
-									if (step === "party") navigate({ to: "/" });
+							onClick={() => {
+									if (step === "party") navigate({ to: "/$username", params: { username } });
 									if (step === "refill") setStep(config.enablePartySizeSelection ? "party" : "party");
 									if (step === "menu") setStep(config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : config.enablePartySizeSelection ? "party" : "party");
 									if (step === "checkout") setStep("menu");
@@ -644,7 +645,7 @@ function OrderPage() {
 							isLoading={authLoading}
 							onOpenAuth={() => setAuthModalOpen(true)}
 							onLogout={logout}
-							onProfileClick={() => navigate({ to: "/profile" })}
+							onProfileClick={() => navigate({ to: "/$username/profile", params: { username } })}
 						/>
 					</div>
 

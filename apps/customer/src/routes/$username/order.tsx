@@ -10,7 +10,7 @@ const orderSearchSchema = z.object({
 	table: z.string().optional(),
 });
 
-export const Route = createFileRoute("/order")({
+export const Route = createFileRoute("/$username/order")({
 	validateSearch: (search: Record<string, unknown>) =>
 		orderSearchSchema.parse(search),
 });

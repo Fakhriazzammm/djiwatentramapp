@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useHybridActiveMiniGameByBrand } from "@/hooks/use-hybrid-minigames-data";
 import { useHybridSpin } from "@/hooks/use-hybrid-write-actions";
 
-export const Route = createLazyFileRoute("/minigames")({
+export const Route = createLazyFileRoute("/$username/minigames")({
 	component: MiniGamesPage,
 });
 

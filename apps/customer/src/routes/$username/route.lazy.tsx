@@ -118,7 +118,7 @@ function MemberHomePage() {
 								<button
 									type="button"
 									className="flex w-full items-center justify-between rounded-xl bg-primary px-4 py-3 text-sm font-black text-white shadow-sm"
-									onClick={() => navigate({ to: "/order", search: { step: "party" } })}
+									onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
 								>
 									<span>Mulai pesan</span>
 									<ChevronRight className="h-4 w-4" />
@@ -212,7 +212,7 @@ function MemberHomePage() {
 							<button
 								type="button"
 								className="flex w-full items-center justify-between rounded-xl bg-primary px-4 py-3 text-sm font-black text-white shadow-sm"
-								onClick={() => navigate({ to: "/order", search: { step: "party" } })}
+								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
 							>
 								<span>Mulai pesan</span>
 								<ChevronRight className="h-4 w-4" />
