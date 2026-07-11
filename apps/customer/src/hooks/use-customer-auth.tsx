@@ -50,6 +50,40 @@ interface CustomerAuthContextType {
 
 // ── Helpers ────────────────────────────────────────────────────
 
+const STORAGE_KEY = "yumme-customer-auth";
+
+/** Decode JWT payload to check expiry (no signature verification needed for client-side expiry check) */
+function decodeJWT(token: string): Record<string, unknown> | null {
+	try {
+		return JSON.parse(atob(token.split(".")[1]));
+	} catch {
+		return null;
+	}
+}
+
+function isTokenExpired(token: string): boolean {
+	const payload = decodeJWT(token);
+	if (!payload?.exp) return true;
+	return Date.now() / 1000 > (payload.exp as number);
+}
+
+function loadSession(): CustomerSession | null {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		return raw ? JSON.parse(raw) : null;
+	} catch {
+		return null;
+	}
+}
+
+function saveSession(session: CustomerSession) {
+	localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+}
+
+function clearSession() {
+	localStorage.removeItem(STORAGE_KEY);
+}
+
 function emailToUsername(email: string | null): string {
 	if (!email) return "user";
 	return email
@@ -93,13 +127,15 @@ async function fetchCustomer(sourceId: string): Promise<CustomerUser | null> {
 	return mapCustomerRow(data as Record<string, unknown>);
 }
 
-/** Build a minimal CustomerUser from Supabase Auth user (fallback when DB record missing) */
-function fallbackCustomer(user: { id: string; email?: string | null; user_metadata?: { name?: string } }): CustomerUser {
-	const email = user.email ?? null;
+function buildFallbackCustomer(
+	userId: string,
+	email: string | null,
+	name: string | null,
+): CustomerUser {
 	return {
-		sourceId: user.id,
+		sourceId: userId,
 		email,
-		name: user.user_metadata?.name ?? email?.split("@")[0] ?? "User",
+		name: name ?? email?.split("@")[0] ?? "User",
 		phone: null,
 		photoUrl: null,
 		username: emailToUsername(email),
@@ -110,6 +146,38 @@ function fallbackCustomer(user: { id: string; email?: string | null; user_metada
 		lastOrderAt: null,
 		createdAt: null,
 	};
+}
+
+/** Call the customer-auth Edge Function and return typed result */
+type AuthResult = {
+	accessToken: string;
+	refreshToken: string;
+	user: { id: string; email: string | null };
+};
+
+/** Refresh an expired access token via the Edge Function (which uses service_role internally) */
+async function refreshTokenViaEdge(
+	refreshToken: string,
+): Promise<{ accessToken: string; refreshToken: string } | null> {
+	try {
+		const supabase = createClient();
+		const { data, error } = await supabase.functions.invoke("customer-auth", {
+			body: { action: "refreshToken", refreshToken },
+		});
+
+		if (error || data?.error) {
+			console.warn("[customer-auth] Token refresh failed:", data?.error || error?.message);
+			return null;
+		}
+
+		if (data.accessToken && data.refreshToken) {
+			return { accessToken: data.accessToken, refreshToken: data.refreshToken };
+		}
+		return null;
+	} catch (e) {
+		console.warn("[customer-auth] Token refresh error:", e);
+		return null;
+	}
 }
 
 // ── Context ────────────────────────────────────────────────────
@@ -130,36 +198,55 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 		useState(false);
 	const isAuthenticated = !!session;
 
-	// ── Session recovery on mount ──────────────────────────────
+	// ── Session recovery on mount (via localStorage, NOT supabase.auth.*) ──
 	useEffect(() => {
 		let cancelled = false;
 
 		async function recover() {
 			setIsLoading(true);
 			try {
-				const supabase = createClient();
-				const {
-					data: { session: sbSession },
-				} = await supabase.auth.getSession();
-
-				if (cancelled) return;
-
-				if (!sbSession?.user) {
-					setIsLoading(false);
+				const saved = loadSession();
+				if (!saved) {
+					if (!cancelled) setIsLoading(false);
 					return;
 				}
 
-				const cust = await fetchCustomer(sbSession.user.id) ?? fallbackCustomer(sbSession.user);
+				// Check if access token is expired — refresh if needed
+				let { accessToken, refreshToken, user } = saved;
+
+				if (isTokenExpired(accessToken)) {
+					const refreshed = await refreshTokenViaEdge(refreshToken);
+					if (!refreshed) {
+						// Refresh failed — clear session (forced logout)
+						clearSession();
+						if (!cancelled) setIsLoading(false);
+						return;
+					}
+					accessToken = refreshed.accessToken;
+					refreshToken = refreshed.refreshToken;
+				}
+
+				// Re-fetch customer data (points, etc. may have changed)
+				const cust = await fetchCustomer(user.sourceId) ?? buildFallbackCustomer(
+					user.sourceId,
+					user.email,
+					user.name,
+				);
+
 				if (cancelled) return;
 
-				setCustomer(cust);
-				setSession({
-					accessToken: sbSession.access_token,
-					refreshToken: sbSession.refresh_token,
+				const recovered: CustomerSession = {
+					accessToken,
+					refreshToken,
 					user: cust,
-				});
+				};
+
+				saveSession(recovered);
+				setCustomer(cust);
+				setSession(recovered);
 			} catch (error) {
 				console.error("[customer-auth] Session recovery error:", error);
+				clearSession();
 			} finally {
 				if (!cancelled) setIsLoading(false);
 			}
@@ -169,39 +256,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
 		return () => {
 			cancelled = true;
-		};
-	}, []);
-
-	// ── Listen for auth state changes ──────────────────────────
-	useEffect(() => {
-		const supabase = createClient();
-
-		const {
-			data: { subscription },
-		} = supabase.auth.onAuthStateChange(async (event, sbSession) => {
-			if (sbSession?.user) {
-				const cust = await fetchCustomer(sbSession.user.id) ?? fallbackCustomer(sbSession.user);
-				setCustomer(cust);
-				setSession({
-					accessToken: sbSession.access_token,
-					refreshToken: sbSession.refresh_token,
-					user: cust,
-				});
-
-					// Show welcome-back toast after email confirmation redirect
-					if (event === "SIGNED_IN") {
-						setRegistrationNeedsEmailConfirm(false);
-						toast.success("Email terkonfirmasi! Selamat datang kembali.");
-					}
-				} else {
-				setSession(null);
-				setCustomer(undefined);
-			}
-			setIsLoading(false);
-		});
-
-		return () => {
-			subscription.unsubscribe();
 		};
 	}, []);
 
@@ -225,28 +279,26 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 				throw new Error("No session after login");
 			}
 
-			// Set session from Edge Function response
-			await supabase.auth.setSession({
-				access_token: data.accessToken,
-				refresh_token: data.refreshToken,
-			});
+			// Save to localStorage directly (bypass supabase.auth.*)
+			const userInfo = data.user as { id: string; email: string | null } | null;
+			const userId = userInfo?.id ?? "";
+			const userEmail = userInfo?.email ?? null;
 
-			const cust = await fetchCustomer(data.user?.id ?? "") ?? {
-				sourceId: data.user?.id ?? "",
-				email: data.user?.email ?? null,
-				name: null,
-				phone: null,
-				photoUrl: null,
-				username: emailToUsername(data.user?.email ?? null),
-				totalPoints: 0,
-				lifetimePoints: 0,
-				totalOrders: 0,
-				totalSpent: 0,
-				lastOrderAt: null,
-				createdAt: null,
+			const cust = await fetchCustomer(userId) ?? buildFallbackCustomer(
+				userId,
+				userEmail,
+				null,
+			);
+
+			const newSession: CustomerSession = {
+				accessToken: data.accessToken,
+				refreshToken: data.refreshToken,
+				user: cust,
 			};
-			setCustomer(cust);
 
+			saveSession(newSession);
+			setCustomer(cust);
+			setSession(newSession);
 			setRegistrationNeedsEmailConfirm(false);
 			toast.success("Berhasil masuk!");
 		} catch (error) {
@@ -279,33 +331,26 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 					throw new Error("No user returned from register");
 				}
 
-				if (data.accessToken && data.refreshToken) {
-					// Auto-confirm — set session immediately
-					await supabase.auth.setSession({
-						access_token: data.accessToken,
-						refresh_token: data.refreshToken,
-					});
+				const userInfo = data.user as { id: string; email: string | null };
+				const userId = userInfo.id;
 
-					const cust = await fetchCustomer(data.user.id) ?? {
-						sourceId: data.user.id,
-						email: data.user.email ?? null,
-						name: name,
-						phone: null,
-						photoUrl: null,
-						username: emailToUsername(data.user.email ?? null),
-						totalPoints: 0,
-						lifetimePoints: 0,
-						totalOrders: 0,
-						totalSpent: 0,
-						lastOrderAt: null,
-						createdAt: null,
-					};
-					setCustomer(cust);
-					setSession({
+				if (data.accessToken && data.refreshToken) {
+					// Auto-confirm — save session immediately
+					const cust = await fetchCustomer(userId) ?? buildFallbackCustomer(
+						userId,
+						userInfo.email ?? null,
+						name,
+					);
+
+					const newSession: CustomerSession = {
 						accessToken: data.accessToken,
 						refreshToken: data.refreshToken,
 						user: cust,
-					});
+					};
+
+					saveSession(newSession);
+					setCustomer(cust);
+					setSession(newSession);
 					setRegistrationNeedsEmailConfirm(false);
 					toast.success("Akun berhasil dibuat!");
 				} else {
@@ -321,7 +366,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 						{
 							body: {
 								action: "sync",
-								userId: data.user.id,
+								userId,
 								email,
 								name,
 							},
@@ -353,19 +398,20 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 	// ── logout ─────────────────────────────────────────────────
 	const logout = useCallback(async () => {
 		try {
+			// Try to revoke on server — best-effort (if it fails, still clear local)
 			const supabase = createClient();
-			const { error } = await supabase.auth.signOut();
-			if (error) {
-				console.error("[customer-auth] Logout error:", error);
-			}
-		} catch (error) {
-			console.error("[customer-auth] Logout error:", error);
+			await supabase.functions.invoke("customer-auth", {
+				body: { action: "logout", refreshToken: session?.refreshToken ?? "" },
+			}).catch(() => {});
+		} catch (_error) {
+			// swallow — we clear local regardless
 		} finally {
+			clearSession();
 			setSession(null);
 			setCustomer(undefined);
 			toast.success("Berhasil keluar");
 		}
-	}, []);
+	}, [session]);
 
 	// ── resetPassword ─────────────────────────────────────────
 	const resetPassword = useCallback(async (email: string) => {
