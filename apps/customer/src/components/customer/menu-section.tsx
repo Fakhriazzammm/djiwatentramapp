@@ -7,8 +7,6 @@ import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { BadgePill, chipClassName } from "./shared-components";
 
 export interface MenuSectionProps {
-	showHappyHourBanner?: boolean;
-	onOpenAuth?: () => void;
 	activeCategoryId: Id<"categories"> | null;
 	cart: CartItem[];
 	codeFeedback: string;
@@ -56,21 +54,6 @@ export function renderMenuSection(props: MenuSectionProps) {
 					<BadgePill label={`${props.totalItems} item • ${currency(props.total)}`} />
 				</div>
 			</div>
-
-			{props.showHappyHourBanner ? (
-				<div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100/60 p-3 shadow-sm dark:border-amber-800 dark:from-amber-900/20 dark:to-amber-800/10">
-					<div className="flex items-start gap-2.5">
-						<div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400 text-xs">🎉</div>
-						<div className="min-w-0 flex-1">
-							<p className="text-xs font-black text-amber-900 dark:text-amber-100">Happy Hour sedang berlangsung!</p>
-							<p className="mt-0.5 text-[11px] leading-relaxed text-amber-800/80 dark:text-amber-200/80">Masuk/Daftar untuk dapatkan harga spesial hingga Rp 15.000!</p>
-							<button type="button" className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-[10px] font-black text-white shadow-sm transition-all hover:bg-amber-600 active:scale-95" onClick={() => props.onOpenAuth?.()}>
-								🔒 Masuk / Daftar
-							</button>
-						</div>
-					</div>
-				</div>
-			) : null}
 
 			<div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
 				<button type="button" className={cn("rounded-xl px-3 py-2 text-xs font-black transition-all", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("number")}>Nomor Produk</button>

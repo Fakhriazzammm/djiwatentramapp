@@ -11,13 +11,11 @@ export function ProductSheet({
 	onAdd,
 	onClose,
 	product,
-	isHappyHourLocked = false,
 }: {
 	discounts: Doc<"discounts">[];
 	onAdd: (item: CartItem) => void;
 	onClose: () => void;
 	product: Doc<"products"> | null;
-	isHappyHourLocked?: boolean;
 }) {
 	const [quantity, setQuantity] = useState(1);
 	const [variants, setVariants] = useState<Record<string, string>>({});
@@ -82,11 +80,6 @@ export function ProductSheet({
 						</span>
 					) : null}
 				</div>
-				{isHappyHourLocked ? (
-					<p className="mt-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-						🔒 Login untuk harga Happy Hour spesial
-					</p>
-				) : null}
 				{groups.length > 0 ? (
 					<div className="mt-4 space-y-4">
 						{groups.map((group) => (
