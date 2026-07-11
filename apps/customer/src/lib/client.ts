@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL =
 	import.meta.env.VITE_SUPABASE_URL;
@@ -10,11 +10,11 @@ export function isSupabaseConfigured(): boolean {
 	return Boolean(SUPABASE_URL && SUPABASE_KEY);
 }
 
-let browserClient: ReturnType<typeof createBrowserClient> | null = null;
+let browserClient: ReturnType<typeof createSupabaseClient> | null = null;
 
 export function createClient() {
 	if (!browserClient) {
-		browserClient = createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
+		browserClient = createSupabaseClient(SUPABASE_URL, SUPABASE_KEY);
 	}
 
 	return browserClient;
