@@ -17,6 +17,9 @@ deploy_app() {
 	local domain=$2
 	echo ""
 	echo "📦 Building $name ($domain)..."
+
+	# Ponytail: clear turbo cache so .env vars are picked up fresh
+	rm -rf "apps/$name/.turbo" "apps/$name/dist"
 	
 	if [ "$name" = "customer" ]; then
 		bun run build:customer 2>&1 | tail -3

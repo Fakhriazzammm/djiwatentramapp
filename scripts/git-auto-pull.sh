@@ -44,6 +44,9 @@ if [ "$LOCAL" != "$REMOTE" ]; then
     bash scripts/deploy-vps.sh karyawan >> "$LOG_FILE" 2>&1
     sudo systemctl restart yumi-hrd-agent.service >> "$LOG_FILE" 2>&1
 
+    # Juga build & deploy customer (ponytail: ensure fresh build with .env)
+    bash scripts/deploy-vps.sh customer >> "$LOG_FILE" 2>&1
+
     echo "Pull berhasil pada $(date)" >> "$LOG_FILE"
 else
     echo "Tidak ada update baru." >> "$LOG_FILE"
