@@ -210,30 +210,42 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 		setIsLoading(true);
 		try {
 			const supabase = createClient();
-			const { data, error } =
-				await supabase.auth.signInWithPassword({ email, password });
+			const { data, error } = await supabase.functions.invoke("customer-auth", {
+				body: { action: "login", email, password },
+			});
 
-			if (error) {
-				const message =
-					error.message === "Invalid login credentials"
-						? "Email atau password salah."
-						: error.message;
+			if (error || data?.error) {
+				const message = data?.error || error?.message || "Gagal masuk.";
 				toast.error(message);
-				throw error;
+				throw new Error(message);
 			}
 
-			if (!data.session?.user) {
+			if (!data.accessToken || !data.refreshToken) {
 				toast.error("Gagal mendapatkan sesi.");
 				throw new Error("No session after login");
 			}
 
-			const cust = await fetchCustomer(data.session.user.id) ?? fallbackCustomer(data.session.user);
-			setCustomer(cust);
-			setSession({
-				accessToken: data.session.access_token,
-				refreshToken: data.session.refresh_token,
-				user: cust,
+			// Set session from Edge Function response
+			await supabase.auth.setSession({
+				access_token: data.accessToken,
+				refresh_token: data.refreshToken,
 			});
+
+			const cust = await fetchCustomer(data.user?.id ?? "") ?? {
+				sourceId: data.user?.id ?? "",
+				email: data.user?.email ?? null,
+				name: null,
+				phone: null,
+				photoUrl: null,
+				username: emailToUsername(data.user?.email ?? null),
+				totalPoints: 0,
+				lifetimePoints: 0,
+				totalOrders: 0,
+				totalSpent: 0,
+				lastOrderAt: null,
+				createdAt: null,
+			};
+			setCustomer(cust);
 
 			setRegistrationNeedsEmailConfirm(false);
 			toast.success("Berhasil masuk!");
@@ -252,28 +264,57 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 			setIsLoading(true);
 			try {
 				const supabase = createClient();
-				const { data, error } = await supabase.auth.signUp({
-					email,
-					password,
-					options: {
-						data: { name },
-						emailRedirectTo: window.location.origin,
-					},
+				const { data, error } = await supabase.functions.invoke("customer-auth", {
+					body: { action: "register", email, password, name },
 				});
 
-				if (error) {
-					toast.error(error.message);
-					throw error;
+				if (error || data?.error) {
+					const message = data?.error || error?.message || "Gagal mendaftar.";
+					toast.error(message);
+					throw new Error(message);
 				}
 
-				// If identity already exists, Supabase returns the existing user
-				// without creating a new one — check for that.
 				if (!data.user) {
 					toast.error("Gagal mendaftar. Coba lagi.");
-					throw new Error("No user returned from signUp");
+					throw new Error("No user returned from register");
 				}
 
-				// Sync customer record via Edge Function
+				if (data.accessToken && data.refreshToken) {
+					// Auto-confirm — set session immediately
+					await supabase.auth.setSession({
+						access_token: data.accessToken,
+						refresh_token: data.refreshToken,
+					});
+
+					const cust = await fetchCustomer(data.user.id) ?? {
+						sourceId: data.user.id,
+						email: data.user.email ?? null,
+						name: name,
+						phone: null,
+						photoUrl: null,
+						username: emailToUsername(data.user.email ?? null),
+						totalPoints: 0,
+						lifetimePoints: 0,
+						totalOrders: 0,
+						totalSpent: 0,
+						lastOrderAt: null,
+						createdAt: null,
+					};
+					setCustomer(cust);
+					setSession({
+						accessToken: data.accessToken,
+						refreshToken: data.refreshToken,
+						user: cust,
+					});
+					setRegistrationNeedsEmailConfirm(false);
+					toast.success("Akun berhasil dibuat!");
+				} else {
+					// Email confirmation required
+					setRegistrationNeedsEmailConfirm(true);
+					toast.success("Pendaftaran berhasil! Cek email untuk konfirmasi.");
+				}
+
+				// Sync customer record via existing Edge Function
 				try {
 					const { error: fnError } = await supabase.functions.invoke(
 						"customer-sync",
@@ -294,29 +335,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 						);
 					}
 				} catch (syncError) {
-					// Non-blocking — the customer record may already exist
 					console.warn(
 						"[customer-auth] customer-sync invocation failed:",
 						syncError,
-					);
-				}
-
-				// If session is returned immediately (auto-confirm), set state
-				if (data.session) {
-					const cust = await fetchCustomer(data.user.id) ?? fallbackCustomer(data.user);
-					setCustomer(cust);
-					setSession({
-						accessToken: data.session.access_token,
-						refreshToken: data.session.refresh_token,
-						user: cust,
-					});
-					setRegistrationNeedsEmailConfirm(false);
-					toast.success("Akun berhasil dibuat!");
-				} else {
-					// Email confirmation required
-					setRegistrationNeedsEmailConfirm(true);
-					toast.success(
-						"Pendaftaran berhasil! Cek email untuk konfirmasi.",
 					);
 				}
 			} catch (error) {
@@ -349,13 +370,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 	// ── resetPassword ─────────────────────────────────────────
 	const resetPassword = useCallback(async (email: string) => {
 		const supabase = createClient();
-		const { error } = await supabase.auth.resetPasswordForEmail(email, {
-			redirectTo: window.location.origin,
+		const { data, error } = await supabase.functions.invoke("customer-auth", {
+			body: { action: "resetPassword", email },
 		});
 
-		if (error) {
-			toast.error(error.message);
-			throw error;
+		if (error || data?.error) {
+			toast.error(data?.error || error?.message || "Gagal mengirim link reset.");
+			throw new Error(data?.error || error?.message);
 		}
 
 		toast.success("Link reset password sudah dikirim ke email.");
