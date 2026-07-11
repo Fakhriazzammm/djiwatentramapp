@@ -7,7 +7,53 @@ import {
 	type ReactNode,
 } from "react";
 import { createClient } from "@/lib/client";
+import { isSupabaseConfigured } from "@/lib/client";
 import { toast } from "sonner";
+
+// ── Direct fetch helper (bypass supabase.functions.invoke quirks) ──
+
+const AUTH_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/customer-auth`;
+const ANON_KEY =
+	import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+	import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+type AuthApiResult = {
+	data: Record<string, unknown>;
+	error: { message: string } | null;
+};
+
+async function callAuthApi(body: Record<string, unknown>): Promise<AuthApiResult> {
+	try {
+		const res = await fetch(AUTH_FN_URL, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				apikey: ANON_KEY,
+				Authorization: `Bearer ${ANON_KEY}`,
+			},
+			body: JSON.stringify(body),
+		});
+
+		let parsed: Record<string, unknown>;
+		const text = await res.text();
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			return { data: {}, error: { message: "Invalid response from server" } };
+		}
+
+		if (parsed.error) {
+			return { data: parsed, error: { message: String(parsed.error) } };
+		}
+
+		return { data: parsed, error: null };
+	} catch (e) {
+		return {
+			data: {},
+			error: { message: e instanceof Error ? e.message : "Network error" },
+		};
+	}
+}
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -160,10 +206,7 @@ async function refreshTokenViaEdge(
 	refreshToken: string,
 ): Promise<{ accessToken: string; refreshToken: string } | null> {
 	try {
-		const supabase = createClient();
-		const { data, error } = await supabase.functions.invoke("customer-auth", {
-			body: { action: "refreshToken", refreshToken },
-		});
+		const { data, error } = await callAuthApi({ action: "refreshToken", refreshToken });
 
 		if (error || data?.error) {
 			console.warn("[customer-auth] Token refresh failed:", data?.error || error?.message);
@@ -171,7 +214,7 @@ async function refreshTokenViaEdge(
 		}
 
 		if (data.accessToken && data.refreshToken) {
-			return { accessToken: data.accessToken, refreshToken: data.refreshToken };
+			return { accessToken: data.accessToken as string, refreshToken: data.refreshToken as string };
 		}
 		return null;
 	} catch (e) {
@@ -263,10 +306,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 	const login = useCallback(async (email: string, password: string) => {
 		setIsLoading(true);
 		try {
-			const supabase = createClient();
-			const { data, error } = await supabase.functions.invoke("customer-auth", {
-				body: { action: "login", email, password },
-			});
+			const { data, error } = await callAuthApi({ action: "login", email, password });
 
 			if (error || data?.error) {
 				const message = data?.error || error?.message || "Gagal masuk.";
@@ -315,10 +355,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 		async (email: string, password: string, name: string) => {
 			setIsLoading(true);
 			try {
-				const supabase = createClient();
-				const { data, error } = await supabase.functions.invoke("customer-auth", {
-					body: { action: "register", email, password, name },
-				});
+				const { data, error } = await callAuthApi({ action: "register", email, password, name });
 
 				if (error || data?.error) {
 					const message = data?.error || error?.message || "Gagal mendaftar.";
@@ -399,10 +436,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 	const logout = useCallback(async () => {
 		try {
 			// Try to revoke on server — best-effort (if it fails, still clear local)
-			const supabase = createClient();
-			await supabase.functions.invoke("customer-auth", {
-				body: { action: "logout", refreshToken: session?.refreshToken ?? "" },
-			}).catch(() => {});
+			await callAuthApi({ action: "logout", refreshToken: session?.refreshToken ?? "" }).catch(() => {});
 		} catch (_error) {
 			// swallow — we clear local regardless
 		} finally {
@@ -415,10 +449,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
 	// ── resetPassword ─────────────────────────────────────────
 	const resetPassword = useCallback(async (email: string) => {
-		const supabase = createClient();
-		const { data, error } = await supabase.functions.invoke("customer-auth", {
-			body: { action: "resetPassword", email },
-		});
+		const { data, error } = await callAuthApi({ action: "resetPassword", email });
 
 		if (error || data?.error) {
 			toast.error(data?.error || error?.message || "Gagal mengirim link reset.");
