@@ -35,6 +35,19 @@ deploy_app() {
 	echo "✅ $name deployed to https://$domain/"
 }
 
+deploy_edge_function() {
+	local name=$1
+	echo ""
+	echo "⚡ Deploying Edge Function: $name..."
+	mkdir -p "/opt/supabase-selfhost/volumes/functions/$name"
+	cp "supabase/functions/$name/index.ts" "/opt/supabase-selfhost/volumes/functions/$name/index.ts"
+	cd /opt/supabase-selfhost && docker compose up --detach functions 2>&1 | tail -1
+	cd "$SCRIPT_DIR"
+	echo "✅ Edge Function $name deployed"
+}
+
+SELFHOST_FUNCTIONS="/opt/supabase-selfhost/volumes/functions"
+
 case "$APP" in
 	pos)
 		deploy_app "pos" "pos.yumme.id"
@@ -44,11 +57,13 @@ case "$APP" in
 		;;
 	customer)
 		deploy_app "customer" "djiwatentram.yumme.id"
+		deploy_edge_function "customer-auth"
 		;;
 	all|*)
 		deploy_app "pos" "pos.yumme.id"
 		deploy_app "karyawan" "karyawan.yumme.id"
 		deploy_app "customer" "djiwatentram.yumme.id"
+		deploy_edge_function "customer-auth"
 		;;
 esac
 

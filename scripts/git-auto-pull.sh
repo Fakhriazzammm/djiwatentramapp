@@ -39,13 +39,9 @@ if [ "$LOCAL" != "$REMOTE" ]; then
     # Restart services jika perlu
     export PATH="$PATH:/home/ubuntu/.bun/bin"
     cd /opt/djiwatentramapp
-    bun run build:karyawan >> "$LOG_FILE" 2>&1
-    # Deploy ke nginx (copy dist → /var/www/)
-    bash scripts/deploy-vps.sh karyawan >> "$LOG_FILE" 2>&1
+    # Build & deploy semua apps + edge functions
+    bash scripts/deploy-vps.sh all >> "$LOG_FILE" 2>&1
     sudo systemctl restart yumi-hrd-agent.service >> "$LOG_FILE" 2>&1
-
-    # Juga build & deploy customer (ponytail: ensure fresh build with .env)
-    bash scripts/deploy-vps.sh customer >> "$LOG_FILE" 2>&1
 
     echo "Pull berhasil pada $(date)" >> "$LOG_FILE"
 else
