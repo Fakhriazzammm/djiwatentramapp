@@ -121,7 +121,7 @@ function BrandCustomerIndex() {
 								onClick={() => setAuthModalOpen(true)}
 							>
 								<LogIn className="h-3.5 w-3.5" />
-								Masuk / Daftar untuk poin
+								🔓 Klaim Semua Benefit
 							</button>
 						</div>
 					</section>
