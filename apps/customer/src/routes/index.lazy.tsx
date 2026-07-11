@@ -103,13 +103,13 @@ function BrandCustomerIndex() {
 							{/* ── Benefit list ────────────────────── */}
 							<div className="mt-4 grid grid-cols-3 gap-1.5">
 								{[
-									{ icon: "🪙", label: "Poin Ditukar Gratis!" },
-									{ icon: "🎉", label: "Happy Hour: Harga Khusus" },
-									{ icon: "🏷️", label: "Promo Spesial Anggota" },
+									{ icon: "🪙", label: "Dapatkan Poin untuk Member\nLogin/Register" },
+									{ icon: "🎉", label: "Daftar/Login untuk\nHappy Hour 15rb All Menu!" },
+									{ icon: "🏷️", label: "Promo Spesial Khusus Member\nLogin/Register" },
 								].map((b) => (
 									<div key={b.label} className="rounded-xl border border-border/60 bg-muted/30 px-2 py-2 text-center">
 										<span className="text-lg">{b.icon}</span>
-										<p className="mt-0.5 text-[9px] font-bold leading-tight text-muted-foreground">{b.label}</p>
+										<p className="mt-0.5 whitespace-pre-line text-[9px] font-bold leading-tight text-muted-foreground">{b.label}</p>
 									</div>
 								))}
 							</div>
