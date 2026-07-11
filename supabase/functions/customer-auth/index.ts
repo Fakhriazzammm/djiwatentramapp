@@ -9,9 +9,10 @@ const admin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 	auth: { autoRefreshToken: false, persistSession: false },
 });
 
-function respond(data: Record<string, unknown>, status = 200) {
+/** Always return 200 — supabase-js functions.invoke() treats non-2xx as FetchError, swallowing the actual body */
+function respond(data: Record<string, unknown>) {
 	return new Response(JSON.stringify(data), {
-		status,
+		status: 200,
 		headers: { ...corsHeaders, "Content-Type": "application/json" },
 	});
 }
@@ -19,7 +20,7 @@ function respond(data: Record<string, unknown>, status = 200) {
 async function login(email: string, password: string) {
 	// Call GoTrue admin API via service_role — bypasses Kong, direct to auth service on localhost
 	const { data, error } = await admin.auth.signInWithPassword({ email, password });
-	if (error) return respond({ error: error.message }, 400);
+	if (error) return respond({ error: error.message });
 	return respond({
 		accessToken: data.session?.access_token ?? null,
 		refreshToken: data.session?.refresh_token ?? null,
@@ -32,7 +33,7 @@ async function register(email: string, password: string, name: string) {
 		email, password,
 		options: { data: { name }, emailRedirectTo: "https://djiwatentram.yumme.id" },
 	});
-	if (error) return respond({ error: error.message }, 400);
+	if (error) return respond({ error: error.message });
 	return respond({
 		accessToken: data.session?.access_token ?? null,
 		refreshToken: data.session?.refresh_token ?? null,
@@ -44,13 +45,13 @@ async function resetPassword(email: string) {
 	const { error } = await admin.auth.resetPasswordForEmail(email, {
 		redirectTo: "https://djiwatentram.yumme.id",
 	});
-	if (error) return respond({ error: error.message }, 400);
+	if (error) return respond({ error: error.message });
 	return respond({ success: true });
 }
 
 async function refreshToken(refreshToken: string) {
 	const { data, error } = await admin.auth.refreshSession({ refresh_token: refreshToken });
-	if (error) return respond({ error: error.message }, 400);
+	if (error) return respond({ error: error.message });
 	return respond({
 		accessToken: data.session?.access_token ?? null,
 		refreshToken: data.session?.refresh_token ?? null,
@@ -67,8 +68,8 @@ Deno.serve(async (req) => {
 		if (action === "refreshToken") return await refreshToken(rt);
 		// logout is a no-op — client just clears localStorage; tokens expire naturally
 		if (action === "logout") return respond({ success: true });
-		return respond({ error: "Unknown action" }, 400);
+		return respond({ error: "Unknown action" });
 	} catch (e) {
-		return respond({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+		return respond({ error: e instanceof Error ? e.message : "Unknown error" });
 	}
 });
