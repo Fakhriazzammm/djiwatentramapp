@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Loader2, ShoppingCart, LogIn } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
-import { AuthHeader } from "@/components/customer/auth-header";
 
 export const Route = createLazyFileRoute("/")({
 	component: BrandCustomerIndex,
@@ -66,18 +65,6 @@ function BrandCustomerIndex() {
 						</div>
 					</div>
 				</header>
-
-				{/* ── Auth header ──────────────────────────────── */}
-				<div className="px-3 pt-3">
-					<AuthHeader
-						isAuthenticated={false}
-						customer={null}
-						isLoading={false}
-						onOpenAuth={() => setAuthModalOpen(true)}
-						onLogout={logout}
-						onProfileClick={() => navigate({ to: "/profile" })}
-					/>
-				</div>
 
 				{/* ── Welcome card di tengah ───────────────────── */}
 				<main className="flex flex-1 items-center justify-center px-3">
