@@ -103,9 +103,9 @@ function BrandCustomerIndex() {
 							{/* ── Benefit list ────────────────────── */}
 							<div className="mt-4 grid grid-cols-3 gap-1.5">
 								{[
-									{ icon: "🪙", label: "Kumpulkan Poin" },
-									{ icon: "🎉", label: "Happy Hour" },
-									{ icon: "🏷️", label: "Promo Spesial" },
+									{ icon: "🪙", label: "Poin → Gratis!" },
+									{ icon: "🎉", label: "Happy Hour rame" },
+									{ icon: "🏷️", label: "Diskon Eksklusif" },
 								].map((b) => (
 									<div key={b.label} className="rounded-xl border border-border/60 bg-muted/30 px-2 py-2 text-center">
 										<span className="text-lg">{b.icon}</span>
