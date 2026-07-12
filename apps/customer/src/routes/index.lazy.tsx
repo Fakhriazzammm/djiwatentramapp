@@ -121,7 +121,7 @@ function BrandCustomerIndex() {
 								onClick={() => setAuthModalOpen(true)}
 							>
 								<LogIn className="h-3.5 w-3.5" />
-								🔓 Klaim Semua Benefit
+								Login/Register untuk Happy Hour
 							</button>
 						</div>
 					</section>

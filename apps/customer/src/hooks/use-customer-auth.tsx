@@ -358,7 +358,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 				const { data, error } = await callAuthApi({ action: "register", email, password, name });
 
 				if (error || data?.error) {
-					const message = data?.error || error?.message || "Gagal mendaftar.";
+					const message = error?.message || (typeof data?.error === "string" ? data.error : "Gagal mendaftar.");
 					toast.error(message);
 					throw new Error(message);
 				}
@@ -396,32 +396,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 					toast.success("Pendaftaran berhasil! Cek email untuk konfirmasi.");
 				}
 
-				// Sync customer record via existing Edge Function
-				try {
-					const { error: fnError } = await supabase.functions.invoke(
-						"customer-sync",
-						{
-							body: {
-								action: "sync",
-								userId,
-								email,
-								name,
-							},
-						},
-					);
-
-					if (fnError) {
-						console.warn(
-							"[customer-auth] customer-sync error:",
-							fnError,
-						);
-					}
-				} catch (syncError) {
-					console.warn(
-						"[customer-auth] customer-sync invocation failed:",
-						syncError,
-					);
-				}
 			} catch (error) {
 				console.error("[customer-auth] Register error:", error);
 				throw error;

@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Mail, Lock, User, Loader2, ArrowRight, LogIn, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, User, Loader2, ArrowRight, LogIn, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 type Tab = "login" | "register";
 
@@ -40,6 +40,7 @@ export function AuthModal({
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
 
   // ── Forgot password state ─────────────────────────────────
@@ -256,7 +257,7 @@ export function AuthModal({
                 <div className="relative">
                   <Lock className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -264,8 +265,16 @@ export function AuthModal({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && isFormValid) handleSubmit();
                     }}
-                    className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                    className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-9 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                   />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
                 </div>
               </div>
 
