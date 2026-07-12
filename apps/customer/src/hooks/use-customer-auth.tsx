@@ -45,6 +45,7 @@ interface CustomerAuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -206,6 +207,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // ── signInWithGoogle ────────────────────────────────────────
+  const signInWithGoogle = useCallback(async () => {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+  }, []);
+
   // ── resetPassword ────────────────────────────────────────────
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await (authClient as any).forgetPassword({ email });
@@ -228,6 +237,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        signInWithGoogle,
         resetPassword,
       }}
     >

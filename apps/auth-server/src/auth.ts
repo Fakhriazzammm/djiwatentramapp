@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
+import { dash } from "@better-auth/infra";
 
 const pool = new Pool({
   host: "localhost",
@@ -14,5 +15,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  // ponytail: no social providers, no magic link, no 2FA — add when requested
+  plugins: [
+    dash(),
+  ],
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
+  // ponytail: add magic link/2FA when requested
 });
