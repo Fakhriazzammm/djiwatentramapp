@@ -1,0 +1,18 @@
+[Unit]
+Description=Better Auth Server for Djiwa Tentram
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/djiwatentramapp/apps/auth-server
+ExecStart=/usr/local/bin/bun src/index.ts
+Restart=always
+RestartSec=5
+Environment=BETTER_AUTH_SECRET=coKdFoMHuRmQrwMzYiJHSlG0kGy7F56KF1vEhXELmA8=
+Environment=BETTER_AUTH_URL=https://djiwatentram.yumme.id
+Environment=BETTER_AUTH_PORT=3001
+
+[Install]
+WantedBy=multi-user.target

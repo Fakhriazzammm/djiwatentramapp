@@ -1,0 +1,14 @@
+{
+  "name": "auth-server",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {
+    "better-auth": "^1.4.0",
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "pg": "^8.13.0"
+  }
+}
