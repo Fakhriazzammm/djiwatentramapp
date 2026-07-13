@@ -59,6 +59,7 @@ import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/adm
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
+import { Route as AdminFinanceExpensesRouteRouteImport } from './routes/admin/finance/expenses/route'
 import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
 import { Route as AdminOperationalTeamPayrollIndexRouteImport } from './routes/admin/operational-team/payroll/index'
 import { Route as AdminOperationalTeamAttendanceIndexRouteImport } from './routes/admin/operational-team/attendance.index'
@@ -384,6 +385,12 @@ const AdminFinanceReportsRouteRoute =
     path: '/reports',
     getParentRoute: () => AdminFinanceRouteRoute,
   } as any)
+const AdminFinanceExpensesRouteRoute =
+  AdminFinanceExpensesRouteRouteImport.update({
+    id: '/expenses',
+    path: '/expenses',
+    getParentRoute: () => AdminFinanceRouteRoute,
+  } as any)
 const AdminFinanceAccountingRouteRoute =
   AdminFinanceAccountingRouteRouteImport.update({
     id: '/accounting',
@@ -553,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
+  '/admin/finance/expenses': typeof AdminFinanceExpensesRouteRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -612,6 +620,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
+  '/admin/finance/expenses': typeof AdminFinanceExpensesRouteRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -674,6 +683,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
+  '/admin/finance/expenses': typeof AdminFinanceExpensesRouteRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -740,6 +750,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
+    | '/admin/finance/expenses'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -799,6 +810,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/attendance'
     | '/admin/finance/accounting'
+    | '/admin/finance/expenses'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -860,6 +872,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
+    | '/admin/finance/expenses'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -1241,6 +1254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceReportsRouteRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/finance/expenses': {
+      id: '/admin/finance/expenses'
+      path: '/expenses'
+      fullPath: '/admin/finance/expenses'
+      preLoaderRoute: typeof AdminFinanceExpensesRouteRouteImport
+      parentRoute: typeof AdminFinanceRouteRoute
+    }
     '/admin/finance/accounting': {
       id: '/admin/finance/accounting'
       path: '/accounting'
@@ -1344,6 +1364,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminFinanceRouteRouteChildren {
   AdminFinanceAccountingRouteRoute: typeof AdminFinanceAccountingRouteRoute
+  AdminFinanceExpensesRouteRoute: typeof AdminFinanceExpensesRouteRoute
   AdminFinanceReportsRouteRoute: typeof AdminFinanceReportsRouteRoute
   AdminFinanceTransactionsRouteRoute: typeof AdminFinanceTransactionsRouteRoute
   AdminFinanceShiftReportsRoute: typeof AdminFinanceShiftReportsRoute
@@ -1352,6 +1373,7 @@ interface AdminFinanceRouteRouteChildren {
 
 const AdminFinanceRouteRouteChildren: AdminFinanceRouteRouteChildren = {
   AdminFinanceAccountingRouteRoute: AdminFinanceAccountingRouteRoute,
+  AdminFinanceExpensesRouteRoute: AdminFinanceExpensesRouteRoute,
   AdminFinanceReportsRouteRoute: AdminFinanceReportsRouteRoute,
   AdminFinanceTransactionsRouteRoute: AdminFinanceTransactionsRouteRoute,
   AdminFinanceShiftReportsRoute: AdminFinanceShiftReportsRoute,

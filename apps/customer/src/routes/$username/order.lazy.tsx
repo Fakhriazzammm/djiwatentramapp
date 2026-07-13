@@ -120,7 +120,7 @@ function OrderPage() {
 		updateCartQuantity,
 	} = useOrderContext();
 
-	const { isAuthenticated, customer, login, register, resetPassword, logout, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const isMenuLoading = categories === undefined || products === undefined;
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
@@ -656,6 +656,7 @@ function OrderPage() {
 						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
 						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 						onSkip={() => setAuthModalOpen(false)}
+						onGoogleSignIn={signInWithGoogle}
 						onResetPassword={async (email) => { try { await resetPassword(email); } catch { } }}
 						isLoading={authLoading}
 						needsEmailConfirm={registrationNeedsEmailConfirm}

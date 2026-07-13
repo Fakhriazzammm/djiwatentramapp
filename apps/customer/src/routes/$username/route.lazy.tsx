@@ -1,4 +1,4 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronRight, Loader2, LogIn, ShoppingCart, Star, User } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
@@ -37,6 +37,8 @@ function MemberHomePage() {
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
+
+	const matches = useMatches();
 
 	// ── Guest data dari localStorage (synchronous, no network) ──
 	// Langsung resolve kalau guest match — tanpa nunggu auth check
@@ -165,9 +167,13 @@ function MemberHomePage() {
 	if (!customer) return null;
 
 	const displayName = customer.name || customer.username || "Member";
+	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
+
+
 
 	return (
-		<div className="app-page min-h-app">
+		<>
+		<div className={`app-page min-h-app $\{isChildRoute ? 'hidden' : ''\}`}>
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
@@ -221,6 +227,11 @@ function MemberHomePage() {
 				</main>
 			</div>
 
+			{/* ── Child route outlet ── */}
+			<div className={isChildRoute ? '' : 'hidden'}>
+				<Outlet />
+			</div>
+
 			<AuthModal
 				open={authModalOpen}
 				onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
@@ -234,5 +245,6 @@ function MemberHomePage() {
 				error={authError}
 			/>
 		</div>
+		</>
 	);
 }
