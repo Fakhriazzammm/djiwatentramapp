@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight, Loader2, LogIn, ShoppingCart, Star, User } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
+import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
 
 type GuestData = {
 	name: string;
@@ -30,7 +31,7 @@ export const Route = createLazyFileRoute("/$username")({
 function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
-	const { isAuthenticated, isLoading, customer, login, register, logout, resetPassword, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer, login, register, logout, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 
@@ -150,6 +151,7 @@ function MemberHomePage() {
 					onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
 					onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 					onSkip={() => setAuthModalOpen(false)}
+					onGoogleSignIn={signInWithGoogle}
 					onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
 					isLoading={isLoading}
 					needsEmailConfirm={registrationNeedsEmailConfirm}
@@ -208,23 +210,12 @@ function MemberHomePage() {
 							) : null}
 						</div>
 
-						<div className="mt-4 space-y-2">
-							<button
-								type="button"
-								className="flex w-full items-center justify-between rounded-xl bg-primary px-4 py-3 text-sm font-black text-white shadow-sm"
-								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
-							>
-								<span>Mulai pesan</span>
-								<ChevronRight className="h-4 w-4" />
-							</button>
-							<button
-								type="button"
-								className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-4 py-3 text-sm font-black text-foreground"
-								onClick={() => navigate({ to: "/$username/profile", params: { username } })}
-							>
-								<span>Profil saya</span>
-								<ChevronRight className="h-4 w-4" />
-							</button>
+						{/* ─── Menu ─── */}
+						<div className="mt-4">
+							<h2 className="text-xs font-black uppercase tracking-wider text-foreground mb-3">
+								Menu
+							</h2>
+							<CustomerMenuGrid baseRoute={username} />
 						</div>
 					</div>
 				</main>
@@ -236,6 +227,7 @@ function MemberHomePage() {
 				onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
 				onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 				onSkip={() => setAuthModalOpen(false)}
+				onGoogleSignIn={signInWithGoogle}
 				onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
 				isLoading={isLoading}
 				needsEmailConfirm={registrationNeedsEmailConfirm}

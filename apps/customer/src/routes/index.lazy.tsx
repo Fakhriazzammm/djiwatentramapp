@@ -19,6 +19,7 @@ function BrandCustomerIndex() {
 		register,
 		logout,
 		resetPassword,
+		signInWithGoogle,
 		registrationNeedsEmailConfirm,
 	} = useCustomerAuth();
 
@@ -33,7 +34,7 @@ function BrandCustomerIndex() {
 	// jika ternyata user sudah login.
 	useEffect(() => {
 		if (isAuthenticated && customer) {
-			navigate({ to: `/${customer.username}` });
+			navigate({ to: `/${customer.username}/order` });
 		}
 	}, [isAuthenticated, customer, navigate]);
 
@@ -151,6 +152,7 @@ function BrandCustomerIndex() {
 						}
 					}}
 					onSkip={() => setAuthModalOpen(false)}
+					onGoogleSignIn={signInWithGoogle}
 					onResetPassword={async (email) => {
 						try {
 							await resetPassword(email);
