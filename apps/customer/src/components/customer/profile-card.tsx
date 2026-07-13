@@ -67,7 +67,10 @@ export function ProfileCard({
         <Button
           variant="ghost"
           size="icon-xs"
-          onClick={onLogout}
+          onClick={(e) => {
+            e.stopPropagation(); // prevent parent ProfileCard navigation to /profile
+            onLogout();
+          }}
           className="shrink-0 text-muted-foreground hover:text-destructive"
         >
           <LogOut className="h-3.5 w-3.5" />

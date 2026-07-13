@@ -30,13 +30,26 @@ function BrandCustomerIndex() {
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
 	// ── Redirect member ke /{username} ────────────────────────────
-	// Auth berjalan di background; langsung render, redirect otomatis
-	// jika ternyata user sudah login.
+	// HARUS dipanggil sebelum conditional return agar tidak melanggar
+	// rules of hooks (React error #310).
 	useEffect(() => {
 		if (isAuthenticated && customer) {
 			navigate({ to: `/${customer.username}/order` });
 		}
 	}, [isAuthenticated, customer, navigate]);
+
+	// ── Loading state ────────────────────────────────────────────
+	// Cegah flash welcome page untuk user yang sudah login
+	if (isLoading) {
+		return (
+			<div className="flex min-h-app items-center justify-center bg-background">
+				<div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+					<Loader2 className="h-4 w-4 animate-spin text-primary" />
+					<span className="text-xs font-medium text-muted-foreground">Menyiapkan halaman...</span>
+				</div>
+			</div>
+		);
+	}
 
 	// ── Guest welcome page ───────────────────────────────────
 	return (

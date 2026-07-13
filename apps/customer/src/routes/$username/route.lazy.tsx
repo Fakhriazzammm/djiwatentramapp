@@ -39,6 +39,7 @@ function MemberHomePage() {
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
 	const matches = useMatches();
+	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 
 	// ── Guest data dari localStorage (synchronous, no network) ──
 	// Langsung resolve kalau guest match — tanpa nunggu auth check
@@ -83,7 +84,7 @@ function MemberHomePage() {
 	}
 
 	// ── Guest view ─────────────────────────────────
-	if (guestData && !isAuthenticated) {
+	if (guestData && !isAuthenticated && !isChildRoute) {
 		const isCurrentGuest = loadGuestData()?.username === username;
 		return (
 			<div className="app-page min-h-app">
@@ -165,15 +166,37 @@ function MemberHomePage() {
 
 	// ── Member view (authenticated) ────────────────
 	if (!customer) return null;
+	if (isChildRoute) {
+		// Child route aktif → render hanya Outlet (sudah di luar app-page)
+		return (
+			<>
+				<div className={isChildRoute ? 'min-h-app' : 'hidden'}>
+					<Outlet />
+				</div>
+				<AuthModal
+					open={authModalOpen}
+					onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
+					onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
+					onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
+					onSkip={() => setAuthModalOpen(false)}
+					onGoogleSignIn={signInWithGoogle}
+					onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
+					isLoading={isLoading}
+					needsEmailConfirm={registrationNeedsEmailConfirm}
+					error={authError}
+				/>
+			</>
+		);
+	}
 
 	const displayName = customer.name || customer.username || "Member";
-	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 
 
 
 	return (
 		<>
-				<div className={`app-page min-h-app ${isChildRoute ? 'hidden' : ''}`}>
+			{/* ── Member layout (hidden saat child route aktif) ── */}
+			<div className={`app-page min-h-app ${isChildRoute ? 'hidden' : ''}`}>
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
@@ -225,10 +248,11 @@ function MemberHomePage() {
 						</div>
 					</div>
 				</main>
-			</div>
+				</div>
+				</div>
 
-			{/* ── Child route outlet ── */}
-			<div className={isChildRoute ? '' : 'hidden'}>
+			{/* ── Child route outlet (sibling terpisah, TIDAK di-dalam app-page) ── */}
+			<div className={isChildRoute ? 'min-h-app' : 'hidden'}>
 				<Outlet />
 			</div>
 
@@ -244,7 +268,6 @@ function MemberHomePage() {
 				needsEmailConfirm={registrationNeedsEmailConfirm}
 				error={authError}
 			/>
-		</div>
 		</>
 	);
 }
