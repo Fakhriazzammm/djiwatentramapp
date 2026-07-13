@@ -15,7 +15,7 @@ Environment=BETTER_AUTH_URL=https://djiwatentram.yumme.id
 Environment=BETTER_AUTH_PORT=3001
 Environment=BETTER_AUTH_API_KEY=ba_5gxlku2ytxamrt4izhq481grqgsz6tl9
 Environment=GOOGLE_CLIENT_ID=559298319721-pivu1oompqkc21t3sgau2oao39jpms9r.apps.googleusercontent.com
-Environment=GOOGLE_CLIENT_SECRET=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
+Environment=GOOGLE_CLIENT_SECRET=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
 
 [Install]
 WantedBy=multi-user.target

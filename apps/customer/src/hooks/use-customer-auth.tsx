@@ -50,13 +50,14 @@ interface CustomerAuthContextType {
 
 // ── Helpers ────────────────────────────────────────────────────
 
-function emailToUsername(email: string | null): string {
-  if (!email) return "user";
-  return email
-    .split("@")[0]
-    .replace(/[^a-zA-Z0-9._-]/g, "")
+function deriveUsername(email: string | null, name?: string | null): string {
+  // ponytail: name-priority, email fallback; slug spaces/dots → hyphen
+  const base = (name?.trim() || email?.split("@")[0] || "user")
     .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 32);
+  return base || "user";
 }
 
 function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
@@ -66,7 +67,7 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
     name: (row.name as string) ?? null,
     phone: (row.phone as string) ?? null,
     photoUrl: (row.photo_url as string) ?? null,
-    username: emailToUsername((row.email as string) ?? null),
+    username: deriveUsername((row.email as string) ?? null, (row.name as string) ?? null),
     totalPoints: Number(row.total_points ?? 0),
     lifetimePoints: Number(row.lifetime_points ?? 0),
     totalOrders: Number(row.total_orders ?? 0),
@@ -76,7 +77,10 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
   };
 }
 
-async function fetchCustomer(sourceId: string): Promise<CustomerUser | null> {
+async function fetchCustomer(
+  sourceId: string,
+  email?: string | null,
+): Promise<CustomerUser | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("pos_customers_view")
@@ -88,9 +92,25 @@ async function fetchCustomer(sourceId: string): Promise<CustomerUser | null> {
     console.warn("[customer-auth] fetchCustomer error:", error);
     return null;
   }
-  if (!data) return null;
+  if (data) return mapCustomerRow(data as Record<string, unknown>);
 
-  return mapCustomerRow(data as Record<string, unknown>);
+  // ponytail: relink-by-email — existing customers keyed to the OLD auth id
+  // (UUID) won't match the new Better Auth id. Re-point source_id to the new
+  // id on first login so their points/orders history is preserved.
+  if (!email) return null;
+
+  const { data: relinked, error: relinkErr } = await supabase
+    .schema("pos")
+    .from("customers")
+    .update({ source_id: sourceId, updated_at: new Date().toISOString() })
+    .eq("email", email)
+    .select("*")
+    .maybeSingle();
+  if (relinkErr || !relinked) {
+    console.warn("[customer-auth] relink failed:", relinkErr);
+    return null;
+  }
+  return mapCustomerRow(relinked as Record<string, unknown>);
 }
 
 function buildFallbackCustomer(
@@ -104,7 +124,7 @@ function buildFallbackCustomer(
     name: name ?? email?.split("@")[0] ?? "User",
     phone: null,
     photoUrl: null,
-    username: emailToUsername(email),
+    username: deriveUsername(email, name),
     totalPoints: 0,
     lifetimePoints: 0,
     totalOrders: 0,
@@ -138,7 +158,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const user = betterSession.user;
-    fetchCustomer(user.id).then((cust) => {
+    fetchCustomer(user.id, user.email).then((cust) => {
       setCustomer(cust ?? buildFallbackCustomer(user.id, user.email, user.name));
       setIsLoading(false);
     });
