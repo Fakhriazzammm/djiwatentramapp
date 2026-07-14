@@ -29,12 +29,10 @@ function BrandCustomerIndex() {
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
-	// ── Redirect member ke /{username} ────────────────────────────
-	// HARUS dipanggil sebelum conditional return agar tidak melanggar
-	// rules of hooks (React error #310).
+	// ponytail: sudah login → langsung ke /{username}, bukan /order
 	useEffect(() => {
 		if (isAuthenticated && customer) {
-			navigate({ to: `/${customer.username}/order` });
+			navigate({ to: `/${customer.username}` });
 		}
 	}, [isAuthenticated, customer, navigate]);
 
