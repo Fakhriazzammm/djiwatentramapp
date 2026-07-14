@@ -87,7 +87,7 @@ export function useCustomerOrders() {
 			const { data, error: queryError } = await supabase
 				.from("pos_orders")
 				.select("*")
-				.eq("customer_source_id", cust.sourceId)
+				.eq("auth_user_id", cust.sourceId)
 				.order("createdAt", { ascending: false })
 				.limit(50);
 
