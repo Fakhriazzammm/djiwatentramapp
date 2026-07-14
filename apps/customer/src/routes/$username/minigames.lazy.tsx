@@ -1,6 +1,6 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Gift, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, Gift, Sparkles, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,9 @@ export const Route = createLazyFileRoute("/$username/minigames")({
 function MiniGamesPage() {
 	const game = useHybridActiveMiniGameByBrand(import.meta.env.VITE_BRAND_SLUG || "djiwatentram");
 	const spin = useHybridSpin();
+	const { username } = Route.useParams();
+	const navigate = useNavigate();
+	const goHome = () => navigate({ to: "/$username", params: { username } });
 
 	const [form, setForm] = useState({
 		fullName: "",
@@ -81,20 +84,26 @@ function MiniGamesPage() {
 
 	if (game === undefined) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background">
-				<p className="text-muted-foreground">Memuat mini games...</p>
+			<div className="min-h-screen bg-background">
+				<BackBar onBack={goHome} />
+				<div className="flex items-center justify-center py-24">
+					<p className="text-muted-foreground">Memuat mini games...</p>
+				</div>
 			</div>
 		);
 	}
 
 	if (!game) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background p-6">
-				<div className="max-w-md space-y-3 rounded-2xl border bg-card p-6 text-center">
-					<h1 className="font-bold text-2xl">Mini Games Belum Aktif</h1>
-					<p className="text-muted-foreground text-sm">
-						Tidak ada mini game aktif untuk brand ini saat ini.
-					</p>
+			<div className="min-h-screen bg-background">
+				<BackBar onBack={goHome} />
+				<div className="flex items-center justify-center p-6">
+					<div className="max-w-md space-y-3 rounded-2xl border bg-card p-6 text-center">
+						<h1 className="font-bold text-2xl">Mini Games Belum Aktif</h1>
+						<p className="text-muted-foreground text-sm">
+							Tidak ada mini game aktif untuk brand ini saat ini.
+						</p>
+					</div>
 				</div>
 			</div>
 		);
@@ -102,6 +111,11 @@ function MiniGamesPage() {
 
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-orange-50 px-4 py-8">
+			<div className="mx-auto mb-4 max-w-6xl">
+				<button type="button" onClick={goHome} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+					<ArrowLeft className="h-4 w-4" /> Kembali
+				</button>
+			</div>
 			<div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.2fr,1fr]">
 				<div className="space-y-4 rounded-3xl border bg-card p-6 shadow-sm">
 					<div className="flex items-center gap-2 text-primary">
@@ -223,6 +237,16 @@ function MiniGamesPage() {
 					</p>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function BackBar({ onBack }: { onBack: () => void }) {
+	return (
+		<div className="px-4 pt-4">
+			<button type="button" onClick={onBack} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+				<ArrowLeft className="h-4 w-4" /> Kembali
+			</button>
 		</div>
 	);
 }

@@ -24,11 +24,16 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
   },
-  accountLinking: {
-    // ponytail: allow Google to link to existing email/password account
-    enabled: true,
-    allowDifferentEmails: false,
-    allowUnlink: true,
+  account: {
+    accountLinking: {
+      // ponytail: allow Google to link to existing email/password account
+      enabled: true,
+      trustedProviders: ["google"],
+      allowDifferentEmails: false,
+      // Akun email/password punya emailVerified=false; email Google sudah
+      // terverifikasi, jadi izinkan link tanpa verifikasi email lokal dulu.
+      requireLocalEmailVerified: false,
+    },
   },
   // ponytail: add magic link/2FA when requested
 });
