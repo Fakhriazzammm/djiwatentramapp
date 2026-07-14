@@ -31,7 +31,7 @@ export const Route = createLazyFileRoute("/$username")({
 function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
-	const { isAuthenticated, isLoading, customer, login, register, logout, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer, login, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 
@@ -69,6 +69,26 @@ function MemberHomePage() {
 		navigate({ to: "/" });
 	}, [resolved, isLoading, isAuthenticated, customer, username, navigate]);
 
+	// Sinkronkan guest data kalau berubah (mis. setelah daftar ulang)
+	useEffect(() => {
+		setGuestData(loadGuestData());
+	}, [username]);
+
+	const authModal = (
+		<AuthModal
+			open={authModalOpen}
+			onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
+			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
+			onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
+			onSkip={() => setAuthModalOpen(false)}
+			onGoogleSignIn={signInWithGoogle}
+			onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
+			isLoading={isLoading}
+			needsEmailConfirm={registrationNeedsEmailConfirm}
+			error={authError}
+		/>
+	);
+
 	// ── Loading ────────────────────────────────────
 	// Guest match → skip loading (resolved=true sejak awal, tanpa network)
 	// Non-guest → nunggu auth baru resolve
@@ -83,8 +103,23 @@ function MemberHomePage() {
 		);
 	}
 
+	// ── Child route aktif ──────────────────────────
+	// PENTING: render Outlet untuk guest MAUPUN member — guard per-halaman
+	// dilakukan di masing-masing child page. Sebelumnya guest kena
+	// `if (!customer) return null` → halaman blank untuk semua tombol menu.
+	if (isChildRoute) {
+		return (
+			<>
+				<div className="min-h-app">
+					<Outlet />
+				</div>
+				{authModal}
+			</>
+		);
+	}
+
 	// ── Guest view ─────────────────────────────────
-	if (guestData && !isAuthenticated && !isChildRoute) {
+	if (guestData && !isAuthenticated) {
 		const isCurrentGuest = loadGuestData()?.username === username;
 		return (
 			<div className="app-page min-h-app">
@@ -144,59 +179,31 @@ function MemberHomePage() {
 									Masuk / Daftar untuk poin
 								</button>
 							</div>
+
+							{/* ─── Menu (guest juga bisa akses semua tombol) ─── */}
+							<div className="mt-4">
+								<h2 className="text-xs font-black uppercase tracking-wider text-foreground mb-3">
+									Menu
+								</h2>
+								<CustomerMenuGrid baseRoute={username} />
+							</div>
 						</div>
 					</main>
 				</div>
 
-				<AuthModal
-					open={authModalOpen}
-					onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-					onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-					onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
-					onSkip={() => setAuthModalOpen(false)}
-					onGoogleSignIn={signInWithGoogle}
-					onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
-					isLoading={isLoading}
-					needsEmailConfirm={registrationNeedsEmailConfirm}
-					error={authError}
-				/>
+				{authModal}
 			</div>
 		);
 	}
 
 	// ── Member view (authenticated) ────────────────
 	if (!customer) return null;
-	if (isChildRoute) {
-		// Child route aktif → render hanya Outlet (sudah di luar app-page)
-		return (
-			<>
-				<div className={isChildRoute ? 'min-h-app' : 'hidden'}>
-					<Outlet />
-				</div>
-				<AuthModal
-					open={authModalOpen}
-					onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-					onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-					onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
-					onSkip={() => setAuthModalOpen(false)}
-					onGoogleSignIn={signInWithGoogle}
-					onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
-					isLoading={isLoading}
-					needsEmailConfirm={registrationNeedsEmailConfirm}
-					error={authError}
-				/>
-			</>
-		);
-	}
 
 	const displayName = customer.name || customer.username || "Member";
 
-
-
 	return (
 		<>
-			{/* ── Member layout (hidden saat child route aktif) ── */}
-			<div className={`app-page min-h-app ${isChildRoute ? 'hidden' : ''}`}>
+			<div className="app-page min-h-app">
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
@@ -251,23 +258,7 @@ function MemberHomePage() {
 				</div>
 				</div>
 
-			{/* ── Child route outlet (sibling terpisah, TIDAK di-dalam app-page) ── */}
-			<div className={isChildRoute ? 'min-h-app' : 'hidden'}>
-				<Outlet />
-			</div>
-
-			<AuthModal
-				open={authModalOpen}
-				onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-				onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-				onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
-				onSkip={() => setAuthModalOpen(false)}
-				onGoogleSignIn={signInWithGoogle}
-				onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
-				isLoading={isLoading}
-				needsEmailConfirm={registrationNeedsEmailConfirm}
-				error={authError}
-			/>
+			{authModal}
 		</>
 	);
 }
