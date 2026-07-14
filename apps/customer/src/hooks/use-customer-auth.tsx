@@ -158,10 +158,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const user = betterSession.user;
-    fetchCustomer(user.id, user.email).then((cust) => {
-      setCustomer(cust ?? buildFallbackCustomer(user.id, user.email, user.name));
-      setIsLoading(false);
-    });
+    fetchCustomer(user.id, user.email)
+      .then((cust) => {
+        setCustomer(cust ?? buildFallbackCustomer(user.id, user.email, user.name));
+      })
+      .catch((err) => {
+        // jangan biarkan fetch gagal → customer undefined → gak redirect
+        console.error("[customer-auth] fetchCustomer failed, using fallback:", err);
+        setCustomer(buildFallbackCustomer(user.id, user.email, user.name));
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [betterSession, isPending]);
 
   const session: CustomerSession | null =
@@ -231,7 +239,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      callbackURL: window.location.origin + "/",
     });
   }, []);
 

@@ -38,11 +38,14 @@ export default defineConfig({
 			},
 			workbox: {
 				navigateFallback: "/index.html",
+				// Jangan sajikan SPA (index.html) untuk navigasi ke /api/* —
+				// biarkan lewat ke nginx→better-auth (mis. callback OAuth Google).
+				navigateFallbackDenylist: [/^\/api\//],
 				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
 				globPatterns: ["**/*.{js,css,html,png,svg,gif,ico,webmanifest}"],
 				runtimeCaching: [
 					{
-						urlPattern: ({ request }) => request.mode === "navigate",
+						urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/api/"),
 						handler: "NetworkFirst",
 						options: {
 							cacheName: "menu-pages",
