@@ -68,13 +68,16 @@ function interpolate(template: string, vars: Record<string, string>): string {
 }
 
 // ponytail: padatkan kontrak jadi ringkasan key points buat mobile
-function renderSummary(template: string, vars: Record<string, string>): string[] {
-  const text = interpolate(template, vars);
-  // Ambil heading pasal aja
+function parsePasal(text: string): { title: string; body: string }[] {
   return text
-    .split("\n")
-    .filter((l) => l.startsWith("Pasal") || l.startsWith("Perjanjian"))
-    .map((l) => l.trim());
+    .split(/\n(?=Pasal \d|Perjanjian)/)
+    .filter((b) => b.trim())
+    .map((b) => {
+      const nl = b.indexOf("\n");
+      return nl === -1
+        ? { title: b.trim(), body: "" }
+        : { title: b.substring(0, nl).trim(), body: b.substring(nl + 1).trim() };
+    });
 }
 
 function RegisterPage() {
@@ -106,7 +109,7 @@ function RegisterPage() {
   };
 
   const contractText = interpolate(CONTRACT_TEMPLATE, contractVars);
-  const summaryLines = renderSummary(CONTRACT_TEMPLATE, contractVars);
+  const pasalBlocks = parsePasal(contractText);
 
   const submit = async () => {
     if (!canNext || !agree || submitting) return;
@@ -276,40 +279,151 @@ function RegisterPage() {
             </form>
           )}
 
-          {/* ── STEP 1: Contract ── */}
+          {/* ── STEP 1: Contract — Paper Document ── */}
           {step === 1 && (
-            <div>
-              {/* Summary */}
-              <div className="mb-3 space-y-1 rounded-xl bg-muted/40 p-3">
-                {summaryLines.map((l, i) => (
-                  <p key={i} className="text-xs text-muted-foreground">{l}</p>
-                ))}
-              </div>
+            <div className="space-y-4" style={{ perspective: "1200px" }}>
+              {/* Paper document with page-flip animation */}
+              <motion.div
+                initial={{ rotateY: 80, opacity: 0, scale: 0.92 }}
+                animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+                transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+                style={{ transformOrigin: "left center" }}
+                className="relative overflow-hidden rounded-lg border border-amber-200/50 bg-[#fefcf6] shadow-[0_8px_30px_-6px_rgba(120,80,30,0.15)]"
+              >
+                {/* Paper grain texture */}
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-[0.025]"
+                  style={{
+                    backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, #8b6914 3px, #8b6914 3.5px)",
+                  }}
+                />
 
-              {/* Full contract */}
-              <div className="mb-4 max-h-52 overflow-y-auto rounded-xl border border-border/40 bg-muted/20 p-3">
-                <pre className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">{contractText}</pre>
-              </div>
+                {/* Decorative header */}
+                <div className="relative border-b border-double border-amber-200/50 px-5 pb-4 pt-5 text-center">
+                  <div className="mx-auto mb-2 flex items-center justify-center gap-2">
+                    <div className="h-px w-8 bg-amber-300/50" />
+                    <span className="font-serif text-[9px] uppercase tracking-[0.2em] text-amber-600/50">Djiwa Tentram</span>
+                    <div className="h-px w-8 bg-amber-300/50" />
+                  </div>
+                  <h3 className="font-serif text-sm font-bold tracking-wide text-amber-900">
+                    PERJANJIAN KERJA
+                  </h3>
+                  <p className="mt-0.5 font-serif text-[10px] italic text-amber-700/50">
+                    {jabatan.toUpperCase()}
+                  </p>
+                </div>
 
-              {/* Agree */}
-              <label className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/10 p-3 cursor-pointer">
-                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded accent-primary" />
+                {/* Contract body — scrollable */}
+                <div className="relative max-h-60 overflow-y-auto px-5 py-3 scrollbar-thin">
+                  {pasalBlocks.map((pasal, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.45 + i * 0.06, duration: 0.35 }}
+                      className="mb-3"
+                    >
+                      <h4 className="font-serif text-[11px] font-bold leading-tight text-amber-900">
+                        {pasal.title}
+                      </h4>
+                      {pasal.body && (
+                        <p className="mt-0.5 font-serif text-[10px] leading-[1.65] text-stone-600 whitespace-pre-wrap">
+                          {pasal.body}
+                        </p>
+                      )}
+                    </motion.div>
+                  ))}
+
+                  {/* Page fold shadow at bottom */}
+                  <div className="pointer-events-none sticky bottom-0 -mx-5 h-6 bg-gradient-to-t from-[#fefcf6] to-transparent" />
+                </div>
+
+                {/* Signature block */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.0, duration: 0.5 }}
+                  className="relative border-t border-double border-amber-200/50 px-5 pb-4 pt-3"
+                >
+                  <div className="flex items-end justify-between">
+                    {/* Pihak Pertama */}
+                    <div className="text-center min-w-0 flex-1">
+                      <div className="mb-5 font-serif text-[10px] font-medium text-stone-400">PIHAK PERTAMA</div>
+                      <div className="font-serif text-[9px] font-semibold text-stone-500">Fakhri Azzam</div>
+                      <div className="font-serif text-[8px] text-stone-400">Owner</div>
+                    </div>
+
+                    {/* Seal / Stamp */}
+                    <div className="mx-1 flex-shrink-0">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-amber-300/30 bg-amber-50/80">
+                        <span className="font-serif text-[7px] font-bold uppercase tracking-widest text-amber-400/50">
+                          SEAL
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Pihak Kedua */}
+                    <div className="text-center min-w-0 flex-1">
+                      <div className="mb-5 font-serif text-[10px] font-medium text-stone-400">PIHAK KEDUA</div>
+                      <div className="font-serif text-[9px] font-semibold text-stone-500 truncate">
+                        {name.trim() || "(nama)"}
+                      </div>
+                      <div className="font-serif text-[8px] text-stone-400">{jabatan.toUpperCase()}</div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Bottom decorative line */}
+                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-300/30 to-transparent" />
+              </motion.div>
+
+              {/* Agree checkbox */}
+              <motion.label
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.15, duration: 0.3 }}
+                className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/10 p-3 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={agree}
+                  onChange={(e) => setAgree(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded accent-primary"
+                />
                 <span className="text-xs text-muted-foreground">
                   Saya telah membaca dan menyetujui Perjanjian Kerja di atas.
                 </span>
-              </label>
+              </motion.label>
 
-              <div className="mt-4 flex gap-2">
-                <button type="button" onClick={() => setStep(0)}
-                  className="flex items-center gap-1 rounded-xl border border-border/60 bg-background px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted">
+              {/* Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.25, duration: 0.3 }}
+                className="flex gap-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => setStep(0)}
+                  className="flex items-center gap-1 rounded-xl border border-border/60 bg-background px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
+                >
                   <ArrowLeft className="h-3.5 w-3.5" /> Kembali
                 </button>
-                <button type="button" onClick={submit} disabled={!agree || submitting}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-bold text-white transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-                  {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengirim...</> : "Kirim Pendaftaran"}
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={!agree || submitting}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-bold text-white transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Mengirim...
+                    </>
+                  ) : (
+                    "Kirim Pendaftaran"
+                  )}
                 </button>
-              </div>
+              </motion.div>
             </div>
           )}
         </div>
