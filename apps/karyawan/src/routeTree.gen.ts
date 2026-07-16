@@ -11,6 +11,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AbsenKeluarMiniRouteImport } from './routes/absen-keluar-mini'
 import { Route as UsernameRouteImport } from './routes/$username'
@@ -29,6 +30,11 @@ import { Route as UsernameAbsenKeluarRouteImport } from './routes/$username/abse
 
 const IndexLazyRouteImport = createFileRoute('/')()
 
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/register.lazy').then((d) => d.Route))
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/$username': typeof UsernameRouteWithChildren
   '/absen-keluar-mini': typeof AbsenKeluarMiniRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/$username/absen-keluar': typeof UsernameAbsenKeluarRoute
   '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/beranda': typeof UsernameBerandaRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
   '/absen-keluar-mini': typeof AbsenKeluarMiniRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/$username/absen-keluar': typeof UsernameAbsenKeluarRoute
   '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/beranda': typeof UsernameBerandaRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/$username': typeof UsernameRouteWithChildren
   '/absen-keluar-mini': typeof AbsenKeluarMiniRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/$username/absen-keluar': typeof UsernameAbsenKeluarRoute
   '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/beranda': typeof UsernameBerandaRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/$username'
     | '/absen-keluar-mini'
     | '/login'
+    | '/register'
     | '/$username/absen-keluar'
     | '/$username/absensi'
     | '/$username/beranda'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/'
     | '/absen-keluar-mini'
     | '/login'
+    | '/register'
     | '/$username/absen-keluar'
     | '/$username/absensi'
     | '/$username/beranda'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/$username'
     | '/absen-keluar-mini'
     | '/login'
+    | '/register'
     | '/$username/absen-keluar'
     | '/$username/absensi'
     | '/$username/beranda'
@@ -251,10 +263,18 @@ export interface RootRouteChildren {
   UsernameRoute: typeof UsernameRouteWithChildren
   AbsenKeluarMiniRoute: typeof AbsenKeluarMiniRoute
   LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -409,6 +429,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsernameRoute: UsernameRouteWithChildren,
   AbsenKeluarMiniRoute: AbsenKeluarMiniRoute,
   LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

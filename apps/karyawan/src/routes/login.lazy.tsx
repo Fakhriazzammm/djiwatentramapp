@@ -364,6 +364,17 @@ function KaryawanLoginPage() {
           </div>
         </div>
 
+        {/* Register link */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/register" as any })}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+          >
+            Daftar Karyawan Baru
+          </button>
+        </div>
+
         {/* Footer */}
         <p className="mt-4 text-center text-xs text-muted-foreground/50">
           Djiwa Tentram — Kehadiran Karyawan
