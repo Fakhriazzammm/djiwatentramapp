@@ -41,19 +41,17 @@ Pasal 3 — Masa Perjanjian dan Status Kerja
 (2) Status hubungan kerja PIHAK KEDUA adalah {TIPE}.
 (3) Perpanjangan perjanjian akan dikomunikasikan secara tertulis paling lambat 30 (tiga puluh) hari sebelum masa berlaku berakhir.
 
-Pasal 4 — Masa Percobaan (Probation)
-(1) PIHAK KEDUA menjalani masa percobaan selama 3 (tiga) bulan terhitung sejak tanggal mulai kerja.
-(2) Selama masa percobaan, PIHAK PERTAMA berhak melakukan evaluasi berkala terhadap kinerja, disiplin, dan kepatuhan PIHAK KEDUA terhadap peraturan perusahaan.
-(3) PIHAK PERTAMA berhak mengakhiri hubungan kerja selama masa percobaan dengan pemberitahuan 7 (tujuh) hari sebelumnya, tanpa kewajiban memberikan kompensasi tambahan di luar hak yang telah menjadi kewajiban perusahaan.
-(4) Setelah masa percobaan dinyatakan lulus, status PIHAK KEDUA dikonfirmasi sesuai Pasal 3 ayat (2).
+Pasal 4 — Masa Training
+(1) PIHAK KEDUA menjalani masa training selama 1 (satu) bulan terhitung sejak tanggal mulai kerja.
+(2) Selama masa training, PIHAK PERTAMA berhak melakukan evaluasi berkala terhadap kinerja, disiplin, dan kepatuhan PIHAK KEDUA terhadap peraturan perusahaan.
+(3) PIHAK PERTAMA berhak mengakhiri hubungan kerja selama masa training dengan pemberitahuan 7 (tujuh) hari sebelumnya, tanpa kewajiban memberikan kompensasi tambahan di luar hak yang telah menjadi kewajiban perusahaan.
+(4) Setelah masa training dinyatakan lulus, status PIHAK KEDUA dikonfirmasi sesuai Pasal 3 ayat (2).
 
 Pasal 5 — Kompensasi dan Tunjangan
 (1) Gaji Pokok ditetapkan berdasarkan jabatan dan akan diinformasikan secara terpisah dalam lampiran kompensasi yang merupakan bagian tidak terpisahkan dari perjanjian ini.
 (2) Tunjangan Transportasi diberikan sesuai kebijakan perusahaan dan dibayarkan bersamaan dengan gaji pokok.
-(3) Tunjangan Hari Raya (THR) diberikan sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.
-(4) Bonus Kinerja diberikan berdasarkan pencapaian target yang ditetapkan oleh PIHAK PERTAMA dan dievaluasi setiap periode tertentu.
-(5) Upah Lembur dihitung sesuai peraturan ketenagakerjaan yang berlaku, dengan persetujuan tertulis dari atasan langsung sebelum pelaksanaan lembur.
-(6) Pembayaran gaji dan tunjangan dilakukan setiap akhir bulan melalui transfer bank ke rekening yang didaftarkan oleh PIHAK KEDUA.
+(3) Bonus Kinerja diberikan berdasarkan pencapaian target yang ditetapkan oleh PIHAK PERTAMA dan dievaluasi setiap periode tertentu.
+(4) Pembayaran gaji dan tunjangan dilakukan setiap akhir bulan melalui transfer bank ke rekening yang didaftarkan oleh PIHAK KEDUA.
 
 Pasal 6 — Waktu Kerja
 (1) Waktu kerja mengikuti jadwal shift yang ditetapkan oleh PIHAK PERTAMA sesuai kebutuhan operasional outlet.
@@ -69,12 +67,7 @@ Pasal 7 — Cuti dan Waktu Istirahat
 (4) Cuti Melahirkan: PIHAK KEDUA perempuan berhak atas cuti melahirkan selama 3 (tiga) bulan sesuai ketentuan peraturan perundang-undangan yang berlaku.
 (5) Cuti di luar ketentuan di atas dapat dinegosiasikan dengan PIHAK PERTAMA dan wajib mendapatkan persetujuan tertulis.
 
-Pasal 8 — BPJS dan Jaminan Sosial
-(1) PIHAK PERTAMA wajib mendaftarkan PIHAK KEDUA dalam program Badan Penyelenggara Jaminan Sosial (BPJS) Ketenagakerjaan yang meliputi Jaminan Kecelakaan Kerja, Jaminan Kematian, Jaminan Hari Tua, dan Jaminan Pensiun sesuai peraturan perundang-undangan.
-(2) PIHAK PERTAMA wajib mendaftarkan PIHAK KEDUA dalam program BPJS Kesehatan sesuai peraturan perundang-undangan yang berlaku.
-(3) PIHAK KEDUA wajib memberikan data diri yang akurat untuk keperluan pendaftaran BPJS.
-
-Pasal 9 — Hak dan Kewajiban Karyawan
+Pasal 8 — Hak dan Kewajiban Karyawan
 (1) PIHAK KEDUA berhak untuk:
     a. Menerima gaji, tunjangan, dan kompensasi lainnya tepat waktu;
     b. Mendapatkan lingkungan kerja yang aman, nyaman, dan sehat;
@@ -91,7 +84,7 @@ Pasal 9 — Hak dan Kewajiban Karyawan
     f. Berpakaian rapi dan menjaga kebersihan diri sesuai standar perusahaan;
     g. Mengikuti pelatihan dan pengembangan yang diselenggarakan oleh perusahaan.
 
-Pasal 10 — Hak dan Kewajiban Perusahaan
+Pasal 9 — Hak dan Kewajiban Perusahaan
 (1) PIHAK PERTAMA berhak untuk:
     a. Mengatur dan mengawasi pelaksanaan pekerjaan PIHAK KEDUA;
     b. Menetapkan target dan standar kinerja yang harus dicapai;
@@ -102,22 +95,21 @@ Pasal 10 — Hak dan Kewajiban Perusahaan
     a. Membayar gaji dan tunjangan tepat waktu;
     b. Menyediakan lingkungan kerja yang aman dan sehat;
     c. Memberikan perlindungan keselamatan kerja sesuai peraturan perundang-undangan;
-    d. Mendaftarkan PIHAK KEDUA dalam program jaminan sosial;
-    e. Memberikan pembinaan dan pengembangan kompetensi.
+    d. Memberikan pembinaan dan pengembangan kompetensi.
 
-Pasal 11 — Kerahasiaan dan Perlindungan Data
+Pasal 10 — Kerahasiaan dan Perlindungan Data
 (1) PIHAK KEDUA wajib menjaga kerahasiaan seluruh informasi perusahaan termasuk namun tidak terbatas pada resep, data keuangan, strategi bisnis, data pelanggan, data karyawan, dan informasi rahasia lainnya yang diketahui selama masa kerja.
 (2) Kewajiban kerahasiaan ini tetap berlaku meskipun hubungan kerja telah berakhir, tanpa batas waktu.
 (3) PIHAK KEDUA dilarang memperbanyak, menggandakan, menyimpan secara pribadi, atau menyebarluaskan dokumen dan informasi rahasia perusahaan tanpa izin tertulis dari PIHAK PERTAMA.
 (4) PIHAK PERTAMA berhak menuntut ganti rugi secara hukum atas pelanggaran ketentuan kerahasiaan ini.
 
-Pasal 12 — Larangan Rangkap Jabatan dan Benturan Kepentingan
+Pasal 11 — Larangan Rangkap Jabatan dan Benturan Kepentingan
 (1) Selama masa kerja, PIHAK KEDUA dilarang bekerja di tempat lain atau menjalankan usaha yang dapat menimbulkan benturan kepentingan dengan bisnis PIHAK PERTAMA.
 (2) PIHAK KEDUA wajib melaporkan kepada PIHAK PERTAMA apabila terdapat potensi benturan kepentingan dalam pelaksanaan tugasnya.
 (3) PIHAK KEDUA dilarang menggunakan fasilitas, aset, atau informasi perusahaan untuk kepentingan pribadi atau pihak ketiga tanpa izin tertulis.
 (4) Selama 6 (enam) bulan setelah berakhirnya hubungan kerja, PIHAK KEDUA tidak diperkenankan bekerja atau membuka usaha sejenis dalam radius 5 (lima) kilometer dari lokasi operasional PIHAK PERTAMA.
 
-Pasal 13 — Disiplin dan Sanksi
+Pasal 12 — Disiplin dan Sanksi
 (1) PIHAK KEDUA wajib mematuhi peraturan perusahaan, instruksi atasan, dan ketentuan dalam perjanjian ini.
 (2) Pelanggaran disiplin kerja akan dikenakan sanksi secara bertahap sesuai tingkat pelanggaran:
     a. Pelanggaran Ringan: Teguran lisan dan pembinaan;
@@ -125,7 +117,7 @@ Pasal 13 — Disiplin dan Sanksi
     c. Pelanggaran Berat: Skorsing hingga Pemutusan Hubungan Kerja (PHK).
 (3) Jenis pelanggaran berat yang dapat mengakibatkan PHK langsung meliputi: pencurian, penggelapan, penipuan, kekerasan di tempat kerja, pelanggaran kerahasiaan berat, dan tindakan yang merugikan perusahaan secara signifikan.
 
-Pasal 14 — Pengakhiran Hubungan Kerja
+Pasal 13 — Pengakhiran Hubungan Kerja
 (1) Hubungan kerja antara PIHAK PERTAMA dan PIHAK KEDUA berakhir karena:
     a. Berakhirnya jangka waktu perjanjian dan tidak diperpanjang;
     b. Pengunduran diri PIHAK KEDUA dengan pemberitahuan tertulis minimal 30 (tiga puluh) hari sebelumnya;
@@ -134,19 +126,20 @@ Pasal 14 — Pengakhiran Hubungan Kerja
     e. PIHAK KEDUA memasuki usia pensiun sesuai ketentuan perusahaan;
     f. Keadaan memaksa (force majeure) yang mengakibatkan perjanjian tidak dapat dilaksanakan.
 (2) Dalam hal pengunduran diri, PIHAK KEDUA wajib menyelesaikan seluruh tanggung jawab dan melakukan serah terima pekerjaan sebelum tanggal efektif pengunduran diri.
-(3) Dalam hal PHK, PIHAK PERTAMA wajib memberikan hak-hak PIHAK KEDUA sesuai peraturan perundang-undangan yang berlaku.
+(3) Apabila PIHAK KEDUA mengundurkan diri atau mengakhiri hubungan kerja sebelum jangka waktu perjanjian berakhir (1 tahun), PIHAK KEDUA wajib membayar ganti rugi kepada PIHAK PERTAMA sebesar 1 (satu) kali Gaji Pokok sebagai kompensasi atas biaya rekrutmen, pelatihan, dan kerugian operasional yang ditimbulkan.
+(4) Dalam hal PHK, PIHAK PERTAMA wajib memberikan hak-hak PIHAK KEDUA sesuai peraturan perundang-undangan yang berlaku.
 
-Pasal 15 — Penyelesaian Perselisihan
+Pasal 14 — Penyelesaian Perselisihan
 (1) Segala perselisihan yang timbul dari pelaksanaan perjanjian ini akan diselesaikan secara musyawarah untuk mencapai mufakat antara Para Pihak.
 (2) Apabila musyawarah tidak mencapai kesepakatan, Para Pihak akan menempuh mediasi melalui Dinas Ketenagakerjaan setempat.
 (3) Apabila mediasi tidak berhasil, Para Pihak sepakat untuk menyelesaikan perselisihan melalui Pengadilan Hubungan Industrial pada Pengadilan Negeri yang berwenang.
 
-Pasal 16 — Force Majeure
+Pasal 15 — Force Majeure
 (1) Force majeure adalah kejadian di luar kendali Para Pihak yang timbul setelah ditandatanganinya perjanjian ini, yang mengakibatkan salah satu atau Para Pihak tidak dapat memenuhi kewajibannya, termasuk namun tidak terbatas pada: bencana alam, kebakaran, banjir, gempa bumi, wabah penyakit, perang, huru-hara, sabotase, pemogokan umum, dan perubahan peraturan pemerintah yang berdampak langsung pada operasional perusahaan.
 (2) Dalam keadaan force majeure, Para Pihak dibebaskan dari tanggung jawab atas tidak terlaksananya kewajiban dalam perjanjian ini selama keadaan force majeure berlangsung.
 (3) Para Pihak wajib memberitahukan secara tertulis dalam waktu 7 (tujuh) hari sejak terjadinya force majeure.
 
-Pasal 17 — Ketentuan Penutup
+Pasal 16 — Ketentuan Penutup
 (1) Perjanjian ini dibuat dalam rangkap 2 (dua), masing-masing memiliki kekuatan hukum yang sama, ditandatangani oleh Para Pihak dan masing-masing pihak memegang 1 (satu) salinan.
 (2) Hal-hal yang belum diatur atau belum cukup diatur dalam perjanjian ini akan ditentukan kemudian oleh Para Pihak secara musyawarah dan akan dituangkan dalam bentuk addendum yang merupakan bagian tidak terpisahkan dari perjanjian ini.
 (3) Apabila di kemudian hari terdapat kekeliruan atau perubahan dalam perjanjian ini, Para Pihak sepakat untuk melakukan perbaikan sebagaimana mestinya.
