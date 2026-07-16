@@ -504,14 +504,14 @@ function RegisterPage() {
                   rows={2}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Tgl Lahir</label>
                   <input
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full rounded-xl border border-border/60 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
                 <div>
@@ -523,7 +523,7 @@ function RegisterPage() {
                     value={birthPlace}
                     onChange={(e) => setBirthPlace(e.target.value)}
                     placeholder="Jakarta"
-                    className="w-full rounded-xl border border-border/60 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </div>
