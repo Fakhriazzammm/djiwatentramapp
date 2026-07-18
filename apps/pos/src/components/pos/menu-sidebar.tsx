@@ -2605,13 +2605,13 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					"📦 Item Terjual": `${s.totalItemsSold}`,
 					"🏷 Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
 					"━━━ DI LACI ━━━": "━━━",
-					"💰 Modal Kasir": `Rp ${modalKasir.toLocaleString("id-ID")}`,
-					"💵 Uang Fisik": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
+					"💰 Modal (Laci)": `Rp ${modalKasir.toLocaleString("id-ID")}`,
+					"💵 Uang (Laci)": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
 					"🔢 Pecahan:": `
 ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					"━━━ SELISIH ━━━": "━━━",
-					"💵 Penjualan Tunai": `Rp ${s.cashRevenue.toLocaleString("id-ID")}`,
-					"💵 Uang Fisik": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
+					"💵 Penjualan (Laci)": `Rp ${s.cashRevenue.toLocaleString("id-ID")}`,
+					"💵 Uang (Fisik)": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
 					"📊 Selisih:": fmtSelisih(diffTunai),
 					"📝 Catatan:": notes || "-",
 				}, { startTime: si.startTime || undefined, endTime: Date.now() });
