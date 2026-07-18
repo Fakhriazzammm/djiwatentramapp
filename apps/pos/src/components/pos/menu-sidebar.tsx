@@ -556,6 +556,7 @@ export function MenuSidebar({
 										<ParkirTab
 											onClose={() => setIsOpen(false)}
 											onRestore={handleRestoreOrder}
+											onSelectOrder={setSelectedOrder}
 											onPrint={
 												siteSettings?.allowOpenBillPrint !== false
 													? handlePrintOrder
@@ -1580,10 +1581,12 @@ Total Produk Terjual: ${totalItems}`;
 function ParkirTab({
 	onClose,
 	onRestore,
+	onSelectOrder,
 	onPrint,
 }: {
 	onClose: () => void;
 	onRestore: (order: Doc<"orders">) => void;
+	onSelectOrder?: (order: Doc<"orders">) => void;
 	onPrint?: (order: Doc<"orders">, mode: ReceiptPrintMode) => void;
 }) {
 	const orders = useHybridOrders({ status: "pending" });
@@ -1626,7 +1629,8 @@ function ParkirTab({
 					{orders.map((order: Doc<"orders">) => (
 						<div
 							key={order._id}
-							className="group flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-2 transition-all hover:border-orange-500/50 hover:bg-orange-50/30"
+							onClick={() => onSelectOrder?.(order)}
+							className="group flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-2 transition-all hover:border-orange-500/50 hover:bg-orange-50/30"
 						>
 							{/* Baris kiri: nomor + nama/meja + meta */}
 							<div className="min-w-0 flex-1">
@@ -1656,7 +1660,7 @@ function ParkirTab({
 								</span>
 								{onPrint && (
 									<DropdownMenu>
-										<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Cetak Struk" />}>
+										<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Cetak Struk" onClick={(e) => e.stopPropagation()} />}>
 											<Printer className="h-3.5 w-3.5" />
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="end" className="w-52">
@@ -1677,7 +1681,10 @@ function ParkirTab({
 								)}
 								<Button
 									className="h-7 rounded-md bg-orange-500 px-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
-									onClick={() => onRestore(order)}
+									onClick={(e) => {
+										e.stopPropagation();
+										onRestore(order);
+									}}
 									size="sm"
 								>
 									Panggil
