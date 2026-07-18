@@ -1622,79 +1622,68 @@ function ParkirTab({
 					<p className="text-[10px] text-muted-foreground/60">Semua pesanan sudah selesai</p>
 				</div>
 			) : (
-				<div className="grid gap-3">
+				<div className="grid gap-1.5">
 					{orders.map((order: Doc<"orders">) => (
-						<Card
-							className="group relative overflow-hidden border-border transition-all hover:border-orange-500/50 hover:shadow-md"
+						<div
 							key={order._id}
+							className="group flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-2 transition-all hover:border-orange-500/50 hover:bg-orange-50/30"
 						>
-							<CardContent className="p-4">
-								<div className="flex items-start justify-between mb-3">
-									<div className="space-y-1">
-										<div className="flex items-center gap-2">
-											<span className="font-mono text-sm font-bold text-primary">
-												#{order.orderNumber}
-											</span>
-											<span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-600 uppercase tracking-tighter">
-												DISIMPAN
-											</span>
-										</div>
-										<p className="font-bold text-foreground">
-											{order.customerName || "Pelanggan Tanpa Nama"}
-										</p>
-										{order.tableNumber && (
-											<p className="text-[10px] text-muted-foreground">
-												MEJA: <span className="font-bold text-foreground">{order.tableNumber}</span>
-											</p>
-										)}
-									</div>
-									<div className="text-right">
-										<p className="text-[10px] text-muted-foreground mb-1">
-											{formatTime(order.createdAt)}
-										</p>
-										<p className="font-bold text-primary">
-											{formatCurrency(order.totalAmount)}
-										</p>
-									</div>
-								</div>
-
-								<div className="flex items-center justify-between border-t border-dashed border-border/50 pt-3">
-									<div className="text-[10px] text-muted-foreground">
-										{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
-									</div>
-									<div className="flex items-center gap-2">
-									{onPrint && (
-									<DropdownMenu>
-									<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Cetak Struk" />}>
-											<Printer className="h-4 w-4" />
-										</DropdownMenuTrigger>
-											<DropdownMenuContent align="end" className="w-52">
-												<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer">
-													<Receipt className="h-4 w-4 text-blue-500" />
-													<span>Cetak Struk Lunas</span>
-												</DropdownMenuItem>
-												<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer">
-													<FileText className="h-4 w-4 text-amber-500" />
-													<span>Cetak Open Bill</span>
-												</DropdownMenuItem>
-												<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer">
-													<ChefHat className="h-4 w-4 text-green-500" />
-													<span>Cetak Tiket Kitchen</span>
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
+							{/* Baris kiri: nomor + nama/meja + meta */}
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-1.5">
+									<span className="font-mono text-[13px] font-bold text-primary leading-none">
+										#{order.orderNumber}
+									</span>
+									{order.tableNumber && (
+										<span className="text-[10px] text-muted-foreground leading-none">
+											Meja {order.tableNumber}
+										</span>
 									)}
-										<Button
-											className="h-8 rounded-lg bg-orange-500 px-3 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
-											onClick={() => onRestore(order)}
-											size="sm"
-										>
-											Pulihkan Order
-										</Button>
-									</div>
 								</div>
-							</CardContent>
-						</Card>
+								<div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground leading-none">
+									<span className="truncate">{order.customerName || "Tanpa Nama"}</span>
+									<span>•</span>
+									<span className="shrink-0">{formatTime(order.createdAt)}</span>
+									<span>•</span>
+									<span className="shrink-0">{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty</span>
+								</div>
+							</div>
+
+							{/* Baris kanan: total + aksi */}
+							<div className="flex shrink-0 items-center gap-1.5">
+								<span className="font-bold text-[13px] text-primary leading-none">
+									{formatCurrency(order.totalAmount)}
+								</span>
+								{onPrint && (
+									<DropdownMenu>
+										<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Cetak Struk" />}>
+											<Printer className="h-3.5 w-3.5" />
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end" className="w-52">
+											<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer">
+												<Receipt className="h-4 w-4 text-blue-500" />
+												<span>Cetak Struk Lunas</span>
+											</DropdownMenuItem>
+											<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer">
+												<FileText className="h-4 w-4 text-amber-500" />
+												<span>Cetak Open Bill</span>
+											</DropdownMenuItem>
+											<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer">
+												<ChefHat className="h-4 w-4 text-green-500" />
+												<span>Cetak Tiket Kitchen</span>
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
+								<Button
+									className="h-7 rounded-md bg-orange-500 px-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
+									onClick={() => onRestore(order)}
+									size="sm"
+								>
+									Panggil
+								</Button>
+							</div>
+						</div>
 					))}
 				</div>
 			)}
