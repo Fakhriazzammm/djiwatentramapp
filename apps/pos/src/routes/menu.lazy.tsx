@@ -287,6 +287,52 @@ function MenuImageWithSkeleton({
 	);
 }
 
+function HeaderClock() {
+	const [now, setNow] = useState(() => new Date());
+	useEffect(() => {
+		const id = setInterval(() => setNow(new Date()), 30000);
+		return () => clearInterval(id);
+	}, []);
+	return (
+		<span className="whitespace-nowrap leading-none">
+			{now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+		</span>
+	);
+}
+
+function PrinterStatusBadge() {
+	const [connected, setConnected] = useState(() => bluetoothPrinter.isConnected());
+	useEffect(() => {
+		let cancelled = false;
+		let checking = false;
+		const tick = async () => {
+			if (checking) return;
+			checking = true;
+			try {
+				if (!bluetoothPrinter.isConnected()) {
+					await bluetoothPrinter.autoReconnectIfNeeded();
+				}
+				if (!cancelled) setConnected(bluetoothPrinter.isConnected());
+			} finally {
+				checking = false;
+			}
+		};
+		void tick();
+		const id = setInterval(() => void tick(), 5000);
+		return () => {
+			cancelled = true;
+			clearInterval(id);
+		};
+	}, []);
+	if (connected) return null;
+	return (
+		<div className="flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md whitespace-nowrap bg-muted text-muted-foreground">
+			<Printer className="h-3 w-3 shrink-0" />
+			<span className="leading-none text-[10px] sm:text-xs font-semibold">Offline</span>
+		</div>
+	);
+}
+
 function MenuPage() {
 	// Queries
 	const siteSettings = useHybridSiteSettings();
@@ -344,42 +390,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const shiftStatus = useHybridShiftStatus(shiftStatusMountKey);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
-	// Printer State
-	const [isPrinterConnected, setIsPrinterConnected] = useState(bluetoothPrinter.isConnected());
 	const [currentTime, setCurrentTime] = useState(new Date());
 	const [shiftReminderOpen, setShiftReminderOpen] = useState(false);
 	const [shiftReminderState, setShiftReminderState] = useState<"soon" | "overdue" | null>(null);
 
-	// Periodically check printer connection and attempt silent auto reconnect.
+	// Clock tick — 30s is enough for a header clock; keeps full-page re-render cheap.
+	// Printer status is handled by <PrinterStatusBadge /> (own state/interval) so it no
+	// longer forces the whole product grid + bonus panel to re-render every few seconds.
 	useEffect(() => {
-		let cancelled = false;
-		let checking = false;
-
-		const tick = async () => {
-			if (checking) return;
-			checking = true;
-			try {
-				if (!bluetoothPrinter.isConnected()) {
-					await bluetoothPrinter.autoReconnectIfNeeded();
-				}
-				if (!cancelled) {
-					setIsPrinterConnected(bluetoothPrinter.isConnected());
-					setCurrentTime(new Date());
-				}
-			} finally {
-				checking = false;
-			}
-		};
-
-		void tick();
-		const interval = setInterval(() => {
-			void tick();
-		}, 3000);
-
-		return () => {
-			cancelled = true;
-			clearInterval(interval);
-		};
+		const id = setInterval(() => setCurrentTime(new Date()), 30000);
+		return () => clearInterval(id);
 	}, []);
 
 	useEffect(() => {
@@ -1367,12 +1387,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0">
 							<div className="flex flex-nowrap items-center gap-1 opacity-75">
 								<Clock className="h-3 w-3 shrink-0" />
-								<span className="whitespace-nowrap leading-none">{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+								<HeaderClock />
 							</div>
-							<div className={cn("flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md whitespace-nowrap", isPrinterConnected ? "bg-blue-50 text-blue-600 shadow-[0_0_8px_rgba(59,130,246,0.1)]" : "bg-muted text-muted-foreground")}>
-								<Printer className="h-3 w-3 shrink-0" />
-								<span className="leading-none text-[10px] sm:text-xs font-semibold">{isPrinterConnected ? "Printer Siap" : "Offline"}</span>
-							</div>
+							<PrinterStatusBadge />
 							{offlinePendingCount > 0 && (
 								<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[10px]">
 									Sync {offlinePendingCount}
@@ -1632,7 +1649,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							<Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-primary" />
 							<Input
 								type="text"
-								placeholder="Cari produk... (/)"
+								placeholder="Cari produk..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
 								onFocus={() => setIsSearchFocused(true)}
@@ -1767,7 +1784,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										)}
 									>
 										{/* Image */}
-										<div className="relative h-24 sm:h-28 w-full bg-muted shrink-0">
+										<div className="relative h-28 sm:h-32 w-full bg-muted shrink-0">
 											<MenuImageWithSkeleton
 												src={product.image}
 												alt={product.name}
@@ -1796,7 +1813,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 											)}
 
 											{/* Stock Badge Overlay — only shown for critical stock */}
-											{(product.quantity ?? 0) <= 2 && (
+											{(product.quantity ?? 0) <= 5 && (
 												<span className={cn(
 													"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
 													(product.quantity ?? 0) <= 0
@@ -1819,36 +1836,30 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 												{product.name}
 											</p>
 
-						{/* Visual Stock Gauge Bar */}
-						{(product.quantity ?? 0) >= 0 && (
-							<div className="mt-1.5 flex items-center gap-1.5">
-								<div className="flex-1 h-1 rounded-full bg-muted/50 overflow-hidden min-w-[20px]">
-									<motion.div
-										className={cn(
-											"h-full rounded-full",
-											(product.quantity ?? 0) <= 0
-												? "bg-red-500"
-												: (product.quantity ?? 0) <= 5
-													? "bg-amber-500"
-													: "bg-emerald-500"
-										)}
-										initial={{ width: 0 }}
-										animate={{ width: Math.min(100, ((product.quantity ?? 0) / 30) * 100) + "%" }}
-										transition={{ duration: 0.5, ease: "easeOut" }}
-									/>
+						{/* Visual Stock Indicator — bar only for low stock (<=30), healthy stock shows count */}
+						{(() => {
+							const qty = product.quantity ?? 0;
+							const isLow = qty <= 30;
+							const barColor = qty <= 0 ? "bg-red-500" : qty <= 5 ? "bg-amber-500" : "bg-emerald-500";
+							const numColor = qty <= 0 ? "text-red-500" : qty <= 5 ? "text-amber-600" : "text-emerald-600";
+							return (
+								<div className="mt-1.5 flex items-center gap-1.5">
+									{isLow && (
+										<div className="flex-1 h-1 rounded-full bg-muted/50 overflow-hidden min-w-[20px]">
+											<motion.div
+												className={cn("h-full rounded-full", barColor)}
+												initial={{ width: 0 }}
+												animate={{ width: Math.min(100, (qty / 30) * 100) + "%" }}
+												transition={{ duration: 0.5, ease: "easeOut" }}
+											/>
+										</div>
+									)}
+									<span className={cn("text-[9px] font-bold shrink-0 whitespace-nowrap", numColor)}>
+										{qty > 30 ? `Stok ${qty}` : qty}
+									</span>
 								</div>
-								<span className={cn(
-									"text-[9px] font-bold shrink-0 whitespace-nowrap",
-									(product.quantity ?? 0) <= 0
-										? "text-red-500"
-										: (product.quantity ?? 0) <= 5
-											? "text-amber-600"
-											: "text-emerald-600"
-								)}>
-									{product.quantity}
-								</span>
-			</div>
-						)}
+							);
+						})()}
 
 						<div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
 												<p
@@ -1910,16 +1921,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									type="button"
 								>
 									<div className={cn(
-										"flex h-8 w-8 items-center justify-center rounded-md transition-all",
+										"flex h-9 w-9 items-center justify-center rounded-md transition-all",
 										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
 										needsAttention && "bg-rose-50 text-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.2)]"
 									)}>
-										<Icon className={cn("h-4 w-4", needsAttention && "animate-bounce")} />
+										<Icon className={cn("h-5 w-5", needsAttention && "animate-bounce")} />
 									</div>
-									<span className="text-[9px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
+									<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
 										{item.label.split(' ')[0]}
 									</span>
-									<span className="text-[10px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
+									<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
 										{item.label}
 									</span>
 								</button>
@@ -1943,7 +1954,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 			{/* === CART BUTTON (Floating Mobile) === */}
 			{(totalItems > 0 || !customerInfo.isSubmitted) && (
-				<div className="fixed bottom-[5.5rem] left-4 right-4 z-20 px-3 md:hidden">
+				<div className="fixed bottom-[6.75rem] left-4 right-4 z-20 px-3 md:hidden">
 					<button
 						type="button"
 						onClick={() => setIsCartOpen(true)}
