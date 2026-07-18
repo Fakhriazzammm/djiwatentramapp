@@ -1938,10 +1938,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								</button>
 							);
 						})}
-						{/* Lainnya — opens the full sidebar (Chat AI, Pengaturan, etc.) */}
+						{/* Lainnya — opens the full sidebar on the first overflow tab (Chat AI) */}
 						<button
 							key="more"
 							onClick={() => {
+								setActiveSidebarTab("yumi");
 								setIsSidebarOpen(true);
 							}}
 							className={cn(
