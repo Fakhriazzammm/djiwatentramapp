@@ -6,6 +6,7 @@ import {
 	Clock,
 	Coffee,
 	Minus,
+	MoreHorizontal,
 	Package,
 	Plus,
 	Search,
@@ -1898,9 +1899,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				</main>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
+				{/* Show first 5 items directly; overflow goes to "Lainnya" which opens the full sidebar drawer */}
 				<div className="app-bottom-bar shrink-0 w-full pb-safe-area px-3 pt-1.5">
 					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-0.5 sm:gap-1">
-						{SIDEBAR_MENU_ITEMS.map((item, index) => {
+						{SIDEBAR_MENU_ITEMS.slice(0, 5).map((item, index) => {
 							const Icon = item.icon;
 							const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
 							const isActive = isSidebarOpen && activeSidebarTab === item.id;
@@ -1936,6 +1938,30 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								</button>
 							);
 						})}
+						{/* Lainnya — opens the full sidebar (Chat AI, Pengaturan, etc.) */}
+						<button
+							key="more"
+							onClick={() => {
+								setIsSidebarOpen(true);
+							}}
+							className={cn(
+								"flex flex-col items-center gap-0.5 min-w-[40px] transition-all",
+								isSidebarOpen && !SIDEBAR_MENU_ITEMS.slice(0, 5).some((i) => i.id === activeSidebarTab)
+									? "text-primary"
+									: "text-muted-foreground hover:text-foreground"
+							)}
+							type="button"
+						>
+							<div className="flex h-9 w-9 items-center justify-center rounded-md transition-all bg-transparent hover:bg-muted/50">
+								<MoreHorizontal className="h-5 w-5" />
+							</div>
+							<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
+								Lainnya
+							</span>
+							<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
+								Lainnya
+							</span>
+						</button>
 					</div>
 				</div>
 			</div>
