@@ -1687,8 +1687,8 @@ function ParkirTab({
 									}}
 									size="sm"
 								>
-									Panggil
-								</Button>
+									Pulihkan
+									</Button>
 							</div>
 						</div>
 					))}
