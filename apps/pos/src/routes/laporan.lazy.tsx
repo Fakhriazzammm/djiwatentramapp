@@ -419,16 +419,16 @@ function LaporanPage() {
 										</div>
 									</div>
 
-									<div className="rounded-2xl border border-border bg-slate-950 p-3 text-slate-50 shadow-inner">
+									<div className="rounded-2xl border border-border bg-card p-3 text-foreground shadow-sm">
 										<div className="mb-3 flex items-center justify-between">
-											<h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
+											<h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 												Format Ringkasan
 											</h4>
-											<span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+											<span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
 												Siap salin
 											</span>
 										</div>
-										<pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-6 text-slate-100">
+										<pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-6 text-foreground">
 											{summaryText}
 										</pre>
 									</div>
