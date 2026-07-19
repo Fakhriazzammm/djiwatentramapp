@@ -1463,7 +1463,7 @@ Total Produk Terjual: ${totalItems}`;
 						</Button>
 					</div>
 				</div>
-								<Card className="border-border bg-slate-950 shadow-sm text-xs font-mono whitespace-pre-wrap p-4 overflow-x-auto text-slate-100">
+								<Card className="border-border bg-card shadow-sm text-xs font-mono whitespace-pre-wrap p-4 overflow-x-auto">
 					{dailyReportText}
 				</Card>
 			</div>
