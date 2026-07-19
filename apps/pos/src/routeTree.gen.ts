@@ -73,6 +73,7 @@ import { Route as AdminOperationalTeamRegisterContractRouteRouteImport } from '.
 import { Route as AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport } from './routes/admin/operational-team/register.application.$registrationNumber'
 import { Route as AdminOperationalTeamRegisterContractTemplateIdPreviewRouteImport } from './routes/admin/operational-team/register/contract/$templateId/preview'
 
+const LaporanLazyRouteImport = createFileRoute('/laporan')()
 const AdminOperationalTeamRegisterContractIndexLazyRouteImport =
   createFileRoute('/admin/operational-team/register/contract/')()
 const AdminOperationalTeamRegisterContractEditTemplateIdLazyRouteImport =
@@ -80,6 +81,11 @@ const AdminOperationalTeamRegisterContractEditTemplateIdLazyRouteImport =
     '/admin/operational-team/register/contract/edit/$templateId',
   )()
 
+const LaporanLazyRoute = LaporanLazyRouteImport.update({
+  id: '/laporan',
+  path: '/laporan',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/laporan.lazy').then((d) => d.Route))
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -533,6 +539,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
+  '/laporan': typeof LaporanLazyRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -596,6 +603,7 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
+  '/laporan': typeof LaporanLazyRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -656,6 +664,7 @@ export interface FileRoutesById {
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
+  '/laporan': typeof LaporanLazyRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -723,6 +732,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/menu'
     | '/register'
+    | '/laporan'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -786,6 +796,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/menu'
     | '/register'
+    | '/laporan'
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
@@ -845,6 +856,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/menu'
     | '/register'
+    | '/laporan'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -911,6 +923,7 @@ export interface RootRouteChildren {
   HomeRoute: typeof HomeRouteWithChildren
   MenuRoute: typeof MenuRoute
   RegisterRoute: typeof RegisterRouteWithChildren
+  LaporanLazyRoute: typeof LaporanLazyRoute
   KaryawanUsernameRoute: typeof KaryawanUsernameRoute
   KaryawanLoginRoute: typeof KaryawanLoginRoute
   KasirLoginRoute: typeof KasirLoginRoute
@@ -918,6 +931,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/laporan': {
+      id: '/laporan'
+      path: '/laporan'
+      fullPath: '/laporan'
+      preLoaderRoute: typeof LaporanLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -1618,6 +1638,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRoute: HomeRouteWithChildren,
   MenuRoute: MenuRoute,
   RegisterRoute: RegisterRouteWithChildren,
+  LaporanLazyRoute: LaporanLazyRoute,
   KaryawanUsernameRoute: KaryawanUsernameRoute,
   KaryawanLoginRoute: KaryawanLoginRoute,
   KasirLoginRoute: KasirLoginRoute,

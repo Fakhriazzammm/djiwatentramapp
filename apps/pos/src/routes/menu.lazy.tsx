@@ -1,10 +1,11 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {
 	BarChart3,
 	Bot,
 	Clock,
 	Coffee,
+	FileText,
 	Minus,
 	MoreHorizontal,
 	Package,
@@ -335,6 +336,7 @@ function PrinterStatusBadge() {
 }
 
 function MenuPage() {
+	const navigate = useNavigate();
 	// Queries
 	const siteSettings = useHybridSiteSettings();
 	const mayarConfig = useHybridMayarConfig();
@@ -1441,8 +1443,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									<p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mt-0.5 opacity-60">POS Kasir & Inventory</p>
 								</div>
 							</div>
-
-
+							<button
+								type="button"
+								onClick={() => {
+									setActiveSidebarTab("yumi");
+									setIsSidebarOpen(true);
+								}}
+								className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
+							>
+								<MoreHorizontal className="h-4 w-4" />
+							</button>
 						</div>
 					</div>
 
@@ -1938,29 +1948,24 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								</button>
 							);
 						})}
-						{/* Lainnya — opens the full sidebar on the first overflow tab (Chat AI) */}
+						{/* Laporan — navigasi ke halaman laporan */}
 						<button
-							key="more"
-							onClick={() => {
-								setActiveSidebarTab("yumi");
-								setIsSidebarOpen(true);
-							}}
+							key="laporan"
+							onClick={() => navigate({ to: "/laporan" })}
 							className={cn(
 								"flex flex-col items-center gap-0.5 min-w-[40px] transition-all",
-								isSidebarOpen && !SIDEBAR_MENU_ITEMS.slice(0, 5).some((i) => i.id === activeSidebarTab)
-									? "text-primary"
-									: "text-muted-foreground hover:text-foreground"
+								"text-muted-foreground hover:text-foreground"
 							)}
 							type="button"
 						>
 							<div className="flex h-9 w-9 items-center justify-center rounded-md transition-all bg-transparent hover:bg-muted/50">
-								<MoreHorizontal className="h-5 w-5" />
+								<FileText className="h-5 w-5" />
 							</div>
 							<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
-								Lainnya
+								Laporan
 							</span>
 							<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
-								Lainnya
+								Laporan
 							</span>
 						</button>
 					</div>
