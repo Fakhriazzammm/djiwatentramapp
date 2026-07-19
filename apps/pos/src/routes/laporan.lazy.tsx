@@ -245,10 +245,10 @@ function LaporanPage() {
 	}, [selectedShift, shiftDetails, allStaffUsers]);
 
 	return (
-		<div className="min-h-app bg-background font-sans text-foreground antialiased">
-			{/* Header */}
-			<header className="sticky top-0 z-30 border-b border-border/50 bg-background/95 backdrop-blur-md">
-				<div className="flex items-center gap-3 px-4 py-3">
+		<div className="app-page min-h-app text-foreground">
+			<div className="mx-auto w-full max-w-md px-4 pb-8 pt-4 md:max-w-4xl">
+				{/* Header */}
+				<header className="flex items-center gap-3 mb-5">
 					<button
 						type="button"
 						onClick={() => navigate({ to: "/menu" })}
@@ -260,12 +260,10 @@ function LaporanPage() {
 						<FileText className="h-5 w-5 text-primary" />
 						<h1 className="text-base font-bold tracking-tight">Laporan Shift</h1>
 					</div>
-				</div>
-			</header>
+				</header>
 
-			<main className="mx-auto max-w-2xl px-4 py-5 pb-24">
 				{/* Ringkasan Shift */}
-				<section className="app-card mb-5 overflow-hidden">
+				<section id="shift-summary" className="app-card mb-5 overflow-hidden">
 					<button
 						type="button"
 						onClick={() => setShiftExpanded(!shiftExpanded)}
@@ -439,7 +437,7 @@ function LaporanPage() {
 						</div>
 					)}
 				</section>
-			</main>
+			</div>
 		</div>
 	);
 }
