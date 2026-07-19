@@ -4,13 +4,11 @@ import { toast } from "sonner";
 import {
 	ArrowLeft,
 	Copy,
-	ChevronDown,
 	FileText,
 } from "lucide-react";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import {
 	formatDateWIB,
-	formatTimeWIB,
 } from "@/lib/wib-utils";
 import {
 	useHybridShiftDetails,
@@ -49,11 +47,6 @@ type ShiftRow = {
 
 function formatDate(timestamp: number) {
 	return formatDateWIB(timestamp);
-}
-
-function formatTime(timestamp?: number) {
-	if (!timestamp) return "Aktif";
-	return formatTimeWIB(timestamp);
 }
 
 function formatTeamMembersByRole(
@@ -211,7 +204,6 @@ function LaporanPage() {
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(
 		null
 	);
-	const [shiftExpanded, setShiftExpanded] = useState(true);
 
 	useEffect(() => {
 		if (!shiftRows?.length) {
@@ -262,178 +254,83 @@ function LaporanPage() {
 					</div>
 				</header>
 
-				{/* Ringkasan Shift */}
-				<section id="shift-summary" className="app-card mb-5 overflow-hidden">
-					<button
-						type="button"
-						onClick={() => setShiftExpanded(!shiftExpanded)}
-						className="flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-muted/30"
-					>
-						<div>
-							<p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-								Ringkasan Shift
-							</p>
-							<p className="mt-0.5 text-sm font-medium text-muted-foreground">
-								Lihat, salin & kirim laporan shift
-							</p>
-						</div>
-						<ChevronDown
-							className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-								shiftExpanded ? "rotate-180" : ""
-							}`}
-						/>
-					</button>
-
-					{shiftExpanded && (
-						<div className="border-t border-border px-4 pb-4 pt-4">
-							{/* Action buttons row */}
-							<div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-								<div>
-									<p className="font-bold text-base text-foreground">
-										Ringkasan Per Shift
-									</p>
-									<p className="text-xs text-muted-foreground">
-										Format laporan siap copy paste.
-									</p>
-								</div>
-								<div className="flex flex-wrap gap-2">
-									<button
-										type="button"
-										disabled={!summaryText}
-										onClick={async () => {
-											if (!summaryText) return;
-											await navigator.clipboard.writeText(summaryText);
-											toast.success("Ringkasan shift berhasil disalin");
-											triggerHybridRefresh();
-										}}
-										className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
-									>
-										<Copy className="h-3.5 w-3.5" />
-										Salin
-									</button>
-									<button
-										type="button"
-										disabled={!summaryText}
-										onClick={async () => {
-											if (!summaryText) return;
-											try {
-												const { sendTelegramReport } = await import(
-													"@/lib/telegram-report"
-												);
-												const result = await sendTelegramReport(summaryText);
-												if (result.ok) {
-													toast.success(
-														"Ringkasan shift berhasil dikirim ke Telegram!"
-													);
-													triggerHybridRefresh();
-												} else {
-													toast.error(
-														result.error || "Gagal mengirim ke Telegram"
-													);
-												}
-											} catch (err: any) {
-												toast.error(
-													err?.message || "Gagal mengirim ke Telegram"
-												);
-											}
-										}}
-										className="inline-flex items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-500/10 hover:text-blue-700 disabled:opacity-50"
-									>
-										<svg
-											className="h-3.5 w-3.5"
-											viewBox="0 0 24 24"
-											fill="currentColor"
-										>
-											<path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-										</svg>
-										Telegram
-									</button>
-								</div>
-							</div>
-
-							{shiftRowsResult === undefined ? (
-								<div className="py-8 text-sm text-muted-foreground">
-									Memuat data shift...
-								</div>
-							) : shiftRows.length === 0 ? (
-								<div className="py-8 text-sm text-muted-foreground">
-									Belum ada data shift.
-								</div>
-							) : (
-								<div className="space-y-4">
-									<div className="grid gap-3 sm:grid-cols-2">
-										<div className="space-y-1.5">
-											<label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Pilih Shift
-											</label>
-											<select
-												className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												value={selectedShift?.startTime ?? ""}
-												onChange={(event) =>
-													setSelectedShiftStart(
-														Number(event.target.value)
-													)
-												}
-											>
-												{shiftRows.map((shift) => (
-													<option
-														key={shift.shiftId}
-														value={shift.startTime}
-													>
-														{shift.shiftName} -{" "}
-														{formatDate(shift.startTime)} ({" "}
-														{shift.status})
-													</option>
-												))}
-											</select>
-										</div>
-										<div className="grid gap-2 rounded-2xl border border-border bg-muted/20 p-3 text-sm">
-											<div className="flex items-center justify-between">
-												<span className="text-muted-foreground">Kasir</span>
-												<span className="font-semibold text-foreground">
-													{selectedShift?.cashierName || "-"}
-												</span>
-											</div>
-											<div className="flex items-center justify-between">
-												<span className="text-muted-foreground">Durasi</span>
-												<span className="font-semibold text-foreground">
-													{selectedShift
-														? `${formatTime(
-																selectedShift.startTime
-															)} - ${formatTime(
-																selectedShift.endTime
-															)}`
-														: "-"}
-												</span>
-											</div>
-											<div className="flex items-center justify-between">
-												<span className="text-muted-foreground">
-													Revenue Bersih
-												</span>
-												<span className="font-semibold text-primary">
-													{formatCurrencyIDR(
-														selectedShift?.totalRevenue ?? 0
-													)}
-												</span>
-											</div>
-										</div>
-									</div>
-
-									<div className="rounded-2xl border border-border bg-card p-3 text-foreground shadow-sm">
-										<div className="mb-3 flex items-center justify-between">
-											<h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Format Ringkasan
-											</h4>
-											<span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-												Siap salin
-											</span>
-										</div>
-										<pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-6 text-foreground">
-											{summaryText}
-										</pre>
-									</div>
-								</div>
+				{/* Ringkasan Shift — simple seperti dashboard */}
+				<section className="mb-5 space-y-3">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<h3 className="font-bold text-sm">Ringkasan Shift</h3>
+							{shiftRows.length > 0 && (
+								<select
+									className="rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none"
+									value={selectedShift?.startTime ?? ""}
+									onChange={(e) =>
+										setSelectedShiftStart(Number(e.target.value))
+									}
+								>
+									{shiftRows.map((shift) => (
+										<option key={shift.shiftId} value={shift.startTime}>
+											{shift.shiftName} - {formatDate(shift.startTime)} ({shift.status})
+										</option>
+									))}
+								</select>
 							)}
+						</div>
+						<div className="flex items-center gap-0.5">
+							<button
+								type="button"
+								className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+								disabled={!summaryText}
+								onClick={async () => {
+									if (!summaryText) return;
+									await navigator.clipboard.writeText(summaryText);
+									toast.success("Ringkasan shift berhasil disalin");
+									triggerHybridRefresh();
+								}}
+							>
+								<Copy className="h-3.5 w-3.5" />
+								Salin
+							</button>
+							<button
+								type="button"
+								className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-blue-500/10 hover:text-blue-600 disabled:opacity-50"
+								disabled={!summaryText}
+								onClick={async () => {
+									if (!summaryText) return;
+									try {
+										const { sendTelegramReport } = await import(
+											"@/lib/telegram-report"
+										);
+										const result = await sendTelegramReport(summaryText);
+										if (result.ok) {
+											toast.success("Ringkasan shift berhasil dikirim ke Telegram!");
+											triggerHybridRefresh();
+										} else {
+											toast.error(result.error || "Gagal mengirim ke Telegram");
+										}
+									} catch (err: any) {
+										toast.error(err?.message || "Gagal mengirim ke Telegram");
+									}
+								}}
+							>
+								<svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+								Telegram
+							</button>
+						</div>
+					</div>
+
+					{shiftRowsResult === undefined ? (
+						<div className="py-8 text-sm text-muted-foreground">
+							Memuat data shift...
+						</div>
+					) : shiftRows.length === 0 ? (
+						<div className="py-8 text-sm text-muted-foreground">
+							Belum ada data shift.
+						</div>
+					) : (
+						<div className="rounded-2xl border border-border bg-card p-4 text-foreground shadow-sm">
+							<pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-6">
+								{summaryText}
+							</pre>
 						</div>
 					)}
 				</section>
