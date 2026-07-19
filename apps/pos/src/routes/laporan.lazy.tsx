@@ -328,7 +328,7 @@ function LaporanPage() {
 						</div>
 					) : (
 						<div className="rounded-2xl border border-border bg-card p-4 text-foreground shadow-sm">
-							<pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-6">
+							<pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-5">
 								{summaryText}
 							</pre>
 						</div>
