@@ -257,24 +257,7 @@ function LaporanPage() {
 				{/* Ringkasan Shift — simple seperti dashboard */}
 				<section className="mb-5 space-y-3">
 					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<h3 className="font-bold text-sm">Ringkasan Shift</h3>
-							{shiftRows.length > 0 && (
-								<select
-									className="rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none"
-									value={selectedShift?.startTime ?? ""}
-									onChange={(e) =>
-										setSelectedShiftStart(Number(e.target.value))
-									}
-								>
-									{shiftRows.map((shift) => (
-										<option key={shift.shiftId} value={shift.startTime}>
-											{shift.shiftName} - {formatDate(shift.startTime)} ({shift.status})
-										</option>
-									))}
-								</select>
-							)}
-						</div>
+						<h3 className="font-bold text-sm">Ringkasan Shift</h3>
 						<div className="flex items-center gap-0.5">
 							<button
 								type="button"
@@ -316,6 +299,24 @@ function LaporanPage() {
 								Telegram
 							</button>
 						</div>
+					</div>
+
+					<div className="flex items-center gap-2">
+						{shiftRows.length > 0 && (
+							<select
+								className="flex-1 min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none"
+								value={selectedShift?.startTime ?? ""}
+								onChange={(e) =>
+									setSelectedShiftStart(Number(e.target.value))
+								}
+							>
+								{shiftRows.map((shift) => (
+									<option key={shift.shiftId} value={shift.startTime}>
+										{shift.shiftName} - {formatDate(shift.startTime)} ({shift.status})
+									</option>
+								))}
+							</select>
+						)}
 					</div>
 
 					{shiftRowsResult === undefined ? (
