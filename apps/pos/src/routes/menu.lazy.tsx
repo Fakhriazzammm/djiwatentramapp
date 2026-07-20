@@ -1340,8 +1340,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		<div className="flex h-app flex-row bg-background overflow-hidden relative">
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden relative">
-				{/* Shift Closed Overlay */}
-				{!isShiftOpen && (
+				{/* Shift Closed Overlay — only show when shift status is known AND closed */}
+				{shiftStatus !== undefined && !isShiftOpen && (
 					<div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
 						<div className="flex flex-col items-center justify-center p-6 text-center max-w-md bg-card rounded-2xl shadow-xl border border-border/50">
 							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 mb-3">
