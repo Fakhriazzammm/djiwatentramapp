@@ -161,3 +161,14 @@ body.admin-shell[data-admin-density="compact"] [data-admin-modal-backdrop] {
 	filter: blur(6px);
 	user-select: none;
 }
+
+@keyframes shimmer {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
+.shimmer-bg {
+	background: linear-gradient(90deg, hsl(var(--muted)/0.3) 25%, hsl(var(--muted)/0.7) 50%, hsl(var(--muted)/0.3) 75%);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s ease-in-out infinite;
+}

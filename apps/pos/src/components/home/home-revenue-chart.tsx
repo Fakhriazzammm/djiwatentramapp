@@ -60,7 +60,15 @@ export function HomeRevenueChart() {
 	}, [shiftRows]);
 
 	if (!shiftRows) {
-		return <div className="h-48 animate-pulse rounded-xl bg-muted/50" />;
+		return (
+			<div className="flex flex-col gap-2">
+				<div className="flex items-center justify-between">
+					<div className="h-3 w-24 rounded shimmer-bg" />
+					<div className="h-6 w-14 rounded-lg shimmer-bg" />
+				</div>
+				<div className="h-40 rounded-xl shimmer-bg" />
+			</div>
+		);
 	}
 
 	const CustomTooltip = ({ active, payload }: any) => {

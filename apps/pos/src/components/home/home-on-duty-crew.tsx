@@ -60,7 +60,7 @@ export function HomeOnDutyCrew() {
 	}, [crewStats, allStaff, onDutyNames]);
 
 	if (crew === null) {
-		return <div className="h-24 animate-pulse rounded-xl bg-muted/50" />;
+		return <div className="h-24 rounded-xl shimmer-bg" />;
 	}
 
 	if (crew.length === 0) {
