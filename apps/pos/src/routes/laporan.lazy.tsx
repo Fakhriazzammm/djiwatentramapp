@@ -64,7 +64,8 @@ function LaporanPage() {
 
 		const completedOrders = (todayOrders ?? []).filter(
 			(o: Doc<"orders">) =>
-				o.status === "completed" || o.status === "paid"
+				(o.status === "completed" || o.status === "paid") &&
+				o.createdAt >= todayStart,
 		);
 
 		const totalCash = completedOrders
