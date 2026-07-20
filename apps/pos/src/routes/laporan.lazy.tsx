@@ -45,11 +45,10 @@ function LaporanPage() {
 	const categoriesList = useHybridCategories(refreshTick);
 	const products = useHybridProducts(null, refreshTick);
 
-	const todayOrders = useHybridOrders({
-		status: "completed",
-		limit: 1000,
-		refreshTrigger: refreshTick,
-	});
+		const todayOrders = useHybridOrders({
+			limit: 2000,
+			refreshTrigger: refreshTick,
+		});
 
 	const todayTransactions = useHybridAllTransactions({
 		startDate: todayStart,
