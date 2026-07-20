@@ -3,9 +3,9 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.149",
+	semantic: "0.2.150",
 	// Git/deploy commit hash (short)
-	commitHash: "ae7f93f",
+	commitHash: "f1ab3ff",
 	// Build timestamp
 	buildDate: "2026-07-19",
 	// Full version string for display
