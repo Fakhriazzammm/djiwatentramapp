@@ -2158,7 +2158,9 @@ export function useHybridShiftReportRows(refreshTrigger?: number) {
 		"shift-reports",
 		fetchShiftReports,
 		[],
-		{ refreshMs: 10_000, tables: ['pos_shifts'], ...(refreshTrigger !== undefined ? { refreshTrigger } : {}) }
+		// Bug #12: Polling 10 detik + realtime di tabel sumber (orders/shifts/financial)
+		// agar revenue dashboard ikut ter-update saat ada order baru.
+		{ refreshMs: 10_000, tables: ['shifts', 'orders', 'financial_transactions'], ...(refreshTrigger !== undefined ? { refreshTrigger } : {}) }
 	);
 	return supabaseData as ShiftReportRecord[] | undefined;
 }

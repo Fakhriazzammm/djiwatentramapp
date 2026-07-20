@@ -17,7 +17,9 @@ export function HomeTodaysPulse() {
 
 	const todayData = useMemo(() => {
 		if (!shiftRows) return null;
-		const todayShifts = shiftRows.filter((s: any) => isSameDayWIB(s.startTime));
+		const todayShifts = shiftRows.filter((s: any) =>
+			isSameDayWIB(s.startTime, Date.now()),
+		);
 		const revenue = todayShifts.reduce(
 			(acc: number, s: any) => acc + (s.totalRevenue || 0),
 			0,

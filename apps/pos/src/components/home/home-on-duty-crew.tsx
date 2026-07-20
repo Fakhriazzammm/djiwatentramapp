@@ -22,7 +22,7 @@ export function HomeOnDutyCrew() {
 	const onDutyNames = useMemo(() => {
 		if (!shiftRows) return new Set<string>();
 		const todayShifts = shiftRows.filter((s: any) =>
-			isSameDayWIB(s.startTime),
+			isSameDayWIB(s.startTime, Date.now()),
 		);
 		const names = new Set<string>();
 		for (const shift of todayShifts) {
