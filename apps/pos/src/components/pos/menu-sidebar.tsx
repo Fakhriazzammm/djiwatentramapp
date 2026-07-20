@@ -80,6 +80,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
+import { HomeAnalyticsDashboard } from "@/components/home/home-analytics-dashboard";
 import {
 	bluetoothPrinter,
 	type OrderItem,
@@ -1362,6 +1363,7 @@ Total Produk Terjual: ${totalItems}`;
 
 	return (
 		<div className="space-y-3">
+			<HomeAnalyticsDashboard />
 			<div className="flex items-center justify-between">
 				<span className="font-semibold text-foreground text-sm">{todayLabel}</span>
 				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Live</span>
