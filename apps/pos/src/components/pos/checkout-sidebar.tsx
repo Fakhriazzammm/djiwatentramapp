@@ -36,11 +36,28 @@ import { isDiscountApplicable } from "@/lib/utils/pricing";
 import {
 	useHybridShiftStatus,
 	useHybridCategories,
+	useHybridStaffUsers,
 	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
 import { useAppData } from "@/context/app-data-context";
 import type { Doc } from "@/types/backend-compat";
 import { CustomerSearchModal } from "./customer-search-modal";
+
+// ── Role → Production Track mapping ──
+const ROLE_TRACK_MAP: Record<string, "bar" | "kitchen" | "both"> = {
+	barista: "bar",
+	bartender: "bar",
+	bar: "bar",
+	chef: "kitchen",
+	koki: "kitchen",
+	kitchen: "kitchen",
+	cook: "kitchen",
+};
+
+function getStaffTrack(roleName: string | null | undefined): "bar" | "kitchen" | "both" {
+	if (!roleName) return "both";
+	return ROLE_TRACK_MAP[roleName.toLowerCase().trim()] ?? "both";
+}
 
 export function CheckoutSidebar({ 
 	onConfirmPayment,
@@ -160,6 +177,31 @@ export function CheckoutSidebar({
 		return Array.from(names);
 	}, [shiftStatus?.ongoingShift?.cashierName, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.shiftInfo?.cashierName]);
 
+	// Staff users data for role-based filtering
+	const staffUsers = useHybridStaffUsers();
+	const staffRoleMap = useMemo(() => {
+		const map = new Map<string, string | null>();
+		for (const u of staffUsers ?? []) {
+			const key = u.name?.toLowerCase().trim();
+			if (key) map.set(key, u.roleName || null);
+		}
+		return map;
+	}, [staffUsers]);
+
+	// Filter on-duty staff by role track for each production group
+	const filteredStaffByGroup = useMemo(() => ({
+		barista: onDutyStaff.filter(name => {
+			const role = staffRoleMap.get(name.toLowerCase().trim());
+			const track = getStaffTrack(role);
+			return track === "bar" || track === "both";
+		}),
+		kitchen: onDutyStaff.filter(name => {
+			const role = staffRoleMap.get(name.toLowerCase().trim());
+			const track = getStaffTrack(role);
+			return track === "kitchen" || track === "both";
+		}),
+	}), [onDutyStaff, staffRoleMap]);
+
 	// Rebuild assignments when items or categories change
 	useEffect(() => {
 		if (!categories || items.length === 0) return;
@@ -187,21 +229,23 @@ export function CheckoutSidebar({
 		const defaultStaff = onDutyStaff[0] || "Staff";
 		const newAssignments: GroupAssignment[] = [];
 		if (barItems.length > 0) {
+			const defaultBarStaff = filteredStaffByGroup.barista[0] || defaultStaff;
 			newAssignments.push({
 				groupType: "barista",
-				assignedTo: defaultStaff,
-				items: barItems.map((i) => ({ ...i, assignedTo: defaultStaff })),
+				assignedTo: defaultBarStaff,
+				items: barItems.map((i) => ({ ...i, assignedTo: defaultBarStaff })),
 			});
 		}
 		if (kitchenItems.length > 0) {
+			const defaultKitchenStaff = filteredStaffByGroup.kitchen[0] || defaultStaff;
 			newAssignments.push({
 				groupType: "kitchen",
-				assignedTo: defaultStaff,
-				items: kitchenItems.map((i) => ({ ...i, assignedTo: defaultStaff })),
+				assignedTo: defaultKitchenStaff,
+				items: kitchenItems.map((i) => ({ ...i, assignedTo: defaultKitchenStaff })),
 			});
 		}
 		setGroupAssignments(newAssignments);
-	}, [items, categories, onDutyStaff]);
+	}, [items, categories, onDutyStaff, filteredStaffByGroup]);
 
 	const fmt = (n: number) =>
 		new Intl.NumberFormat("id-ID", {
@@ -972,9 +1016,13 @@ export function CheckoutSidebar({
 											}}
 											className="rounded-lg border border-border/60 px-2 py-1 text-[10px] font-bold bg-background"
 										>
-											{onDutyStaff.map(name => (
-												<option key={name} value={name}>{name}</option>
-											))}
+											{filteredStaffByGroup[group.groupType].length > 0 ? (
+												filteredStaffByGroup[group.groupType].map(name => (
+													<option key={name} value={name}>{name}</option>
+												))
+											) : (
+												<option value="" disabled>Tidak ada staff</option>
+											)}
 										</select>
 									</div>
 
@@ -998,9 +1046,13 @@ export function CheckoutSidebar({
 													}}
 													className="rounded border border-border/40 px-1.5 py-0.5 text-[9px] font-medium bg-background"
 												>
-													{onDutyStaff.map(name => (
-														<option key={name} value={name}>{name}</option>
-													))}
+													{filteredStaffByGroup[group.groupType].length > 0 ? (
+														filteredStaffByGroup[group.groupType].map(name => (
+															<option key={name} value={name}>{name}</option>
+														))
+													) : (
+														<option value="" disabled>Tidak ada staff</option>
+													)}
 												</select>
 											</div>
 										))}
