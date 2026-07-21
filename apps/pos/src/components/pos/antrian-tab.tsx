@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Timer, User, ChevronDown, Pencil, AlertCircle, Lock } from "lucide-react";
+import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Timer, User, ChevronDown, Pencil, AlertCircle, Lock, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,13 @@ function formatTimeFull(isoStr?: string | null): string {
 	return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) +
 		" · " + d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 }
+
+const fmt = (n: number) =>
+	new Intl.NumberFormat("id-ID", {
+		style: "currency",
+		currency: "IDR",
+		maximumFractionDigits: 0,
+	}).format(n);
 
 // ── Edit window: 60 menit setelah selesai ──
 const EDIT_WINDOW_MS = 60 * 60 * 1000;
@@ -228,10 +235,49 @@ export function CompletedDetailModal({
 }) {
 	const [dibuatBy, setDibuatBy] = useState(order.dibuat_by || "");
 	const [selesaiBy, setSelesaiBy] = useState(order.selesai_by || "");
+	const [items, setItems] = useState<any[] | null>(null);
+	const [itemsLoading, setItemsLoading] = useState(true);
+
+	// Fetch order items from pos_orders when modal opens
+	useEffect(() => {
+		let cancelled = false;
+		setItemsLoading(true);
+		(async () => {
+			try {
+				const { createClient } = await import("@/lib/client");
+				const supabase = createClient();
+				const { data, error } = await supabase
+					.from("pos_orders")
+					.select("items")
+					.eq("orderNumber", order.order_no)
+					.maybeSingle();
+				if (!cancelled) {
+					if (error) {
+						console.error("[antrian] Failed to fetch order items:", error);
+						setItems([]);
+					} else {
+						setItems(Array.isArray(data?.items) ? data.items : []);
+					}
+					setItemsLoading(false);
+				}
+			} catch {
+				if (!cancelled) {
+					setItems([]);
+					setItemsLoading(false);
+				}
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [order.order_no]);
+
+	const totalItemsPrice = useMemo(() => {
+		if (!items) return 0;
+		return items.reduce((sum: number, item: any) => sum + (Number(item.price ?? 0) * Number(item.quantity ?? 0)), 0);
+	}, [items]);
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onClose()}>
-			<DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+			<DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2 text-base">
 						{order.group_type === "barista" ? <Coffee className="h-4 w-4 text-amber-600" /> : <ChefHat className="h-4 w-4 text-orange-600" />}
@@ -247,6 +293,46 @@ export function CompletedDetailModal({
 						<div className="text-right">{formatTimeFull(order.dibuat_at)}</div>
 						<div className="text-muted-foreground">Selesai</div>
 						<div className="text-right">{formatTimeFull(order.selesai_at)}</div>
+					</div>
+
+					{/* ── Order Items ── */}
+					<div className="border-t border-border/40 pt-2">
+						<div className="flex items-center gap-1.5 mb-2">
+							<ShoppingBag className="h-3 w-3 text-muted-foreground" />
+							<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Items</span>
+							{items && <span className="text-[9px] text-muted-foreground/60">({items.length})</span>}
+						</div>
+						{itemsLoading ? (
+							<div className="flex items-center justify-center py-3">
+								<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+							</div>
+						) : items && items.length > 0 ? (
+							<div className="space-y-1">
+								{items.map((item: any, idx: number) => (
+									<div key={idx} className="flex items-start justify-between text-[11px] py-1 border-b border-border/20 last:border-0">
+										<div className="flex-1 min-w-0">
+											<div className="font-medium truncate">{item.productName || "—"}</div>
+											{item.variant && (
+												<div className="text-[9px] text-muted-foreground/60 truncate">{item.variant}</div>
+											)}
+										</div>
+										<div className="flex items-center gap-2 shrink-0 ml-2">
+											<span className="text-muted-foreground tabular-nums">x{item.quantity ?? 0}</span>
+											<span className="font-semibold tabular-nums w-[80px] text-right">
+												{fmt(Number(item.price ?? 0) * Number(item.quantity ?? 0))}
+											</span>
+										</div>
+									</div>
+								))}
+								{/* Total */}
+								<div className="flex items-center justify-between text-[12px] font-bold pt-1">
+									<span>Total</span>
+									<span className="tabular-nums">{fmt(totalItemsPrice)}</span>
+								</div>
+							</div>
+						) : (
+							<p className="text-[10px] text-muted-foreground/60 italic py-1">Tidak ada item</p>
+						)}
 					</div>
 
 					{/* Sisa waktu edit */}
