@@ -220,17 +220,17 @@ export function QueueHorizontalBar() {
 		};
 	}, [orders]);
 
-	// Staff production stats — count items per staff
+	// Staff production stats — count items per staff (shift only)
 	const staffStats = useMemo(() => {
-		if (!orders || orders.length === 0) return [];
+		if (!orders || orders.length === 0 || onDutyStaff.length === 0) return [];
+		const onDuty = new Set(onDutyStaff.map(n => n.toLowerCase().trim()));
 		const counts = new Map<string, { dibuat: number; selesai: number; groups: Set<string> }>();
 		for (const o of orders) {
-			// Count items assigned via dibuat_by / selesai_by
 			const staffNames = new Set<string>();
 			if (o.dibuat_by && o.dibuat_by !== "Otomatis") staffNames.add(o.dibuat_by.trim());
 			if (o.selesai_by && o.selesai_by !== "Otomatis") staffNames.add(o.selesai_by.trim());
 			for (const name of staffNames) {
-				if (!name) continue;
+				if (!name || !onDuty.has(name.toLowerCase().trim())) continue;
 				if (!counts.has(name)) counts.set(name, { dibuat: 0, selesai: 0, groups: new Set() });
 				const entry = counts.get(name)!;
 				if (name === (o.dibuat_by?.trim() ?? "")) entry.dibuat += 1;
@@ -247,7 +247,7 @@ export function QueueHorizontalBar() {
 				groups: Array.from(data.groups) as ("barista" | "kitchen")[],
 			}))
 			.sort((a, b) => b.total - a.total);
-	}, [orders]);
+	}, [orders, onDutyStaff]);
 
 	// Handle update
 	const handleUpdate = useCallback(
@@ -324,50 +324,50 @@ export function QueueHorizontalBar() {
 					</button>
 				</div>
 
+					{/* ── STAFF PRODUCTION STATS (always visible) ── */}
+					{staffStats.length > 0 && (
+						<div className="mb-3">
+							<div className="flex items-center gap-1.5 mb-2">
+								<Users className="h-3.5 w-3.5 text-indigo-600" strokeWidth={2.5} />
+								<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
+									Produksi Staff
+								</span>
+							</div>
+							<div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-3 px-3">
+								{staffStats.map((staff) => {
+									const maxTotal = staffStats[0].total || 1;
+									const pct = Math.min(100, Math.round((staff.total / maxTotal) * 100));
+									return (
+										<div key={staff.name} className="w-36 shrink-0 snap-start rounded-xl border border-indigo-100 bg-white p-2.5 shadow-sm">
+											<div className="flex items-center justify-between mb-1.5">
+												<span className="text-[11px] font-black truncate">{staff.name}</span>
+												<span className="text-[10px] font-bold text-indigo-600">{staff.total} item</span>
+											</div>
+											<div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden mb-1.5">
+												<div
+													className="h-full bg-indigo-500 rounded-full transition-all duration-700"
+													style={{ width: `${pct}%` }}
+												/>
+											</div>
+											<div className="flex items-center gap-1 flex-wrap">
+												{staff.groups.includes("barista") && <Coffee className="h-3 w-3 text-amber-600" />}
+												{staff.groups.includes("kitchen") && <ChefHat className="h-3 w-3 text-orange-600" />}
+												<span className="text-[9px] text-muted-foreground leading-tight">
+													{staff.dibuat > 0 && `${staff.dibuat} dibuat`}
+													{staff.dibuat > 0 && staff.selesai > 0 && " · "}
+													{staff.selesai > 0 && `${staff.selesai} selesai`}
+												</span>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						</div>
+					)}
+
 				{/* ── COLLAPSIBLE CONTENT ── */}
 				{isQueueExpanded && (
 					<>
-						{/* ── STAFF PRODUCTION STATS ── */}
-						{staffStats.length > 0 && (
-							<div className="mb-3">
-								<div className="flex items-center gap-1.5 mb-2">
-									<Users className="h-3.5 w-3.5 text-indigo-600" strokeWidth={2.5} />
-									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
-										Produksi Staff
-									</span>
-								</div>
-								<div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-3 px-3">
-									{staffStats.map((staff) => {
-										const maxTotal = staffStats[0].total || 1;
-										const pct = Math.min(100, Math.round((staff.total / maxTotal) * 100));
-										return (
-											<div key={staff.name} className="w-36 shrink-0 snap-start rounded-xl border border-indigo-100 bg-white p-2.5 shadow-sm">
-												<div className="flex items-center justify-between mb-1.5">
-													<span className="text-[11px] font-black truncate">{staff.name}</span>
-													<span className="text-[10px] font-bold text-indigo-600">{staff.total} item</span>
-												</div>
-												<div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden mb-1.5">
-													<div
-														className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-														style={{ width: `${pct}%` }}
-													/>
-												</div>
-												<div className="flex items-center gap-1 flex-wrap">
-													{staff.groups.includes("barista") && <Coffee className="h-3 w-3 text-amber-600" />}
-													{staff.groups.includes("kitchen") && <ChefHat className="h-3 w-3 text-orange-600" />}
-													<span className="text-[9px] text-muted-foreground leading-tight">
-														{staff.dibuat > 0 && `${staff.dibuat} dibuat`}
-														{staff.dibuat > 0 && staff.selesai > 0 && " · "}
-														{staff.selesai > 0 && `${staff.selesai} selesai`}
-													</span>
-												</div>
-											</div>
-										);
-									})}
-								</div>
-							</div>
-						)}
-
 						{/* ── SEDANG DIBUAT ── */}
 						{inProgress.length > 0 && (
 							<div className="mb-2 last:mb-0">
