@@ -1161,19 +1161,20 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	// Handle order submission from payment modal or sidebar
 	const handlePaymentConfirm = useCallback(
 		async (
-			finalAmount: number,
-			discountId?: string,
-			paymentMethod?: string,
-			orderData?: {
-				tableNumber?: string;
-				orderType?: string;
-				notes?: string;
-				autoComplete?: boolean;
-				isOpenBill?: boolean;
-				cashReceived?: number;
-				changeAmount?: number;
-			}
-		) => {
+				finalAmount: number,
+				discountId?: string,
+				paymentMethod?: string,
+				orderData?: {
+					tableNumber?: string;
+					orderType?: string;
+					notes?: string;
+					autoComplete?: boolean;
+					isOpenBill?: boolean;
+					cashReceived?: number;
+					changeAmount?: number;
+					assignments?: { groupType: "barista" | "kitchen"; assignedTo: string; items: { productName: string; quantity: number; assignedTo: string }[] }[];
+				}
+			) => {
 			if (!isShiftOpen) {
 				toast.error("Buka shift terlebih dahulu di Dashboard");
 				return;
@@ -1262,6 +1263,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					paymentReceiptKind: mayarInvoice ? "cashier_pending" as const : undefined,
 					isOpenBill: shouldOpenBill,
 					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
+					assignments: orderData?.assignments,
 				};
 
 				if (!navigator.onLine) {

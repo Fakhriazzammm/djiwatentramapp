@@ -16,6 +16,9 @@ import {
 	Zap,
 	Tag,
 	Coffee,
+	ChefHat,
+	Clock,
+	ChevronDown,
 	X,
 	Printer,
 	Search,
@@ -32,6 +35,7 @@ import { ShimmerSkeleton } from "@/components/ui/loading-state";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
 import {
 	useHybridShiftStatus,
+	useHybridCategories,
 	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
 import { useAppData } from "@/context/app-data-context";
@@ -60,11 +64,12 @@ export function CheckoutSidebar({
 			isOpenBill?: boolean;
 			cashReceived?: number;
 			changeAmount?: number;
+			assignments?: { groupType: "barista" | "kitchen"; assignedTo: string; items: { productName: string; quantity: number; assignedTo: string }[] }[];
 		}
 	) => void;
 	isSubmitting?: boolean;
 	onClose?: () => void;
-	initialStep?: "customer" | "menu" | "payment";
+	initialStep?: "customer" | "menu" | "payment" | "assign";
 	lastOrderId?: string | null;
 	onPrintLastOrder?: () => void;
 	onPrintOpenBill?: () => void;
@@ -118,7 +123,7 @@ export function CheckoutSidebar({
 	}, [platforms, customerInfo.platform]);
 	const platformName = selectedPlatform?.name ?? "";
 
-	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment">(
+	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment" | "assign">(
 		initialStep || "menu"
 	);
 	
@@ -128,6 +133,75 @@ export function CheckoutSidebar({
 	const [changeAmount, setChangeAmount] = useState(0);
 	const [autoComplete, setAutoComplete] = useState(false);
 	const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(appliedVoucher?._id || null);
+
+	// ── Assignment state for Step 4 ──
+	interface GroupAssignment {
+		groupType: "barista" | "kitchen";
+		assignedTo: string;
+		items: { productId: string; productName: string; variant?: string; quantity: number; assignedTo: string }[];
+	}
+
+	// Build group assignments from cart items + categories
+	const categories = useHybridCategories();
+	const [groupAssignments, setGroupAssignments] = useState<GroupAssignment[]>([]);
+
+	// Compute on-duty staff from shift
+	const onDutyStaff = useMemo(() => {
+		const names = new Set<string>();
+		const cashierName = shiftStatus?.ongoingShift?.cashierName || shiftStatus?.shiftInfo?.cashierName;
+		if (cashierName) names.add(cashierName.trim());
+		const teamRaw = shiftStatus?.ongoingShift?.teamMembers || "";
+		teamRaw
+			.split(/[,\n;|]/g)
+			.map((name: string) => name.trim())
+			.filter(Boolean)
+			.forEach((name: string) => names.add(name));
+		if (names.size === 0) names.add("Kasir");
+		return Array.from(names);
+	}, [shiftStatus?.ongoingShift?.cashierName, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.shiftInfo?.cashierName]);
+
+	// Rebuild assignments when items or categories change
+	useEffect(() => {
+		if (!categories || items.length === 0) return;
+		const catTrackMap = new Map<string, "bar" | "kitchen" | null>();
+		for (const cat of categories as any[]) {
+			catTrackMap.set(cat._id, cat.track ?? null);
+		}
+		const barItems: GroupAssignment["items"] = [];
+		const kitchenItems: GroupAssignment["items"] = [];
+		for (const item of items) {
+			const track = item.category ? catTrackMap.get(item.category) : null;
+			const entry = {
+				productId: item.productId,
+				productName: item.name,
+				variant: item.variant,
+				quantity: item.quantity,
+				assignedTo: "" as string,
+			};
+			if (track === "kitchen") {
+				kitchenItems.push(entry);
+			} else {
+				barItems.push(entry);
+			}
+		}
+		const defaultStaff = onDutyStaff[0] || "Staff";
+		const newAssignments: GroupAssignment[] = [];
+		if (barItems.length > 0) {
+			newAssignments.push({
+				groupType: "barista",
+				assignedTo: defaultStaff,
+				items: barItems.map((i) => ({ ...i, assignedTo: defaultStaff })),
+			});
+		}
+		if (kitchenItems.length > 0) {
+			newAssignments.push({
+				groupType: "kitchen",
+				assignedTo: defaultStaff,
+				items: kitchenItems.map((i) => ({ ...i, assignedTo: defaultStaff })),
+			});
+		}
+		setGroupAssignments(newAssignments);
+	}, [items, categories, onDutyStaff]);
 
 	const fmt = (n: number) =>
 		new Intl.NumberFormat("id-ID", {
@@ -260,21 +334,33 @@ export function CheckoutSidebar({
 	}, [selectedDiscountId, allActiveDiscounts, appliedVoucher, applyVoucher]);
 
 	const handleConfirmPayment = () => {
-		if (onConfirmPayment) {
-			onConfirmPayment(
-				finalTotal,
-				selectedDiscountId || undefined,
-				selectedPaymentMethod,
-				{
-					tableNumber: customerInfo.tableNumber,
-					orderType: customerInfo.orderType,
-					autoComplete,
-					isOpenBill: false,
-					cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
-					changeAmount: changeAmount
-				}
-			);
-		}
+		setActiveStep("assign");
+	};
+
+	const handleSubmitAssignment = () => {
+		if (!onConfirmPayment) return;
+		onConfirmPayment(
+			finalTotal,
+			selectedDiscountId || undefined,
+			selectedPaymentMethod,
+			{
+				tableNumber: customerInfo.tableNumber,
+				orderType: customerInfo.orderType,
+				autoComplete,
+				isOpenBill: false,
+				cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
+				changeAmount: changeAmount,
+				assignments: groupAssignments.map(ga => ({
+					groupType: ga.groupType,
+					assignedTo: ga.assignedTo,
+					items: ga.items.map(item => ({
+						productName: item.productName,
+						quantity: item.quantity,
+						assignedTo: item.assignedTo,
+					})),
+				})),
+			}
+		);
 	};
 
 	const handleSaveOrderQuick = () => {
@@ -324,6 +410,14 @@ export function CheckoutSidebar({
 						)}>3</div>
 						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
 					</div>
+					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
+					<div className="flex items-center gap-1.5 sm:gap-2">
+						<div className={cn(
+							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
+							activeStep === "assign" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
+						)}>4</div>
+						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "assign" ? "text-foreground" : "text-muted-foreground")}>Assign</span>
+					</div>
 				</div>
 				<div className="flex items-center gap-2 text-muted-foreground">
 					{lastOrderId && onPrintLastOrder && (
@@ -352,7 +446,7 @@ export function CheckoutSidebar({
 			</div>
 
 			<ScrollArea className="flex-1 min-h-0">
-				<div className={cn("space-y-3 p-3 md:space-y-3 md:p-3", activeStep === "payment" ? "pb-24" : "pb-20")}>
+				<div className={cn("space-y-3 p-3 md:space-y-3 md:p-3", activeStep === "payment" || activeStep === "assign" ? "pb-24" : "pb-20")}>
 					{/* Section 1: Informasi Pelanggan */}
 					{activeStep === "customer" && (
 						<div className="fade-in animate-in space-y-3 duration-300 slide-in-from-right-4 md:space-y-3.5">
@@ -838,6 +932,83 @@ export function CheckoutSidebar({
 							</div>
 						</div>
 					)}
+
+					{/* Section 4: Assign Produksi */}
+					{activeStep === "assign" && (
+						<div className="space-y-3 fade-in animate-in slide-in-from-right-4 duration-300">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<User className="h-4 w-4 text-primary" />
+									<h3 className="text-xs font-bold uppercase tracking-wider">Assign Produksi</h3>
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
+									onClick={() => setActiveStep("payment")}
+								>
+									<ChevronLeft className="mr-1 h-3 w-3" /> Kembali
+								</Button>
+							</div>
+
+							{groupAssignments.map((group) => (
+								<div key={group.groupType} className="rounded-xl border border-border/60 bg-white p-2.5 space-y-2 shadow-sm">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-1.5">
+											{group.groupType === "barista" ? <Coffee className="h-3.5 w-3.5 text-amber-600" /> : <ChefHat className="h-3.5 w-3.5 text-orange-600" />}
+											<span className="text-[10px] font-black uppercase tracking-wider">
+												{group.groupType === "barista" ? "Barista" : "Kitchen"} ({group.items.length} item)
+											</span>
+										</div>
+										<select
+											value={group.assignedTo}
+											onChange={(e) => {
+												const newVal = e.target.value;
+												setGroupAssignments(prev => prev.map(g =>
+													g.groupType === group.groupType
+														? { ...g, assignedTo: newVal, items: g.items.map(item => ({ ...item, assignedTo: newVal })) }
+														: g
+												));
+											}}
+											className="rounded-lg border border-border/60 px-2 py-1 text-[10px] font-bold bg-background"
+										>
+											{onDutyStaff.map(name => (
+												<option key={name} value={name}>{name}</option>
+											))}
+										</select>
+									</div>
+
+									<div className="space-y-1">
+										{group.items.map((item, idx) => (
+											<div key={idx} className="flex items-center justify-between text-[11px] py-0.5">
+												<div className="flex-1 min-w-0 flex items-center gap-1">
+													<span className="truncate">{item.productName}</span>
+													{item.variant && <span className="text-[9px] text-muted-foreground/60 truncate">({item.variant})</span>}
+													<span className="text-muted-foreground shrink-0">x{item.quantity}</span>
+												</div>
+												<select
+													value={item.assignedTo}
+													onChange={(e) => {
+														const newStaff = e.target.value;
+														setGroupAssignments(prev => prev.map(g =>
+															g.groupType === group.groupType
+																? { ...g, items: g.items.map((it, i) => i === idx ? { ...it, assignedTo: newStaff } : it) }
+																: g
+														));
+													}}
+													className="rounded border border-border/40 px-1.5 py-0.5 text-[9px] font-medium bg-background"
+												>
+													{onDutyStaff.map(name => (
+														<option key={name} value={name}>{name}</option>
+													))}
+												</select>
+											</div>
+										))}
+									</div>
+								</div>
+							))}
+						</div>
+					)}
 				</div>
 			</ScrollArea>
 
@@ -926,6 +1097,21 @@ export function CheckoutSidebar({
 							<ShimmerSkeleton className="h-4 w-20 bg-white/20" />
 						) : (
 							"Konfirmasi Bayar"
+						)}
+					</Button>
+				)}
+
+				{activeStep === "assign" && (
+					<Button
+						onClick={handleSubmitAssignment}
+						disabled={items.length === 0 || isSubmitting}
+						className="w-full h-10 text-xs font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all"
+						size="lg"
+					>
+						{isSubmitting ? (
+							<ShimmerSkeleton className="h-4 w-20 bg-white/20" />
+						) : (
+							"Kirim ke Produksi"
 						)}
 					</Button>
 				)}
