@@ -426,10 +426,19 @@ canEdit?: boolean;
 						<CheckCircle2 className="h-3 w-3 text-emerald-500" /> {order.selesai_by}
 					</span>
 				)}
+			</div>
 
-				{/* Selesai & dalam 60 menit → tampilkan countdown edit */}
-				{isSelesai && canEdit && order.selesai_at && (
-					<EditTimeLeft selesai_at={order.selesai_at} />
+			{/* Time info — seperti di Telegram */}
+			<div className="flex items-center gap-3 text-[10px] text-muted-foreground border-t border-border/40 pt-2 mt-1">
+				<span className="flex items-center gap-1">
+					<span className="font-medium text-foreground/70">Dibuat</span>
+					{formatTimeAgo(order.created_at)}
+				</span>
+				{isSelesai && order.selesai_at && (
+					<span className="flex items-center gap-1">
+						<span className="font-medium text-foreground/70">Selesai</span>
+						{formatTimeAgo(order.selesai_at)}
+					</span>
 				)}
 			</div>
 
