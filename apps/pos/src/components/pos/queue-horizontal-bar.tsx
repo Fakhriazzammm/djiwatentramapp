@@ -318,11 +318,53 @@ export function QueueHorizontalBar() {
 	const totalAll = inProgress.length + completed.length;
 
 	// Don't render anything if no orders at all
-	if (!orders || totalAll === 0) return null;
+	const hasOrders = orders && totalAll > 0;
 
 	return (
 		<>
-			<div className="border-t border-border/50 bg-muted/5 px-3 py-2 transition-all">
+			{/* ── STAFF PRODUCTION STATS (above antrian, always visible) ── */}
+			{staffStats.length > 0 && (
+				<div className="border-t border-border/50 bg-muted/5 px-3 py-2 transition-all">
+					<div className="flex items-center gap-1.5 mb-2">
+						<Users className="h-3.5 w-3.5 text-indigo-600" strokeWidth={2.5} />
+						<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
+							Produksi Staff
+						</span>
+					</div>
+					<div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-3 px-3">
+						{staffStats.map((staff) => {
+							const maxTotal = staffStats[0].total || 1;
+							const pct = Math.min(100, Math.round((staff.total / maxTotal) * 100));
+							return (
+								<div key={staff.name} className="w-36 shrink-0 snap-start rounded-xl border border-indigo-100 bg-white p-2.5 shadow-sm">
+									<div className="flex items-center justify-between mb-1.5">
+										<span className="text-[11px] font-black truncate">{staff.name}</span>
+										<span className="text-[10px] font-bold text-indigo-600">{staff.total} item</span>
+									</div>
+									<div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden mb-1.5">
+										<div
+											className="h-full bg-indigo-500 rounded-full transition-all duration-700"
+											style={{ width: `${pct}%` }}
+										/>
+									</div>
+									<div className="flex items-center gap-1 flex-wrap">
+										{staff.groups.includes("barista") && <Coffee className="h-3 w-3 text-amber-600" />}
+										{staff.groups.includes("kitchen") && <ChefHat className="h-3 w-3 text-orange-600" />}
+										<span className="text-[9px] text-muted-foreground leading-tight">
+											{staff.dibuat > 0 && `${staff.dibuat} dibuat`}
+											{staff.dibuat > 0 && staff.selesai > 0 && " · "}
+											{staff.selesai > 0 && `${staff.selesai} selesai`}
+										</span>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
+
+			{/* ── ANTRIAN CONTAINER ── */}
+			{hasOrders && (<>
 				{/* ── COLLAPSE HEADER ── */}
 				<div className="flex w-full items-center justify-between mb-1.5">
 					<div className="flex items-center gap-1.5">
@@ -345,47 +387,6 @@ export function QueueHorizontalBar() {
 						{isQueueExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={3} /> : <ChevronDown className="h-3 w-3" strokeWidth={3} />}
 					</button>
 				</div>
-
-					{/* ── STAFF PRODUCTION STATS (always visible) ── */}
-					{staffStats.length > 0 && (
-						<div className="mb-3">
-							<div className="flex items-center gap-1.5 mb-2">
-								<Users className="h-3.5 w-3.5 text-indigo-600" strokeWidth={2.5} />
-								<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
-									Produksi Staff
-								</span>
-							</div>
-							<div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-3 px-3">
-								{staffStats.map((staff) => {
-									const maxTotal = staffStats[0].total || 1;
-									const pct = Math.min(100, Math.round((staff.total / maxTotal) * 100));
-									return (
-										<div key={staff.name} className="w-36 shrink-0 snap-start rounded-xl border border-indigo-100 bg-white p-2.5 shadow-sm">
-											<div className="flex items-center justify-between mb-1.5">
-												<span className="text-[11px] font-black truncate">{staff.name}</span>
-												<span className="text-[10px] font-bold text-indigo-600">{staff.total} item</span>
-											</div>
-											<div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden mb-1.5">
-												<div
-													className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-													style={{ width: `${pct}%` }}
-												/>
-											</div>
-											<div className="flex items-center gap-1 flex-wrap">
-												{staff.groups.includes("barista") && <Coffee className="h-3 w-3 text-amber-600" />}
-												{staff.groups.includes("kitchen") && <ChefHat className="h-3 w-3 text-orange-600" />}
-												<span className="text-[9px] text-muted-foreground leading-tight">
-													{staff.dibuat > 0 && `${staff.dibuat} dibuat`}
-													{staff.dibuat > 0 && staff.selesai > 0 && " · "}
-													{staff.selesai > 0 && `${staff.selesai} selesai`}
-												</span>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						</div>
-					)}
 
 				{/* ── COLLAPSIBLE CONTENT ── */}
 				{isQueueExpanded && (
@@ -441,7 +442,7 @@ export function QueueHorizontalBar() {
 						)}
 					</>
 				)}
-			</div>
+			</>)}
 
 			{/* Detail modal for completed orders */}
 			{detailOrder && (
