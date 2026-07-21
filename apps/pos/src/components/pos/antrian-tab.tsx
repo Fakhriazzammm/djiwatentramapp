@@ -422,6 +422,9 @@ canEdit?: boolean;
 
 // ── Main Antrian Tab ──
 export function AntrianTab({ onClose }: { onClose?: () => void }) {
+	// ── Deploy version check banner ── 🚀
+	const [showBanner] = useState(true);
+
 	const orders = useHybridOrderStatus();
 	const shiftStatus = useHybridShiftStatus();
 	const { updateStatus } = useHybridWriteOrderStatus();
@@ -524,6 +527,12 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 	return (
 		<>
 			<div className="space-y-3">
+				{showBanner && (
+					<div className="rounded-lg bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 p-3 text-center shadow-lg">
+						<p className="text-sm font-bold text-white">🚀 Deploy v2.0 — 60 Menit ✅</p>
+						<p className="text-[10px] text-white/80 mt-0.5">Edit staff dibatasi 60 menit setelah selesai (bukan shift)</p>
+					</div>
+				)}
 				{/* Summary */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
