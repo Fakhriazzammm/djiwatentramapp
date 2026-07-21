@@ -313,7 +313,7 @@ export function QueueHorizontalBar() {
 								<CompactDoneCard
 									key={`done-${o.group_type}-${o.order_no}`}
 									order={o}
-									onClick={(order) => isWithinEditWindow(order.selesai_at) && setDetailOrder(order)}
+									onClick={(order) => setDetailOrder(order)}
 								/>
 							))}
 						</ScrollRow>

@@ -767,7 +767,7 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 								<div
 									key={`done-${o.group_type}-${o.order_no}`}
 									className="flex items-center justify-between rounded-lg bg-muted/30 px-2.5 py-1.5 cursor-pointer hover:bg-muted/50 transition-colors"
-									onClick={() => isWithinEditWindow(o.selesai_at) && setDetailOrder(o)}
+									onClick={() => setDetailOrder(o)}
 								>
 									<div className="flex items-center gap-2 min-w-0">
 										{o.group_type === "barista" ? (
