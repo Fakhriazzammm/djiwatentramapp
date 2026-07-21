@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
-import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Pencil, TrendingUp } from "lucide-react";
+import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Pencil, TrendingUp, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -181,6 +181,7 @@ export function QueueHorizontalBar() {
 
 	const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
 	const [detailOrder, setDetailOrder] = useState<OrderStatusRecord | null>(null);
+	const [isQueueExpanded, setIsQueueExpanded] = useState(true);
 
 	// Parse on-duty staff
 	const onDutyStaff = useMemo(() => {
@@ -263,61 +264,90 @@ export function QueueHorizontalBar() {
 	);
 
 	const totalActive = inProgress.length;
+	const totalAll = inProgress.length + completed.length;
 
 	// Don't render anything if no orders at all
-	if (!orders || (inProgress.length === 0 && completed.length === 0)) return null;
+	if (!orders || totalAll === 0) return null;
 
 	return (
 		<>
 			<div className="border-t border-border/50 bg-muted/5 px-3 py-2 transition-all">
-				{/* ── SEDANG DIBUAT ── */}
-				{inProgress.length > 0 && (
-					<div className="mb-2 last:mb-0">
-						<div className="flex items-center gap-1.5 mb-2">
-							<Clock className="h-3.5 w-3.5 text-amber-600" strokeWidth={2.5} />
-							<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
-								Sedang Dibuat
-							</span>
-							<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-amber-100 px-1.5 text-[9px] font-bold text-amber-700">
-								{totalActive}
-							</span>
-						</div>
-						<ScrollRow>
-							{inProgress.map((o) => (
-								<CompactActionCard
-									key={`ip-${o.group_type}-${o.order_no}`}
-									order={o}
-									onDutyStaff={onDutyStaff}
-									onUpdate={handleUpdate}
-									updating={updatingOrders.has(`${o.order_no}-${o.group_type}-dibuat`) || updatingOrders.has(`${o.order_no}-${o.group_type}-selesai`)}
-								/>
-							))}
-						</ScrollRow>
+				{/* ── COLLAPSE HEADER ── */}
+				<div className="flex w-full items-center justify-between mb-1.5">
+					<div className="flex items-center gap-1.5">
+						<ClipboardList className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
+						<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
+							Antrian
+						</span>
+						<span className="inline-flex items-center justify-center h-4 min-w-[20px] rounded-full bg-primary/10 px-1.5 text-[9px] font-bold text-primary">
+							{totalAll}
+						</span>
 					</div>
-				)}
+					<button
+						type="button"
+						onClick={() => setIsQueueExpanded(!isQueueExpanded)}
+						className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-2 py-0.5 hover:bg-primary/5 text-primary transition-all active:scale-95"
+					>
+						<span className="text-[10px] font-bold uppercase tracking-widest">
+							{isQueueExpanded ? "Tutup" : "Buka"}
+						</span>
+						{isQueueExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={3} /> : <ChevronDown className="h-3 w-3" strokeWidth={3} />}
+					</button>
+				</div>
 
-				{/* ── SELESAI ── */}
-				{completed.length > 0 && (
-					<div className={cn(inProgress.length > 0 && "mt-2")}>
-						<div className="flex items-center gap-1.5 mb-2">
-							<TrendingUp className="h-3.5 w-3.5 text-emerald-600" strokeWidth={2.5} />
-							<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
-								Selesai
-							</span>
-							<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-emerald-100 px-1.5 text-[9px] font-bold text-emerald-700">
-								{completed.length}
-							</span>
-						</div>
-						<ScrollRow>
-							{completed.map((o) => (
-								<CompactDoneCard
-									key={`done-${o.group_type}-${o.order_no}`}
-									order={o}
-									onClick={(order) => setDetailOrder(order)}
-								/>
-							))}
-						</ScrollRow>
-					</div>
+				{/* ── COLLAPSIBLE CONTENT ── */}
+				{isQueueExpanded && (
+					<>
+						{/* ── SEDANG DIBUAT ── */}
+						{inProgress.length > 0 && (
+							<div className="mb-2 last:mb-0">
+								<div className="flex items-center gap-1.5 mb-2">
+									<Clock className="h-3.5 w-3.5 text-amber-600" strokeWidth={2.5} />
+									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
+										Sedang Dibuat
+									</span>
+									<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-amber-100 px-1.5 text-[9px] font-bold text-amber-700">
+										{totalActive}
+									</span>
+								</div>
+								<ScrollRow>
+									{inProgress.map((o) => (
+										<CompactActionCard
+											key={`ip-${o.group_type}-${o.order_no}`}
+											order={o}
+											onDutyStaff={onDutyStaff}
+											onUpdate={handleUpdate}
+											updating={updatingOrders.has(`${o.order_no}-${o.group_type}-dibuat`) || updatingOrders.has(`${o.order_no}-${o.group_type}-selesai`)}
+										/>
+									))}
+								</ScrollRow>
+							</div>
+						)}
+
+						{/* ── SELESAI ── */}
+						{completed.length > 0 && (
+							<div className={cn(inProgress.length > 0 && "mt-2")}>
+								<div className="flex items-center gap-1.5 mb-2">
+									<TrendingUp className="h-3.5 w-3.5 text-emerald-600" strokeWidth={2.5} />
+									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
+										Selesai
+									</span>
+									<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-emerald-100 px-1.5 text-[9px] font-bold text-emerald-700">
+										{completed.length}
+									</span>
+								</div>
+								<ScrollRow>
+									{completed.map((o) => (
+										<CompactDoneCard
+											key={`done-${o.group_type}-${o.order_no}`}
+											order={o}
+											onClick={(order) => setDetailOrder(order)}
+										/>
+									))}
+								</ScrollRow>
+							</div>
+						)}
+					</>
 				)}
 			</div>
 
