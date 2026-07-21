@@ -41,6 +41,55 @@ function isWithinEditWindow(selesai_at?: string | null): boolean {
 	return (Date.now() - selesai) < EDIT_WINDOW_MS;
 }
 
+// ── Countdown sisa waktu edit ──
+function EditTimeLeft({ selesai_at }: { selesai_at?: string | null }) {
+	const calcRemaining = useCallback(() => {
+		if (!selesai_at) return EDIT_WINDOW_MS;
+		const selesai = new Date(selesai_at.replace("Z", "+00:00")).getTime();
+		return Math.max(0, EDIT_WINDOW_MS - (Date.now() - selesai));
+	}, [selesai_at]);
+
+	const [remaining, setRemaining] = useState(calcRemaining);
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setRemaining(calcRemaining());
+		}, 1000);
+		return () => clearInterval(interval);
+	}, [calcRemaining]);
+
+	const minutes = Math.floor(remaining / 60000);
+	const seconds = Math.floor((remaining % 60000) / 1000);
+	const pct = (remaining / EDIT_WINDOW_MS) * 100;
+	const isUrgent = remaining < 300000; // < 5 menit
+	const isWarning = remaining < 600000; // < 10 menit
+
+	if (remaining <= 0) return null;
+
+	return (
+		<div className="space-y-1">
+			<div className="flex items-center justify-between text-[11px]">
+				<span className="text-muted-foreground">Sisa waktu edit</span>
+				<span className={cn(
+					"font-mono font-bold tabular-nums",
+					isUrgent ? "text-red-500" : isWarning ? "text-amber-500" : "text-emerald-500"
+				)}>
+					{String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+				</span>
+			</div>
+			<div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+				<div
+					className={cn(
+						"h-full rounded-full transition-all duration-1000",
+						isUrgent ? "bg-red-500" : isWarning ? "bg-amber-500" : "bg-emerald-500"
+					)}
+					style={{ width: `${pct}%` }}
+				/>
+			</div>
+		</div>
+	);
+}
+
 // ── Countdown timer before auto-process (300 detik) ──
 const AUTO_PROCESS_SECONDS = 300;
 
@@ -199,6 +248,9 @@ function CompletedDetailModal({
 						<div className="text-muted-foreground">Selesai</div>
 						<div className="text-right">{formatTimeFull(order.selesai_at)}</div>
 					</div>
+
+					{/* Sisa waktu edit */}
+					<EditTimeLeft selesai_at={order.selesai_at} />
 
 					{canEdit ? (
 						<>
@@ -422,9 +474,6 @@ canEdit?: boolean;
 
 // ── Main Antrian Tab ──
 export function AntrianTab({ onClose }: { onClose?: () => void }) {
-	// ── Deploy version check banner ── 🚀
-	const [showBanner] = useState(true);
-
 	const orders = useHybridOrderStatus();
 	const shiftStatus = useHybridShiftStatus();
 	const { updateStatus } = useHybridWriteOrderStatus();
@@ -527,12 +576,6 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 	return (
 		<>
 			<div className="space-y-3">
-				{showBanner && (
-					<div className="rounded-lg bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 p-3 text-center shadow-lg">
-						<p className="text-sm font-bold text-white">🚀 Deploy v2.0 — 60 Menit ✅</p>
-						<p className="text-[10px] text-white/80 mt-0.5">Edit staff dibatasi 60 menit setelah selesai (bukan shift)</p>
-					</div>
-				)}
 				{/* Summary */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
