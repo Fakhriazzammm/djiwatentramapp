@@ -223,24 +223,46 @@ export function QueueHorizontalBar() {
 	// Staff production stats — count items per staff (shift only)
 	const staffStats = useMemo(() => {
 		if (!orders || orders.length === 0 || onDutyStaff.length === 0) return [];
-		const onDuty = new Set(onDutyStaff.map(n => n.toLowerCase().trim()));
+		// Initialize all on-duty staff with 0 counts
 		const counts = new Map<string, { dibuat: number; selesai: number; groups: Set<string> }>();
+		const nameVariants = new Map<string, string>(); // normalized → display name
+		for (const name of onDutyStaff) {
+			const key = name.toLowerCase().trim();
+			counts.set(key, { dibuat: 0, selesai: 0, groups: new Set() });
+			nameVariants.set(key, name.trim());
+		}
+		// Match order staff to on-duty staff (by normalized substring or full match)
 		for (const o of orders) {
-			const staffNames = new Set<string>();
-			if (o.dibuat_by && o.dibuat_by !== "Otomatis") staffNames.add(o.dibuat_by.trim());
-			if (o.selesai_by && o.selesai_by !== "Otomatis") staffNames.add(o.selesai_by.trim());
-			for (const name of staffNames) {
-				if (!name || !onDuty.has(name.toLowerCase().trim())) continue;
-				if (!counts.has(name)) counts.set(name, { dibuat: 0, selesai: 0, groups: new Set() });
-				const entry = counts.get(name)!;
-				if (name === (o.dibuat_by?.trim() ?? "")) entry.dibuat += 1;
-				if (name === (o.selesai_by?.trim() ?? "")) entry.selesai += 1;
+			const candidates = new Set<string>();
+			if (o.dibuat_by && o.dibuat_by !== "Otomatis") candidates.add(o.dibuat_by.trim());
+			if (o.selesai_by && o.selesai_by !== "Otomatis") candidates.add(o.selesai_by.trim());
+			for (const candidate of candidates) {
+				if (!candidate) continue;
+				const cKey = candidate.toLowerCase();
+				// Try exact match first, then check if one contains the other
+				let matchedKey: string | null = null;
+				if (counts.has(cKey)) {
+					matchedKey = cKey;
+				} else {
+					for (const dutyKey of counts.keys()) {
+						if (dutyKey.includes(cKey) || cKey.includes(dutyKey)) {
+							matchedKey = dutyKey;
+							break;
+						}
+					}
+				}
+				if (!matchedKey) continue;
+				const entry = counts.get(matchedKey)!;
+				const isDibuat = candidate === (o.dibuat_by?.trim() ?? "");
+				const isSelesai = candidate === (o.selesai_by?.trim() ?? "");
+				if (isDibuat) entry.dibuat += 1;
+				if (isSelesai) entry.selesai += 1;
 				entry.groups.add(o.group_type);
 			}
 		}
 		return Array.from(counts.entries())
-			.map(([name, data]) => ({
-				name,
+			.map(([key, data]) => ({
+				name: nameVariants.get(key) || key,
 				total: data.dibuat + data.selesai,
 				dibuat: data.dibuat,
 				selesai: data.selesai,
