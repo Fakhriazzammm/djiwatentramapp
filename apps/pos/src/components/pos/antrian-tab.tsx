@@ -293,6 +293,24 @@ export function CompletedDetailModal({
 						<div className="text-right">{formatTimeFull(order.dibuat_at)}</div>
 						<div className="text-muted-foreground">Selesai</div>
 						<div className="text-right">{formatTimeFull(order.selesai_at)}</div>
+						{order.dibuat_by && (
+							<>
+								<div className="text-muted-foreground">Diproses</div>
+								<div className="text-right font-medium truncate flex items-center justify-end gap-1">
+									<User className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+									{order.dibuat_by}
+								</div>
+							</>
+						)}
+						{order.selesai_by && (
+							<>
+								<div className="text-muted-foreground">Selesai oleh</div>
+								<div className="text-right font-medium truncate flex items-center justify-end gap-1">
+									<User className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+									{order.selesai_by}
+								</div>
+							</>
+						)}
 					</div>
 
 					{/* ── Order Items ── */}
