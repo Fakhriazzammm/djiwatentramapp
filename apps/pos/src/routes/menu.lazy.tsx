@@ -46,6 +46,7 @@ import {
 	useHybridCategories,
 	useHybridCurrentMonthProgress,
 	useHybridOrders,
+	useHybridOrderStatus,
 	useHybridShiftStatus,
 	useHybridProducts,
 	useHybridStaffRoles,
@@ -74,6 +75,7 @@ import {
 } from "@/lib/receipt-data";
 import { playSuccessSound } from "@/lib/play-success-sound";
 import { createClient } from "@/lib/client";
+import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
 
 const fmt = (n: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -1654,6 +1656,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					initialTab={activeSidebarTab}
 				/>
 
+				{/* HORIZONTAL QUEUE BAR */}
+				<QueueHorizontalBar />
 
 				{/* STICKY CONTROL AREA (Search, Categories, Subcategories) */}
 				<div className="sticky top-0 z-30 flex flex-col gap-0 border-b border-border/20 bg-background/95 backdrop-blur-md shadow-sm transition-all pb-1">

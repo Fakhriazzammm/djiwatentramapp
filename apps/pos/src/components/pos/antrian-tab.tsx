@@ -13,7 +13,7 @@ import { useHybridOrderStatus, useHybridShiftStatus } from "@/hooks/use-hybrid-p
 import type { OrderStatusRecord } from "@/hooks/use-hybrid-pos-data";
 import { useHybridWriteOrderStatus, useHybridUpdateOrderStaff } from "@/hooks/use-hybrid-write-actions";
 
-function formatTimeAgo(isoStr?: string | null): string {
+export function formatTimeAgo(isoStr?: string | null): string {
 	if (!isoStr) return "--";
 	const then = new Date(isoStr.replace("Z", "+00:00")).getTime();
 	const now = Date.now();
@@ -35,7 +35,7 @@ function formatTimeFull(isoStr?: string | null): string {
 // ── Edit window: 60 menit setelah selesai ──
 const EDIT_WINDOW_MS = 60 * 60 * 1000;
 
-function isWithinEditWindow(selesai_at?: string | null): boolean {
+export function isWithinEditWindow(selesai_at?: string | null): boolean {
 	if (!selesai_at) return true; // belum selesai → selalu bisa
 	const selesai = new Date(selesai_at.replace("Z", "+00:00")).getTime();
 	return (Date.now() - selesai) < EDIT_WINDOW_MS;
@@ -93,7 +93,7 @@ function EditTimeLeft({ selesai_at }: { selesai_at?: string | null }) {
 // ── Countdown timer before auto-process (300 detik) ──
 const AUTO_PROCESS_SECONDS = 300;
 
-function AutoCountdown({ created_at }: { created_at?: string | null }) {
+export function AutoCountdown({ created_at }: { created_at?: string | null }) {
 	const calcRemaining = useCallback(() => {
 		if (!created_at) return 0;
 		const created = new Date(created_at.replace("Z", "+00:00")).getTime();
@@ -131,7 +131,7 @@ function AutoCountdown({ created_at }: { created_at?: string | null }) {
 	);
 }
 
-function getStatusBadge(status: string) {
+export function getStatusBadge(status: string) {
 	switch (status) {
 		case "new":
 			return { label: "Baru", color: "bg-blue-100 text-blue-700 border-blue-200", dot: "bg-blue-500 animate-pulse" };
@@ -211,7 +211,7 @@ function StaffPicker({
 }
 
 // ── Detail Modal for Completed Orders ──
-function CompletedDetailModal({
+export function CompletedDetailModal({
 	order,
 	onDutyStaff,
 	onClose,
