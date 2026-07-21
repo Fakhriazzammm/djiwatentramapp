@@ -1,7 +1,7 @@
 ﻿import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
@@ -6190,6 +6190,102 @@ export function useHybridSendShiftTableReportEmail() {
 		},
 		[fallback]
 	);
+}
+
+// ──────────────────────────────────────────────
+// Order Status Write (public.pos_order_status)
+// ──────────────────────────────────────────────
+
+export function useHybridWriteOrderStatus() {
+	const [isLoading, setIsLoading] = useState(false);
+
+	const updateStatus = async (payload: {
+		order_no: string;
+		group_type: "barista" | "kitchen";
+		status: "dibuat" | "selesai";
+		by: string;
+	}): Promise<{ success: boolean; error?: string }> => {
+		setIsLoading(true);
+		try {
+			const supabase = createClient();
+			const now = new Date().toISOString();
+
+			// Build update object
+			const updates: Record<string, any> = { status: payload.status };
+			if (payload.status === "dibuat") {
+				updates.dibuat_by = payload.by;
+				updates.dibuat_at = now;
+			} else if (payload.status === "selesai") {
+				updates.selesai_by = payload.by;
+				updates.selesai_at = now;
+			}
+
+			const { error } = await supabase
+				.from("pos_order_status")
+				.update(updates)
+				.eq("order_no", payload.order_no)
+				.eq("group_type", payload.group_type);
+
+			if (error) {
+				console.error("[hybrid] Failed to update order status", error);
+				return { success: false, error: error.message };
+			}
+
+			return { success: true };
+		} catch (e: any) {
+			return { success: false, error: e?.message || "Unknown error" };
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	return { updateStatus, isLoading };
+}
+
+// ──────────────────────────────────────────────
+// Order Staff Update (edit staff on completed)
+// ──────────────────────────────────────────────
+
+export function useHybridUpdateOrderStaff() {
+	const [saving, setSaving] = useState(false);
+
+	const updateStaff = async (payload: {
+		order_no: string;
+		group_type: "barista" | "kitchen";
+		dibuat_by?: string | null;
+		selesai_by?: string | null;
+	}): Promise<{ success: boolean; error?: string }> => {
+		setSaving(true);
+		try {
+			const supabase = createClient();
+			const updates: Record<string, any> = {};
+			if (payload.dibuat_by !== undefined) updates.dibuat_by = payload.dibuat_by;
+			if (payload.selesai_by !== undefined) updates.selesai_by = payload.selesai_by;
+
+			if (Object.keys(updates).length === 0) {
+				return { success: true };
+			}
+
+			const { error } = await supabase
+				.from("pos_order_status")
+				.update(updates)
+				.eq("order_no", payload.order_no)
+				.eq("group_type", payload.group_type);
+
+			if (error) {
+				console.error("[hybrid] Failed to update order staff", error);
+				return { success: false, error: error.message };
+			}
+
+			return { success: true };
+		} catch (e: any) {
+			return { success: false, error: e?.message || "Unknown error" };
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	return { updateStaff, saving };
 }
 
 

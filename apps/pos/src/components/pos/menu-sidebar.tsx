@@ -80,6 +80,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
+import { AntrianTab } from "@/components/pos/antrian-tab";
 import { HomeAnalyticsDashboard } from "@/components/home/home-analytics-dashboard";
 import {
 	bluetoothPrinter,
@@ -166,6 +167,7 @@ export function MenuSidebar({
 		{ value: "history", label: "Riwayat Order", icon: Clock, iconColor: "text-blue-500" },
 		{ value: "kas", label: "Shift & Kas", icon: Wallet, iconColor: "text-primary" },
 		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
+		{ value: "antrian", label: "Antrian", icon: ClipboardList, iconColor: "text-emerald-600" },
 		{
 			value: "yumi",
 			label: "Yumi AI",
@@ -588,6 +590,13 @@ export function MenuSidebar({
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
 										<StokTab />
+									</div>
+								</div>
+							)}
+							{activeTab === "antrian" && (
+								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
+									<div className="p-4 pb-20">
+										<AntrianTab onClose={() => setIsOpen(false)} />
 									</div>
 								</div>
 							)}
@@ -1121,13 +1130,12 @@ function DashboardTab({
 
 	return (
 		<div className="space-y-3">
-			<HomeAnalyticsDashboard />
 			<div className="flex items-center justify-between">
 				<span className="font-semibold text-foreground text-sm">{todayLabel}</span>
 				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Live</span>
 			</div>
 
-			{/* Shift Status Card & Report - Moved to top */}
+			{/* Shift Status — Paling atas */}
 			<div className="space-y-3">
 				<Card className="border-border bg-muted/30 overflow-hidden shadow-sm">
 					<div className="flex items-center justify-between p-3">
@@ -1160,115 +1168,10 @@ function DashboardTab({
 							{isShiftOpen ? "Kelola Shift" : "Buka Shift"}
 						</Button>
 					</div>
-				</Card>
-
-
-			</div>
-
-			<div className="space-y-3">
-				<div className="flex items-center justify-between">
-					<h3 className="font-bold text-sm">Aksi Cepat</h3>
-				</div>
-				<div className="grid grid-cols-2 gap-2">
-					<Button
-						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-primary/50 hover:bg-primary/5 transition-all active:scale-95"
-						onClick={() => onNavigate("kas")}
-						variant="outline"
-					>
-						<SquarePlay className="h-4 w-4 text-primary" />
-						<span className="text-[10px] font-semibold">Mulai Shift</span>
-					</Button>
-					<Button
-						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all active:scale-95"
-						onClick={onParkOrder}
-						variant="outline"
-					>
-						<Clock className="h-4 w-4 text-orange-500" />
-						<span className="text-[10px] font-semibold">Tunda Order</span>
-					</Button>
-					<Button
-						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-blue-500/50 hover:bg-blue-500/5 transition-all active:scale-95"
-						onClick={() => onNavigate("yumi")}
-						variant="outline"
-					>
-						<Bot className="h-4 w-4 text-blue-500" />
-						<span className="text-[10px] font-semibold">Tanya AI</span>
-					</Button>
-					<Button
-						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-accent/50 hover:bg-accent/5 transition-all active:scale-95"
-						onClick={() => onNavigate("stok")}
-						variant="outline"
-					>
-						<Package className="h-4 w-4 text-accent" />
-						<span className="text-[10px] font-semibold">Update Stok</span>
-					</Button>
-				</div>
-			</div>
-
-			{(lowStockItems?.length || 0) > 0 && (
-				<Card className="border-destructive/20 bg-destructive/5">
-					<CardContent className="p-3">
-						<div className="flex items-center gap-2">
-							<AlertCircle className="h-4 w-4 text-destructive" />
-							<span className="font-medium text-destructive text-sm">
-								{lowStockItems?.length} item stok rendah!
-							</span>
-						</div>
-					</CardContent>
-				</Card>
-			)}
-
-			<div className="space-y-2">
-				<div className="flex items-center justify-between">
-					<h3 className="font-bold text-sm">Transaksi Terakhir</h3>
-					<button 
-						className="text-[10px] text-primary hover:underline font-medium"
-						onClick={() => onNavigate("history")}
-					>
-						Lihat Semua
-					</button>
-				</div>
-				{recentOrders.length === 0 ? (
-					<div className="rounded-lg border border-dashed py-6 text-center text-muted-foreground text-sm">
-						Belum ada transaksi hari ini
+					</Card>
 					</div>
-				) : (
-					<div className="space-y-2">
-						{recentOrders.map((order: Doc<"orders">) => (
-							<button
-								className="flex w-full items-center justify-between rounded-lg border bg-muted/30 p-2 text-left transition-colors hover:bg-muted/50"
-								key={order._id}
-								onClick={() => onSelectOrder(order)}
-								type="button"
-							>
-								<div className="flex items-center gap-2">
-									<div
-										className={`h-2 w-2 rounded-full ${
-											order.status === "completed" || order.status === "paid"
-												? "bg-primary"
-												: order.status === "pending"
-													? "bg-accent"
-													: "bg-destructive"
-										}`}
-									/>
-									<div>
-										<p className="font-medium text-xs">
-											{order.items?.[0]?.productName || "Pesanan"}
-											{order.items?.length > 1 && ` +${order.items.length - 1}`}
-										</p>
-										<p className="text-[10px] text-muted-foreground">
-											{formatTime(order.createdAt)}
-										</p>
-									</div>
-								</div>
-								<span className="font-bold text-sm">
-									{formatCurrency(order.totalAmount)}
-								</span>
-							</button>
-						))}
-					</div>
-				)}
-			</div>
+
+			<HomeAnalyticsDashboard />
 
 			<div className="h-6" />
 		</div>

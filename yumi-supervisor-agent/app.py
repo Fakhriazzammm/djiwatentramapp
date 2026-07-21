@@ -738,9 +738,14 @@ async def _update_message_id(order: dict):
     except Exception:
         pass
 
-async def _do_dibuat(key: str, by: str = "Otomatis", tg_user_id: int | None = None):
+async def _do_dibuat(key: str, by: str = "Otomatis", tg_user_id: int | None = None, siblings: bool = True):
     order = _active_orders.get(key)
-    if not order or order["status"] != "new":
+    if not order:
+        return
+    if order["status"] != "new":
+        # Staff override: update DB anyway with the staff name
+        await _update_order_status(key, "dibuat", by, tg_user_id)
+        logger.info("[%s] Staff override DIBUAT by %s (was %s)", key, by, order.get("dibuat_by"))
         return
     await _cancel_task(order, "auto_dibuat_task")
 
@@ -760,9 +765,24 @@ async def _do_dibuat(key: str, by: str = "Otomatis", tg_user_id: int | None = No
     # Auto selesai setelah 30 menit (1800 detik)
     order["auto_selesai_task"] = asyncio.create_task(_auto_selesai(key, 1800))
 
-async def _do_selesai(key: str, by: str = "Otomatis", tg_user_id: int | None = None):
+    # ── Propagate staff name to sibling groups ──
+    if siblings and by and by != "Otomatis":
+        for sibling_key, sibling in list(_active_orders.items()):
+            if sibling_key.startswith(f"{order_no}|") and sibling_key != key:
+                current_sibling_by = sibling.get("dibuat_by")
+                if not current_sibling_by or current_sibling_by == "Otomatis":
+                    if sibling.get("status") in ("new", "dibuat"):
+                        logger.info("[%s] Propagating DIBUAT by %s to sibling %s", key, by, sibling_key)
+                        await _do_dibuat(sibling_key, by=by, tg_user_id=tg_user_id, siblings=False)
+
+async def _do_selesai(key: str, by: str = "Otomatis", tg_user_id: int | None = None, siblings: bool = True):
     order = _active_orders.get(key)
-    if not order or order["status"] == "selesai":
+    if not order:
+        return
+    if order["status"] == "selesai":
+        # Staff override: update DB anyway
+        await _update_order_status(key, "selesai", by, tg_user_id)
+        logger.info("[%s] Staff override SELESAI by %s", key, by)
         return
     await _cancel_task(order, "auto_dibuat_task")
     await _cancel_task(order, "auto_selesai_task")
@@ -778,6 +798,17 @@ async def _do_selesai(key: str, by: str = "Otomatis", tg_user_id: int | None = N
 
     # Bersihkan setelah 30 menit agar dict tidak membesar
     asyncio.create_task(_cleanup_order(key, 1800))
+
+    # ── Propagate staff name to sibling groups ──
+    if siblings and by and by != "Otomatis":
+        order_no, current_group = key.split("|")
+        for sibling_key, sibling in list(_active_orders.items()):
+            if sibling_key.startswith(f"{order_no}|") and sibling_key != key:
+                current_sibling_by = sibling.get("selesai_by")
+                if not current_sibling_by or current_sibling_by == "Otomatis":
+                    if sibling.get("status") == "selesai":
+                        logger.info("[%s] Propagating SELESAI by %s to sibling %s", key, by, sibling_key)
+                        await _do_selesai(sibling_key, by=by, tg_user_id=tg_user_id, siblings=False)
 
 async def _auto_dibuat(key: str, delay: int):
     """Auto-dibuat with live countdown in message text."""
@@ -949,7 +980,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
             "items": bev_items,
             "struk_line": struk_line,
         }
-        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 30))
+        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 300))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Barista notification sent for %s (%d beverages)", order_no, len(bev_items))
     except Exception as e:
@@ -1050,11 +1081,45 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
             "items": food_items,
             "struk_line": struk_line,
         }
-        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 30))
+        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 300))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Kitchen notification sent for %s (%d food items)", order_no, len(food_items))
     except Exception as e:
         logger.error("send_kitchen_notification failed for %s: %s", order_no, e)
+
+# ── Telegram user → staff name mapping ──────────────────────────
+
+_tg_name_cache: dict[int, str] = {}
+_tg_cache_loaded = False
+
+async def _load_tg_name_cache():
+    """Load all employee_telegram_links into cache."""
+    global _tg_name_cache, _tg_cache_loaded
+    try:
+        rows = await _fetch("employee_telegram_links", "select=telegram_user_id,employee_name&is_active=eq.true&limit=200")
+        _tg_name_cache = {row["telegram_user_id"]: row["employee_name"] for row in rows if row.get("employee_name")}
+        _tg_cache_loaded = True
+        logger.info("Loaded %d Telegram→staff name mappings", len(_tg_name_cache))
+    except Exception as e:
+        logger.error("Failed to load Telegram name cache: %s", e)
+
+async def _resolve_staff_name(tg_user_id: int) -> str:
+    """Get staff name from Telegram user ID using cached employee_telegram_links."""
+    if not _tg_cache_loaded:
+        await _load_tg_name_cache()
+    cached = _tg_name_cache.get(tg_user_id)
+    if cached:
+        return cached
+    # Fallback: try direct query on miss
+    try:
+        rows = await _fetch("employee_telegram_links", f"telegram_user_id=eq.{tg_user_id}&select=employee_name&limit=1")
+        if rows and rows[0].get("employee_name"):
+            name = rows[0]["employee_name"]
+            _tg_name_cache[tg_user_id] = name
+            return name
+    except Exception:
+        pass
+    return "Staff"
 
 # ── Callback handler ─────────────────────────────────────────────
 
@@ -1066,8 +1131,10 @@ async def _handle_callback(update: Update, context):
     try:
         action, order_no, group_type = data.split("|")
         key = f"{order_no}|{group_type}"
-        user = query.from_user.username or query.from_user.first_name or "Staff"
         tg_user_id = query.from_user.id
+
+        # Resolve staff name from employee_telegram_links cache
+        user = await _resolve_staff_name(tg_user_id)
 
         # Lazy-load from Supabase if not in memory
         order = _active_orders.get(key)
@@ -1777,6 +1844,7 @@ async def _post_init(app):
     await _build_beverage_lookup()
     await _build_food_lookup()
     await _build_staff_lookup()
+    await _load_tg_name_cache()
 
     # Restore active orders from Supabase (persistent across restarts)
     await _load_active_orders(app.bot)

@@ -326,6 +326,15 @@ function deriveTotalItemsSoldFromSummary(summary: any): number {
 	return fromBreakdown > 0 ? fromBreakdown : 0;
 }
 
+function deriveOrderCountFromSummary(summary: any): number {
+	const direct = safeNum(summary?.orderCount);
+	if (direct > 0) return direct;
+	// Fallback: estimate from totalItemsSold / avg items per order (≈2)
+	const items = safeNum(summary?.totalItemsSold);
+	if (items > 0) return Math.max(1, Math.round(items / 2));
+	return 0;
+}
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
@@ -1123,7 +1132,7 @@ export async function fetchShiftReports() {
 
 	// Step 3: Untuk shift aktif, query orders untuk revenue & diskon realtime
 	const activeShifts = shifts.filter((s: any) => s.end_time == null);
-	let activeRevenue: Record<string, { total: number; cash: number; qris: number; discount: number; itemsSold: number }> = {};
+	let activeRevenue: Record<string, { total: number; cash: number; qris: number; discount: number; itemsSold: number; orderCount: number }> = {};
 	for (const s of activeShifts) {
 		const sid = s.source_id;
 		const st = Number(s.start_time ?? 0);
@@ -1144,10 +1153,10 @@ export async function fetchShiftReports() {
 					if (m.includes("cash") || m.includes("tunai")) cash += p;
 					else if (m.includes("qris") || m.includes("qr")) qris += p;
 				}
-				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: orders.length };
+				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: orders.length, orderCount: orders.length };
 			}
 		} catch {}
-		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0, discount: 0, itemsSold: 0 };
+		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0, discount: 0, itemsSold: 0, orderCount: 0 };
 	}
 
 	// Step 4: Hitung daily_collected per hari dari financial_transactions
@@ -1250,7 +1259,7 @@ export async function fetchShiftReports() {
 			totalRevenue: totalRev,
 			totalExpenses: expenses,
 			totalItemsSold: itemsSold,
-			orderCount: 0,
+			orderCount: isActive && rev ? rev.orderCount : deriveOrderCountFromSummary(summary),
 			bookingCount: 0,
 			hasTarget,
 			targetRevenue: hasTarget ? targetRevenue : undefined,
@@ -2287,6 +2296,7 @@ export type {
 	InventoryRecord,
 	InventoryCostMapRecord,
 	OrderRecord,
+	OrderStatusRecord,
 	ProductRecord,
 	ShiftOperationalRecord,
 	ShiftStatusRecord,
@@ -2295,4 +2305,52 @@ export type {
 	StaffUserRecord,
 	SiteSettingsRecord,
 };
+
+// ──────────────────────────────────────────────
+// Order Status (public.pos_order_status)
+// ──────────────────────────────────────────────
+
+export type OrderStatusRecord = {
+	order_no: string;
+	group_type: "barista" | "kitchen";
+	status: "new" | "dibuat" | "selesai";
+	dibuat_by?: string | null;
+	selesai_by?: string | null;
+	dibuat_at?: string | null;
+	selesai_at?: string | null;
+	created_at?: string;
+};
+
+export type UpdateOrderStatusPayload = {
+	order_no: string;
+	group_type: "barista" | "kitchen";
+	status: "dibuat" | "selesai";
+	by: string; // nama staff
+};
+
+async function fetchOrderStatus(): Promise<OrderStatusRecord[]> {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_order_status")
+		.select("*")
+		.order("created_at", { ascending: false })
+		.limit(100);
+	if (error) {
+		console.error("[hybrid] pos_order_status query failed", error);
+		return [];
+	}
+	return (data as OrderStatusRecord[]) ?? [];
+}
+
+export function useHybridOrderStatus(refreshTrigger?: number) {
+	const supabaseData = useSupabaseValue(
+		"order-status",
+		fetchOrderStatus,
+		[],
+		refreshTrigger !== undefined
+			? { refreshTrigger, tables: ['pos_order_status'] }
+			: { tables: ['pos_order_status'] }
+	);
+	return supabaseData as OrderStatusRecord[] | undefined;
+}
 

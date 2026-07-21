@@ -20,7 +20,8 @@ import {
 	User,
 	TrendingUp,
 	ChevronUp,
-	ChevronDown
+	ChevronDown,
+	ClipboardList,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -153,6 +154,7 @@ const SIDEBAR_MENU_ITEMS = [
 	{ id: "parkir", label: "Simpan Orderan", icon: ShoppingCart },
 	{ id: "history", label: "Riwayat Order", icon: Clock },
 	{ id: "kas", label: "Kas", icon: Wallet },
+	{ id: "antrian", label: "Antrian", icon: ClipboardList },
 	{ id: "stok", label: "Stok", icon: Package },
 	{ id: "yumi", label: "Chat AI", icon: Bot },
 	{ id: "settings", label: "Pengaturan", icon: Settings2 },
@@ -1405,7 +1407,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				{/* MAIN Y-SCROLL CONTAINER */}
 				<main
 					ref={mainScrollRef}
-					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative"
+					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative pb-20 md:pb-0"
 				>
 					<header
 						ref={headerRef}
@@ -1910,7 +1912,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				</main>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
 				{/* Show first 5 items directly; overflow goes to "Lainnya" which opens the full sidebar drawer */}
-				<div className="app-bottom-bar shrink-0 w-full pb-safe-area px-3 pt-1.5">
+				<nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 backdrop-blur-md shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-2 pt-1.5 pb-safe-area-or-2 safe-area-bottom md:hidden">
 					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-0.5 sm:gap-1">
 						{SIDEBAR_MENU_ITEMS.slice(0, 5).map((item, index) => {
 							const Icon = item.icon;
@@ -1969,7 +1971,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							</span>
 						</button>
 					</div>
-				</div>
+				</nav>
 			</div>
 
 			{/* RIGHT CONTENT: Checkout Sidebar (Desktop/Tablet) */}
@@ -1986,7 +1988,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 			{/* === CART BUTTON (Floating Mobile) === */}
 			{(totalItems > 0 || !customerInfo.isSubmitted) && (
-				<div className="fixed bottom-[6.75rem] left-4 right-4 z-20 px-3 md:hidden">
+				<div className="fixed bottom-[6.75rem] left-4 right-4 z-40 px-3 md:hidden">
 					<button
 						type="button"
 						onClick={() => setIsCartOpen(true)}
