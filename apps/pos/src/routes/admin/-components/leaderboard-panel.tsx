@@ -70,7 +70,7 @@ const counterVariants = {
 		opacity: 1,
 		transition: {
 			delay: 0.3 + i * 0.08,
-			type: "spring",
+			type: "spring" as const,
 			stiffness: 50,
 			damping: 10,
 		},

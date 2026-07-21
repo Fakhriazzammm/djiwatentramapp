@@ -245,8 +245,8 @@ function CompletedDetailModal({
 					) : (
 						<div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-center">
 							<Lock className="h-4 w-4 mx-auto text-muted-foreground/60 mb-1" />
-							<p className="text-[11px] font-medium text-muted-foreground">Shift sudah ditutup</p>
-							<p className="text-[9px] text-muted-foreground/60 mt-0.5">Data tidak dapat diedit lagi</p>
+							<p className="text-[11px] font-medium text-muted-foreground">Waktu edit sudah habis</p>
+							<p className="text-[9px] text-muted-foreground/60 mt-0.5">Edit hanya berlaku 60 menit setelah pesanan selesai</p>
 						</div>
 					)}
 
