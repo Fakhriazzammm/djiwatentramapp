@@ -426,6 +426,11 @@ canEdit?: boolean;
 						<CheckCircle2 className="h-3 w-3 text-emerald-500" /> {order.selesai_by}
 					</span>
 				)}
+
+				{/* Selesai & dalam 60 menit → tampilkan countdown edit */}
+				{isSelesai && canEdit && order.selesai_at && (
+					<EditTimeLeft selesai_at={order.selesai_at} />
+				)}
 			</div>
 
 			{!isSelesai && (
