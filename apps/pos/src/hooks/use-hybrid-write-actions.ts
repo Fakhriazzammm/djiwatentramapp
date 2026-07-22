@@ -254,7 +254,33 @@ async function verifyAttendanceIdentity(args: {
 	}
 }
 
+const LOCAL_TOKEN_PREFIX = "local_yumi_session:";
+
 async function getSessionUserByToken(token: string) {
+	// Handle local session tokens (fallback login — stored in localStorage, not in DB)
+	if (token.startsWith(LOCAL_TOKEN_PREFIX)) {
+		try {
+			const encoded = token.slice(LOCAL_TOKEN_PREFIX.length);
+			const binary = atob(encoded);
+			const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+			const json = new TextDecoder().decode(bytes);
+			const session = JSON.parse(json);
+			if (Date.now() > session.expiresAt) return null;
+
+			const supabase = createClient();
+			const { data: user, error: userError } = await supabase
+				.from("yumi_users")
+				.select("*")
+				.eq("source_id", session.user._id)
+				.maybeSingle();
+			if (userError) throw userError;
+			return user ?? null;
+		} catch (error) {
+			console.warn("[getSessionUserByToken] Failed to decode local session:", error);
+			return null;
+		}
+	}
+
 	const supabase = createClient();
 	const nowIso = new Date().toISOString();
 	const { data: session, error: sessionError } = await supabase

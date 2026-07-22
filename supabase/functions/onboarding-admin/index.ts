@@ -19,6 +19,8 @@ const ADMIN_SECRET = Deno.env.get("ONBOARDING_ADMIN_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const TELEGRAM_WELCOME_CHAT_ID = Deno.env.get("TELEGRAM_WELCOME_CHAT_ID") ?? "";
+const TELEGRAM_GM_BOT_TOKEN = Deno.env.get("TELEGRAM_GM_BOT_TOKEN") ?? "";
+const TELEGRAM_WELCOME_CHANNEL_ID = Deno.env.get("TELEGRAM_WELCOME_CHANNEL_ID") ?? "";
 
 if (!ADMIN_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing required environment variables: ONBOARDING_ADMIN_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY");
@@ -424,6 +426,73 @@ async function handleApprove(
       });
     } catch (_e) {
       console.warn("[onboarding-admin] Welcome notification failed:", _e);
+    }
+  }
+
+  // ── Channel welcome via GM Bot (ke channel Djiwa Tentram) ──
+  if (TELEGRAM_GM_BOT_TOKEN && TELEGRAM_WELCOME_CHANNEL_ID) {
+    try {
+      // Fetch telegram_code
+      const userData = await supabase
+        .from("yumi_users")
+        .select("telegram_code")
+        .eq("source_id", sourceId)
+        .maybeSingle();
+      const tgCode = (userData.data as any)?.telegram_code ?? "";
+
+      const channelMsg = [
+        "🎉 Selamat Datang " + (roleName === "CHEF" ? "🍳" : roleName === "BARISTA" ? "☕" : "👤") + " — " + name,
+        "",
+        "Halo! Dengan senang hati kami mengumumkan bahwa kamu telah resmi bergabung",
+        "sebagai bagian dari keluarga besar Djiwa Tentram Cafe & Resto,",
+        "bagian dari Yumme Group! 🌟",
+        "",
+        "Kami percaya kehadiranmu akan membawa semangat baru dan energi positif",
+        "untuk tim kami. Selamat bergabung, ya!",
+        "",
+        "📋 Data Karyawan",
+        `  • Nama Lengkap  : ${name}`,
+        `  • Role          : ${roleName}`,
+        `  • No. HP        : ${phone}`,
+        `  • Tgl Mulai     : ${startDate}`,
+        "",
+        ...(tgCode ? [
+          "📌 Yang Perlu Kamu Lakukan:",
+          "  1. Buka Telegram, cari @yumihrdbot",
+          `  2. Ketik perintah: /daftar ${tgCode}`,
+          "  3. Kalau berhasil, bot akan membalas dengan data kamu",
+          "  4. Selesai! Kamu sudah bisa:",
+          "     • Absen masuk / keluar lewat Telegram",
+          "     • Menerima notifikasi order di grup yang sesuai",
+          "     • Melihat jadwal shift kamu",
+          "",
+          "💡 Tips:",
+          "  • Jangan lupa login ke aplikasi POS di https://pos.yumme.id",
+          "  • Username dan password sudah diberikan oleh admin",
+          "  • Kalau ada kendala, tanyakan ke tim manajemen ya",
+        ] : []),
+        "",
+        "————————————————————————————",
+        "Sekali lagi, selamat bergabung! 🎉",
+        "Mari kita berkarya dan tumbuh bersama —",
+        "Djiwa Tentram, Yumme Group.",
+        "————————————————————————————",
+        "",
+        "— Manajemen Djiwa Tentram",
+      ].join("\n");
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_GM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: parseInt(TELEGRAM_WELCOME_CHANNEL_ID, 10),
+          text: channelMsg,
+          disable_web_page_preview: true,
+        }),
+      });
+      console.log("[onboarding-admin] Channel welcome sent via GM Bot");
+    } catch (_e) {
+      console.warn("[onboarding-admin] GM Bot channel welcome failed:", _e);
     }
   }
 

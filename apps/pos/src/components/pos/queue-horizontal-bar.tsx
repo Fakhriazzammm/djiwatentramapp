@@ -262,76 +262,68 @@ export function QueueHorizontalBar() {
 		};
 	}, [orders]);
 
-	// Staff production stats — count items per staff (shift only)
-	const staffStats = useMemo(() => {
-		if (!orders || orders.length === 0 || onDutyStaff.length === 0) return [];
-		// Initialize all on-duty staff with 0 counts
-		const counts = new Map<string, { dibuat: number; selesai: number; groups: Set<string> }>();
-		const nameVariants = new Map<string, string>(); // normalized → display name
-		for (const name of onDutyStaff) {
-			const key = name.toLowerCase().trim();
-			counts.set(key, { dibuat: 0, selesai: 0, groups: new Set() });
-			nameVariants.set(key, name.trim());
-		}
-		// Match order staff to on-duty staff (by normalized substring or full match)
-		for (const o of orders) {
-			// ── 1. Count explicitly assigned staff (non-Otomatis) ──
-			const candidates = new Set<string>();
-			if (o.dibuat_by && o.dibuat_by !== "Otomatis") candidates.add(o.dibuat_by.trim());
-			if (o.selesai_by && o.selesai_by !== "Otomatis") candidates.add(o.selesai_by.trim());
-			for (const candidate of candidates) {
-				if (!candidate) continue;
-				const cKey = candidate.toLowerCase();
-				// Try exact match first, then check if one contains the other
-				let matchedKey: string | null = null;
-				if (counts.has(cKey)) {
-					matchedKey = cKey;
-				} else {
-					for (const dutyKey of counts.keys()) {
-						if (dutyKey.includes(cKey) || cKey.includes(dutyKey)) {
-							matchedKey = dutyKey;
-							break;
+		// Staff production stats — count items per staff (shift only)
+		const staffStats = useMemo(() => {
+			if (!orders || orders.length === 0 || onDutyStaff.length === 0) return [];
+
+			// Filter orders to current shift only
+			const shiftStartMs = shiftStatus?.ongoingShift?.startTime || shiftStatus?.shiftInfo?.startTime;
+			const currentShiftOrders = shiftStartMs
+				? orders.filter(o => {
+						const createdMs = new Date(o.created_at ?? 0).getTime();
+						return createdMs >= shiftStartMs;
+				  })
+				: orders;
+
+			if (currentShiftOrders.length === 0) return [];
+
+			// Initialize all on-duty staff with 0 counts
+			const counts = new Map<string, { dibuat: number; selesai: number; groups: Set<string> }>();
+			const nameVariants = new Map<string, string>(); // normalized → display name
+			for (const name of onDutyStaff) {
+				const key = name.toLowerCase().trim();
+				counts.set(key, { dibuat: 0, selesai: 0, groups: new Set() });
+				nameVariants.set(key, name.trim());
+			}
+			// Count only explicitly assigned staff (non-Otomatis) in current shift
+			for (const o of currentShiftOrders) {
+				const candidates = new Set<string>();
+				if (o.dibuat_by && o.dibuat_by !== "Otomatis") candidates.add(o.dibuat_by.trim());
+				if (o.selesai_by && o.selesai_by !== "Otomatis") candidates.add(o.selesai_by.trim());
+				for (const candidate of candidates) {
+					if (!candidate) continue;
+					const cKey = candidate.toLowerCase();
+					// Try exact match first, then check if one contains the other
+					let matchedKey: string | null = null;
+					if (counts.has(cKey)) {
+						matchedKey = cKey;
+					} else {
+						for (const dutyKey of counts.keys()) {
+							if (dutyKey.includes(cKey) || cKey.includes(dutyKey)) {
+								matchedKey = dutyKey;
+								break;
+							}
 						}
 					}
+					if (!matchedKey) continue;
+					const entry = counts.get(matchedKey)!;
+					const isDibuat = candidate === (o.dibuat_by?.trim() ?? "");
+					const isSelesai = candidate === (o.selesai_by?.trim() ?? "");
+					if (isDibuat) entry.dibuat += 1;
+					if (isSelesai) entry.selesai += 1;
+					entry.groups.add(o.group_type);
 				}
-				if (!matchedKey) continue;
-				const entry = counts.get(matchedKey)!;
-				const isDibuat = candidate === (o.dibuat_by?.trim() ?? "");
-				const isSelesai = candidate === (o.selesai_by?.trim() ?? "");
-				if (isDibuat) entry.dibuat += 1;
-				if (isSelesai) entry.selesai += 1;
-				entry.groups.add(o.group_type);
 			}
-
-			// ── 2. Attribute "Otomatis" / empty records to default staff for group ──
-			const defaultStaffForGroup = o.group_type === "barista"
-				? filteredStaffByGroup.barista[0]
-				: filteredStaffByGroup.kitchen[0];
-			if (!defaultStaffForGroup) continue;
-
-			const defaultKey = defaultStaffForGroup.toLowerCase().trim();
-			const defaultEntry = counts.get(defaultKey);
-			if (!defaultEntry) continue;
-
-			if (!o.dibuat_by || o.dibuat_by === "Otomatis") {
-				defaultEntry.dibuat += 1;
-				defaultEntry.groups.add(o.group_type);
-			}
-			if (!o.selesai_by || o.selesai_by === "Otomatis") {
-				defaultEntry.selesai += 1;
-				defaultEntry.groups.add(o.group_type);
-			}
-		}
-		return Array.from(counts.entries())
-			.map(([key, data]) => ({
-				name: nameVariants.get(key) || key,
-				total: data.dibuat + data.selesai,
-				dibuat: data.dibuat,
-				selesai: data.selesai,
-				groups: Array.from(data.groups) as ("barista" | "kitchen")[],
-			}))
-			.sort((a, b) => b.selesai - a.selesai);
-	}, [orders, onDutyStaff, filteredStaffByGroup]);
+			return Array.from(counts.entries())
+				.map(([key, data]) => ({
+					name: nameVariants.get(key) || key,
+					total: data.dibuat + data.selesai,
+					dibuat: data.dibuat,
+					selesai: data.selesai,
+					groups: Array.from(data.groups) as ("barista" | "kitchen")[],
+				}))
+				.sort((a, b) => b.selesai - a.selesai);
+		}, [orders, onDutyStaff, shiftStatus?.ongoingShift?.startTime, shiftStatus?.shiftInfo?.startTime]);
 
 	// Handle update
 	const handleUpdate = useCallback(
@@ -395,31 +387,21 @@ export function QueueHorizontalBar() {
 					</div>
 					<div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-3 px-3">
 						{staffStats.map((staff) => {
-							const maxSelesai = staffStats[0].selesai || 1;
-							const pct = Math.min(100, Math.round((staff.selesai / maxSelesai) * 100));
-							return (
-							<div key={staff.name} className="w-28 shrink-0 snap-start rounded-lg border border-indigo-100 bg-white p-1.5 shadow-sm">
-									<div className="flex items-center justify-between mb-1">
-										<span className="text-[10px] font-black truncate">{staff.name}</span>
-										<span className="text-[9px] font-bold text-indigo-600">{staff.selesai} selesai</span>
-									</div>
-									<div className="h-1 w-full bg-indigo-100 rounded-full overflow-hidden mb-1">
-										<div
-											className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-											style={{ width: `${pct}%` }}
-										/>
-									</div>
-									<div className="flex items-center gap-1 flex-wrap">
-										{staff.groups.includes("barista") && <Coffee className="h-2.5 w-2.5 text-amber-600" />}
-										{staff.groups.includes("kitchen") && <ChefHat className="h-2.5 w-2.5 text-orange-600" />}
-										<span className="text-[8px] text-muted-foreground leading-tight">
-											{staff.dibuat > 0 && `${staff.dibuat} dibuat`}
-											{staff.dibuat > 0 && staff.selesai > 0 && " · "}
-											{staff.selesai > 0 && `${staff.selesai} selesai`}
-										</span>
-									</div>
-								</div>
-							);
+						  return (
+						  <div key={staff.name} className="shrink-0 snap-start rounded-lg border border-indigo-100 bg-white px-2 py-1.5 shadow-sm min-w-0">
+						      <div className="flex items-center gap-2">
+						        <span className="text-[10px] font-black leading-tight">{staff.name}</span>
+						        <span className="text-[10px] font-bold text-indigo-600 ml-auto whitespace-nowrap tabular-nums">{staff.selesai} selesai</span>
+						      </div>
+						      {(staff.dibuat > 0 || staff.groups.length > 0) && (
+						        <div className="flex items-center gap-1 mt-0.5">
+						          {staff.groups.includes("barista") && <Coffee className="h-2.5 w-2.5 text-amber-600 shrink-0" />}
+						          {staff.groups.includes("kitchen") && <ChefHat className="h-2.5 w-2.5 text-orange-600 shrink-0" />}
+						          {staff.dibuat > 0 && <span className="text-[9px] text-muted-foreground">{staff.dibuat} dibuat</span>}
+						        </div>
+						      )}
+						    </div>
+						  );
 						})}
 					</div>
 				</div>

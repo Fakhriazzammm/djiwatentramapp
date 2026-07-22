@@ -12,11 +12,11 @@ type AuthAction =
 
 type JsonRecord = Record<string, unknown>;
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabaseUrl = Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL");
+const supabaseServiceRoleKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
-	throw new Error("Missing Supabase function secrets");
+	throw new Error("Missing Supabase function secrets (YUMI_SUPABASE_URL / YUMI_SERVICE_ROLE_KEY)");
 }
 
 // Raw fetch helper — avoids supabase-js Authorization header bug in edge-runtime
@@ -48,6 +48,7 @@ async function restRpc(fn: string, body: JsonRecord) {
 		method: "POST",
 		headers: {
 			"apikey": supabaseServiceRoleKey,
+			"Authorization": `Bearer ${supabaseServiceRoleKey}`,
 			"Content-Type": "application/json",
 			"Accept": "application/json",
 		},
@@ -67,6 +68,7 @@ async function restInsert(table: string, body: Record<string, unknown>) {
 		method: "POST",
 		headers: {
 			"apikey": supabaseServiceRoleKey,
+			"Authorization": `Bearer ${supabaseServiceRoleKey}`,
 			"Content-Type": "application/json",
 			"Accept": "application/json",
 			"Prefer": "return=minimal",
@@ -86,6 +88,7 @@ async function restUpdate(table: string, body: Record<string, unknown>, eqColumn
 		method: "PATCH",
 		headers: {
 			"apikey": supabaseServiceRoleKey,
+			"Authorization": `Bearer ${supabaseServiceRoleKey}`,
 			"Content-Type": "application/json",
 			"Accept": "application/json",
 			"Prefer": "return=minimal",
@@ -105,6 +108,7 @@ async function restDelete(table: string, eqColumn: string, eqValue: string) {
 		method: "DELETE",
 		headers: {
 			"apikey": supabaseServiceRoleKey,
+			"Authorization": `Bearer ${supabaseServiceRoleKey}`,
 			"Accept": "application/json",
 		},
 	});
@@ -453,6 +457,16 @@ Deno.serve(async (req) => {
 	try {
 		const body = (await req.json()) as JsonRecord;
 		const action = body.action as AuthAction | undefined;
+
+		// Debug action
+		if (action === "debug") {
+			return json({
+				supabaseUrl: supabaseUrl,
+				supabaseUrlPrefix: supabaseUrl?.slice(0,30),
+				keyPrefix: supabaseServiceRoleKey?.slice(0,20),
+				keyLength: supabaseServiceRoleKey?.length,
+			});
+		}
 
 		switch (action) {
 			case "listPublicUsers":

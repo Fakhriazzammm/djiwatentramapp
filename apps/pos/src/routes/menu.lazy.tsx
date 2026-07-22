@@ -1791,16 +1791,27 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								const isFocused = isKeyboardActive && isZoneFocused("products") && focusedIndex === index;
 
 								return (
-									<button
-										key={product._id}
-										data-product-index={index}
-										type="button"
-										onClick={() => handleProductClick(product)}
-										className={cn(
-											"group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
-											"transition-all active:scale-[0.97]",
-											isFocused && "ring-2 ring-primary ring-offset-2 shadow-lg"
-										)}
+								  <motion.button
+								    key={product._id}
+								    data-product-index={index}
+								    type="button"
+								    onClick={() => handleProductClick(product)}
+								    layout
+								    initial={{ opacity: 0, scale: 0.92, y: 12 }}
+								    animate={{ opacity: 1, scale: 1, y: 0 }}
+								    transition={{
+								      delay: Math.min(index * 0.025, 0.4),
+								      duration: 0.3,
+								      ease: [0.25, 0.1, 0.25, 1],
+								      layout: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
+								    }}
+								    whileHover={{ y: -2, transition: { duration: 0.2 } }}
+								    whileTap={{ scale: 0.97 }}
+								    className={cn(
+								      "group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
+								      "transition-shadow",
+								      isFocused && "ring-2 ring-primary ring-offset-2 shadow-lg"
+								    )}
 									>
 										{/* Image */}
 										<div className="relative h-28 sm:h-32 w-full bg-muted shrink-0">
@@ -1894,7 +1905,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 												)}
 											</div>
 										</div>
-									</button>
+									</motion.button>
 								);
 							})
 						)}
