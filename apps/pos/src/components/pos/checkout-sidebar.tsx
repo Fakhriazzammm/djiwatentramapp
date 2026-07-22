@@ -54,9 +54,9 @@ const ROLE_TRACK_MAP: Record<string, "bar" | "kitchen" | "both"> = {
 	cook: "kitchen",
 };
 
-function getStaffTrack(roleName: string | null | undefined): "bar" | "kitchen" | "both" {
-	if (!roleName) return "both";
-	return ROLE_TRACK_MAP[roleName.toLowerCase().trim()] ?? "both";
+function getStaffTrack(roleName: string | null | undefined): "bar" | "kitchen" | "both" | null {
+	if (!roleName) return null;
+	return ROLE_TRACK_MAP[roleName.toLowerCase().trim()] ?? null;
 }
 
 export function CheckoutSidebar({ 
