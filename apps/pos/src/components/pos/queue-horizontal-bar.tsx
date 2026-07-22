@@ -3,7 +3,7 @@ import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Pencil, TrendingUp, Chev
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useHybridOrderStatus, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
+import { useHybridOrderStatus, useHybridShiftStatus, useHybridStaffUsers } from "@/hooks/use-hybrid-pos-data";
 import type { OrderStatusRecord } from "@/hooks/use-hybrid-pos-data";
 import { useHybridWriteOrderStatus, useHybridUpdateOrderStaff } from "@/hooks/use-hybrid-write-actions";
 import {
@@ -31,6 +31,22 @@ function GroupIcon({ group_type }: { group_type: "barista" | "kitchen" }) {
 	return <ChefHat className="h-3 w-3 text-orange-600 shrink-0" />;
 }
 
+// ── Role → Production Track mapping (sync with checkout-sidebar) ──
+const STAFF_ROLE_TRACK_MAP: Record<string, "bar" | "kitchen" | "both"> = {
+	barista: "bar",
+	bartender: "bar",
+	bar: "bar",
+	chef: "kitchen",
+	koki: "kitchen",
+	kitchen: "kitchen",
+	cook: "kitchen",
+};
+
+function getStaffTrack(roleName: string | null | undefined): "bar" | "kitchen" | "both" {
+	if (!roleName) return "both";
+	return STAFF_ROLE_TRACK_MAP[roleName.toLowerCase().trim()] ?? "both";
+}
+
 // ── Compact Horizontal Card (for "Sedang Dibuat" row) ──
 function CompactActionCard({
 	order,
@@ -45,8 +61,9 @@ function CompactActionCard({
 }) {
 	const isNew = order.status === "new";
 	const isDibuat = order.status === "dibuat";
-	const fromDb = order.dibuat_by && order.dibuat_by !== "Otomatis";
-	const assignedStaff = order.dibuat_by || onDutyStaff[0] || "Staff";
+	const effectiveStaff = order.dibuat_by && order.dibuat_by !== "Otomatis" ? order.dibuat_by : null;
+	const fromDb = !!effectiveStaff;
+	const assignedStaff = effectiveStaff || onDutyStaff[0] || "Staff";
 
 	return (
 		<div
@@ -153,7 +170,7 @@ function CompactDoneCard({
 					🏁 Selesai
 				</span>
 				<div className="flex items-center gap-1">
-					{order.selesai_by && (
+					{order.selesai_by && order.selesai_by !== "Otomatis" && (
 						<span className="text-[9px] text-muted-foreground truncate max-w-[50px]">{order.selesai_by}</span>
 					)}
 					<Pencil className="h-2.5 w-2.5 text-muted-foreground/40 shrink-0" />
@@ -198,6 +215,31 @@ export function QueueHorizontalBar() {
 		return Array.from(names);
 	}, [shiftStatus?.ongoingShift?.cashierName, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.shiftInfo?.cashierName]);
 
+	// Staff users data for role-based filtering
+	const staffUsers = useHybridStaffUsers();
+	const staffRoleMap = useMemo(() => {
+		const map = new Map<string, string | null>();
+		for (const u of staffUsers ?? []) {
+			const key = u.name?.toLowerCase().trim();
+			if (key) map.set(key, u.roleName || null);
+		}
+		return map;
+	}, [staffUsers]);
+
+	// Filter on-duty staff by role track for each production group
+	const filteredStaffByGroup = useMemo(() => ({
+		barista: onDutyStaff.filter(name => {
+			const role = staffRoleMap.get(name.toLowerCase().trim());
+			const track = getStaffTrack(role);
+			return track === "bar" || track === "both";
+		}),
+		kitchen: onDutyStaff.filter(name => {
+			const role = staffRoleMap.get(name.toLowerCase().trim());
+			const track = getStaffTrack(role);
+			return track === "kitchen" || track === "both";
+		}),
+	}), [onDutyStaff, staffRoleMap]);
+
 	// Group orders into "sedang dibuat" and "selesai" (newest first)
 	const { inProgress, completed } = useMemo(() => {
 		if (!orders) return { inProgress: [], completed: [] };
@@ -233,6 +275,7 @@ export function QueueHorizontalBar() {
 		}
 		// Match order staff to on-duty staff (by normalized substring or full match)
 		for (const o of orders) {
+			// ── 1. Count explicitly assigned staff (non-Otomatis) ──
 			const candidates = new Set<string>();
 			if (o.dibuat_by && o.dibuat_by !== "Otomatis") candidates.add(o.dibuat_by.trim());
 			if (o.selesai_by && o.selesai_by !== "Otomatis") candidates.add(o.selesai_by.trim());
@@ -259,6 +302,25 @@ export function QueueHorizontalBar() {
 				if (isSelesai) entry.selesai += 1;
 				entry.groups.add(o.group_type);
 			}
+
+			// ── 2. Attribute "Otomatis" / empty records to default staff for group ──
+			const defaultStaffForGroup = o.group_type === "barista"
+				? filteredStaffByGroup.barista[0]
+				: filteredStaffByGroup.kitchen[0];
+			if (!defaultStaffForGroup) continue;
+
+			const defaultKey = defaultStaffForGroup.toLowerCase().trim();
+			const defaultEntry = counts.get(defaultKey);
+			if (!defaultEntry) continue;
+
+			if (!o.dibuat_by || o.dibuat_by === "Otomatis") {
+				defaultEntry.dibuat += 1;
+				defaultEntry.groups.add(o.group_type);
+			}
+			if (!o.selesai_by || o.selesai_by === "Otomatis") {
+				defaultEntry.selesai += 1;
+				defaultEntry.groups.add(o.group_type);
+			}
 		}
 		return Array.from(counts.entries())
 			.map(([key, data]) => ({
@@ -269,7 +331,7 @@ export function QueueHorizontalBar() {
 				groups: Array.from(data.groups) as ("barista" | "kitchen")[],
 			}))
 			.sort((a, b) => b.total - a.total);
-	}, [orders, onDutyStaff]);
+	}, [orders, onDutyStaff, filteredStaffByGroup]);
 
 	// Handle update
 	const handleUpdate = useCallback(
@@ -336,21 +398,21 @@ export function QueueHorizontalBar() {
 							const maxTotal = staffStats[0].total || 1;
 							const pct = Math.min(100, Math.round((staff.total / maxTotal) * 100));
 							return (
-								<div key={staff.name} className="w-36 shrink-0 snap-start rounded-xl border border-indigo-100 bg-white p-2.5 shadow-sm">
-									<div className="flex items-center justify-between mb-1.5">
-										<span className="text-[11px] font-black truncate">{staff.name}</span>
-										<span className="text-[10px] font-bold text-indigo-600">{staff.total} item</span>
+							<div key={staff.name} className="w-28 shrink-0 snap-start rounded-lg border border-indigo-100 bg-white p-1.5 shadow-sm">
+									<div className="flex items-center justify-between mb-1">
+										<span className="text-[10px] font-black truncate">{staff.name}</span>
+										<span className="text-[9px] font-bold text-indigo-600">{staff.total} item</span>
 									</div>
-									<div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden mb-1.5">
+									<div className="h-1 w-full bg-indigo-100 rounded-full overflow-hidden mb-1">
 										<div
 											className="h-full bg-indigo-500 rounded-full transition-all duration-700"
 											style={{ width: `${pct}%` }}
 										/>
 									</div>
 									<div className="flex items-center gap-1 flex-wrap">
-										{staff.groups.includes("barista") && <Coffee className="h-3 w-3 text-amber-600" />}
-										{staff.groups.includes("kitchen") && <ChefHat className="h-3 w-3 text-orange-600" />}
-										<span className="text-[9px] text-muted-foreground leading-tight">
+										{staff.groups.includes("barista") && <Coffee className="h-2.5 w-2.5 text-amber-600" />}
+										{staff.groups.includes("kitchen") && <ChefHat className="h-2.5 w-2.5 text-orange-600" />}
+										<span className="text-[8px] text-muted-foreground leading-tight">
 											{staff.dibuat > 0 && `${staff.dibuat} dibuat`}
 											{staff.dibuat > 0 && staff.selesai > 0 && " · "}
 											{staff.selesai > 0 && `${staff.selesai} selesai`}
