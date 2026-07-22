@@ -2094,6 +2094,42 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setIsSubmitting(false);
 			return;
 		}
+
+		// ── Validasi waktu tutup kasir ──
+		// Cegah kasir menutup shift sebelum closeTime - grace period
+		const closeTimeStr = selectedShiftSchedule?.closeTime; // "14:30"
+		if (closeTimeStr) {
+			const [closeHour, closeMin] = closeTimeStr.split(":").map(Number);
+			const now = new Date();
+			const nowWib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+
+			// Build today's closeTime in WIB
+			const closeWib = new Date(nowWib);
+			closeWib.setHours(closeHour, closeMin, 0, 0);
+
+			const nowEpoch = nowWib.getTime();
+			const closeEpoch = closeWib.getTime();
+			const earlyCutoff = closeEpoch - 30 * 60 * 1000; // 30 menit sebelum closeTime
+			const graceDeadline = closeEpoch + 60 * 60 * 1000; // 1 jam setelah closeTime
+
+			if (nowEpoch < earlyCutoff) {
+				const closeFmt = `${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")}`;
+				toast.error(
+					`Shift ${shiftName} baru tutup jam ${closeFmt} WIB. ` +
+					`Belum bisa ditutup sekarang (${String(nowWib.getHours()).padStart(2, "0")}:${String(nowWib.getMinutes()).padStart(2, "0")} WIB).`
+				);
+				setIsSubmitting(false);
+				return;
+			}
+
+			if (nowEpoch > graceDeadline) {
+				toast.warning(
+					`Shift ${shiftName} sudah lewat 1 jam dari jadwal (${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")} WIB). ` +
+					`Pastikan data sudah akurat.`
+				);
+			}
+		}
+
 		setIsSubmitting(true);
 		setSubmitError(null);
 		try {

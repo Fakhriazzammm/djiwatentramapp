@@ -4487,6 +4487,36 @@ export function useHybridEndShift() {
 					throw new Error("Waktu akhir shift tidak boleh lebih awal dari waktu mulai");
 				}
 
+				// ── Defense-in-depth: validasi waktu tutup kasir ──
+				// Cegah menutup shift sebelum closeTime - grace period (30 menit)
+				// Ambil closeTime dari shift.name via site settings
+				const shiftName = String(shift.shift_name ?? "");
+				const { data: siteSettings, error: settingsError } = await supabase
+					.from("pos_site_settings")
+					.select("raw")
+					.limit(1)
+					.maybeSingle();
+				if (!settingsError && siteSettings?.raw?.shiftSettings?.shiftSchedules) {
+					const schedules = siteSettings.raw.shiftSettings.shiftSchedules;
+					const matchingSchedule = schedules.find(
+						(s: any) => s.name === shiftName && s.closeTime
+					);
+					if (matchingSchedule) {
+						const [closeHour, closeMin] = matchingSchedule.closeTime.split(":").map(Number);
+						const now = new Date();
+						const nowWib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+						const closeWib = new Date(nowWib);
+						closeWib.setHours(closeHour, closeMin, 0, 0);
+						const earlyCutoff = closeWib.getTime() - 30 * 60 * 1000;
+						if (nowWib.getTime() < earlyCutoff) {
+							throw new Error(
+								`Shift ${shiftName} baru tutup jam ${matchingSchedule.closeTime} WIB. ` +
+								`Belum bisa ditutup sekarang.`
+							);
+						}
+					}
+				}
+
 				const { data: txRows, error: txError } = await supabase
 					.from("pos_financial_transactions")
 					.select("type, amount, category, paymentMethod, status")
