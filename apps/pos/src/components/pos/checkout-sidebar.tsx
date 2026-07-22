@@ -226,22 +226,19 @@ export function CheckoutSidebar({
 				barItems.push(entry);
 			}
 		}
-		const defaultStaff = onDutyStaff[0] || "Staff";
 		const newAssignments: GroupAssignment[] = [];
 		if (barItems.length > 0) {
-			const defaultBarStaff = filteredStaffByGroup.barista[0] || defaultStaff;
 			newAssignments.push({
 				groupType: "barista",
-				assignedTo: defaultBarStaff,
-				items: barItems.map((i) => ({ ...i, assignedTo: defaultBarStaff })),
+				assignedTo: "",
+				items: barItems.map((i) => ({ ...i, assignedTo: "" })),
 			});
 		}
 		if (kitchenItems.length > 0) {
-			const defaultKitchenStaff = filteredStaffByGroup.kitchen[0] || defaultStaff;
 			newAssignments.push({
 				groupType: "kitchen",
-				assignedTo: defaultKitchenStaff,
-				items: kitchenItems.map((i) => ({ ...i, assignedTo: defaultKitchenStaff })),
+				assignedTo: "",
+				items: kitchenItems.map((i) => ({ ...i, assignedTo: "" })),
 			});
 		}
 		setGroupAssignments(newAssignments);
@@ -383,6 +380,21 @@ export function CheckoutSidebar({
 
 	const handleSubmitAssignment = () => {
 		if (!onConfirmPayment) return;
+		const validAssignments = groupAssignments
+			.map(ga => ({
+				...ga,
+				items: ga.items.filter(item => item.assignedTo !== ""),
+			}))
+			.filter(ga => ga.items.length > 0)
+			.map(ga => ({
+				groupType: ga.groupType,
+				assignedTo: ga.assignedTo,
+				items: ga.items.map(item => ({
+					productName: item.productName,
+					quantity: item.quantity,
+					assignedTo: item.assignedTo,
+				})),
+			}));
 		onConfirmPayment(
 			finalTotal,
 			selectedDiscountId || undefined,
@@ -394,15 +406,7 @@ export function CheckoutSidebar({
 				isOpenBill: false,
 				cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
 				changeAmount: changeAmount,
-				assignments: groupAssignments.map(ga => ({
-					groupType: ga.groupType,
-					assignedTo: ga.assignedTo,
-					items: ga.items.map(item => ({
-						productName: item.productName,
-						quantity: item.quantity,
-						assignedTo: item.assignedTo,
-					})),
-				})),
+				assignments: validAssignments,
 			}
 		);
 	};
@@ -1016,12 +1020,11 @@ export function CheckoutSidebar({
 											}}
 											className="rounded-lg border border-border/60 px-2 py-1 text-[10px] font-bold bg-background"
 										>
-											{filteredStaffByGroup[group.groupType].length > 0 ? (
+											<option value="">Tidak ditugaskan</option>
+											{filteredStaffByGroup[group.groupType].length > 0 && (
 												filteredStaffByGroup[group.groupType].map(name => (
 													<option key={name} value={name}>{name}</option>
 												))
-											) : (
-												<option value="" disabled>Tidak ada staff</option>
 											)}
 										</select>
 									</div>
@@ -1046,12 +1049,11 @@ export function CheckoutSidebar({
 													}}
 													className="rounded border border-border/40 px-1.5 py-0.5 text-[9px] font-medium bg-background"
 												>
-													{filteredStaffByGroup[group.groupType].length > 0 ? (
+													<option value="">Tidak ditugaskan</option>
+													{filteredStaffByGroup[group.groupType].length > 0 && (
 														filteredStaffByGroup[group.groupType].map(name => (
 															<option key={name} value={name}>{name}</option>
 														))
-													) : (
-														<option value="" disabled>Tidak ada staff</option>
 													)}
 												</select>
 											</div>
