@@ -330,7 +330,7 @@ export function QueueHorizontalBar() {
 				selesai: data.selesai,
 				groups: Array.from(data.groups) as ("barista" | "kitchen")[],
 			}))
-			.sort((a, b) => b.total - a.total);
+			.sort((a, b) => b.selesai - a.selesai);
 	}, [orders, onDutyStaff, filteredStaffByGroup]);
 
 	// Handle update
@@ -395,13 +395,13 @@ export function QueueHorizontalBar() {
 					</div>
 					<div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-3 px-3">
 						{staffStats.map((staff) => {
-							const maxTotal = staffStats[0].total || 1;
-							const pct = Math.min(100, Math.round((staff.total / maxTotal) * 100));
+							const maxSelesai = staffStats[0].selesai || 1;
+							const pct = Math.min(100, Math.round((staff.selesai / maxSelesai) * 100));
 							return (
 							<div key={staff.name} className="w-28 shrink-0 snap-start rounded-lg border border-indigo-100 bg-white p-1.5 shadow-sm">
 									<div className="flex items-center justify-between mb-1">
 										<span className="text-[10px] font-black truncate">{staff.name}</span>
-										<span className="text-[9px] font-bold text-indigo-600">{staff.total} item</span>
+										<span className="text-[9px] font-bold text-indigo-600">{staff.selesai} selesai</span>
 									</div>
 									<div className="h-1 w-full bg-indigo-100 rounded-full overflow-hidden mb-1">
 										<div
