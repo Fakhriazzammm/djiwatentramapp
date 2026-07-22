@@ -2626,6 +2626,26 @@ export function useHybridCreateOrder() {
 					}
 				}
 
+				// Insert order_status records jika ada assignments
+				const assignments = args?.assignments as
+				| { groupType: "barista" | "kitchen"; assignedTo: string; items: { productName: string; quantity: number; assignedTo: string }[] }[]
+				| undefined;
+				if (assignments && assignments.length > 0) {
+					const now = new Date().toISOString();
+					const statusRows = assignments.map((a) => ({
+					order_no: orderNumber,
+					group_type: a.groupType,
+					status: "dibuat" as const,
+					dibuat_by: a.assignedTo,
+					dibuat_at: now,
+					items: JSON.stringify(a.items),
+					}));
+					const { error: statusError } = await pos.from("order_status").insert(statusRows);
+					if (statusError) {
+					console.error("[create-order] Failed to insert order_status:", statusError);
+					}
+				}
+
 				return orderId;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-create-order] fallback disabled", error);
@@ -6204,13 +6224,51 @@ export function useHybridWriteOrderStatus() {
 		group_type: "barista" | "kitchen";
 		status: "dibuat" | "selesai";
 		by: string;
+		itemName?: string; // untuk per-item selesai
 	}): Promise<{ success: boolean; error?: string }> => {
 		setIsLoading(true);
 		try {
 			const supabase = createClient();
 			const now = new Date().toISOString();
 
-			// Build update object
+			if (payload.status === "selesai" && payload.itemName) {
+				// Per-item: append productName ke array completed_items
+				const { data: current, error: fetchError } = await supabase
+					.from("pos_order_status")
+					.select("completed_items")
+					.eq("order_no", payload.order_no)
+					.eq("group_type", payload.group_type)
+					.single();
+
+				if (fetchError) {
+					return { success: false, error: fetchError.message };
+				}
+
+				const existing: string[] = Array.isArray(current?.completed_items)
+					? current.completed_items
+					: [];
+				if (existing.includes(payload.itemName)) {
+					return { success: true }; // already completed
+				}
+
+				const { error: updateError } = await supabase
+					.from("pos_order_status")
+					.update({
+						completed_items: [...existing, payload.itemName],
+						selesai_by: payload.by,
+						selesai_at: now,
+					})
+					.eq("order_no", payload.order_no)
+					.eq("group_type", payload.group_type);
+
+				if (updateError) {
+					return { success: false, error: updateError.message };
+				}
+
+				return { success: true };
+			}
+
+			// Group-level update (existing behavior)
 			const updates: Record<string, any> = { status: payload.status };
 			if (payload.status === "dibuat") {
 				updates.dibuat_by = payload.by;

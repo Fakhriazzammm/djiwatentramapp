@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Timer, User, ChevronDown, Pencil, AlertCircle, Lock, ShoppingBag } from "lucide-react";
+import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Timer, User, ChevronDown, Pencil, AlertCircle, Lock, ShoppingBag, Square, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -440,7 +440,7 @@ canEdit = true,
 }: {
 order: OrderStatusRecord;
 onDutyStaff: string[];
-onUpdate: (orderNo: string, groupType: "barista" | "kitchen", status: "dibuat" | "selesai", by: string) => void;
+onUpdate: (orderNo: string, groupType: "barista" | "kitchen", status: "dibuat" | "selesai", by: string, itemName?: string) => void;
 updating: boolean;
 onShowDetail?: (order: OrderStatusRecord) => void;
 canEdit?: boolean;
@@ -453,6 +453,16 @@ canEdit?: boolean;
 	// Untuk order BARU: staff picker untuk pilih nama sebelum klik Proses
 	const fromDb = order.dibuat_by && order.dibuat_by !== "Otomatis";
 	const [cardStaff, setCardStaff] = useState(onDutyStaff[0] || "Staff");
+
+	// Items dari order (JSON array items + completed_items)
+	const itemList = useMemo(() => {
+		if (!Array.isArray(order.items)) return [];
+		return order.items as { productName: string; quantity: number; assignedTo: string }[];
+	}, [order.items]);
+	const completedSet = useMemo(() => {
+		return new Set(order.completed_items || []);
+	}, [order.completed_items]);
+	const allItemsCompleted = itemList.length > 0 && itemList.every(it => completedSet.has(it.productName));
 
 	// Saat shift berganti, reset pilihan staff
 	useEffect(() => {
@@ -532,11 +542,48 @@ canEdit?: boolean;
 				)}
 			</div>
 
+
+			{/* ── Daftar Items (dengan per-item selesai) ── */}
+			{itemList.length > 0 && (
+			<div className="space-y-1 mb-2 border-t border-border/40 pt-2 mt-1">
+			{itemList.map((item, idx) => {
+				const done = completedSet.has(item.productName);
+				return (
+					<div key={idx} className="flex items-center gap-2 text-[11px]">
+						{!isSelesai && !done && (
+							<button
+								type="button"
+								onClick={(e) => {
+									e.stopPropagation();
+									const staff = cardStaff || order.dibuat_by || "Staff";
+									onUpdate(order.order_no, order.group_type, "selesai", staff, item.productName);
+								}}
+								className="shrink-0"
+							>
+								<Square className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-primary transition-colors" />
+							</button>
+						)}
+						{done && (
+							<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+						)}
+						<span className={cn(
+							"flex-1 truncate",
+							done && "line-through text-muted-foreground/60"
+						)}>
+							{item.productName}
+						</span>
+						<span className="text-muted-foreground shrink-0">x{item.quantity}</span>
+					</div>
+				);
+			})}
+			</div>
+			)}
+
 			{/* Time info — seperti di Telegram */}
 			<div className="flex items-center gap-3 text-[10px] text-muted-foreground border-t border-border/40 pt-2 mt-1">
-				<span className="flex items-center gap-1">
-					<span className="font-medium text-foreground/70">Dibuat</span>
-					{formatTimeAgo(order.created_at)}
+			<span className="flex items-center gap-1">
+			<span className="font-medium text-foreground/70">Dibuat</span>
+				{formatTimeAgo(order.created_at)}
 				</span>
 				{isSelesai && order.selesai_at && (
 					<span className="flex items-center gap-1">
@@ -647,13 +694,18 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 		groupType: "barista" | "kitchen",
 		status: "dibuat" | "selesai",
 		by: string,
+		itemName?: string,
 	) => {
-		const key = `${orderNo}-${groupType}-${status}`;
+		const key = `${orderNo}-${groupType}-${status}-${itemName || "all"}`;
 		setUpdatingOrders((prev) => new Set(prev).add(key));
 		try {
-			const result = await updateStatus({ order_no: orderNo, group_type: groupType, status, by });
+			const result = await updateStatus({ order_no: orderNo, group_type: groupType, status, by, itemName });
 			if (result.success) {
-				toast.success(`#${orderNo} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
+				if (itemName) {
+					toast.success(`✅ ${itemName} selesai oleh ${by}`);
+				} else {
+					toast.success(`#${orderNo} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
+				}
 			} else {
 				toast.error(result.error || "Gagal update status");
 			}

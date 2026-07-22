@@ -2319,6 +2319,8 @@ export type OrderStatusRecord = {
 	dibuat_at?: string | null;
 	selesai_at?: string | null;
 	created_at?: string;
+	items?: any[];
+	completed_items?: string[];
 };
 
 export type UpdateOrderStatusPayload = {
