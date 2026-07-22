@@ -499,6 +499,39 @@ async def _build_staff_lookup():
 
 _ROLE_ORDER = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"]
 
+# ── Role → Production Track mapping (synchronized with POS frontend) ──
+_ROLE_TRACK_MAP: dict[str, str] = {
+    "barista": "bar",
+    "bartender": "bar",
+    "bar": "bar",
+    "chef": "kitchen",
+    "koki": "kitchen",
+    "kitchen": "kitchen",
+    "cook": "kitchen",
+}
+
+def _get_staff_track(role_name: str | None) -> str:
+    """Map role name to production track: 'bar', 'kitchen', or 'both'."""
+    if not role_name:
+        return "both"
+    return _ROLE_TRACK_MAP.get(role_name.lower().strip(), "both")
+
+def _is_staff_for_group(staff_name: str, group_type: str) -> bool:
+    """Check if a staff member belongs to the given production group (barista/kitchen).
+    Uses _STAFF_ROLE_MAP to resolve role, then checks against _ROLE_TRACK_MAP.
+    Falls back to True (allow) when data is unavailable to avoid breaking existing flow."""
+    key = staff_name.lower().strip()
+    role = _STAFF_ROLE_MAP.get(key)
+    if not role:
+        # Staff not in map — uncertain, allow propagation (safe default)
+        return True
+    track = _get_staff_track(role)
+    if group_type == "barista":
+        return track in ("bar", "both")
+    elif group_type == "kitchen":
+        return track in ("kitchen", "both")
+    return True
+
 def _format_team_by_role(team_members: str, target_role: str | None = None) -> str:
     if not team_members or not team_members.strip():
         return ""
@@ -767,13 +800,19 @@ async def _do_dibuat(key: str, by: str = "Otomatis", tg_user_id: int | None = No
 
     # ── Propagate staff name to sibling groups ──
     if siblings and by and by != "Otomatis":
+        _, current_group = key.split("|")
         for sibling_key, sibling in list(_active_orders.items()):
             if sibling_key.startswith(f"{order_no}|") and sibling_key != key:
                 current_sibling_by = sibling.get("dibuat_by")
                 if not current_sibling_by or current_sibling_by == "Otomatis":
                     if sibling.get("status") in ("new", "dibuat"):
-                        logger.info("[%s] Propagating DIBUAT by %s to sibling %s", key, by, sibling_key)
-                        await _do_dibuat(sibling_key, by=by, tg_user_id=tg_user_id, siblings=False)
+                        # Only propagate if staff belongs to sibling group's role track
+                        sibling_group = sibling_key.split("|")[1]
+                        if _is_staff_for_group(by, sibling_group):
+                            logger.info("[%s] Propagating DIBUAT by %s to sibling %s", key, by, sibling_key)
+                            await _do_dibuat(sibling_key, by=by, tg_user_id=tg_user_id, siblings=False)
+                        else:
+                            logger.info("[%s] Skipping DIBUAT propagation of %s to %s (role mismatch)", key, by, sibling_key)
 
 async def _do_selesai(key: str, by: str = "Otomatis", tg_user_id: int | None = None, siblings: bool = True):
     order = _active_orders.get(key)
@@ -807,8 +846,13 @@ async def _do_selesai(key: str, by: str = "Otomatis", tg_user_id: int | None = N
                 current_sibling_by = sibling.get("selesai_by")
                 if not current_sibling_by or current_sibling_by == "Otomatis":
                     if sibling.get("status") == "selesai":
-                        logger.info("[%s] Propagating SELESAI by %s to sibling %s", key, by, sibling_key)
-                        await _do_selesai(sibling_key, by=by, tg_user_id=tg_user_id, siblings=False)
+                        # Only propagate if staff belongs to sibling group's role track
+                        sibling_group = sibling_key.split("|")[1]
+                        if _is_staff_for_group(by, sibling_group):
+                            logger.info("[%s] Propagating SELESAI by %s to sibling %s", key, by, sibling_key)
+                            await _do_selesai(sibling_key, by=by, tg_user_id=tg_user_id, siblings=False)
+                        else:
+                            logger.info("[%s] Skipping SELESAI propagation of %s to %s (role mismatch)", key, by, sibling_key)
 
 async def _auto_dibuat(key: str, delay: int):
     """Auto-dibuat with live countdown in message text."""
