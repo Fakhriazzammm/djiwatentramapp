@@ -690,14 +690,10 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ts = int(_now_wib().timestamp() * 1000)
                 sig = hmac.new(ATTENDANCE_HMAC_SECRET.encode(), f"{emp_id}:{ts}".encode(), hashlib.sha256).hexdigest()
                 mini_url = f"https://karyawan.yumme.id/absen-keluar-mini?uid={emp_id}&t={ts}&sig={sig}"
-                keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("📝 Isi Stock Opname", web_app=WebAppInfo(url=mini_url))]
-                ])
-                await update.message.reply_text(
-                    f"⚠️ *{emp_name}*, absen keluar via bot tidak bisa untuk role {rn}.\n\n"
-                    f"📌 Klik tombol di bawah untuk isi *Stock Opname* langsung di Telegram:",
-                    parse_mode="Markdown",
-                    reply_markup=keyboard)
+                # Auto-redirect ke Mini App (tanpa perlu klik tombol)
+                await update.message.reply_web_app_info(
+                    text=f"🔄 Membuka Stock Opname untuk role {rn}...",
+                    web_app=mini_url)
                 return
     except Exception:
         pass
