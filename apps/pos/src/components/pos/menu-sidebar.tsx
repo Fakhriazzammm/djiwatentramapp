@@ -2109,10 +2109,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 			const nowEpoch = nowWib.getTime();
 			const closeEpoch = closeWib.getTime();
-			const earlyCutoff = closeEpoch - 30 * 60 * 1000; // 30 menit sebelum closeTime
 			const graceDeadline = closeEpoch + 60 * 60 * 1000; // 1 jam setelah closeTime
 
-			if (nowEpoch < earlyCutoff) {
+			if (nowEpoch < closeEpoch) {
 				const closeFmt = `${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")}`;
 				toast.error(
 					`Shift ${shiftName} baru tutup jam ${closeFmt} WIB. ` +
