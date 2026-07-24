@@ -1096,6 +1096,9 @@ function DashboardTab({
 	// Minute-tick for shift close reminder
 	const [reminderTick, setReminderTick] = useState(() => new Date());
 	const [shiftCloseReminderShown, setShiftCloseReminderShown] = useState(false);
+	// ── Team attendance status ──
+	const [teamAttendance, setTeamAttendance] = useState<Record<string, "active" | "checked_out" | "no_show">>({});
+	const [teamAttendanceLoading, setTeamAttendanceLoading] = useState(false);
 	useEffect(() => {
 		const timer = setInterval(() => setReminderTick(new Date()), 60_000);
 		return () => clearInterval(timer);
@@ -1124,6 +1127,57 @@ function DashboardTab({
 		}
 		if (remaining > reminderMinutes) setShiftCloseReminderShown(false);
 	}, [reminderTick, isShiftOpen, siteSettings, shiftStatus, shiftCloseReminderShown]);
+
+	// ── Fetch team attendance status for open shift ──
+	useEffect(() => {
+		if (!isShiftOpen || !shiftStatus?.ongoingShift?.teamMembers || !allStaffUsers?.length) {
+			setTeamAttendance({});
+			return;
+		}
+		const fetchAttendance = async () => {
+			setTeamAttendanceLoading(true);
+			const supabase = createClient();
+			const memberNames = shiftStatus.ongoingShift.teamMembers
+				.split(",")
+				.map((n: string) => n.trim())
+				.filter(Boolean);
+			const memberIds: string[] = [];
+			const nameToId: Record<string, string> = {};
+			memberNames.forEach((name: string) => {
+				const user = allStaffUsers.find(
+					(u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase()
+				);
+				if (user?._id) {
+					memberIds.push(user._id);
+					nameToId[name] = user._id;
+				}
+			});
+			if (memberIds.length === 0) { setTeamAttendance({}); setTeamAttendanceLoading(false); return; }
+			const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+			const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+			const { data: logs } = await supabase
+				.from("pos_attendance_logs")
+				.select("userId, type, timestamp")
+				.in("userId", memberIds)
+				.gte("timestamp", todayStart.getTime())
+				.lte("timestamp", todayEnd.getTime())
+				.order("timestamp", { ascending: false });
+			const status: Record<string, "active" | "checked_out" | "no_show"> = {};
+			memberNames.forEach((name: string) => {
+				const uid = nameToId[name];
+				if (!uid) { status[name] = "no_show"; return; }
+				const userLogs = logs?.filter((l: any) => l.userId === uid) ?? [];
+				const hasCheckOut = userLogs.some((l: any) => l.type === "check_out");
+				const hasCheckIn = userLogs.some((l: any) => l.type === "check_in");
+				if (hasCheckOut) status[name] = "checked_out";
+				else if (hasCheckIn) status[name] = "active";
+				else status[name] = "no_show";
+			});
+			setTeamAttendance(status);
+			setTeamAttendanceLoading(false);
+		};
+		fetchAttendance();
+	}, [isShiftOpen, shiftStatus?.ongoingShift?.teamMembers, allStaffUsers]);
 
 	// Shared daily report text (used by card display, Salin, and Kirim ke Telegram)
 	// Ringkasan Hari Ini — dihapus, fitur pindah ke halaman /laporan
@@ -1168,6 +1222,60 @@ function DashboardTab({
 							{isShiftOpen ? "Kelola Shift" : "Buka Shift"}
 						</Button>
 					</div>
+					{isShiftOpen && shiftStatus?.ongoingShift?.teamMembers && (
+						<div className="border-t border-border/50 px-3 py-2 space-y-1.5">
+							<div className="flex items-center justify-between">
+								<p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">📋 Tim Shift</p>
+								{teamAttendanceLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+							</div>
+							{!teamAttendanceLoading && Object.keys(teamAttendance).length > 0 && (
+								(() => {
+									const grouped = new Map<string, string[]>();
+									const activeCount: string[] = [];
+									Object.keys(teamAttendance).forEach((name) => {
+										const user = allStaffUsers?.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
+										const role = user?.roleName?.trim() || "Lainnya";
+										if (!grouped.has(role)) grouped.set(role, []);
+										grouped.get(role)!.push(name);
+										if (teamAttendance[name] === "active") activeCount.push(name);
+									});
+									const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+									const sortedRoles = [...grouped.keys()].sort((a, b) => {
+										const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
+										const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
+										return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+									});
+									return (
+										<div className="space-y-1">
+											{sortedRoles.map((role) => (
+												<div key={role}>
+													<p className="text-[8px] font-bold text-muted-foreground/50 uppercase tracking-wider mt-1 first:mt-0">{role}</p>
+													{grouped.get(role)!.map((name) => {
+														const s = teamAttendance[name];
+														const dot = s === "active" ? "🟢" : s === "checked_out" ? "🔴" : "⚪";
+														const label = s === "active" ? "Aktif" : s === "checked_out" ? "Absen Keluar" : "Belum Absen";
+														const bg = s === "active" ? "bg-emerald-50 text-emerald-700" : s === "checked_out" ? "bg-rose-50 text-rose-600" : "bg-muted text-muted-foreground";
+														return (
+															<div key={name} className="flex items-center justify-between py-0.5">
+																<span className="text-[10px] font-medium">{dot} {name}</span>
+																<span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${bg}`}>{label}</span>
+															</div>
+														);
+													})}
+												</div>
+											))}
+											{activeCount.length > 0 && (
+												<div className="mt-1.5 pt-1.5 border-t border-border/30 flex items-center gap-1">
+													<span className="text-[9px] font-bold text-amber-600">⚠️</span>
+													<span className="text-[9px] font-bold text-amber-700">{activeCount.length} orang masih aktif</span>
+												</div>
+											)}
+										</div>
+									);
+								})()
+							)}
+						</div>
+					)}
 					</Card>
 					</div>
 
