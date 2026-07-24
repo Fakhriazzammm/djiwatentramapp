@@ -4507,8 +4507,7 @@ export function useHybridEndShift() {
 						const nowWib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
 						const closeWib = new Date(nowWib);
 						closeWib.setHours(closeHour, closeMin, 0, 0);
-						const earlyCutoff = closeWib.getTime() - 30 * 60 * 1000;
-						if (nowWib.getTime() < earlyCutoff) {
+						if (nowWib.getTime() < closeWib.getTime()) {
 							throw new Error(
 								`Shift ${shiftName} baru tutup jam ${matchingSchedule.closeTime} WIB. ` +
 								`Belum bisa ditutup sekarang.`
