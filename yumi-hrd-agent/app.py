@@ -4,6 +4,8 @@ import asyncio
 import uuid
 import io
 from datetime import datetime, timezone, timedelta
+import hmac
+import hashlib
 
 import httpx
 from dotenv import load_dotenv
@@ -18,6 +20,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 # Group where attendance notifications are broadcast (overrides yumi-ai-bot behavior)
 REPORT_CHAT_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
+ATTENDANCE_HMAC_SECRET = os.getenv("ATTENDANCE_HMAC_SECRET", "")
 
 WIB = timezone(timedelta(hours=7))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -137,28 +140,27 @@ async def _has_today_attendance(employee_user_id: str, att_type: str) -> tuple[b
 async def _insert_attendance(employee_user_id: str, att_type: str, notes: str = "",
                               shift_name: str = "", shift_open_time: str = "") -> bool:
     now = int(_now_wib().timestamp() * 1000)
-    doc_id = f"att_tele_{uuid.uuid4().hex[:20]}"
-    doc = {
+    payload = {
         "userId": employee_user_id,
         "type": att_type,
-        "timestamp": now,
         "source": "telegram_hrd",
         "notes": notes,
     }
     if shift_name:
-        doc["shiftName"] = shift_name
-    if shift_open_time:
-        doc["shiftOpenTimeSnapshot"] = shift_open_time
+        payload["shiftName"] = shift_name
     try:
-        await _post_legacy_mirror({
-            "table_name": "attendance",
-            "document_id": doc_id,
-            "creation_time": now,
-            "document": doc,
-        })
+        url = f"{SUPABASE_URL}/functions/v1/record-attendance"
+        headers = {
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, json=payload, headers=headers, timeout=15)
+            r.raise_for_status()
         return True
     except Exception as e:
-        logger.error("insert_attendance failed: %s", e)
+        logger.error("_insert_attendance via edge function failed: %s", e)
         return False
 
 
@@ -400,7 +402,7 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 def _main_keyboard(is_registered: bool = True) -> ReplyKeyboardMarkup:
     if is_registered:
         return ReplyKeyboardMarkup(
-            [["✅ Absen Masuk", "📤 Absen Keluar"], ["📋 Status Saya", "📊 Rekap Bulanan"]],
+            [["✅ Absen Masuk", "📤 Absen Keluar"], ["📋 Status Saya", "📊 Rekap Bulanan"], ["📅 Jadwal Saya"]],
             resize_keyboard=True,
         )
     return ReplyKeyboardMarkup(
@@ -686,7 +688,8 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if "bar" in role or "kitchen" in role:
                 # Telegram Mini App for stock opname
                 ts = int(_now_wib().timestamp() * 1000)
-                mini_url = f"https://karyawan.yumme.id/absen-keluar-mini?uid={emp_id}&t={ts}"
+                sig = hmac.new(ATTENDANCE_HMAC_SECRET.encode(), f"{emp_id}:{ts}".encode(), hashlib.sha256).hexdigest()
+                mini_url = f"https://karyawan.yumme.id/absen-keluar-mini?uid={emp_id}&t={ts}&sig={sig}"
                 keyboard = InlineKeyboardMarkup([
                     [InlineKeyboardButton("📝 Isi Stock Opname", web_app=WebAppInfo(url=mini_url))]
                 ])
@@ -1426,6 +1429,108 @@ async def _shift_end_reminder_loop(app: Application):
         await asyncio.sleep(60)
 
 
+# ── Jadwal Saya ──
+
+async def cmd_jadwal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    emp = await _require_employee(update)
+    if not emp:
+        return
+    emp_id = emp["employee_user_id"]
+    emp_name = emp["employee_name"]
+
+    # Fetch user role
+    staff_rows = await _fetch("pos_staff_users",
+        f"select=\\\"roleName\\\"&_id=eq.{emp_id}&limit=1")
+    role = staff_rows[0].get("roleName", "") if staff_rows else ""
+    role_line = f" ({role})" if role else ""
+
+    # Determine current month
+    now = _now_wib()
+    year, month = now.year, now.month
+    month_str = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                 "Juli", "Agustus", "September", "Oktober", "November", "Desember"][month - 1]
+    start_date = f"{year}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year + 1}-01-01"
+    else:
+        end_date = f"{year}-{month + 1:02d}-01"
+
+    rows = await _fetch("pos_attendance_schedules",
+        f"select=date,shiftName,startTime,endTime,status"
+        f"&userId=eq.{emp_id}"
+        f"&date=gte.{start_date}"
+        f"&date=lt.{end_date}"
+        f"&order=date.asc")
+
+    if not rows:
+        await update.message.reply_text(
+            f"📅 *Jadwal — {month_str} {year}*\n\n"
+            f"👤 *{emp_name}*{role_line}\n\n"
+            f"Tidak ada jadwal untuk bulan ini.",
+            parse_mode="Markdown", reply_markup=_main_keyboard())
+        return
+
+    # Header
+    lines = [
+        f"📅 *Jadwal — {month_str} {year}*",
+        f"👤 *{emp_name}*{role_line}",
+        "────────────────────",
+    ]
+
+    # Today's index for highlighting
+    today_str = now.strftime("%Y-%m-%d")
+    today_day = now.day
+
+    # Show today + upcoming (up to 14 days ahead)
+    upcoming = [r for r in rows if r["date"] >= today_str][:14]
+
+    if upcoming:
+        today_marker = False
+        for r in upcoming:
+            dt = r["date"]
+            shift = r["shiftName"]
+            start = r.get("startTime") or "-"
+            end = r.get("endTime") or "-"
+            status = r["status"]
+
+            # Determine icon
+            if dt == today_str:
+                marker = "🟡 *HARI INI* — "
+                today_marker = True
+            else:
+                marker = ""
+
+            # Format shift name
+            day_name = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][
+                datetime.strptime(dt, "%Y-%m-%d").weekday()]
+
+            if status == "off":
+                icon = "⚪"
+                shift_display = "OFF"
+            else:
+                icon = "🟢"
+                shift_display = f"{shift} {start}-{end}" if start != "-" else shift
+
+            lines.append(f"{marker}{icon} {day_name} {dt[-2:]} — {shift_display}")
+
+        if not today_marker:
+            lines.append("")
+            lines.append("💡 Tidak ada jadwal untuk hari ini.")
+    else:
+        lines.append("")
+        lines.append("📭 Tidak ada jadwal tersisa untuk bulan ini.")
+
+    # Summary
+    total_kerja = sum(1 for r in rows if r["status"] != "off" and r["date"] <= today_str)
+    lines.extend([
+        "",
+        f"📊 *Ringkasan:* {total_kerja} shift kerja bulan ini",
+    ])
+
+    await update.message.reply_text(
+        "\n".join(lines), parse_mode="Markdown", reply_markup=_main_keyboard())
+
+
 # ── Text Message Handlers (buttons) ──
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1548,6 +1653,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await cmd_status(update, context)
     elif "Rekap Bulanan" in text or "Log" in text or "rekap" in text.lower():
         await cmd_mylog(update, context)
+    elif "Jadwal" in text:
+        await cmd_jadwal(update, context)
     else:
         # Check if not registered → show registration prompt
         emp = await _find_employee_by_telegram(tg_id)

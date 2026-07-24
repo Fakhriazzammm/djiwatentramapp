@@ -8,12 +8,17 @@ import {
   Loader2, Sparkles, AlertTriangle, X
 } from "lucide-react";
 import {
-  submitOpnamePerPerson,
-  checkIsLastPerson,
-  applyFinalOpname,
-  recordCheckOut,
+  submitClosingViaEdge,
   type OpnameItem,
 } from "../hooks/use-closing-submit";
+
+// ─── Search Schema ────────────────────────────
+
+const searchSchema = z.object({
+  uid: z.string().optional(),
+  t: z.string().optional(),
+  sig: z.string().optional(),
+});
 
 // ─── Telegram WebApp Type ─────────────────
 
@@ -104,6 +109,7 @@ const AREAS_KEBERSIHAN: KebersihanArea[] = [
 
 export const Route = createLazyFileRoute("/absen-keluar-mini")({
   component: MiniClosingPage,
+  validateSearch: searchSchema,
 });
 
 // ═══════════════════════════════════════════
@@ -111,12 +117,15 @@ export const Route = createLazyFileRoute("/absen-keluar-mini")({
 // ═══════════════════════════════════════════
 
 function MiniClosingPage() {
-  const search = useSearch({ from: "/absen-keluar-mini" }) as any;
+  const search = useSearch({ from: "/absen-keluar-mini" });
   const navigate = useNavigate();
 
   const [staff, setStaff] = useState<StaffInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingStaff, setLoadingStaff] = useState(true);
+  const [verified, setVerified] = useState<boolean>(false);
+  const [verifying, setVerifying] = useState<boolean>(true);
+  const [shiftName, setShiftName] = useState<string>("Shift");
 
   // ── Telegram init ──
   useEffect(() => {
@@ -129,70 +138,48 @@ function MiniClosingPage() {
     }
   }, []);
 
-  // ── Auth via uid + t ──
+  // ── Verify link via Edge Function ──
   const uid = (search as any)?.uid || "";
-  const t = parseInt((search as any)?.t || "0", 10);
+  const t = (search as any)?.t || "";
+  const sig = (search as any)?.sig || "";
 
   useEffect(() => {
-    if (!uid) {
-      setLoadError("❌ Tautan tidak valid (tidak ada user ID).");
+    if (!uid || !t || !sig) {
+      setLoadError("❌ Tautan tidak valid (parameter tidak lengkap).");
       setLoadingStaff(false);
+      setVerifying(false);
       return;
     }
-    // Validate timestamp (max 5 minutes)
-    const now = Date.now();
-    if (t && now - t > 5 * 60 * 1000) {
-      setLoadError("⏰ Tautan sudah kedaluwarsa. Silakan klik tombol dari bot lagi.");
-      setLoadingStaff(false);
-      return;
-    }
-    fetchStaff(uid);
-  }, [uid, t]);
 
-  async function fetchStaff(userId: string) {
-    try {
-      const supabase = createClient();
-      const { data: user, error } = await supabase
-        .from("yumi_users")
-        .select("source_id, name, slug, raw")
-        .eq("source_id", userId)
-        .maybeSingle();
+    (async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const res = await fetch(`${supabaseUrl}/functions/v1/verify-closing-link`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid, t: parseInt(t, 10), sig }),
+        });
+        const data = await res.json();
 
-      if (error) throw error;
-      if (!user) {
-        setLoadError("❌ Karyawan tidak ditemukan.");
+        if (!data.valid) {
+          setLoadError(data.error || "❌ Tautan tidak valid.");
+          setVerifying(false);
+          setLoadingStaff(false);
+          return;
+        }
+
+        setStaff(data.staff);
+        setShiftName(data.shiftName || "Shift");
+        setVerified(true);
+        setVerifying(false);
         setLoadingStaff(false);
-        return;
+      } catch (err: any) {
+        setLoadError(err?.message || "Gagal memverifikasi tautan.");
+        setVerifying(false);
+        setLoadingStaff(false);
       }
-
-      // Get role name from raw or separate query
-      let roleName = "";
-      const raw = user.raw as any;
-      if (raw?.roleName) {
-        roleName = raw.roleName;
-      } else {
-        // Try role_source_id
-        const { data: role } = await supabase
-          .schema("public")
-          .from("yumi_roles")
-          .select("name")
-          .eq("source_id", user.raw?.role_source_id || "")
-          .maybeSingle();
-        if (role) roleName = role.name;
-      }
-
-      setStaff({
-        sourceId: user.source_id,
-        name: user.name,
-        roleName,
-        username: user.slug || user.source_id.slice(0, 8),
-      });
-      setLoadingStaff(false);
-    } catch (err: any) {
-      setLoadError(err?.message || "Gagal memuat data.");
-      setLoadingStaff(false);
-    }
-  }
+    })();
+  }, [uid, t, sig]);
 
   if (loadingStaff) {
     return (
@@ -224,7 +211,7 @@ function MiniClosingPage() {
     return null;
   })();
 
-  return <ClosingForm staff={staff!} role={role} shiftName="Shift" />;
+  return <ClosingForm staff={staff!} role={role} shiftName={shiftName} />;
 }
 
 // ═══════════════════════════════════════════
@@ -285,46 +272,19 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
         (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
       );
 
-      // 1. Save opname per-person
-      if (role && opnameItems.length > 0) {
-        await submitOpnamePerPerson(markedChanged.length > 0 ? markedChanged : opnameItems, {
-          userId,
-          staffName: userName,
-          role,
-          shiftSourceId: "",
-          shiftName,
-          notes: `Opname by ${userName} (${role}) via Telegram Mini App — ${markedChanged.length} item berubah`,
-        });
-      }
-
-      // 2. Check last person
-      let isLastPerson = false;
-      if (role) {
-        try {
-          const result = await checkIsLastPerson(userId, shiftName, roleName);
-          isLastPerson = result.isLast;
-        } catch {
-          isLastPerson = true;
-        }
-      }
-
-      // 3. Apply final opname if last
-      if (role && isLastPerson && markedChanged.length > 0) {
-        await applyFinalOpname(markedChanged, userName, userId);
-      }
-
-      // 4. Record check-out
-      await recordCheckOut({
+      const result = await submitClosingViaEdge({
         userId,
         userName,
         roleName,
         shiftName,
-        notes: `Absen keluar via Telegram Mini App (${role} — ${isLastPerson ? "final" : "per-person"})`,
+        role,
+        items: markedChanged.length > 0 ? markedChanged : opnameItems,
+        source: "telegram_mini_app",
       });
 
       setSubmitDone(true);
 
-      // 5. Close Mini App after 1.5s delay
+      // Close Mini App after 1.5s delay
       const tg = window.Telegram?.WebApp;
       if (tg) {
         tg.MainButton.setText("✅ Selesai! Tutup...");

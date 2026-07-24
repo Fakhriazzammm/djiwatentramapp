@@ -25,6 +25,14 @@ export interface ClosingArgs {
   notes: string;
 }
 
+export interface ClosingEdgeResponse {
+  success: boolean;
+  isLastPerson: boolean;
+  staffName: string;
+  shiftName: string;
+  error?: { code: string; message: string };
+}
+
 // ─── Ingredient sets ────────────────────────────────────────
 
 const BAR_INGREDIENTS = new Set([
@@ -391,4 +399,40 @@ export async function submitClosing(args: ClosingArgs): Promise<void> {
     .eq("source_id", args.shiftSourceId);
 
   if (updateError) throw updateError;
+}
+
+// ────────────────────────────────────────────────────────────
+//  7. Process closing via Edge Function (single call)
+//     Combines: stock opname log + last-person check +
+//     final opname + check-out in one server-side call
+// ────────────────────────────────────────────────────────────
+
+export async function submitClosingViaEdge(params: {
+  userId: string;
+  userName: string;
+  roleName: string;
+  shiftName: string;
+  role: "bar" | "kitchen" | null;
+  items: OpnameItem[];
+  source?: string;
+}): Promise<ClosingEdgeResponse> {
+  const supabaseUrl = "https://supabase.yumme.id";
+  const response = await fetch(`${supabaseUrl}/functions/v1/process-closing`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: params.userId,
+      userName: params.userName,
+      roleName: params.roleName,
+      shiftName: params.shiftName,
+      role: params.role,
+      items: params.items,
+      source: params.source || "karyawan_web",
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.success) {
+    throw new Error(result.error?.message || "Gagal memproses closing");
+  }
+  return result as ClosingEdgeResponse;
 }

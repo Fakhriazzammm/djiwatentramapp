@@ -9,11 +9,9 @@ import {
   Loader2, Sparkles, AlertTriangle, ArrowLeft, X, Image
 } from "lucide-react";
 import {
-  submitOpnamePerPerson,
-  checkIsLastPerson,
-  applyFinalOpname,
-  recordCheckOut,
+  submitClosingViaEdge,
   type OpnameItem,
+  type ClosingEdgeResponse,
 } from "../../hooks/use-closing-submit";
 
 // ─── Types ───
@@ -251,50 +249,21 @@ function ClosingPage() {
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      // 1. Get opname items (always, even if unchanged)
+      // 1. Get opname items
       const opnameItems = opnameRef.current?.getItems() ?? [];
       const markedChanged = opnameItems.filter(
         (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
       );
 
-      // 2. Save opname per-person to stock_opname_logs (NO inventory update yet)
-      if (role && opnameItems.length > 0) {
-        await submitOpnamePerPerson(markedChanged.length > 0 ? markedChanged : opnameItems, {
-          userId,
-          staffName: userName,
-          role,
-          shiftSourceId: "",
-          shiftName,
-          notes: `Opname by ${userName} (${role}) — ${markedChanged.length} item berubah`,
-        });
-      }
-
-      // 3. Check if this person is the LAST for this shift+role today
-      let isLastPerson = false;
-      if (role) {
-        try {
-          const result = await checkIsLastPerson(userId, shiftName, roleName);
-          isLastPerson = result.isLast;
-        } catch {
-          // If check fails, assume last person (safe default — inventory gets updated)
-          isLastPerson = true;
-        }
-      }
-
-      // 4. If last person → apply FINAL opname to inventory
-      if (role && isLastPerson && markedChanged.length > 0) {
-        await applyFinalOpname(markedChanged, userName, userId);
-      }
-
-      // 5. Record check-out in pos_attendance_logs
-      await recordCheckOut({
+      // 2. Submit ALL via Edge Function (atomic — handles lock, opname, last-person check, inventory update, check-out)
+      const result = await submitClosingViaEdge({
         userId,
         userName,
         roleName,
         shiftName,
-        notes: role
-          ? `Absen keluar via karyawan web (${role} — opname ${isLastPerson ? "final" : "per-person"})`
-          : "Absen keluar via karyawan web (tanpa opname)",
+        role,
+        items: markedChanged.length > 0 ? markedChanged : opnameItems,
+        source: "karyawan_web",
       });
 
       setSubmitDone(true);
