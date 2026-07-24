@@ -84,6 +84,50 @@ Deno.serve(async (req: Request) => {
       (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01,
     );
 
+    // ── Close-time validation ──────────────────────────────────
+    if (shiftName) {
+      try {
+        const { data: settings } = await supabase
+          .schema("pos")
+          .from("site_settings")
+          .select("raw")
+          .limit(1)
+          .single();
+
+        const schedules =
+          ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
+            ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
+
+        let closeTime = "";
+        for (const s of schedules) {
+          const name = String(s.name ?? s.shiftName ?? s.shift_name ?? "");
+          if (name === shiftName) {
+            closeTime = String(s.closeTime ?? s.close_time ?? "");
+            break;
+          }
+        }
+
+        if (closeTime) {
+          const [ch, cm] = closeTime.split(":").map(Number);
+          if (!isNaN(ch) && !isNaN(cm)) {
+            const closeMin = ch * 60 + cm;
+            const currentMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+            if (currentMin < closeMin) {
+              const closeHour = String(ch).padStart(2, "0");
+              const closeMinStr = String(cm).padStart(2, "0");
+              return fail(
+                "BEFORE_CLOSE_TIME",
+                `Closing belum bisa. Shift ${shiftName} tutup pukul ${closeHour}.${closeMinStr} WIB. Silakan tunggu sampai jam tutup.`,
+              );
+            }
+          }
+        }
+      } catch {
+        // If validation fails (e.g. no schedules configured), allow
+      }
+    }
+
     // ── Step 1: Acquire distributed lock ──────────────────────
     // Uses closing_locks PK unique constraint as a lock.
     // Only one closing per (shiftName, role) can proceed at a time.

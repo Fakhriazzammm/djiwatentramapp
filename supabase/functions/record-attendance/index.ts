@@ -129,6 +129,7 @@ Deno.serve(async (req: Request) => {
     if (type === "check_in" && !finalShiftName) {
       try {
         const { data: settings } = await supabase
+          .schema("pos")
           .from("site_settings")
           .select("raw")
           .limit(1)
@@ -169,6 +170,95 @@ Deno.serve(async (req: Request) => {
         }
       } catch {
         // ignore
+      }
+    }
+
+    // ── Close-time validation for check_out ─────────────────
+    if (type === "check_out") {
+      try {
+        // Auto-detect shift for check_out too if not provided
+        if (!finalShiftName) {
+          const { data: settings } = await supabase
+            .schema("pos")
+            .from("site_settings")
+            .select("raw")
+            .limit(1)
+            .single();
+
+          const schedules =
+            ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
+              ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
+
+          const currentMin = new Date().getHours() * 60 + new Date().getMinutes();
+          const matches: Array<{ name: string; openMin: number; closeMin: number }> = [];
+
+          for (const s of schedules) {
+            const ot = String(s.openTime ?? s.open_time ?? "");
+            const ct = String(s.closeTime ?? s.close_time ?? "");
+            const name = String(s.name ?? s.shiftName ?? s.shift_name ?? "");
+            if (!ot || !ct || !name) continue;
+
+            const [oh, om] = ot.split(":").map(Number);
+            const [ch, cm] = ct.split(":").map(Number);
+            if (isNaN(oh) || isNaN(om) || isNaN(ch) || isNaN(cm)) continue;
+
+            const openMin = oh * 60 + om;
+            const closeMin = ch * 60 + cm;
+
+            if (openMin <= closeMin) {
+              if (currentMin >= (openMin - 60) && currentMin <= closeMin) matches.push({ name, openMin, closeMin });
+            } else {
+              if (currentMin >= openMin || currentMin <= closeMin) matches.push({ name, openMin, closeMin });
+            }
+          }
+
+          if (matches.length > 0) {
+            matches.sort((a, b) => b.openMin - a.openMin);
+            finalShiftName = matches[0].name;
+          }
+        }
+
+        // Now validate closeTime
+        if (finalShiftName) {
+          const { data: settings } = await supabase
+            .schema("pos")
+            .from("site_settings")
+            .select("raw")
+            .limit(1)
+            .single();
+
+          const schedules =
+            ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
+              ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
+
+          let closeTime = "";
+          for (const s of schedules) {
+            const name = String(s.name ?? s.shiftName ?? s.shift_name ?? "");
+            if (name === finalShiftName) {
+              closeTime = String(s.closeTime ?? s.close_time ?? "");
+              break;
+            }
+          }
+
+          if (closeTime) {
+            const [ch, cm] = closeTime.split(":").map(Number);
+            if (!isNaN(ch) && !isNaN(cm)) {
+              const closeMin = ch * 60 + cm;
+              const currentMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+              if (currentMin < closeMin) {
+                const closeHour = String(ch).padStart(2, "0");
+                const closeMinStr = String(cm).padStart(2, "0");
+                return fail(
+                  "BEFORE_CLOSE_TIME",
+                  `Absen keluar belum bisa. Shift ${finalShiftName} tutup pukul ${closeHour}.${closeMinStr} WIB. Silakan tunggu sampai jam tutup.`,
+                );
+              }
+            }
+          }
+        }
+      } catch {
+        // If validation fails (e.g. no schedules configured), allow
       }
     }
 
