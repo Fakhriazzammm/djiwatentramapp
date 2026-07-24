@@ -578,19 +578,26 @@ async def _lazy_fetch_product_category(pid: str) -> str:
         if cat_id in _FOOD_CATEGORY_IDS:
             _FOOD_PRODUCT_IDS.add(pid)
             return "food"
-        # Fallback: fetch category name directly (works even if lookups never built)
+        # Fallback: traverse parent chain to find "Makanan" or "Minuman"
+        # (works even if lookups never built at startup)
         try:
-            cat_rows = await _fetch("pos_categories", f"select=name&_id=eq.{cat_id}&limit=1")
-            if cat_rows:
+            visited = set()
+            current_id = cat_id
+            while current_id and current_id not in visited:
+                visited.add(current_id)
+                cat_rows = await _fetch("pos_categories", f"select=name,parentId&_id=eq.{current_id}&limit=1")
+                if not cat_rows:
+                    break
                 cat_name = (cat_rows[0].get("name") or "").strip().lower()
                 if cat_name == "minuman":
-                    _BEVERAGE_CATEGORY_IDS.add(cat_id)
+                    _BEVERAGE_CATEGORY_IDS.add(current_id)
                     _BEVERAGE_PRODUCT_IDS.add(pid)
                     return "beverage"
                 elif cat_name == "makanan":
-                    _FOOD_CATEGORY_IDS.add(cat_id)
+                    _FOOD_CATEGORY_IDS.add(current_id)
                     _FOOD_PRODUCT_IDS.add(pid)
                     return "food"
+                current_id = cat_rows[0].get("parentId")
         except Exception:
             pass
         return "other"
