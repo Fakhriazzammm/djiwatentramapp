@@ -1179,6 +1179,28 @@ function DashboardTab({
 		fetchAttendance();
 	}, [isShiftOpen, shiftStatus?.ongoingShift?.teamMembers, allStaffUsers]);
 
+	// ── Compute team status display data ──
+	const teamStatusDisplay = useMemo(() => {
+		const keys = Object.keys(teamAttendance);
+		if (!keys.length) return null;
+		const grouped = new Map<string, string[]>();
+		const activeNames: string[] = [];
+		keys.forEach((name) => {
+			const user = allStaffUsers?.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
+			const role = user?.roleName?.trim() || "Lainnya";
+			if (!grouped.has(role)) grouped.set(role, []);
+			grouped.get(role)!.push(name);
+			if (teamAttendance[name] === "active") activeNames.push(name);
+		});
+		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+		const sortedRoles = [...grouped.keys()].sort((a, b) => {
+			const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
+			const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
+			return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+		});
+		return { grouped, sortedRoles, activeCount: activeNames.length };
+	}, [teamAttendance, allStaffUsers]);
+
 	// Shared daily report text (used by card display, Salin, and Kirim ke Telegram)
 	// Ringkasan Hari Ini — dihapus, fitur pindah ke halaman /laporan
 
@@ -1228,51 +1250,32 @@ function DashboardTab({
 								<p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">📋 Tim Shift</p>
 								{teamAttendanceLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
 							</div>
-							{!teamAttendanceLoading && Object.keys(teamAttendance).length > 0 && (
-								(() => {
-									const grouped = new Map<string, string[]>();
-									const activeCount: string[] = [];
-									Object.keys(teamAttendance).forEach((name) => {
-										const user = allStaffUsers?.find((u: any) => u.name?.trim()?.toLowerCase() === name.toLowerCase());
-										const role = user?.roleName?.trim() || "Lainnya";
-										if (!grouped.has(role)) grouped.set(role, []);
-										grouped.get(role)!.push(name);
-										if (teamAttendance[name] === "active") activeCount.push(name);
-									});
-									const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
-									const sortedRoles = [...grouped.keys()].sort((a, b) => {
-										const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
-										const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
-										return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-									});
-									return (
-										<div className="space-y-1">
-											{sortedRoles.map((role) => (
-												<div key={role}>
-													<p className="text-[8px] font-bold text-muted-foreground/50 uppercase tracking-wider mt-1 first:mt-0">{role}</p>
-													{grouped.get(role)!.map((name) => {
-														const s = teamAttendance[name];
-														const dot = s === "active" ? "🟢" : s === "checked_out" ? "🔴" : "⚪";
-														const label = s === "active" ? "Aktif" : s === "checked_out" ? "Absen Keluar" : "Belum Absen";
-														const bg = s === "active" ? "bg-emerald-50 text-emerald-700" : s === "checked_out" ? "bg-rose-50 text-rose-600" : "bg-muted text-muted-foreground";
-														return (
-															<div key={name} className="flex items-center justify-between py-0.5">
-																<span className="text-[10px] font-medium">{dot} {name}</span>
-																<span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${bg}`}>{label}</span>
-															</div>
-														);
-													})}
-												</div>
-											))}
-											{activeCount.length > 0 && (
-												<div className="mt-1.5 pt-1.5 border-t border-border/30 flex items-center gap-1">
-													<span className="text-[9px] font-bold text-amber-600">⚠️</span>
-													<span className="text-[9px] font-bold text-amber-700">{activeCount.length} orang masih aktif</span>
-												</div>
-											)}
+							{!teamAttendanceLoading && teamStatusDisplay && (
+								<div className="space-y-1">
+									{teamStatusDisplay.sortedRoles.map((role) => (
+										<div key={role}>
+											<p className="text-[8px] font-bold text-muted-foreground/50 uppercase tracking-wider mt-1 first:mt-0">{role}</p>
+											{teamStatusDisplay.grouped.get(role)!.map((name) => {
+												const s = teamAttendance[name];
+												const dot = s === "active" ? "🟢" : s === "checked_out" ? "🔴" : "⚪";
+												const label = s === "active" ? "Aktif" : s === "checked_out" ? "Absen Keluar" : "Belum Absen";
+												const bg = s === "active" ? "bg-emerald-50 text-emerald-700" : s === "checked_out" ? "bg-rose-50 text-rose-600" : "bg-muted text-muted-foreground";
+												return (
+													<div key={name} className="flex items-center justify-between py-0.5">
+														<span className="text-[10px] font-medium">{dot} {name}</span>
+														<span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${bg}`}>{label}</span>
+													</div>
+												);
+											})}
 										</div>
-									);
-								})()
+									))}
+									{teamStatusDisplay.activeCount > 0 && (
+										<div className="mt-1.5 pt-1.5 border-t border-border/30 flex items-center gap-1">
+											<span className="text-[9px] font-bold text-amber-600">⚠️</span>
+											<span className="text-[9px] font-bold text-amber-700">{teamStatusDisplay.activeCount} orang masih aktif</span>
+										</div>
+									)}
+								</div>
 							)}
 						</div>
 					)}
