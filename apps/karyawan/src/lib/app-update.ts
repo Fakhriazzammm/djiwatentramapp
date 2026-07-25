@@ -51,6 +51,21 @@ export async function checkForAppUpdate() {
 	// SessionStorage survive refresh jadi flag ini mencegah dialog
 	// muncul kembali saat bundle baru belum ter-download.
 	const INFLIGHT_KEY = "__app_update_inflight__";
+	const APPLIED_VERSION_KEY = "__app_update_applied_version__";
+
+	// Skip jika versi di version.json sudah pernah diapply sebelumnya
+	// Ini mencegah loop: user klik update → reload → bundle lama masih terload
+	// → polling deteksi version.json masih beda → popup lagi ♾️
+	const storedAppliedVersion = localStorage.getItem(APPLIED_VERSION_KEY);
+	if (storedAppliedVersion) {
+		const latestVersion = normalizeVersionValue(payload?.version);
+		if (latestVersion && latestVersion === storedAppliedVersion) {
+			return null;
+		}
+		// Applied version sudah obsolete, hapus
+		localStorage.removeItem(APPLIED_VERSION_KEY);
+	}
+
 	if (sessionStorage.getItem(INFLIGHT_KEY) === "1") {
 		sessionStorage.removeItem(INFLIGHT_KEY);
 		return null;
@@ -124,6 +139,12 @@ export async function applyAppUpdate() {
 	// Tandai bahwa update sedang diproses — polling skip dialog
 	// sampai reload berikutnya selesai.
 	sessionStorage.setItem("__app_update_inflight__", "1");
+
+	// Simpan versi yang sedang diapply — polling skip version.json yg sama
+	// setelah reload. Ini mencegah loop popup terus-terusan.
+	if (latestUpdateInfo?.latestVersion) {
+		localStorage.setItem("__app_update_applied_version__", latestUpdateInfo.latestVersion);
+	}
 
 	try {
 		// 1. Activate waiting SW (jika ada) — biar SW baru bisa ambil alih

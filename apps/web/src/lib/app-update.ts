@@ -54,6 +54,11 @@ export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 export async function checkForAppUpdate() {
 	if (typeof window === "undefined" || APP_VERSION.isDev) return null;
 
+	// Skip jika versi di version.json sudah pernah diapply sebelumnya
+	// Mencegah loop popup setelah user klik update tapi bundle lama masih terload
+	const APPLIED_VERSION_KEY = "__app_update_applied_version__";
+	const storedAppliedVersion = localStorage.getItem(APPLIED_VERSION_KEY);
+
 	try {
 		const response = await fetch(`${VERSION_ENDPOINT}?t=${Date.now()}`, {
 			cache: "no-store",
@@ -67,6 +72,15 @@ export async function checkForAppUpdate() {
 
 		const payload = await response.json();
 		if (!isNewerBuild(payload)) return null;
+
+		// Skip jika versi ini sudah pernah diapply
+		if (storedAppliedVersion) {
+			const latestVersion = normalizeVersionValue(payload.version);
+			if (latestVersion && latestVersion === storedAppliedVersion) {
+				return null;
+			}
+			localStorage.removeItem(APPLIED_VERSION_KEY);
+		}
 
 		const updateInfo: AppUpdateInfo = {
 			currentVersion: APP_VERSION.semantic,
@@ -100,6 +114,12 @@ export function startAppUpdatePolling(intervalMs = 60_000) {
 export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
+
+	// Simpan versi yang sedang diapply — polling skip version.json yg sama
+	// setelah reload. Mencegah loop popup terus-terusan.
+	if (latestUpdateInfo?.latestVersion) {
+		localStorage.setItem("__app_update_applied_version__", latestUpdateInfo.latestVersion);
+	}
 
 	try {
 		if ("serviceWorker" in navigator) {
