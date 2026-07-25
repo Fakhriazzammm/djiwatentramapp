@@ -1192,7 +1192,7 @@ function DashboardTab({
 			grouped.get(role)!.push(name);
 			if (teamAttendance[name] === "active") activeNames.push(name);
 		});
-		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Waiters", "Manajer"];
 		const sortedRoles = [...grouped.keys()].sort((a, b) => {
 			const ai = roleOrder.findIndex(r => r.toLowerCase() === a.toLowerCase());
 			const bi = roleOrder.findIndex(r => r.toLowerCase() === b.toLowerCase());
@@ -2057,6 +2057,14 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		}
 	}, [cashierName, staffUsers]);
 
+	// Auto-add cashier ke team members saat buka shift
+	useEffect(() => {
+		if (shiftType !== "mulai") return;
+		if (cashierName && !teamMembers.includes(cashierName)) {
+			setTeamMembers((prev) => [...prev, cashierName]);
+		}
+	}, [cashierName, shiftType]);
+
 	// Auto-fill default starting cash and first predefined shift
 	useEffect(() => {
 		if (shiftType === "mulai" && siteSettings?.shiftSettings) {
@@ -2143,7 +2151,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	// ── Helper: Format team per-role ──
 	const formatTeamByRole = useCallback((members: string[], allStaff: any[]): string => {
 		if (!members.length) return "-";
-		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
+		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Waiters", "Manajer"];
 		const normalize = new Map<string, string>();
 		for (const r of roleOrder) { normalize.set(r.toUpperCase(), r); normalize.set(r.toLowerCase(), r); }
 		normalize.set("CHEF", "Kitchen"); normalize.set("MANAGER", "Manajer"); normalize.set("WAITERS", "Waitress");
@@ -2165,6 +2173,29 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			return `${r.charAt(0).toUpperCase() + r.slice(1).toLowerCase()}: ${grouped.get(r)!.join(", ")}`;
 		}).join("\n");
 	}, []);
+
+	// ── Staff sections for shift form (grouped by role) ──
+	const staffSections = useMemo(() => {
+		if (!staffUsers?.length) return null;
+		const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Waiters", "Manajer"];
+		const grouped = new Map<string, any[]>();
+		const others: any[] = [];
+		staffUsers.forEach((u: any) => {
+			const rn = (u.roleName || "").trim();
+			if (roleOrder.some(r => r.toLowerCase() === rn.toLowerCase())) {
+				const key = rn.charAt(0).toUpperCase() + rn.slice(1).toLowerCase();
+				if (!grouped.has(key)) grouped.set(key, []);
+				grouped.get(key)!.push(u);
+			} else {
+				others.push(u);
+			}
+		});
+		const sections = roleOrder
+			.filter(r => grouped.has(r))
+			.map(r => ({ role: r, users: grouped.get(r)! }));
+		if (others.length) sections.push({ role: "Lainnya", users: others });
+		return sections;
+	}, [staffUsers]);
 
 	// ── Helper: Kirim notifikasi Telegram ──
 	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }) => {
@@ -2606,50 +2637,31 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						<div className="space-y-1.5">
 							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Tim Bertugas (Opsional)</Label>
 							<div className="rounded-md border bg-background p-2 space-y-2 max-h-48 overflow-y-auto">
-								{staffUsers.length === 0 ? (
-									<p className="text-[10px] text-muted-foreground italic px-1">Memuat data staff...</p>
-								) : (() => {
-									const roleOrder = ["Barista", "Kitchen", "Kasir", "Waitress", "Manajer"];
-									const grouped = new Map<string, any[]>();
-									const others: any[] = [];
-									staffUsers.forEach((u: any) => {
-										const rn = (u.roleName || "").trim();
-										if (roleOrder.some(r => r.toLowerCase() === rn.toLowerCase())) {
-											const key = rn.charAt(0).toUpperCase() + rn.slice(1).toLowerCase();
-											if (!grouped.has(key)) grouped.set(key, []);
-											grouped.get(key)!.push(u);
-										} else {
-											others.push(u);
-										}
-									});
-									const sections = roleOrder
-										.filter(r => grouped.has(r))
-										.map(r => ({ role: r, users: grouped.get(r)! }));
-									if (others.length) sections.push({ role: "Lainnya", users: others });
-									return sections.map(({ role, users }) => (
-										<div key={role}>
-											<p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70 mb-1 px-1">{role}</p>
-											{users.map((u: any) => (
-												<label
-													key={u._id}
-													className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer"
-												>
-													<Checkbox
-														checked={teamMembers.includes(u.name)}
-														onCheckedChange={(checked: boolean) => {
-															setTeamMembers(prev =>
-																checked
-																	? [...prev, u.name]
-																	: prev.filter(n => n !== u.name)
-															);
-														}}
-													/>
-													<span className="text-xs">{u.name}</span>
-												</label>
-											))}
-										</div>
-									));
-								})()}
+																{!staffSections ? (
+																	<p className="text-[10px] text-muted-foreground italic px-1">Memuat data staff...</p>
+																) : staffSections.map(({ role, users }) => (
+																	<div key={role}>
+																		<p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70 mb-1 px-1">{role}</p>
+																		{users.map((u: any) => (
+																			<label
+																				key={u._id}
+																				className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer"
+																			>
+																				<Checkbox
+																					checked={teamMembers.includes(u.name)}
+																					onCheckedChange={(checked: boolean) => {
+																						setTeamMembers(prev =>
+																							checked
+																								? [...prev, u.name]
+																								: prev.filter(n => n !== u.name)
+																						);
+																					}}
+																				/>
+																				<span className="text-xs">{u.name}</span>
+																			</label>
+																		))}
+																	</div>
+																))}
 							</div>
 							{teamMembers.length > 0 && (
 								<p className="text-[10px] text-muted-foreground">
