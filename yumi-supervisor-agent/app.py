@@ -1555,9 +1555,11 @@ async def _check_new_orders(app):
         daily_no = row.get("daily_receipt_no")
         receipt_kind = row.get("receipt_kind")
         receipt_kind_labels = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}
-        kind_label = receipt_kind_labels.get(receipt_kind) if receipt_kind else None
+        # Prioritaskan order_type (POS kadang simpan receipt_kind=dine_in untuk online order)
+        display_kind = order_type if order_type in receipt_kind_labels else receipt_kind
+        kind_label = receipt_kind_labels.get(display_kind) if display_kind else None
         if daily_no and kind_label:
-            if receipt_kind == "online" and order_type not in ("online", "dine_in", "takeaway"):
+            if display_kind == "online" and order_type not in ("online", "dine_in", "takeaway"):
                 sub = order_type.replace("_", " ").title()
                 struk_line = f"STRUK NO. {daily_no} - {kind_label} ({sub})"
             else:
