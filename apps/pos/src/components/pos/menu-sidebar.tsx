@@ -1744,19 +1744,23 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 													console.warn("[delivered-toggle] failed", err);
 												}
 											}}
-											className="flex items-center gap-1 px-1.5 py-0.5 text-[9px]"
+											className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors ${
+												order.is_delivered
+													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+													: "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:border-gray-400"
+											}`}
 											type="button"
 											title={order.is_delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
 										>
 											{order.is_delivered ? (
 												<>
-													<CheckCircle className="h-3 w-3 text-emerald-500" />
-													<span className="font-medium text-emerald-600">Sudah Diantar</span>
+													<CheckCircle className="h-3 w-3 text-emerald-600" />
+													<span>Sudah Diantar</span>
 												</>
 											) : (
 												<>
-													<Circle className="h-3 w-3 text-muted-foreground/40" />
-													<span className="text-muted-foreground">Belum Diantar</span>
+													<Circle className="h-3 w-3" />
+													<span>Belum Diantar</span>
 												</>
 											)}
 										</button>
