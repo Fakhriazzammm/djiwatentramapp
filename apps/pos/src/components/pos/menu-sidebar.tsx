@@ -1680,7 +1680,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 									{/* Clickable main area */}
 									<button
 										onClick={() => onSelectOrder(order)}
-										className="flex flex-1 flex-col gap-0.5 p-2.5 min-w-0 text-left"
+										className="flex flex-[2] flex-col gap-0.5 p-2.5 min-w-0 text-left"
 										type="button"
 									>
 										{/* Line 1: Order # + status + shift */}
@@ -1700,43 +1700,12 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												{orderTypeLabel}
 											</span>
 											{isDineIn && order.tableNumber && (
-												<>
-													<span className="text-[9px] text-muted-foreground/60">•</span>
-													<span className="text-[9px] font-medium text-primary/70">Meja {order.tableNumber}</span>
-																	</>
-																)}
-																{/* Delivered toggle inline with status */}
-																<span className="text-[9px] text-muted-foreground/60">•</span>
-																<button
-																	onClick={async (e) => {
-																		e.stopPropagation();
-																		setDeliveredToggles(prev => {
-																			const next = new Set(prev);
-																			if (next.has(order._id)) next.delete(order._id);
-																			else next.add(order._id);
-																			return next;
-																		});
-																		try {
-																			const supabase = createClient();
-																			await supabase.schema("pos").from("orders")
-																				.update({ is_delivered: !delivered })
-																				.eq("_id", order._id);
-																		} catch (err) {
-																			console.warn("[delivered-toggle] failed", err);
-																		}
-																	}}
-																	className={`shrink-0 inline-flex items-center gap-0.5 rounded-full border px-1.5 py-[1px] text-[9px] font-medium cursor-pointer select-none transition-colors ${
-																		delivered
-																			? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-																			: "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500"
-																	}`}
-																	type="button"
-																	title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
-																>
-																	{delivered ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
-																	{delivered ? "Diantar" : "Belum"}
-																</button>
-															</div>
+														<>
+															<span className="text-[9px] text-muted-foreground/60">•</span>
+															<span className="text-[9px] font-medium text-primary/70">Meja {order.tableNumber}</span>
+														</>
+													)}
+												</div>
 										{/* Line 2: Date/Time + Kasir + Customer */}
 										<div className="flex items-center gap-1 flex-wrap text-[10px] text-muted-foreground">
 											<span>{formatDate(order.createdAt)} {formatTime(order.createdAt)}</span>
@@ -1772,10 +1741,40 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											)}
 										</div>
 									</button>
-									{/* Print on the right */}
-									<div className="flex items-center pr-1.5">
+									{/* Right column: Delivered toggle + Print, ratio 1 of 2:1 */}
+									<div className="flex-[1] flex flex-col items-center justify-center gap-1 border-l border-gray-100 px-1.5">
+										{/* Delivered toggle */}
+										<button
+											onClick={async (e) => {
+												e.stopPropagation();
+												setDeliveredToggles(prev => {
+													const next = new Set(prev);
+													if (next.has(order._id)) next.delete(order._id);
+													else next.add(order._id);
+													return next;
+												});
+												try {
+													const supabase = createClient();
+													await supabase.schema("pos").from("orders")
+														.update({ is_delivered: !delivered })
+														.eq("_id", order._id);
+												} catch (err) {
+													console.warn("[delivered-toggle] failed", err);
+												}
+											}}
+											className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-medium cursor-pointer select-none transition-colors ${
+												delivered
+													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+													: "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500"
+											}`}
+											type="button"
+											title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
+										>
+											{delivered ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+											{delivered ? "Diantar" : "Belum"}
+										</button>
+										{/* Print */}
 										{onPrint && (
-											<div className="flex items-center">
 											<DropdownMenu>
 												<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
 													<Printer className="h-3.5 w-3.5" />
@@ -1795,10 +1794,9 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 													</DropdownMenuItem>
 												</DropdownMenuContent>
 											</DropdownMenu>
-										</div>
-									)}
-								</div>
-								</div>
+										)}
+									</div>
+									</div>
 								</div>
 								);
 								})}
