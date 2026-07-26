@@ -2760,6 +2760,23 @@ export function useHybridDeleteOrder() {
 				const supabase = createClient();
 				const pos = supabase.schema("pos");
 
+				// Fetch order details before deleting (for counter decrement + order_status cleanup)
+				let orderNumber: string | null = null;
+				let dailyReceiptNo: number | null = null;
+				let receiptKind: string | null = null;
+				try {
+					const { data: order } = await pos
+						.from("orders")
+						.select("order_number,daily_receipt_no,receipt_kind")
+						.eq("source_id", id)
+						.maybeSingle();
+					if (order) {
+						orderNumber = order.order_number ?? null;
+						dailyReceiptNo = order.daily_receipt_no ?? null;
+						receiptKind = order.receipt_kind ?? null;
+					}
+				} catch (_) { /* best-effort */ }
+
 				const { error: txError } = await pos
 					.from("financial_transactions")
 					.delete()
@@ -2772,11 +2789,34 @@ export function useHybridDeleteOrder() {
 					.eq("order_source_id", id);
 				if (itemsError) throw itemsError;
 
+				// Delete order_status records (supervisor bot tracking)
+				if (orderNumber) {
+					try {
+						const { error: statusError } = await pos
+							.from("order_status")
+							.delete()
+							.eq("order_no", orderNumber);
+						if (statusError) {
+							console.warn("[delete-order] Failed to delete order_status:", statusError);
+						}
+					} catch (_) { /* best-effort */ }
+				}
+
 				const { error: orderError } = await pos
 					.from("orders")
 					.delete()
 					.eq("source_id", id);
 				if (orderError) throw orderError;
+
+				// Decrement daily receipt counter (fill gap — only if this was the highest number)
+				if (dailyReceiptNo != null && receiptKind) {
+					try {
+						await supabase.rpc("decrement_daily_receipt_no", {
+							p_order_kind: receiptKind,
+							p_last_no: dailyReceiptNo,
+						});
+					} catch (_) { /* best-effort */ }
+				}
 
 				return;
 			} catch (error) {
