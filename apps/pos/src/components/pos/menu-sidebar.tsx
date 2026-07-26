@@ -1754,62 +1754,68 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										</div>
 									</button>
 									</div>
-									{/* RIGHT CARD: Aksi */}
-									<div className="flex-[1] rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm">
-										<div className="flex flex-col items-center justify-center gap-2.5 py-2 px-1">
-											{/* Delivered toggle */}
-											<button
-												onClick={async (e) => {
-													e.stopPropagation();
-													setDeliveredToggles(prev => {
-														const next = new Set(prev);
-														if (next.has(order._id)) next.delete(order._id);
-														else next.add(order._id);
-														return next;
-													});
-													try {
-														const supabase = createClient();
-														await supabase.schema("pos").from("orders")
-															.update({ is_delivered: !delivered })
-															.eq("_id", order._id);
-													} catch (err) {
-														console.warn("[delivered-toggle] failed", err);
-													}
-												}}
-												className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-medium cursor-pointer select-none transition-colors whitespace-nowrap ${
-													delivered
-														? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-														: "bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:text-red-600"
-												}`}
-												type="button"
-												title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
-											>
-												{delivered ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
-												{delivered ? "Diantar" : "Sudah diantar?"}
-											</button>
-											{/* Print */}
-											{onPrint && (
-												<DropdownMenu>
-													<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
-														<Printer className="h-3.5 w-3.5" />
-													</DropdownMenuTrigger>
-												<DropdownMenuContent align="end" className="w-48">
-													<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer text-xs">
-														<Receipt className="h-3.5 w-3.5 text-blue-500" />
-														<span>Cetak Struk Lunas</span>
-													</DropdownMenuItem>
-													<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer text-xs">
-														<FileText className="h-3.5 w-3.5 text-amber-500" />
-														<span>Cetak Open Bill</span>
-													</DropdownMenuItem>
-													<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer text-xs">
-														<ChefHat className="h-3.5 w-3.5 text-green-500" />
-														<span>Cetak Tiket Kitchen</span>
-													</DropdownMenuItem>
-												</DropdownMenuContent>
-											</DropdownMenu>
+									{/* RIGHT COLUMN: dua card vertikal */}
+									<div className="flex-[1] flex flex-col gap-2">
+										{/* Card atas: Delivered toggle */}
+										<div className="rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm">
+											<div className="flex items-center justify-center py-2 px-1">
+												<button
+													onClick={async (e) => {
+														e.stopPropagation();
+														setDeliveredToggles(prev => {
+															const next = new Set(prev);
+															if (next.has(order._id)) next.delete(order._id);
+															else next.add(order._id);
+															return next;
+														});
+														try {
+															const supabase = createClient();
+															await supabase.schema("pos").from("orders")
+																.update({ is_delivered: !delivered })
+																.eq("_id", order._id);
+														} catch (err) {
+															console.warn("[delivered-toggle] failed", err);
+														}
+													}}
+													className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-medium cursor-pointer select-none transition-colors whitespace-nowrap ${
+														delivered
+															? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+															: "bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:text-red-600"
+													}`}
+													type="button"
+													title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
+												>
+													{delivered ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
+													{delivered ? "Diantar" : "Sudah diantar?"}
+												</button>
+											</div>
+										</div>
+										{/* Card bawah: Print */}
+										{onPrint && (
+											<div className="rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm">
+												<div className="flex items-center justify-center py-2 px-1">
+													<DropdownMenu>
+														<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
+															<Printer className="h-3.5 w-3.5" />
+														</DropdownMenuTrigger>
+														<DropdownMenuContent align="end" className="w-48">
+															<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer text-xs">
+																<Receipt className="h-3.5 w-3.5 text-blue-500" />
+																<span>Cetak Struk Lunas</span>
+															</DropdownMenuItem>
+															<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer text-xs">
+																<FileText className="h-3.5 w-3.5 text-amber-500" />
+																<span>Cetak Open Bill</span>
+															</DropdownMenuItem>
+															<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer text-xs">
+																<ChefHat className="h-3.5 w-3.5 text-green-500" />
+																<span>Cetak Tiket Kitchen</span>
+															</DropdownMenuItem>
+														</DropdownMenuContent>
+													</DropdownMenu>
+												</div>
+											</div>
 										)}
-									</div>
 									</div>
 									</div>
 								);
