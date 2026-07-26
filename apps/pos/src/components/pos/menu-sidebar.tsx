@@ -1765,15 +1765,15 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												}
 											}}
 											className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium cursor-pointer select-none transition-colors ${
-												delivered
-													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-													: "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500"
-											}`}
-											type="button"
-											title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
-										>
-											{delivered ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
-											{delivered ? "Diantar" : "Belum"}
+													delivered
+														? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+														: "bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:text-red-600"
+												}`}
+												type="button"
+												title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
+											>
+												{delivered ? <CheckCircle className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+												{delivered ? "Diantar" : "Sudah diantar?"}
 										</button>
 										{/* Print */}
 										{onPrint && (
