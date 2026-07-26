@@ -309,6 +309,7 @@ function HeaderClock() {
 function PrinterStatusBadge() {
 	const [connected, setConnected] = useState(() => bluetoothPrinter.isConnected());
 	const [connecting, setConnecting] = useState(false);
+	const mountedRef = useRef(false);
 
 	const handleConnect = useCallback(async (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -325,20 +326,38 @@ function PrinterStatusBadge() {
 		}
 	}, [connecting]);
 
+	// Auto-connect on mount (pakai getDevices — tanpa dialog, pakai device yg sudah di-pair)
 	useEffect(() => {
 		let cancelled = false;
-		const tick = () => {
-			if (!cancelled) {
-				const isOk = bluetoothPrinter.isConnected();
-				setConnected(isOk);
+		const init = async () => {
+			mountedRef.current = true;
+			// Cek dulu — barangkali session GATT masih hidup
+			if (bluetoothPrinter.isConnected()) {
+				setConnected(true);
+				return;
+			}
+			// Coba auto-connect via getDevices (tanpa dialog user)
+			try {
+				const name = await bluetoothPrinter.autoConnect();
+				if (!cancelled && name) {
+					setConnected(true);
+				}
+			} catch {
+				// autoConnect gagal — user harus klik "Hubungkan"
 			}
 		};
-		tick();
-		const id = setInterval(tick, 5000);
-		return () => {
-			cancelled = true;
-			clearInterval(id);
-		};
+		init();
+		return () => { cancelled = true; mountedRef.current = false; };
+	}, []);
+
+	// Polling berkala
+	useEffect(() => {
+		const id = setInterval(() => {
+			if (mountedRef.current) {
+				setConnected(bluetoothPrinter.isConnected());
+			}
+		}, 5000);
+		return () => clearInterval(id);
 	}, []);
 
 	if (connected) {
