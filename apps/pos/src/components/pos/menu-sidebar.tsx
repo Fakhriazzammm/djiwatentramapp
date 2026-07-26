@@ -1420,6 +1420,16 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 	const [timeFilter, setTimeFilter] = useState("today");
 	const [sortOrder, setSortOrder] = useState("desc");
 	const [shiftFilter, setShiftFilter] = useState("active");
+	const [deliveredToggles, setDeliveredToggles] = useState<Set<string>>(new Set());
+
+	// Optimistic is_delivered: local toggle overrides DB value
+	const getIsDelivered = useCallback(
+		(orderId: string, dbValue: boolean) => {
+			if (deliveredToggles.has(orderId)) return !dbValue;
+			return dbValue;
+		},
+		[deliveredToggles]
+	);
 
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat("id-ID", {
@@ -1631,6 +1641,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 						const cashierName = matchedShift?.cashierName || "—";
 						const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
 						const promoLabels: string[] = order.receiptMeta?.promotionLabels ?? [];
+						const delivered = getIsDelivered(order._id, !!order.is_delivered);
 						const orderTypeLabel =
 							order.orderType === "dine_in" ? "Makan di Tempat"
 							: order.orderType === "takeaway" ? "Bungkus"
@@ -1735,24 +1746,31 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										<button
 											onClick={async (e) => {
 												e.stopPropagation();
+												// Optimistic: toggle immediately
+												setDeliveredToggles(prev => {
+													const next = new Set(prev);
+													if (next.has(order._id)) next.delete(order._id);
+													else next.add(order._id);
+													return next;
+												});
 												try {
 													const supabase = createClient();
 													await supabase.schema("pos").from("orders")
-														.update({ is_delivered: !order.is_delivered })
+														.update({ is_delivered: !delivered })
 														.eq("_id", order._id);
 												} catch (err) {
 													console.warn("[delivered-toggle] failed", err);
 												}
 											}}
-											className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors ${
-												order.is_delivered
+											className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors cursor-pointer select-none ${
+												delivered
 													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
 													: "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:border-gray-400"
 											}`}
 											type="button"
-											title={order.is_delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
+											title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
 										>
-											{order.is_delivered ? (
+											{delivered ? (
 												<>
 													<CheckCircle className="h-3 w-3 text-emerald-600" />
 													<span>Sudah Diantar</span>
