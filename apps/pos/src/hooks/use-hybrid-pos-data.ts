@@ -794,6 +794,10 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 			row.serviceChargeAmount === null || row.serviceChargeAmount === undefined
 				? null
 				: Number(row.serviceChargeAmount),
+		dailyReceiptNo:
+			row.daily_receipt_no === null || row.daily_receipt_no === undefined
+				? null
+				: Number(row.daily_receipt_no),
 		receiptMeta:
 			row.receiptMeta && typeof row.receiptMeta === "object"
 				? row.receiptMeta
