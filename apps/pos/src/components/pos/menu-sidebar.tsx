@@ -1754,67 +1754,65 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										</div>
 									</button>
 									</div>
-									{/* RIGHT COLUMN: dua card vertikal */}
-									<div className="flex-[1] flex flex-col gap-2">
-										{/* Card atas: Delivered toggle */}
-										<div className="rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm">
-											<div className="flex items-center justify-center py-2 px-1">
-												<button
-													onClick={async (e) => {
-														e.stopPropagation();
-														setDeliveredToggles(prev => {
-															const next = new Set(prev);
-															if (next.has(order._id)) next.delete(order._id);
-															else next.add(order._id);
-															return next;
-														});
-														try {
-															const supabase = createClient();
-															await supabase.schema("pos").from("orders")
-																.update({ is_delivered: !delivered })
-																.eq("_id", order._id);
-														} catch (err) {
-															console.warn("[delivered-toggle] failed", err);
-														}
-													}}
-													className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-medium cursor-pointer select-none transition-colors whitespace-nowrap ${
-														delivered
-															? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-															: "bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:text-red-600"
-													}`}
-													type="button"
-													title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
-												>
-													{delivered ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
-													{delivered ? "Diantar" : "Sudah diantar?"}
-												</button>
-											</div>
-										</div>
-										{/* Card bawah: Print */}
+									{/* RIGHT COLUMN: 4 tombol vertikal */}
+									<div className="flex-[1] flex flex-col gap-1.5 justify-center items-stretch px-1">
+										{/* 1. Delivered toggle */}
+										<button
+											onClick={async (e) => {
+												e.stopPropagation();
+												setDeliveredToggles(prev => {
+													const next = new Set(prev);
+													if (next.has(order._id)) next.delete(order._id);
+													else next.add(order._id);
+													return next;
+												});
+												try {
+													const supabase = createClient();
+													await supabase.schema("pos").from("orders")
+														.update({ is_delivered: !delivered })
+														.eq("_id", order._id);
+												} catch (err) {
+													console.warn("[delivered-toggle] failed", err);
+												}
+											}}
+											className={`shrink-0 inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium transition-colors whitespace-nowrap ${
+												delivered
+													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+													: "bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:text-red-600"
+											}`}
+											type="button"
+										>
+											{delivered ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
+											{delivered ? "Diantar" : "Sudah diantar?"}
+										</button>
+										{/* 2-4: Print buttons */}
 										{onPrint && (
-											<div className="rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm">
-												<div className="flex items-center justify-center py-2 px-1">
-													<DropdownMenu>
-														<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
-															<Printer className="h-3.5 w-3.5" />
-														</DropdownMenuTrigger>
-														<DropdownMenuContent align="end" className="w-48">
-															<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer text-xs">
-																<Receipt className="h-3.5 w-3.5 text-blue-500" />
-																<span>Cetak Struk Lunas</span>
-															</DropdownMenuItem>
-															<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer text-xs">
-																<FileText className="h-3.5 w-3.5 text-amber-500" />
-																<span>Cetak Open Bill</span>
-															</DropdownMenuItem>
-															<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer text-xs">
-																<ChefHat className="h-3.5 w-3.5 text-green-500" />
-																<span>Cetak Tiket Kitchen</span>
-															</DropdownMenuItem>
-														</DropdownMenuContent>
-													</DropdownMenu>
-												</div>
-											</div>
+											<>
+												<button
+													onClick={(e) => { e.stopPropagation(); onPrint(order, "paid"); }}
+													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors whitespace-nowrap"
+													type="button"
+												>
+													<Receipt className="h-2.5 w-2.5" />
+													Struk Lunas
+												</button>
+												<button
+													onClick={(e) => { e.stopPropagation(); onPrint(order, "open_bill"); }}
+													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100 transition-colors whitespace-nowrap"
+													type="button"
+												>
+													<FileText className="h-2.5 w-2.5" />
+													Open Bill
+												</button>
+												<button
+													onClick={(e) => { e.stopPropagation(); onPrint(order, "kitchen"); }}
+													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium bg-green-50 border-green-200 text-green-600 hover:bg-green-100 transition-colors whitespace-nowrap"
+													type="button"
+												>
+													<ChefHat className="h-2.5 w-2.5" />
+													Kitchen
+												</button>
+											</>
 										)}
 									</div>
 									</div>
