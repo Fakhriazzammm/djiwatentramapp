@@ -308,34 +308,60 @@ function HeaderClock() {
 
 function PrinterStatusBadge() {
 	const [connected, setConnected] = useState(() => bluetoothPrinter.isConnected());
+	const [connecting, setConnecting] = useState(false);
+
+	const handleConnect = useCallback(async (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (connecting) return;
+		setConnecting(true);
+		try {
+			const name = await bluetoothPrinter.connect();
+			setConnected(true);
+			toast.success(`Terhubung ke printer: ${name}`);
+		} catch (error) {
+			toast.error((error as Error).message || "Gagal hubungkan printer");
+		} finally {
+			setConnecting(false);
+		}
+	}, [connecting]);
+
 	useEffect(() => {
 		let cancelled = false;
-		let checking = false;
-		const tick = async () => {
-			if (checking) return;
-			checking = true;
-			try {
-				if (!bluetoothPrinter.isConnected()) {
-					await bluetoothPrinter.autoReconnectIfNeeded();
-				}
-				if (!cancelled) setConnected(bluetoothPrinter.isConnected());
-			} finally {
-				checking = false;
+		const tick = () => {
+			if (!cancelled) {
+				const isOk = bluetoothPrinter.isConnected();
+				setConnected(isOk);
 			}
 		};
-		void tick();
-		const id = setInterval(() => void tick(), 5000);
+		tick();
+		const id = setInterval(tick, 5000);
 		return () => {
 			cancelled = true;
 			clearInterval(id);
 		};
 	}, []);
-	if (connected) return null;
+
+	if (connected) {
+		return (
+			<div className="flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md whitespace-nowrap bg-emerald-50 text-emerald-600">
+				<Printer className="h-3 w-3 shrink-0" />
+				<span className="leading-none text-[10px] sm:text-xs font-semibold">Terhubung</span>
+			</div>
+		);
+	}
+
 	return (
-		<div className="flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md whitespace-nowrap bg-muted text-muted-foreground">
+		<button
+			type="button"
+			onClick={handleConnect}
+			disabled={connecting}
+			className="flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md whitespace-nowrap bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50 cursor-pointer select-none"
+		>
 			<Printer className="h-3 w-3 shrink-0" />
-			<span className="leading-none text-[10px] sm:text-xs font-semibold">Offline</span>
-		</div>
+			<span className="leading-none text-[10px] sm:text-xs font-semibold">
+				{connecting ? "..." : "Hubungkan"}
+			</span>
+		</button>
 	);
 }
 
