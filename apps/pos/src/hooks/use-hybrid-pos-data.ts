@@ -799,6 +799,10 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 				? row.receiptMeta
 				: null,
 		paymentReceiptKind: row.paymentReceiptKind ?? null,
+		is_delivered:
+			row.is_delivered === null || row.is_delivered === undefined
+				? false
+				: Boolean(row.is_delivered),
 		paymentGateway:
 			row.paymentGateway && typeof row.paymentGateway === "object"
 				? row.paymentGateway
