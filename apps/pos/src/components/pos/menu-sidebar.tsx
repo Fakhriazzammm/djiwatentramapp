@@ -1674,13 +1674,13 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 						return (
 							<div
 								key={order._id}
-								className="group rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm"
+								className="flex items-stretch gap-2"
 							>
-								<div className="flex items-stretch">
-									{/* Clickable main area */}
+								{/* LEFT CARD: Data transaksi */}
+								<div className="flex-[2] rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm">
 									<button
 										onClick={() => onSelectOrder(order)}
-										className="flex flex-[2] flex-col gap-0.5 p-2.5 min-w-0 text-left"
+										className="flex flex-col gap-0.5 p-2.5 w-full min-w-0 text-left"
 										type="button"
 									>
 										{/* Line 1: Order # + status + shift */}
@@ -1741,8 +1741,10 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											)}
 										</div>
 									</button>
-									{/* Right column: Delivered toggle + Print, ratio 1 of 2:1 */}
-									<div className="flex-[1] flex flex-col items-center justify-center gap-1 border-l border-gray-100 px-1.5">
+									</div>
+									{/* RIGHT CARD: Aksi */}
+									<div className="flex-[1] rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm">
+									<div className="flex flex-col items-center justify-center gap-3 py-2.5 px-1.5">
 										{/* Delivered toggle */}
 										<button
 											onClick={async (e) => {
@@ -1762,7 +1764,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 													console.warn("[delivered-toggle] failed", err);
 												}
 											}}
-											className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-medium cursor-pointer select-none transition-colors ${
+											className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium cursor-pointer select-none transition-colors ${
 												delivered
 													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
 													: "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500"
@@ -1776,8 +1778,8 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										{/* Print */}
 										{onPrint && (
 											<DropdownMenu>
-												<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
-													<Printer className="h-3.5 w-3.5" />
+												<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
+													<Printer className="h-4 w-4" />
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end" className="w-48">
 													<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer text-xs">
@@ -1797,7 +1799,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										)}
 									</div>
 									</div>
-								</div>
+									</div>
 								);
 								})}
 				</div>
