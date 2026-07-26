@@ -5,6 +5,8 @@ import {
 	Banknote,
 	BarChart3,
 	Bot,
+	CheckCircle,
+	Circle,
 	ClipboardList,
 	Clock,
 	CreditCard,
@@ -1728,9 +1730,39 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											)}
 										</div>
 									</button>
+									{/* Delivered toggle + Print */}
+									<div className="flex flex-col items-center justify-center gap-0.5 pr-1.5">
+										<button
+											onClick={async (e) => {
+												e.stopPropagation();
+												try {
+													const supabase = createClient();
+													await supabase.schema("pos").from("orders")
+														.update({ is_delivered: !order.is_delivered })
+														.eq("_id", order._id);
+												} catch (err) {
+													console.warn("[delivered-toggle] failed", err);
+												}
+											}}
+											className="flex items-center gap-1 px-1.5 py-0.5 text-[9px]"
+											type="button"
+											title={order.is_delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
+										>
+											{order.is_delivered ? (
+												<>
+													<CheckCircle className="h-3 w-3 text-emerald-500" />
+													<span className="font-medium text-emerald-600">Sudah Diantar</span>
+												</>
+											) : (
+												<>
+													<Circle className="h-3 w-3 text-muted-foreground/40" />
+													<span className="text-muted-foreground">Belum Diantar</span>
+												</>
+											)}
+										</button>
 									{/* Print dropdown on the right */}
 									{onPrint && (
-										<div className="flex items-center pr-1.5">
+										<div className="flex items-center">
 											<DropdownMenu>
 												<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
 													<Printer className="h-3.5 w-3.5" />
@@ -1753,9 +1785,10 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										</div>
 									)}
 								</div>
-							</div>
-						);
-					})}
+								</div>
+								</div>
+								);
+								})}
 				</div>
 			)}
 			<div className="h-6" />

@@ -4678,6 +4678,23 @@ export function useHybridEndShift() {
 					.eq("source_id", shiftId);
 				if (updateError) throw updateError;
 
+				// Auto-mark all shift orders as delivered
+				try {
+					const { error: deliveredError } = await supabase
+						.schema("pos")
+						.from("orders")
+						.update({ is_delivered: true })
+						.gte("creation_time", Number(shift.startTime))
+						.lt("creation_time", endTime)
+						.in("status", ["completed", "paid"])
+						.eq("is_delivered", false);
+					if (deliveredError) {
+						console.warn("[supabase-hybrid:write-end-shift] auto-deliver failed", deliveredError);
+					}
+				} catch (e) {
+					console.warn("[supabase-hybrid:write-end-shift] auto-deliver error", e);
+				}
+
 				const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${Number(
 					shift.startingCash ?? 0
 				).toLocaleString("id-ID")}\nCash: Rp ${cashRevenue.toLocaleString(
