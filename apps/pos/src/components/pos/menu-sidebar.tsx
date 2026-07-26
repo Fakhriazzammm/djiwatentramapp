@@ -1703,9 +1703,40 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												<>
 													<span className="text-[9px] text-muted-foreground/60">•</span>
 													<span className="text-[9px] font-medium text-primary/70">Meja {order.tableNumber}</span>
-												</>
-											)}
-										</div>
+																	</>
+																)}
+																{/* Delivered toggle inline with status */}
+																<span className="text-[9px] text-muted-foreground/60">•</span>
+																<button
+																	onClick={async (e) => {
+																		e.stopPropagation();
+																		setDeliveredToggles(prev => {
+																			const next = new Set(prev);
+																			if (next.has(order._id)) next.delete(order._id);
+																			else next.add(order._id);
+																			return next;
+																		});
+																		try {
+																			const supabase = createClient();
+																			await supabase.schema("pos").from("orders")
+																				.update({ is_delivered: !delivered })
+																				.eq("_id", order._id);
+																		} catch (err) {
+																			console.warn("[delivered-toggle] failed", err);
+																		}
+																	}}
+																	className={`shrink-0 inline-flex items-center gap-0.5 rounded-full border px-1.5 py-[1px] text-[9px] font-medium cursor-pointer select-none transition-colors ${
+																		delivered
+																			? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+																			: "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500"
+																	}`}
+																	type="button"
+																	title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
+																>
+																	{delivered ? <CheckCircle className="h-2.5 w-2.5" /> : <Circle className="h-2.5 w-2.5" />}
+																	{delivered ? "Diantar" : "Belum"}
+																</button>
+															</div>
 										{/* Line 2: Date/Time + Kasir + Customer */}
 										<div className="flex items-center gap-1 flex-wrap text-[10px] text-muted-foreground">
 											<span>{formatDate(order.createdAt)} {formatTime(order.createdAt)}</span>
@@ -1741,50 +1772,10 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											)}
 										</div>
 									</button>
-									{/* Delivered toggle + Print */}
-									<div className="flex flex-col items-center justify-center gap-0.5 pr-1.5">
-										<button
-											onClick={async (e) => {
-												e.stopPropagation();
-												// Optimistic: toggle immediately
-												setDeliveredToggles(prev => {
-													const next = new Set(prev);
-													if (next.has(order._id)) next.delete(order._id);
-													else next.add(order._id);
-													return next;
-												});
-												try {
-													const supabase = createClient();
-													await supabase.schema("pos").from("orders")
-														.update({ is_delivered: !delivered })
-														.eq("_id", order._id);
-												} catch (err) {
-													console.warn("[delivered-toggle] failed", err);
-												}
-											}}
-											className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-colors cursor-pointer select-none ${
-												delivered
-													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-													: "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:border-gray-400"
-											}`}
-											type="button"
-											title={delivered ? "Tandai belum diantar" : "Tandai sudah diantar"}
-										>
-											{delivered ? (
-												<>
-													<CheckCircle className="h-3 w-3 text-emerald-600" />
-													<span>Sudah Diantar</span>
-												</>
-											) : (
-												<>
-													<Circle className="h-3 w-3" />
-													<span>Belum Diantar</span>
-												</>
-											)}
-										</button>
-									{/* Print dropdown on the right */}
-									{onPrint && (
-										<div className="flex items-center">
+									{/* Print on the right */}
+									<div className="flex items-center pr-1.5">
+										{onPrint && (
+											<div className="flex items-center">
 											<DropdownMenu>
 												<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
 													<Printer className="h-3.5 w-3.5" />
