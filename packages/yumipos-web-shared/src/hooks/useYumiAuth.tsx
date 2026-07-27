@@ -43,7 +43,6 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 		return null;
 	});
 	const [session, setSession] = useState<YumiValidatedSession | null>(null);
-	const [isLoading, setIsLoading] = useState(Boolean(token));
 
 	const clearSession = useCallback(() => {
 		if (typeof window !== "undefined") {
@@ -51,18 +50,15 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 		}
 		setToken(null);
 		setSession(null);
-		setIsLoading(false);
 	}, []);
 
 	const refreshSession = useCallback(
 		async (sessionToken: string | null) => {
 			if (!sessionToken) {
 				setSession(null);
-				setIsLoading(false);
 				return;
 			}
 
-			setIsLoading(true);
 			try {
 				const nextSession = await validateYumiSession(sessionToken);
 				if (!nextSession) {
@@ -73,8 +69,6 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 			} catch (error) {
 				console.error("Session validation error:", error);
 				clearSession();
-			} finally {
-				setIsLoading(false);
 			}
 		},
 		[clearSession]
@@ -112,7 +106,6 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 			} as YumiValidatedSession;
 
 			setSession(recoveredSession);
-			setIsLoading(false);
 		} catch {
 			// Silent — no session to recover
 		}
@@ -141,6 +134,7 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const isAuthenticated = !!session;
+	const isLoading = token !== null && session === null;
 	const user = session?.user;
 	const role = session?.role;
 	const isAdmin = role?.name?.trim().toLowerCase() === "admin";
