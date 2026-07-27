@@ -1640,6 +1640,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 						const shiftLabel = matchedShift?.shiftName || "Di luar shift";
 						const cashierName = matchedShift?.cashierName || "—";
 						const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
+						const subtotal = order.items?.reduce((sum: number, i: any) => sum + (i.originalPrice ?? i.price) * (i.quantity || 0), 0) ?? 0;
 						const promoLabels: string[] = order.receiptMeta?.promotionLabels ?? [];
 						const delivered = getIsDelivered(order._id, !!order.is_delivered);
 						const orderTypeLabel =
