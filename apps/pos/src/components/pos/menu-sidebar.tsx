@@ -1698,45 +1698,37 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												● {statusLabel}
 											</span>
 										</div>
-										{/* Line 1: Order ID + shift + type */}
-										<div className="flex items-center gap-1.5 flex-wrap">
-											<span className="text-[10px] text-muted-foreground">
-												ID: {order.orderNumber}
-											</span>
-											<span className="text-[9px] text-muted-foreground/60">•</span>
-											<span className="text-[9px] font-medium text-muted-foreground truncate">
-												{shiftLabel}
-											</span>
-											<span className="text-[9px] text-muted-foreground/60">•</span>
-											<span className="text-[9px] text-muted-foreground">
-												{orderTypeLabel}
-											</span>
+										{/* Line 1: Order ID */}
+										<div className="text-[10px] text-muted-foreground">
+											{order.orderNumber}
+										</div>
+										{/* Line 2: shift + type */}
+										<div className="flex items-center gap-1 flex-wrap text-[9px] text-muted-foreground">
+											<span>{shiftLabel}</span>
+											<span className="text-muted-foreground/40">•</span>
+											<span>{orderTypeLabel}</span>
 											{isDineIn && order.tableNumber && (
 												<>
-													<span className="text-[9px] text-muted-foreground/60">•</span>
-													<span className="text-[9px] font-medium text-primary/70">Meja {order.tableNumber}</span>
+													<span className="text-muted-foreground/40">•</span>
+													<span className="font-medium text-primary/70">Meja {order.tableNumber}</span>
 												</>
 											)}
 										</div>
-										{/* Line 2: Date/Time + Kasir + Customer */}
+										{/* Line 3: Date/Time + Kasir */}
 										<div className="flex items-center gap-1 flex-wrap text-[10px] text-muted-foreground">
 											<span>{formatDate(order.createdAt)} {formatTime(order.createdAt)}</span>
 											<span className="text-muted-foreground/40">•</span>
-											<span>{cashierName}</span>
-											{order.customerName && order.customerName !== "Pelanggan" && (
-												<>
-													<span className="text-muted-foreground/40">•</span>
-													<span className="truncate max-w-[120px]">{order.customerName}</span>
-												</>
-											)}
+											<span>{cashierName} (kasir)</span>
 										</div>
-										{/* Line 3: Items + Amount + Method + Promo */}
-										<div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+										{/* Line 4: Customer + Items + Amount + Method + Promo */}
+										<div className="flex items-center gap-1 flex-wrap text-[10px] text-muted-foreground">
+											<span className="truncate max-w-[120px]">{(order.customerName && order.customerName !== "Pelanggan") ? order.customerName : "Pelanggan"} (customer)</span>
+											<span className="text-muted-foreground/40">•</span>
 											<span className="font-medium text-foreground/80">
 												{totalQty} item · {formatCurrency(order.totalAmount)}
 											</span>
 											<span className="text-muted-foreground/40">•</span>
-											<span className="text-muted-foreground">{payMethodLabel}</span>
+											<span>{payMethodLabel}</span>
 											{promoLabels.length > 0 && (
 												<>
 													<span className="text-muted-foreground/40">•</span>

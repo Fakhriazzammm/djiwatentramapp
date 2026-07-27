@@ -199,9 +199,15 @@ function StaffProfileLayout() {
 	const navigate = useNavigate();
 	const { user: authUser, isAdmin, isAuthenticated, token, isLoading: isAuthLoading } = useYumiAuth();
 
-	const [isUnlocked, setIsUnlocked] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [notifCount, setNotifCount] = useState(0);
+
+	// Auto-unlock if current user is the owner or an admin
+	const isUnlocked = useMemo(() => {
+		if (!isAuthenticated || !authUser) return false;
+		const isOwner = authUser.slug === username || authUser._id === username;
+		return isOwner || isAdmin;
+	}, [isAuthenticated, authUser, isAdmin, username]);
 
 		// Auto-refresh when page gains focus
 	useEffect(() => {
@@ -209,16 +215,6 @@ function StaffProfileLayout() {
 		window.addEventListener("focus", onFocus);
 		return () => window.removeEventListener("focus", onFocus);
 	}, []);
-
-	// Auto-unlock if current user is the owner or an admin
-	useEffect(() => {
-		if (isAuthenticated && authUser) {
-			const isOwner = authUser.slug === username || authUser._id === username;
-			if (isOwner || isAdmin) {
-				setIsUnlocked(true);
-			}
-		}
-	}, [isAuthenticated, authUser, isAdmin, username]);
 
 	// Prevent browser back button from returning to /login
 	useEffect(() => {
