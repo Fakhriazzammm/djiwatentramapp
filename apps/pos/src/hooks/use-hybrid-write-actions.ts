@@ -6388,6 +6388,23 @@ export function useHybridWriteOrderStatus() {
 			} else if (payload.status === "selesai") {
 				updates.selesai_by = payload.by;
 				updates.selesai_at = now;
+
+				// Group-level "Selesai" — populate completed_items dengan semua item name
+				// agar order tidak stuck di "dibuat" tanpa item ter-checklist
+				try {
+					const { data: full } = await supabase
+						.from("pos_order_status")
+						.select("items")
+						.eq("order_no", payload.order_no)
+						.eq("group_type", payload.group_type)
+						.single();
+					if (full?.items && Array.isArray(full.items) && full.items.length > 0) {
+						const allNames = full.items.map((it: any) => it.productName).filter(Boolean);
+						updates.completed_items = allNames;
+					}
+				} catch {
+					// non-fatal — status tetap berubah
+				}
 			}
 
 			const { error } = await supabase
