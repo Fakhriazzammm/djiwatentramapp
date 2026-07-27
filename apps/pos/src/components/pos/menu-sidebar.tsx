@@ -1737,7 +1737,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 													</span>
 												</>
 											)}
-											{order.discountAmount && order.discountAmount > 0 && !promoLabels.length && (
+											{order.discountAmount > 0 && !promoLabels.length && (
 												<>
 													<span className="text-muted-foreground/40">•</span>
 													<span className="rounded bg-rose-50 px-1.5 py-0.5 text-[8px] font-bold text-rose-500 uppercase tracking-wider leading-none">Diskon</span>
