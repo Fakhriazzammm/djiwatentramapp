@@ -1725,7 +1725,15 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											<span className="truncate max-w-[120px]">{(order.customerName && order.customerName !== "Pelanggan") ? order.customerName : "Pelanggan"} (customer)</span>
 											<span className="text-muted-foreground/40">•</span>
 											<span className="font-medium text-foreground/80">
-												{totalQty} item · {formatCurrency(order.totalAmount)}
+												{totalQty} item ·{" "}
+												{(order.receiptMeta?.promotionLabels?.length ?? 0) > 0 && subtotal > order.totalAmount ? (
+													<>
+														<span className="line-through text-muted-foreground/50">{formatCurrency(subtotal)}</span>{" "}
+														{formatCurrency(order.totalAmount)}
+													</>
+												) : (
+													formatCurrency(order.totalAmount)
+												)}
 											</span>
 											<span className="text-muted-foreground/40">•</span>
 											<span>{payMethodLabel}</span>

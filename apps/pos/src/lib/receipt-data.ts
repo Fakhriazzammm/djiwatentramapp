@@ -80,10 +80,10 @@ export function buildReceiptMetaFromCart({
 			}
 
 			return [
-				discount.isHappyHour
-					? `Happy Hour - ${discount.name}`
-					: `Promosi - ${discount.name}`,
-			];
+							discount.isHappyHour
+								? discount.name
+								: `Promosi - ${discount.name}`,
+						];
 		}) ?? [];
 
 	if (appliedVoucher?.name) {
