@@ -2097,20 +2097,6 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		}
 	}, [shiftStatus?.isOpen]);
 
-	// Auto-fill cashier name from current authenticated user
-	useEffect(() => {
-		if (currentUser?.name) {
-			setCashierName((prev) => prev || currentUser.name);
-		}
-	}, [currentUser?.name]);
-
-	// Fallback: jika user tidak ada name, ambil dari staffUsers pertama
-	useEffect(() => {
-		if (!cashierName && staffUsers.length > 0) {
-			setCashierName(staffUsers[0].name);
-		}
-	}, [cashierName, staffUsers]);
-
 	// Auto-add cashier ke team members saat buka shift
 	useEffect(() => {
 		if (shiftType !== "mulai") return;
