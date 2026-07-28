@@ -102,79 +102,46 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 </nav>
 
 <main>
-<!-- ═══ HERO ═══ -->
+<!-- ═══ HERO (Gojek app pattern: greeting card + quick actions) ═══ -->
 <section class="pt-[96px]">
-  <div class="max-w-[1180px] mx-auto px-6 pb-10">
-    <div class="grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr] gap-5 items-stretch">
+  <div class="max-w-[1180px] mx-auto px-6 pb-8">
 
-      <!-- Greeting + Value + Actions + Stats -->
-      <div class="relative overflow-hidden rounded-card p-8 sm:p-10 text-white" style="background: radial-gradient(circle at top right, rgba(31,94,255,0.22), transparent 42%), linear-gradient(135deg, #132f6a 0%, #1f5eff 100%);">
-        <div aria-hidden class="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-white/5 blur-3xl"></div>
-        <div class="relative">
-          <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-white/90 text-[12px] font-bold mb-5">
-            <span class="size-1.5 rounded-full bg-white"></span> Dibuka hari ini
-          </span>
-          <h1 class="font-display text-[clamp(30px,5vw,46px)] leading-[1.05] tracking-[-0.03em] font-extrabold mb-4">Mulai karir <br>di Djiwa Tentram</h1>
-          <p class="text-white/80 text-[15px] leading-[1.65] max-w-[520px]">Temukan posisi yang cocok, isi data dirimu, dan bergabung dengan tim yang peduli kualitas. Kami akan review dan menghubungimu.</p>
-          <div class="flex gap-3 flex-wrap mt-7">
-            <a href="#jobsSection" class="inline-flex items-center justify-center gap-2 min-h-[48px] rounded-ctl px-5 bg-white text-accent-dark font-display font-extrabold text-[14px] no-underline motion-safe shadow-ios-1">
-              Lihat lowongan
-              <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </a>
-            <a href="#applyPanel" class="inline-flex items-center justify-center gap-2 min-h-[48px] rounded-ctl px-5 bg-white/10 text-white font-display font-extrabold text-[14px] no-underline border border-white/20 motion-safe">
-              Langsung daftar
-            </a>
-          </div>
-          <!-- Statistics -->
-          <div class="grid grid-cols-3 gap-3 mt-9">
-            <div class="rounded-[18px] p-3.5 backdrop-blur-[8px]" style="background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.12);">
-              <div class="text-[26px] font-display font-extrabold tracking-[-0.03em] leading-none mb-1" id="metricPositions">0</div>
-              <div class="text-[11px] text-white/78 leading-[1.45]">Posisi dibuka</div>
-            </div>
-            <div class="rounded-[18px] p-3.5 backdrop-blur-[8px]" style="background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.12);">
-              <div class="text-[26px] font-display font-extrabold tracking-[-0.03em] leading-none mb-1" id="metricApplicants">0</div>
-              <div class="text-[11px] text-white/78 leading-[1.45]">Total pelamar</div>
-            </div>
-            <div class="rounded-[18px] p-3.5 backdrop-blur-[8px]" style="background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.12);">
-              <div class="text-[26px] font-display font-extrabold tracking-[-0.03em] leading-none mb-1">1–3</div>
-              <div class="text-[11px] text-white/78 leading-[1.45]">Hari review</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Side: How to apply (3 steps) -->
-      <div class="bg-white rounded-card p-6 shadow-ios-1 border border-border-ios flex flex-col gap-4">
+    <!-- Greeting Card (white, not gradient) -->
+    <div class="bg-white rounded-card p-7 sm:p-8 shadow-ios-1 border border-border-ios">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <div>
-          <h2 class="font-display text-[17px] font-extrabold tracking-[-0.02em]">Cara daftar</h2>
-          <p class="text-ink-2 text-[13px] leading-[1.6] mt-1.5">Tiga langkah mudah untuk mulai.</p>
+          <h1 class="font-display text-[clamp(28px,4.5vw,42px)] leading-[1.05] tracking-[-0.03em] font-extrabold text-ink">Mulai karir di Djiwa Tentram</h1>
+          <p class="text-ink-2 text-[15px] leading-[1.6] mt-2.5 max-w-[560px]">Temukan posisi yang cocok, isi data dirimu, dan bergabung dengan tim yang peduli kualitas. Kami review dan hubungi kamu.</p>
         </div>
-        <div class="grid gap-3">
-          <div class="grid grid-cols-[44px_1fr] gap-3 items-start p-3.5 rounded-[18px] bg-accent-soft border border-border-ios">
-            <div class="size-11 rounded-ctl bg-accent text-white flex items-center justify-center"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
-            <div>
-              <h3 class="font-display text-[14px] font-extrabold mb-1">Pilih posisi</h3>
-              <p class="text-[12px] text-ink-2 leading-[1.6]">Cek lowongan yang tersedia di bawah.</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-[44px_1fr] gap-3 items-start p-3.5 rounded-[18px] bg-white border border-border-ios">
-            <div class="size-11 rounded-ctl bg-accent-soft text-accent flex items-center justify-center"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-            <div>
-              <h3 class="font-display text-[14px] font-extrabold mb-1">Isi data diri</h3>
-              <p class="text-[12px] text-ink-2 leading-[1.6]">Lengkapi form lamaran di samping.</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-[44px_1fr] gap-3 items-start p-3.5 rounded-[18px] bg-white border border-border-ios">
-            <div class="size-11 rounded-ctl bg-accent-soft text-accent flex items-center justify-center"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
-            <div>
-              <h3 class="font-display text-[14px] font-extrabold mb-1">Tunggu review</h3>
-              <p class="text-[12px] text-ink-2 leading-[1.6]">Tim HR review dan hubungi kamu.</p>
-            </div>
-          </div>
+        <!-- Quick Actions -->
+        <div class="flex gap-2.5 shrink-0">
+          <a href="#jobsSection" class="inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-5 bg-accent text-white font-display font-extrabold text-[14px] no-underline motion-safe shadow-ios-1">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            Lihat lowongan
+          </a>
+          <a href="#applyPanel" class="inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-5 border-2 border-accent bg-accent-soft text-accent font-display font-extrabold text-[14px] no-underline motion-safe">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            Daftar
+          </a>
         </div>
       </div>
-
+      <!-- Stats inline (no glass box) -->
+      <div class="flex flex-wrap gap-x-8 gap-y-3 mt-6 pt-5 border-t border-border-ios">
+        <div class="flex items-baseline gap-2">
+          <span class="text-[22px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricPositions">0</span>
+          <span class="text-[13px] text-ink-2 font-semibold">Posisi dibuka</span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span class="text-[22px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricApplicants">0</span>
+          <span class="text-[13px] text-ink-2 font-semibold">Total pelamar</span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span class="text-[22px] font-display font-extrabold tracking-[-0.03em] text-accent">1–3</span>
+          <span class="text-[13px] text-ink-2 font-semibold">Hari review</span>
+        </div>
+      </div>
     </div>
+
   </div>
 </section>
 
@@ -203,8 +170,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
           <div class="flex flex-wrap gap-2" id="filterRow"></div>
         </div>
 
-        <!-- Job list -->
-        <div class="grid gap-3" id="jobList"></div>
+        <!-- Job Grid (Gojek service-grid style) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" id="jobList"></div>
       </div>
 
       <!-- Right: Form (sticky) -->
@@ -354,21 +321,29 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 <script>
 // ── Icons (Lucide, line-only 2px) ──
 const ICONS = {
-  briefcase: '<svg class="size-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+  briefcase: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+  coffee: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h12Z"/><path d="M16 8h2a2 2 0 0 1 2 2v4a6 6 0 0 1-6 6"/></svg>',
+  chef: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>',
+  cook: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 10c-1.1 0-2-.9-2-2V2"/><path d="M21 6V2"/><path d="M19 10v12"/></svg>',
+  waiter: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18"/><path d="M12 3v8"/><path d="M5 3h14l2 8H3Z"/><path d="M4 19v2"/><path d="M20 19v2"/><path d="M12 11v8"/></svg>',
+  cashier: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="10" x="3" y="4" rx="2"/><path d="M7 8h.01"/><path d="M11 8h2"/><path d="M3 20h18"/></svg>',
+  crew: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  supervisor: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  manager: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-3"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/></svg>',
   send: '<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
   users: '<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
 };
 
-// ── Job Positions ──
+// ── Job Positions (with icon key) ──
 const JOBS = [
-  { title: 'Barista', summary: 'Menyajikan kopi dan minuman specialty dengan kualitas terbaik, menjaga kebersihan bar area, dan memberikan customer experience yang ramah.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'F&B'] },
-  { title: 'Chef', summary: 'Bertanggung jawab atas kualitas dan konsistensi menu makanan Djiwa Tentram, menjaga standar higiene dapur, dan mengelola stok bahan baku.', types: ['Full Time'], tags: ['Kitchen', 'F&B'] },
-  { title: 'Cook', summary: 'Membantu Chef dalam persiapan dan penyajian menu, menjaga kebersihan area dapur, dan memastikan ketersediaan bahan masak.', types: ['Full Time', 'Part Time'], tags: ['Kitchen', 'F&B'] },
-  { title: 'Waiters', summary: 'Melayani pelanggan dengan ramah, mengambil pesanan, menyajikan makanan/minuman, dan memastikan kepuasan pelanggan selama dining.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'Service'] },
-  { title: 'Cashier', summary: 'Menangani transaksi pembayaran dengan akurat, mengelola kasir, dan memberikan informasi menu kepada pelanggan.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'Finance'] },
-  { title: 'Kitchen Crew', summary: 'Mendukung operasional dapur — mencuci peralatan, menyiapkan bahan, menjaga kebersihan, dan memastikan dapur selalu siap operasi.', types: ['Full Time', 'Part Time'], tags: ['Kitchen', 'Support'] },
-  { title: 'Supervisor', summary: 'Mengawasi operasional harian, memimpin tim shift, memastikan standar layanan terpenuhi, dan membantu manajemen outlet.', types: ['Full Time'], tags: ['Management'] },
-  { title: 'Store Manager', summary: 'Memimpin seluruh operasional outlet, mengelola tim, mencapai target penjualan, dan menjaga brand experience Djiwa Tentram.', types: ['Full Time'], tags: ['Management'] },
+  { title: 'Barista', icon: 'coffee', summary: 'Menyajikan kopi dan minuman specialty dengan kualitas terbaik, menjaga kebersihan bar area, dan memberikan customer experience yang ramah.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'F&B'] },
+  { title: 'Chef', icon: 'chef', summary: 'Bertanggung jawab atas kualitas dan konsistensi menu makanan Djiwa Tentram, menjaga standar higiene dapur, dan mengelola stok bahan baku.', types: ['Full Time'], tags: ['Kitchen', 'F&B'] },
+  { title: 'Cook', icon: 'cook', summary: 'Membantu Chef dalam persiapan dan penyajian menu, menjaga kebersihan area dapur, dan memastikan ketersediaan bahan masak.', types: ['Full Time', 'Part Time'], tags: ['Kitchen', 'F&B'] },
+  { title: 'Waiters', icon: 'waiter', summary: 'Melayani pelanggan dengan ramah, mengambil pesanan, menyajikan makanan/minuman, dan memastikan kepuasan pelanggan selama dining.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'Service'] },
+  { title: 'Cashier', icon: 'cashier', summary: 'Menangani transaksi pembayaran dengan akurat, mengelola kasir, dan memberikan informasi menu kepada pelanggan.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'Finance'] },
+  { title: 'Kitchen Crew', icon: 'crew', summary: 'Mendukung operasional dapur — mencuci peralatan, menyiapkan bahan, menjaga kebersihan, dan memastikan dapur selalu siap operasi.', types: ['Full Time', 'Part Time'], tags: ['Kitchen', 'Support'] },
+  { title: 'Supervisor', icon: 'supervisor', summary: 'Mengawasi operasional harian, memimpin tim shift, memastikan standar layanan terpenuhi, dan membantu manajemen outlet.', types: ['Full Time'], tags: ['Management'] },
+  { title: 'Store Manager', icon: 'manager', summary: 'Memimpin seluruh operasional outlet, mengelola tim, mencapai target penjualan, dan menjaga brand experience Djiwa Tentram.', types: ['Full Time'], tags: ['Management'] },
 ];
 
 let selectedJob = null;
@@ -427,7 +402,7 @@ function renderEmpty(q) {
   </div>`;
 }
 
-// ── Render Jobs with stagger ──
+// ── Render Jobs as service grid (Gojek style) ──
 function renderJobs() {
   const list = document.getElementById('jobList');
   const q = (document.getElementById('searchInput').value || '').toLowerCase();
@@ -443,23 +418,15 @@ function renderJobs() {
     const ac = getApplicantCountByJob(job.title);
     const active = selectedJob?.title === job.title;
     return `
-      <article class="bg-white rounded-card p-5 border border-border-ios animate-rise shadow-ios-1 motion-safe job-card ${active ? '!border-accent !shadow-[0_0_0_4px_rgba(31,94,255,0.10),0_12px_32px_-12px_rgba(9,9,11,0.12)]' : 'hover:-translate-y-0.5 hover:shadow-ios-2'}"
+      <article class="group bg-white rounded-card p-4 border border-border-ios animate-rise shadow-ios-1 motion-safe job-card ${active ? '!border-accent !shadow-[0_0_0_4px_rgba(31,94,255,0.10),0_12px_32px_-12px_rgba(9,9,11,0.12)]' : 'hover:-translate-y-0.5 hover:shadow-ios-2'}"
         data-job="${escapeHtml(job.title)}" style="animation-delay:${i * 40}ms">
-        <div class="flex items-start gap-4">
-          <div class="size-[48px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">${ICONS.briefcase}</div>
-          <div class="flex-1 min-w-0">
-            <h3 class="font-display text-[17px] font-extrabold tracking-[-0.02em]">${escapeHtml(job.title)}</h3>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              <span class="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 rounded-full bg-success/10 border border-success/25 text-success text-[11px] font-extrabold">${ICONS.users}${ac} pelamar</span>
-              ${job.types.map(t => `<span class="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 rounded-full bg-accent-soft border border-accent-line text-accent text-[11px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
-            </div>
-            <p class="mt-2.5 text-ink-2 text-[13px] leading-[1.6]">${escapeHtml(job.summary)}</p>
-            <div class="flex flex-wrap gap-1.5 mt-3">
-              ${job.tags.map(t => `<span class="inline-flex items-center min-h-[30px] px-2.5 rounded-full bg-surface-2 border border-border-ios text-ink-2 text-[11px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
-            </div>
-            <button type="button" onclick="selectJob('${escapeHtml(job.title)}')" class="mt-4 w-full inline-flex items-center justify-center gap-2 min-h-[42px] rounded-ctl bg-accent text-white font-display font-extrabold text-[13px] motion-safe">${ICONS.send} Lamar posisi ini</button>
-          </div>
+        <div class="size-[52px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center mb-3">${ICONS[job.icon] || ICONS.briefcase}</div>
+        <h3 class="font-display text-[15px] font-extrabold tracking-[-0.02em] mb-1">${escapeHtml(job.title)}</h3>
+        <div class="flex flex-wrap gap-1.5 mb-3">
+          <span class="inline-flex items-center gap-1.5 min-h-[26px] px-2 rounded-full bg-success/10 border border-success/25 text-success text-[10px] font-extrabold">${ICONS.users}${ac}</span>
+          ${job.types.map(t => `<span class="inline-flex items-center min-h-[26px] px-2 rounded-full bg-accent-soft border border-accent-line text-accent text-[10px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
         </div>
+        <button type="button" onclick="selectJob('${escapeHtml(job.title)}')" class="w-full inline-flex items-center justify-center gap-1.5 min-h-[40px] rounded-ctl bg-accent text-white font-display font-extrabold text-[12px] motion-safe">${ICONS.send} Lamar</button>
       </article>`;
   }).join('');
 }
@@ -504,19 +471,14 @@ function closeConfirm() {
   document.getElementById('confirmModal').classList.remove('show');
 }
 
-// ── Skeleton ──
+// ── Skeleton (grid) ──
 function showSkeleton() {
-  document.getElementById('jobList').innerHTML = Array(3).fill(0).map(() => `
-    <div class="bg-white rounded-card p-5 border border-border-ios">
-      <div class="flex items-start gap-4">
-        <div class="skel shimmer size-[48px] rounded-ctl flex-shrink-0"></div>
-        <div class="flex-1">
-          <div class="skel shimmer h-[18px] w-[40%] rounded-[8px] mb-3"></div>
-          <div class="skel shimmer h-[14px] w-[90%] rounded-[8px] mb-2.5"></div>
-          <div class="skel shimmer h-[14px] w-[70%] rounded-[8px] mb-2.5"></div>
-          <div class="skel shimmer h-[12px] w-[40%] rounded-[8px] mt-3.5"></div>
-        </div>
-      </div>
+  document.getElementById('jobList').innerHTML = Array(4).fill(0).map(() => `
+    <div class="bg-white rounded-card p-4 border border-border-ios">
+      <div class="skel shimmer size-[52px] rounded-ctl mb-3"></div>
+      <div class="skel shimmer h-[16px] w-[60%] rounded-[8px] mb-2.5"></div>
+      <div class="skel shimmer h-[26px] w-[80%] rounded-full mb-3"></div>
+      <div class="skel shimmer h-[40px] w-full rounded-ctl"></div>
     </div>
   `).join('');
 }
