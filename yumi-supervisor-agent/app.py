@@ -312,15 +312,32 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     emp_id = emp["employee_user_id"]
     emp_name = emp["employee_name"]
-    # Cek sudah check_in hari ini
-    exists_in, log_in = await _has_today_attendance(emp_id, "check_in")
-    if not exists_in:
+    
+    # Cari check-in terakhir (bisa dari hari sebelumnya untuk cross-day shift)
+    today_start = _start_of_day_ms(_now_wib())
+    today_end = today_start + 86400000
+    rows = await _fetch("pos_attendance_logs",
+        f"select=timestamp,type,shiftName"
+        f"&userId=eq.{emp_id}"
+        f"&type=eq.check_in"
+        f"&order=timestamp.desc&limit=3")
+
+    log_in = None
+    for row in rows:
+        ts = int(float(row.get("timestamp", 0)))
+        # Accept check-in from today OR yesterday (for cross-day shifts)
+        if ts >= (today_start - 86400000) and ts < today_end:
+            log_in = row
+            break
+
+    if not log_in:
         await update.message.reply_text(
-            f"⚠️ *{emp_name}*, kamu belum absen masuk hari ini.\n\n"
+            f"⚠️ *{emp_name}*, kamu belum absen masuk.\n\n"
             f"Gunakan `/clockin` untuk absen masuk.",
             parse_mode="Markdown")
         return
-    # Cek double check-out
+    
+    # Cek double check-out (today only)
     exists_out, _ = await _has_today_attendance(emp_id, "check_out")
     if exists_out:
         await update.message.reply_text(
