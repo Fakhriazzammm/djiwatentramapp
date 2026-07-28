@@ -402,7 +402,7 @@ function renderEmpty(q) {
   </div>`;
 }
 
-// ── Render Jobs as service grid (Gojek style) ──
+// ── Render Jobs as card grid (Gojek style) ──
 function renderJobs() {
   const list = document.getElementById('jobList');
   const q = (document.getElementById('searchInput').value || '').toLowerCase();
@@ -420,13 +420,21 @@ function renderJobs() {
     return `
       <article class="group bg-white rounded-card p-4 border border-border-ios animate-rise shadow-ios-1 motion-safe job-card ${active ? '!border-accent !shadow-[0_0_0_4px_rgba(31,94,255,0.10),0_12px_32px_-12px_rgba(9,9,11,0.12)]' : 'hover:-translate-y-0.5 hover:shadow-ios-2'}"
         data-job="${escapeHtml(job.title)}" style="animation-delay:${i * 40}ms">
-        <div class="size-[52px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center mb-3">${ICONS[job.icon] || ICONS.briefcase}</div>
-        <h3 class="font-display text-[15px] font-extrabold tracking-[-0.02em] mb-1">${escapeHtml(job.title)}</h3>
-        <div class="flex flex-wrap gap-1.5 mb-3">
-          <span class="inline-flex items-center gap-1.5 min-h-[26px] px-2 rounded-full bg-success/10 border border-success/25 text-success text-[10px] font-extrabold">${ICONS.users}${ac}</span>
-          ${job.types.map(t => `<span class="inline-flex items-center min-h-[26px] px-2 rounded-full bg-accent-soft border border-accent-line text-accent text-[10px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
+        <div class="flex items-start gap-3 mb-2.5">
+          <div class="size-[44px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">${ICONS[job.icon] || ICONS.briefcase}</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-display text-[16px] font-extrabold tracking-[-0.02em] mb-1">${escapeHtml(job.title)}</h3>
+            <div class="flex flex-wrap gap-1">
+              <span class="inline-flex items-center gap-1 min-h-[24px] px-2 rounded-full bg-success/10 border border-success/25 text-success text-[9px] font-extrabold">${ICONS.users}${ac}</span>
+              ${job.types.map(t => `<span class="inline-flex items-center min-h-[24px] px-2 rounded-full bg-accent-soft border border-accent-line text-accent text-[9px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
+            </div>
+          </div>
         </div>
-        <button type="button" onclick="selectJob('${escapeHtml(job.title)}')" class="w-full inline-flex items-center justify-center gap-1.5 min-h-[40px] rounded-ctl bg-accent text-white font-display font-extrabold text-[12px] motion-safe">${ICONS.send} Lamar</button>
+        <p class="text-ink-2 text-[12px] leading-[1.55] mb-3 line-clamp-2">${escapeHtml(job.summary)}</p>
+        <div class="flex flex-wrap gap-1 mb-3">
+          ${job.tags.map(t => `<span class="inline-flex items-center min-h-[24px] px-2 rounded-full bg-surface-2 border border-border-ios text-ink-2 text-[9px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
+        </div>
+        <button type="button" onclick="selectJob('${escapeHtml(job.title)}')" class="w-full inline-flex items-center justify-center gap-1.5 min-h-[38px] rounded-ctl bg-accent text-white font-display font-extrabold text-[12px] motion-safe">${ICONS.send} Lamar</button>
       </article>`;
   }).join('');
 }
@@ -471,14 +479,20 @@ function closeConfirm() {
   document.getElementById('confirmModal').classList.remove('show');
 }
 
-// ── Skeleton (grid) ──
+// ── Skeleton (card grid) ──
 function showSkeleton() {
   document.getElementById('jobList').innerHTML = Array(4).fill(0).map(() => `
     <div class="bg-white rounded-card p-4 border border-border-ios">
-      <div class="skel shimmer size-[52px] rounded-ctl mb-3"></div>
-      <div class="skel shimmer h-[16px] w-[60%] rounded-[8px] mb-2.5"></div>
-      <div class="skel shimmer h-[26px] w-[80%] rounded-full mb-3"></div>
-      <div class="skel shimmer h-[40px] w-full rounded-ctl"></div>
+      <div class="flex items-start gap-3 mb-2.5">
+        <div class="skel shimmer size-[44px] rounded-ctl flex-shrink-0 mt-0.5"></div>
+        <div class="flex-1">
+          <div class="skel shimmer h-[16px] w-[50%] rounded-[8px] mb-2"></div>
+          <div class="skel shimmer h-[24px] w-[70%] rounded-full"></div>
+        </div>
+      </div>
+      <div class="skel shimmer h-[12px] w-full rounded-[8px] mb-1.5"></div>
+      <div class="skel shimmer h-[12px] w-[90%] rounded-[8px] mb-3"></div>
+      <div class="skel shimmer h-[38px] w-full rounded-ctl"></div>
     </div>
   `).join('');
 }
