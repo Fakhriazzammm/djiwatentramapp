@@ -34,6 +34,75 @@ function makeSourceId(prefix: string): string {
   return `${prefix}_${rnd}`;
 }
 
+interface KebersihanArea {
+  id: string;
+  label?: string;
+  status?: string;
+  catatan?: string;
+  photoBase64?: string;
+  photoContentType?: string;
+  photoUrl?: string;
+}
+
+const CLOSING_PHOTO_BUCKET = "shift-closing-photos";
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Base URL yang bisa dibuka browser. SUPABASE_URL di dalam container adalah
+ * http://kong:8000 (hanya valid antar-container), dan SUPABASE_PUBLIC_URL di
+ * server ini menunjuk ke app POS, bukan API gateway.
+ */
+const publicSupabaseUrl = (
+  Deno.env.get("YUMI_PUBLIC_SUPABASE_URL") ?? "https://supabase.yumme.id"
+).replace(/\/+$/, "");
+
+/**
+ * Upload foto kebersihan pakai service role. Wajib di server: `anon` tidak
+ * punya hak tulis ke storage.objects sama sekali, jadi upload langsung dari
+ * browser selalu ditolak 403.
+ */
+async function uploadClosingPhoto(
+  supabaseUrl: string,
+  serviceKey: string,
+  userId: string,
+  areaId: string,
+  base64: string,
+  contentType: string,
+): Promise<string> {
+  if (!ALLOWED_PHOTO_TYPES.includes(contentType)) {
+    throw new Error(`Format foto ${areaId} harus JPG, PNG, atau WEBP`);
+  }
+
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  if (bytes.byteLength > MAX_PHOTO_BYTES) {
+    throw new Error(`Ukuran foto ${areaId} melebihi 5MB`);
+  }
+
+  const ext =
+    contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+  const path = `${userId}/${Date.now()}_${areaId}.${ext}`;
+
+  const res = await fetch(
+    `${supabaseUrl}/storage/v1/object/${CLOSING_PHOTO_BUCKET}/${path}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": contentType,
+        "x-upsert": "true",
+      },
+      body: bytes,
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Upload foto ${areaId} gagal (${res.status}): ${await res.text()}`);
+  }
+
+  return `${publicSupabaseUrl}/storage/v1/object/public/${CLOSING_PHOTO_BUCKET}/${path}`;
+}
+
 // ─── Main handler ─────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -54,6 +123,7 @@ Deno.serve(async (req: Request) => {
       role,
       items = [],
       source = "karyawan_web",
+      kebersihan = [],
     } = payload as {
       userId: string;
       userName: string;
@@ -62,6 +132,7 @@ Deno.serve(async (req: Request) => {
       role: "bar" | "kitchen" | null;
       items: OpnameItem[];
       source: string;
+      kebersihan: KebersihanArea[];
     };
 
     if (!userId || !userName) {
@@ -304,6 +375,33 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // ── Step 4b: Upload foto kebersihan ─────────────────────
+      // Sebelumnya data kebersihan (status, catatan, foto) hanya hidup di state
+      // halaman dan hilang saat submit — tidak pernah dikirim ke server.
+      const kebersihanResult: KebersihanArea[] = [];
+      for (const area of Array.isArray(kebersihan) ? kebersihan : []) {
+        if (!area?.id) continue;
+        const entry: KebersihanArea = {
+          id: area.id,
+          label: area.label,
+          status: area.status,
+          catatan: area.catatan,
+        };
+        if (area.photoBase64) {
+          entry.photoUrl = await uploadClosingPhoto(
+            supabaseUrl,
+            supabaseKey,
+            userId,
+            area.id,
+            area.photoBase64,
+            area.photoContentType || "image/jpeg",
+          );
+        } else if (area.photoUrl) {
+          entry.photoUrl = area.photoUrl;
+        }
+        kebersihanResult.push(entry);
+      }
+
       // ── Step 5: Record check-out ────────────────────────────
       const docId = makeSourceId("att");
 
@@ -326,6 +424,9 @@ Deno.serve(async (req: Request) => {
             shiftName,
             roleName,
             notes: checkOutNotes,
+            ...(kebersihanResult.length > 0
+              ? { closing: { kebersihan: kebersihanResult, closedAt: now } }
+              : {}),
           },
         });
 

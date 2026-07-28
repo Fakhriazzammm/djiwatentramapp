@@ -384,6 +384,18 @@ async function generatePayslipsForRun(supabase: ReturnType<typeof createClient>,
               net_pay = ${newNet}
             WHERE payroll_run_item_id = '${item.id}';
           `);
+
+          // Also update payroll_run_items so SaldoCard gets correct data
+          await queryRaw(`
+            UPDATE pos.payroll_run_items
+            SET
+              bonus_pay = ${bonusInfo.total},
+              gross_pay = ${newGross},
+              net_pay = ${newNet},
+              compensation_breakdown = '${JSON.stringify(breakdown).replace(/'/g, "''")}'::jsonb,
+              updated_at = now()
+            WHERE id = '${item.id}';
+          `);
         }
       }
     }
