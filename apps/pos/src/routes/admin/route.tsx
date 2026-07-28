@@ -92,7 +92,8 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/operational-team/karyawan": "Karyawan",
 	"/admin/operational-team/karyawan/data": "Data Karyawan",
 	"/admin/operational-team/register/riwayat": "Riwayat Kontrak",
-	"/admin/forecasting": "Forecasting",
+	"/admin/operational-team/rekrutmen": "Rekrutmen",
+		"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
 	"/admin/kitchen": "Dapur",
 	"/admin/bar": "Bar",
@@ -183,6 +184,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
 			{ to: "/admin/customers", icon: Users, label: "Pelanggan" },
+			{ to: "/admin/operational-team/rekrutmen", icon: FileText, label: "Rekrutmen", permission: "users:manage" },
 		],
 	},
 	{
@@ -222,7 +224,8 @@ const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/register/onboarding",
 	"/admin/operational-team/register/contract",
 	"/admin/operational-team/register/riwayat",
-];
+	"/admin/operational-team/rekrutmen",
+	];
 
 function AdminLayout() {
 	const navigate = useNavigate();
@@ -490,6 +493,7 @@ function AdminLayout() {
 							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 							<DesktopNavLink icon={<FileSignature />} isCollapsed={isCollapsed} label="Kontrak" to="/admin/operational-team/register/contract" permission="users:manage" />
 							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
+							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Rekrutmen" to="/admin/operational-team/rekrutmen" permission="users:manage" />
 						</>
 					) : (
 						<>
@@ -516,6 +520,7 @@ function AdminLayout() {
 										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 										<DesktopSubNavLink icon={<FileSignature />} label="Kontrak Kerja" to="/admin/operational-team/register/contract" permission="users:manage" />
 										<DesktopSubNavLink icon={<FileText />} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
+									<DesktopSubNavLink icon={<FileText />} label="Rekrutmen" to="/admin/operational-team/rekrutmen" permission="users:manage" />
 										</div>
 									</motion.div>
 								)}

@@ -1,0 +1,5 @@
+node_modules/
+.hermes/
+airtable_export.json
+.supabase_key
+step2_html_js.py
