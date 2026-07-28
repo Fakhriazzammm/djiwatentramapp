@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import {
   submitClosingViaEdge,
+  prepareKebersihanPhoto,
   type OpnameItem,
   type ClosingEdgeResponse,
 } from "../../hooks/use-closing-submit";
@@ -21,7 +22,10 @@ type KebersihanArea = {
   label: string;
   emoji: string;
   status: "bersih" | "perlu_perbaikan";
+  /** Object URL — hanya untuk preview di layar. */
   foto: string | null;
+  /** File aslinya; ini yang dikirim saat submit. */
+  fotoFile?: File | null;
   catatan: string;
 };
 
@@ -80,7 +84,29 @@ function ClosingPage() {
   const search = useSearch({ from: Route.id as any });
   const navigate = useNavigate();
 
-  const shiftName = (search as any)?.shift || "Shift";
+  // Determine shift name: from URL param, or from latest check-in, or fallback
+  const [shiftName, setShiftName] = useState<string>((search as any)?.shift || "");
+  useEffect(() => {
+    if (shiftName) return; // already have it from URL
+    const fetchShift = async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("pos_attendance_logs")
+          .select("shiftName")
+          .eq("type", "check_in")
+          .eq("userId", staff?._id || username)
+          .order("timestamp", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data?.shiftName) setShiftName(data.shiftName);
+        else setShiftName("Shift");
+      } catch {
+        setShiftName("Shift");
+      }
+    };
+    fetchShift();
+  }, [staff, username, shiftName]);
   const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">("opname");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
@@ -255,7 +281,20 @@ function ClosingPage() {
         (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
       );
 
-      // 2. Submit ALL via Edge Function (atomic — handles lock, opname, last-person check, inventory update, check-out)
+      // 2. Kebersihan: kecilkan foto lalu ikutkan ke payload. Sebelumnya
+      //    data ini hanya hidup di state dan hilang begitu submit.
+      const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
+      const kebersihan = await Promise.all(
+        areasKebersihan.map(async (a) => ({
+          id: a.id,
+          label: a.label,
+          status: a.status,
+          catatan: a.catatan,
+          ...(a.fotoFile ? await prepareKebersihanPhoto(a.fotoFile) : {}),
+        })),
+      );
+
+      // 3. Submit ALL via Edge Function (atomic — handles lock, opname, last-person check, inventory update, check-out)
       const result = await submitClosingViaEdge({
         userId,
         userName,
@@ -264,6 +303,7 @@ function ClosingPage() {
         role,
         items: markedChanged.length > 0 ? markedChanged : opnameItems,
         source: "karyawan_web",
+        kebersihan,
       });
 
       setSubmitDone(true);
@@ -580,7 +620,7 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
     if (!file) return;
     const url = URL.createObjectURL(file);
     setAreas((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, foto: url } : a))
+      prev.map((a) => (a.id === id ? { ...a, foto: url, fotoFile: file } : a))
     );
   };
 
@@ -590,7 +630,7 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
 
   const removeFoto = (id: string) => {
     setAreas((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, foto: null } : a))
+      prev.map((a) => (a.id === id ? { ...a, foto: null, fotoFile: null } : a))
     );
   };
 
