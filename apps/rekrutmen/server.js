@@ -62,6 +62,20 @@ function psql(sql) {
   return result.trim();
 }
 
+// ── GET /api/recruitment-positions (hanya yang is_open=true) ──
+app.get("/api/recruitment-positions", async (req, res) => {
+  try {
+    const raw = psql(
+      `SELECT json_build_object('title', title, 'icon', icon, 'summary', summary, 'types', types, 'tags', tags)::text FROM pos.recruitment_positions WHERE is_open = true ORDER BY sort_order ASC`
+    );
+    if (!raw) return res.json([]);
+    const rows = raw.split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── GET /api/table/Candidates ──
 app.get("/api/table/Candidates", async (req, res) => {
   try {

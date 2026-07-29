@@ -395,17 +395,20 @@ const ICONS = {
   users: '<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
 };
 
-// ── Job Positions (with icon key) ──
-const JOBS = [
-  { title: 'Barista', icon: 'coffee', summary: 'Menyajikan kopi dan minuman specialty dengan kualitas terbaik, menjaga kebersihan bar area, dan memberikan customer experience yang ramah.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'F&B'] },
-  { title: 'Chef', icon: 'chef', summary: 'Bertanggung jawab atas kualitas dan konsistensi menu makanan Djiwa Tentram, menjaga standar higiene dapur, dan mengelola stok bahan baku.', types: ['Full Time'], tags: ['Kitchen', 'F&B'] },
-  { title: 'Cook', icon: 'cook', summary: 'Membantu Chef dalam persiapan dan penyajian menu, menjaga kebersihan area dapur, dan memastikan ketersediaan bahan masak.', types: ['Full Time', 'Part Time'], tags: ['Kitchen', 'F&B'] },
-  { title: 'Waiters', icon: 'waiter', summary: 'Melayani pelanggan dengan ramah, mengambil pesanan, menyajikan makanan/minuman, dan memastikan kepuasan pelanggan selama dining.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'Service'] },
-  { title: 'Cashier', icon: 'cashier', summary: 'Menangani transaksi pembayaran dengan akurat, mengelola kasir, dan memberikan informasi menu kepada pelanggan.', types: ['Full Time', 'Part Time'], tags: ['Frontline', 'Finance'] },
-  { title: 'Kitchen Crew', icon: 'crew', summary: 'Mendukung operasional dapur — mencuci peralatan, menyiapkan bahan, menjaga kebersihan, dan memastikan dapur selalu siap operasi.', types: ['Full Time', 'Part Time'], tags: ['Kitchen', 'Support'] },
-  { title: 'Supervisor', icon: 'supervisor', summary: 'Mengawasi operasional harian, memimpin tim shift, memastikan standar layanan terpenuhi, dan membantu manajemen outlet.', types: ['Full Time'], tags: ['Management'] },
-  { title: 'Store Manager', icon: 'manager', summary: 'Memimpin seluruh operasional outlet, mengelola tim, mencapai target penjualan, dan menjaga brand experience Djiwa Tentram.', types: ['Full Time'], tags: ['Management'] },
-];
+// ── Job Positions (dynamic dari DB via /api/recruitment-positions) ──
+let JOBS = [];
+async function loadJobs() {
+  try {
+    const res = await fetch('/api/recruitment-positions');
+    if (!res.ok) throw new Error('fetch jobs failed');
+    JOBS = await res.json();
+  } catch (e) {
+    console.error('Gagal load posisi:', e);
+    JOBS = [];
+  }
+  renderJobs();
+  updateMetrics();
+}
 
 let selectedJob = null;
 let candidateRecords = [];
@@ -577,7 +580,7 @@ function showSkeleton() {
 }
 
 // ── Load ──
-async function loadJobs() {
+async function loadCandidates() {
   showSkeleton();
   try {
     const res = await fetch('/api/table/Candidates');
@@ -690,7 +693,7 @@ async function submitApplication() {
     document.getElementById('selectedRoleBox').classList.remove('hidden');
     document.getElementById('successDesc').innerHTML = 'Posisi <strong>' + escapeHtml(posisi) + '</strong> sudah masuk ke tim kami.';
     document.getElementById('successOverlay').classList.add('show');
-    await loadJobs();
+    await loadCandidates();
   } catch (error) {
     showToast('Gagal kirim: ' + error.message, 'error');
   } finally {
@@ -710,6 +713,7 @@ function fileToDataURL(file) {
 }
 
 loadJobs();
+loadCandidates();
 </script>
 </body>
 </html>
