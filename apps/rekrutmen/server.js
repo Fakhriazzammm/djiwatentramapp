@@ -9,8 +9,44 @@ const PORT = 3456;
 const TABLE = "recruitment_candidates";
 const UPLOAD_DIR = path.join(__dirname, "public", "uploads");
 
-// pastikan folder uploads ada
+// ── Supabase config (baca dari .env agent, bukan hardcode) ──
+function loadEnv(file) {
+  try {
+    const txt = fs.readFileSync(file, "utf8");
+    const o = {};
+    for (const line of txt.split("\n")) {
+      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (m) o[m[1]] = m[2].trim();
+    }
+    return o;
+  } catch { return {}; }
+}
+const SUP = loadEnv(path.join(__dirname, "..", "..", "yumi-ai-bot", ".env"));
+const SUPABASE_URL = SUP.SUPABASE_URL || process.env.SUPABASE_URL;
+const SUPABASE_SKEY = SUP.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const CV_BUCKET = "recruitment-cv";
+
+// pastikan folder uploads ada (fallback)
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+// upload buffer ke Supabase Storage (self-host), return public URL
+async function uploadToStorage(objectPath, buffer, contentType) {
+  const url = `${SUPABASE_URL}/storage/v1/object/${CV_BUCKET}/${encodeURIComponent(objectPath)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SUPABASE_SKEY}`,
+      apikey: SUPABASE_SKEY,
+      "Content-Type": contentType || "application/octet-stream",
+    },
+    body: buffer,
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error("Storage upload failed: " + res.status + " " + err.slice(0, 200));
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/${CV_BUCKET}/${encodeURIComponent(objectPath)}`;
+}
 
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
@@ -62,22 +98,22 @@ app.get("/api/table/Candidates", async (req, res) => {
   }
 });
 
-// ── POST /api/upload-cv (base64 → file, no multer) ──
+// ── POST /api/upload-cv (ke Supabase Storage self-host) ──
 app.post("/api/upload-cv", async (req, res) => {
   try {
     const { data, filename } = req.body;
     if (!data || !filename) return res.status(400).json({ error: "data & filename required" });
-    // validasi tipe
     const allowed = [".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"];
     const ext = path.extname(filename).toLowerCase();
     if (!allowed.includes(ext)) return res.status(400).json({ error: "Tipe file tidak didukung" });
-    const m = data.match(/^data:([A-Za-z0-9+/=]+);base64,(.+)$/);
+    const m = data.match(/^data:([A-Za-z0-9/+-]+);base64,(.+)$/);
     if (!m) return res.status(400).json({ error: "Format base64 tidak valid" });
+    const contentType = m[1];
     const buf = Buffer.from(m[2], "base64");
     if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: "Maksimal 8MB" });
     const safeName = Date.now() + "-" + filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    fs.writeFileSync(path.join(UPLOAD_DIR, safeName), buf);
-    res.json({ url: "/uploads/" + safeName });
+    const url = await uploadToStorage(safeName, buf, contentType);
+    res.json({ url });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
