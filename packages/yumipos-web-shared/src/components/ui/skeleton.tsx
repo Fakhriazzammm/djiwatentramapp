@@ -16,7 +16,7 @@ function Skeleton({
 	return (
 		<div
 			className={cn(
-				"animate-pulse bg-muted",
+				"animate-shimmer bg-muted",
 				shape === "circle" && "rounded-full",
 				shape === "square" && "rounded-none",
 				shape === "rounded" && "rounded-md",
