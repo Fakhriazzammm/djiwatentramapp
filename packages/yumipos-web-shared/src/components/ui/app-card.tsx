@@ -16,7 +16,7 @@ function AppCard({
     <div
       className={cn(
         strong ? "app-card-strong" : "app-card",
-        "p-5 sm:p-6",
+        "p-5 sm:p-6 lift-ios",
         className
       )}
       data-slot="app-card"
