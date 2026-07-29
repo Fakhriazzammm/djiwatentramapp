@@ -139,6 +139,23 @@ app.post("/api/table/Candidates", async (req, res) => {
   try {
     const b = req.body;
     const esc = (v) => { if (v == null) return "NULL"; return "'" + String(v).replace(/'/g, "''") + "'"; };
+
+    // ── Dedupe: cek duplikat dalam 5 menit terakhir (cegah looping notif) ──
+    const dupSql = `SELECT id FROM pos.${TABLE} WHERE email = ${esc(b["Email"])} AND posisi_dilamar = ${esc(b["Posisi Dilamar"])} AND created_at > NOW() - INTERVAL '5 minutes' ORDER BY created_at DESC LIMIT 1`;
+    let existingId = null;
+    try {
+      const dupRes = execSync(
+        `docker exec -i supabase-db psql -U postgres -d postgres -t -A -c '${dupSql.replace(/'/g, "'\"'\"'")}'`,
+        { encoding: "utf-8", timeout: 10000 }
+      );
+      existingId = dupRes.trim();
+    } catch (_) { /* ignore, lanjut insert */ }
+
+    if (existingId) {
+      // Duplikat terdeteksi → jangan insert & jangan notif (cegah loop)
+      return res.json({ records: [{ id: existingId, fields: b, duplicate: true }] });
+    }
+
     const sql = `INSERT INTO pos.${TABLE}
 (nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date, cv_url)
 VALUES (${esc(b["Nama Lengkap"])}, ${esc(b["Jenis Kelamin"])}, ${esc(b["Tanggal Lahir"])}, ${esc(b["Email"])}, ${esc(b["Nomor Telepon/HP"])}, ${esc(b["Sosial Media Instagram/Tiktok"])}, ${esc(b["Posisi Dilamar"])}, ${esc(b["Full time/Part time"])}, ${esc(b["Notes"])}, ${esc(b["Status"] || "Application Received")}, ${esc(b["Application Date"] || new Date().toISOString().split("T")[0])}, ${esc(b["CV URL"])}) RETURNING id`;
@@ -147,7 +164,7 @@ VALUES (${esc(b["Nama Lengkap"])}, ${esc(b["Jenis Kelamin"])}, ${esc(b["Tanggal 
       { encoding: "utf-8", timeout: 10000 }
     );
     const newId = result.trim();
-    // ── Notifikasi ke grup [Report] via yumi-ai-bot ──
+    // ── Notifikasi ke grup [Report] via yumi-hrd-agent ──
     try {
       const notifPayload = JSON.stringify({
         nama_lengkap: b["Nama Lengkap"],
