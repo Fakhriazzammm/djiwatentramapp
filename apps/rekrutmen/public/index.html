@@ -356,7 +356,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <p class="text-ink-2 text-[14px] leading-[1.6] mb-6">Pastikan data diri dan posisi <strong id="confirmRole" class="text-ink">—</strong> sudah benar sebelum dikirim.</p>
     <div class="flex gap-3">
       <button onclick="closeConfirm()" class="flex-1 min-h-[46px] rounded-ctl border-2 border-border-ios bg-white text-ink font-display font-extrabold text-[14px] motion-safe">Batal</button>
-      <button onclick="submitApplication()" class="flex-1 min-h-[46px] rounded-ctl bg-accent text-white font-display font-extrabold text-[14px] motion-safe">Ya, kirim</button>
+      <button onclick="if(this.disabled)return; this.disabled=true; submitApplication();" class="flex-1 min-h-[46px] rounded-ctl bg-accent text-white font-display font-extrabold text-[14px] motion-safe">Ya, kirim</button>
     </div>
   </div>
 </div>
@@ -588,6 +588,8 @@ function closeSuccess() {
 }
 function closeConfirm() {
   document.getElementById('confirmModal').classList.remove('show');
+  const yesBtn = document.querySelector('#confirmModal button[onclick*="submitApplication"]');
+  if (yesBtn) yesBtn.disabled = false;
 }
 
 // ── Skeleton (card grid, compact) ──
@@ -660,6 +662,8 @@ document.getElementById('applicationForm').addEventListener('submit', function(e
 });
 
 async function submitApplication() {
+  if (window.__isSubmitting) return; // guard double-submit
+  window.__isSubmitting = true;
   closeConfirm();
   const btn = document.getElementById('submitBtn');
   const txt = document.getElementById('submitText');
@@ -722,6 +726,7 @@ async function submitApplication() {
     txt.textContent = 'Kirim lamaran';
     spinner.classList.add('hidden');
     btn.disabled = false;
+    window.__isSubmitting = false;
   }
 }
 
