@@ -57,6 +57,8 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 .ease-spring { transition-timing-function: cubic-bezier(.32,.72,0,1); }
 .motion-safe { transition: all 180ms cubic-bezier(.32,.72,0,1); }
 .motion-safe:active { transform: scale(.97); }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* Skeleton */
 .skel { background: linear-gradient(90deg,#f4f4f5 25%,#ecedef 50%,#f4f4f5 75%); background-size: 200% 100%; }
@@ -135,20 +137,20 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         </div>
       </div>
       <!-- Stats inline 1 row -->
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 mt-5 pt-5 border-t border-border-ios">
-        <div class="flex items-baseline gap-1.5">
-          <span class="text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricPositions">0</span>
-          <span class="text-[12px] text-ink-2 font-semibold">Posisi dibuka</span>
+      <div class="flex items-center gap-3 sm:gap-5 mt-5 pt-5 border-t border-border-ios whitespace-nowrap overflow-x-auto no-scrollbar">
+        <div class="flex items-baseline gap-1.5 flex-shrink-0">
+          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricPositions">0</span>
+          <span class="text-[11px] sm:text-[12px] text-ink-2 font-semibold">Posisi dibuka</span>
         </div>
-        <div class="w-px h-5 bg-border-ios hidden sm:block"></div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricApplicants">0</span>
-          <span class="text-[12px] text-ink-2 font-semibold">Total pelamar</span>
+        <div class="w-px h-4 bg-border-ios flex-shrink-0"></div>
+        <div class="flex items-baseline gap-1.5 flex-shrink-0">
+          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricApplicants">0</span>
+          <span class="text-[11px] sm:text-[12px] text-ink-2 font-semibold">Total pelamar</span>
         </div>
-        <div class="w-px h-5 bg-border-ios hidden sm:block"></div>
-        <div class="flex items-baseline gap-1.5">
-          <span class="text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent">1–3</span>
-          <span class="text-[12px] text-ink-2 font-semibold">Hari review</span>
+        <div class="w-px h-4 bg-border-ios flex-shrink-0"></div>
+        <div class="flex items-baseline gap-1.5 flex-shrink-0">
+          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent">1–3</span>
+          <span class="text-[11px] sm:text-[12px] text-ink-2 font-semibold">Hari review</span>
         </div>
       </div>
     </div>
