@@ -1,0 +1,23 @@
+{
+  "buildCommand": "cd ../.. && bun run build:pos",
+  "ignoreCommand": "bash ../../scripts/vercel-ignore.sh apps/pos packages/backend packages/env packages/config supabase",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && bun install",
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/version.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/:path((?!.*\\..*).*)", "destination": "/index.html" }
+  ]
+}

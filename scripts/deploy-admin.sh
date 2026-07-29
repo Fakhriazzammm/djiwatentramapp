@@ -31,15 +31,15 @@ check_disk() {
 }
 check_disk
 
-# ── Build pos (admin = build pos) ──
+# ── Build admin app (apps/admin) ──
 echo ""
-echo "📦 Building pos (source for admin app)..."
-rm -rf ".turbo" "apps/pos/.turbo" "apps/pos/dist"
-bun run build:pos
-echo "✅ Build pos succeeded"
+echo "📦 Building admin (apps/admin)..."
+rm -rf ".turbo" "apps/admin/.turbo" "apps/admin/dist"
+bun run build:admin
+echo "✅ Build admin succeeded"
 
 if [ "$DEBUG" = "1" ]; then
-	echo "🐛 DEBUG mode: skip copy. Dist ada di apps/pos/dist/"
+	echo "🐛 DEBUG mode: skip copy. Dist ada di apps/admin/dist/"
 	exit 0
 fi
 

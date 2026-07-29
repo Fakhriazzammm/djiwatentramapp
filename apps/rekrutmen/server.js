@@ -79,7 +79,7 @@ app.get("/api/recruitment-positions", async (req, res) => {
 // ── GET /api/table/Candidates ──
 app.get("/api/table/Candidates", async (req, res) => {
   try {
-    const sql = `SELECT id, nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date, created_at FROM pos.${TABLE} ORDER BY created_at DESC`;
+    const sql = `SELECT id, nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date, created_at, cv_url FROM pos.${TABLE} ORDER BY created_at DESC`;
     const raw = execSync(
       `docker exec -i supabase-db psql -U postgres -d postgres -t -A -F '|||' -c '${sql.replace(/'/g, "'\"'\"'")}'`,
       { encoding: "utf-8", timeout: 10000 }
@@ -87,7 +87,7 @@ app.get("/api/table/Candidates", async (req, res) => {
     const records = [];
     for (const line of raw.trim().split("\n").filter(Boolean)) {
       const cols = line.split("|||");
-      if (cols.length < 13) continue;
+      if (cols.length < 14) continue;
       records.push({
         id: cols[0],
         createdTime: cols[12],
@@ -103,6 +103,7 @@ app.get("/api/table/Candidates", async (req, res) => {
           "Notes": cols[9] || "",
           "Status": cols[10] || "Application Received",
           "Application Date": cols[11] || null,
+          "CV URL": cols[13] || "",
         },
       });
     }
