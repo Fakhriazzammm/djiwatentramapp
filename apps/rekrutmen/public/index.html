@@ -713,7 +713,7 @@ async function submitApplication() {
     });
     const result = await res.json();
     if (result.error) throw new Error(result.error.message || JSON.stringify(result.error));
-    this.reset();
+    document.getElementById('applicationForm').reset();
     document.getElementById('fieldPosisi').value = posisi;
     document.getElementById('cvFileName').textContent = 'Belum ada file';
     document.getElementById('selectedRoleBox').classList.remove('hidden');
