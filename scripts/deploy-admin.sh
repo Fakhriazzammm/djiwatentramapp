@@ -45,9 +45,9 @@ fi
 
 # ── Copy ke domain admin ──
 echo ""
-echo "📁 Copying pos dist -> /var/www/$ADMIN_DOMAIN/..."
+echo "📁 Copying admin dist -> /var/www/$ADMIN_DOMAIN/..."
 sudo rm -rf "/var/www/$ADMIN_DOMAIN/"*
-sudo cp -r "apps/pos/dist/"* "/var/www/$ADMIN_DOMAIN/"
+sudo cp -r "apps/admin/dist/"* "/var/www/$ADMIN_DOMAIN/"
 sudo chown -R www-data:www-data "/var/www/$ADMIN_DOMAIN/"
 echo "✅ Admin deployed to https://$ADMIN_DOMAIN/"
 

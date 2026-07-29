@@ -212,14 +212,22 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
           </div>
 
           <form id="applicationForm" novalidate>
-            <input type="hidden" id="fieldPosisi" name="Posisi Dilamar">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div class="flex flex-col gap-[7px] sm:col-span-2">
+                <label class="text-[12px] font-extrabold text-ink">Posisi dilamar *</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Pilih posisi yang ingin kamu lamar</p>
+                <select id="fieldPosisi" required class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
+                  <option value="">Pilih posisi</option>
+                </select>
+              </div>
+              <div class="flex flex-col gap-[7px] sm:col-span-2">
                 <label class="text-[12px] font-extrabold text-ink">Nama lengkap *</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Sesuai KTP / identitas resmi</p>
                 <input type="text" id="fieldNama" required class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 py-3 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
               </div>
               <div class="flex flex-col gap-[7px]">
                 <label class="text-[12px] font-extrabold text-ink">Jenis kelamin *</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Laki-laki / Perempuan</p>
                 <select id="fieldGender" required class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
                   <option value="">Pilih</option>
                   <option>Laki-Laki</option>
@@ -228,22 +236,27 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
               </div>
               <div class="flex flex-col gap-[7px]">
                 <label class="text-[12px] font-extrabold text-ink">Tanggal lahir *</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Format: DD/MM/YYYY</p>
                 <input type="date" id="fieldBirth" required class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
               </div>
               <div class="flex flex-col gap-[7px]">
                 <label class="text-[12px] font-extrabold text-ink">Email *</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Alamat email aktif & sering dicek</p>
                 <input type="email" id="fieldEmail" required class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
               </div>
               <div class="flex flex-col gap-[7px]">
                 <label class="text-[12px] font-extrabold text-ink">Nomor WA *</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Contoh: 081234567890</p>
                 <input type="tel" id="fieldPhone" required class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
               </div>
               <div class="flex flex-col gap-[7px] sm:col-span-2">
                 <label class="text-[12px] font-extrabold text-ink">Instagram / TikTok</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Opsional — untuk lihat portofolio / karya</p>
                 <input type="text" id="fieldSocial" placeholder="@username" class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
               </div>
               <div class="flex flex-col gap-[7px] sm:col-span-2">
                 <label class="text-[12px] font-extrabold text-ink">Preferensi tipe kerja *</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">Full time atau part time</p>
                 <select id="fieldTipe" required class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]">
                   <option value="">Pilih</option>
                   <option>Full Time</option>
@@ -252,6 +265,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
               </div>
               <div class="flex flex-col gap-[7px] sm:col-span-2">
                 <label class="text-[12px] font-extrabold text-ink">Upload CV</label>
+                <p class="text-[10.5px] text-ink-3 -mt-[3px]">PDF / DOC / PNG / JPG, maksimal 8MB</p>
                 <div class="flex items-center gap-3">
                   <label class="inline-flex items-center justify-center gap-2 min-h-[46px] px-4 rounded-ctl border-2 border-border-ios bg-white text-ink font-display font-extrabold text-[13px] cursor-pointer hover:border-accent transition-colors duration-180 ease-spring">
                     <svg class="size-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
@@ -260,7 +274,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
                   </label>
                   <span id="cvFileName" class="text-[12px] text-ink-2 truncate flex-1">Belum ada file</span>
                 </div>
-                <p class="text-[10.5px] text-ink-3">PDF/DOC/PNG/JPG, maks 8MB</p>
+                <p class="text-[10.5px] text-ink-3">CV membantu kami mengenal pengalaman kamu</p>
               </div>
             </div>
             <div class="flex gap-3 mt-5">
@@ -408,6 +422,14 @@ async function loadJobs() {
   }
   renderJobs();
   updateMetrics();
+  // Isi dropdown Posisi Dilamar di form
+  const sel = document.getElementById('fieldPosisi');
+  if (sel) {
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Pilih posisi</option>' +
+      JOBS.map(j => `<option value="${escapeHtml(j.title)}">${escapeHtml(j.title)}</option>`).join('');
+    if (current) sel.value = current;
+  }
 }
 
 let selectedJob = null;
@@ -623,14 +645,10 @@ document.getElementById('applicationForm').addEventListener('submit', function(e
   const posisi = document.getElementById('fieldPosisi').value;
   if (!posisi) {
     showToast('Pilih posisi dulu ya', 'error');
-    // Tarik user ke area pilih posisi
-    const jobsSection = document.getElementById('jobsSection');
-    jobsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const hint = document.getElementById('jobHint');
-    if (hint) {
-      hint.classList.add('ring-2', 'ring-accent', 'ring-offset-2');
-      setTimeout(() => hint.classList.remove('ring-2', 'ring-accent', 'ring-offset-2'), 2000);
-    }
+    const sel = document.getElementById('fieldPosisi');
+    sel.classList.add('ring-2', 'ring-accent', 'ring-offset-2');
+    sel.focus();
+    setTimeout(() => sel.classList.remove('ring-2', 'ring-accent', 'ring-offset-2'), 2000);
     return;
   }
   document.getElementById('confirmRole').textContent = posisi;
