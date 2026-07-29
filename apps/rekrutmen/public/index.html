@@ -112,42 +112,42 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 
 <main>
 <!-- ═══ HERO (Gojek app pattern: greeting card + quick actions) ═══ -->
-<section class="pt-[96px]">
-  <div class="max-w-[1180px] mx-auto px-6 pb-8">
+<section class="pt-[88px]">
+  <div class="max-w-[1180px] mx-auto px-4 sm:px-6 pb-6">
 
     <!-- Greeting Card (white, not gradient) -->
-    <div class="bg-white rounded-card p-7 sm:p-8 shadow-ios-1 border border-border-ios">
+    <div class="bg-white rounded-card p-5 sm:p-7 shadow-ios-1 border border-border-ios">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
         <div>
           <h1 class="font-display text-[clamp(28px,4.5vw,42px)] leading-[1.05] tracking-[-0.03em] font-extrabold text-ink">Mulai karir di Djiwa Tentram</h1>
           <p class="text-ink-2 text-[15px] leading-[1.6] mt-2.5 max-w-[560px]">Temukan posisi yang cocok, isi data dirimu, dan bergabung dengan tim yang peduli kualitas. Kami review dan hubungi kamu.</p>
         </div>
         <!-- Quick Actions -->
-        <div class="flex gap-2.5 shrink-0">
-          <a href="#jobsSection" class="inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-4 bg-accent text-white font-display font-extrabold text-[14px] no-underline motion-safe shadow-ios-1 whitespace-nowrap overflow-hidden text-ellipsis">
+        <div class="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+          <a href="#jobsSection" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-4 bg-accent text-white font-display font-extrabold text-[14px] no-underline motion-safe shadow-ios-1 whitespace-nowrap">
             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             Lihat Lowongan
           </a>
-          <a href="#applyPanel" class="inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-5 border-2 border-accent bg-accent-soft text-accent font-display font-extrabold text-[14px] no-underline motion-safe">
+          <a href="#applyPanel" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-5 border-2 border-accent bg-accent-soft text-accent font-display font-extrabold text-[14px] no-underline motion-safe">
             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
             Daftar
           </a>
         </div>
       </div>
       <!-- Stats inline 1 row -->
-      <div class="flex items-center gap-6 mt-5 pt-5 border-t border-border-ios">
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-2.5 mt-5 pt-5 border-t border-border-ios">
         <div class="flex items-baseline gap-1.5">
-          <span class="text-[20px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricPositions">0</span>
+          <span class="text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricPositions">0</span>
           <span class="text-[12px] text-ink-2 font-semibold">Posisi dibuka</span>
         </div>
-        <div class="w-px h-5 bg-border-ios"></div>
+        <div class="w-px h-5 bg-border-ios hidden sm:block"></div>
         <div class="flex items-baseline gap-1.5">
-          <span class="text-[20px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricApplicants">0</span>
+          <span class="text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricApplicants">0</span>
           <span class="text-[12px] text-ink-2 font-semibold">Total pelamar</span>
         </div>
-        <div class="w-px h-5 bg-border-ios"></div>
+        <div class="w-px h-5 bg-border-ios hidden sm:block"></div>
         <div class="flex items-baseline gap-1.5">
-          <span class="text-[20px] font-display font-extrabold tracking-[-0.03em] text-accent">1–3</span>
+          <span class="text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent">1–3</span>
           <span class="text-[12px] text-ink-2 font-semibold">Hari review</span>
         </div>
       </div>
@@ -158,7 +158,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 
 <!-- ═══ JOBS + FORM ═══ -->
 <section id="jobsSection">
-  <div class="max-w-[1180px] mx-auto px-6 pb-12">
+  <div class="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
 
       <!-- Left: Jobs -->
