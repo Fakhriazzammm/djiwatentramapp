@@ -95,6 +95,21 @@ app.patch("/api/table/Candidates/:id", async (req, res) => {
   }
 });
 
+// ── DELETE /api/table/Candidates/:id ──
+app.delete("/api/table/Candidates/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const sql = `DELETE FROM pos.${TABLE} WHERE id = '${id}'`;
+    execSync(
+      `docker exec -i supabase-db psql -U postgres -d postgres -c '${sql.replace(/'/g, "'\"'\"'")}'`,
+      { encoding: "utf-8", timeout: 10000 }
+    );
+    res.json({ success: true, id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Other tables (Interviews / Onboarding) ──
 app.get("/api/table/:name", (req, res) => { res.json({ records: [] }); });
 app.post("/api/table/:name", (req, res) => { res.status(400).json({ error: "Table not supported" }); });

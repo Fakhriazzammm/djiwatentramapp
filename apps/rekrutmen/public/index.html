@@ -66,7 +66,16 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 @keyframes pop-in { 0% { transform: scale(0); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
 /* Overlays */
-#successOverlay.show, #confirmModal.show { opacity: 1; pointer-events: auto; }
+#successOverlay.show, #confirmModal.show, #jobDetailSheet.show { opacity: 1; pointer-events: auto; }
+
+/* iOS bottom sheet */
+#jobDetailSheet .sheet {
+  transform: translateY(100%);
+  transition: transform 380ms cubic-bezier(.32,.72,0,1);
+  will-change: transform;
+}
+#jobDetailSheet.show .sheet { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { #jobDetailSheet .sheet { transition: none; transform: none; } #jobDetailSheet.show .sheet { transform: none; } }
 
 /* Toast */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 100; padding: 14px 20px; border-radius: 14px; font-size: 13px; font-weight: 700; color: white; opacity: 0; pointer-events: none; transition: opacity 280ms cubic-bezier(.32,.72,0,1), transform 280ms cubic-bezier(.32,.72,0,1); white-space: nowrap; box-shadow: 0 12px 32px -12px rgba(9,9,11,0.3); }
@@ -317,6 +326,39 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   </div>
 </div>
 
+<!-- ═══ JOB DETAIL SHEET (iOS bottom sheet) ═══ -->
+<div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[8px] flex items-end sm:items-center justify-center opacity-0 pointer-events-none transition-opacity duration-320 ease-spring" id="jobDetailSheet">
+  <div class="sheet w-full sm:max-w-[460px] bg-white rounded-t-[28px] sm:rounded-card max-h-[90dvh] overflow-y-auto shadow-ios-2">
+    <div class="sticky top-0 bg-white/90 backdrop-blur-[12px] z-10 flex items-center justify-between px-5 pt-3 pb-3 border-b border-border-ios rounded-t-[28px]">
+      <div class="mx-auto w-9 h-1 rounded-full bg-border-ios sm:hidden"></div>
+      <button onclick="closeJobDetail()" class="absolute right-4 top-3.5 size-8 rounded-full bg-surface-2 text-ink-2 flex items-center justify-center" aria-label="Tutup">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6">
+      <div class="flex items-center gap-3.5 mb-4">
+        <div class="size-[52px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0" id="jdIcon"></div>
+        <div class="flex-1 min-w-0">
+          <h2 class="font-display text-[22px] font-extrabold tracking-[-0.03em] leading-tight" id="jdTitle">—</h2>
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            <span class="inline-flex items-center gap-1 min-h-[26px] px-2.5 rounded-full bg-success/10 border border-success/25 text-success text-[11px] font-extrabold" id="jdApplicants"></span>
+            <span id="jdTypes" class="flex flex-wrap gap-1.5"></span>
+          </div>
+        </div>
+      </div>
+      <p class="text-ink-2 text-[14px] leading-[1.65] mb-5" id="jdSummary">—</p>
+      <div class="mb-6">
+        <div class="text-[12px] font-extrabold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Kategori</div>
+        <div id="jdTags" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <button onclick="applyFromDetail()" class="w-full inline-flex items-center justify-center gap-2 min-h-[50px] rounded-ctl bg-accent text-white font-display font-extrabold text-[15px] motion-safe shadow-ios-1">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        Lamar posisi ini
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ TOAST ═══ -->
 <div class="toast" id="toast"></div>
 
@@ -423,8 +465,8 @@ function renderJobs() {
     return `
       <article class="group bg-white rounded-card p-4 border border-border-ios animate-rise shadow-ios-1 motion-safe job-card cursor-pointer flex flex-col ${active ? '!border-accent !shadow-[0_0_0_4px_rgba(31,94,255,0.10),0_12px_32px_-12px_rgba(9,9,11,0.12)]' : 'hover:-translate-y-0.5 hover:shadow-ios-2'}"
         data-job="${escapeHtml(job.title)}" style="animation-delay:${i * 40}ms"
-        title="${escapeHtml(job.summary)}" role="button" tabindex="0" onclick="selectJob('${escapeHtml(job.title)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectJob('${escapeHtml(job.title)}')}">
-        <div class="flex items-start gap-3 mb-2.5">
+        title="${escapeHtml(job.summary)}" role="button" tabindex="0" onclick="openJobDetail('${escapeHtml(job.title)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openJobDetail('${escapeHtml(job.title)}')}">
+        <div class="flex items-center gap-3 mb-2.5">
           <div class="size-[40px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">${ICONS[job.icon] || ICONS.briefcase}</div>
           <div class="flex-1 min-w-0">
             <h3 class="font-display text-[15px] font-extrabold tracking-[-0.02em] leading-tight mb-1.5 truncate">${escapeHtml(job.title)}</h3>
@@ -433,33 +475,53 @@ function renderJobs() {
               ${job.types.map(t => `<span class="inline-flex items-center min-h-[22px] px-2 rounded-full bg-accent-soft border border-accent-line text-accent text-[9px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
             </div>
           </div>
+          <svg class="size-4 text-ink-3 flex-shrink-0 group-hover:text-accent group-hover:translate-x-0.5 transition-all duration-180 ease-spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </div>
-        <p class="text-ink-2 text-[11.5px] leading-[1.5] mb-2.5 line-clamp-2">${escapeHtml(job.summary)}</p>
-        <div class="flex flex-wrap gap-1 mb-3">
-          ${job.tags.map(t => `<span class="inline-flex items-center min-h-[22px] px-2 rounded-full bg-surface-2 border border-border-ios text-ink-2 text-[9px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
-        </div>
-        <div class="mt-auto pt-2.5 border-t border-border-ios flex items-center justify-between">
-          <span class="text-[10px] font-extrabold text-ink-3 uppercase tracking-[0.06em]">Klik untuk melamar</span>
-          <svg class="size-3.5 text-accent group-hover:translate-x-0.5 transition-transform duration-180 ease-spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <div class="mt-auto pt-2.5 border-t border-border-ios flex items-center gap-1.5">
+          <span class="text-[10px] font-extrabold text-ink-3 uppercase tracking-[0.06em]">Ketuk untuk detail</span>
         </div>
       </article>`;
   }).join('');
 }
 
-// ── Select Job ──
-function selectJob(title) {
+// ── Open Job Detail (iOS sheet) ──
+function openJobDetail(title) {
   const job = JOBS.find(j => j.title === title);
   if (!job) return;
   selectedJob = job;
+  const ac = getApplicantCountByJob(job.title);
+  document.getElementById('jdIcon').innerHTML = ICONS[job.icon] || ICONS.briefcase;
+  document.getElementById('jdTitle').textContent = job.title;
+  document.getElementById('jdApplicants').innerHTML = ICONS.users + ' ' + ac + ' pelamar';
+  document.getElementById('jdTypes').innerHTML = job.types.map(t => `<span class="inline-flex items-center min-h-[26px] px-2.5 rounded-full bg-accent-soft border border-accent-line text-accent text-[11px] font-extrabold">${escapeHtml(t)}</span>`).join('');
+  document.getElementById('jdSummary').textContent = job.summary;
+  document.getElementById('jdTags').innerHTML = job.tags.map(t => `<span class="inline-flex items-center min-h-[26px] px-2.5 rounded-full bg-surface-2 border border-border-ios text-ink-2 text-[11px] font-extrabold">${escapeHtml(t)}</span>`).join('');
+  document.getElementById('jobDetailSheet').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeJobDetail() {
+  document.getElementById('jobDetailSheet').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// ── Apply from detail sheet ──
+function applyFromDetail() {
+  if (!selectedJob) return;
+  closeJobDetail();
+  const job = selectedJob;
   document.getElementById('fieldPosisi').value = job.title;
   document.getElementById('selectedRoleBox').classList.remove('hidden');
   document.getElementById('selectedRoleName').textContent = job.title;
   document.getElementById('selectedRoleMeta').textContent = job.types.join(' / ') + ' • ' + job.tags.join(' • ');
-  document.getElementById('applyPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  document.querySelectorAll('.job-card').forEach(c => c.classList.remove('active'));
-  const card = document.querySelector(`.job-card[data-job="${escapeHtml(title)}"]`);
-  if (card) card.classList.add('active');
-  renderJobs();
+  setTimeout(() => {
+    document.getElementById('applyPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 360);
+}
+
+// ── Select Job (legacy, kept for compat) ──
+function selectJob(title) {
+  openJobDetail(title);
 }
 
 // ── Metrics ──
