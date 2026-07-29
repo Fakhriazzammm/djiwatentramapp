@@ -720,6 +720,18 @@ async function submitApplication() {
     document.getElementById('successDesc').innerHTML = 'Posisi <strong>' + escapeHtml(posisi) + '</strong> sudah masuk ke tim kami.';
     document.getElementById('successOverlay').classList.add('show');
     await loadCandidates();
+    // Lock form 3 detik biar user gak klik berkali, lalu reset & unlock
+    const form = document.getElementById('applicationForm');
+    form.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = true);
+    setTimeout(() => {
+      closeSuccess();
+      form.reset();
+      document.getElementById('fieldPosisi').innerHTML = '<option value="">Pilih posisi</option>' + (window.JOBS || []).map(j => `<option value="${escapeHtml(j.title)}">${escapeHtml(j.title)}</option>`).join('');
+      document.getElementById('cvFileName').textContent = 'Belum ada file';
+      document.getElementById('selectedRoleBox').classList.add('hidden');
+      form.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = false);
+      window.__isSubmitting = false;
+    }, 3500);
   } catch (error) {
     showToast('Gagal kirim: ' + error.message, 'error');
   } finally {
