@@ -422,7 +422,7 @@ function renderJobs() {
     return `
       <article class="group bg-white rounded-card p-4 border border-border-ios animate-rise shadow-ios-1 motion-safe job-card cursor-pointer ${active ? '!border-accent !shadow-[0_0_0_4px_rgba(31,94,255,0.10),0_12px_32px_-12px_rgba(9,9,11,0.12)]' : 'hover:-translate-y-0.5 hover:shadow-ios-2'}"
         data-job="${escapeHtml(job.title)}" style="animation-delay:${i * 40}ms"
-        title="${escapeHtml(job.summary)}">
+        title="${escapeHtml(job.summary)}" role="button" tabindex="0" onclick="selectJob('${escapeHtml(job.title)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectJob('${escapeHtml(job.title)}')}">
         <div class="size-[44px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center mb-2.5">${ICONS[job.icon] || ICONS.briefcase}</div>
         <h3 class="font-display text-[15px] font-extrabold tracking-[-0.02em] mb-1">${escapeHtml(job.title)}</h3>
         <div class="flex flex-wrap gap-1">
