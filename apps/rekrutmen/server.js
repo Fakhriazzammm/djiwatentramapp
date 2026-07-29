@@ -161,7 +161,7 @@ VALUES (${esc(b["Nama Lengkap"])}, ${esc(b["Jenis Kelamin"])}, ${esc(b["Tanggal 
         cv_url: b["CV URL"],
         created_at: new Date().toISOString().split("T")[0],
       });
-      const notifScript = "/opt/djiwatentramapp/yumi-ai-bot/notify_new_applicant.py";
+      const notifScript = "/opt/djiwatentramapp/yumi-hrd-agent/notify_new_applicant.py";
       execSync(`python3 ${notifScript} '${notifPayload.replace(/'/g, "'\"'\"'")}'`, {
         encoding: "utf-8",
         timeout: 15000,

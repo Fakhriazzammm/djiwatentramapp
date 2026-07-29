@@ -19,11 +19,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-REPORT_CHAT_ID = os.environ.get("TELEGRAM_REPORT_CHAT_ID")
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+REPORT_CHAT_ID = os.environ.get("TELEGRAM_REPORT_CHAT_ID", "-1003991897388")
 
-if not TOKEN or not REPORT_CHAT_ID:
-    print("ERROR: TELEGRAM_BOT_TOKEN / TELEGRAM_REPORT_CHAT_ID tidak ditemukan")
+if not BOT_TOKEN:
+    print("ERROR: TELEGRAM_BOT_TOKEN tidak ditemukan")
     sys.exit(1)
 
 
@@ -65,7 +65,7 @@ def build_message(d):
 
 
 def send(chat_id, text):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     r = httpx.post(
         url,
         json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
@@ -88,7 +88,7 @@ def main():
     try:
         r = send(REPORT_CHAT_ID, msg)
         if r.status_code == 200 and r.json().get("ok"):
-            print("OK: notif terkirim ke grup Report")
+            print("OK: notif terkirim ke grup Report (via yumi-hrd-agent)")
         else:
             print(f"ERROR: telegram {r.status_code} {r.text[:200]}")
             sys.exit(1)
