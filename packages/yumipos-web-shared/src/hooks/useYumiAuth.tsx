@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useRef,
 	useState,
 	type ReactNode,
 } from "react";
@@ -43,6 +44,11 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 		return null;
 	});
 	const [session, setSession] = useState<YumiValidatedSession | null>(null);
+	// `false` selama sesi awal belum selesai diverifikasi. Route guard wajib
+	// menunggu ini sebelum memutuskan redirect ke /login, kalau tidak user yang
+	// sudah login akan dilempar keluar setiap kali halaman dimuat ulang.
+	const [isResolved, setIsResolved] = useState(false);
+	const isLoggingOutRef = useRef(false);
 
 	const clearSession = useCallback(() => {
 		if (typeof window !== "undefined") {
@@ -62,13 +68,16 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 			try {
 				const nextSession = await validateYumiSession(sessionToken);
 				if (!nextSession) {
+					// Server memastikan sesi tidak valid → buang.
 					clearSession();
 					return;
 				}
 				setSession(nextSession);
 			} catch (error) {
+				// Gagal menghubungi server (offline / 5xx). Token JANGAN dihapus —
+				// kalau dihapus, gangguan jaringan sesaat memaksa semua karyawan
+				// login ulang. Sesi tetap dianggap belum terverifikasi.
 				console.error("Session validation error:", error);
-				clearSession();
 			}
 		},
 		[clearSession]
@@ -76,6 +85,7 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 
 	// Try Supabase session recovery when no custom token exists
 	const recoverFromSupabaseSession = useCallback(async () => {
+		if (isLoggingOutRef.current) return;
 		try {
 			const supabase = createClient();
 			const { data: { session: sbSession } } = await supabase.auth.getSession();
@@ -86,6 +96,10 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 
 			const userMeta = sbSession.user.user_metadata || {};
 			if (userMeta.is_active === false) return;
+
+			// Supabase mengirim expires_at dalam DETIK epoch, bukan milidetik.
+			const expiresAt = (sbSession.expires_at ?? 0) * 1000;
+			if (expiresAt && Date.now() > expiresAt) return;
 
 			const recoveredSession = {
 				user: {
@@ -102,7 +116,7 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 					name: claims.role_name || "staff",
 					permissions: Array.isArray(claims.permissions) ? claims.permissions : [],
 				},
-				expiresAt: new Date(sbSession.expires_at!).getTime(),
+				expiresAt,
 			} as YumiValidatedSession;
 
 			setSession(recoveredSession);
@@ -112,12 +126,27 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	useEffect(() => {
-		if (token) {
-			void refreshSession(token);
-		} else {
-			// No custom token — try Supabase session recovery
-			void recoverFromSupabaseSession();
-		}
+		let cancelled = false;
+
+		setIsResolved(false);
+		void (async () => {
+			try {
+				if (token) {
+					await refreshSession(token);
+				} else {
+					// No custom token — try Supabase session recovery
+					await recoverFromSupabaseSession();
+				}
+			} finally {
+				// Tandai selesai hanya kalau efek ini belum digantikan oleh token baru,
+				// supaya hasil validasi lama tidak menutup proses yang masih berjalan.
+				if (!cancelled) setIsResolved(true);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
 	}, [refreshSession, recoverFromSupabaseSession, token]);
 
 	useEffect(() => {
@@ -134,13 +163,18 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const isAuthenticated = !!session;
-	const isLoading = token !== null && session === null;
+	// Loading selama verifikasi awal belum selesai. Pemakaian lama
+	// (`token !== null && session === null`) melewatkan jalur "tanpa token" —
+	// pemulihan sesi Supabase masih berjalan tapi isLoading sudah false,
+	// sehingga guard sempat melihat "belum login" dan redirect ke /login.
+	const isLoading = !isResolved;
 	const user = session?.user;
 	const role = session?.role;
 	const isAdmin = role?.name?.trim().toLowerCase() === "admin";
 	const isStaff = role?.name?.toLowerCase() === "staff" || (!isAdmin && !!role);
 
 	const login = useCallback((newToken: string) => {
+		isLoggingOutRef.current = false;
 		if (typeof window !== "undefined") {
 			localStorage.setItem(SESSION_KEY, newToken);
 		}
@@ -149,6 +183,10 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 
 	const logout = useCallback(async () => {
 		const currentToken = token;
+		// Menghapus token memicu efek resolusi ulang. Tanpa flag ini, pemulihan
+		// sesi Supabase bisa menghidupkan lagi sesi yang baru saja dibuang
+		// sebelum signOut selesai — user terlihat "gagal logout".
+		isLoggingOutRef.current = true;
 		clearSession();
 
 		if (currentToken) {

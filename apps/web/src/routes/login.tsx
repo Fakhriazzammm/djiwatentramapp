@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@/lib/yumi-auth-client";
 
-export const Route = createFileRoute("/login" as any)({
+export const Route = createFileRoute("/login")({
 	component: LoginPage,
 });
 

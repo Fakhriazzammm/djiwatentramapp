@@ -1,6 +1,6 @@
 import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useYumiAuth, YumiAuthProvider, useDemoMode } from "@yumipos/web-shared";
-import { Component, type ReactNode, useEffect, useState } from "react";
+import { Component, type ReactNode, useEffect } from "react";
 import { preloadFaceModels } from "@/components/auth/FaceRecognition";
 
 // ── Error Boundary ──
@@ -42,33 +42,46 @@ class RootErrorBoundary extends Component<
   }
 }
 
+/**
+ * Halaman yang boleh diakses tanpa login.
+ * - /login, /register  → alur masuk & pendaftaran karyawan baru
+ * - /absen-keluar-mini → deep link absen keluar (dibuka dari tautan, bawa ?uid)
+ *
+ * Selain ini semuanya butuh sesi. Sebelumnya daftar publik dihitung dengan
+ * `path.startsWith("/")` yang cocok untuk SEMUA path, jadi guard-nya tidak
+ * pernah benar-benar menahan siapa pun.
+ */
+const PUBLIC_PATHS = new Set(["/login", "/register", "/absen-keluar-mini"]);
+
+function isPublicPath(pathname: string) {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return PUBLIC_PATHS.has(path);
+}
+
 function RootContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, isLoading, role } = useYumiAuth();
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   useEffect(() => {
+    // Tunggu sesi selesai diverifikasi — kalau tidak, user yang sudah login
+    // ikut terlempar ke /login setiap kali halaman dimuat ulang.
     if (isLoading) return;
 
     const path = location.pathname;
 
-    // Public pages: /login and /$username (any single-segment path like /selinaapriliani)
-    const isLoginPage = path === "/login";
-    const isProfilePage = path !== "/login" && path !== "/" && path.startsWith("/");
-    const isPublicPage = isLoginPage || isProfilePage;
-
     if (!isAuthenticated) {
-      if (!isPublicPage) {
+      if (!isPublicPath(path)) {
         navigate({ to: "/login" as any, replace: true });
       }
-    } else {
-      if (isLoginPage) {
-        // After login, redirect to user's own profile page
-        navigate({ to: "/" as any, replace: true });
-      }
+      return;
     }
-    setInitialCheckDone(true);
+
+    // Sudah login tapi masih di halaman login → lempar ke "/" yang akan
+    // mengarahkan ke profil miliknya sendiri.
+    if (isPublicPath(path) && path.replace(/\/+$/, "") === "/login") {
+      navigate({ to: "/" as any, replace: true });
+    }
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
 
   // Preload face models in background for faster attendance

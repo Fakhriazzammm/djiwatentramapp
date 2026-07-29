@@ -223,6 +223,27 @@ function StaffProfileLayout() {
 		}
 	}, [isUnlocked]);
 
+	/*
+	 * Guard akses profil. Dijalankan sebagai efek, bukan di tengah render —
+	 * versi lama memanggil window.location.replace("/login") langsung di body
+	 * render, yang berarti efek samping saat render (dobel di StrictMode) dan
+	 * reload halaman penuh, bukan navigasi SPA.
+	 */
+	useEffect(() => {
+		if (isAuthLoading || isUnlocked) return;
+
+		if (!isAuthenticated) {
+			navigate({ to: "/login" as any, replace: true });
+			return;
+		}
+
+		// Sudah login tapi membuka profil orang lain → arahkan ke profilnya sendiri.
+		const ownHandle = authUser?.slug || authUser?._id;
+		if (ownHandle && ownHandle !== username) {
+			navigate({ to: "/$username", params: { username: ownHandle }, replace: true } as any);
+		}
+	}, [isAuthLoading, isUnlocked, isAuthenticated, authUser, username, navigate]);
+
 	const staff = useHybridStaffBySlug(username);
 
 	// Read notification unread count from localStorage
@@ -266,10 +287,16 @@ function StaffProfileLayout() {
 		);
 	}
 
-	// Guard: after auth has resolved, if still locked → redirect to login
+	// Guard: belum ter-unlock → tampilkan loader sementara efek di atas
+	// mengalihkan halaman. Jangan render isi profil siapa pun di sini.
 	if (!isUnlocked) {
-		window.location.replace("/login");
-		return null;
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background">
+				<motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+					<Clock className="h-8 w-8 text-primary opacity-50" />
+				</motion.div>
+			</div>
+		);
 	}
 
 	// Context shared with child routes

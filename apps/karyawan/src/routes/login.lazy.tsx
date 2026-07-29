@@ -187,8 +187,15 @@ function KaryawanLoginPage() {
       const result = await loginWithYumiPin(resolvedUser!._id, pinStr);
       login(result.token);
       toast.success(`Selamat datang, ${result.user.name}`);
-      const slug = result.user.slug || result.user._id;
-      navigate({ to: `/${slug}/` as any, replace: true });
+      // slug bisa kosong untuk sebagian user — _id selalu ada dan diterima
+      // route /$username. Pakai params, bukan path rakitan, supaya nilainya
+      // ter-encode dengan benar.
+      const handle = result.user.slug || result.user._id;
+      navigate({
+        to: "/$username",
+        params: { username: handle },
+        replace: true,
+      } as any);
     } catch (err: any) {
       toast.error(err?.message || "Gagal masuk");
       setPin(["", "", "", "", "", ""]);

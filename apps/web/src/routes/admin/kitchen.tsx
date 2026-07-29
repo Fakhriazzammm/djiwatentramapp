@@ -5,6 +5,6 @@ const kitchenSearchSchema = z.object({
 	tab: z.enum(["orders", "stock"]).optional(),
 });
 
-export const Route = createFileRoute("/admin/kitchen" as any)({
+export const Route = createFileRoute("/admin/kitchen")({
 	validateSearch: (search: Record<string, unknown>) => kitchenSearchSchema.parse(search),
 });

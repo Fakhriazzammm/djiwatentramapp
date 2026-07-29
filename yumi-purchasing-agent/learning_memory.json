@@ -1,5 +1,5 @@
 {
-  "version": 455,
+  "version": 461,
   "entries": [
     {
       "id": "fc7cee30-3f76-4147-9858-fc2ce098807e",
@@ -480,9 +480,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 22,
+      "usageCount": 69,
       "createdAt": "2026-05-19T08:05:15.061003+00:00",
-      "updatedAt": "2026-07-14T03:58:13.741009+00:00"
+      "updatedAt": "2026-07-25T13:48:28.169374+00:00"
     },
     {
       "id": "86f9ec3e-7a6d-41b2-b24e-db649d8dca97",
@@ -795,9 +795,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 33,
+      "usageCount": 93,
       "createdAt": "2026-05-19T08:05:15.090747+00:00",
-      "updatedAt": "2026-07-14T03:58:15.344195+00:00"
+      "updatedAt": "2026-07-25T13:48:44.396819+00:00"
     },
     {
       "id": "8c28998a-a2ba-4543-85f2-43c39e070cb3",
@@ -1026,9 +1026,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 6,
+      "usageCount": 21,
       "createdAt": "2026-05-19T08:05:15.103369+00:00",
-      "updatedAt": "2026-06-30T09:27:08.063160+00:00"
+      "updatedAt": "2026-07-25T06:49:59.547517+00:00"
     },
     {
       "id": "6ab21fa4-f638-44f6-82a5-a213fc881c3b",
@@ -1446,9 +1446,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 23,
+      "usageCount": 69,
       "createdAt": "2026-05-19T08:05:15.130717+00:00",
-      "updatedAt": "2026-07-06T03:24:08.504970+00:00"
+      "updatedAt": "2026-07-25T13:48:28.236686+00:00"
     },
     {
       "id": "e5096070-f9a3-4cbf-9aa7-93a935f30781",
@@ -1467,9 +1467,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 13,
       "createdAt": "2026-05-19T08:05:15.132324+00:00",
-      "updatedAt": "2026-05-19T08:05:15.132324+00:00"
+      "updatedAt": "2026-07-25T13:48:44.306232+00:00"
     },
     {
       "id": "45b4bc41-f130-4020-ad83-f0fd670eaf7f",
@@ -1509,9 +1509,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 13,
+      "usageCount": 58,
       "createdAt": "2026-05-19T08:05:15.136356+00:00",
-      "updatedAt": "2026-07-13T04:15:39.920116+00:00"
+      "updatedAt": "2026-07-25T13:48:59.766207+00:00"
     },
     {
       "id": "a1a2997c-4e8d-4958-ad60-c3d84f4ae99e",
@@ -1698,9 +1698,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 28,
+      "usageCount": 63,
       "createdAt": "2026-05-19T08:05:15.151868+00:00",
-      "updatedAt": "2026-07-13T08:28:49.230261+00:00"
+      "updatedAt": "2026-07-25T13:48:39.626275+00:00"
     },
     {
       "id": "16004d96-5940-4199-8b5e-a4d071f3c066",
@@ -1824,9 +1824,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 9,
+      "usageCount": 21,
       "createdAt": "2026-05-19T08:05:15.162881+00:00",
-      "updatedAt": "2026-06-14T10:44:36.265376+00:00"
+      "updatedAt": "2026-07-25T13:48:44.056860+00:00"
     },
     {
       "id": "1ad252f6-e419-41f6-afdc-9e7da2183206",
@@ -2076,9 +2076,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 4,
+      "usageCount": 5,
       "createdAt": "2026-05-19T08:05:15.187257+00:00",
-      "updatedAt": "2026-07-14T03:58:15.380283+00:00"
+      "updatedAt": "2026-07-20T02:07:40.861031+00:00"
     },
     {
       "id": "961387df-4018-4338-81cf-8dac0edabde8",
@@ -2139,9 +2139,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 21,
       "createdAt": "2026-05-19T08:05:15.193920+00:00",
-      "updatedAt": "2026-05-19T08:05:15.193920+00:00"
+      "updatedAt": "2026-07-25T13:48:46.336098+00:00"
     },
     {
       "id": "c2d71533-8f3b-44a2-a52b-41b44d3beb64",
@@ -2160,9 +2160,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 25,
+      "usageCount": 89,
       "createdAt": "2026-05-19T08:05:15.197047+00:00",
-      "updatedAt": "2026-07-13T01:27:25.644649+00:00"
+      "updatedAt": "2026-07-25T13:48:55.043436+00:00"
     },
     {
       "id": "168f04a4-3a3b-4b87-b1d7-e95d064c59d9",
@@ -2370,9 +2370,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 16,
       "createdAt": "2026-05-19T08:05:15.221621+00:00",
-      "updatedAt": "2026-05-19T08:05:15.221621+00:00"
+      "updatedAt": "2026-07-25T06:49:58.016306+00:00"
     },
     {
       "id": "05498fe4-201a-4693-8de2-8434f159e4a7",
@@ -2496,9 +2496,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 7,
+      "usageCount": 22,
       "createdAt": "2026-05-19T08:05:15.237323+00:00",
-      "updatedAt": "2026-06-30T09:27:08.084378+00:00"
+      "updatedAt": "2026-07-25T06:49:59.497397+00:00"
     },
     {
       "id": "b560a906-5f6a-4766-bf96-0e170bee1da8",
@@ -3168,9 +3168,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 43,
+      "usageCount": 116,
       "createdAt": "2026-05-19T08:05:15.329117+00:00",
-      "updatedAt": "2026-07-12T13:37:24.688982+00:00"
+      "updatedAt": "2026-07-25T13:48:56.601863+00:00"
     },
     {
       "id": "dd9d5eb0-1abd-4f72-9071-f382485cd34e",
@@ -4029,9 +4029,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 95.0,
-      "usageCount": 2,
+      "usageCount": 4,
       "createdAt": "2026-05-22T13:14:23.865759+00:00",
-      "updatedAt": "2026-05-23T12:54:51.556661+00:00"
+      "updatedAt": "2026-07-20T02:07:39.084351+00:00"
     },
     {
       "id": "c2c00db4-8840-433e-aa84-df478d787745",
@@ -4092,9 +4092,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 100.0,
-      "usageCount": 27,
+      "usageCount": 28,
       "createdAt": "2026-05-22T13:14:57.493998+00:00",
-      "updatedAt": "2026-07-13T04:21:17.579971+00:00"
+      "updatedAt": "2026-07-20T02:07:42.509066+00:00"
     },
     {
       "id": "549ee73a-1c77-4d58-9957-e2632a4f3fb9",
@@ -4281,9 +4281,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 2,
+      "usageCount": 22,
       "createdAt": "2026-05-23T01:19:36.585220+00:00",
-      "updatedAt": "2026-06-30T09:32:48.202633+00:00"
+      "updatedAt": "2026-07-25T13:48:46.275326+00:00"
     },
     {
       "id": "0bd078de-1f4b-4f93-97a1-41882ddbcd38",
@@ -4701,9 +4701,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 2,
+      "usageCount": 23,
       "createdAt": "2026-05-23T01:19:36.740653+00:00",
-      "updatedAt": "2026-07-14T03:58:15.260757+00:00"
+      "updatedAt": "2026-07-25T13:48:46.086947+00:00"
     },
     {
       "id": "792cba62-4a89-4365-95e0-d911e6b4a98e",
@@ -5100,9 +5100,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 12,
+      "usageCount": 58,
       "createdAt": "2026-05-23T01:19:36.897595+00:00",
-      "updatedAt": "2026-06-22T07:14:36.440180+00:00"
+      "updatedAt": "2026-07-25T13:48:53.719889+00:00"
     },
     {
       "id": "aa1ac03f-ec20-4b60-879f-ba16d1e5a772",
@@ -5814,9 +5814,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 6,
+      "usageCount": 30,
       "createdAt": "2026-05-23T01:19:37.202459+00:00",
-      "updatedAt": "2026-05-25T06:46:52.990359+00:00"
+      "updatedAt": "2026-07-25T13:48:57.989060+00:00"
     },
     {
       "id": "b14bccdd-7820-4cf9-bc8d-14902eb3b306",
@@ -5940,9 +5940,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 6,
       "createdAt": "2026-05-23T01:19:37.260046+00:00",
-      "updatedAt": "2026-05-23T01:19:37.260046+00:00"
+      "updatedAt": "2026-07-22T13:30:27.466166+00:00"
     },
     {
       "id": "d2310798-d064-42f1-97a5-f71d0b6163fe",
@@ -6003,9 +6003,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 11,
+      "usageCount": 19,
       "createdAt": "2026-05-23T01:19:37.294640+00:00",
-      "updatedAt": "2026-07-12T06:08:21.892263+00:00"
+      "updatedAt": "2026-07-24T05:45:22.244395+00:00"
     },
     {
       "id": "3424bbe3-b0c0-4ddc-9e7e-e8b981a7e75b",
@@ -6066,9 +6066,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 6,
+      "usageCount": 7,
       "createdAt": "2026-05-23T01:19:37.328093+00:00",
-      "updatedAt": "2026-07-14T03:58:13.775068+00:00"
+      "updatedAt": "2026-07-20T02:07:39.910769+00:00"
     },
     {
       "id": "bbce6d13-83ba-4080-a1eb-f6be5113fe4b",
@@ -6276,9 +6276,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 25,
       "createdAt": "2026-05-23T01:19:37.424399+00:00",
-      "updatedAt": "2026-05-23T01:19:37.424399+00:00"
+      "updatedAt": "2026-07-25T13:49:00.588188+00:00"
     },
     {
       "id": "bc03932f-9dac-4e51-a14b-f2988cbfbcd1",
@@ -6633,9 +6633,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 12,
       "createdAt": "2026-05-23T01:19:37.610259+00:00",
-      "updatedAt": "2026-05-23T01:19:37.610259+00:00"
+      "updatedAt": "2026-07-25T13:48:42.547365+00:00"
     },
     {
       "id": "df1c5239-b331-42d7-a57b-c1cb200fd0ab",
@@ -6801,9 +6801,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 20,
+      "usageCount": 55,
       "createdAt": "2026-05-23T01:19:37.699326+00:00",
-      "updatedAt": "2026-07-06T03:24:06.847581+00:00"
+      "updatedAt": "2026-07-25T13:48:43.996035+00:00"
     },
     {
       "id": "67446e60-8630-4840-aa0e-805d93de4297",
@@ -6885,9 +6885,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 21,
       "createdAt": "2026-05-23T01:19:37.742982+00:00",
-      "updatedAt": "2026-05-23T01:19:37.742982+00:00"
+      "updatedAt": "2026-07-25T13:48:46.396230+00:00"
     },
     {
       "id": "5d222c38-7e47-403d-9b93-51cc5aa06021",
@@ -7389,9 +7389,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 2,
+      "usageCount": 22,
       "createdAt": "2026-05-23T01:19:38.017350+00:00",
-      "updatedAt": "2026-05-25T06:46:10.646405+00:00"
+      "updatedAt": "2026-07-25T13:48:46.138433+00:00"
     },
     {
       "id": "13c9ebca-8ad0-4fab-b3ec-3bbb2c2593df",
@@ -8124,9 +8124,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 7,
       "createdAt": "2026-05-23T01:19:38.482938+00:00",
-      "updatedAt": "2026-05-23T01:19:38.482938+00:00"
+      "updatedAt": "2026-07-24T05:45:15.003649+00:00"
     },
     {
       "id": "f2a3646a-22b0-4d69-b7cc-f739102d46a5",
@@ -8145,9 +8145,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 1,
+      "usageCount": 20,
       "createdAt": "2026-05-23T01:19:38.495496+00:00",
-      "updatedAt": "2026-05-23T01:19:38.495496+00:00"
+      "updatedAt": "2026-07-25T13:48:41.132060+00:00"
     },
     {
       "id": "6ee8c996-32f8-402e-8f98-7bd76cea13f9",
@@ -8460,9 +8460,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 3,
+      "usageCount": 15,
       "createdAt": "2026-05-23T01:19:38.682516+00:00",
-      "updatedAt": "2026-05-23T12:55:16.554871+00:00"
+      "updatedAt": "2026-07-25T13:48:44.232079+00:00"
     },
     {
       "id": "ed84bb06-4993-4698-b6f8-c63f663da874",
@@ -8964,9 +8964,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 20,
+      "usageCount": 81,
       "createdAt": "2026-05-23T01:19:38.991857+00:00",
-      "updatedAt": "2026-07-06T03:24:20.823534+00:00"
+      "updatedAt": "2026-07-25T13:48:58.855932+00:00"
     },
     {
       "id": "9c6f10b7-31dc-41d0-be42-d912522a6a05",
@@ -9006,9 +9006,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 21,
+      "usageCount": 82,
       "createdAt": "2026-05-23T01:19:39.017282+00:00",
-      "updatedAt": "2026-07-06T03:24:20.804013+00:00"
+      "updatedAt": "2026-07-25T13:48:58.884264+00:00"
     },
     {
       "id": "1e83fc09-0f52-458b-8434-0ed9a2298e44",
@@ -9153,9 +9153,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 0.95,
-      "usageCount": 2,
+      "usageCount": 14,
       "createdAt": "2026-05-23T01:19:39.109851+00:00",
-      "updatedAt": "2026-06-17T03:55:40.245242+00:00"
+      "updatedAt": "2026-07-25T13:48:38.208680+00:00"
     },
     {
       "id": "b4147ca7-a753-4691-8f81-f1f2dcf4f1d5",
@@ -9321,9 +9321,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 85.0,
-      "usageCount": 5,
+      "usageCount": 11,
       "createdAt": "2026-05-23T12:55:08.705051+00:00",
-      "updatedAt": "2026-07-06T03:24:13.933479+00:00"
+      "updatedAt": "2026-07-24T05:45:15.036698+00:00"
     },
     {
       "id": "4abc4b14-ef5f-42eb-85b4-92a11ddb8c1d",
@@ -9384,9 +9384,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 85.0,
-      "usageCount": 7,
+      "usageCount": 30,
       "createdAt": "2026-05-25T06:49:08.818184+00:00",
-      "updatedAt": "2026-07-06T03:24:06.738901+00:00"
+      "updatedAt": "2026-07-25T13:48:25.976597+00:00"
     },
     {
       "id": "ed3b829b-b71e-481f-86eb-97c86cc4ac25",
@@ -9405,9 +9405,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 90.0,
-      "usageCount": 14,
+      "usageCount": 37,
       "createdAt": "2026-05-25T06:49:09.238746+00:00",
-      "updatedAt": "2026-07-06T03:24:06.814279+00:00"
+      "updatedAt": "2026-07-25T13:48:26.093469+00:00"
     },
     {
       "id": "aa9376ef-8044-4e39-b295-bb1cf9d9ed52",
@@ -9426,9 +9426,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 95.0,
-      "usageCount": 13,
+      "usageCount": 48,
       "createdAt": "2026-05-25T06:49:09.633019+00:00",
-      "updatedAt": "2026-07-06T03:24:06.883165+00:00"
+      "updatedAt": "2026-07-25T13:48:44.162661+00:00"
     },
     {
       "id": "376c39e8-a927-4982-b7c0-23857046a030",
@@ -9534,7 +9534,133 @@
       "usageCount": 1,
       "createdAt": "2026-05-29T07:36:48.212583+00:00",
       "updatedAt": "2026-05-29T07:36:48.212583+00:00"
+    },
+    {
+      "id": "1ba82f16-20fc-43c5-8726-df6130d9844b",
+      "type": "expense_match",
+      "userInput": "Gas",
+      "parsedName": "Gas 3 Kg",
+      "matchedInventoryId": "kd75y6wp4cxa9b2ft57fthgj5x84ebw9",
+      "matchedIngredientName": "Gas 3 Kg",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 100.0,
+      "usageCount": 22,
+      "createdAt": "2026-07-22T08:11:49.795993+00:00",
+      "updatedAt": "2026-07-25T13:49:01.430482+00:00"
+    },
+    {
+      "id": "fd7cacd2-cfbe-43c5-8a6c-99c4bdd5de65",
+      "type": "expense_match",
+      "userInput": "Palmsuiker Palm Sugar",
+      "parsedName": "Palmsuiker Palm Sugar",
+      "matchedInventoryId": "kd77707657fgh0v1vsq3nsnym58404a7",
+      "matchedIngredientName": "Palm Sugar",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 13,
+      "createdAt": "2026-07-22T08:11:59.169117+00:00",
+      "updatedAt": "2026-07-25T06:50:01.308474+00:00"
+    },
+    {
+      "id": "00152260-bc23-4eb0-a1ed-04f7b72bdb31",
+      "type": "expense_match",
+      "userInput": "Bonteng",
+      "parsedName": "Bonteng",
+      "matchedInventoryId": "kd76ybncahe4c1xy6wqzkbm1xh841xwd",
+      "matchedIngredientName": "Timun",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 100.0,
+      "usageCount": 21,
+      "createdAt": "2026-07-22T12:12:23.099261+00:00",
+      "updatedAt": "2026-07-25T13:48:28.335821+00:00"
+    },
+    {
+      "id": "3b11b9d5-4894-409c-a3d4-60f1cc6e9a0e",
+      "type": "expense_match",
+      "userInput": "Tofico Green Apl",
+      "parsedName": "Tofico Green Apl",
+      "matchedInventoryId": "kd7e3k2x2qyxajfdzyeqvn135d841pxk",
+      "matchedIngredientName": "Sirup Green Apple",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 18,
+      "createdAt": "2026-07-24T09:41:38.115764+00:00",
+      "updatedAt": "2026-07-25T13:48:46.218565+00:00"
+    },
+    {
+      "id": "a63206e6-c49a-4ffe-a308-bdb577b284d6",
+      "type": "expense_match",
+      "userInput": "Argopuro fw",
+      "parsedName": "Argopuro fw",
+      "matchedInventoryId": "kd768t6rd9rckr6xmk19wkh1b184mmh4",
+      "matchedIngredientName": "Beans Arabika Flores Bajawa FW",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 90.0,
+      "usageCount": 9,
+      "createdAt": "2026-07-24T09:42:20.951176+00:00",
+      "updatedAt": "2026-07-25T06:49:59.438731+00:00"
+    },
+    {
+      "id": "e7da7474-0c8c-4853-ad9b-cd2eeb510054",
+      "type": "expense_match",
+      "userInput": "ABC LR03-AAA/4S MPUR",
+      "parsedName": "ABC LR03-AAA/4S MPUR",
+      "matchedInventoryId": "kd7fx5qj79c7kkt5pgmje294p984e215",
+      "matchedIngredientName": "Baterai ABC",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 95.0,
+      "usageCount": 11,
+      "createdAt": "2026-07-25T05:46:57.398108+00:00",
+      "updatedAt": "2026-07-25T13:48:35.372428+00:00"
     }
   ],
-  "last_updated": "2026-07-14T03:58:15.380311+00:00"
+  "last_updated": "2026-07-25T13:49:01.430558+00:00"
 }

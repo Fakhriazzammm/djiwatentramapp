@@ -22,6 +22,20 @@ export const Route = createLazyFileRoute("/$username/profil")({
 	component: ProfilPage,
 });
 
+/** Baca File jadi base64 murni (tanpa prefix data:...;base64,). */
+function fileToBase64(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onerror = () => reject(new Error("Gagal membaca file foto"));
+		reader.onload = () => {
+			const result = String(reader.result ?? "");
+			const comma = result.indexOf(",");
+			resolve(comma >= 0 ? result.slice(comma + 1) : result);
+		};
+		reader.readAsDataURL(file);
+	});
+}
+
 function ProfilPage() {
 	const { staff, username, isUnlocked, isAdmin, authUser, isAuthenticated, token, navigate, refreshKey } = useStaffProfile();
 	const { logout: logoutYumi } = useYumiAuth();
@@ -273,19 +287,16 @@ function ProfilPage() {
 							if (!token) return;
 							setIsSavingProfile(true);
 							try {
-								let photoUrl: string | undefined;
+								// Foto dikirim sebagai base64 dan di-upload oleh edge function
+								// dengan service_role. Upload langsung dari browser tidak
+								// mungkin: anon tidak punya hak tulis ke storage.objects.
+								let photoBase64: string | undefined;
+								let photoContentType: string | undefined;
 								if (editPhotoFile) {
 									setIsUploadingPhoto(true);
 									try {
-										const supabase = createClient();
-										const ext = editPhotoFile.name.split('.').pop() || 'jpg';
-										const objectPath = `profile-photos/${staff?.slug || username}_${Date.now()}.${ext}`;
-										const { error: uploadError } = await supabase.storage
-											.from("profile-photos")
-											.upload(objectPath, editPhotoFile, { contentType: editPhotoFile.type || "image/jpeg", upsert: true });
-										if (uploadError) throw uploadError;
-										const { data: publicUrlData } = supabase.storage.from("profile-photos").getPublicUrl(objectPath);
-										photoUrl = publicUrlData.publicUrl;
+										photoBase64 = await fileToBase64(editPhotoFile);
+										photoContentType = editPhotoFile.type || "image/jpeg";
 									} finally { setIsUploadingPhoto(false); }
 								}
 								await updateProfileMutation({
@@ -302,7 +313,8 @@ function ProfilPage() {
 									emergencyContactPhone: editEmergencyContactPhone || undefined,
 									bankName: editBankName || undefined,
 									bankAccount: editBankAccount || undefined,
-									photoUrl,
+									photoBase64,
+									photoContentType,
 								});
 								if (editEmail && editEmail !== privateData?.email && editEmail !== privateData?.username) {
 									const supabase = createClient();

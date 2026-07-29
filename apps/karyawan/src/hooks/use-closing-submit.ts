@@ -343,28 +343,46 @@ export async function submitOpname(
 }
 
 // ────────────────────────────────────────────────────────────
-//  5. Kebersihan photo upload (unchanged)
+//  5. Kebersihan photo — dikecilkan lalu dikirim ke edge function
 // ────────────────────────────────────────────────────────────
 
-export async function uploadKebersihanPhoto(
+export type KebersihanPhotoPayload = {
+  photoBase64: string;
+  photoContentType: string;
+};
+
+/**
+ * Kecilkan foto dari kamera HP jadi JPEG maks 1280px sebelum dikirim.
+ * Foto mentah bisa 3–5MB; tiga area sekaligus akan membuat request terlalu besar.
+ *
+ * Upload TIDAK dilakukan di sini: `anon` tidak punya hak tulis ke
+ * storage.objects, jadi upload langsung dari browser selalu ditolak 403.
+ * Edge function `process-closing` yang meng-upload dengan service role.
+ */
+export async function prepareKebersihanPhoto(
   file: File,
-  userId: string,
-  area: string,
-): Promise<string | null> {
-  const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${userId}/${Date.now()}_${area}.${ext}`;
+  maxDimension = 1280,
+  quality = 0.8,
+): Promise<KebersihanPhotoPayload> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
 
-  const { error } = await createClient()
-    .storage.from("shift-closing-photos")
-    .upload(path, file, { contentType: file.type, upsert: false });
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Gagal memproses foto");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
 
-  if (error) throw error;
-
-  const { data: publicUrl } = createClient()
-    .storage.from("shift-closing-photos")
-    .getPublicUrl(path);
-
-  return publicUrl?.publicUrl ?? null;
+  const dataUrl = canvas.toDataURL("image/jpeg", quality);
+  const comma = dataUrl.indexOf(",");
+  return {
+    photoBase64: comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl,
+    photoContentType: "image/jpeg",
+  };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -407,6 +425,15 @@ export async function submitClosing(args: ClosingArgs): Promise<void> {
 //     final opname + check-out in one server-side call
 // ────────────────────────────────────────────────────────────
 
+export type KebersihanSubmitArea = {
+  id: string;
+  label?: string;
+  status?: string;
+  catatan?: string;
+  photoBase64?: string;
+  photoContentType?: string;
+};
+
 export async function submitClosingViaEdge(params: {
   userId: string;
   userName: string;
@@ -415,6 +442,7 @@ export async function submitClosingViaEdge(params: {
   role: "bar" | "kitchen" | null;
   items: OpnameItem[];
   source?: string;
+  kebersihan?: KebersihanSubmitArea[];
 }): Promise<ClosingEdgeResponse> {
   const supabaseUrl = "https://supabase.yumme.id";
   const response = await fetch(`${supabaseUrl}/functions/v1/process-closing`, {
@@ -428,6 +456,7 @@ export async function submitClosingViaEdge(params: {
       role: params.role,
       items: params.items,
       source: params.source || "karyawan_web",
+      kebersihan: params.kebersihan ?? [],
     }),
   });
   const result = await response.json();

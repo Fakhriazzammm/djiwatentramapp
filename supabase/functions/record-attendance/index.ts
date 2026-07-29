@@ -26,6 +26,11 @@ function nowWib(): number {
   return Date.now(); // We'll use UTC epoch ms — shift calc uses WIB offset
 }
 
+function currentMinWib(): number {
+  const wib = new Date(Date.now() + WIB_OFFSET_MS);
+  return wib.getUTCHours() * 60 + wib.getUTCMinutes();
+}
+
 function startOfDayWib(ts: number): number {
   const wib = new Date(ts + WIB_OFFSET_MS);
   return new Date(
@@ -139,7 +144,7 @@ Deno.serve(async (req: Request) => {
           ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
             ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
 
-        const currentMin = new Date().getHours() * 60 + new Date().getMinutes();
+        const currentMin = currentMinWib();
         const matches: Array<{ name: string; openMin: number }> = [];
 
         for (const s of schedules) {
@@ -189,7 +194,7 @@ Deno.serve(async (req: Request) => {
             ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
               ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
 
-          const currentMin = new Date().getHours() * 60 + new Date().getMinutes();
+          const currentMin = currentMinWib();
           const matches: Array<{ name: string; openMin: number; closeMin: number }> = [];
 
           for (const s of schedules) {
@@ -244,7 +249,7 @@ Deno.serve(async (req: Request) => {
             const [ch, cm] = closeTime.split(":").map(Number);
             if (!isNaN(ch) && !isNaN(cm)) {
               const closeMin = ch * 60 + cm;
-              const currentMin = new Date().getHours() * 60 + new Date().getMinutes();
+              const currentMin = currentMinWib();
 
               if (currentMin < closeMin) {
                 const closeHour = String(ch).padStart(2, "0");

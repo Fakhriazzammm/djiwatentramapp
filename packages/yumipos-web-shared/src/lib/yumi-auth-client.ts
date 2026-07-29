@@ -1,5 +1,5 @@
 import { createClient } from "./client";
-import { invokeEdgeFunction, ApiError } from "./api-helper";
+import { invokeEdgeFunction } from "./api-helper";
 
 export type YumiPublicUser = {
 	_id: string;
@@ -53,18 +53,15 @@ type PublicUserRow = {
 	username?: string | null;
 	roleId?: string | null;
 	roleName?: string | null;
-	homePinFingerprint?: string | null;
 };
 
-async function sha256Hex(input: string): Promise<string> {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(input);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-const LOCAL_TOKEN_PREFIX = "local_yumi_session:";
+/**
+ * Prefix token "local session" yang dulu dipakai sebagai fallback offline.
+ * Sekarang hanya dipakai untuk MENOLAK token lama: isinya cuma base64 JSON
+ * tanpa tanda tangan, jadi siapa pun bisa mengarang sesi (termasuk role admin)
+ * lewat localStorage. Semua sesi wajib divalidasi ke server.
+ */
+const LEGACY_LOCAL_TOKEN_PREFIX = "local_yumi_session:";
 
 function assertSupabaseConfig() {
 	if (
@@ -78,65 +75,6 @@ function assertSupabaseConfig() {
 async function invokeAuth<T>(body: Record<string, unknown>) {
 	assertSupabaseConfig();
 	return invokeEdgeFunction<T>("yumi-auth", body);
-}
-
-function encodeLocalSession(session: YumiValidatedSession) {
-	const json = JSON.stringify(session);
-	const bytes = new TextEncoder().encode(json);
-	const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
-	return `${LOCAL_TOKEN_PREFIX}${btoa(binary)}`;
-}
-
-function decodeLocalSession(token: string) {
-	if (!token.startsWith(LOCAL_TOKEN_PREFIX)) return null;
-
-	try {
-		const encoded = token.slice(LOCAL_TOKEN_PREFIX.length);
-		const binary = atob(encoded);
-		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-		const json = new TextDecoder().decode(bytes);
-		return JSON.parse(json) as YumiValidatedSession;
-	} catch (error) {
-		console.error("Failed to decode local Yumi session:", error);
-		return null;
-	}
-}
-
-async function fetchPublicUserById(userId: string) {
-	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_users_public")
-		.select("*")
-		.eq("_id", userId)
-		.eq("isActive", true)
-		.maybeSingle();
-
-	if (error) {
-		throw new Error(error.message || "Gagal memuat data pengguna");
-	}
-
-	return data as PublicUserRow | null;
-}
-
-async function fetchRoleById(roleId: string) {
-	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_staff_roles")
-		.select("*")
-		.eq("_id", roleId)
-		.maybeSingle();
-
-	if (error) {
-		throw new Error(error.message || "Gagal memuat data role");
-	}
-
-	return data as
-		| {
-				_id: string;
-				name: string;
-				permissions: string[] | null;
-		  }
-		| null;
 }
 
 function mapPublicUsers(rows: PublicUserRow[]) {
@@ -285,91 +223,63 @@ export async function listPublicYumiUsers({ forceRefresh }: { forceRefresh?: boo
 	}
 }
 
+/**
+ * Login dengan PIN. Verifikasi PIN HANYA dilakukan di server (edge function
+ * `yumi-auth`), yang membandingkan bcrypt hash dan mencatat sesi di
+ * `yumi_sessions`. Tidak ada fallback verifikasi di browser — dulu ada, tapi
+ * itu mencocokkan SHA-256 PIN dari view publik lalu menerbitkan token buatan
+ * sendiri, sehingga login bisa dilewati sepenuhnya dari sisi klien.
+ */
 export async function loginWithYumiPin(userId: string, pin: string) {
-  try {
-    const response = await invokeAuth<LoginResponse & {
-      supabaseAccessToken?: string | null;
-      supabaseRefreshToken?: string | null;
-    }>({
-      action: "loginWithPin",
-      userId,
-      pin,
-    });
-
-    // Set Supabase Auth session jika tersedia
-    if (response.supabaseAccessToken && response.supabaseRefreshToken) {
-      try {
-        const supabase = createClient();
-        await supabase.auth.setSession({
-          access_token: response.supabaseAccessToken,
-          refresh_token: response.supabaseRefreshToken,
-        });
-      } catch (sessionErr) {
-        console.warn("[yumi-auth] Failed to set Supabase session:", sessionErr);
-      }
-    }
-
-    return response;
-  } catch (invokeError) {
-		console.warn(
-			"[yumi-auth] loginWithPin failed, falling back to public views",
-			invokeError
-		);
-
-		if (!/^\d{6}$/.test(pin)) {
-			throw new Error("PIN harus terdiri dari 6 digit angka");
-		}
-
-		const user = await fetchPublicUserById(userId);
-		if (!user) {
-			throw new Error("User tidak ditemukan atau nonaktif");
-		}
-
-		const fingerprint = user.homePinFingerprint;
-		if (!fingerprint || fingerprint !== (await sha256Hex(pin))) {
-			throw new Error("PIN yang Anda masukkan salah");
-		}
-
-		const role = user.roleId ? await fetchRoleById(user.roleId) : null;
-		const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-		const session: YumiValidatedSession = {
-			user: {
-				_id: user._id,
-				name: user.name ?? "",
-				username: user.username ?? "",
-				slug: user.slug ?? undefined,
-				roleId: user.roleId ?? "",
-				hasFace: Boolean(user.hasFace),
-			},
-			role: {
-				_id: role?._id ?? user.roleId ?? "",
-				name: role?.name ?? user.roleName ?? "staff",
-				permissions:
-					role && Array.isArray(role.permissions) ? role.permissions : [],
-			},
-			expiresAt,
-		};
-
-		return {
-			token: encodeLocalSession(session),
-			expiresAt,
-			user: {
-				_id: session.user._id,
-				name: session.user.name,
-				slug: session.user.slug,
-				hasFace: session.user.hasFace,
-			},
-		};
+	if (!/^\d{6}$/.test(pin)) {
+		throw new Error("PIN harus terdiri dari 6 digit angka");
 	}
+
+	const response = await invokeAuth<
+		LoginResponse & {
+			supabaseAccessToken?: string | null;
+			supabaseRefreshToken?: string | null;
+		}
+	>({
+		action: "loginWithPin",
+		userId,
+		pin,
+	});
+
+	if (!response?.token) {
+		throw new Error("Login gagal: server tidak mengembalikan token sesi");
+	}
+
+	// Sesi Supabase Auth bersifat opsional — dipakai sebagai jalur cepat
+	// validasi. Kegagalan di sini tidak membatalkan login.
+	if (response.supabaseAccessToken && response.supabaseRefreshToken) {
+		try {
+			const supabase = createClient();
+			await supabase.auth.setSession({
+				access_token: response.supabaseAccessToken,
+				refresh_token: response.supabaseRefreshToken,
+			});
+		} catch (sessionErr) {
+			console.warn("[yumi-auth] Failed to set Supabase session:", sessionErr);
+		}
+	}
+
+	return response;
 }
 
+/**
+ * Validasi token sesi.
+ *
+ * Kontrak pemanggil penting:
+ *  - `null`  → server memastikan sesi TIDAK valid (kedaluwarsa/dicabut/user
+ *              nonaktif). Pemanggil harus menghapus sesi lokal.
+ *  - throw   → gagal menghubungi/menjalankan validasi (offline, 5xx, dsb).
+ *              Pemanggil TIDAK boleh menghapus sesi, cukup coba lagi nanti.
+ */
 export async function validateYumiSession(token: string) {
-	const localSession = decodeLocalSession(token);
-	if (localSession) {
-		if (Date.now() > localSession.expiresAt) {
-			return null;
-		}
-		return localSession;
+	// Token "local session" lawas tidak bertanda tangan → selalu tolak.
+	if (token.startsWith(LEGACY_LOCAL_TOKEN_PREFIX)) {
+		return null;
 	}
 
 	// Try Supabase Auth session first (faster — no Edge Function call)
@@ -387,7 +297,11 @@ export async function validateYumiSession(token: string) {
 						return null;
 					}
 
-					const expiresAt = new Date(sbSession.expires_at!).getTime();
+					// Supabase mengirim expires_at dalam DETIK epoch, bukan milidetik.
+					const expiresAt = (sbSession.expires_at ?? 0) * 1000;
+					if (expiresAt && Date.now() > expiresAt) {
+						return null;
+					}
 					return {
 						user: {
 							_id: claims.source_id || userMeta.source_id || "",
@@ -422,20 +336,25 @@ export async function validateYumiSession(token: string) {
 }
 
 export async function logoutYumiSession(token: string) {
-	if (token.startsWith(LOCAL_TOKEN_PREFIX)) {
+	// Selalu bersihkan sesi Supabase Auth, apa pun jenis tokennya.
+	const signOutSupabase = async () => {
+		try {
+			const supabase = createClient();
+			await supabase.auth.signOut();
+		} catch {
+			// Silent — token lokal sudah dihapus pemanggil.
+		}
+	};
+
+	if (token.startsWith(LEGACY_LOCAL_TOKEN_PREFIX)) {
+		await signOutSupabase();
 		return;
 	}
 
-  await invokeAuth<{ success: boolean }>({
-    action: "logoutSession",
-    token,
-  });
+	await invokeAuth<{ success: boolean }>({
+		action: "logoutSession",
+		token,
+	});
 
-  // Juga logout dari Supabase Auth
-  try {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-  } catch {
-    // Silent — custom token sudah dihapus
-  }
+	await signOutSupabase();
 }

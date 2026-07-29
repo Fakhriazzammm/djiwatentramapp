@@ -6,6 +6,8 @@ type AuthAction =
 	| "loginWithPin"
 	| "validateSession"
 	| "logoutSession"
+	| "changePin"
+	| "updateProfile"
 	| "updateEmail"
 	| "backfillAuthUsers"
 	| "createAuthUser";
@@ -13,6 +15,17 @@ type AuthAction =
 type JsonRecord = Record<string, unknown>;
 
 const supabaseUrl = Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL");
+
+/**
+ * Base URL yang bisa dibuka browser. `SUPABASE_URL` di dalam container adalah
+ * http://kong:8000 (hanya valid antar-container), dan `SUPABASE_PUBLIC_URL` di
+ * server ini salah konfigurasi — menunjuk ke https://pos.yumme.id (app POS),
+ * bukan ke API gateway. Jadi URL publik diambil dari env khusus, dengan default
+ * ke domain API yang dipakai semua app (lihat VITE_SUPABASE_URL di apps/*).
+ */
+const publicSupabaseUrl = (
+	Deno.env.get("YUMI_PUBLIC_SUPABASE_URL") ?? "https://supabase.yumme.id"
+).replace(/\/+$/, "");
 const supabaseServiceRoleKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -31,6 +44,10 @@ async function restQuery(table: string, select: string, options?: { eq?: { colum
 	const res = await fetch(url, {
 		headers: {
 			"apikey": supabaseServiceRoleKey,
+			// PostgREST menentukan role dari JWT di header Authorization, bukan dari
+			// apikey. Tanpa ini query jalan sebagai `anon` dan tabel tanpa grant anon
+			// (mis. yumi_sessions) balas 401 "permission denied".
+			"Authorization": `Bearer ${supabaseServiceRoleKey}`,
 			"Accept": "application/json",
 		},
 	});
@@ -120,6 +137,52 @@ async function restDelete(table: string, eqColumn: string, eqValue: string) {
 
 // GoTrue Admin API — POST to http://auth:8081/admin/<path>
 const gotrueUrl = Deno.env.get("SUPABASE_URL")?.replace("kong:8000", "auth:8081") ?? "http://auth:8081";
+
+/** Endpoint GoTrue non-admin (mis. /verify). */
+async function gotruePublic(path: string, body: Record<string, unknown>) {
+	const res = await fetch(`${gotrueUrl}/${path}`, {
+		method: "POST",
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+	if (!res.ok) {
+		throw new Error(`GoTrue ${path} failed (${res.status}): ${await res.text()}`);
+	}
+	return await res.json() as Record<string, unknown>;
+}
+
+/**
+ * Terbitkan sesi Supabase Auth untuk user, tanpa perlu password.
+ *
+ * Caranya: minta magic link lewat admin API (ini TIDAK mengirim email — yang
+ * mengirim email adalah endpoint /magiclink, bukan /admin/generate_link), lalu
+ * tukar `hashed_token`-nya jadi access/refresh token lewat /verify.
+ *
+ * Versi lama memanggil POST /admin/sessions yang tidak pernah ada di GoTrue —
+ * selalu 404, sehingga token Supabase selalu null dan seluruh app berjalan
+ * sebagai `anon`.
+ */
+async function issueSupabaseSession(email: string) {
+	const link = await gotrueAdmin("generate_link", { type: "magiclink", email });
+	const hashedToken = link.hashed_token;
+	if (typeof hashedToken !== "string" || !hashedToken) {
+		throw new Error("GoTrue tidak mengembalikan hashed_token");
+	}
+
+	const session = await gotruePublic("verify", {
+		type: "magiclink",
+		token_hash: hashedToken,
+	});
+
+	return {
+		accessToken: typeof session.access_token === "string" ? session.access_token : null,
+		refreshToken: typeof session.refresh_token === "string" ? session.refresh_token : null,
+	};
+}
 async function gotrueAdmin(path: string, body?: Record<string, unknown>): Promise<Record<string, unknown>> {
 	const url = `${gotrueUrl}/admin/${path}`;
 	const res = await fetch(url, {
@@ -255,21 +318,17 @@ async function loginWithPin(payload: JsonRecord) {
 	let supabaseRefreshToken: string | null = null;
 
 	try {
-		const authUsers = await restQuery("yumi_users", "auth_user_id", {
+		const authUsers = await restQuery("yumi_users", "auth_user_id, email", {
 			eq: { column: "source_id", value: user.source_id },
 			limit: 1,
 		});
 		const userRecord = authUsers?.[0];
+		const email = toTrimmedString(userRecord?.email);
 
-		if (userRecord?.auth_user_id) {
-			const sessionData = await gotrueAdmin("sessions", {
-				user_id: userRecord.auth_user_id,
-			}) as any;
-
-			if (sessionData) {
-				supabaseAccessToken = sessionData.access_token ?? null;
-				supabaseRefreshToken = sessionData.refresh_token ?? null;
-			}
+		if (userRecord?.auth_user_id && email) {
+			const session = await issueSupabaseSession(email);
+			supabaseAccessToken = session.accessToken;
+			supabaseRefreshToken = session.refreshToken;
 		}
 	} catch (sessionErr) {
 		console.warn("[yumi-auth] Failed to create Supabase session:", sessionErr);
@@ -354,6 +413,178 @@ async function validateSession(payload: JsonRecord) {
 			expiresAt,
 		},
 	};
+}
+
+/**
+ * Ganti PIN. Wajib lewat sini, bukan UPDATE langsung dari browser:
+ * `anon` tidak punya (dan tidak boleh punya) hak UPDATE atas yumi_users.
+ *
+ * Menulis home_pin_hash (bcrypt) DAN home_pin_fingerprint (SHA-256) sekaligus.
+ * loginWithPin memprioritaskan bcrypt — kalau hanya fingerprint yang diperbarui
+ * (perilaku hook lama), PIN baru akan ditolak saat login untuk user yang sudah
+ * punya bcrypt hash. Fingerprint masih ditulis karena apps web/customer/pos
+ * belum dipindah dan masih mencocokkannya; hapus kolom itu setelah mereka pindah.
+ */
+async function changePin(payload: JsonRecord) {
+	const token = normalizeToken(payload.token);
+	const newPin = normalizePin(payload.newPin);
+	const oldPin = normalizePin(payload.oldPin);
+
+	if (!/^\d{6}$/.test(newPin)) throw new Error("PIN baru harus 6 digit angka");
+
+	const user = await requireSessionUser(
+		token,
+		"source_id, home_pin_hash, home_pin_fingerprint, is_active, raw",
+	);
+
+	// Kalau user sudah punya PIN, PIN lama wajib benar.
+	const currentHash = user.home_pin_hash as string | null;
+	const currentFingerprint = user.home_pin_fingerprint as string | null;
+	if (currentHash || currentFingerprint) {
+		if (!/^\d{6}$/.test(oldPin)) throw new Error("PIN lama wajib diisi");
+		const oldValid = currentHash
+			? await bcrypt.compare(oldPin, currentHash)
+			: (await sha256Hex(oldPin)) === currentFingerprint;
+		if (!oldValid) throw new Error("PIN lama salah");
+		if (oldPin === newPin) throw new Error("PIN baru harus berbeda dari PIN lama");
+	}
+
+	const raw =
+		user.raw && typeof user.raw === "object" && !Array.isArray(user.raw)
+			? { ...(user.raw as JsonRecord), requiresPinChange: false }
+			: { requiresPinChange: false };
+
+	await restUpdate(
+		"yumi_users",
+		{
+			home_pin_hash: await bcrypt.hash(newPin, 10),
+			home_pin_fingerprint: await sha256Hex(newPin),
+			raw,
+		},
+		"source_id",
+		user.source_id,
+	);
+
+	return { success: true };
+}
+
+/** Ambil user dari token sesi, atau lempar error kalau sesi tidak sah. */
+async function requireSessionUser(token: string, columns: string) {
+	if (!token) throw new Error("Sesi tidak valid atau telah berakhir");
+
+	const sessions = await restQuery("yumi_sessions", "token, user_source_id, expires_at", {
+		eq: { column: "token", value: token },
+		limit: 1,
+	});
+	const session = sessions?.[0];
+	if (!session) throw new Error("Sesi tidak valid atau telah berakhir");
+
+	if (Date.now() > new Date(session.expires_at).getTime()) {
+		await restDelete("yumi_sessions", "token", token);
+		throw new Error("Sesi telah berakhir, silakan login ulang");
+	}
+
+	const users = await restQuery("yumi_users", columns, {
+		eq: { column: "source_id", value: session.user_source_id },
+		limit: 1,
+	});
+	const user = users?.[0];
+	if (!user || !user.is_active) throw new Error("User tidak ditemukan atau nonaktif");
+	return user;
+}
+
+/** Upload foto profil ke storage pakai service role, kembalikan public URL. */
+async function uploadProfilePhoto(sourceId: string, base64: string, contentType: string) {
+	const allowed = ["image/jpeg", "image/png", "image/webp"];
+	if (!allowed.includes(contentType)) {
+		throw new Error("Format foto harus JPG, PNG, atau WEBP");
+	}
+
+	const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+	if (bytes.byteLength > 5 * 1024 * 1024) {
+		throw new Error("Ukuran foto maksimal 5MB");
+	}
+
+	const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+	const path = `${sourceId}/${Date.now()}.${ext}`;
+
+	const res = await fetch(`${supabaseUrl}/storage/v1/object/profile-photos/${path}`, {
+		method: "POST",
+		headers: {
+			"apikey": supabaseServiceRoleKey,
+			"Authorization": `Bearer ${supabaseServiceRoleKey}`,
+			"Content-Type": contentType,
+			"x-upsert": "true",
+		},
+		body: bytes,
+	});
+	if (!res.ok) {
+		throw new Error(`Upload foto gagal (${res.status}): ${await res.text()}`);
+	}
+
+	return `${publicSupabaseUrl}/storage/v1/object/public/profile-photos/${path}`;
+}
+
+/**
+ * Update profil karyawan. Wajib lewat sini: `anon` tidak punya hak UPDATE atas
+ * yumi_users, jadi versi lama (UPDATE langsung dari browser) selalu gagal
+ * "permission denied". Field sensitif seperti role, is_active, dan PIN sengaja
+ * TIDAK bisa diubah lewat endpoint ini — user hanya boleh mengubah datanya sendiri.
+ */
+async function updateProfile(payload: JsonRecord) {
+	const token = normalizeToken(payload.token);
+	const user = await requireSessionUser(token, "source_id, is_active, raw");
+
+	const updates: JsonRecord = {};
+	const setIfString = (key: string, column: string) => {
+		if (payload[key] === undefined) return;
+		const value = toTrimmedString(payload[key]);
+		if (value) updates[column] = value;
+	};
+	setIfString("name", "name");
+	setIfString("username", "username");
+	setIfString("slug", "slug");
+
+	// Field bebas disimpan di kolom JSON `raw`, digabung dengan yang sudah ada.
+	const rawFields = [
+		"phone", "identityNumber", "address", "birthDate", "placeOfBirth",
+		"emergencyContactName", "emergencyContactPhone", "bankName", "bankAccount",
+		"startDate", "employmentType", "location",
+	];
+	const existingRaw =
+		user.raw && typeof user.raw === "object" && !Array.isArray(user.raw)
+			? { ...(user.raw as JsonRecord) }
+			: {};
+	let rawChanged = false;
+	for (const field of rawFields) {
+		if (payload[field] === undefined) continue;
+		existingRaw[field] = payload[field];
+		rawChanged = true;
+	}
+	if (rawChanged) updates.raw = existingRaw;
+
+	// Foto: terima base64 dan upload di server, atau terima URL yang sudah jadi.
+	let photoUrl: string | null = null;
+	const photoBase64 = toTrimmedString(payload.photoBase64);
+	if (photoBase64) {
+		photoUrl = await uploadProfilePhoto(
+			String(user.source_id),
+			photoBase64,
+			toTrimmedString(payload.photoContentType) || "image/jpeg",
+		);
+		updates.photo_url = photoUrl;
+	} else if (payload.photoUrl !== undefined) {
+		const value = toTrimmedString(payload.photoUrl);
+		if (value) {
+			photoUrl = value;
+			updates.photo_url = value;
+		}
+	}
+
+	if (Object.keys(updates).length === 0) return { success: true, photoUrl };
+
+	await restUpdate("yumi_users", updates, "source_id", user.source_id);
+	return { success: true, photoUrl };
 }
 
 async function logoutSession(payload: JsonRecord) {
@@ -477,6 +708,10 @@ Deno.serve(async (req) => {
 				return json(await validateSession(body));
 			case "logoutSession":
 				return json(await logoutSession(body));
+			case "changePin":
+				return json(await changePin(body));
+			case "updateProfile":
+				return json(await updateProfile(body));
 			case "updateEmail":
 				return json(await handleUpdateEmail(body));
 			case "backfillAuthUsers":

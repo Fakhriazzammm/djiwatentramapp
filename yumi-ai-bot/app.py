@@ -130,6 +130,11 @@ REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
 MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "-5288006237"))
 BROADCAST_CHANNEL_ID = int(os.getenv("BROADCAST_CHANNEL_ID", "-1003534335147"))
 
+# ponytail: kill-switch notifikasi otomatis (polling 30s, daily summary, marketlist).
+# Default ON agar tidak breaking behaviour lama. Set "false" di .env untuk mematikan
+# sementara bot tetap hidup untuk command manual (/ringkasan_hari_ini, dll).
+AUTO_REPORTER_ENABLED = os.getenv("AUTO_REPORTER_ENABLED", "true").lower() not in ("false", "0", "no")
+
 # All registered broadcast targets
 ALL_BROADCAST_TARGETS: dict[str, int] = {
     "channel": BROADCAST_CHANNEL_ID,
@@ -2836,6 +2841,9 @@ async def _send_marketlist_to_group(app):
 
 async def _start_auto_reporter(app):
     """Start polling loop and daily summary scheduler."""
+    if not AUTO_REPORTER_ENABLED:
+        logger.info("Auto-reporter DISABLED via AUTO_REPORTER_ENABLED=false — bot stays alive for manual commands only")
+        return
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
     # Build marketlist ingredient category lookup

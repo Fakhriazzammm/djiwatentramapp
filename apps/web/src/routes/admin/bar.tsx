@@ -5,6 +5,6 @@ const barSearchSchema = z.object({
 	tab: z.enum(["orders", "stock"]).optional(),
 });
 
-export const Route = createFileRoute("/admin/bar" as any)({
+export const Route = createFileRoute("/admin/bar")({
 	validateSearch: (search: Record<string, unknown>) => barSearchSchema.parse(search),
 });

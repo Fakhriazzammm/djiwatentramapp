@@ -186,6 +186,14 @@ class SumoPodClient:
             }
         except Exception as e:
             logger.warning("9router chat failed: %s", e)
+            # Failover -> Gemini secondary
+            try:
+                sec = _build_secondary()
+                if sec is not None:
+                    logger.info("chat failover -> Gemini")
+                    return await sec.chat(message, system_prompt=system_prompt, model=GEMINI_TEXT_MODEL, timeout=timeout)
+            except Exception as e2:
+                logger.warning("Gemini chat failover also failed: %s", e2)
             return {
                 "action": "unknown",
                 "amount": 0,
@@ -388,10 +396,18 @@ PENTING:
                 logger.warning("9router vision_json model=%s failed with HTTP %s: %s body=%s", candidate, code, e, body)
                 if code in (400, 401, 403, 429, 500, 502, 503, 504) and idx < len(model_candidates) - 1:
                     continue
+                # Failover -> Gemini secondary (vision/OCR)
+                try:
+                    sec = _build_secondary()
+                    if sec is not None:
+                        logger.info("vision_json failover -> Gemini")
+                        return await sec.vision_json(image_base64_uri, model=GEMINI_VISION_MODEL, timeout=timeout)
+                except Exception as e2:
+                    logger.warning("Gemini vision_json failover also failed: %s", e2)
                 return {
                     "success": False,
-                    "error": "AI vision sedang tidak menerima gambar ini. Coba ulangi atau input manual nominal, kategori, dan catatan.",
-                    "model": candidate,
+                    "error": str(last_error) if last_error else "Unknown OCR error",
+                    "model": model_candidates[-1] if model_candidates else model,
                 }
             except Exception as e:
                 last_error = e
@@ -508,3 +524,229 @@ PENTING: Tulis SEMUA item, jangan ada yang dilewatkan meskipun struk panjang."""
             })
         return clean_items[:80]
 
+
+
+# ============================================================================
+# Gemini secondary client (failover for SumoPod / 9Router proxy)
+# Primary = SumoPodClient (NINEROUTER_BASE_URL proxy). Secondary = Google
+# Gemini direct (OpenAI-compatible endpoint) used when primary fails.
+# ============================================================================
+GEMINI_BASE_URL = os.getenv(
+    "GEMINI_BASE_URL",
+    "https://generativelanguage.googleapis.com/v1beta/openai",
+)
+GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
+GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3-flash-preview")
+GEMINI_VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-3-flash-preview")
+
+
+class GeminiClient:
+    """Secondary AI client -> Google Gemini (OpenAI-compatible).
+
+    Used automatically as a failover when the primary SumoPod/9Router
+    proxy is unreachable or returns an error.
+    """
+
+    def __init__(self, api_key: str = GEMINI_API_KEY, base_url: str = GEMINI_BASE_URL):
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+
+    def _headers(self):
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+    async def chat(
+        self,
+        message: str,
+        system_prompt: str = SYSTEM_PROMPT,
+        model: str = GEMINI_TEXT_MODEL,
+        timeout: int = 60,
+    ) -> dict:
+        """Text chat via Gemini. Returns same dict shape as SumoPodClient.chat."""
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 512,
+            "stream": False,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self._headers(),
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                reply = data["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.warning("Gemini chat failed: %s", e)
+            return {
+                "action": "unknown", "amount": 0, "category": None,
+                "description": message, "confidence": "low",
+                "reply": "Maaf, AI finance sedang sibuk. Coba lagi sebentar lagi.",
+                "raw": "",
+            }
+
+        # Reuse SumoPodClient's parsing via a small local parser.
+        clean_reply = reply.strip()
+        if clean_reply.startswith("```"):
+            clean_reply = re.sub(r"^```\w*\n?", "", clean_reply)
+            clean_reply = re.sub(r"\n?```\s*$", "", clean_reply)
+
+        action_match = re.search(r"ACTION:\s*(\w+)", clean_reply)
+        amount_match = re.search(r"AMOUNT:\s*([\d.,]+)", clean_reply)
+        cat_match = re.search(r"CATEGORY:\s*(\w+)", clean_reply)
+        desc_match = re.search(r"DESCRIPTION:\s*(.+?)(?:\n|$)", clean_reply)
+        conf_match = re.search(r"CONFIDENCE:\s*(\w+)", clean_reply)
+        reply_match = re.search(r"REPLY:\s*(.+?)(?=\n\w+\s*:|$)", clean_reply, re.DOTALL)
+        merchant_match = re.search(r"MERCHANT:\s*(.*?)(?:\n|$)", clean_reply)
+        pm_match = re.search(r"PAYMENT_METHOD:\s*(.*?)(?:\n|$)", clean_reply)
+
+        action = action_match.group(1) if action_match else "unknown"
+        amount = 0.0
+        if amount_match:
+            raw = amount_match.group(1).replace(",", "")
+            try:
+                amount = float(raw)
+            except ValueError:
+                amount = 0.0
+        items = []
+        items_match = re.search(r"ITEMS:\s*(.+)", clean_reply)
+        if items_match:
+            raw_items = items_match.group(1).strip()
+            for part in re.split(r"[;]\s*", raw_items):
+                item_parts = part.split("|")
+                if len(item_parts) >= 4:
+                    try:
+                        qty_raw = item_parts[1].strip()
+                        if "/" in qty_raw:
+                            num, den = qty_raw.split("/", 1)
+                            qty = float(num.strip()) / float(den.strip())
+                        else:
+                            qty = float(qty_raw)
+                        price_raw = item_parts[3].strip().replace(",", "").replace(".", "")
+                        items.append({
+                            "name": item_parts[0].strip(),
+                            "qty": qty, "unit": item_parts[2].strip(),
+                            "price": float(price_raw),
+                        })
+                    except (ValueError, ZeroDivisionError):
+                        pass
+
+        return {
+            "action": action,
+            "amount": amount,
+            "category": cat_match.group(1) if cat_match else None,
+            "description": desc_match.group(1).strip() if desc_match else message,
+            "merchant": merchant_match.group(1).strip() if merchant_match else "",
+            "payment_method": pm_match.group(1).strip().upper() if pm_match else "CASH",
+            "confidence": conf_match.group(1) if conf_match else "medium",
+            "reply": reply_match.group(1).strip() if reply_match else "",
+            "items": items,
+            "raw": reply,
+        }
+
+    async def vision_json(
+        self,
+        image_base64_uri: str,
+        model: str = GEMINI_VISION_MODEL,
+        timeout: int = 90,
+    ) -> dict:
+        """Vision/OCR via Gemini -> structured JSON (same shape as primary)."""
+        prompt = (
+            "Analisis gambar struk/nota belanja ini dan ekstrak data dalam format JSON berikut. "
+            "STRUK BISA PANJANG — baca SEMUA item, jangan sampai ada yang terlewat. "
+            "teks di rawText harus LENGKAP (semua teks yang terbaca), jangan dipotong.\n\n"
+            '{ "type": "expense", "name": "Nama Merchant/Toko", "category": "Kategori", '
+            '"transactionType": "expense", "total": 0, "subtotal": 0, "tax": 0, '
+            '"serviceCharge": 0, "discount": 0, "items": [{"name": "Nama item", "qty": 1, '
+            '"price": 0, "subtotal": 0, "unit": "pcs"}], "date": "YYYY-MM-DD", "time": "HH:MM", '
+            '"receiptNumber": "", "paymentMethod": "Cash/Debit/QRIS", "notes": "", '
+            '"confidence": 0.9, "rawText": "SEMUA teks yang terbaca di struk, jangan dipotong" }\n\n'
+            "PENTING:\n"
+            "- Baca SEMUA item di struk, jangan ada yang dilewatkan\n"
+            "- rawText harus berisi SEMUA teks dari struk, dari baris pertama sampai terakhir\n"
+            "- items[] harus berisi SEMUA item yang terbaca\n"
+            "- confidence 0-1\n"
+            "- WAJIB balas JSON valid saja. Jangan markdown, jangan teks lain."
+        )
+        if not image_base64_uri.startswith("data:image"):
+            return {"success": False, "error": "Format URI gambar tidak valid."}
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": image_base64_uri}},
+                    ],
+                }
+            ],
+            "temperature": 0.1,
+            "max_tokens": 16384,
+            "stream": False,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self._headers(),
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.warning("Gemini vision_json failed: %s", e)
+            return {"success": False, "error": str(e), "model": model}
+
+        import json
+        json_match = re.search(r"\{[\s\S]*\}", content)
+        if not json_match:
+            return {
+                "success": True,
+                "data": {
+                    "type": "expense", "name": None, "category": None,
+                    "transactionType": "expense", "total": 0, "subtotal": 0,
+                    "tax": 0, "serviceCharge": 0, "discount": 0, "items": [],
+                    "date": None, "time": None, "receiptNumber": "",
+                    "paymentMethod": "CASH", "notes": "AI mengembalikan non-JSON; rawText disimpan.",
+                    "confidence": 0.5, "rawText": content,
+                },
+                "raw": content, "model": model,
+            }
+        try:
+            parsed = json.loads(json_match[0])
+        except json.JSONDecodeError:
+            return {
+                "success": True,
+                "data": {
+                    "type": "expense", "name": None, "category": None,
+                    "transactionType": "expense", "total": 0, "subtotal": 0,
+                    "tax": 0, "serviceCharge": 0, "discount": 0, "items": [],
+                    "date": None, "time": None, "receiptNumber": "",
+                    "paymentMethod": "CASH", "notes": "AI mengembalikan JSON tidak valid.",
+                    "confidence": 0.5, "rawText": content,
+                },
+                "raw": content, "model": model,
+            }
+        parsed.setdefault("rawText", content)
+        parsed.setdefault("items", [])
+        parsed.setdefault("confidence", 0.5)
+        return {"success": True, "data": parsed, "raw": content, "model": model}
+
+
+def _build_secondary() -> GeminiClient | None:
+    """Build the secondary Gemini client only if a key is present."""
+    key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    if not key:
+        return None
+    return GeminiClient(api_key=key)

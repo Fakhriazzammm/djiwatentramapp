@@ -1,22 +1,21 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * In-memory storage — never reads/writes localStorage/cookies.
- * This avoids stale session tokens from previous logins (the old
- * @supabase/ssr client may have left session data in localStorage
- * that would override the anon key and cause 403 errors).
- */
-function createMemoryStorage() {
-	const store = new Map<string, string>();
-	return {
-		getItem: async (key: string) => store.get(key) ?? null,
-		setItem: async (key: string, value: string) => { store.set(key, value); },
-		removeItem: async (key: string) => { store.delete(key); },
-	};
-}
-
 let browserClient: SupabaseClient | null = null;
 
+/**
+ * Klien Supabase bersama untuk semua app web.
+ *
+ * Sesi DIPERTAHANKAN di localStorage dan di-refresh otomatis. Dulu di sini
+ * dipakai storage in-memory dengan `persistSession: false`, alasannya token
+ * basi dari login lama bikin 403. Akar masalahnya sebenarnya bukan storage:
+ * `loginWithPin` memanggil endpoint GoTrue yang tidak ada (POST /admin/sessions,
+ * selalu 404), jadi sesi Supabase tidak pernah benar-benar terbit dan yang
+ * tersimpan hanya sisa token yang memang tidak valid.
+ *
+ * Sekarang sesi diterbitkan dengan benar (role `authenticated`), jadi
+ * menyimpannya adalah yang tepat — tanpa ini setiap refresh halaman
+ * menjatuhkan user kembali ke hak `anon` dan semua operasi tulis gagal.
+ */
 export function createClient() {
 	if (!browserClient) {
 		browserClient = createSupabaseClient(
@@ -24,10 +23,10 @@ export function createClient() {
 			import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!,
 			{
 				auth: {
-					persistSession: false,
-					autoRefreshToken: false,
+					persistSession: true,
+					autoRefreshToken: true,
+					// App memakai token sesinya sendiri; tidak ada alur redirect OAuth.
 					detectSessionInUrl: false,
-					storage: createMemoryStorage(),
 				},
 			}
 		);

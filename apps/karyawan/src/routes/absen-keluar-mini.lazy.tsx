@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import {
   submitClosingViaEdge,
+  prepareKebersihanPhoto,
   type OpnameItem,
 } from "../hooks/use-closing-submit";
 
@@ -62,7 +63,10 @@ type KebersihanArea = {
   label: string;
   emoji: string;
   status: "bersih" | "perlu_perbaikan";
+  /** Object URL — hanya untuk preview di layar. */
   foto: string | null;
+  /** File aslinya; ini yang dikirim saat submit. */
+  fotoFile?: File | null;
   catatan: string;
 };
 
@@ -272,6 +276,20 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
         (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
       );
 
+      // Kebersihan: kecilkan foto lalu ikutkan ke payload. Sebelumnya data ini
+      // hanya hidup di state dan hilang begitu submit, padahal layar sukses
+      // sudah terlanjur bilang "kebersihan tersimpan".
+      const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
+      const kebersihan = await Promise.all(
+        areasKebersihan.map(async (a) => ({
+          id: a.id,
+          label: a.label,
+          status: a.status,
+          catatan: a.catatan,
+          ...(a.fotoFile ? await prepareKebersihanPhoto(a.fotoFile) : {}),
+        })),
+      );
+
       const result = await submitClosingViaEdge({
         userId,
         userName,
@@ -280,6 +298,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
         role,
         items: markedChanged.length > 0 ? markedChanged : opnameItems,
         source: "telegram_mini_app",
+        kebersihan,
       });
 
       setSubmitDone(true);
@@ -644,11 +663,11 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
 
   const handleFileSelect = (id: string, file: File | null) => {
     if (!file) return;
-    setAreas((prev) => prev.map((a) => (a.id === id ? { ...a, foto: URL.createObjectURL(file) } : a)));
+    setAreas((prev) => prev.map((a) => (a.id === id ? { ...a, foto: URL.createObjectURL(file), fotoFile: file } : a)));
   };
 
   const triggerFileInput = (id: string) => fileInputRefs.current[id]?.click();
-  const removeFoto = (id: string) => setAreas((prev) => prev.map((a) => (a.id === id ? { ...a, foto: null } : a)));
+  const removeFoto = (id: string) => setAreas((prev) => prev.map((a) => (a.id === id ? { ...a, foto: null, fotoFile: null } : a)));
 
   const completedCount = areas.filter((a) => a.status === "bersih").length;
   const photoCount = areas.filter((a) => a.foto !== null).length;
