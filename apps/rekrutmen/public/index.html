@@ -700,7 +700,7 @@ async function submitApplication() {
       'Sosial Media Instagram/Tiktok': document.getElementById('fieldSocial').value.trim(),
       'Posisi Dilamar': posisi,
       'Full time/Part time': document.getElementById('fieldTipe').value,
-      'Notes': document.getElementById('fieldNotes').value.trim(),
+      'Notes': (document.getElementById('fieldNotes')?.value || '').trim(),
       'CV URL': cvUrl,
       'Application Date': new Date().toISOString().split('T')[0],
       'Status': 'Application Received',
