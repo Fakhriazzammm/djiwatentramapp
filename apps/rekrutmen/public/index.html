@@ -184,7 +184,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         </div>
 
         <!-- Hint: klik card untuk detail -->
-        <div class="flex items-center gap-2 mb-3 text-ink-3">
+        <div id="jobHint" class="flex items-center gap-2 mb-3 text-ink-3 rounded-ctl transition-all duration-200">
           <svg class="size-4 text-accent flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
           <span class="text-[12.5px] font-semibold">Ketuk salah satu kartu untuk melihat detail pekerjaan &amp; melamar</span>
         </div>
@@ -606,6 +606,14 @@ document.getElementById('applicationForm').addEventListener('submit', function(e
   const posisi = document.getElementById('fieldPosisi').value;
   if (!posisi) {
     showToast('Pilih posisi dulu ya', 'error');
+    // Tarik user ke area pilih posisi
+    const jobsSection = document.getElementById('jobsSection');
+    jobsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const hint = document.getElementById('jobHint');
+    if (hint) {
+      hint.classList.add('ring-2', 'ring-accent', 'ring-offset-2');
+      setTimeout(() => hint.classList.remove('ring-2', 'ring-accent', 'ring-offset-2'), 2000);
+    }
     return;
   }
   document.getElementById('confirmRole').textContent = posisi;
