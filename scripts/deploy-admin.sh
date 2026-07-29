@@ -35,7 +35,7 @@ check_disk
 echo ""
 echo "📦 Building admin (apps/admin)..."
 rm -rf ".turbo" "apps/admin/.turbo" "apps/admin/dist"
-bun run build:admin
+bun run build --filter=admin 2>/dev/null || bun run --cwd apps/admin build
 echo "✅ Build admin succeeded"
 
 if [ "$DEBUG" = "1" ]; then

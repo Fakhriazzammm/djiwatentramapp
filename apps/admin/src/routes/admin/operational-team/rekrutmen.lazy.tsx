@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import "@/styles/rekrutmen-admin.css";
 
 export const Route = createLazyFileRoute("/admin/operational-team/rekrutmen")({
   component: AdminRekrutmen,
@@ -392,7 +393,8 @@ function AdminRekrutmen() {
       </div>
 
       {/* Main Card */}
-      <Card className="p-0 overflow-hidden">
+      <div className="rekrutmen-admin">
+      <div className="card workspace">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 p-3 border-b flex-wrap">
           <h2 className="font-bold text-sm">Rekrutmen</h2>
@@ -734,7 +736,8 @@ function AdminRekrutmen() {
             })
           )}
         </div>
-      </Card>
+      </div>
+      </div>
 
       {/* Drawer & Modal */}
       {renderDetailDrawer()}
