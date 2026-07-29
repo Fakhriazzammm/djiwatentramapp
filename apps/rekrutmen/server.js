@@ -147,6 +147,28 @@ VALUES (${esc(b["Nama Lengkap"])}, ${esc(b["Jenis Kelamin"])}, ${esc(b["Tanggal 
       { encoding: "utf-8", timeout: 10000 }
     );
     const newId = result.trim();
+    // ── Notifikasi ke grup [Report] via yumi-ai-bot ──
+    try {
+      const notifPayload = JSON.stringify({
+        nama_lengkap: b["Nama Lengkap"],
+        jenis_kelamin: b["Jenis Kelamin"],
+        tanggal_lahir: b["Tanggal Lahir"],
+        email: b["Email"],
+        nomor_telepon: b["Nomor Telepon/HP"],
+        sosial_media: b["Sosial Media Instagram/Tiktok"],
+        posisi_dilamar: b["Posisi Dilamar"],
+        tipe_kerja: b["Full time/Part time"],
+        cv_url: b["CV URL"],
+        created_at: new Date().toISOString().split("T")[0],
+      });
+      const notifScript = "/opt/djiwatentramapp/yumi-ai-bot/notify_new_applicant.py";
+      execSync(`python3 ${notifScript} '${notifPayload.replace(/'/g, "'\"'\"'")}'`, {
+        encoding: "utf-8",
+        timeout: 15000,
+      });
+    } catch (notifErr) {
+      console.error("Notif lamaran gagal (non-fatal):", notifErr.message);
+    }
     res.json({ records: [{ id: newId, fields: b }] });
   } catch (e) {
     res.status(500).json({ error: e.message });
