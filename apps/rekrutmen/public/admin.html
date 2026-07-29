@@ -902,6 +902,7 @@ function renderCandidatesTable(records) {
           <th class="sticky-col">Kandidat</th>
           <th>Posisi</th>
           <th>Kontak</th>
+          <th>CV</th>
           <th>Tanggal</th>
           <th>Status</th>
           <th>Tipe</th>
@@ -933,6 +934,7 @@ function renderCandidatesTable(records) {
                   <span class="row-sub">${escapeHtml(f.Email || '-')}</span>
                 </div>
               </td>
+              <td>${f['CV URL'] ? `<a href="${escapeHtml(f['CV URL'])}" target="_blank" rel="noopener" class="small-btn">Lihat CV</a>` : '<span class="row-sub">—</span>'}</td>
               <td>${escapeHtml(f['Application Date'] || '-')}</td>
               <td><span class="badge ${statusClass(f.Status)}">${escapeHtml(f.Status || 'New')}</span></td>
               <td>${escapeHtml(f['Full time/Part time'] || '-')}</td>

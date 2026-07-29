@@ -2,14 +2,20 @@ const express = require("express");
 const cors = require("cors");
 const { execSync } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const PORT = 3456;
 const TABLE = "recruitment_candidates";
+const UPLOAD_DIR = path.join(__dirname, "public", "uploads");
+
+// pastikan folder uploads ada
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static(UPLOAD_DIR));
 
 // ── psql helper ──
 function psql(sql) {
@@ -56,14 +62,35 @@ app.get("/api/table/Candidates", async (req, res) => {
   }
 });
 
+// ── POST /api/upload-cv (base64 → file, no multer) ──
+app.post("/api/upload-cv", async (req, res) => {
+  try {
+    const { data, filename } = req.body;
+    if (!data || !filename) return res.status(400).json({ error: "data & filename required" });
+    // validasi tipe
+    const allowed = [".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"];
+    const ext = path.extname(filename).toLowerCase();
+    if (!allowed.includes(ext)) return res.status(400).json({ error: "Tipe file tidak didukung" });
+    const m = data.match(/^data:([A-Za-z0-9+/=]+);base64,(.+)$/);
+    if (!m) return res.status(400).json({ error: "Format base64 tidak valid" });
+    const buf = Buffer.from(m[2], "base64");
+    if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: "Maksimal 8MB" });
+    const safeName = Date.now() + "-" + filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    fs.writeFileSync(path.join(UPLOAD_DIR, safeName), buf);
+    res.json({ url: "/uploads/" + safeName });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── POST /api/table/Candidates ──
 app.post("/api/table/Candidates", async (req, res) => {
   try {
     const b = req.body;
     const esc = (v) => { if (v == null) return "NULL"; return "'" + String(v).replace(/'/g, "''") + "'"; };
     const sql = `INSERT INTO pos.${TABLE}
-(nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date)
-VALUES (${esc(b["Nama Lengkap"])}, ${esc(b["Jenis Kelamin"])}, ${esc(b["Tanggal Lahir"])}, ${esc(b["Email"])}, ${esc(b["Nomor Telepon/HP"])}, ${esc(b["Sosial Media Instagram/Tiktok"])}, ${esc(b["Posisi Dilamar"])}, ${esc(b["Full time/Part time"])}, ${esc(b["Notes"])}, ${esc(b["Status"] || "Application Received")}, ${esc(b["Application Date"] || new Date().toISOString().split("T")[0])}) RETURNING id`;
+(nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date, cv_url)
+VALUES (${esc(b["Nama Lengkap"])}, ${esc(b["Jenis Kelamin"])}, ${esc(b["Tanggal Lahir"])}, ${esc(b["Email"])}, ${esc(b["Nomor Telepon/HP"])}, ${esc(b["Sosial Media Instagram/Tiktok"])}, ${esc(b["Posisi Dilamar"])}, ${esc(b["Full time/Part time"])}, ${esc(b["Notes"])}, ${esc(b["Status"] || "Application Received")}, ${esc(b["Application Date"] || new Date().toISOString().split("T")[0])}, ${esc(b["CV URL"])}) RETURNING id`;
     const result = execSync(
       `docker exec -i supabase-db psql -U postgres -d postgres -t -A -c '${sql.replace(/'/g, "'\"'\"'")}'`,
       { encoding: "utf-8", timeout: 10000 }
