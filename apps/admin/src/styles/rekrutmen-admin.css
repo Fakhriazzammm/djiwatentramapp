@@ -575,7 +575,7 @@
     padding-bottom: 10px;
     flex-wrap: wrap;
   }
-  .rekrutmen-admin .page { padding: 12px 12px 24px; }
+  .rekrutmen-admin .page { padding: 12px 12px 100px; }
   .rekrutmen-admin .workspace { padding: 12px; }
   .rekrutmen-admin .summary { grid-template-columns: 1fr 1fr; }
   .topbar,
@@ -595,6 +595,16 @@
     position: static;
     left: auto;
     box-shadow: none;
+  }
+  /* Fix: rekrutmen dropdowns & toolbar jangan overflow */
+  .rekrutmen-admin .toolbar .search,
+  .rekrutmen-admin .toolbar select,
+  .rekrutmen-admin .toolbar button {
+    min-width: 0;
+    width: 100%;
+  }
+  .rekrutmen-admin .toolbar {
+    gap: 6px;
   }
 }
 
