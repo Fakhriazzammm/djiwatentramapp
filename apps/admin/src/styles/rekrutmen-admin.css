@@ -1,0 +1,597 @@
+
+.rekrutmen-admin {
+  --primary: #1f5eff;
+  --primary-soft: #eef4ff;
+  --primary-border: #cfe0ff;
+  --text: #172033;
+  --muted: #6d7992;
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --line: #dde5f0;
+  --soft: #f8fbff;
+  --success: #17854b;
+  --warning: #c57f0d;
+  --danger: #cb4040;
+  --purple: #6f52d9;
+  --shadow: 0 14px 34px rgba(17, 53, 127, 0.07);
+  --radius: 16px;
+  --radius-lg: 22px;
+}
+.rekrutmen-admin * { box-sizing: border-box; margin: 0; padding: 0; }
+.rekrutmen-admin {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+.rekrutmen-admin a { color: inherit; }
+.rekrutmen-admin button, .rekrutmen-admin input, .rekrutmen-admin select, .rekrutmen-admin textarea { font: inherit; }
+.rekrutmen-admin button { cursor: pointer; }
+
+.rekrutmen-admin .nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(221,229,240,0.95);
+}
+.rekrutmen-admin .nav-inner {
+  max-width: 1380px;
+  margin: 0 auto;
+  height: 64px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rekrutmen-admin .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.rekrutmen-admin .brand svg { width: 32px; height: 32px; }
+.rekrutmen-admin .brand img { width: 32px; height: 32px; flex-shrink: 0; object-fit: contain; border-radius: 6px; }
+.rekrutmen-admin .nav-links { display: flex; gap: 8px; }
+.rekrutmen-admin .nav-link {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.nav-link.active,
+.rekrutmen-admin .nav-link:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.rekrutmen-admin .page {
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 14px 16px 24px;
+}
+.card,
+.modal,
+.rekrutmen-admin .drawer {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.rekrutmen-admin .summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.rekrutmen-admin .stat {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: white;
+}
+.rekrutmen-admin .stat-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rekrutmen-admin .stat-value {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.rekrutmen-admin .workspace {
+  padding: 14px;
+}
+.rekrutmen-admin .topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.rekrutmen-admin .topbar-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.rekrutmen-admin .tab-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rekrutmen-admin .tab {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.tab.active,
+.rekrutmen-admin .tab:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+.rekrutmen-admin .tab .count { margin-left: 5px; opacity: 0.7; }
+
+.rekrutmen-admin .toolbar {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) repeat(4, auto);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.search,
+.tool-select,
+.rekrutmen-admin .tool-btn {
+  min-height: 38px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: white;
+  font-size: 12px;
+}
+.rekrutmen-admin .search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.rekrutmen-admin .search input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 12px 0 34px;
+  color: var(--text);
+}
+.rekrutmen-admin .search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.rekrutmen-admin .tool-select {
+  padding: 0 10px;
+  outline: none;
+  color: var(--text);
+}
+.rekrutmen-admin .tool-btn {
+  padding: 0 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+.tool-btn:hover,
+.rekrutmen-admin .filter-chip:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.rekrutmen-admin .filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.rekrutmen-admin .filter-chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.rekrutmen-admin .filter-chip.active {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.rekrutmen-admin .meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.rekrutmen-admin .meta-row strong { color: var(--text); }
+
+.rekrutmen-admin .table-shell {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: white;
+}
+.rekrutmen-admin .table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 72vh;
+  -webkit-overflow-scrolling: touch;
+}
+.rekrutmen-admin table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+.rekrutmen-admin thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f8fbff;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.rekrutmen-admin tbody td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #edf1f6;
+  vertical-align: top;
+  font-size: 12px;
+  background: white;
+}
+.rekrutmen-admin tbody tr:hover td { background: #fcfdff; }
+.rekrutmen-admin .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: inherit;
+  box-shadow: 1px 0 0 #eef2f7;
+}
+.rekrutmen-admin .row-title {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+.rekrutmen-admin .row-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.rekrutmen-admin .inline-stack { display: grid; gap: 4px; }
+.rekrutmen-admin .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rekrutmen-admin .badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.65;
+}
+.rekrutmen-admin .status-new { background: #edf4ff; color: #265fcb; }
+.rekrutmen-admin .status-review { background: #fff5df; color: #b97200; }
+.rekrutmen-admin .status-interview { background: #efebff; color: #6648d8; }
+.rekrutmen-admin .status-accepted { background: #e9fff2; color: #167a47; }
+.rekrutmen-admin .status-rejected { background: #ffeaea; color: #c93d3d; }
+.rekrutmen-admin .status-scheduled { background: #edf4ff; color: #265fcb; }
+.rekrutmen-admin .status-passed { background: #e9fff2; color: #167a47; }
+.rekrutmen-admin .status-failed { background: #ffeaea; color: #c93d3d; }
+.rekrutmen-admin .status-inprogress { background: #fff5df; color: #a56a00; }
+.rekrutmen-admin .status-completed { background: #e9fff2; color: #167a47; }
+.rekrutmen-admin .meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+.rekrutmen-admin .meta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f4f7fb;
+  border: 1px solid #e5ebf3;
+  color: #5d6981;
+  font-size: 10px;
+  font-weight: 800;
+}
+.rekrutmen-admin .rating {
+  color: #d68a00;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.rekrutmen-admin .row-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.rekrutmen-admin .small-btn {
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: white;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.rekrutmen-admin .small-btn.success { background: var(--success); border-color: var(--success); color: white; }
+.rekrutmen-admin .small-btn:hover { opacity: 0.92; }
+
+.rekrutmen-admin .empty {
+  padding: 32px 18px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.rekrutmen-admin .empty strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.rekrutmen-admin .mobile-cards {
+  display: none;
+  gap: 10px;
+}
+.rekrutmen-admin .mobile-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  padding: 12px;
+}
+.rekrutmen-admin .mobile-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.rekrutmen-admin .mobile-card-grid {
+  display: grid;
+  gap: 8px;
+}
+.rekrutmen-admin .mobile-field {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.rekrutmen-admin .mobile-label {
+  flex: 0 0 92px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rekrutmen-admin .mobile-value {
+  min-width: 0;
+  text-align: right;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.rekrutmen-admin .mobile-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.modal-overlay,
+.rekrutmen-admin .drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.34);
+  display: none;
+}
+.modal-overlay.visible,
+.rekrutmen-admin .drawer-overlay.visible { display: block; }
+.rekrutmen-admin .modal-wrap {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 90;
+}
+.rekrutmen-admin .modal-wrap.visible { display: flex; }
+.rekrutmen-admin .modal {
+  width: min(460px, 100%);
+  padding: 18px;
+}
+.rekrutmen-admin .modal-title { font-size: 18px; font-weight: 800; }
+.rekrutmen-admin .modal-subtitle { margin-top: 4px; font-size: 12px; color: var(--muted); }
+.rekrutmen-admin .modal-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.rekrutmen-admin .modal label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.modal select,
+.rekrutmen-admin .modal textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: white;
+  outline: none;
+}
+.rekrutmen-admin .modal textarea { min-height: 96px; resize: vertical; }
+.rekrutmen-admin .modal-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.btn-primary,
+.rekrutmen-admin .btn-secondary {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 800;
+}
+.rekrutmen-admin .btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.rekrutmen-admin .btn-secondary {
+  background: white;
+  color: var(--muted);
+}
+.rekrutmen-admin .drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(420px, 100vw);
+  height: 100vh;
+  z-index: 95;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  padding: 16px;
+  overflow: auto;
+}
+.rekrutmen-admin .drawer.visible { transform: translateX(0); }
+.rekrutmen-admin .drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.rekrutmen-admin .drawer-title { font-size: 18px; font-weight: 800; }
+.rekrutmen-admin .detail-grid { display: grid; gap: 10px; }
+.rekrutmen-admin .detail-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--soft);
+}
+.rekrutmen-admin .detail-card h4 {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+.rekrutmen-admin .detail-item { display: grid; gap: 4px; margin-bottom: 8px; }
+.rekrutmen-admin .detail-item:last-child { margin-bottom: 0; }
+.rekrutmen-admin .detail-item strong { font-size: 10px; color: var(--muted); }
+.rekrutmen-admin .detail-item span { font-size: 12px; line-height: 1.55; }
+.rekrutmen-admin .toast {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 100;
+  min-width: min(320px, calc(100vw - 28px));
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: 0.18s ease;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.15);
+}
+.rekrutmen-admin .toast.show { opacity: 1; transform: translateY(0); }
+.rekrutmen-admin .toast.success { background: var(--success); }
+.rekrutmen-admin .toast.error { background: var(--danger); }
+.rekrutmen-admin .toast.info { background: var(--primary); }
+
+@media (max-width: 980px) {
+  .rekrutmen-admin .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rekrutmen-admin .toolbar { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 720px) {
+  .rekrutmen-admin .nav-inner {
+    height: auto;
+    min-height: 58px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .rekrutmen-admin .page { padding: 12px 12px 24px; }
+  .rekrutmen-admin .workspace { padding: 12px; }
+  .rekrutmen-admin .summary { grid-template-columns: 1fr 1fr; }
+  .topbar,
+  .meta-row,
+  .modal-actions,
+  .rekrutmen-admin .drawer-head { align-items: stretch; }
+  .rekrutmen-admin .toolbar { grid-template-columns: 1fr; }
+  .rekrutmen-admin .tab-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+  }
+  .rekrutmen-admin .tab { white-space: nowrap; }
+  .rekrutmen-admin .table-shell { display: none; }
+  .rekrutmen-admin .mobile-cards { display: grid; }
+  .rekrutmen-admin .sticky-col {
+    position: static;
+    left: auto;
+    box-shadow: none;
+  }
+}
