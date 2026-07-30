@@ -326,7 +326,7 @@ function AdminRekrutmen() {
             <div>
               <label>Status</label>
               <select
-                className=""
+                
                 value={modalStatus}
                 onChange={(e) => setModalStatus(e.target.value)}
               >
@@ -338,7 +338,7 @@ function AdminRekrutmen() {
             <div>
               <label>Catatan</label>
               <textarea
-                className=""
+                
                 placeholder="Catatan singkat..."
                 value={modalNotes}
                 onChange={(e) => setModalNotes(e.target.value)}
@@ -465,8 +465,8 @@ function AdminRekrutmen() {
         {/* Desktop Table */}
         <div className="table-shell"><div className="table-scroll">
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            <div className="loading-state">
+              
               Memuat data...
             </div>
           ) : filtered.length === 0 ? (
@@ -477,7 +477,7 @@ function AdminRekrutmen() {
           ) : activeTab === "candidates" ? (
             <table className="w-full min-w-[800px] text-xs">
               <thead>
-                <tr className="bg-muted/30 border-b">
+                <tr >
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10`}>Kandidat</th>
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground`}>Posisi</th>
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground`}>Kontak</th>
@@ -492,20 +492,20 @@ function AdminRekrutmen() {
                 {filtered.map((r) => {
                   const f = r.fields;
                   return (
-                    <tr key={r.id} className="border-b hover:bg-muted/20 transition-colors">
+                    <tr key={r.id} >
                       <td className=" sticky left-0 bg-white z-[2]">
                         <div className="row-title">{esc(f["Nama Lengkap"] || "-")}</div>
                         <div className="row-sub">{esc(f.Email || "tanpa email")}</div>
                       </td>
-                      <td className="">
-                        <div className="font-medium">{esc(f["Posisi Dilamar"] || "-")}</div>
-                        <div className="text-[10px] text-muted-foreground">{esc(f["Sosial Media Instagram/Tiktok"] || "")}</div>
+                      <td >
+                        <div>{esc(f["Posisi Dilamar"] || "-")}</div>
+                        <div className="row-sub">{esc(f["Sosial Media Instagram/Tiktok"] || "")}</div>
                       </td>
-                      <td className="">
+                      <td >
                         <div>{esc(f["Nomor Telepon/HP"] || "-")}</div>
-                        <div className="text-[10px] text-muted-foreground">{esc(f.Email || "")}</div>
+                        <div className="row-sub">{esc(f.Email || "")}</div>
                       </td>
-                      <td className="">
+                      <td >
                         {f["CV URL"] ? (
                           <a href={f["CV URL"]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline">
                             <FileText className="h-3 w-3" /> Lihat CV
@@ -514,14 +514,14 @@ function AdminRekrutmen() {
                           <span className="text-[10px] text-muted-foreground">-</span>
                         )}
                       </td>
-                      <td className="">{esc(f["Application Date"] || "-")}</td>
-                      <td className="">
+                      <td >{esc(f["Application Date"] || "-")}</td>
+                      <td >
                         <span className={`badge status-${(f.Status || "new").toLowerCase().replace(/\s+/g, "")}`}>
                           {esc(f.Status || "New")}
                         </span>
                       </td>
-                      <td className="">{esc(f["Full time/Part time"] || "-")}</td>
-                      <td className="">
+                      <td >{esc(f["Full time/Part time"] || "-")}</td>
+                      <td >
                         <div className="flex gap-1">
                           <button className="small-btn" onClick={() => openModal(r.id, f.Status)}>Update</button>
                           <button className="small-btn" onClick={() => openDrawer(r)}>Detail</button>
@@ -535,7 +535,7 @@ function AdminRekrutmen() {
           ) : activeTab === "interviews" ? (
             <table className="w-full min-w-[800px] text-xs">
               <thead>
-                <tr className="bg-muted/30 border-b">
+                <tr >
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10`}>Interview</th>
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground`}>Jadwal</th>
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground`}>Interviewer</th>
@@ -550,26 +550,26 @@ function AdminRekrutmen() {
                   const f = r.fields;
                   const rating = f.Rating ? Math.min(Number(f.Rating), 5) : 0;
                   return (
-                    <tr key={r.id} className="border-b hover:bg-muted/20 transition-colors">
+                    <tr key={r.id} >
                       <td className=" sticky left-0 bg-white z-[2]">
                         <div className="row-title">#{esc(f["Interview ID"] || r.id.slice(0, 6))}</div>
                         <div className="row-sub">{esc(f.Candidate || "kandidat tidak tercatat")}</div>
                       </td>
-                      <td className="">
+                      <td >
                         <div>{esc(f["Interview Date"] || "-")}</div>
-                        <div className="text-[10px] text-muted-foreground">{esc(f["Interview Time"] || "jam belum diisi")}</div>
+                        <div className="row-sub">{esc(f["Interview Time"] || "jam belum diisi")}</div>
                       </td>
-                      <td className="">{esc(f.Interviewer || "-")}</td>
-                      <td className="">
+                      <td >{esc(f.Interviewer || "-")}</td>
+                      <td >
                         <span className={`badge status-${(f.Status || "scheduled").toLowerCase().replace(/\s+/g, "")}`}>
                           {esc(f.Status || "Scheduled")}
                         </span>
                       </td>
-                      <td className="">
-                        {rating > 0 ? Array.from({ length: rating }, (_, i) => <Star key={i} className="h-3 w-3 inline text-amber-400 fill-amber-400" />) : <span className="text-muted-foreground">-</span>}
+                      <td >
+                        {rating > 0 ? Array.from({ length: rating }, (_, i) => <Star key={i} className="rating-star" />) : <span >-</span>}
                       </td>
                       <td className=" text-muted-foreground max-w-[200px] truncate">{esc(f.Feedback || "belum ada feedback")}</td>
-                      <td className="">
+                      <td >
                         <div className="flex gap-1">
                           <button className="small-btn" onClick={() => openModal(r.id)}>Update</button>
                           <button className="small-btn" onClick={() => openDrawer(r)}>Detail</button>
@@ -583,7 +583,7 @@ function AdminRekrutmen() {
           ) : (
             <table className="w-full min-w-[800px] text-xs">
               <thead>
-                <tr className="bg-muted/30 border-b">
+                <tr >
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10`}>Onboarding</th>
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground`}>Mulai</th>
                   <th className={` text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground`}>Probation</th>
@@ -598,21 +598,21 @@ function AdminRekrutmen() {
                   const f = r.fields;
                   const docs = Array.isArray(f["Document Collection Status"]) ? f["Document Collection Status"].join(", ") : (f["Document Collection Status"] || "-");
                   return (
-                    <tr key={r.id} className="border-b hover:bg-muted/20 transition-colors">
+                    <tr key={r.id} >
                       <td className=" sticky left-0 bg-white z-[2]">
                         <div className="row-title">#{esc(f["Onboarding ID"] || r.id.slice(0, 6))}</div>
                         <div className="row-sub">{esc(f.Employee || "employee belum diisi")}</div>
                       </td>
-                      <td className="">{esc(f["Start Date"] || "-")}</td>
-                      <td className="">{esc(f["Probation End Date"] || "-")}</td>
-                      <td className="">
+                      <td >{esc(f["Start Date"] || "-")}</td>
+                      <td >{esc(f["Probation End Date"] || "-")}</td>
+                      <td >
                         <span className={`badge status-${(f["Training Completion Status"] || "inprogress").toLowerCase().replace(/\s+/g, "")}`}>
                           {esc(f["Training Completion Status"] || "In Progress")}
                         </span>
                       </td>
                       <td className=" text-muted-foreground max-w-[150px] truncate">{esc(docs)}</td>
                       <td className=" text-muted-foreground">{esc(f["Training Schedule"] || "-")}</td>
-                      <td className="">
+                      <td >
                         <div className="flex gap-1">
                           <button className="small-btn" onClick={() => openModal(r.id)}>Update</button>
                           <button className="small-btn" onClick={() => openDrawer(r)}>Detail</button>
@@ -630,8 +630,8 @@ function AdminRekrutmen() {
         {/* Mobile Cards */}
         <div className="mobile-cards">
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            <div className="loading-state">
+              
               Memuat data...
             </div>
           ) : filtered.length === 0 ? (
@@ -648,7 +648,7 @@ function AdminRekrutmen() {
                     <div className="mobile-card-head">
                       <div>
                         <div className="font-semibold text-xs">{esc(f["Nama Lengkap"] || "-")}</div>
-                        <div className="text-[10px] text-muted-foreground">{esc(f["Posisi Dilamar"] || "-")}</div>
+                        <div className="row-sub">{esc(f["Posisi Dilamar"] || "-")}</div>
                       </div>
                       <span className={`badge status-${(f.Status || "new").toLowerCase().replace(/\s+/g, "")}`}>{esc(f.Status || "New")}</span>
                     </div>
@@ -675,7 +675,7 @@ function AdminRekrutmen() {
                     <div className="mobile-card-head">
                       <div>
                         <div className="font-semibold text-xs">#{esc(f["Interview ID"] || r.id.slice(0, 6))}</div>
-                        <div className="text-[10px] text-muted-foreground">{esc(f.Candidate || "-")}</div>
+                        <div className="row-sub">{esc(f.Candidate || "-")}</div>
                       </div>
                       <span className={`badge status-${(f.Status || "scheduled").toLowerCase().replace(/\s+/g, "")}`}>{esc(f.Status || "Scheduled")}</span>
                     </div>
@@ -689,7 +689,7 @@ function AdminRekrutmen() {
                         <span className="mobile-value">{esc(f.Interviewer || "-")}</span>
                       </div>
                     </div>
-                    {rating > 0 && <div className="text-[10px]">{Array.from({ length: rating }, (_, i) => <Star key={i} className="h-3 w-3 inline text-amber-400 fill-amber-400" />)}</div>}
+                    {rating > 0 && <div className="rating">{Array.from({ length: rating }, (_, i) => <Star key={i} className="rating-star" />)}</div>}
                     <div className="mobile-actions">
                       <button className="small-btn" onClick={() => openModal(r.id)}>Update</button>
                       <button className="small-btn" onClick={() => openDrawer(r)}>Detail</button>

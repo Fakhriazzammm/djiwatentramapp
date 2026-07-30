@@ -597,3 +597,99 @@
     box-shadow: none;
   }
 }
+
+/* ── Spinner (for loading/saving states) ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.rekrutmen-admin .spin {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+.rekrutmen-admin button .spin {
+  margin-right: 4px;
+}
+
+/* ── Loading state ── */
+.rekrutmen-admin .loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  font-size: 12px;
+  color: var(--muted);
+  gap: 8px;
+}
+.rekrutmen-admin .loading-state::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--muted);
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: spin 0.6s linear infinite;
+}
+
+/* ── Rating stars ── */
+.rekrutmen-admin .rating {
+  color: #d68a00;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.rekrutmen-admin .rating-star {
+  display: inline;
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  color: inherit;
+}
+
+/* ── Toolbar search & selects (admin.html style) ── */
+.rekrutmen-admin .toolbar {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) repeat(4, auto);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.rekrutmen-admin .toolbar .search { grid-column: 1; }
+
+/* ── Filter row chips ── */
+.rekrutmen-admin .filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.rekrutmen-admin .filter-chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.rekrutmen-admin .filter-chip.active {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+/* ── Meta row ── */
+.rekrutmen-admin .meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+.rekrutmen-admin .meta-row strong { color: var(--text); }
