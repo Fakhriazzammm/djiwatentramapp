@@ -246,67 +246,57 @@ function AdminRekrutmen() {
     let cards = "";
     if (tab === "candidates") {
       cards = `
-        <div class="space-y-1">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">Profil</div>
-          <div class="grid gap-2 mt-2">
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Nama</span><span class="text-xs font-medium text-right">${esc(f["Nama Lengkap"] || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Posisi</span><span class="text-xs font-medium text-right">${esc(f["Posisi Dilamar"] || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Status</span><span class="text-xs font-medium text-right">${esc(f.Status || "New")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Tipe</span><span class="text-xs font-medium text-right">${esc(f["Full time/Part time"] || "-")}</span></div>
-          </div>
+        <div class="detail-card">
+          <h4>Profil</h4>
+          <div class="detail-item"><strong>Nama</strong><span>${esc(f["Nama Lengkap"] || "-")}</span></div>
+          <div class="detail-item"><strong>Posisi</strong><span>${esc(f["Posisi Dilamar"] || "-")}</span></div>
+          <div class="detail-item"><strong>Status</strong><span>${esc(f.Status || "New")}</span></div>
+          <div class="detail-item"><strong>Tipe</strong><span>${esc(f["Full time/Part time"] || "-")}</span></div>
         </div>
-        <div class="space-y-1 mt-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">Kontak</div>
-          <div class="grid gap-2 mt-2">
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">No HP</span><span class="text-xs font-medium text-right">${esc(f["Nomor Telepon/HP"] || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Email</span><span class="text-xs font-medium text-right">${esc(f.Email || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Sosmed</span><span class="text-xs font-medium text-right">${esc(f["Sosial Media Instagram/Tiktok"] || "-")}</span></div>
-          </div>
+        <div class="detail-card">
+          <h4>Kontak</h4>
+          <div class="detail-item"><strong>No HP</strong><span>${esc(f["Nomor Telepon/HP"] || "-")}</span></div>
+          <div class="detail-item"><strong>Email</strong><span>${esc(f.Email || "-")}</span></div>
+          <div class="detail-item"><strong>Sosmed</strong><span>${esc(f["Sosial Media Instagram/Tiktok"] || "-")}</span></div>
         </div>
-        <div class="space-y-1 mt-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">CV</div>
-          <div class="mt-2">${f["CV URL"] ? `<a href="${esc(f["CV URL"])}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="12"/><line x1="15" y1="15" x2="12" y2="12"/></svg>Download CV</a>` : '<span class="text-xs text-muted-foreground">Tidak ada CV</span>'}</div>
+        <div class="detail-card">
+          <h4>CV</h4>
+          <div class="detail-item">${f["CV URL"] ? `<a href="${esc(f["CV URL"])}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--primary);text-decoration:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="12"/><line x1="15" y1="15" x2="12" y2="12"/></svg>Download CV</a>` : '<span style="color:var(--muted)">Tidak ada CV</span>'}</div>
         </div>
-        <div class="space-y-1 mt-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">Catatan</div>
-          <div class="mt-2 text-xs">${esc(f.Notes || "Belum ada catatan")}</div>
+        <div class="detail-card">
+          <h4>Catatan</h4>
+          <div class="detail-item"><span>${esc(f.Notes || "Belum ada catatan")}</span></div>
         </div>
       `;
     } else if (tab === "interviews") {
       cards = `
-        <div class="space-y-1">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">Interview</div>
-          <div class="grid gap-2 mt-2">
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">ID</span><span class="text-xs font-medium text-right">${esc(f["Interview ID"] || drawerRecord.id.slice(0, 6))}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Kandidat</span><span class="text-xs font-medium text-right">${esc(f.Candidate || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Interviewer</span><span class="text-xs font-medium text-right">${esc(f.Interviewer || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Status</span><span class="text-xs font-medium text-right">${esc(f.Status || "Scheduled")}</span></div>
-          </div>
+        <div class="detail-card">
+          <h4>Interview</h4>
+          <div class="detail-item"><strong>ID</strong><span>${esc(f["Interview ID"] || drawerRecord.id.slice(0, 6))}</span></div>
+          <div class="detail-item"><strong>Kandidat</strong><span>${esc(f.Candidate || "-")}</span></div>
+          <div class="detail-item"><strong>Interviewer</strong><span>${esc(f.Interviewer || "-")}</span></div>
+          <div class="detail-item"><strong>Status</strong><span>${esc(f.Status || "Scheduled")}</span></div>
         </div>
-        <div class="space-y-1 mt-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">Hasil</div>
-          <div class="mt-2 text-xs">${esc(f.Feedback || "Belum ada feedback")}</div>
-          ${f["Key Notes (AI)"] ? `<div class="mt-2 text-xs italic text-muted-foreground">AI: ${esc(f["Key Notes (AI)"])}</div>` : ""}
+        <div class="detail-card">
+          <h4>Hasil</h4>
+          <div class="detail-item"><span>${esc(f.Feedback || "Belum ada feedback")}</span></div>
+          ${f["Key Notes (AI)"] ? `<div class="detail-item" style="font-style:italic;color:var(--muted)">AI: ${esc(f["Key Notes (AI)"])}</div>` : ""}
         </div>
       `;
     } else {
       const docs = Array.isArray(f["Document Collection Status"]) ? f["Document Collection Status"].join(", ") : (f["Document Collection Status"] || "-");
       cards = `
-        <div class="space-y-1">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">Onboarding</div>
-          <div class="grid gap-2 mt-2">
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">ID</span><span class="text-xs font-medium text-right">${esc(f["Onboarding ID"] || drawerRecord.id.slice(0, 6))}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Employee</span><span class="text-xs font-medium text-right">${esc(f.Employee || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Status</span><span class="text-xs font-medium text-right">${esc(f["Training Completion Status"] || "In Progress")}</span></div>
-          </div>
+        <div class="detail-card">
+          <h4>Onboarding</h4>
+          <div class="detail-item"><strong>ID</strong><span>${esc(f["Onboarding ID"] || drawerRecord.id.slice(0, 6))}</span></div>
+          <div class="detail-item"><strong>Employee</strong><span>${esc(f.Employee || "-")}</span></div>
+          <div class="detail-item"><strong>Status</strong><span>${esc(f["Training Completion Status"] || "In Progress")}</span></div>
         </div>
-        <div class="space-y-1 mt-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-blue-600">Detail</div>
-          <div class="grid gap-2 mt-2">
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Start</span><span class="text-xs font-medium text-right">${esc(f["Start Date"] || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Probation</span><span class="text-xs font-medium text-right">${esc(f["Probation End Date"] || "-")}</span></div>
-            <div class="flex justify-between"><span class="text-xs text-muted-foreground">Dokumen</span><span class="text-xs font-medium text-right">${esc(docs)}</span></div>
-          </div>
+        <div class="detail-card">
+          <h4>Detail</h4>
+          <div class="detail-item"><strong>Start</strong><span>${esc(f["Start Date"] || "-")}</span></div>
+          <div class="detail-item"><strong>Probation</strong><span>${esc(f["Probation End Date"] || "-")}</span></div>
+          <div class="detail-item"><strong>Dokumen</strong><span>${esc(docs)}</span></div>
         </div>
       `;
     }
@@ -317,7 +307,7 @@ function AdminRekrutmen() {
             <h3 className="drawer-title">Detail {config.label}</h3>
             <button className="small-btn" onClick={closeDrawer}><X className="h-4 w-4" /></button>
           </div>
-          <div className="p-4 space-y-4" dangerouslySetInnerHTML={{ __html: cards }} />
+          <div className="detail-grid" dangerouslySetInnerHTML={{ __html: cards }} />
         </div>
       </div>
     );

@@ -433,13 +433,15 @@
 
 .modal-overlay,
 .rekrutmen-admin .drawer-overlay {
+  transition: opacity 320ms cubic-bezier(.32,.72,0,1);
+  opacity: 0;
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.34);
   display: none;
 }
 .modal-overlay.visible,
-.rekrutmen-admin .drawer-overlay.visible { display: block; }
+.rekrutmen-admin .drawer-overlay.visible { display: block; opacity: 1; }
 .rekrutmen-admin .modal-wrap {
   position: fixed;
   inset: 0;
@@ -509,7 +511,7 @@
   height: 100vh;
   z-index: 95;
   transform: translateX(100%);
-  transition: transform 0.2s ease;
+  transition: transform 320ms cubic-bezier(.32,.72,0,1);
   padding: 16px;
   overflow: auto;
 }
