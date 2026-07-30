@@ -325,7 +325,7 @@ function StaffProfileLayout() {
 								alt="Djiwa Tentram"
 								className="h-7 w-7 shrink-0 rounded-lg object-cover shadow-sm"
 							/>
-							<span className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+							<span className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground">
 								Djiwa Tentram
 							</span>
 						</div>

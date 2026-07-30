@@ -38,7 +38,7 @@ function RootContent() {
 				return;
 			}
 			if (!isPublicPage) {
-				navigate({ to: "/kasir/login" as any, replace: true });
+				navigate({ to: "/admin/login" as any, replace: true });
 			}
 		}
 	}, [isAuthenticated, isLoading, isStaff, user, location.pathname, navigate]);

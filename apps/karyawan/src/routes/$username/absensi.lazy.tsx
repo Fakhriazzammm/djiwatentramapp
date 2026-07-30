@@ -78,7 +78,7 @@ function KaryawanAttendancePage() {
                 {selectedUser?.isCurrentlyIn ? "Sedang Bertugas" : "Sedang Off"}
               </p>
             </div>
-            <div className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${selectedUser?.isCurrentlyIn ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+            <div className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${selectedUser?.isCurrentlyIn ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
               {selectedUser?.isCurrentlyIn ? "KELUAR" : "MASUK"}
             </div>
           </div>

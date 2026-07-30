@@ -10,7 +10,6 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@base-ui/react": "^1.0.0",
     "@better-auth/infra": "^0.3.6",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",

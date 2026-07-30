@@ -318,7 +318,7 @@ export function CompletedDetailModal({
 						<div className="flex items-center gap-1.5 mb-2">
 							<ShoppingBag className="h-3 w-3 text-muted-foreground" />
 							<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Items</span>
-							{items && <span className="text-[9px] text-muted-foreground/60">({items.length})</span>}
+							{items && <span className="text-[11px] text-muted-foreground/60">({items.length})</span>}
 						</div>
 						{itemsLoading ? (
 							<div className="flex items-center justify-center py-3">
@@ -331,7 +331,7 @@ export function CompletedDetailModal({
 										<div className="flex-1 min-w-0">
 											<div className="font-medium truncate">{item.productName || "—"}</div>
 											{item.variant && (
-												<div className="text-[9px] text-muted-foreground/60 truncate">{item.variant}</div>
+												<div className="text-[11px] text-muted-foreground/60 truncate">{item.variant}</div>
 											)}
 										</div>
 										<div className="flex items-center gap-2 shrink-0 ml-2">
@@ -373,7 +373,7 @@ export function CompletedDetailModal({
 										/>
 									</div>
 									{dibuatBy !== (order.dibuat_by || "") && (
-										<span className="text-[9px] text-amber-600 font-medium">berubah</span>
+										<span className="text-[11px] text-amber-600 font-medium">berubah</span>
 									)}
 								</div>
 							</div>
@@ -393,7 +393,7 @@ export function CompletedDetailModal({
 										/>
 									</div>
 									{selesaiBy !== (order.selesai_by || "") && (
-										<span className="text-[9px] text-amber-600 font-medium">berubah</span>
+										<span className="text-[11px] text-amber-600 font-medium">berubah</span>
 									)}
 								</div>
 							</div>
@@ -402,7 +402,7 @@ export function CompletedDetailModal({
 						<div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-center">
 							<Lock className="h-4 w-4 mx-auto text-muted-foreground/60 mb-1" />
 							<p className="text-[11px] font-medium text-muted-foreground">Waktu edit sudah habis</p>
-							<p className="text-[9px] text-muted-foreground/60 mt-0.5">Edit hanya berlaku 60 menit setelah pesanan selesai</p>
+							<p className="text-[11px] text-muted-foreground/60 mt-0.5">Edit hanya berlaku 60 menit setelah pesanan selesai</p>
 						</div>
 					)}
 
@@ -846,10 +846,10 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 											<ChefHat className="h-3 w-3 shrink-0 text-orange-500/60" />
 										)}
 										<span className="font-mono text-[10px] font-medium truncate">{o.order_no}</span>
-										<span className="text-[9px] text-muted-foreground/60">• {o.selesai_by || "?"}</span>
+										<span className="text-[11px] text-muted-foreground/60">• {o.selesai_by || "?"}</span>
 									</div>
 									<div className="flex items-center gap-1.5">
-										<span className="text-[9px] text-muted-foreground">{formatTimeAgo(o.selesai_at)}</span>
+										<span className="text-[11px] text-muted-foreground">{formatTimeAgo(o.selesai_at)}</span>
 										<Pencil className="h-2.5 w-2.5 text-muted-foreground/40" />
 									</div>
 								</div>

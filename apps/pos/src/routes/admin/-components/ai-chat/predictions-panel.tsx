@@ -84,7 +84,7 @@ function getConfidence(data: any): "high" | "medium" | "low" {
 const ConfidenceBadge = ({ level }: { level: "high" | "medium" | "low" }) => {
 	const config = CONFIDENCE_CONFIG[level];
 	return (
-		<span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${config.color}`}>
+		<span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${config.color}`}>
 			<span className={`h-1.5 w-1.5 rounded-full ${config.dot} animate-pulse`} />
 			{config.label}
 		</span>
@@ -167,7 +167,7 @@ export const PredictionsPanel = ({
 			<motion.div 
 				initial={{ opacity: 0, y: -10 }}
 				animate={{ opacity: 1, y: 0 }}
-				className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border border-primary/10"
+				className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/10"
 			>
 				<div className="flex items-center gap-2.5">
 					<div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
@@ -175,7 +175,7 @@ export const PredictionsPanel = ({
 					</div>
 					<div>
 						<h2 className="text-[12px] font-black text-foreground tracking-tight">Dashboard Prediksi</h2>
-						<p className="text-[9px] text-muted-foreground font-medium">{activeCount} dari 5 prediksi aktif</p>
+						<p className="text-[11px] text-muted-foreground font-medium">{activeCount} dari 5 prediksi aktif</p>
 					</div>
 				</div>
 				<ConfidenceBadge level={overallConfidence} />
@@ -207,8 +207,8 @@ export const PredictionsPanel = ({
 											<span className="text-[11px] font-semibold text-foreground truncate">{p.ingredientName}</span>
 										</div>
 										<div className="flex flex-col items-end shrink-0">
-											<span className="text-[9px] font-black text-destructive uppercase">Kritis</span>
-											<span className="text-[8px] text-muted-foreground">
+											<span className="text-[11px] font-black text-destructive uppercase">Kritis</span>
+											<span className="text-[10px] text-muted-foreground">
 												sisa {p.currentStock ?? 0}{typeof p.daysUntilEmpty === "number" ? ` • ${p.daysUntilEmpty} hari` : ""}
 											</span>
 										</div>
@@ -257,11 +257,11 @@ export const PredictionsPanel = ({
 				>
 					{hasRevenue ? (
 						<div className="mt-2 p-3 rounded-2xl bg-gradient-to-br from-green-50 to-green-100/30 border border-green-200/50">
-							<p className="text-[9px] font-black text-green-700/60 uppercase tracking-wider mb-0.5">Estimasi Hari Berikutnya</p>
+							<p className="text-[11px] font-black text-green-700/60 uppercase tracking-wider mb-0.5">Estimasi Hari Berikutnya</p>
 							<p className="text-xl font-black text-green-700 tracking-tight">Rp {toRupiah(topRevenuePrediction?.predictedRevenue ?? 0)}</p>
 							<div className="mt-2 flex items-center gap-1 text-green-600">
 								<TrendIcon className="h-3 w-3" />
-								<span className="text-[9px] font-bold">{trendLabel}</span>
+								<span className="text-[11px] font-bold">{trendLabel}</span>
 							</div>
 						</div>
 					) : <LearningState text="Menganalisis riwayat transaksi untuk estimasi akurat..." icon={TrendingUp} />}
@@ -277,7 +277,7 @@ export const PredictionsPanel = ({
 				>
 					{typeof revenueData.currentAvgDaily === 'number' ? (
 						<div className="mt-2 p-3 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10">
-							<p className="text-[9px] font-black text-primary/60 uppercase tracking-wider mb-0.5">Rata-rata Harian</p>
+							<p className="text-[11px] font-black text-primary/60 uppercase tracking-wider mb-0.5">Rata-rata Harian</p>
 							<p className="text-xl font-black text-primary tracking-tight">Rp {toRupiah(revenueData.currentAvgDaily)}</p>
 							<MiniBar value={revenueData.currentAvgDaily ?? 0} maxVal={topRevenuePrediction?.predictedRevenue ?? revenueData.currentAvgDaily ?? 1} color="bg-primary" />
 						</div>
@@ -303,7 +303,7 @@ export const PredictionsPanel = ({
 									className="flex justify-between items-center p-2 rounded-xl bg-background/40 hover:bg-background/60 border border-border/40 transition-all gap-2"
 								>
 									<div className="flex items-center gap-2 min-w-0">
-										<span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 text-[9px] font-black shrink-0">
+										<span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 text-[11px] font-black shrink-0">
 											{i + 1}
 										</span>
 										<span className="text-[11px] font-medium text-foreground truncate">{p.name}</span>
@@ -330,17 +330,17 @@ export const PredictionsPanel = ({
 						<div className="mt-2 p-3 rounded-2xl bg-indigo-50/50 border border-indigo-100">
 							<div className="flex gap-3">
 								<div className="flex-1">
-									<p className="text-[9px] font-black text-indigo-400 uppercase">Hari</p>
+									<p className="text-[11px] font-black text-indigo-400 uppercase">Hari</p>
 									<p className="text-xs font-black text-indigo-700 capitalize">{promoData.bestDay}</p>
 								</div>
 								<div className="flex-1">
-									<p className="text-[9px] font-black text-indigo-400 uppercase">Waktu</p>
+									<p className="text-[11px] font-black text-indigo-400 uppercase">Waktu</p>
 									<p className="text-xs font-black text-indigo-700">{promoData.bestHour}:00</p>
 								</div>
 							</div>
 							<div className="mt-2 flex items-center gap-1 text-indigo-500">
 								<Sparkles className="h-3 w-3" />
-								<span className="text-[8px] font-bold">Waktu terbaik untuk promosi</span>
+								<span className="text-[10px] font-bold">Waktu terbaik untuk promosi</span>
 							</div>
 						</div>
 					) : <LearningState text={promoData.message || "Menentukan waktu ideal untuk promosi..."} icon={Target} />}
@@ -404,7 +404,7 @@ const PredictionCard = ({
 					</div>
 					{tip && (
 						<div className="mt-2.5 pt-2 border-t border-border/30">
-							<p className="text-[9px] text-muted-foreground/60 italic leading-relaxed flex items-start gap-1">
+							<p className="text-[11px] text-muted-foreground/60 italic leading-relaxed flex items-start gap-1">
 								<Zap className="h-3 w-3 shrink-0 mt-0.5 text-primary/40" />
 								{tip}
 							</p>

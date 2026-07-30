@@ -218,7 +218,7 @@ function KasirLoginPage() {
 									</div>
 									<div className="text-center">
 										<p className="text-xl md:text-2xl font-black tracking-tight text-foreground">{selectedUser.name}</p>
-										<div className="mt-1 inline-flex items-center justify-center gap-1 md:gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 md:py-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-amber-600">
+										<div className="mt-1 inline-flex items-center justify-center gap-1 md:gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 md:py-1 text-[11px] md:text-[10px] font-black uppercase tracking-widest text-amber-600">
 											<ShieldCheck className="h-3 w-3 md:h-3.5 md:w-3.5" />
 											Verifikasi PIN
 										</div>

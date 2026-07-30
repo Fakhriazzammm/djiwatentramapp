@@ -83,7 +83,7 @@ const STATUS_CONFIG: Record<string, { icon: any; iconClass: string; bgClass: str
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 function Skeleton() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background p-4">
       <div className="w-full max-w-lg space-y-4">
         <div className="mx-auto h-14 w-14 animate-pulse rounded-2xl bg-muted" />
         <div className="mx-auto h-5 w-48 animate-pulse rounded-md bg-muted" />
@@ -372,7 +372,7 @@ function RegisterCompletePage() {
   // ── Not Found ──
   if (notFound && !app) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4 py-8">
+      <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
         <div className="w-full max-w-lg space-y-4 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
             <FileSignature className="h-7 w-7 text-primary" />
@@ -404,7 +404,7 @@ function RegisterCompletePage() {
   // ── Phase: Contract Review + Signature Inline ──
   if (phase === "contract" && isContractPhase) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 px-3 py-6 sm:px-4 sm:py-8">
+      <div className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8">
         <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => setPhase("tracking")} className="h-8 w-8">
@@ -466,7 +466,7 @@ function RegisterCompletePage() {
 
   // ── Default: Tracking phase ──
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4 py-8">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

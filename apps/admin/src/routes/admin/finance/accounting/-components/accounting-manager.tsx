@@ -355,7 +355,7 @@ export function AccountingManager() {
 																{acct.name}
 															</span>
 															{!acct.is_active && (
-																<Badge className="text-[9px]" variant="secondary">
+																<Badge className="text-[11px]" variant="secondary">
 																	Nonaktif
 																</Badge>
 															)}

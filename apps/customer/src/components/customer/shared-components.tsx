@@ -42,7 +42,7 @@ export function BottomButton({
 			onClick={onClick}
 		>
 			{badge ? (
-				<span className="absolute right-1.5 top-0.5 flex min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] text-white">
+				<span className="absolute right-1.5 top-0.5 flex min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-1 text-[11px] text-white">
 					{badge}
 				</span>
 			) : null}

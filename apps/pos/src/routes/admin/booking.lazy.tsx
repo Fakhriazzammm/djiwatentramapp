@@ -278,7 +278,7 @@ function AdminCalendar({
 							{info && info.count > 0 && (
 								<div className="mt-1 space-y-0.5">
 									<div
-										className={`rounded px-1 text-[9px] font-bold leading-tight ${
+										className={`rounded px-1 text-[11px] font-bold leading-tight ${
 											info.maxPeople > 0 && info.bookedPeople >= info.maxPeople
 												? "bg-red-100 text-red-700"
 												: "bg-primary/10 text-primary"
@@ -288,7 +288,7 @@ function AdminCalendar({
 										{info.maxPeople > 0 ? `/${info.maxPeople}` : ""}p
 									</div>
 									<div
-										className={`rounded px-1 text-[9px] font-bold leading-tight ${
+										className={`rounded px-1 text-[11px] font-bold leading-tight ${
 											info.maxTables > 0 && info.bookedTables >= info.maxTables
 												? "bg-purple-100 text-purple-700"
 												: "bg-purple-50 text-purple-600"

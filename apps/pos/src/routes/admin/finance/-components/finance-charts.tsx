@@ -117,12 +117,12 @@ export function PeriodComparisonCards() {
 								<div className={`p-1 rounded ${item.bg} text-foreground/70`}>
 									{item.icon}
 								</div>
-								<span className="text-muted-foreground text-[9px] font-bold uppercase tracking-tight">
+								<span className="text-muted-foreground text-[11px] font-bold uppercase tracking-tight">
 									{item.label}
 								</span>
 							</div>
 							<span
-								className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[8px] font-bold ${
+								className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-bold ${
 									isPositive
 										? "bg-emerald-500/15 text-emerald-600"
 										: "bg-rose-500/15 text-rose-600"
@@ -142,7 +142,7 @@ export function PeriodComparisonCards() {
 								{formatFull(item.curr)}
 							</p>
 							<div className="flex items-baseline justify-between gap-1 overflow-hidden">
-								<span className="text-muted-foreground text-[8px] font-medium truncate">
+								<span className="text-muted-foreground text-[10px] font-medium truncate">
 									Lalu: {formatFull(item.prev)}
 								</span>
 								<span className="text-slate-400 text-[7px] font-medium shrink-0 italic">
@@ -194,7 +194,7 @@ export function TrendChart() {
 			<div className="mb-2 flex items-center justify-between">
 				<h3 className="font-bold text-xs">Tren Keuangan</h3>
 				<div className="flex gap-1">
-					<div className="flex rounded border border-border overflow-hidden text-[9px]">
+					<div className="flex rounded border border-border overflow-hidden text-[11px]">
 						{(["monthly", "weekly", "daily"] as const).map((m) => (
 							<button
 								key={m}
@@ -210,7 +210,7 @@ export function TrendChart() {
 							</button>
 						))}
 					</div>
-					<div className="flex rounded border border-border overflow-hidden text-[9px]">
+					<div className="flex rounded border border-border overflow-hidden text-[11px]">
 						{(["bar", "line"] as const).map((t) => (
 							<button
 								key={t}

@@ -56,7 +56,7 @@ function BerandaPage() {
 						className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm"
 					/>
 					<div className="min-w-0">
-						<p className="text-[8px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
+						<p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">
 							{storeName}
 						</p>
 						<p className="text-xs font-medium text-muted-foreground truncate">
@@ -65,7 +65,7 @@ function BerandaPage() {
 						<h1 className="text-sm font-black tracking-tight truncate">
 							{staff?.name || "—"}
 						</h1>
-						<p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
+						<p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">
 							{staff?.roleName || "Karyawan"}
 						</p>
 					</div>
@@ -82,7 +82,7 @@ function BerandaPage() {
 							{staff?.name?.charAt(0) || "?"}
 						</div>
 					)}
-					<span className="text-[8px] text-muted-foreground/60 font-medium">{dateStr}</span>
+					<span className="text-[10px] text-muted-foreground/60 font-medium">{dateStr}</span>
 				</div>
 			</motion.div>
 
@@ -128,7 +128,7 @@ function BerandaPage() {
 							? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
 							: "bg-primary hover:bg-primary/90 shadow-primary/20"
 					}`}
-					whileTap={{ scale: 0.96 }} onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
+					onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
 				>
 					{isCurrentlyIn ? (
 						<>

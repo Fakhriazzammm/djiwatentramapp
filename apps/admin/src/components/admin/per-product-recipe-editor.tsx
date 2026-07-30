@@ -269,7 +269,7 @@ export default function PerProductRecipeEditor({
                   {inv?.ingredientName ?? ing.inventoryId}
                 </p>
                 {costPerUnit != null && costPerUnit > 0 && (
-                  <p className="text-[9px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     @ {costPerUnit.toLocaleString("id-ID", {
                       style: "currency",
                       currency: "IDR",

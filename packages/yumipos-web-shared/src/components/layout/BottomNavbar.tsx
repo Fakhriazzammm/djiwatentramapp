@@ -71,7 +71,7 @@ export function BottomNavbar({
               onClick={() =>
                 navigate({
                   to: `/$username${childRoute}` as any,
-                  params: { username },
+                  params: { username } as any,
                 })
               }
               className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-all duration-200 active:scale-95 ${
@@ -87,13 +87,13 @@ export function BottomNavbar({
                   }`}
                 />
                 {badgeCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1 flex min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 py-0.5 text-[8px] font-black leading-none text-white shadow-sm">
+                  <span className="absolute -right-1.5 -top-1 flex min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 py-0.5 text-[11px] font-black leading-none text-white shadow-sm">
                     {badgeCount > 9 ? "9+" : badgeCount}
                   </span>
                 )}
               </div>
               <span
-                className={`text-[9px] font-bold uppercase tracking-wider leading-none ${
+                className={`text-[11px] font-bold uppercase tracking-wider leading-none ${
                   active ? "opacity-100" : "opacity-60"
                 }`}
               >

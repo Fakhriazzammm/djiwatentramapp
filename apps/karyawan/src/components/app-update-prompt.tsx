@@ -169,7 +169,7 @@ export function AppUpdatePrompt() {
 	return (
 		<Dialog open={open}>
 			<DialogContent className="max-w-sm overflow-hidden p-0" showCloseButton={!isUpdating}>
-				<div className="bg-gradient-to-br from-primary/15 via-background to-background p-6">
+				<div className="bg-card p-6">
 					<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
 						{isUpdating ? (
 							<RefreshCw className="h-5 w-5 animate-spin" />

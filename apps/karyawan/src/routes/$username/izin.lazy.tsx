@@ -119,7 +119,7 @@ function IzinCutiSakitPage() {
                   <span className={`text-xs font-bold ${leaveType === lt.value ? "text-primary" : "text-foreground"}`}>
                     {lt.label}
                   </span>
-                  <span className="text-[8px] text-muted-foreground">{lt.desc}</span>
+                  <span className="text-[10px] text-muted-foreground">{lt.desc}</span>
                 </motion.button>
               ))}
             </div>
@@ -128,18 +128,18 @@ function IzinCutiSakitPage() {
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tanggal Mulai</label>
+              <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Mulai</label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} min={todayStr} className="h-10 rounded-xl font-bold text-xs" required />
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tanggal Selesai</label>
+              <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Selesai</label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate || todayStr} className="h-10 rounded-xl font-bold text-xs" required />
             </div>
           </div>
 
           {/* Reason */}
           <div className="space-y-1">
-            <label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Alasan</label>
+            <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Alasan</label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}

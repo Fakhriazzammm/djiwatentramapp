@@ -217,7 +217,7 @@ function ProfilPage() {
 								<motion.div animate={{ x: [0, 3, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
 									<span className="text-base">👉</span>
 								</motion.div>
-								<span className="whitespace-nowrap rounded-lg bg-primary px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">Isi data dirimu!</span>
+								<span className="whitespace-nowrap rounded-lg bg-primary px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">Isi data dirimu!</span>
 							</motion.div>
 						)}
 					</div>
@@ -266,7 +266,7 @@ function ProfilPage() {
 								<span className="font-bold text-right max-w-[200px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
 							</div>
 							<div className="border-t pt-2 mt-2 space-y-1.5">
-								<p className="text-[8px] font-black text-primary uppercase">Pekerjaan</p>
+								<p className="text-[10px] font-black text-primary uppercase">Pekerjaan</p>
 								<div className="flex justify-between items-center text-[10px]">
 									<span className="text-muted-foreground">Mulai</span>
 									<span className="font-bold">{privateData?.raw?.startDate || "---"}</span>
@@ -374,37 +374,37 @@ function ProfilPage() {
 						}}>
 							<div className="space-y-1.5">
 								<div className="space-y-1">
-									<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
+									<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
 									<Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nama Lengkap" />
 								</div>
 								<div className="space-y-1">
-									<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username (login)</label>
+									<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Username (login)</label>
 									<Input value={editUsername} onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} onBlur={() => setEditSlug(editUsername)} className="h-10 rounded-xl font-bold text-xs" placeholder="username-login" />
 								</div>
 								<div className="space-y-1">
-									<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Email</label>
+									<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Email</label>
 									<Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="email@example.com" />
 								</div>
 								<div className="space-y-1">
-									<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username Profil (Slug)</label>
+									<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Username Profil (Slug)</label>
 									<Input value={editSlug} onChange={(e) => setEditSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))} className="h-10 rounded-xl font-bold text-xs" placeholder="username-profil" />
 								</div>
 
 								<div className="pt-2 border-t mt-2 space-y-2.5">
-									<p className="text-[9px] font-black text-primary uppercase ml-1">Data Tambahan</p>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No HP / WA</label><Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: 08123456789" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No Identitas (KTP)</label><Input value={editIdentityNumber} onChange={(e) => setEditIdentityNumber(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="KTP / SIM" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tempat Lahir</label><Input value={editPlaceOfBirth} onChange={(e) => setEditPlaceOfBirth(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: Jakarta" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tanggal Lahir</label><Input value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="YYYY-MM-DD" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Alamat</label><Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Alamat lengkap" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Nama Bank</label><Input value={editBankName} onChange={(e) => setEditBankName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: BCA, Mandiri" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No Rekening</label><Input value={editBankAccount} onChange={(e) => setEditBankAccount(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nomor rekening" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (Nama)</label><Input value={editEmergencyContactName} onChange={(e) => setEditEmergencyContactName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nama kontak darurat" /></div>
-									<div className="space-y-1"><label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (No HP)</label><Input value={editEmergencyContactPhone} onChange={(e) => setEditEmergencyContactPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="No HP kontak darurat" /></div>
+									<p className="text-[11px] font-black text-primary uppercase ml-1">Data Tambahan</p>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">No HP / WA</label><Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: 08123456789" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">No Identitas (KTP)</label><Input value={editIdentityNumber} onChange={(e) => setEditIdentityNumber(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="KTP / SIM" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tempat Lahir</label><Input value={editPlaceOfBirth} onChange={(e) => setEditPlaceOfBirth(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: Jakarta" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Lahir</label><Input value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="YYYY-MM-DD" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Alamat</label><Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Alamat lengkap" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Nama Bank</label><Input value={editBankName} onChange={(e) => setEditBankName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: BCA, Mandiri" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">No Rekening</label><Input value={editBankAccount} onChange={(e) => setEditBankAccount(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nomor rekening" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (Nama)</label><Input value={editEmergencyContactName} onChange={(e) => setEditEmergencyContactName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nama kontak darurat" /></div>
+									<div className="space-y-1"><label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (No HP)</label><Input value={editEmergencyContactPhone} onChange={(e) => setEditEmergencyContactPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="No HP kontak darurat" /></div>
 								</div>
 
 								<div className="pt-2 border-t mt-2 space-y-2.5">
-									<p className="text-[9px] font-black text-primary uppercase ml-1">Foto Profile</p>
+									<p className="text-[11px] font-black text-primary uppercase ml-1">Foto Profile</p>
 									<div className="space-y-2">
 										{staff.photoUrl && !editPhotoFile && (
 											<div className="flex items-center gap-3">
@@ -427,9 +427,9 @@ function ProfilPage() {
 								</div>
 
 								<div className="pt-2 border-t mt-2 space-y-2.5">
-									<p className="text-[9px] font-black text-primary uppercase ml-1">Password Akun (untuk login web)</p>
+									<p className="text-[11px] font-black text-primary uppercase ml-1">Password Akun (untuk login web)</p>
 									<div className="space-y-1">
-										<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Baru</label>
+										<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Password Baru</label>
 										<Input type="password" value={editNewPassword} onChange={(e) => setEditNewPassword(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Minimal 6 karakter" />
 									</div>
 								</div>
@@ -464,7 +464,7 @@ function ProfilPage() {
 							</div>
 							<div>
 								<p className="font-bold text-xs">PIN Keamanan</p>
-								<p className="text-[9px] text-muted-foreground uppercase">Gunakan PIN untuk absensi</p>
+								<p className="text-[11px] text-muted-foreground uppercase">Gunakan PIN untuk absensi</p>
 							</div>
 						</div>
 						<Button variant="outline" size="sm" className="rounded-lg font-bold text-[10px] h-8 px-3" onClick={() => setShowChangePin(!showChangePin)}>
@@ -492,11 +492,11 @@ function ProfilPage() {
 								}}>
 									<div className="grid grid-cols-2 gap-3">
 										<div className="space-y-1">
-											<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
+											<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
 											<Input type="password" maxLength={6} value={oldPin} onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ""))} className="h-10 rounded-xl text-center font-bold tracking-widest text-xs" placeholder="••••••" />
 										</div>
 										<div className="space-y-1">
-											<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">PIN Baru</label>
+											<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">PIN Baru</label>
 											<Input type="password" maxLength={6} value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))} className="h-10 rounded-xl text-center font-bold tracking-widest text-xs" placeholder="••••••" />
 										</div>
 									</div>
@@ -524,7 +524,7 @@ function ProfilPage() {
 							</div>
 							<div>
 								<p className="font-bold text-xs">Scan Wajah</p>
-								<p className="text-[9px] text-muted-foreground uppercase">Daftarkan / perbarui wajah untuk absensi</p>
+								<p className="text-[11px] text-muted-foreground uppercase">Daftarkan / perbarui wajah untuk absensi</p>
 							</div>
 						</div>
 						<Button
@@ -587,7 +587,7 @@ function ProfilPage() {
 								</div>
 								<div>
 									<p className="font-bold text-xs">Telegram Bot</p>
-									<p className="text-[9px] text-muted-foreground uppercase">Absensi via Telegram</p>
+									<p className="text-[11px] text-muted-foreground uppercase">Absensi via Telegram</p>
 								</div>
 							</div>
 							<div className="flex items-center gap-1.5 mb-2">
@@ -600,7 +600,7 @@ function ProfilPage() {
 								</p>
 							)}
 							<div className="rounded-lg bg-muted/50 p-2.5 mb-3">
-								<p className="text-[8px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">Tombol Cepat</p>
+								<p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">Tombol Cepat</p>
 								<div className="flex flex-wrap gap-1.5">
 									{[
 										{ label: "Absen Masuk", emoji: "✅", action: "https://t.me/yumihrdbot?start=checkin" },
@@ -636,7 +636,7 @@ function ProfilPage() {
 								</div>
 								<div>
 									<p className="font-bold text-xs">Telegram Bot</p>
-									<p className="text-[9px] text-muted-foreground uppercase">Absensi via Telegram</p>
+									<p className="text-[11px] text-muted-foreground uppercase">Absensi via Telegram</p>
 								</div>
 							</div>
 							<div className="flex items-center gap-1.5 mb-3">
@@ -645,12 +645,12 @@ function ProfilPage() {
 							</div>
 							{telegramCode && (
 								<div className="rounded-lg bg-sky-50 border border-sky-200 p-3 mb-3 text-center">
-									<p className="text-[9px] font-black uppercase tracking-wider text-sky-700 mb-1.5">🔑 Kode Registrasi</p>
+									<p className="text-[11px] font-black uppercase tracking-wider text-sky-700 mb-1.5">🔑 Kode Registrasi</p>
 									<p className="text-2xl font-black font-mono tracking-widest text-sky-900 select-all">{telegramCode}</p>
 								</div>
 							)}
 							<div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 mb-3">
-								<p className="text-[9px] font-black uppercase tracking-wider text-amber-800 mb-1.5">Cara Hubungkan:</p>
+								<p className="text-[11px] font-black uppercase tracking-wider text-amber-800 mb-1.5">Cara Hubungkan:</p>
 								<ol className="space-y-1 text-[11px] text-amber-900 list-decimal list-inside">
 									<li>Buka bot Telegram di bawah</li>
 									<li>Klik tombol <b>🔑 Daftar / Hubungkan</b> di bot</li>
@@ -697,7 +697,7 @@ function ProfilPage() {
 						<LogOut className="mr-2 h-4 w-4" />
 						KELUAR / LOGOUT
 					</Button>
-					<p className="mt-1.5 text-center text-[9px] font-medium text-destructive/60">
+					<p className="mt-1.5 text-center text-[11px] font-medium text-destructive/60">
 						Akhiri sesi dan kembali ke halaman login
 					</p>
 				</div>
@@ -733,10 +733,10 @@ function ProfilPage() {
 
 								<div className="mb-5 mt-2">
 									<div className="flex items-center justify-between mb-1.5">
-										<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+										<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
 											{completedSteps === 0 ? 'Baru Mulai' : completedSteps === 1 ? '1 Langkah Selesai' : 'Selesai!'}
 										</span>
-										<span className="text-[9px] font-bold text-muted-foreground">{completedSteps}/2</span>
+										<span className="text-[11px] font-bold text-muted-foreground">{completedSteps}/2</span>
 									</div>
 									<div className="h-1.5 rounded-full bg-muted overflow-hidden">
 										<motion.div initial={{ width: "0%" }} animate={{ width: `${(completedSteps / 2) * 100}%` }} transition={{ type: "spring", damping: 20, stiffness: 200 }} className={`h-full rounded-full ${completedSteps === 2 ? "bg-emerald-500" : "bg-primary"}`} />

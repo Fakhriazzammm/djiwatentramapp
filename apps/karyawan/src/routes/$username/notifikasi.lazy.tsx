@@ -255,7 +255,7 @@ function NotifikasiPage() {
           <Bell className="h-4 w-4 text-blue-600" />
           <h2 className="text-xs font-black uppercase tracking-wider">Notifikasi</h2>
           {visible.length > 0 && (
-            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-bold text-blue-700">
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
               {visible.length}
             </span>
           )}
@@ -263,7 +263,7 @@ function NotifikasiPage() {
         {visible.length > 1 && (
           <button
             onClick={markAllRead}
-            className="flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-[9px] font-bold text-muted-foreground hover:bg-muted/80 transition-colors"
+            className="flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground hover:bg-muted/80 transition-colors"
           >
             <CheckCheck className="h-3 w-3" />
             Tandai Semua Dibaca
@@ -291,7 +291,7 @@ function NotifikasiPage() {
               {s.icon}
               <span>{s.label}</span>
               {count > 0 && (
-                <span className={`ml-0.5 rounded-full px-1.5 py-0 text-[8px] font-black ${
+                <span className={`ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-black ${
                   isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"
                 }`}>
                   {count}
@@ -372,7 +372,7 @@ function NotifikasiPage() {
                     )}
                     <div className="flex items-center gap-2 mt-1.5">
                       {n.date && (
-                        <span className="text-[8px] text-muted-foreground/50 flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
                           <Clock className="h-2.5 w-2.5" />
                           {n.date}
                         </span>
@@ -380,7 +380,7 @@ function NotifikasiPage() {
                       {n.actionUrl && n.actionLabel && (
                         <a
                           href={n.actionUrl}
-                          className="inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[8px] font-bold text-primary hover:bg-primary/20 transition-colors"
+                          className="inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors"
                         >
                           {n.actionLabel}
                           <ExternalLink className="h-2.5 w-2.5" />

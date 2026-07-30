@@ -57,7 +57,7 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 								</span>
 							</div>
 						</div>
-						<div className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${!shift.endTime ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-slate-200 text-slate-600'}`}>
+						<div className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${!shift.endTime ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-slate-200 text-slate-600'}`}>
 							{!shift.endTime ? 'Berjalan' : 'Selesai'}
 						</div>
 					</div>
@@ -68,19 +68,19 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 					{/* Stats Grid - 4 columns */}
 					<div className="grid grid-cols-4 gap-2">
 						<div className="bg-muted/30 rounded-lg p-2 text-center">
-							<p className="text-[8px] font-bold text-muted-foreground/70 uppercase mb-1">Total</p>
+							<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1">Total</p>
 							<p className="text-xs font-bold text-primary">{formatCurrencyIDR(totalRevenue, true)}</p>
 						</div>
 						<div className="bg-emerald-50/50 rounded-lg p-2 text-center border border-emerald-100/50">
-							<p className="text-[8px] font-bold text-emerald-700/70 uppercase mb-1">Tunai</p>
+							<p className="text-[10px] font-bold text-emerald-700/70 uppercase mb-1">Tunai</p>
 							<p className="text-xs font-bold text-emerald-700">{formatCurrencyIDR(cashRevenue, true)}</p>
 						</div>
 						<div className="bg-blue-50/50 rounded-lg p-2 text-center border border-blue-100/50">
-							<p className="text-[8px] font-bold text-blue-700/70 uppercase mb-1">QRIS</p>
+							<p className="text-[10px] font-bold text-blue-700/70 uppercase mb-1">QRIS</p>
 							<p className="text-xs font-bold text-blue-700">{formatCurrencyIDR(qrisRevenue, true)}</p>
 						</div>
 						<div className="bg-orange-50/50 rounded-lg p-2 text-center border border-orange-100/50">
-							<p className="text-[8px] font-bold text-orange-700/70 uppercase mb-1">Item</p>
+							<p className="text-[10px] font-bold text-orange-700/70 uppercase mb-1">Item</p>
 							<p className="text-xs font-bold text-orange-700">{details?.orderCount ?? 0}</p>
 						</div>
 					</div>
@@ -91,25 +91,25 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 						shift.nonCashConfirmed !== undefined) && (
 						<div className="grid grid-cols-2 gap-2">
 							<div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-								<p className="text-[9px] font-bold text-muted-foreground/70 uppercase mb-2">Selisih Tunai</p>
+								<p className="text-[11px] font-bold text-muted-foreground/70 uppercase mb-2">Selisih Tunai</p>
 								<div className="flex justify-between items-end">
 									<div>
-										<p className="text-[9px] text-muted-foreground">Ekspektasi: {formatCurrencyIDR(endingCashExpected, true)}</p>
+										<p className="text-[11px] text-muted-foreground">Ekspektasi: {formatCurrencyIDR(endingCashExpected, true)}</p>
 										<p className="text-xs font-bold">Fisik: {formatCurrencyIDR(endingCashPhysical, true)}</p>
 									</div>
-									<div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${(endingCashPhysical - endingCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+									<div className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${(endingCashPhysical - endingCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
 										{(endingCashPhysical - endingCashExpected) >= 0 ? '+' : ''}{formatCurrencyIDR(endingCashPhysical - endingCashExpected, true)}
 									</div>
 								</div>
 							</div>
 							<div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-								<p className="text-[9px] font-bold text-muted-foreground/70 uppercase mb-2">Non-Tunai</p>
+								<p className="text-[11px] font-bold text-muted-foreground/70 uppercase mb-2">Non-Tunai</p>
 								<div className="flex justify-between items-end">
 									<div>
-										<p className="text-[9px] text-muted-foreground">Sistem: {formatCurrencyIDR(nonCashExpected, true)}</p>
+										<p className="text-[11px] text-muted-foreground">Sistem: {formatCurrencyIDR(nonCashExpected, true)}</p>
 										<p className="text-xs font-bold">Konfirmasi: {formatCurrencyIDR(nonCashConfirmed, true)}</p>
 									</div>
-									<div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${(nonCashConfirmed - nonCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+									<div className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${(nonCashConfirmed - nonCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
 										{(nonCashConfirmed - nonCashExpected) >= 0 ? '+' : ''}{formatCurrencyIDR(nonCashConfirmed - nonCashExpected, true)}
 									</div>
 								</div>
@@ -120,12 +120,12 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 					{/* Cash Breakdown - Compact */}
 					{cashBreakdown && (
 						<div>
-							<h4 className="text-[9px] font-bold uppercase text-muted-foreground/70 mb-2">Pecahan Uang</h4>
+							<h4 className="text-[11px] font-bold uppercase text-muted-foreground/70 mb-2">Pecahan Uang</h4>
 							<div className="grid grid-cols-5 gap-1">
 								{Object.entries(cashBreakdown).map(([val, count]: [string, any]) => (
 									count > 0 && (
 										<div key={val} className="p-1.5 rounded-lg bg-muted/20 border border-border/40 text-center">
-											<p className="text-[8px] font-bold text-muted-foreground uppercase">
+											<p className="text-[10px] font-bold text-muted-foreground uppercase">
 												{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
 											</p>
 											<p className="text-[10px] font-black">{count}x</p>
@@ -139,8 +139,8 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 					{/* Recent Transactions - Compact list */}
 					<div>
 						<div className="flex items-center justify-between mb-2">
-							<h4 className="text-[9px] font-bold uppercase text-muted-foreground/70">Transaksi Terakhir</h4>
-							<span className="text-[8px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Sesi Ini</span>
+							<h4 className="text-[11px] font-bold uppercase text-muted-foreground/70">Transaksi Terakhir</h4>
+							<span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Sesi Ini</span>
 						</div>
 
 						{details === undefined ? (

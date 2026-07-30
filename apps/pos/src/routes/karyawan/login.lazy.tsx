@@ -155,7 +155,7 @@ function KaryawanLoginPage() {
 											onClick={() => handleSelectUser(user)}
 											className="flex items-center gap-3 rounded-xl p-3 text-left transition-all hover:bg-muted/80 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 										>
-											<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-sky-400 text-sm font-bold text-white shadow-sm">
+											<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white shadow-sm">
 												{user.initial || user.name.charAt(0).toUpperCase()}
 											</div>
 											<div className="min-w-0 flex-1">
@@ -193,7 +193,7 @@ function KaryawanLoginPage() {
 									<ChevronLeft className="h-5 w-5" />
 								</button>
 								<div className="flex items-center gap-2.5">
-									<div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-sky-400 text-xs font-bold text-white">
+									<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
 										{selectedUser.initial || selectedUser.name.charAt(0).toUpperCase()}
 									</div>
 									<span className="text-sm font-semibold text-foreground">

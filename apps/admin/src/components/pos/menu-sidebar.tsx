@@ -499,7 +499,7 @@ export function MenuSidebar({
 					<SheetTrigger className="relative shrink-0 flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
 						<Menu className="h-5 w-5" />
 						{lowStockCount > 0 && (
-							<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
+							<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[11px] text-destructive-foreground">
 								{lowStockCount > 9 ? "9+" : lowStockCount}
 							</span>
 						)}
@@ -830,7 +830,7 @@ function OrderSimpleDetail({
 				<div className="min-w-0">
 					<div className="flex items-center gap-2 flex-wrap">
 						<p className="font-mono text-base font-bold truncate">#{order.orderNumber}</p>
-						<span className={`rounded-lg border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusBg}`}>
+						<span className={`rounded-lg border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${statusBg}`}>
 							{statusLabels[order.status] || order.status}
 						</span>
 					</div>
@@ -887,19 +887,19 @@ function OrderSimpleDetail({
 			{/* Detail Grid */}
 			<div className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border bg-muted/20 p-3.5 text-[11px]">
 				<div>
-					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Pelanggan</span>
+					<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pelanggan</span>
 					<p className="mt-0.5 font-medium">{order.customerName || "—"}</p>
 				</div>
 				<div>
-					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Order</span>
+					<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Order</span>
 					<p className="mt-0.5 font-medium">{orderTypeLabel}{order.tableNumber ? ` · Meja ${order.tableNumber}` : ""}</p>
 				</div>
 				<div>
-					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Pembayaran</span>
+					<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pembayaran</span>
 					<p className="mt-0.5 font-medium capitalize">{payMethodLabel}</p>
 				</div>
 				<div>
-					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Status</span>
+					<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</span>
 					{isEditMode ? (
 						<Select value={status} onValueChange={(v) => v && setStatus(v as any)}>
 							<SelectTrigger className="h-7 text-[11px] mt-0.5">
@@ -918,10 +918,10 @@ function OrderSimpleDetail({
 				</div>
 				{promoLabels.length > 0 && (
 					<div className="col-span-2">
-						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Promo</span>
+						<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Promo</span>
 						<div className="mt-0.5 flex flex-wrap gap-1">
 							{promoLabels.map((label: string, idx: number) => (
-								<span key={idx} className="rounded bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-600 uppercase tracking-wider leading-none">
+								<span key={idx} className="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-600 uppercase tracking-wider leading-none">
 									{label}
 								</span>
 							))}
@@ -934,11 +934,11 @@ function OrderSimpleDetail({
 			{isEditMode && (
 				<div className="space-y-3 rounded-xl border bg-muted/20 p-3.5">
 					<div className="space-y-1">
-						<Label className="text-[9px] uppercase text-muted-foreground">Nama Pelanggan</Label>
+						<Label className="text-[11px] uppercase text-muted-foreground">Nama Pelanggan</Label>
 						<Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="h-8 text-xs" />
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[9px] uppercase text-muted-foreground">Tipe Order</Label>
+						<Label className="text-[11px] uppercase text-muted-foreground">Tipe Order</Label>
 						<Select value={orderType} onValueChange={(v) => v && setOrderType(v)}>
 							<SelectTrigger className="h-8 text-xs">
 								<SelectValue />
@@ -951,11 +951,11 @@ function OrderSimpleDetail({
 						</Select>
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[9px] uppercase text-muted-foreground">Nomor Meja</Label>
+						<Label className="text-[11px] uppercase text-muted-foreground">Nomor Meja</Label>
 						<Input value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} placeholder="Cth: 7" className="h-8 text-xs" />
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[9px] uppercase text-muted-foreground">Metode Pembayaran</Label>
+						<Label className="text-[11px] uppercase text-muted-foreground">Metode Pembayaran</Label>
 						<Select value={paymentMethod} onValueChange={(v) => v && setPaymentMethod(v)}>
 							<SelectTrigger className="h-8 text-xs">
 								<SelectValue />
@@ -969,7 +969,7 @@ function OrderSimpleDetail({
 						</Select>
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[9px] uppercase text-muted-foreground">Catatan</Label>
+						<Label className="text-[11px] uppercase text-muted-foreground">Catatan</Label>
 						<Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan pesanan..." className="h-8 text-xs" />
 					</div>
 				</div>
@@ -978,8 +978,8 @@ function OrderSimpleDetail({
 			{/* Items List */}
 			<div className="space-y-2.5">
 				<div className="flex items-center justify-between">
-					<h4 className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Daftar Item ({totalQty})</h4>
-					<span className="text-[9px] text-muted-foreground">{order.items?.length || 0} jenis</span>
+					<h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Daftar Item ({totalQty})</h4>
+					<span className="text-[11px] text-muted-foreground">{order.items?.length || 0} jenis</span>
 				</div>
 				<div className="divide-y divide-border/50 rounded-xl border">
 					{order.items.map((item: { quantity: number; productName: string; variant?: string; price: number; originalPrice?: number | null; status?: string | null }, idx: number) => {
@@ -991,12 +991,12 @@ function OrderSimpleDetail({
 									<div className="flex items-center gap-1.5">
 										<span className="font-bold text-xs">{item.quantity}x</span>
 										<span className="text-xs font-medium truncate">{item.productName}</span>
-										{item.variant && <span className="text-[9px] text-muted-foreground truncate">({item.variant})</span>}
+										{item.variant && <span className="text-[11px] text-muted-foreground truncate">({item.variant})</span>}
 									</div>
 									{hasDiscount && (
 										<div className="mt-0.5 flex items-center gap-1">
-											<span className="text-[9px] text-rose-500 line-through">{formatCurrency(item.originalPrice!)}</span>
-											<span className="text-[9px] text-emerald-500">{formatCurrency(item.price)}/item</span>
+											<span className="text-[11px] text-rose-500 line-through">{formatCurrency(item.originalPrice!)}</span>
+											<span className="text-[11px] text-emerald-500">{formatCurrency(item.price)}/item</span>
 										</div>
 									)}
 								</div>
@@ -1225,7 +1225,7 @@ function DashboardTab({
 								<div className="flex items-center gap-2">
 									<p className="font-bold text-sm">Status Shift</p>
 									{isShiftOpen && shiftStatus?.shiftInfo?.shiftName && (
-										<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase tracking-tighter">
+										<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary uppercase tracking-tighter">
 											{shiftStatus.shiftInfo.shiftName}
 										</span>
 									)}
@@ -1249,14 +1249,14 @@ function DashboardTab({
 					{isShiftOpen && shiftStatus?.ongoingShift?.teamMembers && (
 						<div className="border-t border-border/50 px-3 py-2 space-y-1.5">
 							<div className="flex items-center justify-between">
-								<p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">📋 Tim Shift</p>
+								<p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70">📋 Tim Shift</p>
 								{teamAttendanceLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
 							</div>
 							{!teamAttendanceLoading && teamStatusDisplay && (
 								<div className="space-y-1">
 									{teamStatusDisplay.sortedRoles.map((role) => (
 										<div key={role}>
-											<p className="text-[8px] font-bold text-muted-foreground/50 uppercase tracking-wider mt-1 first:mt-0">{role}</p>
+											<p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider mt-1 first:mt-0">{role}</p>
 											{teamStatusDisplay.grouped.get(role)!.map((name) => {
 												const s = teamAttendance[name];
 												const dot = s === "active" ? "🟢" : s === "checked_out" ? "🔴" : "⚪";
@@ -1265,7 +1265,7 @@ function DashboardTab({
 												return (
 													<div key={name} className="flex items-center justify-between py-0.5">
 														<span className="text-[10px] font-medium">{dot} {name}</span>
-														<span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${bg}`}>{label}</span>
+														<span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${bg}`}>{label}</span>
 													</div>
 												);
 											})}
@@ -1273,8 +1273,8 @@ function DashboardTab({
 									))}
 									{teamStatusDisplay.activeCount > 0 && (
 										<div className="mt-1.5 pt-1.5 border-t border-border/30 flex items-center gap-1">
-											<span className="text-[9px] font-bold text-amber-600">⚠️</span>
-											<span className="text-[9px] font-bold text-amber-700">{teamStatusDisplay.activeCount} orang masih aktif</span>
+											<span className="text-[11px] font-bold text-amber-600">⚠️</span>
+											<span className="text-[11px] font-bold text-amber-700">{teamStatusDisplay.activeCount} orang masih aktif</span>
 										</div>
 									)}
 								</div>
@@ -1695,7 +1695,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 													#{order.orderNumber}
 												</span>
 											)}
-											<span className={`text-[9px] font-bold uppercase tracking-wider ${statusBadge}`}>
+											<span className={`text-[11px] font-bold uppercase tracking-wider ${statusBadge}`}>
 												● {statusLabel}
 											</span>
 										</div>
@@ -1704,7 +1704,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											{order.orderNumber}
 										</div>
 										{/* Line 2: shift + type */}
-										<div className="flex items-center gap-1 flex-wrap text-[9px] text-muted-foreground">
+										<div className="flex items-center gap-1 flex-wrap text-[11px] text-muted-foreground">
 											<span>{shiftLabel}</span>
 											<span className="text-muted-foreground/40">•</span>
 											<span>{orderTypeLabel}</span>
@@ -1741,7 +1741,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											{promoLabels.length > 0 && (
 												<>
 													<span className="text-muted-foreground/40">•</span>
-													<span className="rounded bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold text-amber-600 uppercase tracking-wider leading-none">
+													<span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 uppercase tracking-wider leading-none">
 														{promoLabels[0].length > 20 ? promoLabels[0].slice(0, 20) + "…" : promoLabels[0]}
 													</span>
 												</>
@@ -1749,7 +1749,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											{order.discountAmount > 0 && !promoLabels.length && (
 												<>
 													<span className="text-muted-foreground/40">•</span>
-													<span className="rounded bg-rose-50 px-1.5 py-0.5 text-[8px] font-bold text-rose-500 uppercase tracking-wider leading-none">Diskon</span>
+													<span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-500 uppercase tracking-wider leading-none">Diskon</span>
 												</>
 											)}
 										</div>
@@ -1776,7 +1776,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 													console.warn("[delivered-toggle] failed", err);
 												}
 											}}
-											className={`shrink-0 inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium transition-colors whitespace-nowrap ${
+											className={`shrink-0 inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-medium transition-colors whitespace-nowrap ${
 												delivered
 													? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
 													: "bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:text-red-600"
@@ -1791,7 +1791,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											<>
 												<button
 													onClick={(e) => { e.stopPropagation(); onPrint(order, "paid"); }}
-													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors whitespace-nowrap"
+													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors whitespace-nowrap"
 													type="button"
 												>
 													<Receipt className="h-2.5 w-2.5" />
@@ -1799,7 +1799,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												</button>
 												<button
 													onClick={(e) => { e.stopPropagation(); onPrint(order, "open_bill"); }}
-													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100 transition-colors whitespace-nowrap"
+													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100 transition-colors whitespace-nowrap"
 													type="button"
 												>
 													<FileText className="h-2.5 w-2.5" />
@@ -1807,7 +1807,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												</button>
 												<button
 													onClick={(e) => { e.stopPropagation(); onPrint(order, "kitchen"); }}
-													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium bg-green-50 border-green-200 text-green-600 hover:bg-green-100 transition-colors whitespace-nowrap"
+													className="shrink-0 inline-flex items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium bg-green-50 border-green-200 text-green-600 hover:bg-green-100 transition-colors whitespace-nowrap"
 													type="button"
 												>
 													<ChefHat className="h-2.5 w-2.5" />
@@ -1973,19 +1973,19 @@ function KasTab({ onClose }: { onClose: () => void }) {
 								</p>
 							</div>
 							<div className="text-right">
-								<p className="text-[9px] font-bold text-muted-foreground uppercase">Transaksi Shift</p>
+								<p className="text-[11px] font-bold text-muted-foreground uppercase">Transaksi Shift</p>
 								<p className="font-bold text-sm">{shiftTransactionCount}</p>
 							</div>
 						</div>
 						
 						<div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/50">
 							<div className="space-y-1">
-								<p className="text-[9px] font-bold text-emerald-600 uppercase">Total Masuk (+)</p>
+								<p className="text-[11px] font-bold text-emerald-600 uppercase">Total Masuk (+)</p>
 								<p className="font-bold text-xs">{formatCurrency(shiftIncome)}</p>
-								<p className="text-[9px] text-muted-foreground mt-0.5">(Termasuk modal {formatCurrency(modalAwal)})</p>
+								<p className="text-[11px] text-muted-foreground mt-0.5">(Termasuk modal {formatCurrency(modalAwal)})</p>
 							</div>
 							<div className="space-y-1 text-right">
-								<p className="text-[9px] font-bold text-rose-600 uppercase">Total Keluar (-)</p>
+								<p className="text-[11px] font-bold text-rose-600 uppercase">Total Keluar (-)</p>
 								<p className="font-bold text-xs">{formatCurrency(shiftExpense)}</p>
 							</div>
 						</div>
@@ -2610,8 +2610,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								{cashierName === currentUser?.name ? (
 									<div className="flex items-center justify-between h-9 px-3 rounded-md border bg-muted/30">
 										<span className="text-xs font-bold">{cashierName}</span>
-										<span className="text-[9px] text-muted-foreground">· diri sendiri</span>
-										<button type="button" onClick={() => setCashierName("")} className="text-[9px] text-primary font-bold hover:underline ml-auto">Ganti</button>
+										<span className="text-[11px] text-muted-foreground">· diri sendiri</span>
+										<button type="button" onClick={() => setCashierName("")} className="text-[11px] text-primary font-bold hover:underline ml-auto">Ganti</button>
 									</div>
 								) : (
 									<Select
@@ -2690,7 +2690,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 																	<p className="text-[10px] text-muted-foreground italic px-1">Memuat data staff...</p>
 																) : staffSections.map(({ role, users }) => (
 																	<div key={role}>
-																		<p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/70 mb-1 px-1">{role}</p>
+																		<p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/70 mb-1 px-1">{role}</p>
 																		{users.map((u: any) => (
 																			<label
 																				key={u._id}
@@ -2742,22 +2742,22 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						<Card className="border-border bg-emerald-50/30 overflow-hidden">
 							<CardContent className="p-2.5">
 								<div className="flex justify-between items-center mb-1">
-									<h4 className="text-[9px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1">
+									<h4 className="text-[11px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1">
 										<TrendingUp className="h-2.5 w-2.5" /> Ringkasan Shift Ini
 									</h4>
 								</div>
 								<div className="grid grid-cols-2 gap-2">
 									<div className="space-y-0.5">
-										<p className="text-[8px] font-bold text-muted-foreground/70 uppercase">Cash (Laci)</p>
+										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase">Cash (Laci)</p>
 										<p className="text-[11px] font-black text-emerald-700">Rp {shiftCash.toLocaleString('id-ID')}</p>
 									</div>
 									<div className="space-y-0.5 text-right">
-										<p className="text-[8px] font-bold text-muted-foreground/70 uppercase">Non-Tunai</p>
+										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase">Non-Tunai</p>
 										<p className="text-[11px] font-black text-primary">Rp {shiftQris.toLocaleString('id-ID')}</p>
 									</div>
 								</div>
 								<div className="mt-1.5 pt-1.5 border-t border-emerald-100 flex justify-between items-center">
-									<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Saran Setoran:</p>
+									<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Saran Setoran:</p>
 									<p className="text-[10px] font-black text-foreground">Rp {(((shiftStatus?.ongoingShift?.startingCash ?? 0) + shiftCash - shiftExpense)).toLocaleString('id-ID')}</p>
 								</div>
 							</CardContent>
@@ -2768,7 +2768,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							<Card className="border-border bg-rose-50/30 overflow-hidden">
 								<CardContent className="p-2.5">
 									<div className="flex items-center justify-between mb-1">
-										<h4 className="text-[9px] font-black uppercase tracking-widest text-rose-700 flex items-center gap-1">
+										<h4 className="text-[11px] font-black uppercase tracking-widest text-rose-700 flex items-center gap-1">
 											<TrendingDown className="h-2.5 w-2.5" /> Pengeluaran Shift
 										</h4>
 										<span className="text-[10px] font-black text-rose-700">Rp {shiftExpense.toLocaleString('id-ID')}</span>
@@ -2794,13 +2794,13 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								</div>
 								<div className="flex items-center gap-2">
 									{endShiftExpenses.length > 0 && (
-										<span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full">{endShiftExpenses.length}</span>
+										<span className="text-[11px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full">{endShiftExpenses.length}</span>
 									)}
 									<ChevronDown className="h-3 w-3 text-muted-foreground" />
 								</div>
 							</CollapsibleTrigger>
 							<CollapsibleContent className="px-3 pb-3 space-y-2.5">
-								<p className="text-[9px] text-muted-foreground font-medium">Catat pengeluaran langsung saat tutup shift (token listrik, dll).</p>
+								<p className="text-[11px] text-muted-foreground font-medium">Catat pengeluaran langsung saat tutup shift (token listrik, dll).</p>
 								{endShiftExpenses.length === 0 ? (
 									<div className="rounded-lg border border-dashed border-border p-4 text-center">
 										<p className="text-[10px] text-muted-foreground">Belum ada pengeluaran. Klik "+ Tambah" untuk menambah.</p>
@@ -2810,18 +2810,18 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 										{endShiftExpenses.map((exp, idx) => (
 											<div key={exp.id} className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-2">
 												<div className="flex items-center justify-between">
-													<span className="text-[9px] font-bold uppercase text-muted-foreground">Pengeluaran #{idx + 1}</span>
+													<span className="text-[11px] font-bold uppercase text-muted-foreground">Pengeluaran #{idx + 1}</span>
 													<button
 														type="button"
 														onClick={() => setEndShiftExpenses(prev => prev.filter(e => e.id !== exp.id))}
-														className="text-[9px] font-bold text-destructive hover:underline"
+														className="text-[11px] font-bold text-destructive hover:underline"
 													>
 														Hapus
 													</button>
 												</div>
 												<div className="grid grid-cols-5 gap-1.5">
 													<div className="col-span-2 space-y-1">
-														<Label className="text-[8px] font-bold uppercase text-muted-foreground">Kategori</Label>
+														<Label className="text-[10px] font-bold uppercase text-muted-foreground">Kategori</Label>
 														<select
 															className="w-full rounded-md border border-border bg-background px-1.5 py-1.5 text-[10px] font-medium"
 															value={exp.category}
@@ -2834,9 +2834,9 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 														</select>
 													</div>
 													<div className="col-span-1 space-y-1">
-														<Label className="text-[8px] font-bold uppercase text-muted-foreground">Jumlah</Label>
+														<Label className="text-[10px] font-bold uppercase text-muted-foreground">Jumlah</Label>
 														<div className="relative">
-															<span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">Rp</span>
+															<span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted-foreground">Rp</span>
 															<input
 																type="number"
 																min={0}
@@ -2848,7 +2848,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 														</div>
 													</div>
 													<div className="col-span-2 space-y-1">
-														<Label className="text-[8px] font-bold uppercase text-muted-foreground">Keterangan</Label>
+														<Label className="text-[10px] font-bold uppercase text-muted-foreground">Keterangan</Label>
 														<input
 															placeholder="Misal: token 200rb..."
 															className="w-full rounded-md border border-border bg-background px-1.5 py-1.5 text-[10px] font-medium"
@@ -2874,11 +2874,11 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						{/* Pecahan Uang Section */}
 						<div className="space-y-1.5">
 							<div className="flex items-center justify-between">
-								<Label className="text-[9px] font-bold uppercase text-muted-foreground">Pecahan Uang Kertas & Logam</Label>
+								<Label className="text-[11px] font-bold uppercase text-muted-foreground">Pecahan Uang Kertas & Logam</Label>
 								<button 
 									type="button"
 									onClick={handleAutofill}
-									className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full hover:bg-primary/20 transition-colors"
+									className="text-[11px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full hover:bg-primary/20 transition-colors"
 								>
 									Auto-fill
 								</button>
@@ -2889,11 +2889,11 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								return (
 									<>
 										<div className="space-y-1">
-											<p className="text-[8px] font-bold uppercase text-muted-foreground/70">Kertas</p>
+											<p className="text-[10px] font-bold uppercase text-muted-foreground/70">Kertas</p>
 											<div className="grid grid-cols-2 gap-1">
 												{billKeys.map((val) => (
 													<div key={val} className="flex items-center gap-1 group">
-														<div className="w-10 text-[9px] font-black text-muted-foreground shrink-0">
+														<div className="w-10 text-[11px] font-black text-muted-foreground shrink-0">
 															{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
 														</div>
 														<Input
@@ -2909,7 +2909,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 											</div>
 										</div>
 										<Collapsible className="space-y-1">
-											<CollapsibleTrigger className="flex items-center gap-1 text-[8px] font-bold uppercase text-muted-foreground/70 hover:text-muted-foreground transition-colors">
+											<CollapsibleTrigger className="flex items-center gap-1 text-[10px] font-bold uppercase text-muted-foreground/70 hover:text-muted-foreground transition-colors">
 												<ChevronDown className="h-3 w-3" />
 												Logam / Koin
 											</CollapsibleTrigger>
@@ -2917,7 +2917,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 												<div className="grid grid-cols-2 gap-1 pt-1">
 													{coinKeys.map((val) => (
 														<div key={val} className="flex items-center gap-1 group">
-															<div className="w-10 text-[9px] font-black text-muted-foreground shrink-0">
+															<div className="w-10 text-[11px] font-black text-muted-foreground shrink-0">
 																{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
 															</div>
 															<Input
@@ -2941,7 +2941,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						{/* Actual Inputs */}
 						<div className="space-y-2 pt-1">
 							<div className="space-y-1">
-								<Label className="text-[9px] font-bold uppercase text-muted-foreground">Total Uang Fisik (Laci)</Label>
+								<Label className="text-[11px] font-bold uppercase text-muted-foreground">Total Uang Fisik (Laci)</Label>
 								<div className="relative">
 									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">Rp</span>
 									<Input
@@ -2954,7 +2954,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 										onChange={(e) => setCashInRegister(e.target.value)}
 									/>
 								</div>
-								<p className="text-[8px] text-muted-foreground italic font-medium">* Otomatis dari input pecahan</p>
+								<p className="text-[10px] text-muted-foreground italic font-medium">* Otomatis dari input pecahan</p>
 							{/* Selisih Real-time */}
 							{cashInRegister && Number(cashInRegister) > 0 && (() => {
 								const expected = shiftCash;
@@ -2975,7 +2975,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						</div>
 
 							<div className="space-y-1">
-								<Label className="text-[9px] font-bold uppercase text-muted-foreground">Konfirmasi QRIS/EDC (Rp)</Label>
+								<Label className="text-[11px] font-bold uppercase text-muted-foreground">Konfirmasi QRIS/EDC (Rp)</Label>
 								<div className="relative">
 									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">Rp</span>
 									<Input
@@ -2988,7 +2988,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 										value={nonCashConfirmed}
 									/>
 								</div>
-								<p className="text-[8px] text-muted-foreground font-medium flex items-center gap-0.5 mt-0.5">
+								<p className="text-[10px] text-muted-foreground font-medium flex items-center gap-0.5 mt-0.5">
 									<AlertCircle className="h-2.5 w-2.5 text-amber-500" /> Total dari dashboard provider (Mayar/EDC)
 								</p>
 							</div>
@@ -2997,7 +2997,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				)}
 
 				<div className="space-y-1 pt-1">
-					<Label className="text-[9px] font-bold uppercase text-muted-foreground">Catatan / Kendala Shift</Label>
+					<Label className="text-[11px] font-bold uppercase text-muted-foreground">Catatan / Kendala Shift</Label>
 					<Textarea
 						placeholder="Contoh: Selisih uang Rp 2.000, barang rusak..."
 						className="text-[11px] resize-none min-h-[48px]"
@@ -3739,7 +3739,7 @@ function StokTab() {
 							<Icon className="h-3.5 w-3.5" />
 							<span>{tab.label}</span>
 							{tab.badge && tab.badge > 0 && (
-								<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
+								<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[11px] text-destructive-foreground">
 									{tab.badge > 9 ? "9+" : tab.badge}
 								</span>
 							)}

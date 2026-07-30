@@ -8,7 +8,7 @@ const rootDir = resolve(__dirname, "..");
 const metadata = getBuildMetadata(rootDir);
 
 // Write to all apps that serve version.json
-const apps = ["apps/web", "apps/pos", "apps/customer", "apps/karyawan"];
+const apps = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan"];
 
 for (const app of apps) {
 	const outputPath = resolve(rootDir, app, "public/version.json");

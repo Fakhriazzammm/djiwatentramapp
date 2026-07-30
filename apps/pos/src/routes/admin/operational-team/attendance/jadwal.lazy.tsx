@@ -99,14 +99,14 @@ const ShiftCard = memo(function ShiftCard({
       {...attributes}
     >
       <div className="flex items-center gap-1">
-        <span className="inline-block max-w-[48px] truncate rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
+        <span className="inline-block max-w-[48px] truncate rounded bg-muted px-1 py-0.5 text-[11px] font-medium text-muted-foreground">
           {schedule.roleName}
         </span>
         <span className="flex-1 truncate font-medium text-foreground">
           {schedule.userName}
         </span>
       </div>
-      <div className="mt-0.5 flex items-center gap-0.5 truncate text-[9px] text-muted-foreground">
+      <div className="mt-0.5 flex items-center gap-0.5 truncate text-[11px] text-muted-foreground">
         <Clock className="h-2.5 w-2.5 shrink-0" />
         <span className="truncate">{schedule.shiftName}</span>
         {schedule.startTime && (
@@ -118,7 +118,7 @@ const ShiftCard = memo(function ShiftCard({
       <div className="mt-0.5 flex items-center justify-between gap-1">
         <span
           className={cn(
-            "inline-block truncate rounded-full px-1 py-0.5 text-[8px] font-medium",
+            "inline-block truncate rounded-full px-1 py-0.5 text-[10px] font-medium",
             statusColors[schedule.status]
           )}
         >
@@ -269,7 +269,7 @@ const DayColumn = memo(function DayColumn({
         ))}
         {schedules.length > 2 && (
           <button
-            className="rounded bg-muted/70 px-1 py-0.5 text-left text-[9px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="rounded bg-muted/70 px-1 py-0.5 text-left text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => onAdd(dateStr)}
             title="Lihat/tambah jadwal"
           >
@@ -381,7 +381,7 @@ const MatrixCell = memo(function MatrixCell({
       {getRosterLabel(schedule)}
       {schedule && (
         <button
-          className="absolute -right-0.5 -top-0.5 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] text-destructive-foreground hover:flex group-hover:flex"
+          className="absolute -right-0.5 -top-0.5 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground hover:flex group-hover:flex"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
@@ -454,7 +454,7 @@ const RosterMatrix = memo(function RosterMatrix({
             <div className="truncate font-semibold text-foreground" title={user.name}>
               {user.name}
             </div>
-            <div className="truncate text-[9px] text-muted-foreground" title={user.roleName}>
+            <div className="truncate text-[11px] text-muted-foreground" title={user.roleName}>
               {user.roleName}
             </div>
           </div>

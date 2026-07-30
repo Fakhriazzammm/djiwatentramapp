@@ -50,7 +50,7 @@ export function ResponseTable({ table }: { table: ResponseTableData }) {
 							</span>
 						) : null}
 						{meta.confidence != null && (
-							<span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-tighter ${confidenceColor}`}>
+							<span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-tighter ${confidenceColor}`}>
 								{meta.confidence}%
 							</span>
 						)}

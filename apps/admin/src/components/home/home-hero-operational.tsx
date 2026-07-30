@@ -86,7 +86,7 @@ export function HomeHeroOperational({
 					onClick={onAvatarClick}
 					className="relative shrink-0 active:scale-95 transition-transform"
 				>
-					<div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-primary to-sky-400 text-xl font-black text-white shadow-md">
+					<div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-primary text-xl font-black text-white shadow-md">
 						{firstName?.charAt(0)?.toUpperCase()}
 					</div>
 					{/* Status dot with ping animation */}
@@ -102,18 +102,18 @@ export function HomeHeroOperational({
 				</button>
 
 				<div className="flex-1 min-w-0">
-					<p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary/60 leading-none mb-0.5">
+					<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/60 leading-none mb-0.5">
 						{storeName}
 					</p>
 					<h2 className="text-base font-black tracking-tight text-foreground leading-tight truncate">
 						{greeting}, {firstName}
 					</h2>
 					<div className="flex flex-wrap items-center gap-1.5 mt-1">
-						<span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-primary">
+						<span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.14em] text-primary">
 							{userRoleName || "Staff"}
 						</span>
 						<span
-							className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] transition-colors ${
+							className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.14em] transition-colors ${
 								isWorking
 									? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
 									: "bg-muted/80 text-muted-foreground"
@@ -148,35 +148,35 @@ export function HomeHeroOperational({
 			<div className="mx-4 grid grid-cols-3 divide-x divide-border/40 rounded-2xl border border-border/50 bg-background/60 shadow-sm overflow-hidden">
 				{/* Hari ini */}
 				<div className="px-2 py-1.5">
-					<p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
 						Hari Ini
 					</p>
 					<p className="mt-1 text-sm font-black text-foreground leading-none">
 						{workDurationLabel}
 					</p>
-					<p className="mt-0.5 text-[8px] text-muted-foreground/60">total kerja</p>
+					<p className="mt-0.5 text-[10px] text-muted-foreground/60">total kerja</p>
 				</div>
 
 				{/* Shift */}
 				<div className="px-2 py-1.5">
-					<p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
 						Shift
 					</p>
 					<p className="mt-1 text-xs font-black text-foreground leading-none line-clamp-1">
 						{activeShiftName || "—"}
 					</p>
 					{activeShiftTime ? (
-						<p className="mt-0.5 text-[9px] text-muted-foreground/60">
+						<p className="mt-0.5 text-[11px] text-muted-foreground/60">
 							{activeShiftTime}
 						</p>
 					) : (
-						<p className="mt-0.5 text-[9px] text-muted-foreground/60">belum ada</p>
+						<p className="mt-0.5 text-[11px] text-muted-foreground/60">belum ada</p>
 					)}
 				</div>
 
 				{/* Target */}
 				<div className="px-2 py-1.5">
-					<p className="text-[8px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
 						Target
 					</p>
 					{shiftPct !== null ? (
@@ -202,7 +202,7 @@ export function HomeHeroOperational({
 							<p className="mt-1 text-xs font-black text-muted-foreground/40 leading-none">
 								—
 							</p>
-							<p className="mt-0.5 text-[8px] text-muted-foreground/40">no target</p>
+							<p className="mt-0.5 text-[10px] text-muted-foreground/40">no target</p>
 						</>
 					)}
 				</div>

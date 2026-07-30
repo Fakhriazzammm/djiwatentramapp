@@ -197,11 +197,11 @@ function RekapAbsensiPage() {
 									<td className="px-3 py-2 tabular-nums">{s.checkOut ? formatTime(s.checkOut) : "—"}</td>
 									<td className="px-3 py-2">
 										{s.penaltyAmount > 0 ? (
-											<span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-600">
+											<span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-600">
 												Terlambat
 											</span>
 										) : (
-											<span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600">
+											<span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-600">
 												On Time
 											</span>
 										)}

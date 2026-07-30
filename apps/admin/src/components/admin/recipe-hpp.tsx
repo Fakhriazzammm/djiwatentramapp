@@ -353,7 +353,7 @@ function ComboboxCell({
 						) : (
 							<>
 							{filtered.length > 0 && (
-								<div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+								<div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
 									Inventory
 								</div>
 							)}
@@ -378,7 +378,7 @@ function ComboboxCell({
 								<div className="my-1 border-t border-border/50" />
 							)}
 							{filteredBaseRecipes.length > 0 && (
-								<div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+								<div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
 									Base Recipe
 								</div>
 							)}
@@ -589,7 +589,7 @@ function ProductSelectorCard({
 								{recipeFilter && ` (${filteredProducts.length})`}
 							</Button>
 							<div className="w-28 sm:w-32">
-								<Label className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+								<Label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
 									Porsi
 								</Label>
 								<Input
@@ -631,13 +631,13 @@ function ProductSelectorCard({
 											>
 												<span className="flex-1 truncate">{product.name}</span>
 												{isBaseRecipe && (
-													<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">
+													<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-600">
 														<BookOpen className="h-2.5 w-2.5" />
 														{product.targetQuantity} {product.targetUnit}
 													</span>
 												)}
 												{hasRecipe && (
-													<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600">
+													<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-bold text-blue-600">
 														<BookOpen className="h-2.5 w-2.5" />
 														Resep
 													</span>
@@ -1009,7 +1009,7 @@ function IngredientsTableCard({
 											<td className="px-1 py-1.5 text-center">
 												{ing.ingredientName && (
 													<span
-														className={`inline-block rounded px-1 py-0.5 text-[9px] font-bold leading-none ${badge.class}`}
+														className={`inline-block rounded px-1 py-0.5 text-[11px] font-bold leading-none ${badge.class}`}
 														title={badge.label}
 													>
 														{badge.icon}
@@ -1131,19 +1131,19 @@ function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 			<CardContent className="p-4">
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-7">
 					<div>
-						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">HPP/Porsi</p>
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">HPP/Porsi</p>
 						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(metrics.totalHppPerServing)}</p>
 					</div>
 					<div>
-						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">HPP/Batch</p>
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">HPP/Batch</p>
 						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(metrics.totalHppPerBatch)}</p>
 					</div>
 					<div>
-						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Harga Jual</p>
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Harga Jual</p>
 						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(form.sellingPrice)}</p>
 					</div>
 					<div>
-						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">🎉 Happy Hour</p>
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">🎉 Happy Hour</p>
 						{activeHappyHour ? (
 							<div className="group relative mt-0.5">
 								<p className="cursor-pointer text-sm font-bold tabular-nums text-amber-600 transition-colors hover:text-amber-700"
@@ -1152,16 +1152,16 @@ function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 									{formatCurrency(activeHappyHour.computedPrice)}
 								</p>
 								<div className="mt-0.5 flex items-center gap-1">
-									<span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 py-0.5 text-[8px] font-bold text-amber-700">
+									<span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700">
 										💾 {activeHappyHour.discountName}
 									</span>
 									{activeHappyHour.timeRange && (
-										<span className="text-[8px] text-muted-foreground/60">{activeHappyHour.timeRange}</span>
+										<span className="text-[10px] text-muted-foreground/60">{activeHappyHour.timeRange}</span>
 									)}
 								</div>
 								<a
 									href="/admin/discounts"
-									className="mt-0.5 inline-flex items-center gap-0.5 text-[8px] text-blue-500 opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+									className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-blue-500 opacity-0 transition-opacity hover:underline group-hover:opacity-100"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
@@ -1175,7 +1175,7 @@ function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 								</p>
 								<a
 									href="/admin/discounts"
-									className="mt-0.5 inline-flex items-center gap-0.5 text-[8px] text-blue-500 opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+									className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-blue-500 opacity-0 transition-opacity hover:underline group-hover:opacity-100"
 									target="_blank"
 									rel="noopener noreferrer"
 								>
@@ -1195,13 +1195,13 @@ function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 						)}
 					</div>
 					<div>
-						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Laba/Porsi</p>
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Laba/Porsi</p>
 						<p className={`mt-0.5 text-sm font-bold tabular-nums ${metrics.profitPerServing >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
 							{formatCurrency(metrics.profitPerServing)}
 						</p>
 					</div>
 					<div>
-						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Margin</p>
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Margin</p>
 						<p className={`mt-0.5 flex items-center gap-1 text-sm font-bold tabular-nums ${metrics.marginPercent >= 30 ? "text-emerald-600" : metrics.marginPercent >= 15 ? "text-amber-600" : "text-rose-600"}`}>
 							{formatNumber(metrics.marginPercent)}%
 							{metrics.marginPercent >= 30 ? (
@@ -1214,7 +1214,7 @@ function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 						</p>
 					</div>
 					<div>
-						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Markup</p>
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Markup</p>
 						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatNumber(metrics.markupPercent)}%</p>
 					</div>
 				</div>

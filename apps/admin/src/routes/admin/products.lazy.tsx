@@ -1036,20 +1036,20 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												return (
 													<div className="flex items-center gap-1.5 mt-1 flex-wrap">
 														{hasRecipe
-															? <span className="rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-700">✅ Ada Resep</span>
-															: <span className="rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[8px] font-semibold text-amber-700">⚠️ Perlu Resep</span>
+															? <span className="rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">✅ Ada Resep</span>
+															: <span className="rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">⚠️ Perlu Resep</span>
 														}
 														<Link
 															to="/admin/recipe"
 															search={{ productId: String(product._id) }}
-															className="text-[9px] text-primary hover:underline"
+															className="text-[11px] text-primary hover:underline"
 														>
 															Atur Resep
 														</Link>
 														<Link
 															to="/admin/recipe/hpp"
 															search={{ productId: String(product._id) }}
-															className="text-[9px] text-muted-foreground hover:text-primary hover:underline"
+															className="text-[11px] text-muted-foreground hover:text-primary hover:underline"
 														>
 															HPP
 														</Link>
@@ -1103,11 +1103,11 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 														<div className="flex items-center gap-2">
 															<div className="h-8 w-8 overflow-hidden rounded-md bg-muted">
 																{inlineImageFile ? (
-																	<div className="flex h-full w-full items-center justify-center font-semibold text-[8px] text-foreground">
+																	<div className="flex h-full w-full items-center justify-center font-semibold text-[10px] text-foreground">
 																		IMG
 																	</div>
 																) : (
-																	<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">
+																	<div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
 																		NA
 																	</div>
 																)}
@@ -1309,7 +1309,7 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 																		{product.image ? (
 																			<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
 																		) : (
-																			<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">NA</div>
+																			<div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">NA</div>
 																		)}
 																	</div>
 																	<input
@@ -1589,7 +1589,7 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												) : (
 													<>
 														<Upload className="h-5 w-5 text-muted-foreground/60" />
-														<span className="text-center text-[9px] font-medium text-muted-foreground/60 leading-tight">
+														<span className="text-center text-[11px] font-medium text-muted-foreground/60 leading-tight">
 															Tambah
 															<br />
 															Gambar
@@ -1615,13 +1615,13 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												type="file"
 											/>
 											{imageFile && (
-												<p className="mt-1 truncate text-center text-[9px] text-muted-foreground">
+												<p className="mt-1 truncate text-center text-[11px] text-muted-foreground">
 													{imageFile.name}
 												</p>
 											)}
 											{(imageFile || formData.image) && (
 												<button
-													className="mt-1 w-full rounded-md py-0.5 text-[9px] font-medium text-destructive hover:bg-destructive/5 transition-colors"
+													className="mt-1 w-full rounded-md py-0.5 text-[11px] font-medium text-destructive hover:bg-destructive/5 transition-colors"
 													onClick={() => {
 														setImageFile(null);
 														if (!imageFile) setFormData({ ...formData, image: "" });

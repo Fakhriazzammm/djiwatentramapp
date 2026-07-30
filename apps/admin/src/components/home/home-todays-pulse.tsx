@@ -126,14 +126,14 @@ export function HomeTodaysPulse() {
 						>
 							{card.icon}
 						</div>
-						<span className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground">
+						<span className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">
 							{card.label}
 						</span>
 					</div>
 					<p className={`text-sm font-extrabold ${card.color}`}>
 						{card.value}
 					</p>
-					<p className="text-[8px] text-muted-foreground">{card.sub}</p>
+					<p className="text-[10px] text-muted-foreground">{card.sub}</p>
 				</div>
 			))}
 		</div>

@@ -677,7 +677,7 @@ export function TransactionDetailReport({
 		};
 		const s = map[raw] ?? { bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200", dot: "bg-slate-300" };
 		return (
-			<span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-wide ${s.bg} ${s.text} ${s.border}`}>
+			<span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-bold tracking-wide ${s.bg} ${s.text} ${s.border}`}>
 				<span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
 				{raw}
 			</span>
@@ -688,14 +688,14 @@ export function TransactionDetailReport({
 	const comparisonChip = (current: number, prev: number, label: string) => {
 		if (!showComparison) return null;
 		if (previousSummary === null) {
-			return <span className="ml-1 text-[9px] text-slate-400 animate-pulse">...</span>;
+			return <span className="ml-1 text-[11px] text-slate-400 animate-pulse">...</span>;
 		}
 		if (!previousSummary) return null;
 		if (prev === 0) return null;
 		const pct = ((current - prev) / Math.abs(prev)) * 100;
 		const up = pct >= 0;
 		return (
-			<span className={`ml-1 rounded px-1 py-0.5 text-[9px] font-semibold ${up ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+			<span className={`ml-1 rounded px-1 py-0.5 text-[11px] font-semibold ${up ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
 				{up ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
 			</span>
 		);
@@ -757,7 +757,7 @@ export function TransactionDetailReport({
 							{periodButtons!.map((item) => (
 								<button key={item.value} type="button"
 									onClick={() => onPeriodChange!(item.value)}
-									className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-medium transition-colors ${period === item.value ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+									className={`rounded-sm border px-1.5 py-0.5 text-[11px] font-medium transition-colors ${period === item.value ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
 									{item.label}
 								</button>
 							))}
@@ -806,12 +806,12 @@ export function TransactionDetailReport({
 							</div>
 							)}
 							{showComparison && previousSummary && (
-								<div className="text-[8px] text-slate-400">
+								<div className="text-[10px] text-slate-400">
 									vs {previousSummary.periodLabel}: ↑ {formatCurrencyIDR(previousSummary.totalIncome)} · ↓ {formatCurrencyIDR(previousSummary.totalExpense)}
 								</div>
 							)}
 							{showComparison && previousSummary === null && (
-								<div className="text-[8px] text-slate-400 animate-pulse">Memuat data pembanding...</div>
+								<div className="text-[10px] text-slate-400 animate-pulse">Memuat data pembanding...</div>
 							)}
 						</div>
 					</div>
@@ -819,26 +819,26 @@ export function TransactionDetailReport({
 					{/* Row 3: Custom date picker (only when period = custom) */}
 					{period === "custom" && onCustomRangeChange && (
 						<div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-2 py-1">
-							<span className="text-[9px] font-medium text-slate-600">Dari</span>
+							<span className="text-[11px] font-medium text-slate-600">Dari</span>
 							<input
 								type="date"
 								value={customStartInput}
 								onChange={(e) => setCustomStartInput(e.target.value)}
-								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
 							/>
-							<span className="text-[9px] text-slate-400">–</span>
-							<span className="text-[9px] font-medium text-slate-600">Sampai</span>
+							<span className="text-[11px] text-slate-400">–</span>
+							<span className="text-[11px] font-medium text-slate-600">Sampai</span>
 							<input
 								type="date"
 								value={customEndInput}
 								onChange={(e) => setCustomEndInput(e.target.value)}
-								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
 							/>
 							<button type="button" onClick={applyCustomRange}
-								className="inline-flex h-5 items-center rounded bg-emerald-600 px-2 text-[9px] font-semibold text-white hover:bg-emerald-700">
+								className="inline-flex h-5 items-center rounded bg-emerald-600 px-2 text-[11px] font-semibold text-white hover:bg-emerald-700">
 								Terapkan
 							</button>
-							<span className="text-[9px] text-slate-400">
+							<span className="text-[11px] text-slate-400">
 								{range.label && `Aktif: ${range.label}`}
 							</span>
 						</div>
@@ -855,7 +855,7 @@ export function TransactionDetailReport({
 							{(["all", "income", "expense"] as const).map((t) => (
 								<button key={t} type="button"
 									onClick={() => setFilterType(t === "all" ? undefined : t)}
-									className={`rounded px-1.5 py-0.5 text-[9px] font-semibold transition-all ${
+									className={`rounded px-1.5 py-0.5 text-[11px] font-semibold transition-all ${
 										(t === "all" && !filterType) || filterType === t
 											? t === "income" ? "bg-emerald-600 text-white" : t === "expense" ? "bg-orange-500 text-white" : "bg-slate-700 text-white"
 											: "text-slate-600 hover:bg-slate-100"
@@ -876,7 +876,7 @@ export function TransactionDetailReport({
 						{/* Shift filter */}
 						{availableShifts.length > 0 && (
 							<select value={filterShift} onChange={(e) => setFilterShift(e.target.value)}
-								className={`h-6 rounded border px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 ${filterShift ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 bg-slate-50"}`}>
+								className={`h-6 rounded border px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 ${filterShift ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 bg-slate-50"}`}>
 								<option value="">Semua Shift</option>
 								{availableShifts.map((s: string) => (
 									<option key={s} value={s}>{s}</option>
@@ -887,19 +887,19 @@ export function TransactionDetailReport({
 						{/* Sort */}
 						<button type="button"
 							onClick={() => { if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc"); else setSortBy("date"); }}
-							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${sortBy === "date" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[11px] font-medium transition-colors ${sortBy === "date" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
 							<ArrowUpDown className="h-2.5 w-2.5" />
 							Tanggal {sortBy === "date" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
 						</button>
 						<button type="button"
 							onClick={() => { if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc"); else setSortBy("amount"); }}
-							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${sortBy === "amount" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[11px] font-medium transition-colors ${sortBy === "amount" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
 							Nominal {sortBy === "amount" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
 						</button>
 
 						{/* More filters */}
 						<button type="button" onClick={() => setShowFilters((v) => !v)}
-							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${showFilters || filterCategory || minAmount || maxAmount ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[11px] font-medium transition-colors ${showFilters || filterCategory || minAmount || maxAmount ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
 							<Filter className="h-2.5 w-2.5" />
 							Filter
 							{showFilters ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
@@ -908,14 +908,14 @@ export function TransactionDetailReport({
 						{hasActiveFilters && (
 							<button type="button"
 								onClick={() => { setSearchQuery(""); setMinAmount(""); setMaxAmount(""); setFilterCategory(""); setFilterShift(""); }}
-								className="text-[9px] text-red-500 hover:text-red-700 hover:underline">
+								className="text-[11px] text-red-500 hover:text-red-700 hover:underline">
 								Reset
 							</button>
 						)}
 
 						{/* Duplicate warning badge */}
 						{duplicateRowKeys.size > 0 && (
-							<span className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[9px] font-semibold text-amber-700"
+							<span className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
 								title={`${duplicateRowKeys.size} baris terdeteksi duplikat (nominal & tipe sama dalam 5 menit)`}>
 								<AlertTriangle className="h-3 w-3" />
 								{duplicateRowKeys.size} duplikat
@@ -927,17 +927,17 @@ export function TransactionDetailReport({
 					{showFilters && (
 						<div className="mt-1 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1">
 							<div className="flex items-center gap-1">
-								<span className="text-[9px] font-medium uppercase tracking-wider text-slate-600">Nominal:</span>
+								<span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Nominal:</span>
 								<input type="number" placeholder="Min" value={minAmount} onChange={(e) => setMinAmount(e.target.value)}
-									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
+									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
 								<span className="text-slate-300">–</span>
 								<input type="number" placeholder="Max" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)}
-									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
+									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
 							</div>
 							<div className="flex items-center gap-1">
-								<span className="text-[9px] font-medium uppercase tracking-wider text-slate-600">Kategori:</span>
+								<span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Kategori:</span>
 								<select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-									className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300">
+									className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300">
 									<option value="">Semua</option>
 									{EXPENSE_CATEGORIES.map((cat) => (
 										<option key={cat} value={cat}>{cat.replace(/_/g, " ")}</option>
@@ -982,7 +982,7 @@ export function TransactionDetailReport({
 								<col style={{ width: "120px" }} />
 								<col style={{ width: "50px" }} />
 							</colgroup>
-							<thead className="sticky top-0 z-10 bg-slate-50 text-[8px] font-semibold uppercase tracking-wider text-slate-500">
+							<thead className="sticky top-0 z-10 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
 								<tr>
 									<th className="border-b border-slate-200 bg-slate-50 px-1 py-1 text-center">No</th>
 									<th className="border-b border-slate-200 px-2 py-1">Tanggal</th>
@@ -1013,22 +1013,22 @@ export function TransactionDetailReport({
 										return (
 											<tr key={e.id || i}
 												className={`group transition-colors hover:bg-slate-50 ${isDebit ? "" : ""}`}>
-												<td className="px-1 py-0.5 text-center font-mono text-[9px] text-slate-400">{i + 1}</td>
+												<td className="px-1 py-0.5 text-center font-mono text-[11px] text-slate-400">{i + 1}</td>
 												<td className="whitespace-nowrap px-2 py-0.5">
-													<span className="text-[9px] text-slate-500">{e.created_at ? new Date(e.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "-"}</span>
+													<span className="text-[11px] text-slate-500">{e.created_at ? new Date(e.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "-"}</span>
 												</td>
 												<td className="whitespace-nowrap px-2 py-0.5">
-													<span className="font-mono text-[8px] text-slate-400">{String(e.transaction_source_id).slice(-10)}</span>
+													<span className="font-mono text-[10px] text-slate-400">{String(e.transaction_source_id).slice(-10)}</span>
 												</td>
 												<td className="whitespace-nowrap px-2 py-0.5">
-													<span className="text-[9px] text-slate-600">{isDebit ? "💳" : "💰"}</span>
+													<span className="text-[11px] text-slate-600">{isDebit ? "💳" : "💰"}</span>
 												</td>
 												<td className="px-2 py-0.5">
 													<span className="text-[10px] font-medium text-slate-800">
 														{e.coaName || "—"}
 													</span>
-													{e.coaCode && <span className="ml-1 text-[8px] text-slate-400">({e.coaCode})</span>}
-													{e.description && <span className="ml-1 text-[8px] text-slate-400">· {e.description}</span>}
+													{e.coaCode && <span className="ml-1 text-[10px] text-slate-400">({e.coaCode})</span>}
+													{e.description && <span className="ml-1 text-[10px] text-slate-400">· {e.description}</span>}
 												</td>
 												<td className="whitespace-nowrap px-2 py-0.5 text-right font-mono text-[10px] text-sky-600">
 													{isDebit ? formatCurrencyIDR(e.amount) : ""}
@@ -1036,7 +1036,7 @@ export function TransactionDetailReport({
 												<td className="whitespace-nowrap px-2 py-0.5 text-right font-mono text-[10px] text-violet-600">
 													{!isDebit ? formatCurrencyIDR(e.amount) : ""}
 												</td>
-												<td className="px-1 py-0.5 text-center text-[9px]">
+												<td className="px-1 py-0.5 text-center text-[11px]">
 													<span>✅</span>
 												</td>
 											</tr>
@@ -1066,7 +1066,7 @@ export function TransactionDetailReport({
 						{showRunningBalance && <col style={{ width: "100px" }} />}
 						<col style={{ width: "72px" }} />
 					</colgroup>
-						<thead className="sticky top-0 z-10 bg-slate-50 text-[8px] font-semibold uppercase tracking-wider text-slate-500">
+						<thead className="sticky top-0 z-10 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
 							<tr>
 								<th className="border-r border-b border-slate-200 bg-slate-50 px-1 py-1">
 									<div className="flex items-center justify-center">
@@ -1124,7 +1124,7 @@ export function TransactionDetailReport({
 													<td colSpan={columnCount} className="px-2 py-1.5">
 														<div className="flex items-center justify-between">
 															<span className="text-[10px] font-bold text-slate-700">{t.label}</span>
-															<div className="flex items-center gap-2 text-[9px]">
+															<div className="flex items-center gap-2 text-[11px]">
 																<span className="text-slate-400">{t.count} tx</span>
 																<span className="font-semibold text-emerald-600">↑ {formatCurrencyIDR(t.income)}</span>
 																<span className="font-semibold text-orange-500">↓ {formatCurrencyIDR(t.expense)}</span>
@@ -1150,7 +1150,7 @@ export function TransactionDetailReport({
 																<div className="flex items-center gap-2">
 																	{t.isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
 																	<span className="text-[12px] font-bold text-slate-800">{t.label}</span>
-																	<span className="rounded bg-slate-300/70 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">{t.count} tx</span>
+																	<span className="rounded bg-slate-300/70 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">{t.count} tx</span>
 																</div>
 																<div className="flex items-center gap-3 text-[10px]">
 																	<span className="font-semibold text-emerald-600">↑ {formatCurrencyIDR(t.income)}</span>
@@ -1174,7 +1174,7 @@ export function TransactionDetailReport({
 																<div className="flex items-center gap-1.5">
 																	{t.isCollapsed ? <ChevronRight className="h-3 w-3 text-slate-400" /> : <ChevronDown className="h-3 w-3 text-slate-400" />}
 																	<span className="text-[10px] font-semibold text-slate-600">{t.label !== "-" ? t.label : "Tanpa Shift"}</span>
-																	<span className="text-[9px] text-slate-400">· {t.count} tx</span>
+																	<span className="text-[11px] text-slate-400">· {t.count} tx</span>
 																</div>
 																<div className="flex items-center gap-2 text-[10px]">
 																	<span className="text-emerald-600">↑ {formatCurrencyIDR(t.income)}</span>
@@ -1258,7 +1258,7 @@ export function TransactionDetailReport({
 												</td>
 
 						{/* No */}
-						<td className="w-8 border-r border-slate-100 bg-white px-1 py-1 text-center font-mono text-[9px] text-slate-400 group-hover:bg-slate-50">
+						<td className="w-8 border-r border-slate-100 bg-white px-1 py-1 text-center font-mono text-[11px] text-slate-400 group-hover:bg-slate-50">
 							{rowNumberByKey.get(rowKey) || "-"}
 						</td>
 
@@ -1268,7 +1268,7 @@ export function TransactionDetailReport({
 								<span className="text-[10px] font-medium text-slate-900">
 									{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
 								</span>
-								<span className="text-[9px] text-slate-400" title={shiftName !== "-" ? `Shift: ${shiftName}` : undefined}>
+								<span className="text-[11px] text-slate-400" title={shiftName !== "-" ? `Shift: ${shiftName}` : undefined}>
 									{format(new Date(t.date), "HH:mm")}
 									{shiftName !== "-" && <span className="ml-1 text-slate-300">· {shiftName}</span>}
 								</span>
@@ -1278,17 +1278,17 @@ export function TransactionDetailReport({
 						{/* Struk */}
 						<td className="whitespace-nowrap px-1 py-1 text-center">
 							{receiptNo ? (
-								<span className="font-mono text-[9px] text-slate-500" title={`Struk #${receiptNo}`}>
+								<span className="font-mono text-[11px] text-slate-500" title={`Struk #${receiptNo}`}>
 									#{receiptNo}
 								</span>
 							) : (
-								<span className="text-[9px] text-slate-300">—</span>
+								<span className="text-[11px] text-slate-300">—</span>
 							)}
 						</td>
 
 						{/* ID — tampilkan nama order / nomor order */}
 						<td className="whitespace-nowrap px-2 py-1">
-							<span className="font-mono text-[9px] text-slate-500" title={t._id}>
+							<span className="font-mono text-[11px] text-slate-500" title={t._id}>
 								{orderDisplay}
 							</span>
 						</td>
@@ -1298,18 +1298,18 @@ export function TransactionDetailReport({
 									<div className="flex flex-col gap-0.5">
 										{getSourceBadge(t)}
 										{t.metadata?.ocr && (
-											<span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+											<span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700">
 												📸 OCR
 											</span>
 										)}
 										{isDuplicate && (
-											<span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-amber-600">
+											<span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600">
 												<AlertTriangle className="h-2.5 w-2.5" />
 												duplikat
 											</span>
 										)}
 										{expandable && (
-											<span className="inline-flex items-center gap-0.5 text-[8px] text-slate-400">
+											<span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400">
 												<ChevronRight className={`h-2.5 w-2.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
 												{hasScanItems ? `${t.metadata.scanItems.length} item` : "Detail"}
 											</span>
@@ -1320,11 +1320,11 @@ export function TransactionDetailReport({
 						{/* Pembayaran */}
 						<td className="whitespace-nowrap px-1 py-1">
 							{t.paymentMethod ? (
-								<span className="inline-flex items-center gap-0.5 text-[9px] text-slate-600">
+								<span className="inline-flex items-center gap-0.5 text-[11px] text-slate-600">
 									{getPaymentIcon(t.paymentMethod)}
 								</span>
 							) : (
-								<span className="text-[9px] text-slate-300">—</span>
+								<span className="text-[11px] text-slate-300">—</span>
 							)}
 						</td>
 
@@ -1335,7 +1335,7 @@ export function TransactionDetailReport({
 									{entityName}
 								</span>
 							) : (
-								<span className="text-[9px] text-slate-300">—</span>
+								<span className="text-[11px] text-slate-300">—</span>
 							)}
 						</td>
 
@@ -1354,7 +1354,7 @@ export function TransactionDetailReport({
 											{runningBal < 0 && "-"}{formatCurrencyIDR(Math.abs(runningBal))}
 										</span>
 									) : (
-										<span className="text-[9px] text-slate-300">—</span>
+										<span className="text-[11px] text-slate-300">—</span>
 									)}
 								</td>
 							)}

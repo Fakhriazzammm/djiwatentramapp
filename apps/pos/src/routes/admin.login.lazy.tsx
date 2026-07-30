@@ -221,7 +221,7 @@ function AdminLoginPage() {
 									</div>
 									<div className="text-center">
 										<p className="text-xl md:text-2xl font-black tracking-tight text-foreground">{selectedUser.name}</p>
-										<div className="mt-1 inline-flex items-center justify-center gap-1 md:gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 md:py-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary">
+										<div className="mt-1 inline-flex items-center justify-center gap-1 md:gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 md:py-1 text-[11px] md:text-[10px] font-black uppercase tracking-widest text-primary">
 											<ShieldCheck className="h-3 w-3 md:h-3.5 md:w-3.5" />
 											Verifikasi PIN
 										</div>

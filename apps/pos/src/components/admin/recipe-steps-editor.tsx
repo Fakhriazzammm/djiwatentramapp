@@ -462,7 +462,7 @@ function RecipeStepsEditor({ steps, onChange, inventoryMap }: RecipeStepsEditorP
 												{step.temperature && (
 													<Badge
 														variant="secondary"
-														className="text-[9px] h-4 px-1.5 gap-0.5"
+														className="text-[11px] h-4 px-1.5 gap-0.5"
 													>
 														<Gauge className="h-2.5 w-2.5" />
 														{step.temperature}
@@ -471,7 +471,7 @@ function RecipeStepsEditor({ steps, onChange, inventoryMap }: RecipeStepsEditorP
 												{step.timerSeconds && (
 													<Badge
 														variant="secondary"
-														className="text-[9px] h-4 px-1.5 gap-0.5"
+														className="text-[11px] h-4 px-1.5 gap-0.5"
 													>
 														<Clock className="h-2.5 w-2.5" />
 														{step.timerSeconds}dtk
@@ -488,7 +488,7 @@ function RecipeStepsEditor({ steps, onChange, inventoryMap }: RecipeStepsEditorP
 														<Badge
 															key={id}
 															variant="outline"
-															className="text-[9px] h-4 px-1"
+															className="text-[11px] h-4 px-1"
 														>
 															{item.ingredientName || "Bahan"}
 														</Badge>

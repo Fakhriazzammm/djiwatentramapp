@@ -44,7 +44,7 @@ export function getAppVersionInfo() {
 `;
 
 // Write to all apps that use version.ts (skip dirs that don't exist)
-const appDirs = ["apps/web", "apps/pos", "apps/customer", "apps/karyawan"];
+const appDirs = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan"];
 for (const dir of appDirs) {
 	const targetPath = resolve(rootDir, `${dir}/src/lib/version.ts`);
 	try {

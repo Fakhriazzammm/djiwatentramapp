@@ -1,0 +1,1307 @@
+/* ============================================================
+   rekrutmen-admin.css — Mobile-first premium SaaS design
+   Inspired by Linear, Stripe, Notion, Airbnb
+   8pt spacing system · smooth 150-250ms transitions · 44×44 touch
+   Wrapper: .rk
+   ============================================================ */
+
+/* ── Reset ── */
+.rk *,
+.rk *::before,
+.rk *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Design tokens ── */
+.rk {
+  --rk-primary: #1a5dc6;
+  --rk-primary-soft: #eef4ff;
+  --rk-text: #0f172a;
+  --rk-muted: #64748b;
+  --rk-border: #e2e8f0;
+  --rk-bg: #f8fafc;
+  --rk-card: #ffffff;
+  --rk-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --rk-shadow-lg: 0 10px 40px rgba(0,0,0,0.08);
+  --rk-radius: 24px;
+  --rk-radius-sm: 14px;
+  --rk-radius-xs: 8px;
+
+  /* iOS motion — DNA v2.0 */
+  --ease-ios: cubic-bezier(.32,.72,0,1);
+  --dur-micro: 180ms;
+  --dur-transition: 320ms;
+  --dur-spring: 420ms;
+
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', system-ui, sans-serif;
+  background: transparent;
+  color: var(--rk-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  max-width: 100%;
+
+  /* Status colours */
+  --rk-new: #3b82f6;
+  --rk-review: #f59e0b;
+  --rk-interview: #8b5cf6;
+  --rk-accepted: #10b981;
+  --rk-rejected: #ef4444;
+  --rk-scheduled: #3b82f6;
+  --rk-passed: #10b981;
+  --rk-failed: #ef4444;
+  --rk-in-progress: #f59e0b;
+  --rk-completed: #10b981;
+}
+
+.rk button,
+.rk input,
+.rk select,
+.rk textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.rk button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+.rk a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Animations ── */
+@keyframes rk-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes rk-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rk-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rk-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes rk-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rk-pop-in {
+  0% { opacity: 0; transform: scale(0.92); }
+  50% { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   NEW DNA v2.0 COMPONENTS
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Sort Dropdown ── */
+.rk .rk-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 12px;
+  animation: rk-fade-in 200ms ease both;
+}
+
+.rk .rk-sort-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rk-muted);
+  white-space: nowrap;
+}
+
+.rk .rk-sort-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px 0 12px;
+  border-radius: var(--rk-radius-xs);
+  border: 1px solid var(--rk-border);
+  background: var(--rk-card);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-text);
+  cursor: pointer;
+  transition: border-color var(--dur-micro) var(--ease-ios),
+              box-shadow var(--dur-micro) var(--ease-ios);
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 36px;
+  min-width: 140px;
+}
+
+.rk .rk-sort-select:focus {
+  border-color: var(--rk-primary);
+  box-shadow: 0 0 0 3px rgba(26, 93, 198, 0.12);
+  outline: none;
+}
+
+.rk .rk-sort-select:active {
+  transform: scale(0.97);
+}
+
+/* ── Stats Trend ── */
+.rk .rk-stat-trend {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.rk .rk-stat-trend.up {
+  color: var(--rk-accepted);
+}
+
+.rk .rk-stat-trend.down {
+  color: var(--rk-rejected);
+}
+
+.rk .rk-stat-percent {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  line-height: 1.4;
+}
+
+/* ── More Menu Dropdown ── */
+.rk .rk-more-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.rk .rk-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: var(--rk-radius-xs);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rk-muted);
+  background: transparent;
+  border: 1px solid var(--rk-border);
+  cursor: pointer;
+  transition: background var(--dur-micro) var(--ease-ios),
+              color var(--dur-micro) var(--ease-ios),
+              border-color var(--dur-micro) var(--ease-ios);
+  gap: 4px;
+}
+
+.rk .rk-more-btn:active {
+  transform: scale(0.97);
+}
+
+.rk .rk-more-btn:hover {
+  background: var(--rk-primary-soft);
+  border-color: var(--rk-primary);
+  color: var(--rk-primary);
+}
+
+.rk .rk-more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  min-width: 200px;
+  padding: 4px;
+  border-radius: var(--rk-radius-sm);
+  background: var(--rk-card);
+  border: 1px solid var(--rk-border);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+  animation: rk-scale-in var(--dur-micro) var(--ease-ios) both;
+  transform-origin: top right;
+}
+
+.rk .rk-more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--rk-radius-xs);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--dur-micro) var(--ease-ios);
+  text-align: left;
+}
+
+.rk .rk-more-menu-item:active {
+  transform: scale(0.97);
+}
+
+.rk .rk-more-menu-item:hover {
+  background: var(--rk-bg);
+}
+
+.rk .rk-more-menu-item svg {
+  width: 16px;
+  height: 16px;
+  color: var(--rk-muted);
+  flex-shrink: 0;
+}
+
+.rk .rk-more-menu-item.danger {
+  color: var(--rk-rejected);
+}
+
+.rk .rk-more-menu-item.danger svg {
+  color: var(--rk-rejected);
+}
+
+.rk .rk-more-divider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--rk-border);
+}
+
+/* ── Confirmation Dialog ── */
+.rk .rk-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.5);
+  animation: rk-fade-in var(--dur-micro) var(--ease-ios) both;
+}
+
+.rk .rk-confirm {
+  width: 100%;
+  max-width: 340px;
+  padding: 24px;
+  border-radius: var(--rk-radius);
+  background: var(--rk-card);
+  box-shadow: var(--rk-shadow-lg);
+  animation: rk-pop-in var(--dur-transition) var(--ease-ios) both;
+  text-align: center;
+}
+
+.rk .rk-confirm-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.rk .rk-confirm-icon.danger {
+  background: #fef2f2;
+  color: var(--rk-rejected);
+}
+
+.rk .rk-confirm-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--rk-text);
+  margin-bottom: 8px;
+}
+
+.rk .rk-confirm-desc {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.rk .rk-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rk .rk-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: var(--rk-radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform var(--dur-micro) var(--ease-ios),
+              box-shadow var(--dur-micro) var(--ease-ios);
+}
+
+.rk .rk-confirm-btn:active {
+  transform: scale(0.97);
+}
+
+.rk .rk-confirm-btn.primary {
+  background: var(--rk-primary);
+  color: white;
+}
+
+.rk .rk-confirm-btn.danger {
+  background: var(--rk-rejected);
+  color: white;
+}
+
+.rk .rk-confirm-btn.secondary {
+  background: var(--rk-bg);
+  color: var(--rk-text);
+  border: 1px solid var(--rk-border);
+}
+
+/* ── Enhanced Empty State ── */
+.rk .rk-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--rk-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  color: var(--rk-primary);
+}
+
+.rk .rk-empty-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.rk .rk-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--rk-text);
+  margin-top: 8px;
+}
+
+.rk .rk-empty-desc {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  max-width: 280px;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.rk .rk-empty-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 24px;
+  margin-top: 16px;
+  border-radius: var(--rk-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  background: var(--rk-primary);
+  border: none;
+  cursor: pointer;
+  transition: transform var(--dur-micro) var(--ease-ios),
+              box-shadow var(--dur-micro) var(--ease-ios);
+}
+
+.rk .rk-empty-cta:active {
+  transform: scale(0.97);
+}
+
+/* ── Skeleton Loading ── */
+.rk .rk-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 24px;
+}
+
+.rk .rk-skeleton-card {
+  height: 120px;
+  border-radius: var(--rk-radius);
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: rk-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Enhanced Bottom Sheet ── */
+.rk .rk-sheet-section {
+  margin-bottom: 20px;
+}
+
+.rk .rk-sheet-section:last-child {
+  margin-bottom: 0;
+}
+
+.rk .rk-sheet-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rk-muted);
+  margin-bottom: 12px;
+}
+
+.rk .rk-sheet-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rk-border);
+}
+
+.rk .rk-sheet-field:last-child {
+  border-bottom: none;
+}
+
+.rk .rk-sheet-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rk-muted);
+}
+
+.rk .rk-sheet-field-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-text);
+  text-align: right;
+  max-width: 60%;
+}
+
+.rk .rk-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rk .rk-sheet-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: var(--rk-radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform var(--dur-micro) var(--ease-ios);
+}
+
+.rk .rk-sheet-action:active {
+  transform: scale(0.97);
+}
+
+.rk .rk-sheet-action.primary {
+  background: var(--rk-primary);
+  color: white;
+}
+
+.rk .rk-sheet-action.secondary {
+  background: var(--rk-bg);
+  color: var(--rk-text);
+  border: 1px solid var(--rk-border);
+}
+
+.rk .rk-sheet-action.danger {
+  background: #fef2f2;
+  color: var(--rk-rejected);
+}
+
+/* ── Timeline ── */
+.rk .rk-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.rk .rk-timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--rk-border);
+  border-radius: 1px;
+}
+
+.rk .rk-timeline-item {
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.rk .rk-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.rk .rk-timeline-dot {
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--rk-primary);
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px var(--rk-primary);
+}
+
+.rk .rk-timeline-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rk-muted);
+  margin-bottom: 2px;
+}
+
+.rk .rk-timeline-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-text);
+  line-height: 1.5;
+}
+
+/* ── Loading in card area ── */
+.rk .rk-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-muted);
+}
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE BASE  (max-width: 480px default)
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Header ── */
+.rk .rk-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 24px 16px 16px;
+  animation: rk-fade-in 200ms ease both;
+}
+
+.rk .rk-header-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--rk-text);
+}
+
+.rk .rk-header-sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  line-height: 1.5;
+}
+
+/* ── Stats row (horizontal scroll on mobile) ── */
+.rk .rk-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 16px 20px;
+  animation: rk-fade-in 250ms ease 50ms both;
+}
+
+.rk .rk-stats::-webkit-scrollbar {
+  display: none;
+}
+
+.rk .rk-stat {
+  flex: 1 1 calc(50% - 6px);
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px 16px;
+  border-radius: var(--rk-radius-sm);
+  background: var(--rk-card);
+  border: 1px solid var(--rk-border);
+  box-shadow: var(--rk-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: box-shadow var(--dur-micro) var(--ease-ios), transform var(--dur-micro) var(--ease-ios);
+}
+
+.rk .rk-stat:active {
+  transform: scale(0.97);
+}
+
+.rk .rk-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--rk-text);
+}
+
+.rk .rk-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--rk-text);
+}
+
+.rk .rk-stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  line-height: 1.4;
+}
+
+.rk .rk-stat-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Search bar ── */
+.rk .rk-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  margin: 0 16px 12px;
+  border-radius: var(--rk-radius-sm);
+  border: 1px solid var(--rk-border);
+  background: var(--rk-card);
+  box-shadow: var(--rk-shadow);
+  transition: border-color var(--dur-micro) var(--ease-ios), box-shadow var(--dur-micro) var(--ease-ios);
+}
+
+.rk .rk-search:focus-within {
+  border-color: var(--rk-primary);
+  box-shadow: 0 0 0 3px rgba(26, 93, 198, 0.12);
+}
+
+.rk .rk-search-icon {
+  position: absolute;
+  left: 16px;
+  color: var(--rk-muted);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.rk .rk-search-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 16px 0 44px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--rk-text);
+}
+
+.rk .rk-search-input::placeholder {
+  color: var(--rk-muted);
+  font-weight: 400;
+}
+
+/* ── Segmented control ── */
+.rk .rk-segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 16px 12px;
+  border-radius: var(--rk-radius-sm);
+  background: var(--rk-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.rk .rk-segmented::-webkit-scrollbar {
+  display: none;
+}
+
+.rk .rk-segmented-item {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  min-width: 44px;
+  padding: 0 20px;
+  border-radius: var(--rk-radius-xs);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rk-muted);
+  background: transparent;
+  white-space: nowrap;
+  transition: background var(--dur-micro) var(--ease-ios), color var(--dur-micro) var(--ease-ios), box-shadow var(--dur-micro) var(--ease-ios);
+  cursor: pointer;
+  border: none;
+}
+
+.rk .rk-segmented-item:active {
+  transform: scale(0.97);
+}
+
+.rk .rk-segmented-item.active {
+  background: var(--rk-card);
+  color: var(--rk-text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ── Tab bar ── */
+.rk .rk-tab-row {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.rk .rk-tab-row::-webkit-scrollbar {
+  display: none;
+}
+
+.rk .rk-tab {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background var(--dur-micro) var(--ease-ios), color var(--dur-micro) var(--ease-ios), border-color var(--dur-micro) var(--ease-ios);
+  cursor: pointer;
+}
+
+.rk .rk-tab:active {
+  transform: scale(0.97);
+}
+
+.rk .rk-tab.active {
+  background: var(--rk-primary-soft);
+  color: var(--rk-primary);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+/* ── List / card grid ── */
+.rk .rk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 24px;
+}
+
+/* ── Candidate card ── */
+.rk .rk-card {
+  background: var(--rk-card);
+  border-radius: var(--rk-radius);
+  border: 1px solid var(--rk-border);
+  box-shadow: var(--rk-shadow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: box-shadow var(--dur-micro) var(--ease-ios), transform var(--dur-micro) var(--ease-ios);
+  animation: rk-slide-up var(--dur-transition) var(--ease-ios) both;
+}
+
+.rk .rk-card:active {
+  box-shadow: var(--rk-shadow-lg);
+  transform: translateY(-1px);
+}
+
+.rk .rk-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rk .rk-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--rk-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.rk .rk-card-position {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  line-height: 1.3;
+}
+
+.rk .rk-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  max-width: 50%;
+  min-height: 24px;
+  padding: 3px 10px 3px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--rk-primary-soft);
+  color: var(--rk-primary);
+}
+
+.rk .rk-card-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Status badge colours */
+.rk .rk-card-badge[data-status="new"]        { background: #eff6ff; color: var(--rk-new); }
+.rk .rk-card-badge[data-status="review"]     { background: #fffbeb; color: var(--rk-review); }
+.rk .rk-card-badge[data-status="interview"]  { background: #f5f3ff; color: var(--rk-interview); }
+.rk .rk-card-badge[data-status="accepted"]   { background: #ecfdf5; color: var(--rk-accepted); }
+.rk .rk-card-badge[data-status="rejected"]   { background: #fef2f2; color: var(--rk-rejected); }
+.rk .rk-card-badge[data-status="scheduled"]  { background: #eff6ff; color: var(--rk-scheduled); }
+.rk .rk-card-badge[data-status="passed"]     { background: #ecfdf5; color: var(--rk-passed); }
+.rk .rk-card-badge[data-status="failed"]     { background: #fef2f2; color: var(--rk-failed); }
+.rk .rk-card-badge[data-status="inprogress"] { background: #fffbeb; color: var(--rk-in-progress); }
+.rk .rk-card-badge[data-status="completed"]  { background: #ecfdf5; color: var(--rk-completed); }
+
+/* ── Card meta (phone + date) ── */
+.rk .rk-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.rk .rk-card-meta > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Card actions ── */
+.rk .rk-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rk .rk-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0 14px;
+  border-radius: var(--rk-radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rk-muted);
+  background: transparent;
+  border: 1px solid var(--rk-border);
+  transition: background var(--dur-micro) var(--ease-ios), color var(--dur-micro) var(--ease-ios), border-color var(--dur-micro) var(--ease-ios);
+  cursor: pointer;
+  gap: 4px;
+}
+
+.rk .rk-card-action:active {
+  background: var(--rk-bg);
+}
+
+.rk .rk-card-action:hover {
+  background: var(--rk-primary-soft);
+  border-color: var(--rk-primary);
+  color: var(--rk-primary);
+}
+
+/* ── Bottom sheet ── */
+.rk .rk-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  visibility: hidden;
+  transition: visibility 0ms 300ms;
+}
+
+.rk .rk-sheet.open {
+  visibility: visible;
+  transition: visibility 0ms 0ms;
+}
+
+.rk .rk-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.rk .rk-sheet.open .rk-sheet-overlay {
+  opacity: 1;
+}
+
+.rk .rk-sheet-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-height: 85vh;
+  border-radius: var(--rk-radius) var(--rk-radius) 0 0;
+  background: var(--rk-card);
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.10);
+  padding: 24px 20px;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.rk .rk-sheet.open .rk-sheet-content {
+  transform: translateY(0);
+}
+
+/* Sheet drag handle */
+.rk .rk-sheet-content::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rk-border);
+  margin: -12px auto 16px;
+}
+
+/* ── Empty state ── */
+.rk .rk-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 8px;
+  animation: rk-fade-in 200ms ease both;
+}
+
+.rk .rk-empty::before {
+  content: '';
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--rk-primary-soft);
+  margin-bottom: 8px;
+}
+
+.rk .rk-empty strong {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--rk-text);
+}
+
+.rk .rk-empty p {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-muted);
+  max-width: 280px;
+  line-height: 1.6;
+}
+
+/* ── Loading state ── */
+.rk .rk-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rk-muted);
+}
+
+/* ── Spinner ── */
+.rk .rk-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid var(--rk-border);
+  border-top-color: var(--rk-primary);
+  border-radius: 999px;
+  animation: rk-spin 0.6s linear infinite;
+}
+
+/* ════════════════════════════════════════════════════════════
+   DESKTOP UPSCALE  (≥ 768px)
+   ════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .rk .rk-header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 32px 32px 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .rk .rk-header-title {
+    font-size: 32px;
+  }
+
+  .rk .rk-header-sub {
+    font-size: 15px;
+  }
+
+  .rk .rk-stats {
+    flex-wrap: nowrap;
+    padding: 0 32px 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    overflow-x: visible;
+  }
+
+  .rk .rk-stat {
+    flex: 1;
+    min-width: 0;
+    padding: 16px 20px;
+    transition: box-shadow 200ms ease, transform 200ms ease;
+  }
+
+  .rk .rk-stat:hover {
+    box-shadow: var(--rk-shadow-lg);
+    transform: translateY(-2px);
+  }
+
+  .rk .rk-stat:active {
+    transform: scale(0.97);
+  }
+
+  .rk .rk-stat-value {
+    font-size: 26px;
+  }
+
+  .rk .rk-search {
+    max-width: 400px;
+    margin: 0 0 16px;
+    height: 44px;
+  }
+
+  .rk .rk-search-input {
+    font-size: 14px;
+  }
+
+  .rk .rk-search-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .rk .rk-segmented {
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .rk .rk-tab-row {
+    padding: 0 32px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .rk .rk-tab {
+    transition: background 200ms ease, color 200ms ease;
+  }
+
+  .rk .rk-tab:hover {
+    background: var(--rk-primary-soft);
+    color: var(--rk-primary);
+  }
+
+  .rk .rk-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    padding: 0 32px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .rk .rk-card {
+    padding: 20px;
+    gap: 14px;
+    transition: box-shadow 200ms ease, transform 200ms ease;
+  }
+
+  .rk .rk-card:hover {
+    box-shadow: var(--rk-shadow-lg);
+    transform: translateY(-2px);
+  }
+
+  .rk .rk-card:active {
+    transform: scale(0.98);
+  }
+
+  .rk .rk-card-actions {
+    padding-top: 8px;
+  }
+
+  .rk .rk-card-action:hover {
+    background: var(--rk-primary-soft);
+    border-color: var(--rk-primary);
+    color: var(--rk-primary);
+  }
+
+  /* Sheet becomes a centred dialog on desktop */
+  .rk .rk-sheet {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .rk .rk-sheet-content {
+    width: min(520px, 90vw);
+    max-height: 80vh;
+    border-radius: var(--rk-radius);
+    transform: translateY(0) scale(0.95);
+    opacity: 0;
+    transition: transform 250ms ease, opacity 200ms ease;
+  }
+
+  .rk .rk-sheet.open .rk-sheet-content {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  .rk .rk-sheet-content::before {
+    display: none;
+  }
+
+  .rk .rk-empty {
+    padding: 64px 32px;
+  }
+
+  .rk .rk-loading {
+    padding: 64px 32px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   LARGE DESKTOP  (≥ 1024px)
+   ════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  .rk .rk-header {
+    padding: 40px 32px 20px;
+  }
+
+  .rk .rk-header-title {
+    font-size: 36px;
+  }
+
+  .rk .rk-stats {
+    padding: 0 32px 28px;
+    gap: 16px;
+  }
+
+  .rk .rk-stat {
+    padding: 20px 24px;
+  }
+
+  .rk .rk-stat-value {
+    font-size: 30px;
+  }
+
+  .rk .rk-list {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 20px;
+  }
+
+  .rk .rk-card {
+    padding: 24px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   STATUS BADGE LEGACY SUPPORT (class-based colouring)
+   ════════════════════════════════════════════════════════════ */
+.rk .rk-card-badge.status-new        { background: #eff6ff; color: var(--rk-new); }
+.rk .rk-card-badge.status-review     { background: #fffbeb; color: var(--rk-review); }
+.rk .rk-card-badge.status-interview  { background: #f5f3ff; color: var(--rk-interview); }
+.rk .rk-card-badge.status-accepted   { background: #ecfdf5; color: var(--rk-accepted); }
+.rk .rk-card-badge.status-rejected   { background: #fef2f2; color: var(--rk-rejected); }
+.rk .rk-card-badge.status-scheduled  { background: #eff6ff; color: var(--rk-scheduled); }
+.rk .rk-card-badge.status-passed     { background: #ecfdf5; color: var(--rk-passed); }
+.rk .rk-card-badge.status-failed     { background: #fef2f2; color: var(--rk-failed); }
+.rk .rk-card-badge.status-inprogress { background: #fffbeb; color: var(--rk-in-progress); }
+.rk .rk-card-badge.status-completed  { background: #ecfdf5; color: var(--rk-completed); }

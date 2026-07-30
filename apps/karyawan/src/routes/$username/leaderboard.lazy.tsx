@@ -194,9 +194,9 @@ function PodiumCard({ entry, rank, maxBonus, isMe }: {
       </div>
 
       <p className="mt-2 text-[11px] font-bold text-foreground truncate max-w-full text-center leading-tight">
-        {entry.name} {isMe && <span className="text-[8px] text-primary font-bold">(Kamu)</span>}
+        {entry.name} {isMe && <span className="text-[10px] text-primary font-bold">(Kamu)</span>}
       </p>
-      <p className="text-[8px] font-medium text-muted-foreground truncate max-w-full">{entry.roleName}</p>
+      <p className="text-[10px] font-medium text-muted-foreground truncate max-w-full">{entry.roleName}</p>
 
       <motion.p
         custom={rank}
@@ -217,7 +217,7 @@ function PodiumCard({ entry, rank, maxBonus, isMe }: {
         />
       </div>
 
-      <p className="mt-1 text-[8px] text-muted-foreground flex items-center gap-1">
+      <p className="mt-1 text-[10px] text-muted-foreground flex items-center gap-1">
         <Users className="h-2.5 w-2.5" />
         {entry.shiftCount} shift
       </p>
@@ -271,12 +271,12 @@ function LeaderboardRow({ entry, rank, maxBonus, isMe }: {
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-bold text-foreground truncate leading-tight">
             {entry.name}
-            {isMe && <span className="ml-1 text-[8px] bg-primary/10 text-primary font-bold px-1 py-0.5 rounded">Kamu</span>}
+            {isMe && <span className="ml-1 text-[10px] bg-primary/10 text-primary font-bold px-1 py-0.5 rounded">Kamu</span>}
           </p>
-          <p className="text-[8px] text-muted-foreground truncate">{entry.roleName}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{entry.roleName}</p>
         </div>
 
-        <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
           <Users className="h-3 w-3" />
           <span className="font-medium">{entry.shiftCount}</span>
         </div>
@@ -294,14 +294,14 @@ function LeaderboardRow({ entry, rank, maxBonus, isMe }: {
         </div>
 
         <div className="shrink-0 flex items-center gap-1 text-muted-foreground group-hover:text-primary transition-colors">
-          <span className="text-[8px] hidden group-hover:inline text-primary/60">Detail</span>
+          <span className="text-[10px] hidden group-hover:inline text-primary/60">Detail</span>
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </div>
       </div>
 
       <div className="mt-1.5 w-full h-1 rounded-full bg-muted overflow-hidden">
         <motion.div
-          className={`h-full rounded-full ${top3 ? c!.bar : "bg-gradient-to-r from-primary/50 to-primary/30"}`}
+          className={`h-full rounded-full ${top3 ? c!.bar : "bg-primary/40"}`}
           initial={{ width: 0 }}
           animate={{ width: `${barPct}%` }}
           transition={{ delay: 0.3 + rank * 0.04, duration: 0.6, ease: "easeOut" }}
@@ -319,10 +319,10 @@ function LeaderboardRow({ entry, rank, maxBonus, isMe }: {
           >
             <div className="mt-2 pt-2 border-t border-border/40 space-y-1">
               {entry.bonusHistory.length === 0 ? (
-                <p className="text-[9px] text-muted-foreground italic">Belum ada histori bonus</p>
+                <p className="text-[11px] text-muted-foreground italic">Belum ada histori bonus</p>
               ) : (
                 entry.bonusHistory.map((h, i) => (
-                  <div key={i} className="flex items-center justify-between text-[9px]">
+                  <div key={i} className="flex items-center justify-between text-[11px]">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                       <span className="text-muted-foreground truncate">{h.shiftName}</span>
@@ -439,7 +439,7 @@ function LeaderboardPage() {
           </div>
           <div>
             <h1 className="text-sm font-extrabold tracking-tight">Leaderboard Bonus</h1>
-            <p className="text-[9px] font-medium text-muted-foreground">Bulan {new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</p>
+            <p className="text-[11px] font-medium text-muted-foreground">Bulan {new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</p>
           </div>
         </div>
       </div>

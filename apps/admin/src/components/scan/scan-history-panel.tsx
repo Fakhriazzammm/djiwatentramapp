@@ -153,7 +153,7 @@ export function ScanHistoryPanel({ history, onRemove, onClearAll, onClose }: Pro
 												{entry.merchant || "Tidak diketahui"}
 											</span>
 											{entry.saved && (
-												<span className="shrink-0 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600">
+												<span className="shrink-0 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-600">
 													Tersimpan
 												</span>
 											)}

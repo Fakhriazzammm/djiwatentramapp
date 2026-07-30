@@ -133,7 +133,7 @@ function TeamDayView({
         <span className="text-[11px] font-black tracking-tight text-center">
           {format(selectedDate, "EEEE, d MMM", { locale: id })}
           {isToday && (
-            <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary uppercase">
+            <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary uppercase">
               Hari ini
             </span>
           )}
@@ -158,10 +158,10 @@ function TeamDayView({
             return (
               <div key={shift} className={cn("rounded-xl border p-2.5", colors.bg, colors.border)}>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white", colors.dot)}>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white", colors.dot)}>
                     {shift}
                   </span>
-                  <span className="text-[9px] font-medium text-muted-foreground">
+                  <span className="text-[11px] font-medium text-muted-foreground">
                     {staff.length} orang
                   </span>
                 </div>
@@ -185,7 +185,7 @@ function TeamDayView({
                           {s.userName}
                         </p>
                         {s.roleName && (
-                          <p className="text-[9px] text-muted-foreground leading-tight">{s.roleName}</p>
+                          <p className="text-[11px] text-muted-foreground leading-tight">{s.roleName}</p>
                         )}
                       </div>
                       {/* Time */}
@@ -321,7 +321,7 @@ export function PersonalSchedule({
             type="button"
             onClick={() => setMode("personal")}
             className={cn(
-              "rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-all",
+              "rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-all",
               mode === "personal"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -333,7 +333,7 @@ export function PersonalSchedule({
             type="button"
             onClick={() => setMode("team")}
             className={cn(
-              "rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-all",
+              "rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-all",
               mode === "team"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -410,7 +410,7 @@ export function PersonalSchedule({
                 <span className="text-lg font-black text-foreground leading-none">
                   {selectedDayData.day}
                 </span>
-                <span className="text-[8px] font-bold uppercase text-muted-foreground">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">
                   {DAY_NAMES[new Date(year, month - 1, selectedDayData.day).getDay()]}
                 </span>
               </div>
@@ -449,7 +449,7 @@ export function PersonalSchedule({
             {Object.entries(shiftColors).map(([label, c]) => (
               <div key={label} className="flex items-center gap-1">
                 <div className={c.dot} style={{ width: "6px", height: "6px", borderRadius: "50%" }} />
-                <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">{label}</span>
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">{label}</span>
               </div>
             ))}
           </div>

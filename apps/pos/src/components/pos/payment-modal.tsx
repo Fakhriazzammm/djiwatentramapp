@@ -324,11 +324,11 @@ export function PaymentConfirmationModal({
 							
 							<div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/30 border border-border/50 p-3">
 								<div className="space-y-1">
-									<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Pelanggan</p>
+									<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pelanggan</p>
 									<p className="text-xs font-bold text-foreground truncate">{customerInfo.name || "Pelanggan Umum"}</p>
 								</div>
 								<div className="space-y-1 text-right">
-									<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Tipe / Meja</p>
+									<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tipe / Meja</p>
 									<p className="text-xs font-bold text-foreground">
 										{customerInfo.orderType === 'dine_in' ? `Dine In / ${customerInfo.tableNumber || '-'}` : 'Takeaway'}
 									</p>
@@ -364,7 +364,7 @@ export function PaymentConfirmationModal({
 											<div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
 												<Icon className="h-4 w-4" />
 											</div>
-											<span className="text-[9px] font-bold uppercase tracking-wider text-left leading-tight">
+											<span className="text-[11px] font-bold uppercase tracking-wider text-left leading-tight">
 												{opt.label}
 											</span>
 										</button>
@@ -387,7 +387,7 @@ export function PaymentConfirmationModal({
 									</div>
 									{changeAmount > 0 && (
 										<div className="flex items-center gap-1.5 rounded-full bg-green-500 px-2.5 py-1 text-white shadow-sm shadow-green-200">
-											<span className="text-[8px] font-bold uppercase tracking-tighter">Kembali:</span>
+											<span className="text-[10px] font-bold uppercase tracking-tighter">Kembali:</span>
 											<span className="text-[11px] font-black">
 												{new Intl.NumberFormat("id-ID").format(changeAmount)}
 											</span>
@@ -397,7 +397,7 @@ export function PaymentConfirmationModal({
 
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 									<div className="space-y-1.5">
-										<label className="block font-bold text-primary/60 text-[9px] uppercase tracking-widest ml-1">
+										<label className="block font-bold text-primary/60 text-[11px] uppercase tracking-widest ml-1">
 											Uang Diterima
 										</label>
 										<div className="relative">
@@ -415,7 +415,7 @@ export function PaymentConfirmationModal({
 										</div>
 									</div>
 									<div className="space-y-1.5">
-										<label className="block font-bold text-primary/60 text-[9px] uppercase tracking-widest ml-1">
+										<label className="block font-bold text-primary/60 text-[11px] uppercase tracking-widest ml-1">
 											Nominal Cepat
 										</label>
 										<div className="grid grid-cols-3 gap-1.5">
@@ -424,7 +424,7 @@ export function PaymentConfirmationModal({
 													key={amount}
 													type="button"
 													onClick={() => handleQuickCash(amount)}
-													className="rounded-lg border border-primary/20 bg-background py-2 text-[9px] font-black text-primary transition-all hover:bg-primary hover:text-white active:scale-90 shadow-sm"
+													className="rounded-lg border border-primary/20 bg-background py-2 text-[11px] font-black text-primary transition-all hover:bg-primary hover:text-white active:scale-90 shadow-sm"
 												>
 													{amount / 1000}K
 												</button>
@@ -432,7 +432,7 @@ export function PaymentConfirmationModal({
 											<button
 												type="button"
 												onClick={() => handleQuickCash(finalTotal)}
-												className="rounded-lg border border-primary bg-primary py-2 text-[8px] font-black text-white transition-all hover:opacity-90 active:scale-90 shadow-md shadow-primary/20"
+												className="rounded-lg border border-primary bg-primary py-2 text-[10px] font-black text-white transition-all hover:opacity-90 active:scale-90 shadow-md shadow-primary/20"
 											>
 												PAS
 											</button>
@@ -477,7 +477,7 @@ export function PaymentConfirmationModal({
 								)}
 
 								{(serviceChargeAmount > 0 || taxAmount > 0) && (
-									<div className="flex items-center justify-between text-[9px] text-muted-foreground/70 border-t border-border/50 pt-2">
+									<div className="flex items-center justify-between text-[11px] text-muted-foreground/70 border-t border-border/50 pt-2">
 										<span className="uppercase tracking-tighter">Biaya Tambahan (Pajak & Layanan)</span>
 										<span className="font-bold">
 											{new Intl.NumberFormat("id-ID", {
@@ -502,7 +502,7 @@ export function PaymentConfirmationModal({
 
 								{selectedPaymentMethod === "tunai" && cashReceived !== "" && (
 									<div className="mt-2 flex items-center justify-between border-t border-dashed border-primary/20 pt-2 text-emerald-600">
-										<span className="font-bold text-[9px] uppercase tracking-widest">Uang Kembali</span>
+										<span className="font-bold text-[11px] uppercase tracking-widest">Uang Kembali</span>
 										<span className="font-black text-lg tracking-tighter">
 											{new Intl.NumberFormat("id-ID", {
 												style: "currency",
@@ -521,7 +521,7 @@ export function PaymentConfirmationModal({
 							{validDiscounts.length > 0 && (
 								<div className="relative">
 									<label
-										className="mb-1.5 block font-bold text-muted-foreground/60 text-[9px] uppercase tracking-widest ml-1"
+										className="mb-1.5 block font-bold text-muted-foreground/60 text-[11px] uppercase tracking-widest ml-1"
 										htmlFor="discount-select"
 									>
 										Pilih Voucher Lain
@@ -555,9 +555,9 @@ export function PaymentConfirmationModal({
 									</div>
 									<div className="space-y-0.5">
 										<div className="flex items-center gap-1.5">
-											<span className="block font-black text-primary text-[9px] uppercase tracking-widest">Otomatis Lunas</span>
+											<span className="block font-black text-primary text-[11px] uppercase tracking-widest">Otomatis Lunas</span>
 										</div>
-										<p className="text-[8px] text-muted-foreground font-medium leading-none">Instant Settlement & Stok</p>
+										<p className="text-[10px] text-muted-foreground font-medium leading-none">Instant Settlement & Stok</p>
 									</div>
 								</div>
 								<button

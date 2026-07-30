@@ -91,13 +91,13 @@ function DashboardAdmin() {
 				</div>
 				<div className="flex items-center gap-1.5 shrink-0">
 					<div className="rounded-md border border-border bg-muted/30 px-2 py-1">
-						<p className="text-[9px] font-semibold text-muted-foreground">Anomali <span className="text-foreground">{stats.anomalies.length}</span></p>
+						<p className="text-[11px] font-semibold text-muted-foreground">Anomali <span className="text-foreground">{stats.anomalies.length}</span></p>
 					</div>
 					<div className="rounded-md border border-amber-200/60 bg-amber-50/60 px-2 py-1">
-						<p className="text-[9px] font-semibold text-amber-700">Reconcile <span className="text-amber-800">{stats.paymentReconciliation.pendingNonCashCount}</span></p>
+						<p className="text-[11px] font-semibold text-amber-700">Reconcile <span className="text-amber-800">{stats.paymentReconciliation.pendingNonCashCount}</span></p>
 					</div>
 					<div className="rounded-md border border-emerald-200/60 bg-emerald-50/60 px-2 py-1">
-						<p className="text-[9px] font-semibold text-emerald-700">7D {formatCurrencyIDR(sevenDayRevenue)}</p>
+						<p className="text-[11px] font-semibold text-emerald-700">7D {formatCurrencyIDR(sevenDayRevenue)}</p>
 					</div>
 				</div>
 			</div>
@@ -141,27 +141,27 @@ function DashboardAdmin() {
 							<AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
 							Selisih Kas &amp; Rekonsiliasi
 						</h3>
-						<span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
+						<span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
 							{stats.cashDiscrepancySummary.highRiskShiftCount} risiko tinggi
 						</span>
 					</div>
 					<div className="flex gap-2">
 						<div className="flex-1 rounded-lg border border-border bg-muted/20 p-2">
-							<p className="text-[9px] font-semibold text-muted-foreground">Gap Kas Fisik</p>
+							<p className="text-[11px] font-semibold text-muted-foreground">Gap Kas Fisik</p>
 							<p className={`text-sm font-bold ${stats.cashDiscrepancySummary.totalPhysicalGap === 0 ? "text-emerald-600" : "text-rose-600"}`}>
 								{formatCurrencyIDR(stats.cashDiscrepancySummary.totalPhysicalGap)}
 							</p>
 						</div>
 						<div className="flex-1 rounded-lg border border-border bg-muted/20 p-2">
-							<p className="text-[9px] font-semibold text-muted-foreground">Gap Non-Tunai</p>
+							<p className="text-[11px] font-semibold text-muted-foreground">Gap Non-Tunai</p>
 							<p className={`text-sm font-bold ${stats.cashDiscrepancySummary.totalNonCashGap === 0 ? "text-emerald-600" : "text-rose-600"}`}>
 								{formatCurrencyIDR(stats.cashDiscrepancySummary.totalNonCashGap)}
 							</p>
 						</div>
 						<div className="flex-1 rounded-lg border border-border bg-muted/20 p-2">
-							<p className="text-[9px] font-semibold text-muted-foreground">Pending QRIS/TF</p>
+							<p className="text-[11px] font-semibold text-muted-foreground">Pending QRIS/TF</p>
 							<p className="text-sm font-bold text-amber-600">{stats.paymentReconciliation.pendingNonCashCount}</p>
-							<p className="text-[9px] text-muted-foreground">{formatCurrencyIDR(stats.paymentReconciliation.pendingNonCashAmount)}</p>
+							<p className="text-[11px] text-muted-foreground">{formatCurrencyIDR(stats.paymentReconciliation.pendingNonCashAmount)}</p>
 						</div>
 					</div>
 				</div>
@@ -172,7 +172,7 @@ function DashboardAdmin() {
 							<AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
 							Anomali Otomatis
 						</h3>
-						<span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
+						<span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
 							{stats.anomalies.length} temuan
 						</span>
 					</div>
@@ -186,7 +186,7 @@ function DashboardAdmin() {
 								<div key={`${anomaly.type}-${index}`} className="rounded-lg border border-border bg-muted/20 p-2">
 									<div className="flex items-center justify-between gap-2">
 										<p className="font-semibold text-[11px]">{anomaly.title}</p>
-										<Badge className="px-1.5 py-0 text-[8px] uppercase" variant={anomaly.severity === "high" ? "destructive" : "warning"}>
+										<Badge className="px-1.5 py-0 text-[10px] uppercase" variant={anomaly.severity === "high" ? "destructive" : "warning"}>
 											{anomaly.severity}
 										</Badge>
 									</div>
@@ -206,7 +206,7 @@ function DashboardAdmin() {
 							<Clock className="w-3.5 h-3.5 text-primary" />
 							Sesi Kasir Hari Ini
 						</h3>
-						<span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
+						<span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
 							{validShifts.length} Sesi
 						</span>
 					</div>
@@ -226,12 +226,12 @@ function DashboardAdmin() {
 									<div className="flex justify-between items-start mb-1.5">
 										<div>
 											<p className="font-semibold text-[11px] text-foreground">{shift.shiftName || `Shift ${i + 1}`}</p>
-											<p className="text-[9px] text-muted-foreground flex items-center gap-1">
+											<p className="text-[11px] text-muted-foreground flex items-center gap-1">
 												<Users className="w-2.5 h-2.5" />
 												{shift.cashierName || 'Unknown'}
 											</p>
 										</div>
-										<Badge className="px-1.5 py-0 text-[8px] uppercase" variant={isActive ? "success" : "secondary"}>
+										<Badge className="px-1.5 py-0 text-[10px] uppercase" variant={isActive ? "success" : "secondary"}>
 											{isActive ? 'Ongoing' : 'Closed'}
 										</Badge>
 									</div>
@@ -282,9 +282,9 @@ function DashboardAdmin() {
 					<div className="flex items-center justify-between mb-3">
 						<div>
 							<h3 className="text-xs font-bold">Grafik Pendapatan</h3>
-							<p className="text-[9px] text-muted-foreground">7 Hari Terakhir</p>
+							<p className="text-[11px] text-muted-foreground">7 Hari Terakhir</p>
 						</div>
-						<div className="flex items-center gap-1.5 text-primary-foreground bg-primary px-2 py-1 rounded-lg text-[9px] font-bold">
+						<div className="flex items-center gap-1.5 text-primary-foreground bg-primary px-2 py-1 rounded-lg text-[11px] font-bold">
 							<TrendingUp className="w-3 h-3" />
 							<span>{formatCurrencyIDR(sevenDayRevenue)}</span>
 						</div>
@@ -298,13 +298,13 @@ function DashboardAdmin() {
 										style={{ height: `${Math.max((day.revenue / maxRevenue) * 100, 6)}%` }}
 									>
 										{day.revenue > 0 && (
-											<div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-semibold text-primary bg-primary/5 px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-primary/10">
+											<div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-primary bg-primary/5 px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-primary/10">
 												{formatCurrencyIDR(day.revenue)}
 											</div>
 										)}
 									</div>
 								</div>
-								<span className="text-[8px] text-muted-foreground font-semibold uppercase">{day.date.split(',')[0]}</span>
+								<span className="text-[10px] text-muted-foreground font-semibold uppercase">{day.date.split(',')[0]}</span>
 							</div>
 						))}
 					</div>
@@ -361,10 +361,10 @@ function DashboardAdmin() {
 					<div className="flex items-center justify-between mb-2">
 						<div>
 							<h3 className="text-xs font-bold">Stok Kritis</h3>
-							<p className="text-[9px] text-muted-foreground">Persediaan Rendah</p>
+							<p className="text-[11px] text-muted-foreground">Persediaan Rendah</p>
 						</div>
 						{stats.lowStockCount > 0 && (
-							<span className="rounded-full bg-destructive text-destructive-foreground px-1.5 py-0.5 text-[8px] font-semibold">
+							<span className="rounded-full bg-destructive text-destructive-foreground px-1.5 py-0.5 text-[10px] font-semibold">
 								{stats.lowStockCount}
 							</span>
 						)}
@@ -386,7 +386,7 @@ function DashboardAdmin() {
 										<AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
 										<span className="text-[10px] font-semibold truncate">{item.ingredientName}</span>
 									</div>
-									<span className="text-[8px] font-bold text-destructive bg-white/50 px-1 py-0.5 rounded shrink-0">
+									<span className="text-[10px] font-bold text-destructive bg-white/50 px-1 py-0.5 rounded shrink-0">
 										{item.quantity}/{item.lowStockThreshold} {item.unit}
 									</span>
 								</Link>
@@ -411,14 +411,14 @@ function DashboardAdmin() {
 									to="/admin/products"
 									className="flex items-center gap-2 rounded-lg bg-muted/30 p-1.5 hover:bg-muted/50 transition-colors group"
 								>
-									<div className="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-primary text-primary-foreground text-[8px] font-bold">
+									<div className="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-primary text-primary-foreground text-[10px] font-bold">
 										{i + 1}
 									</div>
 									<div className="flex-1 min-w-0">
 										<p className="text-[10px] font-bold truncate text-foreground">{product.name}</p>
-										<p className="text-[8px] font-medium text-muted-foreground">{product.count} unit</p>
+										<p className="text-[10px] font-medium text-muted-foreground">{product.count} unit</p>
 									</div>
-									<span className="text-[8px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded shrink-0">
+									<span className="text-[10px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded shrink-0">
 										{(product.revenue / 1000).toFixed(0)}k
 									</span>
 								</Link>
@@ -445,7 +445,7 @@ function DashboardAdmin() {
 								>
 									<div className="flex-1 min-w-0">
 										<p className="text-[10px] font-bold text-foreground">#{order.orderNumber}</p>
-										<p className="text-[8px] font-medium text-muted-foreground flex items-center gap-1">
+										<p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
 											<Clock className="w-2 h-2" />
 											{new Date(order.createdAt).toLocaleTimeString("id-ID", {
 												hour: "2-digit",
@@ -475,14 +475,14 @@ function DashboardAdmin() {
 					<div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/10">
 						<div className="flex items-center gap-1.5 text-emerald-600 mb-0.5">
 							<ArrowUpRight className="w-3 h-3" />
-							<span className="text-[8px] font-bold uppercase">Inflow</span>
+							<span className="text-[10px] font-bold uppercase">Inflow</span>
 						</div>
 						<p className="font-bold text-xs text-emerald-700">{formatCurrencyIDR(stats.todayIncome)}</p>
 					</div>
 					<div className="rounded-lg bg-rose-500/10 p-2 border border-rose-500/10">
 						<div className="flex items-center gap-1.5 text-rose-600 mb-0.5">
 							<ArrowDownRight className="w-3 h-3" />
-							<span className="text-[8px] font-bold uppercase">Outflow</span>
+							<span className="text-[10px] font-bold uppercase">Outflow</span>
 						</div>
 						<p className="font-bold text-xs text-rose-700">{formatCurrencyIDR(stats.todayExpense)}</p>
 						<p className="text-[7px] text-rose-600/70">Total: {formatCurrencyIDR(stats.totalExpense)}</p>
@@ -490,7 +490,7 @@ function DashboardAdmin() {
 					<div className="rounded-lg bg-indigo-500/10 p-2 border border-indigo-500/10">
 						<div className="flex items-center gap-1.5 text-indigo-600 mb-0.5">
 							<Wallet className="w-3 h-3" />
-							<span className="text-[8px] font-bold uppercase">Net Balance</span>
+							<span className="text-[10px] font-bold uppercase">Net Balance</span>
 						</div>
 						<p className={`font-bold text-xs ${stats.netBalance >= 0 ? "text-indigo-700" : "text-rose-700"}`}>{formatCurrencyIDR(stats.netBalance)}</p>
 						<p className="text-[7px] text-indigo-600/70 italic">Profit: {formatCurrencyIDR(stats.todayIncome - stats.todayExpense)}</p>
@@ -498,17 +498,17 @@ function DashboardAdmin() {
 					<div className="rounded-lg bg-amber-500/10 p-2 border border-amber-500/10">
 						<div className="flex items-center gap-1.5 text-amber-600 mb-0.5">
 							<Users className="w-3 h-3" />
-							<span className="text-[8px] font-bold uppercase">Avg Ticket</span>
+							<span className="text-[10px] font-bold uppercase">Avg Ticket</span>
 						</div>
 						<p className="font-bold text-xs text-amber-700">{formatCurrencyIDR(stats.todayOrders > 0 ? Math.round(stats.todayRevenue / stats.todayOrders) : 0)}</p>
 					</div>
 				</div>
 				<div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
-					<a href="/admin/finance/reports" className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[9px] font-bold text-primary-foreground transition-all hover:opacity-90">
+					<a href="/admin/finance/reports" className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground transition-all hover:opacity-90">
 						<svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
 						Unduh Laporan
 					</a>
-					<a href="/admin/finance" className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[9px] font-bold text-muted-foreground transition-all hover:bg-muted hover:text-foreground">
+					<a href="/admin/finance" className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-bold text-muted-foreground transition-all hover:bg-muted hover:text-foreground">
 						<svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 						Transaksi
 					</a>
@@ -557,7 +557,7 @@ function CompactStat({
 					<span className="text-[10px] font-semibold text-muted-foreground truncate">{label}</span>
 				</div>
 				{trend && (
-					<span className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[8px] font-bold ${trendColors[trend]}`}>
+					<span className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-bold ${trendColors[trend]}`}>
 						{trend === "up" ? <ArrowUpRight className="w-2 h-2" /> : <ArrowDownRight className="w-2 h-2" />}
 						{trend === "up" ? "Gain" : "Loss"}
 					</span>
@@ -565,7 +565,7 @@ function CompactStat({
 			</div>
 			<p className="mt-0.5 font-bold text-sm tracking-tight text-foreground">{value}</p>
 			{sub && (
-				<p className="text-[9px] text-muted-foreground/70 mt-0.5 truncate">{sub}</p>
+				<p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate">{sub}</p>
 			)}
 		</div>
 	);
@@ -609,7 +609,7 @@ function CompactStatusRow({
 			<div className="flex-1">
 				<div className="flex items-center justify-between mb-0.5">
 					<span className="text-[10px] font-semibold text-foreground">{label}</span>
-					<span className="text-[9px] font-bold text-foreground bg-muted px-1 py-0.5 rounded">{count}</span>
+					<span className="text-[11px] font-bold text-foreground bg-muted px-1 py-0.5 rounded">{count}</span>
 				</div>
 				<div className="h-1.5 rounded-full bg-muted overflow-hidden">
 					<div className={`h-full rounded-full ${barColors[color]}`} style={{ width: `${percentage}%` }} />

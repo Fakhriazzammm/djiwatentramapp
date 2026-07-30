@@ -222,7 +222,7 @@ export function StockOpnamePanel({
                         <p className="text-[11px] font-bold truncate leading-tight">
                           {item.name}
                         </p>
-                        <p className="text-[9px] text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground">
                           {changed ? (
                             <span>
                               <span className="line-through">{item.qtyBefore.toLocaleString()} {item.unit}</span>
@@ -283,7 +283,7 @@ export function StockOpnamePanel({
                             [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-125"
                         />
                         {adaptiveStep > 1 && (
-                          <p className="mt-0.5 text-[9px] text-muted-foreground">
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
                             Step {adaptiveStep} (stok besar)
                           </p>
                         )}
@@ -360,7 +360,7 @@ export function StockOpnamePanel({
           )}
         </Button>
         {state.previousInputs && state.previousInputs.length > 0 && (
-          <p className="mt-2 text-center text-[9px] text-muted-foreground">
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
             Input sebelumnya dari rekan tersedia sebagai referensi
           </p>
         )}

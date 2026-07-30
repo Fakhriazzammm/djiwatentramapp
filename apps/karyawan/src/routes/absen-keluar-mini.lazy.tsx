@@ -328,7 +328,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
           </div>
           <div>
             <p className="font-black text-xs tracking-tight">Closing Shift</p>
-            <p className="text-[9px] text-muted-foreground font-semibold">
+            <p className="text-[11px] text-muted-foreground font-semibold">
               {userName} • {roleName} • {shiftName}
             </p>
           </div>
@@ -530,12 +530,12 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
             </div>
             <div>
               <p className="font-bold text-xs">{roleEmoji} {roleLabel} Stock Opname</p>
-              <p className="text-[9px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 {items.length} bahan — {changedItems.length} berubah
               </p>
             </div>
             {allSame && (
-              <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-700">
+              <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                 ✅ Sama
               </span>
             )}
@@ -560,7 +560,7 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
 
         {/* Info banner (compact for mini) */}
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-2">
-          <p className="text-[9px] font-medium text-amber-700 leading-relaxed">
+          <p className="text-[11px] font-medium text-amber-700 leading-relaxed">
             💡 Hanya <strong>orang terakhir</strong> yang absen keluar perubahannya diterapkan ke stok.
           </p>
         </div>
@@ -597,10 +597,10 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
                 <div key={item.inventoryId} className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 transition-all ${
                   isChanged ? "border-amber-200 bg-amber-50/50" : "border-border bg-background"
                 }`}>
-                  <span className="w-5 text-[9px] font-bold text-muted-foreground text-right shrink-0">{globalIdx + 1}</span>
+                  <span className="w-5 text-[11px] font-bold text-muted-foreground text-right shrink-0">{globalIdx + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-semibold truncate">{item.name}</p>
-                    <p className="text-[9px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {item.qtyBefore} {item.unit}
                       {isChanged && (
                         <span className={`ml-1 font-bold ${diff < 0 ? "text-rose-500" : "text-emerald-500"}`}>
@@ -628,11 +628,11 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
         {/* Low stock */}
         {lowStock.length > 0 && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5">
-            <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest mb-1">Stok Menipis</p>
+            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-widest mb-1">Stok Menipis</p>
             {lowStock.slice(0, 3).map((item) => (
               <p key={item.name} className="text-[10px] text-amber-700">• {item.name} — {item.qtyAfter}</p>
             ))}
-            {lowStock.length > 3 && <p className="text-[9px] text-amber-500">+{lowStock.length - 3} lainnya</p>}
+            {lowStock.length > 3 && <p className="text-[11px] text-amber-500">+{lowStock.length - 3} lainnya</p>}
           </div>
         )}
       </div>
@@ -681,7 +681,7 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
           </div>
           <div>
             <p className="font-bold text-xs">🧹 Checklist Kebersihan</p>
-            <p className="text-[9px] text-muted-foreground">{completedCount}/3 area ✅ — {photoCount} foto</p>
+            <p className="text-[11px] text-muted-foreground">{completedCount}/3 area ✅ — {photoCount} foto</p>
           </div>
         </div>
       </div>
@@ -698,11 +698,11 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
             </div>
             <div className="flex gap-1">
               <button onClick={() => updateStatus(area.id, "bersih")}
-                className={`rounded-md px-2 py-1 text-[9px] font-bold transition-all ${
+                className={`rounded-md px-2 py-1 text-[11px] font-bold transition-all ${
                   area.status === "bersih" ? "bg-emerald-500 text-white shadow-sm" : "bg-muted text-muted-foreground"
                 }`}>✅ Bersih</button>
               <button onClick={() => updateStatus(area.id, "perlu_perbaikan")}
-                className={`rounded-md px-2 py-1 text-[9px] font-bold transition-all ${
+                className={`rounded-md px-2 py-1 text-[11px] font-bold transition-all ${
                   area.status === "perlu_perbaikan" ? "bg-amber-500 text-white shadow-sm" : "bg-muted text-muted-foreground"
                 }`}>⚠️ Perlu</button>
             </div>

@@ -131,7 +131,7 @@ function CellEditor({
 				min={0}
 				step="0.1"
 			/>
-			<span className="text-[8px] text-muted-foreground shrink-0">{unit}</span>
+			<span className="text-[10px] text-muted-foreground shrink-0">{unit}</span>
 		</div>
 	);
 }
@@ -731,7 +731,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 										<div className="text-[10px] font-bold text-muted-foreground leading-tight truncate max-w-[64px] mx-auto">
 											{ing.ingredientName}
 										</div>
-										<div className="text-[8px] font-normal text-muted-foreground/50 truncate max-w-[64px] mx-auto">
+										<div className="text-[10px] font-normal text-muted-foreground/50 truncate max-w-[64px] mx-auto">
 											{costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) : "-"}/{dispUnit}
 										</div>
 									</th>
@@ -830,7 +830,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 										</div>
 									</td>
 									{/* Category */}
-									<td className="sticky left-[130px] z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-1 py-1.5 text-center text-[9px] text-muted-foreground tabular-nums">
+									<td className="sticky left-[130px] z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-1 py-1.5 text-center text-[11px] text-muted-foreground tabular-nums">
 										{cat ? cat.slice(0, 3).toUpperCase() : "—"}
 									</td>
 									{/* HPP */}
@@ -840,7 +840,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 												<span className="font-medium">{formatRupiah(Math.round(hpp.hppPerServing))}</span>
 												<span
 													className={cn(
-														"text-[8px]",
+														"text-[10px]",
 														hpp.marginPercent >= 30
 															? "text-emerald-600"
 															: hpp.marginPercent >= 15
@@ -900,7 +900,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 												) : displayAmount != null ? (
 													displayAmount
 												) : (
-													<span className="text-[8px] opacity-40">·</span>
+													<span className="text-[10px] opacity-40">·</span>
 												)}
 											</td>
 										);
@@ -936,7 +936,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				</table>
 		</div>
 		{/* ── Legend ── */}
-		<div className="flex items-center gap-4 px-4 py-1.5 border-t border-border/30 bg-muted/20 shrink-0 text-[9px] text-muted-foreground">
+		<div className="flex items-center gap-4 px-4 py-1.5 border-t border-border/30 bg-muted/20 shrink-0 text-[11px] text-muted-foreground">
 				<span className="flex items-center gap-1">
 					<span className="inline-block w-2.5 h-2.5 rounded bg-primary/[0.04] border border-border/30" />
 					Ada resep
@@ -1148,7 +1148,7 @@ function ReadOnlyView({
 					<div className="mb-3 flex items-center gap-2">
 						<FileText className="h-4 w-4 text-primary" />
 						<h3 className="font-black tracking-tight text-sm">Base Recipe</h3>
-						<Badge variant="outline" className="text-[9px] h-4 px-1">{filteredBase.length}</Badge>
+						<Badge variant="outline" className="text-[11px] h-4 px-1">{filteredBase.length}</Badge>
 					</div>
 					<div className="grid gap-3 md:grid-cols-2">
 						{filteredBase.map((recipe: any) => (
@@ -1182,7 +1182,7 @@ function ReadOnlyView({
 					<div className="mb-3 flex items-center gap-2">
 						<CheckCircle2 className="h-4 w-4 text-primary" />
 						<h3 className="font-black tracking-tight text-sm">Recipe Produk</h3>
-						<Badge variant="outline" className="text-[9px] h-4 px-1">{filteredProduct.length}</Badge>
+						<Badge variant="outline" className="text-[11px] h-4 px-1">{filteredProduct.length}</Badge>
 					</div>
 					<div className="space-y-3">
 						{filteredProduct.map((row: any) => (

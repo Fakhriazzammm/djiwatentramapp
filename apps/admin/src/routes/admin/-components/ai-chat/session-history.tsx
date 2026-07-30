@@ -81,7 +81,7 @@ export const SessionHistory = ({
 							<Bot className="h-5 w-5 text-muted-foreground/30" />
 						</div>
 						<h3 className="text-[11px] font-bold text-foreground mb-1">Mulai Percakapan</h3>
-						<p className="text-[9px] text-muted-foreground leading-relaxed">
+						<p className="text-[11px] text-muted-foreground leading-relaxed">
 							Buat chat baru untuk mulai berdiskusi dengan Yumi AI
 						</p>
 					</div>
@@ -117,11 +117,11 @@ export const SessionHistory = ({
 												{session.title || "Percakapan Baru"}
 											</p>
 											<div className="flex items-center gap-2 mt-0.5">
-												<span className="text-[9px] text-muted-foreground font-medium">
+												<span className="text-[11px] text-muted-foreground font-medium">
 													{session.messageCount} pesan
 												</span>
-												<span className="text-[9px] text-muted-foreground/50">·</span>
-												<span className="inline-flex items-center gap-0.5 text-[9px] text-muted-foreground/60 font-medium">
+												<span className="text-[11px] text-muted-foreground/50">·</span>
+												<span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground/60 font-medium">
 													<Clock className="h-2.5 w-2.5" />
 													{formatRelativeTime(session.createdAt)}
 												</span>

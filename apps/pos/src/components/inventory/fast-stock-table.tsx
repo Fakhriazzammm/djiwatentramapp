@@ -115,7 +115,7 @@ function StockGaugeBar({
 				/>
 			</div>
 			<span
-				className={`shrink-0 text-[9px] font-black uppercase tracking-wider ${gauge.color}`}
+				className={`shrink-0 text-[11px] font-black uppercase tracking-wider ${gauge.color}`}
 			>
 				{gauge.label}
 			</span>
@@ -438,7 +438,7 @@ export function FastStockTable({
 					<span className="font-black text-lg text-slate-800 md:text-xl">
 						{stats.total}
 					</span>
-					<span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+					<span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
 						Total
 					</span>
 				</div>
@@ -447,7 +447,7 @@ export function FastStockTable({
 					<span className="font-black text-lg text-amber-600 md:text-xl">
 						{stats.lowStock}
 					</span>
-					<span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+					<span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
 						Menipis
 					</span>
 				</div>
@@ -456,7 +456,7 @@ export function FastStockTable({
 					<span className="font-black text-lg text-red-600 md:text-xl">
 						{stats.outOfStock}
 					</span>
-					<span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+					<span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
 						Habis
 					</span>
 				</div>
@@ -556,7 +556,7 @@ export function FastStockTable({
 									<h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">
 										{categoryName}
 									</h3>
-									<span className="text-[9px] font-bold text-slate-300">
+									<span className="text-[11px] font-bold text-slate-300">
 										{items.length}
 									</span>
 								</div>
@@ -830,7 +830,7 @@ export function FastStockTable({
 																		product.name
 																	}
 																</h4>
-																<div className="mt-1 flex flex-wrap items-center gap-1.5 font-bold text-[9px] uppercase tracking-widest md:gap-2 md:text-[10px]">
+																<div className="mt-1 flex flex-wrap items-center gap-1.5 font-bold text-[11px] uppercase tracking-widest md:gap-2 md:text-[10px]">
 																	<span className="text-indigo-600">
 																		Rp{" "}
 																		{product.price.toLocaleString()}
@@ -850,7 +850,7 @@ export function FastStockTable({
 
 														<div className="flex shrink-0 items-center gap-1.5 md:gap-2">
 															<button
-																className={`flex h-8 items-center gap-1 rounded-lg px-2.5 font-black text-[9px] uppercase tracking-wider transition-all active:scale-95 md:h-10 md:rounded-xl md:px-3 md:text-[10px] ${
+																className={`flex h-8 items-center gap-1 rounded-lg px-2.5 font-black text-[11px] uppercase tracking-wider transition-all active:scale-95 md:h-10 md:rounded-xl md:px-3 md:text-[10px] ${
 																	product.isAvailable
 																		? "bg-green-50 text-green-600 ring-1 ring-green-100"
 																		: "bg-red-50 text-red-600 ring-1 ring-red-100"
@@ -1044,13 +1044,13 @@ export function FastStockTable({
 													{recipe && (
 														<div className="flex flex-col gap-2 rounded-xl bg-slate-50 p-2.5 ring-1 ring-slate-100 md:rounded-2xl md:p-3">
 															<div className="flex items-center justify-between">
-																<span className="font-black text-[9px] text-slate-400 uppercase tracking-widest">
+																<span className="font-black text-[11px] text-slate-400 uppercase tracking-widest">
 																	Ketersediaan
 																	Bahan
 																	(Inventory)
 																</span>
 																<div
-																	className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${
+																	className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black ${
 																		potentialStock ===
 																		0
 																			? "bg-red-100 text-red-600"

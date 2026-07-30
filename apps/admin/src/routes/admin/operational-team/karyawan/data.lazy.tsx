@@ -100,7 +100,7 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 				<div className="px-3 py-3">
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
-							<div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-primary">
+							<div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
 								<IdCard className="h-3 w-3" />
 								Identitas
 							</div>
@@ -122,7 +122,7 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 							</div>
 						</div>
 						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
-							<div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-primary">
+							<div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
 								<Building2 className="h-3 w-3" />
 								Pekerjaan
 							</div>
@@ -142,7 +142,7 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 							</div>
 						</div>
 						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
-							<div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-primary">
+							<div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
 								<PhoneCall className="h-3 w-3" />
 								Kontak Darurat
 							</div>
@@ -445,11 +445,11 @@ function DataKaryawanPage() {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[9px] font-bold px-2 gap-1.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
+					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
 						{isExporting === "csv" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
 						CSV
 					</Button>
-					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[9px] font-bold px-2 gap-1.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
+					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
 						{isExporting === "pdf" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
 						PDF
 					</Button>
@@ -472,7 +472,7 @@ function DataKaryawanPage() {
 							{stat.value}
 						</div>
 						<div className="min-w-0">
-							<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+							<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
 							<p className="text-sm font-black text-foreground">{stat.value}</p>
 						</div>
 					</div>
@@ -496,7 +496,7 @@ function DataKaryawanPage() {
 
 				<div className="flex items-center gap-2 flex-wrap">
 					<div className="flex items-center gap-1 flex-wrap">
-						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Role:</span>
+						<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Role:</span>
 						<button onClick={() => setRoleFilter("")} className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${!roleFilter ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>Semua</button>
 						{allRoles.slice(0, 8).map((r) => (
 							<button key={r} onClick={() => setRoleFilter(roleFilter === r ? "" : r)} className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${roleFilter === r ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{r}</button>
@@ -512,7 +512,7 @@ function DataKaryawanPage() {
 					<div className="w-px h-5 bg-border/60" />
 
 					<div className="flex items-center gap-1 flex-wrap">
-						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Status:</span>
+						<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Status:</span>
 						{STATUS_OPTIONS.map((opt) => (
 							<button key={opt.value} onClick={() => setStatusFilter(opt.value)} className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${statusFilter === opt.value ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>{opt.label}</button>
 						))}
@@ -565,7 +565,7 @@ function DataKaryawanPage() {
 										onChange={toggleSelectAll}
 									/>
 								</th>
-								<th className="w-8 px-1 py-2.5 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] text-muted-foreground/40">#</span></th>
+								<th className="w-8 px-1 py-2.5 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[10px] text-muted-foreground/40">#</span></th>
 								<th className="px-2.5 py-2.5 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
 								<th className="px-2.5 py-2.5 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
 								<th className="px-2.5 py-2.5 text-left min-w-[100px] hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
@@ -580,7 +580,7 @@ function DataKaryawanPage() {
 								<th className="px-2.5 py-2.5 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
 								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">Wajah</th>
 								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">CV</th>
-								<th className="w-10 px-1 py-2.5 text-center"><span className="text-[8px] text-muted-foreground/40">✕</span></th>
+								<th className="w-10 px-1 py-2.5 text-center"><span className="text-[10px] text-muted-foreground/40">✕</span></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -611,16 +611,16 @@ function DataKaryawanPage() {
 													{row.photoUrl ? (
 														<img src={row.photoUrl} alt={row.name || ""} className="h-6 w-6 shrink-0 rounded-lg object-cover ring-1 ring-border" />
 													) : (
-														<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-black ring-1 ring-border/50 ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
+														<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ring-1 ring-border/50 ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
 													)}
 													<div className="min-w-0">
 														<p className="font-bold text-xs truncate max-w-[120px]">{row.name}</p>
-														<p className="text-[9px] text-muted-foreground truncate max-w-[120px]">@{row.username || row.slug}</p>
+														<p className="text-[11px] text-muted-foreground truncate max-w-[120px]">@{row.username || row.slug}</p>
 													</div>
 												</div>
 											</td>
 											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
-												<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">{row.roleName || "—"}</span>
+												<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary uppercase tracking-wider">{row.roleName || "—"}</span>
 											</td>
 											<td className="px-2.5 py-2 font-medium hidden sm:table-cell">{r.phone || <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-muted-foreground hidden md:table-cell">{r.identityNumber || <span className="text-muted-foreground/40">—</span>}</td>
@@ -628,19 +628,19 @@ function DataKaryawanPage() {
 											<td className="px-2.5 py-2 text-muted-foreground max-w-[120px] truncate hidden lg:table-cell">{r.address || <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden md:table-cell">{fmtDate(r.startDate)}</td>
 											<td className="px-2.5 py-2 hidden sm:table-cell">
-												<span className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${r.employmentType === "permanent" ? "bg-emerald-100 text-emerald-700" : r.employmentType === "probation" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "—"}</span>
+												<span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${r.employmentType === "permanent" ? "bg-emerald-100 text-emerald-700" : r.employmentType === "probation" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "—"}</span>
 											</td>
 											<td className="px-2.5 py-2 text-right font-medium hidden md:table-cell">{fmtCurrency(r.monthlySalary)}</td>
 											<td className="px-2.5 py-2 text-muted-foreground hidden xl:table-cell">{r.location || <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-[10px] hidden xl:table-cell">{r.emergencyContactName ? <div><p className="font-medium">{r.emergencyContactName}</p><p className="text-muted-foreground">{r.emergencyContactPhone || "—"}</p></div> : <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-center">
-												<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] ${isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-muted text-muted-foreground border border-border"}`}>
+												<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.14em] ${isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-muted text-muted-foreground border border-border"}`}>
 													<span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
 													{isActive ? "Aktif" : "Nonaktif"}
 												</span>
 											</td>
 											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{row.hasFace ? <Camera className="inline h-3.5 w-3.5 text-primary" /> : <span className="text-muted-foreground/20">—</span>}</td>
-											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">—</span>}</td>
+											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">—</span>}</td>
 											<td className="px-1 py-2 text-center">
 												<button
 													title="Hapus"

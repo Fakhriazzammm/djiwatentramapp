@@ -861,7 +861,7 @@ function AdminLayout() {
 
 				{/* Page Content - AI Chat and Operational views use internal scroll, others use page scroll */}
 				<div
-					className={(isAIChat || isOperational) ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
+					className={(isAIChat || isOperational) ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto min-h-0 p-3 pb-20 md:p-4 md:pb-4"}
 				>
 					{isAccessDenied ? (
 						<PermissionDenied onBack={() => navigate({ to: "/admin" })} />
@@ -982,7 +982,7 @@ function AdminLayout() {
 							<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
 								<ArrowLeft className="h-4 w-4" />
 							</div>
-							<span className="font-medium text-[9px] leading-tight text-primary">
+							<span className="font-medium text-[11px] leading-tight text-primary">
 								Kembali ke Home
 							</span>
 						</Link>
@@ -1031,7 +1031,7 @@ function AdminLayout() {
 											<div
 												className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${isActive
 														? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
-														: "bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30"
+														: "bg-primary shadow-lg shadow-primary/30"
 													}`}
 											>
 												{isActive ? (
@@ -1070,7 +1070,7 @@ function AdminLayout() {
 											<item.icon className="h-4 w-4" />
 										</div>
 										<span
-											className={`font-medium text-[9px] leading-tight ${isActive || isQuickMenuOpen
+											className={`font-medium text-[11px] leading-tight ${isActive || isQuickMenuOpen
 													? "text-primary"
 													: "text-muted-foreground"
 												}`}
@@ -1097,7 +1097,7 @@ function AdminLayout() {
 										<item.icon className="h-4 w-4" />
 									</div>
 									<span
-										className={`font-medium text-[9px] leading-tight ${isActive ? "text-primary" : "text-muted-foreground"
+										className={`font-medium text-[11px] leading-tight ${isActive ? "text-primary" : "text-muted-foreground"
 											}`}
 									>
 										{item.label}
@@ -1120,7 +1120,7 @@ function AdminLayout() {
 							<div className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground">
 								<ArrowLeft className="h-4 w-4" />
 							</div>
-							<span className="font-medium text-[9px] leading-tight text-muted-foreground">
+							<span className="font-medium text-[11px] leading-tight text-muted-foreground">
 								Kembali
 							</span>
 						</Link>
@@ -1139,7 +1139,7 @@ function AdminLayout() {
 								<ClipboardList className="h-4 w-4" />
 							</div>
 							<span
-								className={`font-medium text-[9px] leading-tight ${search.tab !== "stock"
+								className={`font-medium text-[11px] leading-tight ${search.tab !== "stock"
 										? "text-primary"
 										: "text-muted-foreground"
 									}`}
@@ -1162,7 +1162,7 @@ function AdminLayout() {
 								<Package className="h-4 w-4" />
 							</div>
 							<span
-								className={`font-medium text-[9px] leading-tight ${search.tab === "stock"
+								className={`font-medium text-[11px] leading-tight ${search.tab === "stock"
 										? "text-primary"
 										: "text-muted-foreground"
 									}`}

@@ -83,7 +83,7 @@ export function AccountingEntriesView() {
 						}`}>
 							{summary.balance ? "✅ SEIMBANG" : `⚠️ Rp${summary.selisih.toLocaleString("id-ID")}`}
 						</div>
-						<div className="mt-0.5 text-[9px] text-slate-400">
+						<div className="mt-0.5 text-[11px] text-slate-400">
 							{summary.count} entry
 						</div>
 					</div>
@@ -103,7 +103,7 @@ export function AccountingEntriesView() {
 						<col style={{ width: "100px" }} />
 						<col style={{ width: "100px" }} />
 					</colgroup>
-					<thead className="sticky top-0 z-10 bg-slate-50 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+					<thead className="sticky top-0 z-10 bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
 						<tr>
 							<th className="border-b border-slate-200 px-1 py-1.5 text-center">#</th>
 							<th className="border-b border-slate-200 px-2 py-1.5">Tgl</th>
@@ -143,7 +143,7 @@ export function AccountingEntriesView() {
 											}`}
 											onClick={() => hasItems && toggleExpand(rowId)}
 										>
-											<td className="px-1 py-1 text-center font-mono text-[9px] text-slate-400">
+											<td className="px-1 py-1 text-center font-mono text-[11px] text-slate-400">
 												{hasItems ? (
 													<span className="inline-flex items-center justify-center">
 														{isExpanded ? (
@@ -157,7 +157,7 @@ export function AccountingEntriesView() {
 												)}
 											</td>
 											<td className="whitespace-nowrap px-2 py-1">
-												<span className="text-[9px] text-slate-500">
+												<span className="text-[11px] text-slate-500">
 													{e.created_at
 														? new Date(e.created_at).toLocaleDateString("id-ID", {
 																day: "2-digit",
@@ -167,24 +167,24 @@ export function AccountingEntriesView() {
 												</span>
 											</td>
 											<td className="whitespace-nowrap px-2 py-1">
-												<span className="font-mono text-[8px] text-slate-400">
+												<span className="font-mono text-[10px] text-slate-400">
 													{String(e.transaction_source_id).slice(-10)}
 												</span>
 											</td>
 											<td className="whitespace-nowrap px-2 py-1">
-												<span className="rounded bg-slate-100 px-1 py-0.5 text-[8px] font-medium text-slate-600">
+												<span className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-600">
 													{e.source_label || "—"}
 												</span>
 											</td>
 											<td className="px-2 py-1 max-w-[120px]">
 												{hasItems ? (
-													<span className="text-[9px] text-amber-700 underline decoration-dotted underline-offset-2">
+													<span className="text-[11px] text-amber-700 underline decoration-dotted underline-offset-2">
 														{descText.length > 35
 															? descText.slice(0, 35) + "…"
 															: descText}
 													</span>
 												) : (
-													<span className="text-[9px] text-slate-500">
+													<span className="text-[11px] text-slate-500">
 														{descText.length > 35
 															? descText.slice(0, 35) + "…"
 															: descText}
@@ -193,7 +193,7 @@ export function AccountingEntriesView() {
 											</td>
 											<td className="px-2 py-1">
 												<div className="flex items-center gap-1.5">
-													<code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[8px] text-slate-500">
+													<code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] text-slate-500">
 														{e.coaCode || ""}
 													</code>
 													<span className="truncate text-[10px] text-slate-700">
@@ -215,7 +215,7 @@ export function AccountingEntriesView() {
 													<div className="border-t border-slate-200">
 														<table className="w-full">
 							<thead>
-								<tr className="text-[8px] font-semibold uppercase tracking-wider text-slate-400">
+								<tr className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
 									<th className="w-8 px-3 py-1.5 text-center">No</th>
 									<th className="px-2 py-1.5 text-left">Nama / Item</th>
 									<th className="w-14 px-2 py-1.5 text-right">Qty</th>

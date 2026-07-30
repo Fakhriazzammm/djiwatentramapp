@@ -530,13 +530,13 @@ function AdminOrders() {
 						{showMobileOverview && (
 							<div className="mt-2 grid grid-cols-2 gap-1.5 border-border border-t pt-2">
 								<div className="rounded-lg bg-muted/40 p-2">
-									<p className="text-[9px] text-muted-foreground uppercase">COGS</p>
+									<p className="text-[11px] text-muted-foreground uppercase">COGS</p>
 									<p className="font-semibold text-[11px] text-orange-600">
 										{formatrupiah(hppCogs.totalCogs)}
 									</p>
 								</div>
 								<div className="rounded-lg bg-muted/40 p-2">
-									<p className="text-[9px] text-muted-foreground uppercase">Margin</p>
+									<p className="text-[11px] text-muted-foreground uppercase">Margin</p>
 									<p className="font-semibold text-[11px] text-primary">
 										{hppCogs.grossMargin.toFixed(1)}%
 									</p>
@@ -691,21 +691,21 @@ function AdminOrders() {
 												</span>
 												{order.type === "booking" && (
 													<Badge
-														className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[9px] text-blue-700"
+														className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[11px] text-blue-700"
 														variant="outline"
 													>
 														Booking
 													</Badge>
 												)}
 												<Badge
-													className="rounded-md px-1.5 py-0 font-normal text-[9px]"
+													className="rounded-md px-1.5 py-0 font-normal text-[11px]"
 													variant={getStatusBadgeVariant(order.status)}
 												>
 													{getStatusLabel(order.status)}
 												</Badge>
 											</div>
 											<div className="text-[11px] text-muted-foreground">
-												{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null} ·{" "}
+												{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null} ·{" "}
 												{(order.paymentMethod || "-").toUpperCase()}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
@@ -720,7 +720,7 @@ function AdminOrders() {
 												{formatrupiah(order.totalAmount)}
 											</p>
 										{order.customer_source_id && (
-											<span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0 text-[8px] font-black text-amber-700 uppercase tracking-wider">
+											<span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0 text-[10px] font-black text-amber-700 uppercase tracking-wider">
 												<Star className="h-2.5 w-2.5 fill-amber-400" /> Member
 											</span>
 										)}
@@ -781,7 +781,7 @@ function AdminOrders() {
 															{order.displayId}
 														</span>
 														{order.type === "booking" && (
-															<span className="text-[9px] text-blue-600 uppercase">
+															<span className="text-[11px] text-blue-600 uppercase">
 																Reservasi
 															</span>
 														)}
@@ -794,7 +794,7 @@ function AdminOrders() {
 														</div>
 														<div className="min-w-0 leading-tight">
 															<p className="max-w-[170px] truncate font-medium text-[11px]">
-																{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
+																{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
 															</p>
 															<p className="text-[10px] text-muted-foreground uppercase">
 																{(order.paymentMethod || "-").toUpperCase()}
@@ -868,7 +868,7 @@ function AdminOrders() {
 												<td className="px-3 py-2.5 align-top">
 													<div className="flex flex-col gap-1 leading-tight">
 														<Badge
-															className={`w-fit px-1.5 py-0 text-[9px] ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
+															className={`w-fit px-1.5 py-0 text-[11px] ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
 															variant="outline"
 														>
 															{order.type === "booking" ? "Booking" : "POS"}
@@ -961,7 +961,7 @@ function AdminOrders() {
 														Pelanggan
 													</p>
 													<p className="font-bold text-sm">
-														{selectedOrder.customerName || "Tanpa Nama"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
+														{selectedOrder.customerName || "Tanpa Nama"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
 													</p>
 												</div>
 											</div>
@@ -1020,7 +1020,7 @@ function AdminOrders() {
 														<p className="font-medium text-xs">
 															{formatrupiah(item.price * item.quantity)}
 														</p>
-														<p className="text-[9px] text-muted-foreground">
+														<p className="text-[11px] text-muted-foreground">
 															@ {formatrupiah(item.price)}
 														</p>
 													</div>

@@ -33,7 +33,7 @@ function JadwalPage() {
 				<div className="space-y-2">
 					<div className="flex items-center gap-1.5 px-2">
 						<CalendarDays className="h-3 w-3 text-primary" />
-						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Jadwal Shift</span>
+						<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Jadwal Shift</span>
 					</div>
 					<div className="rounded-xl border bg-card/80 p-2">
 						<PersonalSchedule userId={staff._id} userName={staff.name} userRole={staff.roleName} month={new Date().getMonth() + 1} year={new Date().getFullYear()} />
@@ -45,7 +45,7 @@ function JadwalPage() {
 			<div className="flex items-center justify-between gap-2 px-2">
 				<div className="flex items-center gap-1.5">
 					<History className="h-3 w-3 text-primary" />
-					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
+					<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
 				</div>
 				<div className="flex items-center gap-1.5">
 					<select 
@@ -82,7 +82,7 @@ function JadwalPage() {
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-[10px] font-bold flex-col leading-tight shrink-0">
 										<span>{new Date(log.timestamp).getDate()}</span>
-										<span className="text-[8px] opacity-60">{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
+										<span className="text-[10px] opacity-60">{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
 									</div>
 									<div>
 										<p className="font-bold capitalize text-xs">{log.type === "check_in" ? "Masuk" : "Keluar"}</p>
@@ -96,7 +96,7 @@ function JadwalPage() {
 										<div className={`h-1.5 w-1.5 rounded-full ${log.type === "check_in" ? "bg-emerald-500" : "bg-orange-500"}`} />
 										{log.type === "check_in" ? "MASUK" : "KELUAR"}
 									</div>
-									{log.notes && <p className="text-[9px] text-muted-foreground truncate max-w-[80px] mt-0.5">{log.notes}</p>}
+									{log.notes && <p className="text-[11px] text-muted-foreground truncate max-w-[80px] mt-0.5">{log.notes}</p>}
 								</div>
 							</div>
 						))}

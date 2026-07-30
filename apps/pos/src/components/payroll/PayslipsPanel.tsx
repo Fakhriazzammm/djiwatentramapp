@@ -235,19 +235,19 @@ export default function PayslipsPanel() {
 						<div className="space-y-4 pt-2">
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest">Staff</p>
+									<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest">Staff</p>
 									<p className="font-semibold text-sm">{selectedPayslip.user_name ?? "-"}</p>
 								</div>
 								<div>
-									<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest">Status</p>
+									<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest">Status</p>
 									<div className="mt-0.5">{payslipStatusBadge(selectedPayslip.status)}</div>
 								</div>
 								<div>
-									<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest">Periode</p>
+									<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest">Periode</p>
 									<p className="text-sm">{selectedPayslip.period_name ?? "-"}</p>
 								</div>
 								<div>
-									<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest">Nomor Slip</p>
+									<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest">Nomor Slip</p>
 									<p className="font-mono text-sm">{selectedPayslip.slip_number ?? selectedPayslip.id.slice(0, 8)}</p>
 								</div>
 							</div>
@@ -271,7 +271,7 @@ export default function PayslipsPanel() {
 
 							{selectedPayslip.breakdown && typeof selectedPayslip.breakdown === "object" && (
 								<div className="border-t border-border pt-4">
-									<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest mb-2">Breakdown</p>
+									<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest mb-2">Breakdown</p>
 									<div className="grid grid-cols-2 gap-2 text-xs">
 										{Object.entries(selectedPayslip.breakdown).map(([key, value]) => (
 											<div key={key} className="flex justify-between">

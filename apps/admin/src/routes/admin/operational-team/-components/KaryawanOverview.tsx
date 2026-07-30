@@ -385,7 +385,7 @@ export default function KaryawanOverview() {
 									<div className="flex items-center gap-2 flex-wrap">
 										<p className="font-bold text-xs truncate max-w-[180px]">{user.name}</p>
 										{user.roleName && (
-											<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">
+											<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary uppercase tracking-wider">
 												{user.roleName}
 											</span>
 										)}

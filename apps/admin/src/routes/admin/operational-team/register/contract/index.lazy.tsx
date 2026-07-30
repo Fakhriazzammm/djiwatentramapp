@@ -226,17 +226,17 @@ function ContractLandingPage() {
 											<p className="truncate text-sm font-semibold leading-tight">{tmpl.name}</p>
 											<div className="mt-0.5 flex items-center gap-1.5">
 												{tmpl.isDefault && (
-													<Badge variant="secondary" className="text-[9px] h-4 px-1.5">Default</Badge>
+													<Badge variant="secondary" className="text-[11px] h-4 px-1.5">Default</Badge>
 												)}
 												{tmpl.isCustom && (
-													<Badge variant="outline" className="text-[9px] h-4 px-1.5">Kustom</Badge>
+													<Badge variant="outline" className="text-[11px] h-4 px-1.5">Kustom</Badge>
 												)}
 												{tmpl.isSaved ? (
-													<Badge variant="default" className="text-[9px] h-4 px-1.5 gap-0.5 bg-emerald-600 hover:bg-emerald-600">
+													<Badge variant="default" className="text-[11px] h-4 px-1.5 gap-0.5 bg-emerald-600 hover:bg-emerald-600">
 														<CheckCircle2 className="h-2.5 w-2.5" /> {tmpl.clauseCount} ps
 													</Badge>
 												) : (
-													<Badge variant="outline" className="text-[9px] h-4 px-1.5 text-muted-foreground">
+													<Badge variant="outline" className="text-[11px] h-4 px-1.5 text-muted-foreground">
 														Belum dibuat
 													</Badge>
 												)}

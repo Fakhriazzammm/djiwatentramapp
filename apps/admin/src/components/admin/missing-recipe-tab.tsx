@@ -108,7 +108,7 @@ export function MissingRecipeTab({
 										{product.name}
 									</span>
 									{product.categoryId && (
-										<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">
+										<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
 											{product.categoryId}
 										</span>
 									)}

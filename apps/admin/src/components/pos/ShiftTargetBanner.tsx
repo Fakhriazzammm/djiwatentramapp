@@ -25,9 +25,9 @@ export function ShiftTargetBanner() {
 								<div className={`w-4 h-4 rounded-md flex items-center justify-center ${isShiftMet ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50'}`}>
 									{isShiftMet ? <CheckCircle2 className="h-3 w-3" /> : <Target className="h-3 w-3" />}
 								</div>
-								<span className="text-[8px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/80">Sesi</span>
+								<span className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/80">Sesi</span>
 							</div>
-							<span className={`text-[9px] font-black ${isShiftMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}`}>
+							<span className={`text-[11px] font-black ${isShiftMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}`}>
 								{shiftProgress.toFixed(0)}%
 							</span>
 						</div>
@@ -54,9 +54,9 @@ export function ShiftTargetBanner() {
 								<div className={`w-4 h-4 rounded-md flex items-center justify-center ${isDailyMet ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50'}`}>
 									{isDailyMet ? <CheckCircle2 className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
 								</div>
-								<span className="text-[8px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/80">Harian</span>
+								<span className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/80">Harian</span>
 							</div>
-							<span className={`text-[9px] font-black ${isDailyMet ? 'text-blue-600 dark:text-blue-400' : 'text-blue-500/80'}`}>
+							<span className={`text-[11px] font-black ${isDailyMet ? 'text-blue-600 dark:text-blue-400' : 'text-blue-500/80'}`}>
 								{dailyProgress.toFixed(0)}%
 							</span>
 						</div>

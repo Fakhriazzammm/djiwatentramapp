@@ -121,7 +121,7 @@ function BrandCustomerIndex() {
 								].map((b) => (
 									<div key={b.label} className="rounded-xl border border-border/60 bg-muted/30 px-2 py-2 text-center">
 										<span className="text-lg">{b.icon}</span>
-										<p className="mt-0.5 whitespace-pre-line text-[9px] font-bold leading-tight text-muted-foreground">{b.label}</p>
+										<p className="mt-0.5 whitespace-pre-line text-[11px] font-bold leading-tight text-muted-foreground">{b.label}</p>
 									</div>
 								))}
 							</div>

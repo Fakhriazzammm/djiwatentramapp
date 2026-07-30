@@ -1,5 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-// Auth guard handled by __root.tsx — no unconditional redirect
-export const Route = createFileRoute("/")({});
+// Landing page is the admin login — redirect to it directly.
+export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/login" as any, replace: true });
+  },
+});
  

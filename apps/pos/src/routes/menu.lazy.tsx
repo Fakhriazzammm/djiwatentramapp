@@ -1561,7 +1561,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 															<div key={`shift-${item.memberName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[10px] leading-tight">
 																<div className="flex items-center justify-between mb-1">
 																	<p className="font-black uppercase tracking-wide text-primary">{item.memberName}</p>
-																	<p className="font-bold text-muted-foreground/60 uppercase text-[9px]">{item.roleName}</p>
+																	<p className="font-bold text-muted-foreground/60 uppercase text-[11px]">{item.roleName}</p>
 																</div>
 																<div className="flex flex-wrap gap-1 mb-0.5">
 																	{item.allTiers.map((tier) => {
@@ -1569,7 +1569,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 																		return (
 																			<span
 																				key={tier.thresholdPct}
-																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
+																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
 																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																			</span>
@@ -1577,7 +1577,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 																	})}
 																</div>
 																{item.achievedBonus > 0 && (
-																	<p className="font-black text-primary text-[9px]">Total: {fmt(item.achievedBonus)}</p>
+																	<p className="font-black text-primary text-[11px]">Total: {fmt(item.achievedBonus)}</p>
 																)}
 															</div>
 														))}
@@ -1623,7 +1623,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 															<div key={`daily-${item.memberName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[10px] leading-tight">
 																<div className="flex items-center justify-between mb-1">
 																	<p className="font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">{item.memberName}</p>
-																	<p className="font-bold text-muted-foreground/60 uppercase text-[9px]">{item.roleName}</p>
+																	<p className="font-bold text-muted-foreground/60 uppercase text-[11px]">{item.roleName}</p>
 																</div>
 																<div className="flex flex-wrap gap-1 mb-0.5">
 																	{item.allTiers.map((tier) => {
@@ -1631,7 +1631,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 																		return (
 																			<span
 																				key={tier.thresholdPct}
-																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
+																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
 																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																			</span>
@@ -1639,7 +1639,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 																	})}
 																</div>
 																{item.achievedBonus > 0 && (
-																	<p className="font-black text-blue-700 dark:text-blue-400 text-[9px]">Total: {fmt(item.achievedBonus)}</p>
+																	<p className="font-black text-blue-700 dark:text-blue-400 text-[11px]">Total: {fmt(item.achievedBonus)}</p>
 																)}
 															</div>
 														))}
@@ -1667,7 +1667,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 												<div key={`monthly-${item.memberName}`} className="rounded-md bg-emerald-100/50 dark:bg-emerald-500/10 px-1.5 py-1 text-[10px] leading-tight">
 													<div className="flex items-center justify-between mb-1">
 														<p className="font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">{item.memberName}</p>
-														<p className="font-bold text-emerald-700/60 dark:text-emerald-300/60 uppercase text-[9px]">{item.roleName}</p>
+														<p className="font-bold text-emerald-700/60 dark:text-emerald-300/60 uppercase text-[11px]">{item.roleName}</p>
 													</div>
 													<div className="flex flex-wrap gap-1 mb-0.5">
 														{item.allTiers.map((tier) => {
@@ -1675,7 +1675,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 															return (
 																<span
 																	key={tier.thresholdPct}
-																	className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
+																	className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																>
 																	{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																</span>
@@ -1683,7 +1683,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 														})}
 													</div>
 													{item.achievedBonus > 0 && (
-														<p className="font-black text-emerald-700 dark:text-emerald-300 text-[9px]">Total: {fmt(item.achievedBonus)}</p>
+														<p className="font-black text-emerald-700 dark:text-emerald-300 text-[11px]">Total: {fmt(item.achievedBonus)}</p>
 													)}
 												</div>
 											))}
@@ -1770,7 +1770,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									type="button"
 									onClick={() => setActiveCategoryId(activeParentId)}
 									className={cn(
-										"shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold whitespace-nowrap transition-all shadow-sm border",
+										"shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all shadow-sm border",
 										activeCategoryId === activeParentId
 											? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
 											: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
@@ -1784,7 +1784,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										type="button"
 										onClick={() => setActiveCategoryId(sub._id)}
 										className={cn(
-											"shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold whitespace-nowrap transition-all shadow-sm border",
+											"shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all shadow-sm border",
 											activeCategoryId === sub._id
 												? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
 												: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
@@ -1929,7 +1929,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 											/>
 										</div>
 									)}
-									<span className={cn("text-[9px] font-bold shrink-0 whitespace-nowrap", numColor)}>
+									<span className={cn("text-[11px] font-bold shrink-0 whitespace-nowrap", numColor)}>
 										{qty > 30 ? `Stok ${qty}` : qty}
 									</span>
 								</div>

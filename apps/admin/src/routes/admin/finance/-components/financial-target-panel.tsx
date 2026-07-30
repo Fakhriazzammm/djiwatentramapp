@@ -295,12 +295,12 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 						</div>
 						<div>
 							<h3 className={`font-bold ${compact ? "text-xs" : "text-base"}`}>Target Keuangan</h3>
-							<p className={`text-muted-foreground ${compact ? "text-[9px]" : "text-[11px]"}`}>{progress.monthLabel}</p>
+							<p className={`text-muted-foreground ${compact ? "text-[11px]" : "text-[11px]"}`}>{progress.monthLabel}</p>
 						</div>
 					</div>
 					<button
 						onClick={() => setShowModal(true)}
-						className={`flex items-center gap-1 rounded-lg border border-border ${compact ? "px-1.5 py-1" : "px-2.5 py-1.5"} text-[9px] font-medium text-muted-foreground hover:bg-muted`}
+						className={`flex items-center gap-1 rounded-lg border border-border ${compact ? "px-1.5 py-1" : "px-2.5 py-1.5"} text-[11px] font-medium text-muted-foreground hover:bg-muted`}
 						type="button"
 					>
 						<Edit3 className="h-2.5 w-2.5" />
@@ -315,14 +315,14 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 						<CircularProgress pct={pct} size={compact ? 64 : 88} />
 						<div className="absolute inset-0 flex flex-col items-center justify-center">
 							<span className="font-bold text-lg leading-none">{Math.round(pct)}%</span>
-							<span className="text-[9px] text-muted-foreground">tercapai</span>
+							<span className="text-[11px] text-muted-foreground">tercapai</span>
 						</div>
 					</div>
 
 					{/* Stats */}
 					<div className="flex-1 space-y-2">
 						<div>
-							<p className={`text-muted-foreground uppercase tracking-wide ${compact ? "text-[8px]" : "text-[10px]"}`}>
+							<p className={`text-muted-foreground uppercase tracking-wide ${compact ? "text-[10px]" : "text-[10px]"}`}>
 								Omzet Saat Ini
 							</p>
 							<p className={`font-bold ${compact ? "text-sm" : "text-lg"} text-green-600`}>
@@ -363,7 +363,7 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 					<div className="mt-3 grid grid-cols-3 gap-2 border-border/50 border-t pt-3">
 						<div className="text-center">
 							<p className={`font-semibold ${compact ? "text-[11px]" : "text-sm"}`}>{progress.daysRemaining}</p>
-							<p className={`text-muted-foreground ${compact ? "text-[8px]" : "text-[10px]"}`}>Hari tersisa</p>
+							<p className={`text-muted-foreground ${compact ? "text-[10px]" : "text-[10px]"}`}>Hari tersisa</p>
 						</div>
 						<div className="text-center">
 							<p className="font-semibold text-sm">

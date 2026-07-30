@@ -717,7 +717,7 @@ export function ShiftReport({ range }: Props) {
 											</TableCell>
 											<TableCell>
 												<span
-													className={`inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-bold leading-3 ${
+													className={`inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-3 ${
 														shift.status === "AKTIF"
 															? "bg-emerald-100 text-emerald-700"
 															: "bg-slate-100 text-slate-700"
@@ -786,14 +786,14 @@ export function ShiftReport({ range }: Props) {
 												{shift.memberBonuses && shift.memberBonuses.some((m) => m.bonus > 0) ? (
 													<div className="space-y-0.5">
 														{shift.memberBonuses.filter((m) => m.bonus > 0).map((m) => (
-															<div key={m.name} className="flex items-center gap-1 text-[9px] whitespace-nowrap">
+															<div key={m.name} className="flex items-center gap-1 text-[11px] whitespace-nowrap">
 																<span className="font-bold text-emerald-700 dark:text-emerald-400">{m.name.split(" ")[0]}</span>
 																<span className="text-emerald-600 font-semibold">+{formatCurrencyIDR(m.bonus, true)}</span>
 															</div>
 														))}
 													</div>
 												) : (
-													<span className="text-[9px] text-muted-foreground/50">—</span>
+													<span className="text-[11px] text-muted-foreground/50">—</span>
 												)}
 											</TableCell>
 											<TableCell className="whitespace-nowrap text-rose-700">
@@ -1369,7 +1369,7 @@ function TableHead({
 }) {
 	return (
 		<th
-			className={`whitespace-nowrap px-1.5 py-1.5 text-[9px] font-semibold leading-3 tracking-[0.1em] ${className ?? ""}`}
+			className={`whitespace-nowrap px-1.5 py-1.5 text-[11px] font-semibold leading-3 tracking-[0.1em] ${className ?? ""}`}
 		>
 			{children}
 		</th>
@@ -1456,7 +1456,7 @@ function TargetBadge({
 }) {
 	return (
 		<div
-			className={`rounded-md border px-1.5 py-1 text-[9px] leading-3 ${
+			className={`rounded-md border px-1.5 py-1 text-[11px] leading-3 ${
 				met
 					? "border-emerald-200 bg-emerald-50 text-emerald-700"
 					: "border-rose-200 bg-rose-50 text-rose-700"
@@ -1466,7 +1466,7 @@ function TargetBadge({
 				<span>{label}</span>
 				<span>{met ? "✓" : "✗"}</span>
 			</div>
-			<div className="mt-0.5 text-[8px] font-medium opacity-90">
+			<div className="mt-0.5 text-[10px] font-medium opacity-90">
 				{formatCurrencyIDR(current, true)} / {formatCurrencyIDR(target, true)}
 			</div>
 		</div>

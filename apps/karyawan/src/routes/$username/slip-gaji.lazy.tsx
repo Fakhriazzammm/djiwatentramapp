@@ -85,7 +85,7 @@ function PayslipDetailCard({
 						<p className="truncate text-[10px] text-muted-foreground">{b.role_name ?? payslip.role_name ?? ""}</p>
 					</div>
 				</div>
-				<span className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${badge.cls}`}>
+				<span className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badge.cls}`}>
 					{badge.label}
 				</span>
 			</div>
@@ -181,7 +181,7 @@ function PayslipDetailCard({
 			</div>
 
 			{(payslip.sent_at || payslip.acknowledged_at) && (
-				<p className="text-[9px] text-muted-foreground/60 mb-2">
+				<p className="text-[11px] text-muted-foreground/60 mb-2">
 					{payslip.sent_at && `Dikirim: ${new Date(payslip.sent_at).toLocaleDateString("id-ID")}`}
 					{payslip.sent_at && payslip.acknowledged_at && " · "}
 					{payslip.acknowledged_at && `Diterima: ${new Date(payslip.acknowledged_at).toLocaleDateString("id-ID")}`}
@@ -381,7 +381,7 @@ function SlipGajiPage() {
 			<div className="flex items-center justify-between gap-2 px-2">
 				<div className="flex items-center gap-1.5">
 					<Calendar className="h-3 w-3 text-primary" />
-					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
+					<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
 				</div>
 				<div className="flex items-center gap-1.5">
 					<select 
@@ -453,7 +453,7 @@ function SlipGajiPage() {
 														: "bg-card border-border/50 text-muted-foreground hover:border-border"
 												)}
 											>
-												<span className="text-[8px] font-bold uppercase leading-tight">{month}</span>
+												<span className="text-[10px] font-bold uppercase leading-tight">{month}</span>
 												<span className="text-[10px] font-black tabular-nums leading-tight">{netShort}</span>
 												{isActive && (
 													<motion.div

@@ -223,7 +223,7 @@ function PodiumCard({
 			</p>
 
 			{/* Role */}
-			<p className="text-[8px] font-medium text-muted-foreground truncate max-w-full">{entry.roleName}</p>
+			<p className="text-[10px] font-medium text-muted-foreground truncate max-w-full">{entry.roleName}</p>
 
 			{/* Bonus amount */}
 			<motion.p
@@ -247,7 +247,7 @@ function PodiumCard({
 			</div>
 
 			{/* Shift count */}
-			<p className="mt-1 text-[8px] text-muted-foreground flex items-center gap-1">
+			<p className="mt-1 text-[10px] text-muted-foreground flex items-center gap-1">
 				<Users className="h-2.5 w-2.5" />
 				{entry.shiftCount} shift
 			</p>
@@ -314,11 +314,11 @@ function LeaderboardRow({
 					<p className="text-[11px] font-bold text-foreground truncate leading-tight">
 						{entry.name}
 					</p>
-					<p className="text-[8px] text-muted-foreground truncate">{entry.roleName}</p>
+					<p className="text-[10px] text-muted-foreground truncate">{entry.roleName}</p>
 				</div>
 
 				{/* Shift count */}
-				<div className="hidden sm:flex items-center gap-1 text-[9px] text-muted-foreground">
+				<div className="hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground">
 					<Users className="h-3 w-3" />
 					<span className="font-medium">{entry.shiftCount}</span>
 				</div>
@@ -346,7 +346,7 @@ function LeaderboardRow({
 			<div className="mt-1.5 w-full h-1 rounded-full bg-muted overflow-hidden">
 				<motion.div
 					className={`h-full rounded-full ${
-						top3 ? c!.bar : "bg-gradient-to-r from-primary/50 to-primary/30"
+						top3 ? c!.bar : "bg-primary/40"
 					}`}
 					initial={{ width: 0 }}
 					animate={{ width: `${barPct}%` }}
@@ -366,10 +366,10 @@ function LeaderboardRow({
 					>
 						<div className="mt-2 pt-2 border-t border-border/40 space-y-1">
 							{entry.bonusHistory.length === 0 ? (
-								<p className="text-[9px] text-muted-foreground italic">Belum ada histori bonus</p>
+								<p className="text-[11px] text-muted-foreground italic">Belum ada histori bonus</p>
 							) : (
 								entry.bonusHistory.map((h, i) => (
-									<div key={i} className="flex items-center justify-between text-[9px]">
+									<div key={i} className="flex items-center justify-between text-[11px]">
 										<div className="flex items-center gap-1.5 min-w-0">
 											<span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
 											<span className="text-muted-foreground truncate">{h.shiftName}</span>
@@ -436,7 +436,7 @@ export function LeaderboardPanel() {
 				<div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-lg border border-dashed border-border">
 					<Trophy className="w-10 h-10 text-muted-foreground/30 mb-2" />
 					<p className="text-muted-foreground text-[10px] font-medium">Belum ada bonus shift diberikan</p>
-					<p className="text-muted-foreground/60 text-[9px] mt-1">Atur target shift untuk mulai memberikan bonus</p>
+					<p className="text-muted-foreground/60 text-[11px] mt-1">Atur target shift untuk mulai memberikan bonus</p>
 				</div>
 			</div>
 		);
@@ -456,12 +456,12 @@ export function LeaderboardPanel() {
 						<Trophy className="w-3.5 h-3.5 text-primary" />
 						Leaderboard Bonus Shift
 					</h3>
-					<p className="text-[9px] text-muted-foreground mt-0.5">
+					<p className="text-[11px] text-muted-foreground mt-0.5">
 						Karyawan dengan akumulasi bonus terbanyak
 					</p>
 				</div>
 				<Link
-					className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary hover:bg-primary/20 transition-all"
+					className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary hover:bg-primary/20 transition-all"
 				>
 					Lihat Semua
 					<ArrowRight className="h-3 w-3" />

@@ -18,7 +18,7 @@ import {
 function CompactBadge({ status }: { status: string }) {
 	const info = getStatusBadge(status);
 	return (
-		<span className={cn("inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none", info.color)}>
+		<span className={cn("inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold uppercase leading-none", info.color)}>
 			<span className={cn("h-1.5 w-1.5 rounded-full", info.dot)} />
 			{info.label}
 		</span>
@@ -77,7 +77,7 @@ function CompactActionCard({
 				<span className="font-mono font-bold text-[11px] truncate">{order.order_no}</span>
 				<div className="flex items-center gap-1 shrink-0">
 					<GroupIcon group_type={order.group_type} />
-					<span className="text-[9px] text-muted-foreground font-medium tabular-nums">
+					<span className="text-[11px] text-muted-foreground font-medium tabular-nums">
 						{formatTimeAgo(order.created_at)}
 					</span>
 				</div>
@@ -87,10 +87,10 @@ function CompactActionCard({
 			<div className="flex items-center justify-between mb-1.5">
 				<CompactBadge status={order.status} />
 				{fromDb && (
-					<span className="text-[9px] text-muted-foreground truncate max-w-[60px]">{order.dibuat_by}</span>
+					<span className="text-[11px] text-muted-foreground truncate max-w-[60px]">{order.dibuat_by}</span>
 				)}
 				{isDibuat && !fromDb && (
-					<span className="text-[9px] text-muted-foreground/60 italic truncate max-w-[60px]">{assignedStaff}</span>
+					<span className="text-[11px] text-muted-foreground/60 italic truncate max-w-[60px]">{assignedStaff}</span>
 				)}
 			</div>
 
@@ -158,7 +158,7 @@ function CompactDoneCard({
 				<span className="font-mono font-bold text-[11px] truncate">{order.order_no}</span>
 				<div className="flex items-center gap-1 shrink-0">
 					<GroupIcon group_type={order.group_type} />
-					<span className="text-[9px] text-muted-foreground font-medium tabular-nums">
+					<span className="text-[11px] text-muted-foreground font-medium tabular-nums">
 						{formatTimeAgo(order.selesai_at)}
 					</span>
 				</div>
@@ -166,12 +166,12 @@ function CompactDoneCard({
 
 			{/* Badge + staff */}
 			<div className="flex items-center justify-between">
-				<span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-700 leading-none">
+				<span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold uppercase text-emerald-700 leading-none">
 					🏁 Selesai
 				</span>
 				<div className="flex items-center gap-1">
 					{order.selesai_by && order.selesai_by !== "Otomatis" && (
-						<span className="text-[9px] text-muted-foreground truncate max-w-[50px]">{order.selesai_by}</span>
+						<span className="text-[11px] text-muted-foreground truncate max-w-[50px]">{order.selesai_by}</span>
 					)}
 					<Pencil className="h-2.5 w-2.5 text-muted-foreground/40 shrink-0" />
 				</div>
@@ -397,7 +397,7 @@ export function QueueHorizontalBar() {
 						        <div className="flex items-center gap-1 mt-0.5">
 						          {staff.groups.includes("barista") && <Coffee className="h-2.5 w-2.5 text-amber-600 shrink-0" />}
 						          {staff.groups.includes("kitchen") && <ChefHat className="h-2.5 w-2.5 text-orange-600 shrink-0" />}
-						          {staff.dibuat > 0 && <span className="text-[9px] text-muted-foreground">{staff.dibuat} dibuat</span>}
+						          {staff.dibuat > 0 && <span className="text-[11px] text-muted-foreground">{staff.dibuat} dibuat</span>}
 						        </div>
 						      )}
 						    </div>
@@ -416,7 +416,7 @@ export function QueueHorizontalBar() {
 						<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
 							Antrian
 						</span>
-						<span className="inline-flex items-center justify-center h-4 min-w-[20px] rounded-full bg-primary/10 px-1.5 text-[9px] font-bold text-primary">
+						<span className="inline-flex items-center justify-center h-4 min-w-[20px] rounded-full bg-primary/10 px-1.5 text-[11px] font-bold text-primary">
 							{totalAll}
 						</span>
 					</div>
@@ -443,7 +443,7 @@ export function QueueHorizontalBar() {
 									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
 										Sedang Dibuat
 									</span>
-									<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-amber-100 px-1.5 text-[9px] font-bold text-amber-700">
+									<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-amber-100 px-1.5 text-[11px] font-bold text-amber-700">
 										{totalActive}
 									</span>
 								</div>
@@ -469,7 +469,7 @@ export function QueueHorizontalBar() {
 									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
 										Selesai
 									</span>
-									<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-emerald-100 px-1.5 text-[9px] font-bold text-emerald-700">
+									<span className="inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-emerald-100 px-1.5 text-[11px] font-bold text-emerald-700">
 										{completed.length}
 									</span>
 								</div>

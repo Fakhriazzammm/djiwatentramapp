@@ -69,7 +69,7 @@ export function HomeOnDutyCrew() {
 				<p className="text-xs text-muted-foreground">
 					Belum ada aktivitas produksi hari ini
 				</p>
-				<p className="text-[9px] text-muted-foreground/60 mt-1">
+				<p className="text-[11px] text-muted-foreground/60 mt-1">
 					Data dari bot Telegram akan muncul setelah karyawan tap
 					“Dibuat” / “Selesai”
 				</p>
@@ -100,13 +100,13 @@ export function HomeOnDutyCrew() {
 									<p className="text-[11px] font-bold text-foreground truncate">
 										{member.name}
 									</p>
-									<p className="text-[8px] text-muted-foreground">
+									<p className="text-[10px] text-muted-foreground">
 										{emoji} {member.role}
 									</p>
 								</div>
 							</div>
 							<div className="mt-2 flex items-center justify-between gap-2">
-								<div className="flex items-center gap-1 text-[9px] text-amber-600">
+								<div className="flex items-center gap-1 text-[11px] text-amber-600">
 									<Clock className="h-3 w-3" />
 									<span className="font-bold">
 										{member.dibuat}
@@ -115,7 +115,7 @@ export function HomeOnDutyCrew() {
 										dibuat
 									</span>
 								</div>
-								<div className="flex items-center gap-1 text-[9px] text-emerald-600">
+								<div className="flex items-center gap-1 text-[11px] text-emerald-600">
 									<CheckCircle2 className="h-3 w-3" />
 									<span className="font-bold">
 										{member.selesai}

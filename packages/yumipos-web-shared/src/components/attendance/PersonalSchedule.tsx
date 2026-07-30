@@ -298,7 +298,7 @@ function TeamDayView({
                     <span className="flex h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                   )}
                 </div>
-                <span className="text-[8px] font-semibold text-muted-foreground">
+                <span className="text-[11px] font-semibold text-muted-foreground">
                   {mySchedule
                     ? `${myLabel} • ${mySchedule.startTime?.slice(0, 5) ?? ""}${mySchedule.endTime ? `–${mySchedule.endTime.slice(0, 5)}` : ""}`
                     : "Hari ini libur"}
@@ -316,7 +316,7 @@ function TeamDayView({
           {coworkers.length > 0 && (
             <div className="flex items-center gap-1 px-0.5">
               <Users className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0" />
-              <span className="text-[8px] font-semibold text-muted-foreground/70">
+              <span className="text-[11px] font-semibold text-muted-foreground/70">
                 {coworkers.length} rekan satu shift
               </span>
             </div>
@@ -341,7 +341,7 @@ function TeamDayView({
                   )}
                 >
                   {iconByShift[shift] ?? <CalendarDays className="h-3 w-3" />}
-                  <span className={cn("text-[9px] font-bold", isActive ? theme.text : "")}>
+                  <span className={cn("text-[11px] font-bold", isActive ? theme.text : "")}>
                     {theme.label}
                   </span>
                   <span
@@ -403,7 +403,7 @@ function TeamDayView({
                       </div>
                       <div className="shrink-0 text-right">
                         {s.startTime ? (
-                          <span className="flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground">
+                          <span className="flex items-center gap-0.5 text-[11px] font-semibold text-muted-foreground">
                             <Clock className="h-2.5 w-2.5 text-muted-foreground/60" />
                             {s.startTime.slice(0, 5)}
                             {s.endTime && (
@@ -411,7 +411,7 @@ function TeamDayView({
                             )}
                           </span>
                         ) : (
-                          <span className="text-[8px] font-medium text-muted-foreground/60">–</span>
+                          <span className="text-[11px] font-medium text-muted-foreground/60">–</span>
                         )}
                       </div>
                     </div>
@@ -756,7 +756,7 @@ export function PersonalSchedule({
             {Object.entries(SHIFT_THEME).map(([label, c]) => (
               <div key={label} className="flex items-center gap-1">
                 <div className={c.dot} style={{ width: "6px", height: "6px", borderRadius: "50%" }} />
-                <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">{label}</span>
+                <span className="text-[11px] font-bold text-muted-foreground/60 uppercase">{label}</span>
               </div>
             ))}
           </div>

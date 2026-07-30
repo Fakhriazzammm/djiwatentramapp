@@ -596,7 +596,7 @@ function RegisterPage() {
                 <div className="relative border-b border-double border-amber-200/50 px-5 pb-4 pt-5 text-center">
                   <div className="mx-auto mb-2 flex items-center justify-center gap-2">
                     <div className="h-px w-8 bg-amber-300/50" />
-                    <span className="font-serif text-[9px] uppercase tracking-[0.2em] text-amber-600/50">
+                    <span className="font-serif text-[11px] uppercase tracking-[0.2em] text-amber-600/50">
                       Djiwa Tentram
                     </span>
                     <div className="h-px w-8 bg-amber-300/50" />
@@ -645,8 +645,8 @@ function RegisterPage() {
                     {/* Pihak Pertama */}
                     <div className="text-center min-w-0 flex-1">
                       <div className="mb-5 font-serif text-[10px] font-medium text-stone-400">PIHAK PERTAMA</div>
-                      <div className="font-serif text-[9px] font-semibold text-stone-500">Fakhri Azzam</div>
-                      <div className="font-serif text-[8px] text-stone-400">Owner</div>
+                      <div className="font-serif text-[11px] font-semibold text-stone-500">Fakhri Azzam</div>
+                      <div className="font-serif text-[10px] text-stone-400">Owner</div>
                     </div>
 
                     {/* Seal / Stamp */}
@@ -661,10 +661,10 @@ function RegisterPage() {
                     {/* Pihak Kedua */}
                     <div className="text-center min-w-0 flex-1">
                       <div className="mb-5 font-serif text-[10px] font-medium text-stone-400">PIHAK KEDUA</div>
-                      <div className="font-serif text-[9px] font-semibold text-stone-500 truncate">
+                      <div className="font-serif text-[11px] font-semibold text-stone-500 truncate">
                         {name.trim() || "(nama)"}
                       </div>
-                      <div className="font-serif text-[8px] text-stone-400">{jabatan.toUpperCase()}</div>
+                      <div className="font-serif text-[10px] text-stone-400">{jabatan.toUpperCase()}</div>
                     </div>
                   </div>
                 </motion.div>

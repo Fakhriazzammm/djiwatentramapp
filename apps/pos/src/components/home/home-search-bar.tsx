@@ -38,7 +38,7 @@ export function HomeSearchBar({
 				to={profileTo}
 				className="relative shrink-0 active:scale-95 transition-transform"
 			>
-				<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-sky-400 text-sm font-black text-white shadow-sm">
+				<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-black text-white shadow-sm">
 					{initial}
 				</div>
 			</Link>

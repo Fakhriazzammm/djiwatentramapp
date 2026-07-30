@@ -123,7 +123,7 @@ export const TasksPanel = ({
 			<motion.div 
 				initial={{ opacity: 0, y: -10 }}
 				animate={{ opacity: 1, y: 0 }}
-				className="p-3 rounded-2xl bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border border-primary/10 space-y-3"
+				className="p-3 rounded-2xl bg-primary/5 border border-primary/10 space-y-3"
 			>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2.5">
@@ -132,16 +132,16 @@ export const TasksPanel = ({
 						</div>
 						<div>
 							<h2 className="text-[12px] font-black text-foreground tracking-tight">Tugas AI</h2>
-							<p className="text-[9px] text-muted-foreground font-medium">{totalTasks} tugas aktif</p>
+							<p className="text-[11px] text-muted-foreground font-medium">{totalTasks} tugas aktif</p>
 						</div>
 					</div>
 					{totalTasks > 1 && (
 						<div className="flex gap-1">
-							<Button size="sm" variant="ghost" className="h-6 text-[8px] font-bold text-green-600 hover:bg-green-50 px-1.5" onClick={completeAll}>
+							<Button size="sm" variant="ghost" className="h-6 text-[10px] font-bold text-green-600 hover:bg-green-50 px-1.5" onClick={completeAll}>
 								<CheckCheck className="h-3 w-3 mr-0.5" />
 								Semua Selesai
 							</Button>
-							<Button size="sm" variant="ghost" className="h-6 text-[8px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive px-1.5" onClick={dismissAll}>
+							<Button size="sm" variant="ghost" className="h-6 text-[10px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive px-1.5" onClick={dismissAll}>
 								<Trash2 className="h-3 w-3 mr-0.5" />
 								Bersihkan
 							</Button>
@@ -152,18 +152,18 @@ export const TasksPanel = ({
 				{/* Stats bar */}
 				<div className="flex gap-2">
 					{highCount > 0 && (
-						<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black bg-red-50 text-red-600 border border-red-200">
+						<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-red-50 text-red-600 border border-red-200">
 							<span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
 							{highCount} urgent
 						</span>
 					)}
 					{overdueCount > 0 && (
-						<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black bg-amber-50 text-amber-600 border border-amber-200">
+						<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200">
 							<AlertTriangle className="h-2.5 w-2.5" />
 							{overdueCount} terlambat
 						</span>
 					)}
-					<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black bg-muted/30 text-muted-foreground border border-border/40">
+					<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-muted/30 text-muted-foreground border border-border/40">
 						{totalTasks} total
 					</span>
 				</div>
@@ -213,7 +213,7 @@ export const TasksPanel = ({
 								{/* Meta row */}
 								<div className="flex items-center gap-2 flex-wrap">
 									{task.dueDate && (
-										<span className={`inline-flex items-center gap-1 text-[9px] font-bold ${
+										<span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
 											overdue ? "text-red-500" : "text-muted-foreground"
 										}`}>
 											<CalendarClock className="h-3 w-3" />
@@ -222,7 +222,7 @@ export const TasksPanel = ({
 										</span>
 									)}
 									{task.createdAt && (
-										<span className="text-[8px] text-muted-foreground/60 font-medium">
+										<span className="text-[10px] text-muted-foreground/60 font-medium">
 											{formatRelativeTime(task.createdAt)}
 										</span>
 									)}

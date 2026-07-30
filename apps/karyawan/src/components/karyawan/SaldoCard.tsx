@@ -61,7 +61,7 @@ export function SaldoCard({ staffId }: { staffId: string }) {
           <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-100 text-emerald-600">
             <Wallet className="h-2.5 w-2.5" />
           </div>
-          <p className="text-[9px] font-extrabold">Saldo {ml}</p>
+          <p className="text-[11px] font-extrabold">Saldo {ml}</p>
         </div>
         <motion.button whileTap={{ scale: 0.85 }} onClick={() => setVisible(v => { localStorage.setItem("saldo_visible", String(!v)); return !v; })}
           className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted transition-colors">

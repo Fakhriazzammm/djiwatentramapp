@@ -105,7 +105,7 @@ export const SuggestionsPanel = ({
 			<motion.div 
 				initial={{ opacity: 0, y: -10 }}
 				animate={{ opacity: 1, y: 0 }}
-				className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border border-primary/10"
+				className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/10"
 			>
 				<div className="flex items-center gap-2.5">
 					<div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
@@ -113,14 +113,14 @@ export const SuggestionsPanel = ({
 					</div>
 					<div>
 						<h2 className="text-[12px] font-black text-foreground tracking-tight">Saran AI</h2>
-						<p className="text-[9px] text-muted-foreground font-medium">{suggestions.length} saran tersedia</p>
+						<p className="text-[11px] text-muted-foreground font-medium">{suggestions.length} saran tersedia</p>
 					</div>
 				</div>
 				{suggestions.filter(s => s.action).length > 1 && (
 					<Button 
 						size="sm" 
 						variant="ghost" 
-						className="h-7 text-[9px] font-bold text-primary hover:bg-primary/10"
+						className="h-7 text-[11px] font-bold text-primary hover:bg-primary/10"
 						onClick={() => executeAll(suggestions.filter(s => s.action))}
 					>
 						<Play className="h-3 w-3 mr-1" />
@@ -158,10 +158,10 @@ export const SuggestionsPanel = ({
 								<div className="text-left">
 									<div className="flex items-center gap-1.5">
 										<span className="text-[11px] font-black text-foreground">{config.label}</span>
-										<span className="text-[9px] font-bold text-muted-foreground">{items.length} saran</span>
+										<span className="text-[11px] font-bold text-muted-foreground">{items.length} saran</span>
 									</div>
 									{highCount > 0 && (
-										<span className="text-[8px] font-bold text-red-500">{highCount} urgent</span>
+										<span className="text-[10px] font-bold text-red-500">{highCount} urgent</span>
 									)}
 								</div>
 							</div>

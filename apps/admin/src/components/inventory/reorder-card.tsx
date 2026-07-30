@@ -95,7 +95,7 @@ export function ReorderCard({ items }: ReorderCardProps) {
 									{item.suggestedOrderQty} {item.unit}
 								</p>
 								{item.lastPurchasePrice != null && (
-									<p className="text-[9px] text-slate-400">
+									<p className="text-[11px] text-slate-400">
 										~Rp{(item.suggestedOrderQty * item.lastPurchasePrice).toLocaleString("id-ID")}
 									</p>
 								)}

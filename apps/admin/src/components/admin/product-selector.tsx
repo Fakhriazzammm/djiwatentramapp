@@ -146,11 +146,11 @@ export function ProductSelector({
 								>
 									{/* Recipe status badge */}
 									{hasRecipe ? (
-										<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600">
+										<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-600">
 											✅
 										</span>
 									) : (
-										<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">
+										<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-600">
 											⚠️
 										</span>
 									)}

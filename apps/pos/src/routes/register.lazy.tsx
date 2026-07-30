@@ -350,7 +350,7 @@ function RegisterPage() {
 	// Jika data masih loading, tampilkan skeleton
 	if (isDataLoading) {
 		return (
-			<div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4 py-8">
+			<div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
 				<div className="w-full max-w-lg space-y-4">
 					<div className="mx-auto flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-muted" />
 					<div className="mx-auto h-5 w-48 animate-pulse rounded-md bg-muted" />
@@ -375,7 +375,7 @@ function RegisterPage() {
 	// Jika registration dinonaktifkan, tampilkan halaman tertutup
 	if (!registrationEnabled) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8"
+			<div className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8"
 				style={{ paddingLeft: "calc(0.75rem + var(--safe-area-left, 0px))", paddingRight: "calc(0.75rem + var(--safe-area-right, 0px))", paddingBottom: "calc(1.5rem + var(--safe-area-bottom, 0px))" }}>
 				<div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
 					<Card className="mx-auto max-w-md text-center sm:max-w-xl">
@@ -397,7 +397,7 @@ function RegisterPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8"
+		<div className="min-h-screen bg-background px-3 py-6 sm:px-4 sm:py-8"
 			style={{ paddingLeft: "calc(0.75rem + var(--safe-area-left, 0px))", paddingRight: "calc(0.75rem + var(--safe-area-right, 0px))", paddingBottom: "calc(1.5rem + var(--safe-area-bottom, 0px))" }}>
 			<div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
 

@@ -65,8 +65,8 @@ export function HomeBottomNav() {
 									to={tab.to as any}
 									className="-top-4 relative flex flex-col items-center justify-center"
 								>
-									<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-lg blur-[2px] absolute inset-0" />
-									<div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-lg relative z-10">
+									<div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg blur-[2px] absolute inset-0" />
+									<div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg relative z-10">
 										<Icon className="h-6 w-6 text-primary-foreground" />
 									</div>
 									<span className="font-medium text-[10px] text-primary mt-0.5">

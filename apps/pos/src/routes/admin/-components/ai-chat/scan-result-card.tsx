@@ -42,7 +42,7 @@ export function ScanResultCard({ data }: { data: ScanResultData }) {
 						<span className="text-muted-foreground text-[10px] truncate"> {data.name}</span>
 					)}
 				</div>
-				<span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-tighter shrink-0 ${confidenceColor}`}>
+				<span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-tighter shrink-0 ${confidenceColor}`}>
 					{data.confidence}% Akurat
 				</span>
 			</div>
@@ -134,7 +134,7 @@ export function ScanResultCard({ data }: { data: ScanResultData }) {
 				{/* Items list */}
 				{data.items && data.items.length > 0 && (
 					<div className="rounded-lg border border-border overflow-hidden">
-						<div className="bg-muted/40 px-2.5 py-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
+						<div className="bg-muted/40 px-2.5 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
 							Detail Item ({data.items.length})
 						</div>
 						<div className="divide-y divide-border max-h-[150px] overflow-y-auto">
@@ -143,7 +143,7 @@ export function ScanResultCard({ data }: { data: ScanResultData }) {
 									<div className="flex-1 min-w-0">
 										<p className="text-[10px] text-foreground font-medium truncate leading-tight">{item.name}</p>
 										{item.qty > 0 && (
-											<p className="text-[9px] text-muted-foreground">{item.qty} {item.unit || "pcs"}</p>
+											<p className="text-[11px] text-muted-foreground">{item.qty} {item.unit || "pcs"}</p>
 										)}
 									</div>
 									<span className="text-[10px] font-semibold text-foreground whitespace-nowrap">

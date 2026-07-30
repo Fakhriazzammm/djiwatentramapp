@@ -120,7 +120,7 @@ function PayslipDetailCard({
 						<p className="truncate text-[10px] text-muted-foreground">{b.role_name ?? payslip.role_name ?? ""}</p>
 					</div>
 				</div>
-				<span className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${badge.cls}`}>
+				<span className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badge.cls}`}>
 					{badge.label}
 				</span>
 			</div>
@@ -257,7 +257,7 @@ function PayslipDetailCard({
 
 			{/* Timestamps */}
 			{(payslip.sent_at || payslip.acknowledged_at) && (
-				<p className="text-[9px] text-muted-foreground/60 mb-2">
+				<p className="text-[11px] text-muted-foreground/60 mb-2">
 					{payslip.sent_at && `Dikirim: ${new Date(payslip.sent_at).toLocaleDateString("id-ID")}`}
 					{payslip.sent_at && payslip.acknowledged_at && " · "}
 					{payslip.acknowledged_at && `Diterima: ${new Date(payslip.acknowledged_at).toLocaleDateString("id-ID")}`}
@@ -726,13 +726,13 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										{staff.photoUrl ? (
 											<img src={staff.photoUrl} alt={staff.name} className="h-12 w-12 rounded-xl object-cover shadow-md" />
 										) : (
-											<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-sky-400 text-lg font-black text-white shadow-md">
+											<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-lg font-black text-white shadow-md">
 												{staff.name?.charAt(0)?.toUpperCase()}
 											</div>
 										)}
 									</button>
 									<div className="flex-1 min-w-0">
-										<p className="text-[8px] font-bold uppercase tracking-[0.18em] text-primary/60 leading-none">{storeName}</p>
+										<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/60 leading-none">{storeName}</p>
 										<h2 className="text-sm font-black tracking-tight text-foreground leading-tight truncate mt-0.5">
 											{greeting}, {staff.name?.split(" ")[0] ?? staff.name}
 										</h2>
@@ -748,7 +748,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									</Button>
 								</div>
 								<div className="px-3 pb-3">
-									<p className="text-[8px] text-muted-foreground/60 font-medium">{dateText}</p>
+									<p className="text-[10px] text-muted-foreground/60 font-medium">{dateText}</p>
 									<div className="mt-1.5 grid grid-cols-3 divide-x divide-border/40 rounded-xl border border-border/50 bg-background/60 shadow-sm overflow-hidden">
 									    <div className="px-2 py-1.5 text-center">
 									        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Shift</p>
@@ -779,7 +779,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							<div className="flex items-center justify-between gap-2 px-2">
 								<div className="flex items-center gap-1.5">
 									<Calendar className="h-3 w-3 text-primary" />
-									<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
+									<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
 								</div>
 								<div className="flex items-center gap-1.5">
 									<select 
@@ -967,7 +967,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													<div className="flex items-center gap-2.5">
 														<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-[10px] font-bold flex-col leading-tight shrink-0">
 															<span>{new Date(log.timestamp).getDate()}</span>
-															<span className="text-[8px] opacity-60">{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
+															<span className="text-[10px] opacity-60">{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
 														</div>
 														<div>
 															<p className="font-bold capitalize text-xs">{log.type === "check_in" ? "Masuk" : "Keluar"}</p>
@@ -981,7 +981,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 															<div className={`h-1.5 w-1.5 rounded-full ${log.type === "check_in" ? "bg-emerald-500" : "bg-orange-500"}`} />
 															{log.type === "check_in" ? "MASUK" : "KELUAR"}
 														</div>
-														{log.notes && <p className="text-[9px] text-muted-foreground truncate max-w-[80px] mt-0.5">{log.notes}</p>}
+														{log.notes && <p className="text-[11px] text-muted-foreground truncate max-w-[80px] mt-0.5">{log.notes}</p>}
 													</div>
 												</div>
 											))}
@@ -1042,7 +1042,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 											>
 												<span className="text-base">👉</span>
 											</motion.div>
-											<span className="whitespace-nowrap rounded-lg bg-primary px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">
+											<span className="whitespace-nowrap rounded-lg bg-primary px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">
 												Isi data dirimu!
 											</span>
 										</motion.div>
@@ -1094,7 +1094,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												<span className="font-bold text-right max-w-[200px]">{privateData?.raw?.emergencyContactName ? `${privateData.raw.emergencyContactName} (${privateData.raw.emergencyContactPhone || "-"})` : "---"}</span>
 											</div>
 											<div className="border-t pt-2 mt-2 space-y-1.5">
-												<p className="text-[8px] font-black text-primary uppercase">Pekerjaan</p>
+												<p className="text-[10px] font-black text-primary uppercase">Pekerjaan</p>
 												<div className="flex justify-between items-center text-[10px]">
 													<span className="text-muted-foreground">Mulai</span>
 													<span className="font-bold">{privateData?.raw?.startDate || "---"}</span>
@@ -1215,7 +1215,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										>
 											<div className="space-y-1.5">
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
 													<Input 
 														value={editName}
 														onChange={(e) => setEditName(e.target.value)}
@@ -1224,7 +1224,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													/>
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username (login)</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Username (login)</label>
 													<Input 
 													value={editUsername}
 													onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
@@ -1234,7 +1234,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													/>
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Email</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Email</label>
 													<Input 
 														value={editEmail}
 														onChange={(e) => setEditEmail(e.target.value)}
@@ -1243,7 +1243,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													/>
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username Profil (Slug)</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Username Profil (Slug)</label>
 													<Input 
 														value={editSlug}
 														onChange={(e) => setEditSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
@@ -1253,47 +1253,47 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												</div>
 
 												<div className="pt-2 border-t mt-2 space-y-2.5">
-													<p className="text-[9px] font-black text-primary uppercase ml-1">Data Tambahan</p>
+													<p className="text-[11px] font-black text-primary uppercase ml-1">Data Tambahan</p>
 													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No HP / WA</label>
+														<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">No HP / WA</label>
 														<Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: 08123456789" />
 													</div>
 													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No Identitas (KTP)</label>
+														<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">No Identitas (KTP)</label>
 														<Input value={editIdentityNumber} onChange={(e) => setEditIdentityNumber(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="KTP / SIM" />
 													</div>
 													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tempat Lahir</label>
+														<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tempat Lahir</label>
 														<Input value={editPlaceOfBirth} onChange={(e) => setEditPlaceOfBirth(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: Jakarta" />
 													</div>
 													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Tanggal Lahir</label>
+														<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Lahir</label>
 														<Input value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="YYYY-MM-DD" />
 													</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Alamat</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Alamat</label>
 													<Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Alamat lengkap" />
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Nama Bank</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Nama Bank</label>
 													<Input value={editBankName} onChange={(e) => setEditBankName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Contoh: BCA, Mandiri" />
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">No Rekening</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">No Rekening</label>
 													<Input value={editBankAccount} onChange={(e) => setEditBankAccount(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nomor rekening" />
 												</div>
 												<div className="space-y-1">
-													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (Nama)</label>
+													<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (Nama)</label>
 														<Input value={editEmergencyContactName} onChange={(e) => setEditEmergencyContactName(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="Nama kontak darurat" />
 													</div>
 													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (No HP)</label>
+														<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Kontak Darurat (No HP)</label>
 														<Input value={editEmergencyContactPhone} onChange={(e) => setEditEmergencyContactPhone(e.target.value)} className="h-10 rounded-xl font-bold text-xs" placeholder="No HP kontak darurat" />
 													</div>
 												</div>
 
 												<div className="pt-2 border-t mt-2 space-y-2.5">
-													<p className="text-[9px] font-black text-primary uppercase ml-1">Foto Profile</p>
+													<p className="text-[11px] font-black text-primary uppercase ml-1">Foto Profile</p>
 													<div className="space-y-2">
 														{staff.photoUrl && !editPhotoFile && (
 															<div className="flex items-center gap-3">
@@ -1340,10 +1340,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												</div>
 
 												<div className="pt-2 border-t mt-2 space-y-2.5">
-													<p className="text-[9px] font-black text-primary uppercase ml-1">Ubah Password (Opsional)</p>
+													<p className="text-[11px] font-black text-primary uppercase ml-1">Ubah Password (Opsional)</p>
 
 													<div className="space-y-1">
-														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Baru (Opsional)</label>
+														<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Password Baru (Opsional)</label>
 														<Input 
 															type="password"
 															value={editNewPassword}
@@ -1389,7 +1389,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 											</div>
 											<div>
 												<p className="font-bold text-xs">PIN Keamanan</p>
-												<p className="text-[9px] text-muted-foreground uppercase">Gunakan PIN untuk absensi</p>
+												<p className="text-[11px] text-muted-foreground uppercase">Gunakan PIN untuk absensi</p>
 											</div>
 										</div>
 										<Button 
@@ -1442,7 +1442,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												>
 													<div className="grid grid-cols-2 gap-3">
 														<div className="space-y-1">
-															<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
+															<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
 															<Input 
 																type="password"
 																maxLength={6}
@@ -1453,7 +1453,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 															/>
 														</div>
 														<div className="space-y-1">
-															<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">PIN Baru</label>
+															<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">PIN Baru</label>
 															<Input 
 																type="password"
 																maxLength={6}
@@ -1582,10 +1582,10 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 						{/* Progress Bar */}
 						<div className="mb-5 mt-2">
 							<div className="flex items-center justify-between mb-1.5">
-								<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+								<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
 									{completedSteps === 0 ? 'Baru Mulai' : completedSteps === 1 ? '1 Langkah Selesai' : 'Selesai!'}
 								</span>
-								<span className="text-[9px] font-bold text-muted-foreground">{completedSteps}/2</span>
+								<span className="text-[11px] font-bold text-muted-foreground">{completedSteps}/2</span>
 							</div>
 							<div className="h-1.5 rounded-full bg-muted overflow-hidden">
 								<motion.div

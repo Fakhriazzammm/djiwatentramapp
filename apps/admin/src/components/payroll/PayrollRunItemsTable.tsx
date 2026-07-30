@@ -81,7 +81,7 @@ export default function PayrollRunItemsTable({ runId }: PayrollRunItemsTableProp
 			<div className="overflow-hidden rounded-lg border border-border bg-background">
 				<div className="overflow-x-auto">
 					<table className="w-full text-left text-xs">
-						<thead className="bg-muted/50 font-bold text-muted-foreground text-[9px] uppercase tracking-widest border-b border-border">
+						<thead className="bg-muted/50 font-bold text-muted-foreground text-[11px] uppercase tracking-widest border-b border-border">
 							<tr>
 								<th className="px-3 py-2.5 w-6"></th>
 								<th className="px-3 py-2.5">Staff</th>
@@ -200,7 +200,7 @@ export default function PayrollRunItemsTable({ runId }: PayrollRunItemsTableProp
 													<td colSpan={10} className="px-6 py-3">
 														<div className="grid grid-cols-2 gap-4 md:grid-cols-3 text-[11px]">
 															<div>
-																<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest mb-1">
+																<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest mb-1">
 																	Kehadiran
 																</p>
 																<div className="space-y-0.5 text-muted-foreground">
@@ -210,7 +210,7 @@ export default function PayrollRunItemsTable({ runId }: PayrollRunItemsTableProp
 																</div>
 															</div>
 															<div>
-																<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest mb-1">
+																<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest mb-1">
 																	Komponen Gaji
 																</p>
 																<div className="space-y-0.5 text-muted-foreground">
@@ -221,7 +221,7 @@ export default function PayrollRunItemsTable({ runId }: PayrollRunItemsTableProp
 																</div>
 															</div>
 															<div>
-																<p className="font-bold text-muted-foreground text-[9px] uppercase tracking-widest mb-1">
+																<p className="font-bold text-muted-foreground text-[11px] uppercase tracking-widest mb-1">
 																	Catatan Penyesuaian
 																</p>
 																<p className="text-muted-foreground">

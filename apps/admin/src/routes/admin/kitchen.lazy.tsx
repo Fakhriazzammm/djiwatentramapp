@@ -73,7 +73,7 @@ function KitchenMonitorPage() {
 						<h1 className="font-black text-lg tracking-tight md:text-xl">Dapur</h1>
 					</div>
 					<div className="flex items-center gap-2">
-						<div className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-500 uppercase tracking-widest ring-1 ring-slate-200 md:gap-1.5 md:px-3 md:py-1 md:text-[10px]">
+						<div className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500 uppercase tracking-widest ring-1 ring-slate-200 md:gap-1.5 md:px-3 md:py-1 md:text-[10px]">
 							<span className="relative flex h-2 w-2">
 								<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
 								<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
@@ -322,18 +322,18 @@ function KanbanCard({
 					</div>
 					<div>
 						<h4 className="font-bold text-slate-800 leading-tight">{item.productName}</h4>
-						<div className="mt-1 flex items-center gap-1 font-bold text-[9px] text-slate-400 uppercase tracking-wider md:gap-1.5 md:text-[10px]">
+						<div className="mt-1 flex items-center gap-1 font-bold text-[11px] text-slate-400 uppercase tracking-wider md:gap-1.5 md:text-[10px]">
 							<span>Meja {item.tableNumber || "Takeaway"}</span>
 							<span>•</span>
 							<span>#{item.orderNumber.split("-").pop()}</span>
 							{botBadge && (
-								<span className={`ml-1 rounded px-1 py-px text-[8px] ${botBadge.class}`}>{botBadge.label}</span>
+								<span className={`ml-1 rounded px-1 py-px text-[10px] ${botBadge.class}`}>{botBadge.label}</span>
 							)}
 						</div>
 					</div>
 				</div>
 				{status === "pending" && (
-					<div className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] font-black md:px-2 md:text-[9px] ${isLate ? "bg-red-50 text-red-600" : "bg-slate-50 text-slate-400"}`}>
+					<div className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-black md:px-2 md:text-[11px] ${isLate ? "bg-red-50 text-red-600" : "bg-slate-50 text-slate-400"}`}>
 						<Clock className="h-3 w-3" />
 						{minutesAgo}m
 					</div>

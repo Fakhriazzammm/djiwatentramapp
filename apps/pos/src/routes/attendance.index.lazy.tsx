@@ -525,7 +525,7 @@ function AttendancePage() {
 																{staff.name}
 															</p>
 															<div className="flex flex-col items-center gap-1">
-																<p className={`text-[9px] font-bold uppercase tracking-widest ${isIn ? "text-emerald-600" : "text-muted-foreground/60"}`}>
+																<p className={`text-[11px] font-bold uppercase tracking-widest ${isIn ? "text-emerald-600" : "text-muted-foreground/60"}`}>
 																	{isIn ? "BERTUGAS" : "OFF Duty"}
 																</p>
 																<div className={`mt-0.5 rounded-full px-2 py-0.5 text-[7px] font-bold uppercase tracking-tighter text-white transition-all ${
@@ -554,7 +554,7 @@ function AttendancePage() {
 												</div>
 												<div>
 													<h3 className="font-bold text-sm leading-none">Tim Bertugas</h3>
-													<p className="text-[9px] text-muted-foreground font-bold mt-0.5 uppercase tracking-widest">Live Status Dashboard</p>
+													<p className="text-[11px] text-muted-foreground font-bold mt-0.5 uppercase tracking-widest">Live Status Dashboard</p>
 												</div>
 											</div>
 
@@ -607,7 +607,7 @@ function AttendancePage() {
 												</div>
 												<div>
 													<p className="font-bold text-xs leading-none">{detectedShift.name}</p>
-													<p className={`text-[9px] font-bold uppercase tracking-widest mt-0.5 ${
+													<p className={`text-[11px] font-bold uppercase tracking-widest mt-0.5 ${
 														isShiftActive ? "text-blue-600" : "text-amber-600"
 													}`}>
 														{isShiftActive ? "Shift Aktif Sekarang" : "Shift Berikutnya"}
@@ -721,7 +721,7 @@ function AttendancePage() {
 								</div>
 								<div className="flex items-center gap-1.5 shrink-0">
 									{effectiveShift && !user?.isCurrentlyIn && (
-										<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[9px] font-bold ${
+										<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[11px] font-bold ${
 											isShiftActive 
 												? "bg-blue-50 border-blue-200 text-blue-700" 
 												: "bg-amber-50 border-amber-200 text-amber-700"
@@ -730,7 +730,7 @@ function AttendancePage() {
 											{effectiveShift.name}
 										</div>
 									)}
-									<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[9px] font-bold uppercase tracking-wider ${
+									<div className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[11px] font-bold uppercase tracking-wider ${
 										isInRadius ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-700"
 									}`}>
 										<div className={`h-1.5 w-1.5 rounded-full ${isInRadius ? "bg-emerald-500" : "bg-red-500"}`} />

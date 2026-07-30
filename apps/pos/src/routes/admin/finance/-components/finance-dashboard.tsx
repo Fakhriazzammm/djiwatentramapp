@@ -88,7 +88,7 @@ export function FinanceDashboard() {
 			<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white px-3 py-2 shadow-xs">
 				<div>
 					<h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">Keuangan</h2>
-					<p className="text-[9px] text-slate-400">Grafik arus kas &amp; analisa keuangan</p>
+					<p className="text-[11px] text-slate-400">Grafik arus kas &amp; analisa keuangan</p>
 				</div>
 				<div className="flex items-center gap-1.5">
 					<Link
@@ -113,7 +113,7 @@ export function FinanceDashboard() {
 						key={p.id}
 						type="button"
 						onClick={() => setSelectedRange(p.id)}
-						className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+						className={`rounded-sm border px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
 							selectedRange === p.id
 								? "border-emerald-500 bg-emerald-50 text-emerald-700"
 								: "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
@@ -133,7 +133,7 @@ export function FinanceDashboard() {
 				] as const).map((card) => (
 					<div key={card.label} className="rounded-lg border border-slate-200/80 bg-white px-2.5 py-2 shadow-xs">
 						<div className="flex items-center justify-between">
-							<span className="text-[9px] font-medium uppercase tracking-wider text-slate-500">{card.label}</span>
+							<span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{card.label}</span>
 							<div className={`rounded p-1 ${card.bg} ${typeof card.color === "function" ? "" : card.color}`}>
 								{card.icon}
 							</div>
@@ -172,11 +172,11 @@ export function FinanceDashboard() {
 							{ label: "Gross Margin", value: hppCogs.grossMargin, color: "text-primary", suffix: "%", icon: <TrendingUp className="h-3 w-3" /> },
 						] as { label: string; value: any; color: string; suffix?: string; icon?: React.ReactNode }[]).map((item) => (
 							<div key={item.label}>
-								<p className="text-[9px] text-slate-500">{item.label}</p>
+								<p className="text-[11px] text-slate-500">{item.label}</p>
 								<p className={`font-bold text-[11px] font-mono ${item.color}`}>
 									{item.icon}{item.suffix ? `${item.value?.toFixed(1)}${item.suffix}` : fmt(item.value ?? 0)}
 								</p>
-								<p className="text-[8px] text-slate-400">
+								<p className="text-[10px] text-slate-400">
 									{hppCogs.matchedOrders}/{hppCogs.totalCompletedOrders} pesanan
 								</p>
 							</div>
@@ -185,10 +185,10 @@ export function FinanceDashboard() {
 					{/* Daily breakdown */}
 					{hppCogs.dailySummary.length > 0 && (
 						<div className="mt-2 border-t border-slate-100 pt-2">
-							<p className="mb-1 text-[9px] font-semibold text-slate-500">Ringkasan Harian</p>
+							<p className="mb-1 text-[11px] font-semibold text-slate-500">Ringkasan Harian</p>
 							<div className="space-y-0.5">
 								{hppCogs.dailySummary.slice(0, 7).map((day: any) => (
-									<div key={day.date} className="flex items-center justify-between rounded border border-slate-100 px-2 py-1 text-[9px]">
+									<div key={day.date} className="flex items-center justify-between rounded border border-slate-100 px-2 py-1 text-[11px]">
 										<span className="font-medium text-slate-600">
 											{new Date(day.date).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })}
 										</span>

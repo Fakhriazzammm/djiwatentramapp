@@ -473,7 +473,7 @@ function DatePickerCalendar({
 							<span className="font-bold">{day}</span>
 							{!isPast && (
 								<span
-									className={`text-[9px] leading-tight ${
+									className={`text-[11px] leading-tight ${
 										isSelected
 											? "text-primary-foreground/80"
 											: isFull
@@ -542,7 +542,7 @@ function StepBar({ current }: { current: number }) {
 						)}
 						
 						<span
-							className={`mt-2 text-[8px] font-bold uppercase tracking-tighter text-center line-clamp-1 transition-all ${
+							className={`mt-2 text-[10px] font-bold uppercase tracking-tighter text-center line-clamp-1 transition-all ${
 								i === current ? "text-primary opacity-100" : "text-muted-foreground opacity-60"
 							}`}
 							style={{ width: '40px' }}
