@@ -85,33 +85,34 @@ app.get("/api/recruitment-positions", async (req, res) => {
 // ── GET /api/table/Candidates ──
 app.get("/api/table/Candidates", async (req, res) => {
   try {
-    const sql = `SELECT id, nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date, created_at, cv_url FROM pos.${TABLE} ORDER BY created_at DESC`;
+    const sql = `SELECT json_build_object('id',id,'nama_lengkap',nama_lengkap,'jenis_kelamin',jenis_kelamin,'tanggal_lahir',tanggal_lahir,'email',email,'nomor_telepon',nomor_telepon,'sosial_media',sosial_media,'posisi_dilamar',posisi_dilamar,'tipe_kerja',tipe_kerja,'notes',notes,'status',status,'application_date',application_date,'created_at',created_at,'cv_url',cv_url)::text FROM pos.${TABLE} ORDER BY created_at DESC`;
     const raw = execSync(
-      `docker exec -i supabase-db psql -U postgres -d postgres -t -A -F '|||' -c '${sql.replace(/'/g, "'\"'\"'")}'`,
+      `docker exec -i supabase-db psql -U postgres -d postgres -t -A -c '${sql.replace(/'/g, "'\"'\"'")}'`,
       { encoding: "utf-8", timeout: 10000 }
     );
     const records = [];
     for (const line of raw.trim().split("\n").filter(Boolean)) {
-      const cols = line.split("|||");
-      if (cols.length < 14) continue;
-      records.push({
-        id: cols[0],
-        createdTime: cols[12],
-        fields: {
-          "Nama Lengkap": cols[1] || "",
-          "Jenis Kelamin": cols[2] || "",
-          "Tanggal Lahir": cols[3] || null,
-          "Email": cols[4] || "",
-          "Nomor Telepon/HP": cols[5] || "",
-          "Sosial Media Instagram/Tiktok": cols[6] || "",
-          "Posisi Dilamar": cols[7] || "",
-          "Full time/Part time": cols[8] || "",
-          "Notes": cols[9] || "",
-          "Status": cols[10] || "Application Received",
-          "Application Date": cols[11] || null,
-          "CV URL": cols[13] || "",
-        },
-      });
+      try {
+        const row = JSON.parse(line);
+        records.push({
+          id: row.id,
+          createdTime: row.created_at,
+          fields: {
+            "Nama Lengkap": row.nama_lengkap || "",
+            "Jenis Kelamin": row.jenis_kelamin || "",
+            "Tanggal Lahir": row.tanggal_lahir || null,
+            "Email": row.email || "",
+            "Nomor Telepon/HP": row.nomor_telepon || "",
+            "Sosial Media Instagram/Tiktok": row.sosial_media || "",
+            "Posisi Dilamar": row.posisi_dilamar || "",
+            "Full time/Part time": row.tipe_kerja || "",
+            "Notes": row.notes || "",
+            "Status": row.status || "Application Received",
+            "Application Date": row.application_date || null,
+            "CV URL": row.cv_url || "",
+          },
+        });
+      } catch {}
     }
     res.json({ records });
   } catch (e) {
