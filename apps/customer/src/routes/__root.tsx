@@ -8,8 +8,10 @@ export const Route = createRootRoute({
 		<YumiAuthProvider>
 			<CustomerAuthProvider>
 				<OrderProvider>
-					<div className="min-h-app bg-background font-sans text-foreground antialiased">
-						<Outlet />
+					<div className="mobile-shell">
+						<div className="min-h-app bg-background font-sans text-foreground antialiased">
+							<Outlet />
+						</div>
 					</div>
 				</OrderProvider>
 			</CustomerAuthProvider>

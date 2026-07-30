@@ -9,13 +9,14 @@ import { cn } from "../../lib/utils";
 function AppCard({
   className,
   strong = false,
+  elevated = false,
   children,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { strong?: boolean }) {
+}: React.HTMLAttributes<HTMLDivElement> & { strong?: boolean; elevated?: boolean }) {
   return (
     <div
       className={cn(
-        strong ? "app-card-strong" : "app-card",
+        elevated ? "card-elevated" : strong ? "app-card-strong" : "app-card",
         "p-5 sm:p-6 lift-ios",
         className
       )}

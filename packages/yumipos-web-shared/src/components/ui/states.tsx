@@ -97,4 +97,41 @@ function ErrorState({
   );
 }
 
-export { EmptyState, ErrorState };
+/**
+ * CardSkeleton — Loading placeholder
+ * Animated pulse skeleton for card-style content.
+ */
+function CardSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="space-y-4 p-5">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * AsyncBoundary — Generic async state handler
+ * Handles loading, error, and empty states for any query result.
+ */
+function AsyncBoundary<T>({
+  query,
+  children,
+  skeleton,
+  empty = false,
+}: {
+  query: { isLoading: boolean; isError: boolean; data: T | undefined; error: Error | null; refetch: () => void };
+  children: (data: T) => React.ReactNode;
+  skeleton?: React.ReactNode;
+  empty?: boolean | ((data: T) => boolean);
+}) {
+  if (query.isLoading) return skeleton ?? <CardSkeleton />;
+  if (query.isError) return <ErrorState title="Gagal memuat data" onRetry={() => query.refetch()} />;
+  const data = query.data;
+  const isEmpty = data !== undefined && (typeof empty === "function" ? empty(data) : empty);
+  if (isEmpty || data === undefined) return <EmptyState title="Tidak ada data" />;
+  return <>{children(data)}</>;
+}
+
+export { AsyncBoundary, CardSkeleton, EmptyState, ErrorState };

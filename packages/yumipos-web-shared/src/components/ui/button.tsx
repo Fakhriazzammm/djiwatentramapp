@@ -1,12 +1,12 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import { Loader2 } from "lucide-react";
+// Loader2 import removed — using CSS-only spinner
 
 import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
-	"group/button inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-xl border border-transparent bg-clip-padding font-semibold text-xs outline-none transition-all duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 active:scale-[.97]",
+	"group/button inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-xl border border-transparent bg-clip-padding font-bold text-xs outline-none transition-all duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 active:scale-[.97]",
 	{
 		variants: {
 			variant: {
@@ -63,7 +63,7 @@ function Button({
 		>
 			{loading ? (
 				<>
-					<Loader2 className="animate-spin" />
+					<span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
 					{loadingText || children}
 				</>
 			) : (

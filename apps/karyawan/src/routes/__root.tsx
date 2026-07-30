@@ -100,7 +100,9 @@ export const Route = createRootRoute({
   component: () => (
     <YumiAuthProvider>
       <RootErrorBoundary>
-        <RootContent />
+        <div className="mobile-shell">
+          <RootContent />
+        </div>
       </RootErrorBoundary>
     </YumiAuthProvider>
   ),
