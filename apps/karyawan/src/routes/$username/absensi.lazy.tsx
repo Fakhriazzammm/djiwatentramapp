@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { useHybridCurrentlyInStore, useHybridPublicUsers, useHybridSiteSettings } from "@yumipos/web-shared";
+import { Skeleton, useHybridCurrentlyInStore, useHybridPublicUsers, useHybridSiteSettings } from "@yumipos/web-shared";
 import { useYumiAuth } from "@yumipos/web-shared";
-import { Coffee, ExternalLink, Send, Loader2 } from "lucide-react";
+import { Coffee, ExternalLink, Send } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 export const Route = createLazyFileRoute("/$username/absensi")({
@@ -62,13 +62,13 @@ function KaryawanAttendancePage() {
           <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/50 bg-card text-primary shadow-sm">
             <Coffee className="h-4 w-4" />
           </div>
-          <h1 className="text-sm font-bold tracking-tight">Absensi</h1>
+          <h1 className="text-lg font-bold tracking-tight">Absensi</h1>
         </div>
       </div>
 
       {selectedUser ? (
         <div className="mx-auto w-full max-w-sm space-y-4 pt-4">
-          <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+          <div className="karyawan-card flex items-center gap-3 border bg-card p-4">
             <div className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold text-sm ${selectedUser?.isCurrentlyIn ? "bg-emerald-500 text-white" : "bg-primary text-white"}`}>
               {selectedUser?.name?.charAt(0)}
             </div>
@@ -83,21 +83,21 @@ function KaryawanAttendancePage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50 to-blue-50 p-6 text-center space-y-4">
+          <div className="karyawan-card space-y-4 border border-primary/15 bg-primary/5 p-6 text-center">
             <div className="flex justify-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-500/20">
                 <Send className="h-8 w-8" />
               </div>
             </div>
             <div className="space-y-1">
-              <p className="font-bold text-sm text-sky-900">Absensi via Telegram Bot</p>
+              <h2 className="text-base font-bold text-foreground">Absensi via Telegram Bot</h2>
               <p className="text-[11px] text-sky-700">
                 Absen masuk/keluar, cek status, dan lihat rekap bulanan langsung dari bot Telegram.
               </p>
             </div>
             <button
               onClick={openBotTelegram}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 py-3 font-bold text-sm text-white shadow-md transition-all hover:bg-sky-600 active:scale-[0.97]"
+              className="karyawan-control flex w-full items-center justify-center gap-2 bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90 active:scale-[0.97]"
             >
               <ExternalLink className="h-4 w-4" />
               BUKA BOT TELEGRAM
@@ -105,10 +105,10 @@ function KaryawanAttendancePage() {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center py-16">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-xs font-bold text-muted-foreground">Memuat data...</p>
+        <div className="flex items-center justify-center py-16" role="status" aria-label="Memuat data absensi">
+          <div className="w-full max-w-sm space-y-3">
+            <Skeleton className="h-20 rounded-3xl" />
+            <Skeleton className="h-52 rounded-3xl" />
           </div>
         </div>
       )}

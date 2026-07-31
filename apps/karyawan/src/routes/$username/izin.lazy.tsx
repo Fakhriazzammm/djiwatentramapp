@@ -3,7 +3,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 const spring = { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 };
-import { ArrowLeft, Calendar, Check, AlertCircle, Clock } from "lucide-react";
+import { ArrowLeft, Check, AlertCircle, Clock, ClipboardList, Plane, Stethoscope, MoreHorizontal, type LucideIcon } from "lucide-react";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
 import { toast } from "sonner";
@@ -11,11 +11,11 @@ import { createClient } from "@yumipos/web-shared/lib/client";
 import { useStaffProfile } from "../$username.lazy";
 
 const LEAVE_TYPES = [
-  { value: "izin", label: "Izin", emoji: "📋", desc: "Keperluan pribadi" },
-  { value: "cuti", label: "Cuti", emoji: "🏖️", desc: "Cuti tahunan" },
-  { value: "sakit", label: "Sakit", emoji: "🏥", desc: "Surat dokter menyusul" },
-  { value: "other", label: "Lainnya", emoji: "📌", desc: "Alasan lainnya" },
-];
+  { value: "izin", label: "Izin", icon: ClipboardList, desc: "Keperluan pribadi" },
+  { value: "cuti", label: "Cuti", icon: Plane, desc: "Cuti tahunan" },
+  { value: "sakit", label: "Sakit", icon: Stethoscope, desc: "Surat dokter menyusul" },
+  { value: "other", label: "Lainnya", icon: MoreHorizontal, desc: "Alasan lainnya" },
+] satisfies Array<{ value: string; label: string; icon: LucideIcon; desc: string }>;
 
 export const Route = createLazyFileRoute("/$username/izin")({
   component: IzinCutiSakitPage,
@@ -61,10 +61,10 @@ function IzinCutiSakitPage() {
   }, [canSubmit, staff, leaveType, startDate, endDate, reason, navigate, username]);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="min-h-screen bg-background">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="min-w-0 bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/80 px-0 py-3 backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })} className="h-8 w-8">
+          <Button aria-label="Kembali ke beranda" variant="ghost" size="icon" onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })} className="h-11 w-11 rounded-[14px]">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-sm font-black tracking-tight">Izin / Cuti / Sakit</h1>
@@ -109,13 +109,14 @@ function IzinCutiSakitPage() {
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ ...spring, delay: i * 0.05 }} whileTap={{ scale: 0.95 }}
                 onClick={() => setLeaveType(lt.value)}
-                  className={`flex flex-col items-center gap-1 rounded-xl border-2 p-3 transition-all ${
+                  aria-pressed={leaveType === lt.value}
+                  className={`karyawan-card flex min-h-28 flex-col items-center justify-center gap-1 border-2 p-3 transition-all ${
                     leaveType === lt.value
                       ? "border-primary bg-primary/5 shadow-sm"
                       : "border-transparent bg-card hover:border-border"
                   }`}
                 >
-                  <span className="text-xl">{lt.emoji}</span>
+                  <lt.icon aria-hidden="true" className="h-5 w-5 text-primary" strokeWidth={2} />
                   <span className={`text-xs font-bold ${leaveType === lt.value ? "text-primary" : "text-foreground"}`}>
                     {lt.label}
                   </span>
@@ -129,11 +130,11 @@ function IzinCutiSakitPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Mulai</label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} min={todayStr} className="h-10 rounded-xl font-bold text-xs" required />
+              <Input aria-label="Tanggal mulai" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} min={todayStr} className="karyawan-control font-bold text-xs" required />
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Selesai</label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate || todayStr} className="h-10 rounded-xl font-bold text-xs" required />
+              <Input aria-label="Tanggal selesai" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate || todayStr} className="karyawan-control font-bold text-xs" required />
             </div>
           </div>
 
@@ -144,13 +145,13 @@ function IzinCutiSakitPage() {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Jelaskan alasan pengajuan..."
-              className="flex min-h-[100px] w-full rounded-xl border bg-card px-3 py-2 text-xs font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="min-h-[112px] w-full rounded-[14px] border bg-card px-3 py-3 text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
               required
             />
           </div>
 
           {/* Submit */}
-          <Button type="submit" className="h-12 w-full rounded-xl text-sm font-black shadow-lg shadow-primary/20" disabled={!canSubmit || isSubmitting}>
+          <Button type="submit" className="h-12 w-full rounded-[14px] text-sm font-bold shadow-lg shadow-primary/20 active:scale-[.97]" disabled={!canSubmit || isSubmitting}>
             {isSubmitting ? <Clock className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {isSubmitting ? "MENGIRIM..." : "AJUKAN SEKARANG"}
           </Button>

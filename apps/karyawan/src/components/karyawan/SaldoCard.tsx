@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Wallet } from "lucide-react";
+import { Eye, EyeOff, Wallet, Banknote, Gift, Trophy, type LucideIcon } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
+import { Skeleton } from "@yumipos/web-shared";
 
 const spring = { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 };
 
 function fmtIDR(n: number) { return new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",minimumFractionDigits:0}).format(n); }
 
-function SaldoItem({ emoji, label, value, visible, accentClass }: { emoji: string; label: string; value: number; visible: boolean; accentClass: string }) {
+function SaldoItem({ icon: Icon, label, value, visible, accentClass }: { icon: LucideIcon; label: string; value: number; visible: boolean; accentClass: string }) {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-xs">{emoji}</span>
-      <span className="text-[7px] font-bold text-muted-foreground uppercase tracking-wider">{label}</span>
+      <Icon aria-hidden="true" className="mb-1 h-4 w-4 text-muted-foreground" />
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       <AnimatePresence mode="wait">
         {visible ? (
           <motion.span key="s" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={spring}
@@ -26,7 +27,7 @@ function SaldoItem({ emoji, label, value, visible, accentClass }: { emoji: strin
 }
 
 function LoadingSkeleton() {
-  return (<div className="rounded-lg border bg-card p-2"><div className="flex items-center justify-between mb-1.5"><div className="h-2.5 w-20 animate-pulse rounded bg-muted"/><div className="h-4 w-4 animate-pulse rounded-full bg-muted"/></div><div className="grid grid-cols-3">{[1,2,3].map(i=><div key={i} className="flex flex-col items-center"><div className="h-4 w-4 animate-pulse rounded-full bg-muted"/><div className="h-1 w-8 animate-pulse rounded bg-muted mt-0.5"/><div className="h-2 w-12 animate-pulse rounded bg-muted mt-0.5"/></div>)}</div></div>);
+  return (<div className="karyawan-card border bg-card p-4" role="status" aria-label="Memuat saldo"><Skeleton className="mb-3 h-4 w-28 rounded-lg"/><div className="grid grid-cols-3 gap-3">{[1,2,3].map(i=><div key={i} className="space-y-2"><Skeleton className="mx-auto h-4 w-4 rounded-full"/><Skeleton className="mx-auto h-3 w-14 rounded-lg"/><Skeleton className="mx-auto h-3 w-16 rounded-lg"/></div>)}</div></div>);
 }
 
 type SaldoData = { gaji: number; tunjangan: number; bonus: number; total: number };
@@ -55,7 +56,7 @@ export function SaldoCard({ staffId }: { staffId: string }) {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring}
-      className="rounded-lg border bg-card p-2 shadow-sm">
+      className="karyawan-card border bg-card p-4">
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1">
           <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-100 text-emerald-600">
@@ -63,15 +64,15 @@ export function SaldoCard({ staffId }: { staffId: string }) {
           </div>
           <p className="text-[11px] font-extrabold">Saldo {ml}</p>
         </div>
-        <motion.button whileTap={{ scale: 0.85 }} onClick={() => setVisible(v => { localStorage.setItem("saldo_visible", String(!v)); return !v; })}
-          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted transition-colors">
+        <motion.button aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"} whileTap={{ scale: 0.97 }} onClick={() => setVisible(v => { localStorage.setItem("saldo_visible", String(!v)); return !v; })}
+          className="flex h-11 w-11 items-center justify-center rounded-[14px] text-muted-foreground transition-colors hover:bg-muted">
           {visible ? <EyeOff className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
         </motion.button>
       </div>
       <div className="grid grid-cols-3">
-        <SaldoItem emoji="💵" label="Gaji" value={d.gaji} visible={visible} accentClass="text-emerald-600" />
-        <SaldoItem emoji="🎁" label="Tunjangan" value={d.tunjangan} visible={visible} accentClass="text-blue-600" />
-        <SaldoItem emoji="🏆" label="Bonus" value={d.bonus} visible={visible} accentClass="text-amber-600" />
+        <SaldoItem icon={Banknote} label="Gaji" value={d.gaji} visible={visible} accentClass="text-emerald-600" />
+        <SaldoItem icon={Gift} label="Tunjangan" value={d.tunjangan} visible={visible} accentClass="text-primary" />
+        <SaldoItem icon={Trophy} label="Bonus" value={d.bonus} visible={visible} accentClass="text-amber-600" />
       </div>
     </motion.div>
   );

@@ -14,7 +14,8 @@ import { Input } from "@yumipos/web-shared/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	User, Clock, FileText, Camera, ShieldCheck, Bell, Check, Send, ExternalLink,
-	LogOut, Calendar, KeyRound, X
+	LogOut, Calendar, KeyRound, X, AlertTriangle, MessageCircle, Sparkles,
+	LogIn, ClipboardList, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -190,7 +191,7 @@ function ProfilPage() {
 				return (
 					<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
 						<div className="flex items-start gap-3">
-							<div className="shrink-0 mt-0.5">⚠️</div>
+							<AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
 							<div className="flex-1 min-w-0">
 								<p className="text-[10px] font-black uppercase tracking-wide">Lengkapi Data Diri</p>
 								<p className="mt-0.5 text-[11px] font-medium">Isi No HP, Alamat, dan data lainnya untuk memudahkan administrasi.</p>
@@ -215,7 +216,7 @@ function ProfilPage() {
 						{showEditTooltip && (
 							<motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="relative inline-flex items-center gap-1.5">
 								<motion.div animate={{ x: [0, 3, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-									<span className="text-base">👉</span>
+									<ArrowRight aria-hidden="true" className="h-4 w-4 text-primary" />
 								</motion.div>
 								<span className="whitespace-nowrap rounded-lg bg-primary px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">Isi data dirimu!</span>
 							</motion.div>
@@ -548,7 +549,7 @@ function ProfilPage() {
 				</h3>
 				<div className="rounded-xl border border-sky-100 bg-sky-50 p-3">
 					<div className="flex items-start gap-3">
-						<div className="shrink-0 mt-0.5 text-lg">💬</div>
+						<MessageCircle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" />
 						<div className="flex-1 min-w-0">
 							<p className="text-[10px] font-black uppercase tracking-wide text-sky-800">Gabung Grup Karyawan</p>
 							<p className="mt-0.5 text-[11px] font-medium text-sky-700">Dapatkan pengumuman, jadwal, dan info terbaru dari tim.</p>
@@ -603,16 +604,16 @@ function ProfilPage() {
 								<p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">Tombol Cepat</p>
 								<div className="flex flex-wrap gap-1.5">
 									{[
-										{ label: "Absen Masuk", emoji: "✅", action: "https://t.me/yumihrdbot?start=checkin" },
-										{ label: "Absen Keluar", emoji: "📤", action: "https://t.me/yumihrdbot?start=checkout" },
-										{ label: "Status Saya", emoji: "📋", action: "https://t.me/yumihrdbot?start=status" },
+										{ label: "Absen Masuk", icon: LogIn, action: "https://t.me/yumihrdbot?start=checkin" },
+										{ label: "Absen Keluar", icon: LogOut, action: "https://t.me/yumihrdbot?start=checkout" },
+										{ label: "Status Saya", icon: ClipboardList, action: "https://t.me/yumihrdbot?start=status" },
 									].map((btn) => (
 										<button
 											key={btn.label}
 											onClick={() => window.open(btn.action, "_blank")}
-											className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary shadow-sm hover:bg-primary/20 transition-colors cursor-pointer border-0"
+											className="inline-flex min-h-11 items-center gap-1.5 rounded-[14px] bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary shadow-sm hover:bg-primary/20 transition-colors cursor-pointer border-0"
 										>
-											<span>{btn.emoji}</span>
+											<btn.icon aria-hidden="true" className="h-3.5 w-3.5" />
 											<span>{btn.label}</span>
 										</button>
 									))}
@@ -645,7 +646,7 @@ function ProfilPage() {
 							</div>
 							{telegramCode && (
 								<div className="rounded-lg bg-sky-50 border border-sky-200 p-3 mb-3 text-center">
-									<p className="text-[11px] font-black uppercase tracking-wider text-sky-700 mb-1.5">🔑 Kode Registrasi</p>
+									<p className="flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-sky-700 mb-1.5"><KeyRound aria-hidden="true" className="h-3.5 w-3.5" /> Kode Registrasi</p>
 									<p className="text-2xl font-black font-mono tracking-widest text-sky-900 select-all">{telegramCode}</p>
 								</div>
 							)}
@@ -653,7 +654,7 @@ function ProfilPage() {
 								<p className="text-[11px] font-black uppercase tracking-wider text-amber-800 mb-1.5">Cara Hubungkan:</p>
 								<ol className="space-y-1 text-[11px] text-amber-900 list-decimal list-inside">
 									<li>Buka bot Telegram di bawah</li>
-									<li>Klik tombol <b>🔑 Daftar / Hubungkan</b> di bot</li>
+									<li>Klik tombol <b>Daftar / Hubungkan</b> di bot</li>
 									<li>Masukkan kode: <code className="rounded bg-amber-100 px-1 py-0.5 font-mono font-bold text-[10px]">{telegramCode || "DT-XXXX"}</code></li>
 								</ol>
 							</div>
@@ -727,7 +728,7 @@ function ProfilPage() {
 										</motion.div>
 									</div>
 								)}
-								<button onClick={dismissOnboarding} className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+								<button aria-label="Tutup panduan awal" onClick={dismissOnboarding} className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-[14px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
 									<X className="h-4 w-4" />
 								</button>
 
@@ -745,7 +746,7 @@ function ProfilPage() {
 
 								<div className="text-center mb-6">
 									<motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: "spring", damping: 15 }} className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-										<span className="text-2xl">✨</span>
+										<Sparkles aria-hidden="true" className="h-7 w-7 text-primary" />
 									</motion.div>
 									<h2 className="text-lg sm:text-xl font-black tracking-tight">Selamat Datang!</h2>
 									<p className="text-xs text-muted-foreground mt-1">Selesaikan 2 langkah berikut untuk memulai.</p>
@@ -755,7 +756,7 @@ function ProfilPage() {
 									<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 mb-3">
 										<div className="flex items-center gap-3">
 											<div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white"><Check className="h-4 w-4" /></div>
-											<div><p className="font-bold text-sm text-emerald-800">Data Diri ✓</p><p className="text-[11px] text-emerald-600">Sudah dilengkapi</p></div>
+											<div><p className="font-bold text-sm text-emerald-800">Data Diri</p><p className="text-[11px] text-emerald-600">Sudah dilengkapi</p></div>
 										</div>
 									</div>
 								) : (
@@ -775,7 +776,7 @@ function ProfilPage() {
 									<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 mb-4">
 										<div className="flex items-center gap-3">
 											<div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white"><Check className="h-4 w-4" /></div>
-											<div><p className="font-bold text-sm text-emerald-800">Grup Telegram ✓</p><p className="text-[11px] text-emerald-600">Sudah bergabung</p></div>
+											<div><p className="font-bold text-sm text-emerald-800">Grup Telegram</p><p className="text-[11px] text-emerald-600">Sudah bergabung</p></div>
 										</div>
 									</div>
 								) : (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@yumipos/web-shared/lib/client";
+import { Skeleton } from "@yumipos/web-shared";
 import { Megaphone, Sparkles } from "lucide-react";
 
 type Announcement = {
@@ -70,7 +71,7 @@ export function SmartBanner() {
 
   if (banner.status === "loading") {
     return (
-      <div className="h-24 rounded-2xl bg-gradient-to-r from-gray-800/80 to-gray-600/40 animate-pulse" />
+      <Skeleton className="karyawan-card h-24" role="status" aria-label="Memuat pengumuman" />
     );
   }
 
@@ -79,7 +80,7 @@ export function SmartBanner() {
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 25, mass: 0.8 }}
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 h-28"
+      className="karyawan-card relative h-28 overflow-hidden bg-slate-900"
     >
       {/* Decorative stones pattern */}
       <div className="absolute inset-0 opacity-20">
@@ -96,8 +97,8 @@ export function SmartBanner() {
       </div>
 
       <div className="relative z-10 flex h-full flex-col justify-center px-5">
-        <h3 className="text-sm font-black text-white leading-tight">{banner.title}</h3>
-        <p className="mt-0.5 text-[10px] font-medium text-gray-300">
+        <h2 className="text-base font-bold leading-tight text-white">{banner.title}</h2>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-gray-300">
           {banner.subtitle}
         </p>
       </div>

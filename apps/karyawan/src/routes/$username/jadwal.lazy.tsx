@@ -28,6 +28,10 @@ function JadwalPage() {
 
 	return (
 		<div className="space-y-4">
+			<header className="flex items-center gap-2 px-1">
+				<CalendarDays className="h-5 w-5 text-primary" />
+				<div><h1 className="text-lg font-bold">Jadwal Kerja</h1><p className="text-xs text-muted-foreground">Shift dan riwayat kehadiranmu</p></div>
+			</header>
 			{/* Kalender Jadwal Shift */}
 			{staff && (
 				<div className="space-y-2">
@@ -35,7 +39,7 @@ function JadwalPage() {
 						<CalendarDays className="h-3 w-3 text-primary" />
 						<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Jadwal Shift</span>
 					</div>
-					<div className="rounded-xl border bg-card/80 p-2">
+					<div className="karyawan-card border bg-card/80 p-3">
 						<PersonalSchedule userId={staff._id} userName={staff.name} userRole={staff.roleName} month={new Date().getMonth() + 1} year={new Date().getFullYear()} />
 					</div>
 				</div>
@@ -70,10 +74,11 @@ function JadwalPage() {
 			</div>
 
 			{/* Log Kehadiran List */}
-			<div className="rounded-xl border bg-card overflow-hidden">
+			<div className="karyawan-card overflow-hidden border bg-card">
 				{!logs || logs.length === 0 ? (
-					<div className="p-8 text-center text-xs text-muted-foreground">
-						Tidak ada data absensi untuk periode ini.
+					<div className="p-8 text-center">
+						<History className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+						<p className="text-sm font-bold">Belum ada riwayat</p><p className="mt-1 text-xs text-muted-foreground">Data absensi periode ini akan tampil di sini.</p>
 					</div>
 				) : (
 					<div className="divide-y divide-border">

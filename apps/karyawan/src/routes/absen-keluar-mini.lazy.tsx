@@ -5,7 +5,8 @@ import { z } from "zod";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Check, Camera, Upload,
-  Loader2, Sparkles, AlertTriangle, X
+  Loader2, Sparkles, AlertTriangle, X, Brush, Save, Search,
+  Lightbulb, Coffee, ChefHat, CookingPot, Armchair, Toilet
 } from "lucide-react";
 import {
   submitClosingViaEdge,
@@ -61,7 +62,7 @@ declare global {
 type KebersihanArea = {
   id: string;
   label: string;
-  emoji: string;
+  icon: "cooking" | "seating" | "toilet";
   status: "bersih" | "perlu_perbaikan";
   /** Object URL — hanya untuk preview di layar. */
   foto: string | null;
@@ -104,10 +105,12 @@ const KITCHEN_INGREDIENTS = new Set([
 ]);
 
 const AREAS_KEBERSIHAN: KebersihanArea[] = [
-  { id: "bar_kitchen", label: "Bar & Kitchen", emoji: "🍳", status: "bersih", foto: null, catatan: "" },
-  { id: "area_customer", label: "Area Customer", emoji: "🪑", status: "bersih", foto: null, catatan: "" },
-  { id: "wc", label: "Toilet/WC", emoji: "🚻", status: "bersih", foto: null, catatan: "" },
+  { id: "bar_kitchen", label: "Bar & Kitchen", icon: "cooking", status: "bersih", foto: null, catatan: "" },
+  { id: "area_customer", label: "Area Customer", icon: "seating", status: "bersih", foto: null, catatan: "" },
+  { id: "wc", label: "Toilet/WC", icon: "toilet", status: "bersih", foto: null, catatan: "" },
 ];
+
+const KEBERSIHAN_ICONS = { cooking: CookingPot, seating: Armchair, toilet: Toilet };
 
 // ─── Route ────────────────────────────────
 
@@ -149,7 +152,7 @@ function MiniClosingPage() {
 
   useEffect(() => {
     if (!uid || !t || !sig) {
-      setLoadError("❌ Tautan tidak valid (parameter tidak lengkap).");
+      setLoadError("Tautan tidak valid (parameter tidak lengkap).");
       setLoadingStaff(false);
       setVerifying(false);
       return;
@@ -166,7 +169,7 @@ function MiniClosingPage() {
         const data = await res.json();
 
         if (!data.valid) {
-          setLoadError(data.error || "❌ Tautan tidak valid.");
+          setLoadError(data.error || "Tautan tidak valid.");
           setVerifying(false);
           setLoadingStaff(false);
           return;
@@ -242,7 +245,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
     if (!tg) return;
     if (submitDone) return;
 
-    tg.MainButton.setText("✅ Kirim Laporan Closing");
+    tg.MainButton.setText("Kirim Laporan Closing");
     tg.MainButton.show();
     tg.MainButton.enable();
     tg.MainButton.onClick(handleSubmit);
@@ -258,10 +261,10 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
     if (!tg || submitDone) return;
 
     if (isSubmitting) {
-      tg.MainButton.setText("⏳ Menyimpan...");
+      tg.MainButton.setText("Menyimpan...");
       tg.MainButton.disable();
     } else {
-      tg.MainButton.setText("✅ Kirim Laporan Closing");
+      tg.MainButton.setText("Kirim Laporan Closing");
       tg.MainButton.enable();
     }
   }, [isSubmitting, submitDone]);
@@ -306,7 +309,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
       // Close Mini App after 1.5s delay
       const tg = window.Telegram?.WebApp;
       if (tg) {
-        tg.MainButton.setText("✅ Selesai! Tutup...");
+        tg.MainButton.setText("Selesai, menutup...");
         setTimeout(() => tg.close(), 1500);
       }
     } catch (err: any) {
@@ -363,7 +366,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
             <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 mb-1">
               <Check className="h-4 w-4 text-emerald-600" />
             </div>
-            <p className="font-bold text-sm text-emerald-800">Absen Keluar Berhasil! ✅</p>
+            <p className="font-bold text-sm text-emerald-800">Absen Keluar Berhasil!</p>
             <p className="text-xs text-emerald-600 mt-0.5">Stock opname & kebersihan tersimpan.</p>
             <p className="text-[10px] text-emerald-500 mt-1">Menutup otomatis...</p>
           </motion.div>
@@ -377,24 +380,24 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
             {needsOpname && (
               <button
                 onClick={() => setActiveTab("opname")}
-                className={`flex-1 rounded-lg py-2 text-[11px] font-bold transition-all ${
+                className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] py-2 text-[11px] font-bold transition-all ${
                   activeTab === "opname"
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                🧾 Stock Opname
+                <ClipboardList className="h-4 w-4" /> Stock Opname
               </button>
             )}
             <button
               onClick={() => setActiveTab("kebersihan")}
-              className={`flex-1 rounded-lg py-2 text-[11px] font-bold transition-all ${
+              className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] py-2 text-[11px] font-bold transition-all ${
                 activeTab === "kebersihan"
                   ? "bg-background shadow-sm text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              🧹 Kebersihan
+              <Brush className="h-4 w-4" /> Kebersihan
             </button>
           </div>
         </div>
@@ -432,7 +435,7 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
     const [saved, setSaved] = useState(false);
 
     const targetNames = role === "bar" ? BAR_INGREDIENTS : KITCHEN_INGREDIENTS;
-    const roleEmoji = role === "bar" ? "☕" : "🍳";
+    const RoleIcon = role === "bar" ? Coffee : ChefHat;
     const roleLabel = role === "bar" ? "BAR" : "KITCHEN";
 
     useEffect(() => {
@@ -529,14 +532,14 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
               <ClipboardList className="h-4 w-4" />
             </div>
             <div>
-              <p className="font-bold text-xs">{roleEmoji} {roleLabel} Stock Opname</p>
+              <p className="flex items-center gap-1.5 font-bold text-xs"><RoleIcon className="h-3.5 w-3.5" /> {roleLabel} Stock Opname</p>
               <p className="text-[11px] text-muted-foreground">
                 {items.length} bahan — {changedItems.length} berubah
               </p>
             </div>
             {allSame && (
-              <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                ✅ Sama
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                <Check className="h-3 w-3" /> Sama
               </span>
             )}
           </div>
@@ -544,38 +547,39 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
 
         {/* Quick actions */}
         <div className="flex gap-2">
-          <button onClick={markAllSame} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-[11px] font-bold hover:bg-muted">
-            ✅ Semua Sama
+          <button onClick={markAllSame} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2 text-[11px] font-bold hover:bg-muted">
+            <Check className="h-3.5 w-3.5" /> Semua Sama
           </button>
-          <button onClick={() => setSaved(true)} className="flex-1 rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-600">
-            💾 Simpan
+          <button onClick={() => setSaved(true)} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-600">
+            <Save className="h-3.5 w-3.5" /> Simpan
           </button>
         </div>
 
         {saved && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg bg-blue-50 border border-blue-200 p-2.5 text-center">
-            <p className="text-[11px] font-semibold text-blue-700">✅ Opname tersimpan sementara.</p>
+            <p className="flex items-center justify-center gap-1 text-[11px] font-semibold text-blue-700"><Check className="h-3.5 w-3.5" /> Opname tersimpan sementara.</p>
           </motion.div>
         )}
 
         {/* Info banner (compact for mini) */}
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-2">
-          <p className="text-[11px] font-medium text-amber-700 leading-relaxed">
-            💡 Hanya <strong>orang terakhir</strong> yang absen keluar perubahannya diterapkan ke stok.
+          <p className="flex items-start gap-1 text-[11px] font-medium text-amber-700 leading-relaxed">
+            <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>Hanya <strong>orang terakhir</strong> yang absen keluar perubahannya diterapkan ke stok.</span>
           </p>
         </div>
 
         {/* Search */}
         <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="🔍 Cari bahan..."
+            placeholder="Cari bahan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none transition-all focus:ring-2 focus:ring-primary/20"
+            className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2 pl-9 pr-11 text-xs outline-none transition-all focus:ring-2 focus:ring-primary/20"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <button aria-label="Hapus pencarian" onClick={() => setSearchQuery("")} className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[14px] text-muted-foreground">
               <X className="h-3 w-3" />
             </button>
           )}
@@ -680,31 +684,33 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-bold text-xs">🧹 Checklist Kebersihan</p>
-            <p className="text-[11px] text-muted-foreground">{completedCount}/3 area ✅ — {photoCount} foto</p>
+            <p className="flex items-center gap-1 font-bold text-xs"><Brush className="h-3.5 w-3.5" /> Checklist Kebersihan</p>
+            <p className="text-[11px] text-muted-foreground">{completedCount}/3 area bersih — {photoCount} foto</p>
           </div>
         </div>
       </div>
 
-      {areas.map((area) => (
+      {areas.map((area) => {
+        const AreaIcon = KEBERSIHAN_ICONS[area.icon];
+        return (
         <div key={area.id} className={`rounded-xl border p-3 transition-all ${
           area.status === "perlu_perbaikan" ? "border-amber-200 bg-amber-50/30" :
           area.foto ? "border-emerald-200 bg-emerald-50/30" : "border-border bg-background"
         }`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-base">{area.emoji}</span>
+              <AreaIcon className="h-4 w-4 text-muted-foreground" />
               <p className="font-bold text-xs">{area.label}</p>
             </div>
             <div className="flex gap-1">
               <button onClick={() => updateStatus(area.id, "bersih")}
-                className={`rounded-md px-2 py-1 text-[11px] font-bold transition-all ${
+                className={`inline-flex min-h-11 items-center gap-1 rounded-[14px] px-2 py-1 text-[11px] font-bold transition-all ${
                   area.status === "bersih" ? "bg-emerald-500 text-white shadow-sm" : "bg-muted text-muted-foreground"
-                }`}>✅ Bersih</button>
+                }`}><Check className="h-3.5 w-3.5" /> Bersih</button>
               <button onClick={() => updateStatus(area.id, "perlu_perbaikan")}
-                className={`rounded-md px-2 py-1 text-[11px] font-bold transition-all ${
+                className={`inline-flex min-h-11 items-center gap-1 rounded-[14px] px-2 py-1 text-[11px] font-bold transition-all ${
                   area.status === "perlu_perbaikan" ? "bg-amber-500 text-white shadow-sm" : "bg-muted text-muted-foreground"
-                }`}>⚠️ Perlu</button>
+                }`}><AlertTriangle className="h-3.5 w-3.5" /> Perlu</button>
             </div>
           </div>
 
@@ -729,16 +735,17 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
               className="flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-[11px] outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50" />
           </div>
         </div>
-      ))}
+        );
+      })}
 
       <button onClick={() => setSaved(true)}
-        className="w-full rounded-lg bg-emerald-500 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 active:scale-[0.98]">
-        💾 Simpan Checklist
+        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 active:scale-[0.98]">
+        <Save className="h-3.5 w-3.5" /> Simpan Checklist
       </button>
 
       {saved && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-center">
-          <p className="text-[11px] font-bold text-emerald-700">✅ Checklist tersimpan!</p>
+          <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700"><Check className="h-3.5 w-3.5" /> Checklist tersimpan!</p>
         </motion.div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useStaffProfile } from "../$username.lazy";
-import { useHybridStaffLogs, useHybridStaffStats, useHybridSiteSettings } from "@yumipos/web-shared";
+import { Skeleton, useHybridStaffLogs, useHybridStaffStats, useHybridSiteSettings } from "@yumipos/web-shared";
 import { Calendar, Clock, AlertTriangle, TrendingUp, CheckCircle, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -108,7 +108,7 @@ function RekapAbsensiPage() {
 				<div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/50 bg-card text-primary shadow-sm">
 					<Calendar className="h-4 w-4" />
 				</div>
-				<h1 className="text-sm font-bold tracking-tight">Rekap Absensi</h1>
+				<h1 className="text-lg font-bold tracking-tight">Rekap Absensi</h1>
 			</div>
 
 			{/* Period selector */}
@@ -116,7 +116,8 @@ function RekapAbsensiPage() {
 				<select
 					value={selectedMonth}
 					onChange={(e) => setSelectedMonth(Number(e.target.value))}
-					className="rounded-lg border bg-card px-3 py-1.5 text-xs font-semibold"
+					aria-label="Pilih bulan rekap"
+					className="karyawan-control border bg-card px-3 text-xs font-semibold"
 				>
 					{MONTHS.map((m, i) => (
 						<option key={i} value={i + 1}>{m}</option>
@@ -125,7 +126,8 @@ function RekapAbsensiPage() {
 				<select
 					value={selectedYear}
 					onChange={(e) => setSelectedYear(Number(e.target.value))}
-					className="rounded-lg border bg-card px-3 py-1.5 text-xs font-semibold"
+					aria-label="Pilih tahun rekap"
+					className="karyawan-control border bg-card px-3 text-xs font-semibold"
 				>
 					{years.map((y) => (
 						<option key={y} value={y}>{y}</option>
@@ -158,11 +160,11 @@ function RekapAbsensiPage() {
 			</div>
 
 			{/* Log table */}
-			<div className="rounded-xl border overflow-hidden">
+			<div className="karyawan-card overflow-hidden border">
 				{isLoading ? (
 					<div className="p-4 space-y-2">
 						{Array.from({ length: 5 }).map((_, i) => (
-							<div key={i} className="h-6 rounded bg-muted animate-pulse" />
+							<Skeleton key={i} className="h-6 rounded-lg" />
 						))}
 					</div>
 				) : sessions.length === 0 ? (
@@ -171,7 +173,8 @@ function RekapAbsensiPage() {
 						<p className="text-[11px] text-muted-foreground">Belum ada data absensi untuk bulan ini</p>
 					</div>
 				) : (
-					<table className="w-full text-[10px]">
+					<div className="overflow-x-auto" role="region" aria-label="Tabel rekap absensi" tabIndex={0}>
+					<table className="min-w-[640px] w-full text-xs">
 						<thead>
 							<tr className="border-b bg-muted/50 text-left text-[10px] font-semibold text-muted-foreground">
 								<th className="px-3 py-2">Tanggal</th>
@@ -217,6 +220,7 @@ function RekapAbsensiPage() {
 							))}
 						</tbody>
 					</table>
+					</div>
 				)}
 			</div>
 		</div>
@@ -225,7 +229,7 @@ function RekapAbsensiPage() {
 
 function StatsCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
-		<div className="rounded-xl border bg-card p-3">
+		<div className="karyawan-card border bg-card p-4">
 			<div className="flex items-center gap-1.5 mb-1">
 				{icon}
 				<span className="text-[10px] text-muted-foreground">{label}</span>

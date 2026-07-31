@@ -6,6 +6,7 @@ import {
   Users, ArrowLeft, Loader2, Sparkles, DollarSign,
 } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
+import { Skeleton } from "@yumipos/web-shared";
 import { useStaffProfile } from "../$username.lazy";
 
 // ── Inline formatter ──────────────────────────────────────────────────
@@ -181,7 +182,7 @@ function PodiumCard({ entry, rank, maxBonus, isMe }: {
       variants={podiumVariants}
       initial="hidden"
       animate="visible"
-      className={`relative flex flex-col items-center rounded-xl border bg-card p-3 transition-all ${c.shadow} ${isMe ? "ring-2 ring-primary ring-offset-1" : ""}`}
+      className={`karyawan-card relative flex min-w-0 flex-col items-center border bg-card p-3 transition-all ${c.shadow} ${isMe ? "ring-2 ring-primary ring-offset-1" : ""}`}
     >
       <div className={`absolute -top-3 left-1/2 -translate-x-1/2 flex h-7 w-7 items-center justify-center rounded-full ${c.badge} shadow-md`}>
         {rank === 0 ? <Crown className="h-3.5 w-3.5" /> : rank === 1 ? <Medal className="h-3.5 w-3.5" /> : <Star className="h-3.5 w-3.5" />}
@@ -193,7 +194,7 @@ function PodiumCard({ entry, rank, maxBonus, isMe }: {
         </span>
       </div>
 
-      <p className="mt-2 text-[11px] font-bold text-foreground truncate max-w-full text-center leading-tight">
+      <p className="mt-2 max-w-full text-center text-[11px] font-bold leading-tight text-foreground [overflow-wrap:anywhere]">
         {entry.name} {isMe && <span className="text-[10px] text-primary font-bold">(Kamu)</span>}
       </p>
       <p className="text-[10px] font-medium text-muted-foreground truncate max-w-full">{entry.roleName}</p>
@@ -223,13 +224,9 @@ function PodiumCard({ entry, rank, maxBonus, isMe }: {
       </p>
 
       {rank === 0 && (
-        <motion.div
-          className="absolute -top-1 -right-1"
-          animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
-          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-        >
+        <div className="absolute -right-1 -top-1">
           <Sparkles className="h-4 w-4 text-amber-400" />
-        </motion.div>
+        </div>
       )}
     </motion.div>
   );
@@ -254,6 +251,10 @@ function LeaderboardRow({ entry, rank, maxBonus, isMe }: {
           : "border-border bg-card"
       } hover:bg-muted/50 hover:border-primary/20`}
       onClick={() => setExpanded(!expanded)}
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
+      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpanded(!expanded); } }}
     >
       <div className="flex items-center gap-2">
         <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${top3 ? c!.badge : "bg-muted"} shadow-sm`}>
@@ -348,12 +349,12 @@ function LoadingSkeleton() {
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-5 w-5 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-44 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-5 w-5 rounded-lg" />
+        <Skeleton className="h-4 w-44 rounded-lg" />
       </div>
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-12 w-full animate-pulse rounded-lg bg-muted" />
+          <Skeleton key={i} className="h-12 w-full rounded-lg" />
         ))}
       </div>
     </div>
@@ -429,7 +430,8 @@ function LeaderboardPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })}
-          className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card shadow-sm hover:bg-muted transition-colors"
+          aria-label="Kembali ke beranda"
+          className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-border bg-card shadow-sm hover:bg-muted transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -438,7 +440,7 @@ function LeaderboardPage() {
             <Trophy className="h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-sm font-extrabold tracking-tight">Leaderboard Bonus</h1>
+            <h1 className="text-lg font-bold tracking-tight">Leaderboard Bonus</h1>
             <p className="text-[11px] font-medium text-muted-foreground">Bulan {new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</p>
           </div>
         </div>
@@ -491,8 +493,8 @@ function LeaderboardPage() {
           {/* Rank outside leaderboard */}
           {currentUserRank < 0 && !loading && (
             <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center">
-              <p className="text-[10px] font-medium text-muted-foreground">
-                Kamu belum memiliki bonus bulan ini. Tetap semangat! 💪
+              <p className="flex items-center justify-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                <TrendingUp className="h-3.5 w-3.5" /> Kamu belum memiliki bonus bulan ini. Tetap semangat!
               </p>
             </div>
           )}

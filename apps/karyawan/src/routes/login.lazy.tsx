@@ -217,20 +217,20 @@ function KaryawanLoginPage() {
   const canInputPin = resolvedUser && !resolveError;
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 p-4">
+    <main className="karyawan-shell karyawan-safe-bottom flex min-h-dvh items-center justify-center bg-background p-4">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }}
         className="w-full max-w-sm"
       >
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-lg">
+        <section aria-labelledby="login-title" className="karyawan-card border border-border/60 bg-card p-6">
           {/* Header */}
           <div className="mb-5 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <Fingerprint className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="text-lg font-bold text-foreground">Absen Karyawan</h1>
+            <h1 id="login-title" className="text-xl font-bold text-foreground">Portal Karyawan</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Pilih nama kamu, lalu masukkan PIN
             </p>
@@ -369,7 +369,7 @@ function KaryawanLoginPage() {
                         : "Masukkan PIN 6 digit"}
             </p>
           </div>
-        </div>
+        </section>
 
         {/* Register link */}
         <div className="mt-4 text-center">
@@ -387,6 +387,6 @@ function KaryawanLoginPage() {
           Djiwa Tentram — Kehadiran Karyawan
         </p>
       </motion.div>
-    </div>
+    </main>
   );
 }

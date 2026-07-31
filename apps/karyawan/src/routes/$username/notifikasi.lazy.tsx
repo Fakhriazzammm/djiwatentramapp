@@ -140,7 +140,7 @@ function NotifikasiPage() {
               items.push({
                 id: `slip-${p.id}`,
                 title: `Slip Gaji ${p.period_name || ""}`.trim(),
-                message: `Status: ${p.status === "sent" ? "Telah dikirim 💌" : p.status === "acknowledged" ? "Sudah diterima ✅" : p.status === "disputed" ? "Ada yang perlu dicek ⚠️" : "Tersedia"}`,
+                message: `Status: ${p.status === "sent" ? "Telah dikirim" : p.status === "acknowledged" ? "Sudah diterima" : p.status === "disputed" ? "Ada yang perlu dicek" : "Tersedia"}`,
                 type: "payslip" as NotifType,
                 date: new Date(p.created_at).toLocaleDateString("id-ID", {
                   day: "numeric", month: "short",
@@ -168,10 +168,10 @@ function NotifikasiPage() {
           if (leaves) {
             for (const l of leaves) {
               const statusLabel =
-                l.status === "approved" ? "Disetujui ✅" :
-                l.status === "rejected" ? "Ditolak ❌" :
+                l.status === "approved" ? "Disetujui" :
+                l.status === "rejected" ? "Ditolak" :
                 l.status === "cancelled" ? "Dibatalkan" :
-                "Menunggu ⏳";
+                "Menunggu";
               const period = l.start_date === l.end_date
                 ? new Date(l.start_date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
                 : `${new Date(l.start_date).toLocaleDateString("id-ID", { day: "numeric" })}-${new Date(l.end_date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}`;
@@ -253,7 +253,7 @@ function NotifikasiPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-blue-600" />
-          <h2 className="text-xs font-black uppercase tracking-wider">Notifikasi</h2>
+          <h1 className="text-lg font-bold tracking-tight">Notifikasi</h1>
           {visible.length > 0 && (
             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
               {visible.length}
@@ -263,7 +263,7 @@ function NotifikasiPage() {
         {visible.length > 1 && (
           <button
             onClick={markAllRead}
-            className="flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground hover:bg-muted/80 transition-colors"
+            className="karyawan-control flex items-center gap-1 bg-muted px-3 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/80"
           >
             <CheckCheck className="h-3 w-3" />
             Tandai Semua Dibaca
@@ -282,7 +282,8 @@ function NotifikasiPage() {
             <button
               key={s.key}
               onClick={() => setFilterType(s.key)}
-              className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold transition-all ${
+              aria-pressed={isActive}
+              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                 isActive
                   ? "bg-blue-600 text-white shadow-sm"
                   : "bg-muted text-muted-foreground hover:bg-muted/70"
@@ -316,7 +317,7 @@ function NotifikasiPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border bg-card p-8 text-center">
+        <div className="karyawan-card border bg-card p-8 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             {filterType === "all" ? (
               <CheckCheck className="h-6 w-6 text-emerald-500" />
@@ -346,11 +347,12 @@ function NotifikasiPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25, mass: 0.8 }}
-                className="group relative rounded-xl border bg-card p-3 overflow-hidden"
+                className="karyawan-card group relative overflow-hidden border bg-card p-4"
               >
                 <button
                   onClick={() => dismissOne(n.id)}
-                  className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label={`Tandai ${n.title} sudah dibaca`}
+                  className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground opacity-100 transition-opacity hover:bg-muted"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -380,7 +382,7 @@ function NotifikasiPage() {
                       {n.actionUrl && n.actionLabel && (
                         <a
                           href={n.actionUrl}
-                          className="inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors"
+                          className="inline-flex min-h-11 items-center gap-1 rounded-[14px] bg-primary/10 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
                         >
                           {n.actionLabel}
                           <ExternalLink className="h-2.5 w-2.5" />

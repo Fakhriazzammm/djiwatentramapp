@@ -3,7 +3,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, ArrowLeft, ArrowRight, Loader2, CheckCircle2, FileText, Pen, Eraser } from "lucide-react";
+import { UserPlus, ArrowLeft, ArrowRight, Loader2, Check, CheckCircle2, FileText, Pen, Eraser } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
 import { toast } from "sonner";
 
@@ -391,7 +391,7 @@ function RegisterPage() {
                       : "bg-muted text-muted-foreground"
                 }`}
               >
-                {i < step ? "✓" : i + 1}
+                {i < step ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : i + 1}
               </div>
               <span
                 className={`text-xs ${i === step ? "font-medium text-foreground" : "text-muted-foreground"}`}
@@ -403,7 +403,7 @@ function RegisterPage() {
           ))}
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-lg">
+        <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-lg">
           {/* Header */}
           <div className="mb-5 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">

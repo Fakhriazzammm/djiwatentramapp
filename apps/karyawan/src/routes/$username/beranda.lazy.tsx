@@ -62,7 +62,7 @@ function BerandaPage() {
 						<p className="text-xs font-medium text-muted-foreground truncate">
 							{greeting}, ({timeStr})
 						</p>
-						<h1 className="text-sm font-black tracking-tight truncate">
+						<h1 className="text-lg font-bold tracking-tight [overflow-wrap:anywhere]">
 							{staff?.name || "—"}
 						</h1>
 						<p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">
@@ -94,16 +94,16 @@ function BerandaPage() {
 
 			{/* ─── Quick Stats ─── */}
 			<div className="grid grid-cols-3 gap-2">
-				<div whileHover={{ scale: 1.03 }} transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }} className="rounded-xl border bg-card px-2 py-2 text-center">
-					<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Shift</p>
+				<div className="rounded-2xl border bg-card px-2 py-2 text-center">
+					<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Shift</p>
 					<p className="text-sm font-black">{stats?.sessionCount ?? 0}</p>
 				</div>
-				<div whileHover={{ scale: 1.03 }} transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }} className="rounded-xl border bg-card px-2 py-2 text-center">
-					<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hadir</p>
+				<div className="rounded-2xl border bg-card px-2 py-2 text-center">
+					<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hadir</p>
 					<p className="text-sm font-black">{stats?.attendanceRate ?? 0}<span className="text-[7px] font-normal text-muted-foreground">%</span></p>
 				</div>
-				<div whileHover={{ scale: 1.03 }} transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }} className="rounded-xl border bg-card px-2 py-2 text-center">
-					<p className="text-[7px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Hari</p>
+				<div className="rounded-2xl border bg-card px-2 py-2 text-center">
+					<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hari</p>
 					<p className="text-sm font-black">{stats?.daysWorked ?? 0}</p>
 				</div>
 			</div>
@@ -123,7 +123,7 @@ function BerandaPage() {
 				transition={{ delay: 0.3, ...{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 } }}
 			>
 				<Button
-					className={`h-11 w-full rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 ${
+					className={`h-12 w-full rounded-[14px] text-sm font-bold shadow-lg flex items-center justify-center gap-1.5 active:scale-[.97] ${
 						isCurrentlyIn
 							? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
 							: "bg-primary hover:bg-primary/90 shadow-primary/20"

@@ -6,7 +6,8 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, Check, ChevronDown, ChevronUp, Camera, Upload,
-  Loader2, Sparkles, AlertTriangle, ArrowLeft, X, Image
+  Loader2, Sparkles, AlertTriangle, ArrowLeft, X, Image, Brush,
+  Save, Search, Lightbulb, Coffee, ChefHat, CookingPot, Armchair, Toilet
 } from "lucide-react";
 import {
   submitClosingViaEdge,
@@ -20,7 +21,7 @@ import {
 type KebersihanArea = {
   id: string;
   label: string;
-  emoji: string;
+  icon: "cooking" | "seating" | "toilet";
   status: "bersih" | "perlu_perbaikan";
   /** Object URL — hanya untuk preview di layar. */
   foto: string | null;
@@ -63,10 +64,12 @@ const KITCHEN_INGREDIENTS = new Set([
 ]);
 
 const AREAS_KEBERSIHAN: KebersihanArea[] = [
-  { id: "bar_kitchen", label: "Bar & Kitchen", emoji: "🍳", status: "bersih", foto: null, catatan: "" },
-  { id: "area_customer", label: "Area Customer", emoji: "🪑", status: "bersih", foto: null, catatan: "" },
-  { id: "wc", label: "Toilet/WC", emoji: "🚻", status: "bersih", foto: null, catatan: "" },
+  { id: "bar_kitchen", label: "Bar & Kitchen", icon: "cooking", status: "bersih", foto: null, catatan: "" },
+  { id: "area_customer", label: "Area Customer", icon: "seating", status: "bersih", foto: null, catatan: "" },
+  { id: "wc", label: "Toilet/WC", icon: "toilet", status: "bersih", foto: null, catatan: "" },
 ];
+
+const KEBERSIHAN_ICONS = { cooking: CookingPot, seating: Armchair, toilet: Toilet };
 
 // ─── Route ───
 
@@ -159,13 +162,13 @@ function ClosingPage() {
             <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 mb-2">
               <Check className="h-5 w-5 text-emerald-600" />
             </div>
-            <p className="font-bold text-emerald-800 text-sm">Laporan Closing Terkirim! ✅</p>
+            <p className="font-bold text-emerald-800 text-sm">Laporan Closing Terkirim!</p>
             <p className="text-xs text-emerald-600 mt-1">
               Stock opname & kebersihan tersimpan. Absen keluar berhasil.
             </p>
             <button
               onClick={() => navigate({ to: `/${username}/beranda` })}
-              className="mt-3 inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
+              className="mt-3 inline-flex min-h-11 items-center gap-1 rounded-[14px] bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
             >
               <ArrowLeft className="h-3 w-3" /> Kembali ke Beranda
             </button>
@@ -197,24 +200,24 @@ function ClosingPage() {
             {needsOpname && (
               <button
                 onClick={() => setActiveTab("opname")}
-                className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+                className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] py-2 text-xs font-bold transition-all ${
                   activeTab === "opname"
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                🧾 Stock Opname
+                <ClipboardList className="h-4 w-4" /> Stock Opname
               </button>
             )}
             <button
               onClick={() => setActiveTab("kebersihan")}
-              className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+              className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] py-2 text-xs font-bold transition-all ${
                 activeTab === "kebersihan"
                   ? "bg-background shadow-sm text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              🧹 Kebersihan
+              <Brush className="h-4 w-4" /> Kebersihan
             </button>
           </div>
 
@@ -249,7 +252,7 @@ function ClosingPage() {
             <button
               disabled={isSubmitting}
               onClick={handleSubmit}
-              className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-200/50 transition-all hover:shadow-xl hover:shadow-emerald-200/60 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-[14px] bg-gradient-to-r from-emerald-500 to-emerald-600 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-200/50 transition-all hover:shadow-xl hover:shadow-emerald-200/60 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
@@ -259,7 +262,7 @@ function ClosingPage() {
               ) : (
                 <span className="inline-flex items-center gap-2">
                   <Check className="h-4 w-4" />
-                  ✅ Kirim Laporan Closing
+                  Kirim Laporan Closing
                 </span>
               )}
             </button>
@@ -331,7 +334,7 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
     const [saved, setSaved] = useState(false);
 
     const targetNames = role === "bar" ? BAR_INGREDIENTS : KITCHEN_INGREDIENTS;
-    const roleEmoji = role === "bar" ? "☕" : "🍳";
+    const RoleIcon = role === "bar" ? Coffee : ChefHat;
     const roleLabel = role === "bar" ? "BAR" : "KITCHEN";
 
     useEffect(() => {
@@ -432,14 +435,14 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
               <ClipboardList className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-black text-sm">{roleEmoji} {roleLabel} Stock Opname</p>
+              <p className="flex items-center gap-1.5 font-black text-sm"><RoleIcon className="h-4 w-4" /> {roleLabel} Stock Opname</p>
               <p className="text-[10px] text-muted-foreground font-medium">
                 {items.length} bahan — {changedItems.length} berubah
               </p>
             </div>
             {allSame && (
-              <span className="ml-auto rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
-                ✅ Sama semua
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
+                <Check className="h-3 w-3" /> Sama semua
               </span>
             )}
           </div>
@@ -449,15 +452,15 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
         <div className="flex gap-2">
           <button
             onClick={markAllSame}
-            className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-bold hover:bg-muted transition-colors"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-bold hover:bg-muted transition-colors"
           >
-            ✅ Semua Sama
+            <Check className="h-4 w-4" /> Semua Sama
           </button>
           <button
             onClick={() => setSaved(true)}
-            className="flex-1 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 transition-colors"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 px-3 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 transition-colors"
           >
-            💾 Simpan Opname
+            <Save className="h-4 w-4" /> Simpan Opname
           </button>
         </div>
 
@@ -468,33 +471,36 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-center"
           >
-            <p className="text-xs font-semibold text-blue-700">
-              ✅ Opname tersimpan sementara. Tekan "Kirim Laporan Closing" untuk absen keluar.
+            <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-700">
+              <Check className="h-4 w-4 shrink-0" /> Opname tersimpan sementara. Tekan "Kirim Laporan Closing" untuk absen keluar.
             </p>
           </motion.div>
         )}
 
         {/* Info banner */}
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5">
-          <p className="text-[10px] font-medium text-amber-700 leading-relaxed">
-            💡 Opname ini akan disimpan per orang. Hanya <strong>orang terakhir</strong> yang
-            absen keluar yang perubahannya diterapkan ke stok ({roleLabel}).
+          <p className="flex items-start gap-1.5 text-[10px] font-medium text-amber-700 leading-relaxed">
+            <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>Opname ini akan disimpan per orang. Hanya <strong>orang terakhir</strong> yang
+            absen keluar yang perubahannya diterapkan ke stok ({roleLabel}).</span>
           </p>
         </div>
 
         {/* Search */}
         <div className="relative">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="🔍 Cari bahan..."
+            placeholder="Cari bahan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+            className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-10 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Hapus pencarian"
+              className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[14px] text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -646,16 +652,18 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-black text-sm">🧹 Checklist Kebersihan</p>
+            <p className="flex items-center gap-1.5 font-black text-sm"><Brush className="h-4 w-4" /> Checklist Kebersihan</p>
             <p className="text-[10px] text-muted-foreground font-medium">
-              {completedCount}/3 area ✅ — {photoCount} foto
+              {completedCount}/3 area bersih — {photoCount} foto
             </p>
           </div>
         </div>
       </div>
 
       {/* Area Cards */}
-      {areas.map((area) => (
+      {areas.map((area) => {
+        const AreaIcon = KEBERSIHAN_ICONS[area.icon];
+        return (
         <div
           key={area.id}
           className={`rounded-2xl border p-4 transition-all ${
@@ -669,29 +677,29 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-lg">{area.emoji}</span>
+              <AreaIcon className="h-5 w-5 text-muted-foreground" />
               <p className="font-bold text-sm">{area.label}</p>
             </div>
             <div className="flex gap-1">
               <button
                 onClick={() => updateStatus(area.id, "bersih")}
-                className={`rounded-lg px-3 py-1.5 text-[10px] font-bold transition-all ${
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-[14px] px-3 py-1.5 text-[10px] font-bold transition-all ${
                   area.status === "bersih"
                     ? "bg-emerald-500 text-white shadow-sm"
                     : "bg-muted text-muted-foreground hover:bg-emerald-100 hover:text-emerald-700"
                 }`}
               >
-                ✅ Bersih
+                <Check className="h-3.5 w-3.5" /> Bersih
               </button>
               <button
                 onClick={() => updateStatus(area.id, "perlu_perbaikan")}
-                className={`rounded-lg px-3 py-1.5 text-[10px] font-bold transition-all ${
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-[14px] px-3 py-1.5 text-[10px] font-bold transition-all ${
                   area.status === "perlu_perbaikan"
                     ? "bg-amber-500 text-white shadow-sm"
                     : "bg-muted text-muted-foreground hover:bg-amber-100 hover:text-amber-700"
                 }`}
               >
-                ⚠️ Perlu Perbaikan
+                <AlertTriangle className="h-3.5 w-3.5" /> Perlu Perbaikan
               </button>
             </div>
           </div>
@@ -739,21 +747,22 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs outline-none transition-all focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
               />
               {area.status === "perlu_perbaikan" && !area.catatan && (
-                <p className="text-[10px] text-amber-500 mt-1">
-                  💡 Tambahkan catatan untuk tim maintenance
+                <p className="flex items-center gap-1 text-[10px] text-amber-500 mt-1">
+                  <Lightbulb className="h-3 w-3" /> Tambahkan catatan untuk tim maintenance
                 </p>
               )}
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {/* Save Button */}
       <button
         onClick={() => setSaved(true)}
-        className="w-full rounded-2xl bg-emerald-500 py-3 text-sm font-bold text-white hover:bg-emerald-600 transition-all active:scale-[0.98]"
+        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-emerald-500 py-3 text-sm font-bold text-white hover:bg-emerald-600 transition-all active:scale-[0.98]"
       >
-        💾 Simpan Checklist Kebersihan
+        <Save className="h-4 w-4" /> Simpan Checklist Kebersihan
       </button>
 
       {saved && (
@@ -762,8 +771,8 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
           animate={{ opacity: 1, y: 0 }}
           className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center"
         >
-          <p className="text-xs font-bold text-emerald-700">
-            ✅ Checklist kebersihan tersimpan! Tekan "Kirim Laporan Closing" untuk absen keluar.
+          <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-700">
+            <Check className="h-4 w-4 shrink-0" /> Checklist kebersihan tersimpan! Tekan "Kirim Laporan Closing" untuk absen keluar.
           </p>
         </motion.div>
       )}

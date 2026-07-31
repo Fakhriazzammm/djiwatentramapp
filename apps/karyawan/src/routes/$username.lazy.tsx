@@ -166,28 +166,29 @@ function AttendanceReminder({ userId, userName, username: routeUsername }: { use
         exit={{ opacity: 0, y: -20 }}
         className="mx-auto w-full max-w-2xl px-4 pt-2"
       >
-        <div className="relative flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900 shadow-sm">
-          <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Absensi Terlewat!</p>
-            <p className="mt-0.5 text-xs text-rose-700">
+        <section aria-labelledby="attendance-reminder-title" className="karyawan-card relative flex items-start gap-3 border border-rose-200 bg-rose-50 p-4 text-rose-900">
+          <BellRing aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+          <div className="min-w-0 flex-1">
+            <h2 id="attendance-reminder-title" className="text-sm font-bold">Absensi Terlewat</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-rose-800">
               Kamu tidak check-in sebanyak <strong>{count} hari</strong>: {label}.
               Data absensi ini memengaruhi penggajian. Silakan hubungi atasan jika ada kendala.
             </p>
             <button
               onClick={() => navigate({ to: "/$username/absensi" as any, params: { username: routeUsername! } })}
-              className="mt-2 rounded-lg bg-rose-500 px-4 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition-colors"
+              className="karyawan-control mt-2 bg-rose-600 px-4 text-xs font-semibold text-white transition-colors hover:bg-rose-700 active:scale-[.97]"
             >
               Buka Riwayat Absensi
             </button>
           </div>
           <button
             onClick={dismiss}
-            className="shrink-0 rounded-full p-1 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition-colors"
+            aria-label="Tutup pengingat absensi"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-700"
           >
-            <X className="h-4 w-4" />
+            <X aria-hidden="true" className="h-4 w-4" />
           </button>
-        </div>
+        </section>
       </motion.div>
     </AnimatePresence>
   );
@@ -314,7 +315,7 @@ function StaffProfileLayout() {
 
 	return (
 		<StaffProfileCtx.Provider value={outletContext}>
-			<div className="fixed inset-0 flex flex-col bg-background">
+			<div className="karyawan-shell fixed inset-0 flex min-w-0 flex-col bg-background">
 				{/* Navigation Header */}
 				<header className="shrink-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
 					<div className="mx-auto flex max-w-2xl items-center justify-between">
@@ -347,19 +348,19 @@ function StaffProfileLayout() {
 				<AttendanceReminder userId={staff?._id ?? authUser?._id} userName={staff?.name ?? authUser?.name} username={username} />
 
 				{/* Scrollable content */}
-				<main className="flex-1 overflow-y-auto">
+				<main id="main-content" className="min-w-0 flex-1 overflow-y-auto overscroll-contain">
 					<div className="mx-auto w-full max-w-2xl px-4 py-3">
 						<Outlet />
 					</div>
 				</main>
 
-				{/* Bottom Navbar — fixed at bottom */}
-				<div className="shrink-0 border-t bg-background">
+				{/* Bottom Navbar */}
+				<nav aria-label="Navigasi utama karyawan" className="karyawan-safe-bottom shrink-0 border-t bg-background">
 					<BottomNavbar
 						baseRoute={`/${username}`}
 						unreadCounts={{ notifikasi: notifCount }}
 					/>
-				</div>
+				</nav>
 			</div>
 		</StaffProfileCtx.Provider>
 	);

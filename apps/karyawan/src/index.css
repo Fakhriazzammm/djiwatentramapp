@@ -4,6 +4,78 @@
 @import "./lib/tw-animate.css";
 @import "@yumipos/web-shared/theme.css";
 
+/* Karyawan mobile field-operation layer. Tokens remain sourced from web-shared. */
+@layer base {
+	html,
+	body,
+	#root {
+		width: 100%;
+		min-width: 0;
+		min-height: 100%;
+		overflow-x: clip;
+	}
+
+	body {
+		font-family: var(--font-sans);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4 {
+		font-family: var(--font-display);
+		text-wrap: balance;
+	}
+
+	:where(button, a, input, select, textarea, [role="button"]):focus-visible {
+		outline: 3px solid color-mix(in srgb, var(--primary) 36%, transparent);
+		outline-offset: 2px;
+	}
+
+	:where(button, input, select, [role="button"]) {
+		min-height: 44px;
+	}
+
+	:where(button, [role="button"]) {
+		touch-action: manipulation;
+	}
+}
+
+@layer components {
+	.karyawan-shell {
+		padding-top: env(safe-area-inset-top);
+		padding-right: env(safe-area-inset-right);
+		padding-left: env(safe-area-inset-left);
+	}
+
+	.karyawan-safe-bottom {
+		padding-bottom: env(safe-area-inset-bottom);
+	}
+
+	.karyawan-card {
+		border-radius: 24px;
+		box-shadow: 0 8px 28px rgba(9, 9, 11, 0.06);
+	}
+
+	.karyawan-control {
+		min-height: 44px;
+		border-radius: 14px;
+	}
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
 /* ── Demo Mode (Client Viewer) ── */
 .demo-mode [data-mask] {
 	filter: blur(6px);

@@ -74,14 +74,14 @@ function PayslipDetailCard({
 	if ((b.total_penalty ?? 0) > 0) items.push({ label: "Denda Keterlambatan", value: -Math.abs(b.total_penalty), color: "text-red-600" });
 
 	return (
-		<div className="group rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02]">
+		<div className="karyawan-card group border bg-card p-5 transition-all hover:border-primary/30 hover:bg-primary/[0.02]">
 			<div className="flex items-start justify-between mb-3">
 				<div className="flex items-center gap-2 min-w-0">
 					<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
 						<FileText className="h-4 w-4" />
 					</div>
 					<div className="min-w-0">
-						<p className="truncate font-bold text-xs">{payslip.period_name}</p>
+						<h2 className="text-sm font-bold [overflow-wrap:anywhere]">{payslip.period_name}</h2>
 						<p className="truncate text-[10px] text-muted-foreground">{b.role_name ?? payslip.role_name ?? ""}</p>
 					</div>
 				</div>
@@ -188,7 +188,7 @@ function PayslipDetailCard({
 				</p>
 			)}
 
-			<Button variant="outline" size="sm" className="w-full rounded-lg text-[10px] font-bold h-8" onClick={() => onDownload(payslip)}>
+			<Button variant="outline" size="sm" className="karyawan-control w-full text-xs font-bold" onClick={() => onDownload(payslip)}>
 				<Download className="mr-1.5 h-3 w-3" />
 				Download PDF
 			</Button>
@@ -421,9 +421,9 @@ function SlipGajiPage() {
 							))}
 						</>
 					) : allPayslips.length === 0 ? (
-						<div className="rounded-xl border bg-card p-6 text-center">
+						<div className="karyawan-card border bg-card p-8 text-center">
 							<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-							<p className="text-xs font-medium text-muted-foreground">Belum ada slip gaji</p>
+							<p className="text-sm font-bold">Belum ada slip gaji</p><p className="mt-1 text-xs text-muted-foreground">Slip yang tersedia akan tampil di sini.</p>
 						</div>
 					) : (
 						<>
@@ -447,7 +447,7 @@ function SlipGajiPage() {
 												onClick={() => setSelectedPayslipIdx(i)}
 												whileTap={{ scale: 0.92 }}
 												className={cn(
-													"relative flex shrink-0 flex-col items-center rounded-lg border px-2 py-1 transition-colors",
+													"relative flex min-h-11 shrink-0 flex-col items-center rounded-[14px] border px-3 py-1 transition-colors",
 													isActive
 														? "bg-primary/10 border-primary/30 text-primary"
 														: "bg-card border-border/50 text-muted-foreground hover:border-border"

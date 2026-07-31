@@ -39,13 +39,13 @@ function KontrakPage() {
 	const isActive = !isExpired && (status === "approved" || !status);
 
 	return (
-		<div className="mx-auto max-w-lg px-4 py-8">
+		<div className="mx-auto max-w-lg py-4">
 			<div className="space-y-2">
 				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
 					<FileText className="h-3 w-3 text-emerald-500" />
 					Kontrak Kerja
 				</h3>
-				<div className="rounded-xl border bg-card p-3">
+				<div className="karyawan-card border bg-card p-5">
 					{isLoadingContract ? (
 						<div className="animate-pulse space-y-2">
 							<div className="h-3 w-40 rounded bg-muted" />
@@ -73,15 +73,15 @@ function KontrakPage() {
 								</div>
 							</div>
 							{contractData.contract_pdf_url && (
-								<Button variant="outline" size="sm" className="w-full mt-3 rounded-lg text-[10px] font-bold h-8" onClick={() => window.open(contractData.contract_pdf_url, "_blank")}>
+								<Button variant="outline" size="sm" className="karyawan-control mt-4 w-full text-xs font-bold" onClick={() => window.open(contractData.contract_pdf_url, "_blank")}>
 									<Download className="mr-1.5 h-3 w-3" />
 									Download Kontrak PDF
 								</Button>
 							)}
 						</>
 					) : (
-						<div className="py-4 text-center">
-							<p className="text-[11px] font-medium text-muted-foreground">Belum ada kontrak kerja</p>
+						<div className="py-8 text-center">
+							<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" /><p className="text-sm font-bold">Belum ada kontrak kerja</p><p className="mt-1 text-xs text-muted-foreground">Kontrak aktif akan tersedia di halaman ini.</p>
 						</div>
 					)}
 				</div>
