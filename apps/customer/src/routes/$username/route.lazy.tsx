@@ -1,6 +1,6 @@
 import { createLazyFileRoute, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, LogIn, ShoppingCart, Star, User } from "lucide-react";
+import { ChevronRight, LogIn, LogOut, ShoppingCart, Star, User } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
@@ -32,7 +32,7 @@ export const Route = createLazyFileRoute("/$username")({
 function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
-	const { isAuthenticated, isLoading, customer, login, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 
@@ -200,18 +200,31 @@ function MemberHomePage() {
 			<div className="app-page min-h-app">
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
-					<div className="flex items-center gap-2">
-						{logoUrl ? (
-							<img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={logoUrl} />
-						) : (
-							<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-								<ShoppingCart className="h-5 w-5" />
+					<div className="flex items-center justify-between gap-2">
+						<div className="flex items-center gap-2">
+							{logoUrl ? (
+								<img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={logoUrl} />
+							) : (
+								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<ShoppingCart className="h-5 w-5" />
+								</div>
+							)}
+							<div>
+								<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Member</p>
+								<h1 className="text-sm font-black tracking-tight">{storeName}</h1>
 							</div>
-						)}
-						<div>
-							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Member</p>
-							<h1 className="text-sm font-black tracking-tight">{storeName}</h1>
 						</div>
+						<button
+							type="button"
+							aria-label="Keluar"
+							className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-[color,background-color,transform] duration-[180ms] hover:bg-destructive/10 hover:text-destructive active:scale-[.97]"
+							onClick={async () => {
+								await logout();
+								navigate({ to: "/" });
+							}}
+						>
+							<LogOut className="h-4 w-4" />
+						</button>
 					</div>
 				</header>
 
