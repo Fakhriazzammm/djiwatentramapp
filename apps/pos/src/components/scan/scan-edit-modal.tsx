@@ -1,4 +1,4 @@
-import { Check, Edit3, Loader2, Scissors, X } from "lucide-react";
+import { Check, Edit3, Loader2, Scissors, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
@@ -91,7 +91,7 @@ export function ScanEditModal({ isOpen, params, allowSplit = true, onSave, onSpl
 	const modalContent = (
 		<div className="fixed inset-0 z-[1000] flex items-end justify-center sm:items-center p-4">
 			<div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
-			<div className="relative z-[1001] w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+			<div className="relative z-[1001] w-full max-w-md rounded-[24px] border border-border bg-background shadow-2xl overflow-hidden">
 				{/* Header */}
 				<div className="flex items-center justify-between border-b border-border px-4 py-3">
 					<div className="flex items-center gap-2">
@@ -99,7 +99,8 @@ export function ScanEditModal({ isOpen, params, allowSplit = true, onSave, onSpl
 						<span className="font-bold text-sm">Edit & Validasi Transaksi</span>
 					</div>
 					<button
-						className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted transition-colors"
+						aria-label="Tutup"
+						className="flex size-11 items-center justify-center rounded-full transition-colors hover:bg-muted sm:size-9"
 						onClick={onClose}
 						type="button"
 					>
@@ -128,7 +129,10 @@ export function ScanEditModal({ isOpen, params, allowSplit = true, onSave, onSpl
 											: "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
 									}`}
 								>
-									{t === "expense" ? "💸 Pengeluaran" : "💰 Pemasukan"}
+									<span className="flex items-center justify-center gap-1.5">
+										{t === "expense" ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
+										{t === "expense" ? "Pengeluaran" : "Pemasukan"}
+									</span>
 								</button>
 							))}
 						</div>

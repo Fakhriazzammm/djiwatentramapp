@@ -1249,7 +1249,7 @@ function DashboardTab({
 					{isShiftOpen && shiftStatus?.ongoingShift?.teamMembers && (
 						<div className="border-t border-border/50 px-3 py-2 space-y-1.5">
 							<div className="flex items-center justify-between">
-								<p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70">📋 Tim Shift</p>
+								<p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70"><ClipboardList aria-hidden="true" className="h-3 w-3" /> Tim Shift</p>
 								{teamAttendanceLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
 							</div>
 							{!teamAttendanceLoading && teamStatusDisplay && (
@@ -1259,12 +1259,12 @@ function DashboardTab({
 											<p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider mt-1 first:mt-0">{role}</p>
 											{teamStatusDisplay.grouped.get(role)!.map((name) => {
 												const s = teamAttendance[name];
-												const dot = s === "active" ? "🟢" : s === "checked_out" ? "🔴" : "⚪";
+												const dotClass = s === "active" ? "bg-emerald-500" : s === "checked_out" ? "bg-rose-500" : "bg-muted-foreground/40";
 												const label = s === "active" ? "Aktif" : s === "checked_out" ? "Absen Keluar" : "Belum Absen";
 												const bg = s === "active" ? "bg-emerald-50 text-emerald-700" : s === "checked_out" ? "bg-rose-50 text-rose-600" : "bg-muted text-muted-foreground";
 												return (
 													<div key={name} className="flex items-center justify-between py-0.5">
-														<span className="text-[10px] font-medium">{dot} {name}</span>
+														<span className="flex items-center gap-1.5 text-[10px] font-medium"><span aria-hidden="true" className={`h-2 w-2 rounded-full ${dotClass}`} /> {name}</span>
 														<span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${bg}`}>{label}</span>
 													</div>
 												);
@@ -1273,7 +1273,7 @@ function DashboardTab({
 									))}
 									{teamStatusDisplay.activeCount > 0 && (
 										<div className="mt-1.5 pt-1.5 border-t border-border/30 flex items-center gap-1">
-											<span className="text-[11px] font-bold text-amber-600">⚠️</span>
+											<AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 text-amber-600" />
 											<span className="text-[11px] font-bold text-amber-700">{teamStatusDisplay.activeCount} orang masih aktif</span>
 										</div>
 									)}
@@ -3036,28 +3036,28 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						<div className="rounded-xl bg-muted/30 p-3 space-y-1.5 text-xs">
 							<div className="flex justify-between"><span className="text-muted-foreground">Shift</span><span className="font-bold">{shiftName || shiftStatus?.shiftInfo?.shiftName}</span></div>
 							<div className="flex justify-between"><span className="text-muted-foreground">Kasir</span><span className="font-bold">{cashierName || shiftStatus?.shiftInfo?.cashierName}</span></div>
-							<div className="flex justify-between"><span className="text-muted-foreground">💰 Uang Fisik</span><span className="font-bold">Rp {Number(cashInRegister || 0).toLocaleString('id-ID')}</span></div>
-							<div className="flex justify-between"><span className="text-muted-foreground">💳 QRIS/EDC</span><span className="font-bold">Rp {Number(nonCashConfirmed || 0).toLocaleString('id-ID')}</span></div>
+							<div className="flex justify-between"><span className="flex items-center gap-1 text-muted-foreground"><Banknote aria-hidden="true" className="h-3.5 w-3.5" /> Uang Fisik</span><span className="font-bold">Rp {Number(cashInRegister || 0).toLocaleString('id-ID')}</span></div>
+							<div className="flex justify-between"><span className="flex items-center gap-1 text-muted-foreground"><CreditCard aria-hidden="true" className="h-3.5 w-3.5" /> QRIS/EDC</span><span className="font-bold">Rp {Number(nonCashConfirmed || 0).toLocaleString('id-ID')}</span></div>
 							{(() => {
 								const expected = shiftCash;
 								const actual = Number(cashInRegister || 0);
 								const diff = actual - expected;
 								return (
 									<div className={`flex justify-between ${diff === 0 ? 'text-emerald-600' : diff > 0 ? 'text-amber-600' : 'text-rose-600'}`}>
-										<span>📊 Selisih</span>
-										<span className="font-black">{diff === 0 ? '✅ Pas' : diff > 0 ? `⬆️+ Rp ${diff.toLocaleString('id-ID')}` : `⬇️- Rp ${Math.abs(diff).toLocaleString('id-ID')}`}</span>
+										<span className="flex items-center gap-1"><BarChart3 aria-hidden="true" className="h-3.5 w-3.5" /> Selisih</span>
+										<span className="flex items-center gap-1 font-black">{diff === 0 ? <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" /> : diff > 0 ? <ArrowUpCircle aria-hidden="true" className="h-3.5 w-3.5" /> : <ArrowDownCircle aria-hidden="true" className="h-3.5 w-3.5" />}{diff === 0 ? 'Pas' : diff > 0 ? `+ Rp ${diff.toLocaleString('id-ID')}` : `- Rp ${Math.abs(diff).toLocaleString('id-ID')}`}</span>
 									</div>
 								);
 							})()}
-							{shiftExpense > 0 && <div className="flex justify-between"><span className="text-muted-foreground">💸 Pengeluaran</span><span className="font-bold text-rose-600">-Rp {shiftExpense.toLocaleString('id-ID')}</span></div>}
-							{notes && <div className="border-t border-border pt-1.5 mt-1.5"><span className="text-muted-foreground">📝 Catatan:</span><p className="font-medium mt-0.5">{notes}</p></div>}
+							{shiftExpense > 0 && <div className="flex justify-between"><span className="flex items-center gap-1 text-muted-foreground"><TrendingDown aria-hidden="true" className="h-3.5 w-3.5" /> Pengeluaran</span><span className="font-bold text-rose-600">-Rp {shiftExpense.toLocaleString('id-ID')}</span></div>}
+							{notes && <div className="border-t border-border pt-1.5 mt-1.5"><span className="flex items-center gap-1 text-muted-foreground"><FileText aria-hidden="true" className="h-3.5 w-3.5" /> Catatan:</span><p className="font-medium mt-0.5">{notes}</p></div>}
 						</div>
 					</div>
 					<div className="flex gap-2">
 						<Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-bold" onClick={() => setShowEndConfirm(false)}>Kembali</Button>
 						<Button variant="destructive" size="sm" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={handleEndShift}>
-							{isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-							✅ Akhiri Shift
+							{isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle aria-hidden="true" className="h-3.5 w-3.5" />}
+							Akhiri Shift
 						</Button>
 					</div>
 				</DialogContent>

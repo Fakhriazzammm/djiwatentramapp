@@ -1,5 +1,5 @@
 import { formatCurrencyIDR } from "@/lib/export-utils";
-import { Target, TrendingUp, CheckCircle2, ChevronRight } from "lucide-react";
+import { Target, TrendingUp, CheckCircle2, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHybridShiftTargetProgress } from "@/hooks/use-hybrid-finance-analytics-data";
 
@@ -81,7 +81,7 @@ export function ShiftTargetBanner() {
 								animate={{ opacity: 1, scale: 1 }}
 								className="shrink-0 ml-1 flex items-center gap-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-md px-1.5 py-0.5"
 							>
-								<span className="text-[7px] font-black uppercase tracking-tight">🔥</span>
+								<Flame aria-hidden="true" className="h-3 w-3" />
 							</motion.div>
 						)}
 					</AnimatePresence>
