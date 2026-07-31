@@ -27,6 +27,12 @@ type CategoryRecord = Record<string, any>;
 type ProductRecord = Record<string, any>;
 type DiscountRecord = Record<string, any>;
 type OrderRecord = Record<string, any>;
+type BestSellerRecord = {
+	productId: string;
+	productName: string;
+	totalSold: number;
+	orderCount: number;
+};
 type InventoryRecord = Record<string, any>;
 type ShiftReportRecord = {
 	shiftId: string;
@@ -522,6 +528,22 @@ async function fetchProducts() {
 				: Number(row.menuNumber),
 		variations: row.variations,
 	})) as ProductRecord[];
+}
+
+async function fetchBestSellers() {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_best_sellers")
+		.select("product_id, product_name, total_sold, order_count")
+		.limit(8);
+
+	if (error) throw error;
+	return (data ?? []).map((row: any) => ({
+		productId: String(row.product_id ?? ""),
+		productName: String(row.product_name ?? ""),
+		totalSold: Number(row.total_sold ?? 0),
+		orderCount: Number(row.order_count ?? 0),
+	})) as BestSellerRecord[];
 }
 
 async function fetchAllProducts() {
@@ -2112,6 +2134,15 @@ export function useHybridProducts(categoryId?: string | null, refreshTrigger?: n
 			allowedCategoryIds.has(product.categoryId)
 		);
 	}, [categories, categoryId, supabaseData]);
+}
+
+export function useHybridBestSellers(refreshTrigger?: number) {
+	const supabaseData = useSupabaseValue("best-sellers", fetchBestSellers, [], {
+		cacheKey: "customer:best-sellers",
+		cacheTtlMs: 300_000,
+		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
+	});
+	return supabaseData as BestSellerRecord[] | undefined;
 }
 
 export function useHybridAllProducts(refreshTrigger?: number) {

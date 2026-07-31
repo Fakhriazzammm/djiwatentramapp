@@ -2,7 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Clock, Coins, LogIn, MapPin, PartyPopper, Phone, ShoppingCart, Tags, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
-import { useHybridProducts, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { currency } from "@/components/customer/types";
@@ -32,13 +32,36 @@ function BrandCustomerIndex() {
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
-	// ── Data tambahan landing: menu preview + info toko ─────────
+	// ── Data tambahan landing: best seller + info toko ──────────
 	const products = useHybridProducts();
+	const bestSellers = useHybridBestSellers();
 	const siteSettings = useHybridSiteSettings();
-	const featuredProducts = (products ?? []).slice(0, 4);
+
+	const productMap = new Map<string, Record<string, any>>();
+	for (const p of products ?? []) productMap.set(String((p as Record<string, any>)._id), p as Record<string, any>);
+
+	// Best seller: gabung view (product_id, total_sold) dengan produk aktif
+	// untuk ambil image/harga/menuNumber terbaru. Fallback ke nama dari view.
+	const featuredProducts = (bestSellers ?? [])
+		.slice(0, 4)
+		.map((b) => {
+			const product = productMap.get(b.productId);
+			return {
+				productId: b.productId,
+				name: product?.name || b.productName,
+				image: typeof product?.image === "string" && /^https?:\/\//.test(product.image) ? product.image : null,
+				price: Number(product?.price ?? 0),
+				menuNumber: product?.menuNumber != null ? Number(product.menuNumber) : null,
+				totalSold: b.totalSold,
+			};
+		});
+
+	const openTime = typeof siteSettings?.openingTime === "string" && siteSettings.openingTime.trim() ? siteSettings.openingTime.trim() : null;
+	const closeTime = typeof siteSettings?.closingTime === "string" && siteSettings.closingTime.trim() ? siteSettings.closingTime.trim() : null;
 	const openingHours = typeof siteSettings?.openingHours === "string" && siteSettings.openingHours.trim() ? siteSettings.openingHours : null;
 	const storePhone = typeof siteSettings?.storePhone === "string" && siteSettings.storePhone.trim() ? siteSettings.storePhone : null;
 	const storeAddress = typeof siteSettings?.storeAddress === "string" && siteSettings.storeAddress.trim() ? siteSettings.storeAddress : null;
+	const hasHours = Boolean(openTime || closeTime || openingHours);
 
 	// ponytail: sudah login → langsung ke /{username}, bukan /order
 	useEffect(() => {
@@ -138,7 +161,7 @@ function BrandCustomerIndex() {
 								{featuredProducts.length > 0 ? (
 									<div className="app-card-strong w-full px-4 py-4 text-left">
 										<div className="flex items-center justify-between">
-											<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Menu Favorit</p>
+											<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Menu Best Seller</p>
 											<button
 												type="button"
 												onClick={() => navigate({ to: "/daftar" })}
@@ -148,41 +171,43 @@ function BrandCustomerIndex() {
 											</button>
 										</div>
 										<div className="mt-3 grid grid-cols-2 gap-2.5">
-											{featuredProducts.map((p) => {
-												const image = typeof p.image === "string" && /^https?:\/\//.test(p.image) ? p.image : null;
-												return (
-													<button
-														type="button"
-														key={String(p._id)}
-														onClick={() => navigate({ to: "/daftar" })}
-														className="overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]"
-													>
-														<div className="relative h-24 w-full bg-muted">
-															{image ? <img alt={p.name} className="h-full w-full object-cover" src={image} /> : <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"><UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>}
-															{p.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{p.menuNumber}</span> : null}
-														</div>
-														<div className="space-y-1 p-2.5">
-															<p className="break-words text-xs font-black leading-snug">{p.name}</p>
-															<p className="text-sm font-black text-primary">{currency(Number(p.price ?? 0))}</p>
-														</div>
-													</button>
-												);
-											})}
+											{featuredProducts.map((p) => (
+												<button
+													type="button"
+													key={p.productId}
+													onClick={() => navigate({ to: "/daftar" })}
+													className="overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]"
+												>
+													<div className="relative h-24 w-full bg-muted">
+														{p.image ? <img alt={p.name} className="h-full w-full object-cover" src={p.image} /> : <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"><UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>}
+														{p.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{p.menuNumber}</span> : null}
+														{p.totalSold > 0 ? <span className="absolute bottom-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-white shadow">Terjual {p.totalSold.toLocaleString("id-ID")}</span> : null}
+													</div>
+													<div className="space-y-1 p-2.5">
+														<p className="break-words text-xs font-black leading-snug">{p.name}</p>
+														<p className="text-sm font-black text-primary">{currency(p.price)}</p>
+													</div>
+												</button>
+											))}
 										</div>
 									</div>
 								) : null}
 
 								{/* Info toko */}
-								{openingHours || storePhone || storeAddress ? (
+								{openingHours || storePhone || storeAddress || hasHours ? (
 									<div className="app-card-strong w-full px-4 py-4 text-left">
 										<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Info Restoran</p>
 										<div className="mt-2.5 space-y-2">
-											{openingHours ? (
+											{openTime || closeTime || openingHours ? (
 												<div className="flex items-start gap-2.5">
 													<Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
 													<div>
 														<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Jam operasional</p>
-														<p className="text-xs font-bold leading-snug">{openingHours}</p>
+														<p className="text-xs font-bold leading-snug">
+															{openTime && closeTime
+																? `Buka ${openTime} – Tutup ${closeTime}`
+																: openingHours || [openTime, closeTime].filter(Boolean).join(" – ")}
+														</p>
 													</div>
 												</div>
 											) : null}
