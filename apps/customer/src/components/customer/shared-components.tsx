@@ -34,7 +34,7 @@ export function BottomButton({
 		<button
 			type="button"
 			className={cn(
-				"relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1.5 text-[10px] font-bold transition-all",
+				"relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 py-1.5 text-[10px] font-bold transition-all duration-[180ms] active:scale-[.97]",
 				primary ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground",
 				disabled ? "opacity-40" : ""
 			)}
@@ -64,7 +64,7 @@ export function CartRow({
 	onRemove: () => void;
 }) {
 	return (
-		<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+		<div className="rounded-[20px] border border-border bg-card p-3 shadow-sm">
 			<div className="flex gap-2.5">
 				<div className="h-12 w-12 overflow-hidden rounded-xl bg-muted">
 					{item.image ? (
@@ -81,7 +81,8 @@ export function CartRow({
 						</div>
 						<button
 							type="button"
-							className="flex h-7 w-7 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+							className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+							aria-label={`Hapus ${item.name} dari keranjang`}
 							onClick={onRemove}
 						>
 							<Trash2 className="h-3.5 w-3.5" />
@@ -92,7 +93,8 @@ export function CartRow({
 						<div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-1.5 py-0.5">
 							<button
 								type="button"
-								className="flex h-7 w-7 items-center justify-center rounded-full bg-muted"
+								className="flex h-11 w-11 items-center justify-center rounded-full bg-muted"
+								aria-label={`Kurangi jumlah ${item.name}`}
 								onClick={onDecrease}
 							>
 								<Minus className="h-3.5 w-3.5" />
@@ -100,7 +102,8 @@ export function CartRow({
 							<span className="min-w-[1.25rem] text-center text-xs font-black">{item.quantity}</span>
 							<button
 								type="button"
-								className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"
+								className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"
+								aria-label={`Tambah jumlah ${item.name}`}
 								onClick={onIncrease}
 							>
 								<Plus className="h-3.5 w-3.5" />

@@ -780,7 +780,7 @@ export function CustomerOrderingPage({
 			</div>
 
 			<Sheet open={cartOpen} onOpenChange={setCartOpen}>
-				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
 					<div className="flex h-full flex-col">
 						<div className="border-b border-border px-4 pb-3 pt-4"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Review pesanan</p><h3 className="text-lg font-black">Order basket</h3></div><button type="button" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={() => setCartOpen(false)}><X className="h-3.5 w-3.5" /></button></div></div>
 						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="rounded-xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground">Keranjang masih kosong.</div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
@@ -790,7 +790,7 @@ export function CustomerOrderingPage({
 			</Sheet>
 
 			<Sheet open={serviceOpen} onOpenChange={setServiceOpen}>
-				<SheetContent side="bottom" className="rounded-t-xl p-0">
+				<SheetContent side="bottom" className="rounded-t-3xl p-0">
 					<div className="space-y-3 px-4 py-5">
 						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Layanan customer</p><h3 className="mt-0.5 text-lg font-black">Hubungi tim restoran</h3><p className="mt-1 text-xs text-muted-foreground">Request akan langsung muncul di halaman admin operasional.</p></div>
 						<button type="button" className="flex w-full items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#ef4444,#b91c1c)] px-3 py-4 text-white shadow-sm" onClick={() => requestService("call_staff")}><PhoneCall className="h-4 w-4" /><div><p className="font-black text-sm">Call the staff</p><p className="text-xs text-white/75">Panggil staff ke meja customer.</p></div></button>
@@ -800,13 +800,13 @@ export function CustomerOrderingPage({
 			</Sheet>
 
 			<Sheet open={scannerOpen} onOpenChange={setScannerOpen}>
-				<SheetContent side="bottom" showCloseButton={false} className="rounded-t-xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="rounded-t-3xl p-0">
 					<BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={(rawValue) => { const product = productByMenuNumber.get(normalizeMenuCode(rawValue.replace(/\D/g, ""))) || productByMenuNumber.get(normalizeMenuCode(rawValue)); if (!product) { toast.error("Barcode tidak cocok dengan nomor produk"); return; } handleProductSelect(product); setScannerOpen(false); }} />
 				</SheetContent>
 			</Sheet>
 
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
-				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
 					<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
 				</SheetContent>
 			</Sheet>

@@ -1,8 +1,9 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, ShoppingCart, LogIn } from "lucide-react";
+import { Coins, LogIn, PartyPopper, ShoppingCart, Tags } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
+import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/")({
 	component: BrandCustomerIndex,
@@ -39,14 +40,7 @@ function BrandCustomerIndex() {
 	// ── Loading state ────────────────────────────────────────────
 	// Cegah flash welcome page untuk user yang sudah login
 	if (isLoading) {
-		return (
-			<div className="flex min-h-app items-center justify-center bg-background">
-				<div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
-					<Loader2 className="h-4 w-4 animate-spin text-primary" />
-					<span className="text-xs font-medium text-muted-foreground">Menyiapkan halaman...</span>
-				</div>
-			</div>
-		);
+		return <CustomerPageSkeleton label="Menyiapkan halaman" />;
 	}
 
 	// ── Guest welcome page ───────────────────────────────────
@@ -79,25 +73,14 @@ function BrandCustomerIndex() {
 				</header>
 
 				{/* ── Welcome card di tengah ───────────────────── */}
-				<main className="flex flex-1 items-center justify-center px-3">
+				<main className="flex flex-1 items-start justify-center px-3 py-4 sm:items-center sm:py-6">
 					<section className="flex w-full flex-col items-center justify-center text-center">
-						<div className="app-card-strong w-full px-3 py-4">
-							<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
-								{logoUrl ? (
-									<img
-										alt={storeName}
-										className="h-8 w-8 object-contain"
-										src={logoUrl}
-									/>
-								) : (
-									<ShoppingCart className="h-8 w-8 text-primary" />
-								)}
-							</div>
-							<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
-								Welcome
+						<div className="app-card-strong w-full px-4 py-6">
+							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+								Pesan lebih mudah
 							</p>
-							<h2 className="mt-1 text-xl font-black tracking-tight">
-								{storeName}
+							<h2 className="mt-1 font-display text-2xl font-black tracking-tight text-balance">
+								Pesan favoritmu, tanpa antre
 							</h2>
 							<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
 								Pesan online tanpa antri — praktis dan cepat.
@@ -106,7 +89,7 @@ function BrandCustomerIndex() {
 							{/* ── Tombol Mulai pesan ──────────────── */}
 							<button
 								type="button"
-								className="mt-3 w-full rounded-xl bg-primary px-5 py-2.5 text-xs font-black text-white shadow-sm"
+								className="mt-4 min-h-11 w-full rounded-[14px] bg-primary px-5 py-2.5 text-sm font-black text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
 								onClick={() => navigate({ to: "/daftar" })}
 							>
 								Mulai pesan
@@ -115,13 +98,13 @@ function BrandCustomerIndex() {
 							{/* ── Benefit list ────────────────────── */}
 							<div className="mt-4 grid grid-cols-3 gap-1.5">
 								{[
-									{ icon: "🪙", label: "Dapatkan Poin untuk Member\nLogin/Register" },
-									{ icon: "🎉", label: "Daftar/Login untuk\nHappy Hour 15rb All Menu!" },
-									{ icon: "🏷️", label: "Promo Spesial Khusus Member\nLogin/Register" },
+									{ icon: Coins, label: "Poin Member" },
+									{ icon: PartyPopper, label: "Happy Hour 15rb" },
+									{ icon: Tags, label: "Promo Eksklusif" },
 								].map((b) => (
-									<div key={b.label} className="rounded-xl border border-border/60 bg-muted/30 px-2 py-2 text-center">
-										<span className="text-lg">{b.icon}</span>
-										<p className="mt-0.5 whitespace-pre-line text-[11px] font-bold leading-tight text-muted-foreground">{b.label}</p>
+									<div key={b.label} className="flex min-h-24 flex-col items-center justify-center rounded-[14px] border border-border/60 bg-muted/30 px-2 py-3 text-center">
+										<b.icon aria-hidden="true" className="mx-auto h-5 w-5 text-primary" strokeWidth={2} />
+										<p className="mt-1 text-[11px] font-bold leading-tight text-muted-foreground">{b.label}</p>
 									</div>
 								))}
 							</div>
@@ -129,11 +112,11 @@ function BrandCustomerIndex() {
 							{/* ── Tombol Masuk / Daftar ───────────── */}
 							<button
 								type="button"
-								className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+								className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black text-muted-foreground transition-all duration-[180ms] hover:bg-muted hover:text-foreground active:scale-[.97]"
 								onClick={() => setAuthModalOpen(true)}
 							>
 								<LogIn className="h-3.5 w-3.5" />
-								Login/Register untuk Happy Hour
+								Masuk / Daftar Member
 							</button>
 						</div>
 					</section>

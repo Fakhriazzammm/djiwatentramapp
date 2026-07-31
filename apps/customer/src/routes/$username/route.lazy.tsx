@@ -1,9 +1,10 @@
 import { createLazyFileRoute, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, Loader2, LogIn, ShoppingCart, Star, User } from "lucide-react";
+import { ChevronRight, LogIn, ShoppingCart, Star, User } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
+import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 type GuestData = {
 	name: string;
@@ -93,14 +94,7 @@ function MemberHomePage() {
 	// Guest match → skip loading (resolved=true sejak awal, tanpa network)
 	// Non-guest → nunggu auth baru resolve
 	if (!resolved || (!guestData && isLoading)) {
-		return (
-			<div className="flex min-h-app items-center justify-center bg-background">
-				<div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
-					<Loader2 className="h-4 w-4 animate-spin text-primary" />
-					<span className="text-xs font-medium text-muted-foreground">Menyiapkan halaman...</span>
-				</div>
-			</div>
-		);
+		return <CustomerPageSkeleton label="Menyiapkan halaman member" />;
 	}
 
 	// ── Child route aktif ──────────────────────────
@@ -141,14 +135,14 @@ function MemberHomePage() {
 					</header>
 
 					<main className="flex-1 px-3 py-4">
-						<div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+						<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
 							<div className="flex items-center gap-3">
 								<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
 									<User className="h-6 w-6" />
 								</div>
 								<div>
 									<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Selamat datang</p>
-									<h2 className="text-lg font-black">{guestData.name}</h2>
+									<h2 className="font-display text-xl font-black">{guestData.name}</h2>
 								</div>
 							</div>
 
@@ -156,7 +150,7 @@ function MemberHomePage() {
 							<div className="mt-6 space-y-2">
 								<button
 									type="button"
-									className="flex w-full items-center justify-between rounded-xl bg-primary px-4 py-3 text-sm font-black text-white shadow-sm"
+									className="flex min-h-11 w-full items-center justify-between rounded-[14px] bg-primary px-4 py-3 text-sm font-black text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
 									onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
 								>
 									<span>Mulai pesan</span>
@@ -172,7 +166,7 @@ function MemberHomePage() {
 								) : null}
 								<button
 									type="button"
-									className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black text-muted-foreground"
+									className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black text-muted-foreground"
 									onClick={() => setAuthModalOpen(true)}
 								>
 									<LogIn className="h-3.5 w-3.5" />
@@ -222,18 +216,18 @@ function MemberHomePage() {
 				</header>
 
 				<main className="flex-1 px-3 py-4">
-					<div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+					<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
 						<div className="flex items-center gap-3">
 							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
 								<User className="h-6 w-6" />
 							</div>
 							<div>
 								<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Selamat datang</p>
-								<h2 className="text-lg font-black">{displayName}</h2>
+								<h2 className="font-display text-xl font-black">{displayName}</h2>
 							</div>
 						</div>
 
-						<div className="mt-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-3">
+						<div className="mt-4 rounded-[20px] bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Star className="h-4 w-4 text-amber-500" />

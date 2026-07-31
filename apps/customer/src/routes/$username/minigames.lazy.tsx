@@ -1,12 +1,13 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowLeft, Gift, Sparkles, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, Gamepad2, Gift, Sparkles, Trophy } from "lucide-react";
+import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useHybridActiveMiniGameByBrand } from "@/hooks/use-hybrid-minigames-data";
 import { useHybridSpin } from "@/hooks/use-hybrid-write-actions";
+import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/minigames")({
 	component: MiniGamesPage,
@@ -83,14 +84,7 @@ function MiniGamesPage() {
 	};
 
 	if (game === undefined) {
-		return (
-			<div className="min-h-screen bg-background">
-				<BackBar onBack={goHome} />
-				<div className="flex items-center justify-center py-24">
-					<p className="text-muted-foreground">Memuat mini games...</p>
-				</div>
-			</div>
-		);
+		return <CustomerPageSkeleton label="Memuat mini games" />;
 	}
 
 	if (!game) {
@@ -98,8 +92,9 @@ function MiniGamesPage() {
 			<div className="min-h-screen bg-background">
 				<BackBar onBack={goHome} />
 				<div className="flex items-center justify-center p-6">
-					<div className="max-w-md space-y-3 rounded-2xl border bg-card p-6 text-center">
-						<h1 className="font-bold text-2xl">Mini Games Belum Aktif</h1>
+					<div className="max-w-md space-y-3 rounded-3xl border bg-card p-6 text-center">
+						<Gamepad2 aria-hidden="true" className="mx-auto h-8 w-8 text-primary" strokeWidth={2} />
+						<h1 className="font-display text-2xl font-bold">Mini Games Belum Aktif</h1>
 						<p className="text-muted-foreground text-sm">
 							Tidak ada mini game aktif untuk brand ini saat ini.
 						</p>
@@ -112,7 +107,7 @@ function MiniGamesPage() {
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-orange-50 px-4 py-8">
 			<div className="mx-auto mb-4 max-w-6xl">
-				<button type="button" onClick={goHome} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+				<button type="button" onClick={goHome} className="flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
 					<ArrowLeft className="h-4 w-4" /> Kembali
 				</button>
 			</div>
@@ -124,7 +119,7 @@ function MiniGamesPage() {
 							Mini Games Marketing
 						</p>
 					</div>
-					<h1 className="font-black text-3xl leading-tight">{game.name}</h1>
+					<h1 className="font-display text-3xl font-black leading-tight">{game.name}</h1>
 					{game.description && (
 						<p className="text-muted-foreground text-sm">{game.description}</p>
 					)}
@@ -186,7 +181,7 @@ function MiniGamesPage() {
 
 				<div className="space-y-4 rounded-3xl border bg-card p-6 shadow-sm">
 					<div>
-						<h2 className="font-semibold text-lg">Isi Data Untuk Klaim Hadiah</h2>
+						<h2 className="font-display text-lg font-semibold">Isi Data Untuk Klaim Hadiah</h2>
 						<p className="text-muted-foreground text-xs">
 							Hadiah/voucher akan dihubungi melalui data berikut.
 						</p>
@@ -244,7 +239,7 @@ function MiniGamesPage() {
 function BackBar({ onBack }: { onBack: () => void }) {
 	return (
 		<div className="px-4 pt-4">
-			<button type="button" onClick={onBack} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+			<button type="button" onClick={onBack} className="flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
 				<ArrowLeft className="h-4 w-4" /> Kembali
 			</button>
 		</div>
@@ -264,10 +259,12 @@ function Field({
 	type?: string;
 	placeholder?: string;
 }) {
+	const inputId = useId();
 	return (
 		<div className="space-y-1">
-			<p className="font-medium text-xs">{label}</p>
+			<label htmlFor={inputId} className="text-xs font-medium">{label}</label>
 			<Input
+				id={inputId}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
 				type={type}

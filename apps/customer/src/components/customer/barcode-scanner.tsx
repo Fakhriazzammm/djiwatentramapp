@@ -90,17 +90,18 @@ export function BarcodeScanner({
 					<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">
 						Barcode scanner
 					</p>
-					<h3 className="mt-0.5 text-lg font-black">Scan nomor produk</h3>
+					<h3 className="mt-0.5 font-display text-lg font-black">Scan nomor produk</h3>
 				</div>
 				<button
 					type="button"
-					className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
+					className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+					aria-label="Tutup pemindai barcode"
 					onClick={onClose}
 				>
 					<X className="h-3.5 w-3.5" />
 				</button>
 			</div>
-			<div className="overflow-hidden rounded-xl bg-black">
+			<div className="overflow-hidden rounded-3xl bg-black">
 				<video
 					ref={videoRef}
 					autoPlay
@@ -114,7 +115,7 @@ export function BarcodeScanner({
 			</p>
 			<button
 				type="button"
-				className="w-full rounded-xl border border-border bg-card px-3 py-3 text-xs font-black"
+				className="min-h-11 w-full rounded-[14px] border border-border bg-card px-3 py-3 text-xs font-black"
 				onClick={onClose}
 			>
 				Kembali ke input nomor

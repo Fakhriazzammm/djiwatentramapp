@@ -4,7 +4,6 @@ import {
 	CheckCircle2,
 	ChevronRight,
 	Grid2X2,
-	Loader2,
 	LogIn,
 	PhoneCall,
 	ShoppingCart,
@@ -48,6 +47,7 @@ import { renderReceiptSection } from "@/components/customer/receipt-section";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
+import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
@@ -562,23 +562,15 @@ function OrderPage() {
 		siteSettings === undefined ||
 		brandSettings === undefined
 	) {
-		return (
-			<div className="flex min-h-app items-center justify-center bg-background">
-				<div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
-					<Loader2 className="h-4 w-4 animate-spin text-primary" />
-					<span className="text-xs font-medium text-muted-foreground">
-						Menyiapkan halaman customer...
-					</span>
-				</div>
-			</div>
-		);
+		return <CustomerPageSkeleton label="Menyiapkan halaman customer" />;
 	}
 
 	if (brandSettings?.isActive === false || !config.enabled) {
 		return (
 			<div className="flex min-h-app items-center justify-center bg-background px-4">
-				<div className="max-w-md rounded-2xl border border-border bg-card p-5 text-center shadow-sm">
-					<h1 className="text-lg font-black">Halaman ordering belum aktif</h1>
+				<div className="max-w-md rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
+					<ShoppingCart aria-hidden="true" className="mx-auto h-8 w-8 text-primary" strokeWidth={2} />
+					<h1 className="mt-3 font-display text-lg font-black">Halaman ordering belum aktif</h1>
 					<p className="mt-2 text-xs text-muted-foreground">
 						Customer self-service untuk brand ini sedang dimatikan dari admin.
 					</p>
@@ -598,7 +590,8 @@ function OrderPage() {
 						<div className="flex items-center gap-2">
 							<button
 								type="button"
-								className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
+								className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+								aria-label="Kembali"
 							onClick={() => {
 									if (step === "party") navigate({ to: "/$username", params: { username } });
 									if (step === "refill") setStep(config.enablePartySizeSelection ? "party" : "party");
@@ -748,10 +741,10 @@ function OrderPage() {
 
 			{/* ── Cart Sheet ─────────────────────────────────────── */}
 			<Sheet open={cartOpen} onOpenChange={setCartOpen}>
-				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
 					<div className="flex h-full flex-col">
-						<div className="border-b border-border px-4 pb-3 pt-4"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Review pesanan</p><h3 className="text-lg font-black">Order basket</h3></div><button type="button" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={() => setCartOpen(false)}><X className="h-3.5 w-3.5" /></button></div></div>
-						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="rounded-xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground">Keranjang masih kosong.</div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
+						<div className="border-b border-border px-4 pb-3 pt-4"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Review pesanan</p><h3 className="font-display text-lg font-black">Order basket</h3></div><button type="button" aria-label="Tutup keranjang" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={() => setCartOpen(false)}><X className="h-3.5 w-3.5" /></button></div></div>
+						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground"><ShoppingCart aria-hidden="true" className="h-7 w-7" strokeWidth={2} /><p className="mt-2 font-display text-sm font-bold text-foreground">Keranjang masih kosong</p><p className="mt-1 text-xs">Pilih menu untuk mulai memesan.</p></div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
 						<div className="border-t border-border px-4 pb-5 pt-3"><SummaryCardLines productGrossSubtotal={productGrossSubtotal} freeRefillCharge={freeRefillCharge} promoDiscount={promoDiscount} taxAmount={taxAmount} taxRate={taxRate} serviceChargeAmount={serviceChargeAmount} serviceChargeRate={serviceChargeRate} total={total} /><button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black text-white shadow-sm disabled:opacity-60" style={{ background: themeColor }} onClick={() => { setCartOpen(false); setStep("checkout"); }} disabled={!cart.length}>Lanjut checkout <ChevronRight className="h-4 w-4" /></button></div>
 					</div>
 				</SheetContent>
@@ -759,7 +752,7 @@ function OrderPage() {
 
 			{/* ── Service Sheet ──────────────────────────────────── */}
 			<Sheet open={serviceOpen} onOpenChange={setServiceOpen}>
-				<SheetContent side="bottom" className="rounded-t-xl p-0">
+				<SheetContent side="bottom" className="rounded-t-3xl p-0">
 					<div className="space-y-3 px-4 py-5">
 						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Layanan customer</p><h3 className="mt-0.5 text-lg font-black">Hubungi tim restoran</h3><p className="mt-1 text-xs text-muted-foreground">Request akan langsung muncul di halaman admin operasional.</p></div>
 						<button type="button" className="flex w-full items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#ef4444,#b91c1c)] px-3 py-4 text-white shadow-sm" onClick={() => requestService("call_staff")}><PhoneCall className="h-4 w-4" /><div><p className="font-black text-sm">Call the staff</p><p className="text-xs text-white/75">Panggil staff ke meja customer.</p></div></button>
@@ -770,14 +763,14 @@ function OrderPage() {
 
 			{/* ── Scanner Sheet ──────────────────────────────────── */}
 			<Sheet open={scannerOpen} onOpenChange={setScannerOpen}>
-				<SheetContent side="bottom" showCloseButton={false} className="rounded-t-xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="rounded-t-3xl p-0">
 					<BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={(rawValue) => { const product = productByMenuNumber.get(normalizeMenuCode(rawValue.replace(/\D/g, ""))) || productByMenuNumber.get(normalizeMenuCode(rawValue)); if (!product) { toast.error("Barcode tidak cocok dengan nomor produk"); return; } handleProductSelect(product); setScannerOpen(false); }} />
 				</SheetContent>
 			</Sheet>
 
 			{/* ── Product Sheet ──────────────────────────────────── */}
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
-				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
 					<ProductSheet product={productSheet} discounts={discounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
 				</SheetContent>
 			</Sheet>

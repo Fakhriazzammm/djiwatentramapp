@@ -52,7 +52,8 @@ export function ProductSheet({
 				) : null}
 				<button
 					type="button"
-					className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white"
+					className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-white"
+					aria-label="Tutup detail produk"
 					onClick={onClose}
 				>
 					<X className="h-3.5 w-3.5" />
@@ -64,7 +65,7 @@ export function ProductSheet({
 				) : null}
 			</div>
 			<div className="flex-1 overflow-y-auto px-4 py-4">
-				<h3 className="text-xl font-black tracking-tight">{product.name}</h3>
+				<h3 className="font-display text-xl font-black tracking-tight">{product.name}</h3>
 				{product.description ? (
 					<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
 						{product.description}
@@ -122,7 +123,8 @@ export function ProductSheet({
 					<div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-1.5 py-0.5">
 						<button
 							type="button"
-							className="flex h-7 w-7 items-center justify-center rounded-full bg-muted"
+							className="flex h-11 w-11 items-center justify-center rounded-full bg-muted"
+							aria-label="Kurangi jumlah"
 							onClick={() => setQuantity((value) => Math.max(1, value - 1))}
 						>
 							<Minus className="h-3.5 w-3.5" />
@@ -132,7 +134,8 @@ export function ProductSheet({
 						</span>
 						<button
 							type="button"
-							className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"
+							className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"
+							aria-label="Tambah jumlah"
 							onClick={() => setQuantity((value) => value + 1)}
 						>
 							<Plus className="h-3.5 w-3.5" />
@@ -140,7 +143,7 @@ export function ProductSheet({
 					</div>
 					<button
 						type="button"
-						className="flex flex-1 items-center justify-between rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm"
+						className="flex min-h-11 flex-1 items-center justify-between rounded-[14px] bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm"
 						onClick={() =>
 							onAdd({
 								productId: product._id,

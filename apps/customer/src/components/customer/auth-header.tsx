@@ -37,7 +37,7 @@ export function AuthHeader({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-xl border border-border bg-card p-3 shadow-sm",
+          "flex items-center justify-center rounded-3xl border border-border bg-card p-4 shadow-sm",
           className
         )}
       >
@@ -56,7 +56,7 @@ export function AuthHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between rounded-xl border border-border bg-card p-3 shadow-sm",
+        "flex items-center justify-between rounded-3xl border border-border bg-card p-4 shadow-sm",
         className
       )}
     >

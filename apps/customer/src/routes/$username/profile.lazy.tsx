@@ -1,10 +1,11 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, Loader2, LogOut, Mail, Save, Star, User } from "lucide-react";
+import { ArrowLeft, LogOut, Mail, Star, User } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { currency } from "@/components/customer/types";
+import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/profile")({
 	component: ProfilePage,
@@ -22,16 +23,7 @@ function ProfilePage() {
 	const [saved, setSaved] = useState(false);
 
 	if (authLoading) {
-		return (
-			<div className="flex min-h-app items-center justify-center bg-background">
-				<div className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
-					<Loader2 className="h-4 w-4 animate-spin text-primary" />
-					<span className="text-xs font-medium text-muted-foreground">
-						Memuat profil...
-					</span>
-				</div>
-			</div>
-		);
+		return <CustomerPageSkeleton label="Memuat profil" />;
 	}
 
 	if (!customer) {
@@ -75,12 +67,13 @@ function ProfilePage() {
 				<div className="flex items-center gap-2">
 					<button
 						type="button"
-						className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
+						className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+						aria-label="Kembali ke halaman member"
 						onClick={() => navigate({ to: "/$username", params: { username } })}
 					>
 						<ArrowLeft className="h-3.5 w-3.5" />
 					</button>
-					<h1 className="text-sm font-black tracking-tight">Profil Saya</h1>
+					<h1 className="font-display text-base font-black tracking-tight">Profil Saya</h1>
 				</div>
 			</header>
 
@@ -103,7 +96,7 @@ function ProfilePage() {
 				</div>
 
 				{/* Info Card */}
-				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+				<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 					<div className="space-y-2.5">
 						<InfoRow
 							icon={<Mail className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -123,7 +116,7 @@ function ProfilePage() {
 										type="text"
 										value={editName}
 										onChange={(e) => setEditName(e.target.value)}
-										className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+										className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 										placeholder="Nama lengkap"
 									/>
 								</div>
@@ -133,7 +126,7 @@ function ProfilePage() {
 										type="tel"
 										value={editPhone}
 										onChange={(e) => setEditPhone(e.target.value)}
-										className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+										className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 										placeholder="+62 xxx"
 									/>
 								</div>
@@ -160,7 +153,7 @@ function ProfilePage() {
 						) : (
 							<button
 								type="button"
-								className="mt-1 w-full rounded-xl bg-primary/10 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition-all"
+								className="mt-1 min-h-11 w-full rounded-[14px] bg-primary/10 py-2 text-xs font-bold text-primary transition-all hover:bg-primary/20"
 								onClick={startEditing}
 							>
 								Edit profil
@@ -192,7 +185,7 @@ function ProfilePage() {
 				<div className="mt-4">
 					<button
 						type="button"
-						className="flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs font-bold text-destructive hover:bg-destructive/10 transition-all"
+						className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs font-bold text-destructive transition-all hover:bg-destructive/10"
 						onClick={() => {
 							logout();
 							navigate({ to: "/$username", params: { username } });
@@ -223,7 +216,7 @@ function InfoRow({
 			</div>
 			<div className="min-w-0 flex-1">
 				<p className="text-[10px] font-semibold text-muted-foreground">{label}</p>
-				<p className="truncate text-xs font-bold text-foreground">{value}</p>
+				<p className="break-words text-xs font-bold text-foreground">{value}</p>
 			</div>
 		</div>
 	);

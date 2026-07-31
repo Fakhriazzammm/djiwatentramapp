@@ -63,12 +63,13 @@ function DaftarPage() {
 					<div className="flex items-center gap-2">
 						<button
 							type="button"
-							className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
+							className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+							aria-label="Kembali ke halaman utama"
 							onClick={() => navigate({ to: "/" })}
 						>
 							<ArrowLeft className="h-3.5 w-3.5" />
 						</button>
-						<h1 className="text-sm font-black tracking-tight">Data Diri</h1>
+						<h1 className="font-display text-base font-black tracking-tight">Data Diri</h1>
 					</div>
 				</header>
 
@@ -77,57 +78,61 @@ function DaftarPage() {
 					<div className="space-y-3">
 						{/* Nama */}
 						<div>
-							<label className="text-xs font-bold text-foreground">
+							<label htmlFor="guest-name" className="text-xs font-bold text-foreground">
 								Nama <span className="text-destructive">*</span>
 							</label>
 							<input
+								id="guest-name"
 								type="text"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
 								placeholder="Nama kamu"
-								className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>
 
 						{/* Email */}
 						<div>
-							<label className="text-xs font-bold text-foreground">
+							<label htmlFor="guest-email" className="text-xs font-bold text-foreground">
 								Email
 							</label>
 							<input
+								id="guest-email"
 								type="email"
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder="email@example.com"
-								className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>
 
 						{/* No WhatsApp */}
 						<div>
-							<label className="text-xs font-bold text-foreground">
+							<label htmlFor="guest-phone" className="text-xs font-bold text-foreground">
 								No. WhatsApp
 							</label>
 							<input
+								id="guest-phone"
 								type="tel"
 								value={phone}
 								onChange={(e) => setPhone(e.target.value)}
 								placeholder="08xxxx"
-								className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>
 
 						{/* No Meja */}
 						<div>
-							<label className="text-xs font-bold text-foreground">
+							<label htmlFor="guest-table" className="text-xs font-bold text-foreground">
 								No. Meja
 							</label>
 							<input
+								id="guest-table"
 								type="text"
 								value={tableNumber}
 								onChange={(e) => setTableNumber(e.target.value)}
 								placeholder="Contoh: 5"
-								className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>
 
@@ -135,7 +140,7 @@ function DaftarPage() {
 						<button
 							type="button"
 							onClick={handleSubmit}
-							className="w-full rounded-xl bg-primary px-3 py-2.5 text-sm font-black text-white shadow-sm"
+							className="min-h-11 w-full rounded-[14px] bg-primary px-3 py-2.5 text-sm font-black text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
 						>
 							Lanjut memesan
 						</button>

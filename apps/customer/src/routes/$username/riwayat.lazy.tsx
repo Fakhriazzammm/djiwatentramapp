@@ -1,8 +1,9 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ClipboardList, Loader2, LogIn } from "lucide-react";
+import { ArrowLeft, ClipboardList, LogIn } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { currency } from "@/components/customer/types";
+import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/riwayat")({
 	component: RiwayatPage,
@@ -52,7 +53,7 @@ function RiwayatPage() {
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
-						<button type="button" onClick={goHome} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+						<button type="button" onClick={goHome} className="flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
 							<ArrowLeft className="h-4 w-4" /> Kembali
 						</button>
 						<h1 className="ml-1 text-sm font-black tracking-tight">Riwayat Pesanan</h1>
@@ -61,14 +62,12 @@ function RiwayatPage() {
 
 				<main className="px-3 py-4">
 					{authLoading ? (
-						<div className="flex items-center justify-center py-20">
-							<Loader2 className="h-5 w-5 animate-spin text-primary" />
-						</div>
+						<CustomerSectionSkeleton label="Memeriksa akun" />
 					) : !isAuthenticated ? (
 						/* ── Guest: ajak login ── */
-						<div className="flex flex-col items-center rounded-xl border border-border bg-card px-4 py-10 text-center shadow-sm">
-							<span className="text-4xl">📋</span>
-							<h2 className="mt-3 text-base font-black">Riwayat Pesanan</h2>
+						<div className="flex flex-col items-center rounded-3xl border border-border bg-card px-4 py-10 text-center shadow-sm">
+							<ClipboardList aria-hidden="true" className="h-8 w-8 text-primary" strokeWidth={2} />
+							<h2 className="mt-3 font-display text-base font-black">Riwayat Pesanan</h2>
 							<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
 								Masuk sebagai member agar semua pesananmu tersimpan dan bisa dilihat lagi di sini.
 							</p>
@@ -90,13 +89,11 @@ function RiwayatPage() {
 							</div>
 						</div>
 					) : isLoading ? (
-						<div className="flex items-center justify-center py-20">
-							<Loader2 className="h-5 w-5 animate-spin text-primary" />
-						</div>
+						<CustomerSectionSkeleton label="Memuat riwayat pesanan" />
 					) : error ? (
-						<p className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-3 text-xs text-destructive">{error}</p>
+						<CustomerErrorState message={error} />
 					) : !orders || orders.length === 0 ? (
-						<div className="flex flex-col items-center rounded-xl border border-dashed border-border px-4 py-10 text-center">
+						<div className="flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-10 text-center">
 							<ClipboardList className="h-6 w-6 text-muted-foreground/50" />
 							<p className="mt-2 text-xs text-muted-foreground">Belum ada pesanan. Yuk pesan menu favoritmu!</p>
 							<button
@@ -112,7 +109,7 @@ function RiwayatPage() {
 							{orders.map((order) => {
 								const statusKey = order.status?.toLowerCase?.() ?? "";
 								return (
-									<div key={order.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+									<div key={order.id} className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 										<div className="flex items-center justify-between gap-2">
 											<div className="min-w-0">
 												<p className="truncate text-xs font-black">#{order.orderNumber || order.id.slice(0, 8)}</p>
@@ -127,7 +124,7 @@ function RiwayatPage() {
 											<div className="mt-2 space-y-0.5 border-t border-border/60 pt-2">
 												{order.items.slice(0, 4).map((item, idx) => (
 													<div key={`${order.id}-${idx}`} className="flex items-center justify-between text-[11px]">
-														<span className="truncate text-muted-foreground">
+														<span className="min-w-0 break-words pr-2 text-muted-foreground">
 															{item.quantity}× {item.productName}
 														</span>
 														<span className="ml-2 shrink-0 text-muted-foreground">{currency(item.price * item.quantity)}</span>

@@ -1,4 +1,4 @@
-import { Barcode, Grid2X2, Plus, Search } from "lucide-react";
+import { Barcode, Grid2X2, PackageSearch, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
@@ -36,11 +36,11 @@ export interface MenuSectionProps {
 export function renderMenuSection(props: MenuSectionProps) {
 	return (
 		<div className="space-y-3 px-3 py-3">
-			<div className="rounded-xl px-3 py-3 text-white shadow-[0_16px_40px_rgba(15,23,42,0.16)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
+			<div className="rounded-3xl px-4 py-4 text-white shadow-[0_16px_40px_rgba(15,23,42,0.16)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
 				<div className="flex items-start justify-between gap-3">
 					<div>
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">Session aktif</p>
-						<h2 className="mt-1 text-xl font-black leading-none">Pilih menu</h2>
+						<h2 className="mt-1 font-display text-xl font-black leading-none">Pilih menu</h2>
 						<p className="mt-1 text-xs text-white/75">Ketik nomor produk lengkap, scan barcode, atau pilih lewat katalog.</p>
 					</div>
 					<div className="rounded-xl bg-white/12 px-2.5 py-1.5 text-right backdrop-blur">
@@ -56,15 +56,15 @@ export function renderMenuSection(props: MenuSectionProps) {
 			</div>
 
 			<div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
-				<button type="button" className={cn("rounded-xl px-3 py-2 text-xs font-black transition-all", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("number")}>Nomor Produk</button>
-				<button type="button" className={cn("rounded-xl px-3 py-2 text-xs font-black transition-all", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("catalog")}>Katalog Menu</button>
+				<button type="button" className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("number")}>Nomor Produk</button>
+				<button type="button" className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("catalog")}>Katalog Menu</button>
 			</div>
 
 			{props.menuMode === "number" && props.config.enableMenuNumberEntry ? (
 				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 					<div className="flex items-center justify-between gap-2">
 						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: props.themeColor }}>Mode cepat</p><h3 className="text-sm font-black">Input nomor produk</h3></div>
-						{props.config.enableBarcodeScan ? <button type="button" className="flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[10px] font-bold text-primary" onClick={() => props.setScannerOpen(true)}><Barcode className="h-3.5 w-3.5" />Scan</button> : null}
+						{props.config.enableBarcodeScan ? <button type="button" className="flex min-h-11 items-center gap-1.5 rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-bold text-primary" onClick={() => props.setScannerOpen(true)}><Barcode className="h-3.5 w-3.5" />Scan</button> : null}
 					</div>
 					<div className="mt-3 rounded-xl border border-border bg-background px-3 py-3 shadow-inner">
 						<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input className="w-full bg-transparent text-xl font-black tracking-[0.25em] outline-none placeholder:text-base placeholder:font-semibold placeholder:tracking-normal" inputMode="numeric" placeholder="Ketik nomor menu" value={props.manualCode} onChange={(event) => props.setManualCode(event.target.value.replace(/\D/g, ""))} /></div>
@@ -92,7 +92,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 					{props.isMenuLoading ? (
 						<div className="grid grid-cols-2 gap-2.5">
 							{[1,2,3,4].map((i) => (
-								<div key={i} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm animate-pulse">
+								<div key={i} className="relative overflow-hidden rounded-[20px] border border-border bg-card shadow-sm before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-full before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent before:animate-shimmer">
 									<div className="h-28 w-full bg-muted" />
 									<div className="space-y-2 p-2.5">
 										<div className="h-3 w-3/4 rounded bg-muted" />
@@ -103,13 +103,14 @@ export function renderMenuSection(props: MenuSectionProps) {
 						</div>
 					) : (
 					<div className="grid grid-cols-2 gap-2.5">
+						{props.filteredProducts.length === 0 ? <div className="col-span-2 flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-10 text-center"><PackageSearch aria-hidden="true" className="h-7 w-7 text-muted-foreground" strokeWidth={2} /><p className="mt-3 font-display text-sm font-bold">Menu belum tersedia</p><p className="mt-1 text-xs text-muted-foreground">Pilih kategori lain atau coba lagi sebentar.</p></div> : null}
 						{props.filteredProducts.map((product) => {
 							const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
 							const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
 							return (
-								<button type="button" key={product._id} className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all active:scale-[0.99]" onClick={() => props.handleProductSelect(product)}>
+								<button type="button" key={product._id} className="overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
 									<div className="relative h-28 w-full bg-muted">{product.image ? <img alt={product.name} className="h-full w-full object-cover" src={product.image} /> : null}{product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}{pricing.isPromo ? <span className="absolute right-2 top-2 rounded-full px-2 py-0.5 font-bold text-[10px] text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}{quantity > 0 ? <span className="absolute right-2 top-9 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow">{quantity} di cart</span> : null}</div>
-									<div className="space-y-1.5 p-2.5"><p className="line-clamp-2 text-xs font-black leading-snug">{product.name}</p><div className="flex items-end justify-between gap-1.5"><div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div><div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-3.5 w-3.5" /></div></div></div>
+									<div className="space-y-1.5 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><div className="flex items-end justify-between gap-1.5"><div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div><div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-3.5 w-3.5" /></div></div></div>
 								</button>
 							);
 						})}

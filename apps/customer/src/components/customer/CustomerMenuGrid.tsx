@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bell,
@@ -36,10 +36,11 @@ const menuItems: MenuItem[] = [
 
 export function CustomerMenuGrid({ baseRoute }: CustomerMenuGridProps) {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
-      initial="hidden"
+      initial={reduceMotion ? false : "hidden"}
       animate="visible"
       variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
       className="grid grid-cols-4 gap-3"
@@ -55,9 +56,11 @@ export function CustomerMenuGrid({ baseRoute }: CustomerMenuGridProps) {
             visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 } },
           }}
           whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.95 }}
+          whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+          aria-label={item.label}
+          type="button"
           onClick={() => navigate({ to: item.route as any, params: { username: baseRoute.replace("/", "") } })}
-          className="flex h-20 w-full flex-col items-center justify-center gap-0.5 rounded-2xl border border-gray-50 bg-white p-2 shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all hover:shadow-lg hover:border-gray-100"
+          className="flex h-20 w-full flex-col items-center justify-center gap-1 rounded-[20px] border border-border bg-card p-2 shadow-sm transition-all duration-[180ms] hover:border-primary/20 hover:shadow-md"
         >
           <Icon aria-hidden="true" className="h-6 w-6 text-gray-700" strokeWidth={2} />
           <span className="text-center text-[11px] font-bold text-gray-700 leading-tight">

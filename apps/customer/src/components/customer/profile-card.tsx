@@ -35,11 +35,18 @@ export function ProfileCard({
     .slice(0, 2);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onProfileClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onProfileClick?.();
+        }
+      }}
       className={cn(
-        "w-full rounded-xl border border-border bg-card p-3 shadow-sm text-left transition-all hover:border-primary/30 hover:shadow-md",
+        "w-full rounded-3xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md",
         className
       )}
     >
@@ -72,6 +79,7 @@ export function ProfileCard({
             onLogout();
           }}
           className="shrink-0 text-muted-foreground hover:text-destructive"
+          aria-label="Keluar dari akun"
         >
           <LogOut className="h-3.5 w-3.5" />
         </Button>
@@ -95,7 +103,7 @@ export function ProfileCard({
           value={currency(customer.total_spent ?? 0)}
         />
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -112,10 +120,10 @@ function Stat({
     <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2 py-1.5">
       {icon}
       <div className="min-w-0">
-        <p className="truncate text-[10px] font-semibold text-muted-foreground">
+        <p className="break-words text-[10px] font-semibold text-muted-foreground">
           {label}
         </p>
-        <p className="truncate text-[11px] font-black text-foreground">
+        <p className="break-words text-[11px] font-black text-foreground">
           {value}
         </p>
       </div>

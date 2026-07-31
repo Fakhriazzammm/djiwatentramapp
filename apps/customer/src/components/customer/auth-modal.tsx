@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Mail, Lock, User, Loader2, ArrowRight, LogIn, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Loader2, ArrowLeft, ArrowRight, LogIn, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 type Tab = "login" | "register";
 
@@ -103,17 +103,17 @@ export function AuthModal({
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950">
                 <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="mt-3 text-base font-black">Akun berhasil dibuat!</p>
+              <p className="mt-3 font-display text-base font-black">Akun berhasil dibuat!</p>
               <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
                 Cek email <span className="font-bold text-foreground">{email}</span> untuk klik tautan konfirmasi pendaftaran.
               </p>
               <div className="mt-3 w-full rounded-xl bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                <p className="font-bold">📧 Setelah konfirmasi email:</p>
+                <p className="flex items-center gap-2 font-bold"><Mail aria-hidden="true" className="h-4 w-4" strokeWidth={2} /> Setelah konfirmasi email:</p>
                 <p className="mt-1 ml-0.5">Kembali ke halaman ini lalu masuk (login) menggunakan email dan password yang sudah didaftarkan.</p>
               </div>
               <button
                 type="button"
-                className="mt-4 w-full rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-white shadow-sm"
+                className="mt-4 min-h-11 w-full rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-white shadow-sm"
                 onClick={() => {
                   setShowSuccess(false);
                   setSuccessMessage("");
@@ -145,7 +145,7 @@ export function AuthModal({
               </div>
 
               <DialogHeader className="mt-2 text-center">
-                <DialogTitle className="text-base font-black">
+                <DialogTitle className="font-display text-base font-black">
                   {tab === "login" ? "Masuk ke akun" : "Buat akun baru"}
                 </DialogTitle>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -162,7 +162,7 @@ export function AuthModal({
                     key={t}
                     type="button"
                     className={cn(
-                      "flex-1 rounded-[10px] px-3 py-2 text-xs font-bold transition-all",
+                      "min-h-11 flex-1 rounded-[14px] px-3 py-2 text-xs font-bold transition-all",
                       tab === t
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
@@ -194,12 +194,12 @@ export function AuthModal({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={isLoading || forgotSent}
-                      className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                      className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                     />
                   </div>
                   {forgotSent ? (
                     <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                      ✅ Link reset password sudah dikirim ke <span className="font-bold">{email}</span>. Cek inbox atau folder spam.
+                      <CheckCircle2 aria-hidden="true" className="mr-1 inline h-4 w-4" strokeWidth={2} /> Link reset password sudah dikirim ke <span className="font-bold">{email}</span>. Cek inbox atau folder spam.
                     </div>
                   ) : (
                     <Button
@@ -217,13 +217,13 @@ export function AuthModal({
                   )}
                   <button
                     type="button"
-                    className="mt-3 w-full text-[11px] text-muted-foreground hover:underline"
+                    className="mt-3 flex min-h-11 w-full items-center justify-center gap-1 text-[11px] text-muted-foreground hover:underline"
                     onClick={() => {
                       setShowForgotPassword(false);
                       setForgotSent(false);
                     }}
                   >
-                    ← Kembali ke Masuk
+                    <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" /> Kembali ke Masuk
                   </button>
                 </div>
               ) : (
@@ -239,7 +239,7 @@ export function AuthModal({
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       disabled={isLoading}
-                      className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                      className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                     />
                   </div>
                 ) : null}
@@ -252,7 +252,7 @@ export function AuthModal({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
-                    className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                    className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                   />
                 </div>
 
@@ -267,13 +267,13 @@ export function AuthModal({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && isFormValid) handleSubmit();
                     }}
-                    className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-9 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                    className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-9 pr-11 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                   />
                   <button
                     type="button"
-                    tabIndex={-1}
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+                    className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground/60 transition-colors hover:text-foreground"
                   >
                     {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
@@ -284,7 +284,7 @@ export function AuthModal({
               {tab === "login" ? (
                 <button
                   type="button"
-                  className="mt-2 text-[11px] font-semibold text-primary hover:underline"
+                  className="mt-2 min-h-11 text-[11px] font-semibold text-primary hover:underline"
                   onClick={() => {
                     setShowForgotPassword(true);
                     setForgotSent(false);
@@ -306,7 +306,7 @@ export function AuthModal({
                     type="button"
                     disabled={isLoading}
                     onClick={onGoogleSignIn}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background py-2.5 text-xs font-bold text-foreground shadow-sm transition-all hover:bg-muted disabled:opacity-50"
+                    className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-border bg-background py-2.5 text-xs font-bold text-foreground shadow-sm transition-all hover:bg-muted disabled:opacity-50"
                   >
                     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />

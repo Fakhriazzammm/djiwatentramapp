@@ -1,8 +1,9 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Heart, Loader2, Search } from "lucide-react";
+import { ArrowLeft, Heart, Search, Utensils } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/favorit")({
 	component: FavoritPage,
@@ -31,14 +32,14 @@ function ProductCard({ product, isFavorite, onToggle, onOrder }: {
 }) {
 	const image = typeof product.image === "string" && /^https?:\/\//.test(product.image) ? product.image : null;
 	return (
-		<div className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5 shadow-sm">
+		<div className="flex items-center gap-3 rounded-[20px] border border-border bg-card p-3 shadow-sm">
 			{image ? (
 				<img alt={product.name} src={image} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
 			) : (
-				<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-lg">🍽️</div>
+				<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-muted text-muted-foreground"><Utensils aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>
 			)}
 			<button type="button" className="min-w-0 flex-1 text-left" onClick={onOrder}>
-				<p className="truncate text-xs font-black">{product.name}</p>
+				<p className="break-words text-xs font-black leading-snug">{product.name}</p>
 				<p className="text-[11px] font-bold text-primary">{currency(Number(product.price ?? 0))}</p>
 				{product.menuNumber ? (
 					<p className="text-[10px] text-muted-foreground">Menu #{product.menuNumber}</p>
@@ -48,7 +49,7 @@ function ProductCard({ product, isFavorite, onToggle, onOrder }: {
 				type="button"
 				aria-label={isFavorite ? "Hapus dari favorit" : "Tambah ke favorit"}
 				onClick={onToggle}
-				className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
+				className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${
 					isFavorite ? "bg-red-50 text-red-500" : "bg-muted text-muted-foreground hover:text-red-400"
 				}`}
 			>
@@ -100,7 +101,7 @@ function FavoritPage() {
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
-						<button type="button" onClick={goHome} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+						<button type="button" onClick={goHome} className="flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
 							<ArrowLeft className="h-4 w-4" /> Kembali
 						</button>
 						<h1 className="ml-1 text-sm font-black tracking-tight">Favorit</h1>
@@ -109,18 +110,16 @@ function FavoritPage() {
 
 				<main className="px-3 py-4">
 					{products === undefined ? (
-						<div className="flex items-center justify-center py-20">
-							<Loader2 className="h-5 w-5 animate-spin text-primary" />
-						</div>
+						<CustomerSectionSkeleton label="Memuat menu favorit" />
 					) : (
 						<>
 							{/* ── Daftar favorit ── */}
 							{favoriteProducts.length === 0 ? (
-								<div className="flex flex-col items-center rounded-xl border border-dashed border-border px-4 py-8 text-center">
-									<span className="text-4xl">⭐</span>
-									<h2 className="mt-2 text-base font-black">Belum Ada Favorit</h2>
+								<div className="flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-8 text-center">
+									<Heart aria-hidden="true" className="h-8 w-8 text-primary" strokeWidth={2} />
+									<h2 className="mt-3 font-display text-base font-black">Belum Ada Favorit</h2>
 									<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-										Tandai menu kesukaanmu dengan ikon ❤️ di bawah supaya gampang dicari lagi.
+										Tandai menu kesukaanmu dengan tombol favorit supaya gampang dicari lagi.
 									</p>
 								</div>
 							) : (
@@ -146,7 +145,8 @@ function FavoritPage() {
 									value={query}
 									onChange={(e) => setQuery(e.target.value)}
 									placeholder="Cari menu..."
-									className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+									aria-label="Cari menu"
+									className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 								/>
 							</div>
 							{browseProducts.length === 0 ? (

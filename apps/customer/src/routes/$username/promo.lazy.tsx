@@ -1,8 +1,9 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Loader2, TicketPercent } from "lucide-react";
+import { ArrowLeft, TicketPercent } from "lucide-react";
 import { useMemo } from "react";
 import { useHybridActiveDiscounts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/promo")({
 	component: PromoPage,
@@ -45,7 +46,7 @@ function PromoPage() {
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
-						<button type="button" onClick={goHome} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+						<button type="button" onClick={goHome} className="flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
 							<ArrowLeft className="h-4 w-4" /> Kembali
 						</button>
 						<h1 className="ml-1 text-sm font-black tracking-tight">Promo</h1>
@@ -54,13 +55,11 @@ function PromoPage() {
 
 				<main className="px-3 py-4">
 					{activePromos === undefined ? (
-						<div className="flex items-center justify-center py-20">
-							<Loader2 className="h-5 w-5 animate-spin text-primary" />
-						</div>
+						<CustomerSectionSkeleton label="Memuat promo" />
 					) : activePromos.length === 0 ? (
-						<div className="flex flex-col items-center rounded-xl border border-dashed border-border px-4 py-10 text-center">
-							<span className="text-4xl">🏷️</span>
-							<h2 className="mt-3 text-base font-black">Belum Ada Promo</h2>
+						<div className="flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-10 text-center">
+							<TicketPercent aria-hidden="true" className="h-8 w-8 text-primary" strokeWidth={2} />
+							<h2 className="mt-3 font-display text-base font-black">Belum Ada Promo</h2>
 							<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
 								Saat ini belum ada promo aktif. Cek lagi nanti ya — promo spesial member akan muncul di sini!
 							</p>
@@ -78,13 +77,13 @@ function PromoPage() {
 								const validUntil = fmtDate(promo.endDate);
 								const minOrder = promo.minOrderValue ? Number(promo.minOrderValue) : null;
 								return (
-									<div key={String(promo._id)} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+									<div key={String(promo._id)} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
 										<div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 to-primary/5 px-3 py-3">
 											<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
 												<TicketPercent className="h-5 w-5" />
 											</div>
 											<div className="min-w-0">
-												<p className="truncate text-sm font-black">{promo.name || "Promo"}</p>
+												<p className="break-words font-display text-sm font-black">{promo.name || "Promo"}</p>
 												<p className="text-xs font-bold text-primary">Diskon {discountValueLabel(promo)}</p>
 											</div>
 										</div>
