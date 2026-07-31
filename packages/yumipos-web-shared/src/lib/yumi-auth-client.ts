@@ -255,6 +255,10 @@ export async function loginWithYumiPin(userId: string, pin: string) {
 	if (response.supabaseAccessToken && response.supabaseRefreshToken) {
 		try {
 			const supabase = createClient();
+			// Pastikan inisialisasi GoTrue selesai sebelum mengganti sesi. Tanpa
+			// serialisasi ini, setSession dapat overlap dengan initialization dan
+			// mengirim dua request /auth/v1/user; salah satunya dibatalkan browser.
+			await supabase.auth.getSession();
 			await supabase.auth.setSession({
 				access_token: response.supabaseAccessToken,
 				refresh_token: response.supabaseRefreshToken,
