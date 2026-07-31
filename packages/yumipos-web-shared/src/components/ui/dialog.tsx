@@ -386,11 +386,11 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(funct
 				{children}
 				{showCloseButton && (
 					<DialogClose
-						aria-label="Close"
-						className="absolute top-3 right-3 inline-flex size-10 items-center justify-center rounded-[14px] text-muted-foreground transition-[color,background-color,transform] duration-180 ease-[cubic-bezier(.32,.72,0,1)] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[.97] motion-reduce:transition-none"
+						aria-label="Tutup dialog"
+						className="absolute top-3 right-3 inline-flex h-11 w-11 items-center justify-center rounded-[14px] text-muted-foreground transition-[color,background-color,transform] duration-180 ease-[cubic-bezier(.32,.72,0,1)] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[.97] motion-reduce:transition-none"
 					>
 						<XIcon aria-hidden="true" className="size-4" />
-						<span className="sr-only">Close</span>
+						<span className="sr-only">Tutup dialog</span>
 					</DialogClose>
 				)}
 			</div>

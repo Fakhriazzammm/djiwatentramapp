@@ -1,7 +1,9 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, LogOut, Mail, Star, User } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { currency } from "@/components/customer/types";
@@ -14,7 +16,7 @@ export const Route = createLazyFileRoute("/$username/profile")({
 function ProfilePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
-	const { customer, login, logout, isLoading: authLoading } = useCustomerAuth();
+	const { customer, logout, isLoading: authLoading, refreshCustomer } = useCustomerAuth();
 
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState("");
@@ -45,13 +47,27 @@ function ProfilePage() {
 
 	const handleSave = async () => {
 		if (!editName.trim()) return;
+		if (!customer) return;
 		setSaving(true);
-		// Simulate save — in real implementation, call an edge function
-		await new Promise((r) => setTimeout(r, 600));
-		setSaving(false);
-		setSaved(true);
-		setTimeout(() => setSaved(false), 2000);
-		setIsEditing(false);
+		try {
+			// Update via edge function customer-sync (service_role + email ownership guard)
+			await invokeEdgeFunction("customer-sync", {
+				action: "updateProfile",
+				sourceId: customer.sourceId,
+				email: customer.email ?? undefined,
+				name: editName.trim(),
+				phone: editPhone.trim() || undefined,
+			});
+			await refreshCustomer();
+			setSaving(false);
+			setSaved(true);
+			setTimeout(() => setSaved(false), 2000);
+			setIsEditing(false);
+			toast.success("Profil berhasil diperbarui");
+		} catch (err) {
+			setSaving(false);
+			toast.error((err as Error).message || "Gagal menyimpan profil");
+		}
 	};
 
 	const startEditing = () => {
@@ -80,9 +96,9 @@ function ProfilePage() {
 			<main className="px-3 py-3">
 				{/* Avatar & Username */}
 				<div className="flex flex-col items-center py-4">
-					{customer.photo_url ? (
+					{customer.photoUrl ? (
 						<img
-							src={customer.photo_url}
+							src={customer.photoUrl}
 							alt="Avatar"
 							className="h-16 w-16 rounded-full object-cover ring-4 ring-border"
 						/>

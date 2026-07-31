@@ -1,8 +1,13 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ClipboardList, LogIn } from "lucide-react";
+import { ArrowLeft, ClipboardList, LogIn, RotateCcw } from "lucide-react";
+import { useMemo } from "react";
+import { toast } from "sonner";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
+import { useOrderContext } from "@/hooks/use-order-context";
+import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import type { CartItem } from "@/components/customer/types";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/riwayat")({
@@ -44,9 +49,48 @@ function RiwayatPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated, isLoading: authLoading } = useCustomerAuth();
 	const { orders, isLoading, error } = useCustomerOrders();
+	const { setCart } = useOrderContext();
+	const products = useHybridProducts();
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } });
+
+	// Map product id → product untuk foto menu & harga terbaru
+	const productMap = useMemo(() => {
+		const map = new Map<string, Record<string, any>>();
+		for (const p of products ?? []) map.set(String((p as Record<string, any>)._id), p as Record<string, any>);
+		return map;
+	}, [products]);
+
+	const pesanLagi = (order: { items: Array<{ productId: string; productName: string; quantity: number; price: number; variant?: string | null }> }) => {
+		const items: CartItem[] = [];
+		const skipped: string[] = [];
+		for (const item of order.items) {
+			const product = productMap.get(item.productId);
+			if (!product) {
+				skipped.push(item.productName);
+				continue;
+			}
+			items.push({
+				productId: item.productId,
+				name: product.name || item.productName,
+				price: Number(product.price ?? item.price ?? 0),
+				quantity: item.quantity,
+				variant: item.variant ?? undefined,
+				image: product.image ?? undefined,
+				categoryId: product.categoryId ?? "",
+				menuNumber: product.menuNumber != null ? Number(product.menuNumber) : undefined,
+			});
+		}
+		if (items.length === 0) {
+			toast.error("Menu tidak tersedia untuk dipesan ulang");
+			return;
+		}
+		setCart(items);
+		if (skipped.length > 0) toast.info(`${skipped.length} menu sudah tidak tersedia dan dilewati`);
+		else toast.success("Keranjang diisi ulang dari pesanan ini");
+		navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } });
+	};
 
 	return (
 		<div className="app-page min-h-app">
@@ -122,14 +166,21 @@ function RiwayatPage() {
 
 										{order.items.length > 0 ? (
 											<div className="mt-2 space-y-0.5 border-t border-border/60 pt-2">
-												{order.items.slice(0, 4).map((item, idx) => (
-													<div key={`${order.id}-${idx}`} className="flex items-center justify-between text-[11px]">
-														<span className="min-w-0 break-words pr-2 text-muted-foreground">
-															{item.quantity}× {item.productName}
-														</span>
-														<span className="ml-2 shrink-0 text-muted-foreground">{currency(item.price * item.quantity)}</span>
-													</div>
-												))}
+												{order.items.slice(0, 4).map((item, idx) => {
+													const product = productMap.get(item.productId);
+													const image = typeof product?.image === "string" && /^https?:\/\//.test(product.image) ? product.image : null;
+													return (
+														<div key={`${order.id}-${idx}`} className="flex items-center justify-between text-[11px]">
+															<span className="flex min-w-0 items-center gap-2">
+																{image ? <img alt="" src={image} className="h-8 w-8 shrink-0 rounded-lg object-cover" /> : null}
+																<span className="min-w-0 break-words pr-2 text-muted-foreground">
+																	{item.quantity}× {item.productName}{item.variant ? ` (${item.variant})` : ""}
+																</span>
+															</span>
+															<span className="ml-2 shrink-0 text-muted-foreground">{currency(item.price * item.quantity)}</span>
+														</div>
+													);
+												})}
 												{order.items.length > 4 ? (
 													<p className="text-[10px] text-muted-foreground/70">+{order.items.length - 4} item lainnya</p>
 												) : null}
@@ -141,6 +192,16 @@ function RiwayatPage() {
 												{[order.orderType, order.tableNumber ? `Meja ${order.tableNumber}` : null].filter(Boolean).join(" · ") || "Total"}
 											</span>
 											<span className="text-sm font-black">{currency(order.totalAmount)}</span>
+										</div>
+
+										<div className="mt-2 flex justify-end">
+											<button
+												type="button"
+												onClick={() => pesanLagi(order)}
+												className="flex min-h-11 items-center gap-1.5 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
+											>
+												<RotateCcw className="h-3.5 w-3.5" /> Pesan lagi
+											</button>
 										</div>
 									</div>
 								);

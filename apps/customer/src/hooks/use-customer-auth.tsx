@@ -46,6 +46,7 @@ interface CustomerAuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  refreshCustomer: () => Promise<void>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -243,6 +244,19 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // ── refreshCustomer ─────────────────────────────────────────
+  // Re-fetch customer dari pos_customers_view setelah update profil
+  const refreshCustomer = useCallback(async () => {
+    const user = betterSession?.user;
+    if (!user) return;
+    try {
+      const fresh = await fetchCustomer(user.id, user.email);
+      setCustomer(fresh ?? buildFallbackCustomer(user.id, user.email, user.name));
+    } catch (err) {
+      console.error("[customer-auth] refreshCustomer failed:", err);
+    }
+  }, [betterSession?.user]);
+
   // ── resetPassword ────────────────────────────────────────────
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await (authClient as any).forgetPassword({ email });
@@ -265,8 +279,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
-        signInWithGoogle,
         resetPassword,
+        signInWithGoogle,
+        refreshCustomer,
       }}
     >
       {children}

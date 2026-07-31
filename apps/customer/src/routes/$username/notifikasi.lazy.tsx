@@ -40,11 +40,17 @@ function NotifikasiPage() {
 	const { orders, isLoading } = useCustomerOrders();
 
 	// Timestamp terakhir kali halaman ini dibuka → penanda "belum dibaca"
+	// First visit: seed ke sekarang agar riwayat lama tidak tampil "baru semua".
 	const [lastSeen] = useState<number>(() => {
 		try {
-			return Number(localStorage.getItem(SEEN_KEY) ?? 0);
+			const stored = localStorage.getItem(SEEN_KEY);
+			if (stored === null) {
+				localStorage.setItem(SEEN_KEY, String(Date.now()));
+				return Date.now();
+			}
+			return Number(stored ?? 0);
 		} catch {
-			return 0;
+			return Date.now();
 		}
 	});
 
@@ -118,7 +124,12 @@ function NotifikasiPage() {
 					) : (
 						<div className="space-y-2">
 							{notifications.map((notif) => (
-								<div key={notif.id} className={`flex gap-3 rounded-[20px] border px-3 py-3 shadow-sm ${notif.unread ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
+								<button
+									type="button"
+									key={notif.id}
+									onClick={() => navigate({ to: "/$username/riwayat", params: { username } })}
+									className={`flex w-full gap-3 rounded-[20px] border px-3 py-3 text-left shadow-sm transition-all duration-[180ms] active:scale-[.98] ${notif.unread ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}
+								>
 									<div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${notif.unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
 										<Bell className="h-3.5 w-3.5" />
 									</div>
@@ -130,7 +141,7 @@ function NotifikasiPage() {
 										<p className="text-[11px] leading-snug text-muted-foreground">{notif.message}</p>
 										<p className="mt-0.5 text-[10px] text-muted-foreground/70">{timeAgo(notif.createdAt)}</p>
 									</div>
-								</div>
+								</button>
 							))}
 						</div>
 					)}

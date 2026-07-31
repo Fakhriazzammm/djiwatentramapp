@@ -17,9 +17,11 @@ export type CustomerOrder = {
 };
 
 export type CustomerOrderItem = {
+	productId: string;
 	productName: string;
 	quantity: number;
 	price: number;
+	variant?: string | null;
 };
 
 export type CustomerPointEntry = {
@@ -46,9 +48,11 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 		tableNumber: (row.tableNumber as string) ?? null,
 		items: Array.isArray(row.items)
 			? row.items.map((item: Record<string, unknown>) => ({
+					productId: String(item.productId ?? item.product_id ?? ""),
 					productName: String(item.productName ?? ""),
 					quantity: Number(item.quantity ?? 0),
 					price: Number(item.price ?? 0),
+					variant: (item.variant as string | null | undefined) ?? null,
 				}))
 			: [],
 		createdAt: Number(row.createdAt ?? row._creationTime ?? 0),
@@ -69,57 +73,45 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 }
 
 // ── useCustomerOrders ──────────────────────────────────────────
-// Query pos_orders WHERE customer_source_id = user.id
+// Query pos_orders WHERE customer_source_id = user.id.
+// Realtime: reload otomatis saat ada perubahan di schema pos
+// (status order berubah dari kasir/dapur → notifikasi ikut ter-update).
+import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 export function useCustomerOrders() {
 	const { customer, isLoading: authLoading } = useCustomerAuth();
-	const [orders, setOrders] = useState<CustomerOrder[] | undefined>(
-		undefined,
-	);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const sourceId = customer?.sourceId ?? null;
 
-	const loadOrders = useCallback(async (cust: CustomerUser) => {
-		setIsLoading(true);
-		setError(null);
-		try {
+	const data = useSupabaseLiveValue<CustomerOrder[]>(
+		`customer-orders-${sourceId ?? "guest"}`,
+		async () => {
+			if (!sourceId) return null;
 			const supabase = createClient();
 			const { data, error: queryError } = await supabase
 				.from("pos_orders")
 				.select("*")
-				.eq("customerSourceId", cust.sourceId)
+				.eq("customerSourceId", sourceId)
 				.order("createdAt", { ascending: false })
 				.limit(50);
 
 			if (queryError) throw queryError;
-
-			setOrders(
-				(data ?? []).map((row: unknown) =>
-					mapOrder(row as Record<string, unknown>),
-				),
+			return (data ?? []).map((row: unknown) =>
+				mapOrder(row as Record<string, unknown>),
 			);
-		} catch (err) {
-			const message =
-				err instanceof Error ? err.message : "Gagal memuat riwayat pesanan";
-			console.error("[useCustomerOrders]", message);
-			setError(message);
-			setOrders([]);
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
+		},
+		[sourceId],
+		{
+			realtimeSchemas: ["pos"],
+			cacheKey: sourceId ? `customer:orders:${sourceId}` : undefined,
+			cacheTtlMs: 300_000,
+		},
+	);
 
-	useEffect(() => {
-		if (authLoading) return;
-		if (!customer) {
-			setOrders(undefined);
-			setIsLoading(false);
-			return;
-		}
-		void loadOrders(customer);
-	}, [customer, authLoading, loadOrders]);
-
-	return { orders, isLoading, error, refetch: loadOrders };
+	return {
+		orders: data ?? [],
+		isLoading: authLoading || data === undefined,
+		error: null,
+	};
 }
 
 // ── useCustomerPoints ──────────────────────────────────────────

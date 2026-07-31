@@ -204,7 +204,7 @@ export function AuthModal({
                   ) : (
                     <Button
                       className="mt-3 w-full"
-                      size="default"
+                      size="lg"
                       disabled={!email.trim() || isLoading}
                       loading={isLoading}
                       onClick={() => {
@@ -322,7 +322,7 @@ export function AuthModal({
               {/* Submit button */}
               <Button
                 className="mt-3 w-full"
-                size="default"
+                size="lg"
                 disabled={!isFormValid}
                 loading={isLoading}
                 onClick={handleSubmit}
@@ -337,6 +337,7 @@ export function AuthModal({
             <div className="border-t border-border/50 px-5 pb-5 pt-4">
               <Button
                 variant="ghost"
+                size="lg"
                 className="w-full text-xs text-muted-foreground"
                 disabled={isLoading}
                 onClick={() => {

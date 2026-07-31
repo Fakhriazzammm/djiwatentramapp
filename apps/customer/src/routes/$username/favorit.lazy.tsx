@@ -1,26 +1,14 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Heart, Search, Utensils } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
+import { useCustomerFavorites } from "@/hooks/use-customer-favorites";
 import { currency } from "@/components/customer/types";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/favorit")({
 	component: FavoritPage,
 });
-
-const FAVORITES_KEY = "djiwa-customer-favorites";
-
-function loadFavorites(): string[] {
-	try {
-		const raw = localStorage.getItem(FAVORITES_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed.map(String) : [];
-	} catch {
-		return [];
-	}
-}
 
 type ProductRow = Record<string, any>;
 
@@ -63,21 +51,11 @@ function FavoritPage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const products = useHybridProducts();
-	const [favorites, setFavorites] = useState<string[]>(() => loadFavorites());
+	const { favorites, toggle } = useCustomerFavorites();
 	const [query, setQuery] = useState("");
-
-	useEffect(() => {
-		try {
-			localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-		} catch {}
-	}, [favorites]);
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } });
-
-	const toggleFavorite = (id: string) => {
-		setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
-	};
 
 	const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
@@ -129,7 +107,7 @@ function FavoritPage() {
 											key={String(p._id)}
 											product={p}
 											isFavorite
-											onToggle={() => toggleFavorite(String(p._id))}
+											onToggle={() => toggle(String(p._id))}
 											onOrder={goOrder}
 										/>
 									))}
@@ -158,7 +136,7 @@ function FavoritPage() {
 											key={String(p._id)}
 											product={p}
 											isFavorite={false}
-											onToggle={() => toggleFavorite(String(p._id))}
+											onToggle={() => toggle(String(p._id))}
 											onOrder={goOrder}
 										/>
 									))}
