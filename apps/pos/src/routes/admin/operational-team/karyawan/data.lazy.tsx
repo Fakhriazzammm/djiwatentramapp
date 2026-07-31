@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useHybridPublicUsers } from "@/hooks/use-hybrid-attendance-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Search,
 	X,
@@ -545,7 +546,7 @@ function DataKaryawanPage() {
 			<div className="overflow-x-auto rounded-xl border bg-card">
 				{isLoading ? (
 					<div className="p-6 space-y-3">
-						{[1,2,3,4,5,6].map((i) => <div key={i} className="h-7 w-full rounded-lg bg-muted/40 animate-pulse" />)}
+						{[1,2,3,4,5,6].map((i) => <Skeleton key={i} className="h-7 w-full rounded-lg" />)}
 					</div>
 				) : isEmpty ? (
 					<div className="flex flex-col items-center justify-center py-12 text-center">
@@ -580,7 +581,7 @@ function DataKaryawanPage() {
 								<th className="px-2.5 py-2.5 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
 								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">Wajah</th>
 								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">CV</th>
-								<th className="w-10 px-1 py-2.5 text-center"><span className="text-[10px] text-muted-foreground/40">✕</span></th>
+								<th className="w-10 px-1 py-2.5 text-center"><X className="mx-auto h-3 w-3 text-muted-foreground/40" aria-hidden="true" /></th>
 							</tr>
 						</thead>
 						<tbody>

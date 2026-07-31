@@ -2827,7 +2827,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 															value={exp.category}
 															onChange={(ev) => setEndShiftExpenses(prev => prev.map(x => x.id === exp.id ? {...x, category: ev.target.value} : x))}
 														>
-															<option value="Token Listrik">⚡ Token Listrik</option>
+															<option value="Token Listrik">Token Listrik</option>
 															<option value="Bahan Baku">Bahan Baku</option>
 															<option value="Operasional">Operasional</option>
 															<option value="Lainnya">Lainnya</option>
@@ -3323,7 +3323,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 
 		// Wajib klik AI Bantu dulu kalau deskripsi free-text
 		if (needsAiBantu) {
-			toast.error("Ketik deskripsi dengan format '— QRIS — Toko' atau klik ✨ AI Bantu untuk parsing otomatis");
+			toast.error("Ketik deskripsi dengan format '— QRIS — Toko' atau klik AI Bantu untuk parsing otomatis");
 			return;
 		}
 
@@ -3567,7 +3567,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 					{itemName.trim() && (
 						<div className={`text-[10px] font-medium ${selectedInventoryItem || allowNewInventoryItem ? "text-emerald-600" : "text-amber-700"}`}>
 							{selectedInventoryItem || allowNewInventoryItem
-								? `✅ Stok akan otomatis bertambah +${Number(itemQty) || 1} ${itemUnit.trim() || selectedInventoryItem?.unit || "pcs"} "${selectedInventoryItem?.ingredientName || itemName.trim()}"`
+								? `Stok akan otomatis bertambah +${Number(itemQty) || 1} ${itemUnit.trim() || selectedInventoryItem?.unit || "pcs"} "${selectedInventoryItem?.ingredientName || itemName.trim()}"`
 								: "Pilih item inventory yang sudah ada sebelum menyimpan."}
 						</div>
 					)}
@@ -3605,7 +3605,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 						<div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
 							<AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
 							<span>
-								Deskripsi belum terstruktur. Klik <strong>✨ AI Bantu</strong> di atas untuk isi otomatis kategori, merchant &amp; metode bayar. Atau gunakan format: <code>"— QRIS — Toko"</code>
+								Deskripsi belum terstruktur. Klik <strong>AI Bantu</strong> di atas untuk isi otomatis kategori, merchant &amp; metode bayar. Atau gunakan format: <code>"— QRIS — Toko"</code>
 							</span>
 						</div>
 					)}
@@ -3706,7 +3706,7 @@ function StokTab() {
 			{menuProductsWithoutRecipe.length > 0 && (
 				<div className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900">
 					<p className="font-bold text-[11px] uppercase tracking-wide">
-						⚠ {menuProductsWithoutRecipe.length} menu belum punya recipe
+						{menuProductsWithoutRecipe.length} menu belum punya recipe
 					</p>
 					<p className="mt-1 text-[11px]">
 						Lengkapi recipe agar stok menu bisa sinkron dengan bahan baku.

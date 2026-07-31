@@ -5,6 +5,7 @@ import {
 	ShoppingBag,
 	Trash2,
 	Minus,
+	MousePointerClick,
 	Plus,
 	CreditCard,
 	ChevronRight,
@@ -660,7 +661,8 @@ export function CheckoutSidebar({
 							</div>
 							{!hasChosenOrderType && (
 								<span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 animate-pulse shadow-sm">
-									👆 Ketuk untuk pilih tipe pesanan
+									<MousePointerClick className="h-3 w-3" aria-hidden="true" />
+									Ketuk untuk pilih tipe pesanan
 								</span>
 							)}
 						</div>

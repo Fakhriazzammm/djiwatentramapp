@@ -76,7 +76,7 @@ const STATUS_CONFIG: Record<string, { icon: any; iconClass: string; bgClass: str
     bgClass: "bg-emerald-50 dark:bg-emerald-950/20",
     borderClass: "border-emerald-200 dark:border-emerald-800",
     badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    title: "Kontrak Ditandatangani ✅",
+    title: "Kontrak Ditandatangani",
   },
 } as const;
 
@@ -353,7 +353,7 @@ function RegisterCompletePage() {
       // 3. Finalize via edge function
       await signContract({ applicationId: app.id, signatureUrl, contractPdfUrl, contractText });
 
-      toast.success("Kontrak berhasil ditandatangani! 🎉");
+      toast.success("Kontrak berhasil ditandatangani!");
       setPhase("tracking");
       setSignatureDataUrl("");
       setAgreedData(false);
@@ -551,7 +551,7 @@ function RegisterCompletePage() {
                     </div>
                   </div>
                   <div>
-                    <Badge className={cfg.badge}>{cfg.title} 🎉</Badge>
+                    <Badge className={cfg.badge}>{cfg.title}</Badge>
                     <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                       Selamat! Pendaftaran Anda telah disetujui.
                       <br />Lanjutkan ke penandatanganan kontrak kerja.
@@ -573,7 +573,7 @@ function RegisterCompletePage() {
                     </div>
                   </div>
                   <div>
-                    <Badge className={cfg.badge}>Kontrak Ditandatangani ✅</Badge>
+                    <Badge className={cfg.badge}>Kontrak Ditandatangani</Badge>
                     <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                       Semua proses selesai! Selamat bergabung dengan {companyDisplayName}.
                     </p>
@@ -675,7 +675,7 @@ function RegisterCompletePage() {
         >
           <div className="rounded-xl border border-dashed border-sky-200 bg-sky-50/60 p-5 text-center dark:border-sky-800/50 dark:bg-sky-950/10">
             <p className="mb-2 text-xs font-bold text-sky-700 uppercase tracking-wider dark:text-sky-400">
-              💾 Simpan Halaman Ini
+              Simpan Halaman Ini
             </p>
             <p className="text-sm leading-relaxed text-sky-600 dark:text-sky-300">
               Simpan URL halaman ini untuk mengecek status pendaftaran nanti.

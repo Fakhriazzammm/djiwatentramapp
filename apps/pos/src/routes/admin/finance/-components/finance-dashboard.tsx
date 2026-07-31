@@ -83,40 +83,42 @@ export function FinanceDashboard() {
 	const hppCogs = useHybridOrdersCogs({ startDate: range.startDate, endDate: range.endDate });
 
 	return (
-		<div className="space-y-2.5 p-1">
-			{/* ── Header bar ─────────────────────────────────── */}
-			<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white px-3 py-2 shadow-xs">
+		<div className="space-y-4">
+			{/* ── Page identity and primary actions ───────────── */}
+			<section className="flex flex-col justify-between gap-4 rounded-3xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:p-5">
 				<div>
-					<h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">Keuangan</h2>
-					<p className="text-[11px] text-slate-400">Grafik arus kas &amp; analisa keuangan</p>
+					<p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Kontrol finansial</p>
+					<h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Keuangan</h1>
+					<p className="mt-1 text-sm text-muted-foreground">Pantau arus kas, margin, dan laporan dalam satu alur.</p>
 				</div>
-				<div className="flex items-center gap-1.5">
+				<div className="flex flex-wrap items-center gap-2">
 					<Link
 						to="/admin/finance/transactions"
-						className="inline-flex h-6 items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-2 text-[10px] font-medium text-slate-700 hover:bg-slate-100"
+						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
-						<ListOrdered className="h-3 w-3" /> Transaksi
+						<ListOrdered className="h-4 w-4" /> Transaksi
 					</Link>
 					<Link
 						to="/admin/finance/reports"
-						className="inline-flex h-6 items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-2 text-[10px] font-medium text-slate-700 hover:bg-slate-100"
+						className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
-						<FileBarChart className="h-3 w-3" /> Laporan
+						<FileBarChart className="h-4 w-4" /> Laporan
 					</Link>
 				</div>
-			</div>
+			</section>
 
 			{/* ── Period selector ────────────────────────────── */}
-			<div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-slate-200/80 bg-white px-2 py-1.5 shadow-xs">
+			<div aria-label="Pilih periode laporan" className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-2xl border border-border bg-card p-1.5 shadow-sm">
 				{PERIODS.map((p) => (
 					<button
 						key={p.id}
 						type="button"
 						onClick={() => setSelectedRange(p.id)}
-						className={`rounded-sm border px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
+						aria-pressed={selectedRange === p.id}
+						className={`min-h-11 shrink-0 rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 sm:min-h-9 sm:py-1.5 ${
 							selectedRange === p.id
-								? "border-emerald-500 bg-emerald-50 text-emerald-700"
-								: "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+								? "border-primary bg-primary/10 text-primary"
+								: "border-border bg-background text-muted-foreground hover:bg-muted"
 						}`}
 					>
 						{p.label}
@@ -124,30 +126,35 @@ export function FinanceDashboard() {
 				))}
 			</div>
 
-			{/* ── Summary cards ──────────────────────────────── */}
-			<div className="grid grid-cols-3 gap-1.5">
-				{([
-					{ label: "Pemasukan", value: summary?.totalIncome, color: "text-emerald-600", bg: "bg-emerald-50", icon: <ArrowDownLeft className="h-3 w-3" /> },
-					{ label: "Pengeluaran", value: summary?.totalExpense, color: "text-orange-500", bg: "bg-orange-50", icon: <ArrowUpRight className="h-3 w-3" /> },
-					{ label: "Saldo Bersih", value: summary?.netBalance, color: (v?: number) => (v ?? 0) >= 0 ? "text-slate-900" : "text-red-600", bg: "bg-slate-50", icon: <Wallet className="h-3 w-3" /> },
-				] as const).map((card) => (
-					<div key={card.label} className="rounded-lg border border-slate-200/80 bg-white px-2.5 py-2 shadow-xs">
-						<div className="flex items-center justify-between">
-							<span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{card.label}</span>
-							<div className={`rounded p-1 ${card.bg} ${typeof card.color === "function" ? "" : card.color}`}>
-								{card.icon}
-							</div>
+			{/* ── Primary balance with supporting cash flow ───── */}
+			<section className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
+				<div className="rounded-3xl border border-primary/15 bg-primary/5 p-4 shadow-sm sm:p-5">
+					<div className="flex items-center justify-between gap-3">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Saldo bersih</p>
+							<p className="mt-1 text-xs text-muted-foreground">{RANGE_LABEL_MAP[selectedRange]}</p>
 						</div>
-						{card.value !== undefined ? (
-							<p className={`mt-1 font-bold text-[11px] font-mono ${typeof card.color === "function" ? card.color(card.value) : card.color}`}>
-								{fmt(card.value)}
-							</p>
-						) : (
-							<Skeleton className="mt-1 h-4 w-28" />
-						)}
+						<span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Wallet className="h-5 w-5" /></span>
 					</div>
-				))}
-			</div>
+					{summary?.netBalance !== undefined ? (
+						<p className={`mt-4 break-words font-display text-2xl font-bold tabular-nums sm:text-3xl ${summary.netBalance >= 0 ? "text-foreground" : "text-destructive"}`}>
+							{fmt(summary.netBalance)}
+						</p>
+					) : (
+						<Skeleton className="mt-4 h-9 w-52" />
+					)}
+				</div>
+				<div className="grid grid-cols-2 gap-2">
+					<div className="rounded-2xl border border-emerald-500/15 bg-card p-3 shadow-sm">
+						<div className="flex items-center justify-between text-emerald-600"><span className="text-xs font-semibold">Pemasukan</span><ArrowDownLeft className="h-4 w-4" /></div>
+						{summary?.totalIncome !== undefined ? <p className="mt-3 break-words text-sm font-bold tabular-nums text-emerald-700">{fmt(summary.totalIncome)}</p> : <Skeleton className="mt-3 h-5 w-full" />}
+					</div>
+					<div className="rounded-2xl border border-orange-500/15 bg-card p-3 shadow-sm">
+						<div className="flex items-center justify-between text-orange-600"><span className="text-xs font-semibold">Pengeluaran</span><ArrowUpRight className="h-4 w-4" /></div>
+						{summary?.totalExpense !== undefined ? <p className="mt-3 break-words text-sm font-bold tabular-nums text-orange-700">{fmt(summary.totalExpense)}</p> : <Skeleton className="mt-3 h-5 w-full" />}
+					</div>
+				</div>
+			</section>
 
 			{/* ── Period comparison ──────────────────────────── */}
 			<PeriodComparisonCards />

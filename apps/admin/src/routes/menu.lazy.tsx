@@ -1571,7 +1571,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 																				key={tier.thresholdPct}
 																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
-																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																				{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																			</span>
 																		);
 																	})}
@@ -1633,7 +1633,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 																				key={tier.thresholdPct}
 																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
-																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																				{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																			</span>
 																		);
 																	})}
@@ -1677,7 +1677,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 																	key={tier.thresholdPct}
 																	className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																>
-																	{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																	{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																</span>
 															);
 														})}

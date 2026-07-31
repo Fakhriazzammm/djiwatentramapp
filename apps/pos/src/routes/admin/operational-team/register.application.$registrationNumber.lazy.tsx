@@ -364,12 +364,12 @@ function ApplicationDetailPage() {
 							</Badge>
 							{app.raw?.pipelineStep === "contract_signed" && (
 								<Badge variant="default" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
-									Tahap 2 ✅ Kontrak Ditandatangani
+									<CheckCircle2 className="mr-1 inline h-3 w-3" aria-hidden="true" /> Tahap 2 Kontrak Ditandatangani
 								</Badge>
 							)}
 							{app.status === "approved" && app.raw?.pipelineStep !== "contract_signed" && (
 								<Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
-									Tahap 2 ⏳ Menunggu Tanda Tangan
+									<Loader2 className="mr-1 inline h-3 w-3" aria-hidden="true" /> Tahap 2 Menunggu Tanda Tangan
 								</Badge>
 							)}
 						</div>
@@ -398,10 +398,10 @@ function ApplicationDetailPage() {
 				<div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-800">
 					<div className="flex items-center gap-2 text-sm font-semibold">
 						<CheckCircle2 className="h-5 w-5 text-emerald-600" />
-						<span>✓ Kontrak sudah ditandatangani</span>
+						<span>Kontrak sudah ditandatangani</span>
 					</div>
 					<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-100/50 p-3">
-						<h4 className="mb-1.5 text-xs font-semibold text-emerald-700">📋 Tahap 2 — Kontrak & Tanda Tangan ✅</h4>
+						<h4 className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-emerald-700"><FileText className="h-3.5 w-3.5" aria-hidden="true" /> Tahap 2 — Kontrak & Tanda Tangan <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /></h4>
 						<p className="mb-2 text-[11px] text-emerald-600">Kontrak sudah ditandatangani oleh kandidat.</p>
 						<div className="flex items-center gap-2">
 							{app.contract_pdf_url && (
@@ -420,13 +420,13 @@ function ApplicationDetailPage() {
 				<div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-800">
 					<div className="flex items-center gap-2 text-sm font-semibold">
 						<CheckCircle2 className="h-5 w-5 text-emerald-600" />
-						<span>✓ Tahap 1 — Data & CV Disetujui</span>
+						<span>Tahap 1 — Data & CV Disetujui</span>
 					</div>
 					<p className="mt-1 text-xs text-emerald-600">
 						Akun sudah dibuat. Kandidat dapat melanjutkan ke Tahap 2 (Kontrak & Tanda Tangan).
 					</p>
 					<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-100/50 p-3">
-						<h4 className="mb-1.5 text-xs font-semibold text-emerald-700">📋 Tahap 2 — Kontrak & Tanda Tangan</h4>
+						<h4 className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-emerald-700"><FileText className="h-3.5 w-3.5" aria-hidden="true" /> Tahap 2 — Kontrak & Tanda Tangan</h4>
 						<p className="mb-2 text-[11px] text-emerald-600">
 							Kandidat perlu menandatangani kontrak melalui halaman berikut:
 						</p>
@@ -445,7 +445,7 @@ function ApplicationDetailPage() {
 				<div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">
 					<div className="flex items-center gap-2 text-sm font-semibold">
 						<XCircle className="h-5 w-5 text-red-600" />
-						<span>✕ Pendaftaran ditolak</span>
+						<span>Pendaftaran ditolak</span>
 					</div>
 					{app.review_notes && <p className="mt-1 text-xs text-red-600">Alasan: {app.review_notes}</p>}
 				</div>
@@ -557,7 +557,7 @@ function ApplicationDetailPage() {
 										<Field label="PIN 6 digit">
 											<Input maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className="h-8 text-xs" />
 											{app?.raw?.homePinFingerprint && (
-												<p className="mt-1 text-[10px] text-emerald-600">✓ PIN dari pendaftaran tersedia</p>
+												<p className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600"><CheckCircle2 className="h-3 w-3" aria-hidden="true" /> PIN dari pendaftaran tersedia</p>
 											)}
 										</Field>
 									</div>

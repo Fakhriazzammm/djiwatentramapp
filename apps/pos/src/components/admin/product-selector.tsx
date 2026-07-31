@@ -1,4 +1,4 @@
-import { Search, Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Search, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 
@@ -147,11 +147,11 @@ export function ProductSelector({
 									{/* Recipe status badge */}
 									{hasRecipe ? (
 										<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-600">
-											✅
+											<CheckCircle2 className="h-4 w-4" aria-hidden="true" />
 										</span>
 									) : (
 										<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-600">
-											⚠️
+											<AlertTriangle className="h-4 w-4" aria-hidden="true" />
 										</span>
 									)}
 

@@ -18,7 +18,11 @@ import {
 	Camera,
 	ShieldCheck,
 	History,
+	AlertTriangle,
 	Bell,
+	Hand,
+	MessageCircle,
+	Sparkles,
 	Check,
 	LogOut,
 	ChevronRight,
@@ -999,7 +1003,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 									return (
 										<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
 											<div className="flex items-start gap-3">
-												<div className="shrink-0 mt-0.5">⚠️</div>
+												<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
 												<div className="flex-1 min-w-0">
 													<p className="text-[10px] font-black uppercase tracking-wide">Lengkapi Data Diri</p>
 													<p className="mt-0.5 text-[11px] font-medium">Isi No HP, Alamat, dan data lainnya untuk memudahkan administrasi.</p>
@@ -1040,7 +1044,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												animate={{ x: [0, 3, 0] }}
 												transition={{ repeat: Infinity, duration: 1.5 }}
 											>
-												<span className="text-base">👉</span>
+												<Hand className="h-4 w-4" aria-hidden="true" />
 											</motion.div>
 											<span className="whitespace-nowrap rounded-lg bg-primary px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">
 												Isi data dirimu!
@@ -1486,7 +1490,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								</h3>
 								<div className="rounded-xl border border-sky-100 bg-sky-50 p-3">
 									<div className="flex items-start gap-3">
-										<div className="shrink-0 mt-0.5 text-lg">💬</div>
+										<MessageCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
 										<div className="flex-1 min-w-0">
 											<p className="text-[10px] font-black uppercase tracking-wide text-sky-800">Gabung Grup Karyawan</p>
 											<p className="mt-0.5 text-[11px] font-medium text-sky-700">
@@ -1605,7 +1609,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								transition={{ delay: 0.2, type: "spring", damping: 15 }}
 								className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10"
 							>
-								<span className="text-2xl">✨</span>
+								<Sparkles className="h-6 w-6" aria-hidden="true" />
 							</motion.div>
 							<h2 className="text-lg sm:text-xl font-black tracking-tight">Selamat Datang!</h2>
 							<p className="text-xs text-muted-foreground mt-1">Selesaikan 2 langkah berikut untuk memulai.</p>
@@ -1619,7 +1623,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										<Check className="h-4 w-4" />
 									</div>
 									<div>
-										<p className="font-bold text-sm text-emerald-800">Data Diri ✓</p>
+										<p className="flex items-center gap-1 font-bold text-sm text-emerald-800">Data Diri <Check className="h-3.5 w-3.5" aria-hidden="true" /></p>
 										<p className="text-[11px] text-emerald-600">Sudah dilengkapi</p>
 									</div>
 								</div>
@@ -1660,7 +1664,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 										<Check className="h-4 w-4" />
 									</div>
 									<div>
-										<p className="font-bold text-sm text-emerald-800">Grup Telegram ✓</p>
+										<p className="flex items-center gap-1 font-bold text-sm text-emerald-800">Grup Telegram <Check className="h-3.5 w-3.5" aria-hidden="true" /></p>
 										<p className="text-[11px] text-emerald-600">Sudah bergabung</p>
 									</div>
 								</div>

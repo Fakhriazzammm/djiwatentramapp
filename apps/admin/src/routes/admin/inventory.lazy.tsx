@@ -30,6 +30,7 @@ import {
 	Minus,
 	Plus,
 	RotateCw,
+	ScanLine,
 	Search,
 	Settings2,
 	ShieldAlert,
@@ -1578,7 +1579,7 @@ function InventoryPage() {
 						<X className="h-3.5 w-3.5" />
 					</button>
 					<p className="text-[10px] font-semibold uppercase tracking-[0.14em]">
-						⚠️ {menuProductsWithoutRecipe.length} menu aktif belum punya recipe — stok tidak akan terpotong otomatis
+						<AlertCircle className="h-4 w-4" aria-hidden="true" /> {menuProductsWithoutRecipe.length} menu aktif belum punya recipe — stok tidak akan terpotong otomatis
 					</p>
 					<p className="mt-0.5 text-xs">
 						Lengkapi recipe menu agar stok bahan baku otomatis berkurang tiap penjualan.
@@ -1603,7 +1604,7 @@ function InventoryPage() {
 						<X className="h-3.5 w-3.5" />
 					</button>
 					<p className="text-[10px] font-semibold uppercase tracking-[0.14em]">
-						⚠️ {dataIssueCounts.total} item butuh perbaikan data
+						<BadgeAlert className="h-4 w-4" aria-hidden="true" /> {dataIssueCounts.total} item butuh perbaikan data
 					</p>
 					<p className="mt-0.5 text-xs">
 						{dataIssueCounts.suspiciousBeli > 0 && `${dataIssueCounts.suspiciousBeli} item kolom Beli masih besar (default), `}
@@ -2721,9 +2722,9 @@ function InventoryPlanningPanel({
 															? "bg-blue-100 text-blue-700"
 															: "bg-slate-100 text-slate-600"
 												}`}>
-													{row.latestTransaction.sourceLabel.toLowerCase().includes("ocr") ? "📸 OCR" :
-													 row.latestTransaction.sourceLabel.toLowerCase().includes("order") ? "🛒 Order" :
-													 row.latestTransaction.sourceLabel}
+													{row.latestTransaction.sourceLabel.toLowerCase().includes("ocr") ? <span className="inline-flex items-center gap-1"><ScanLine className="h-3 w-3" aria-hidden="true" /> OCR</span> :
+																										row.latestTransaction.sourceLabel.toLowerCase().includes("order") ? <span className="inline-flex items-center gap-1"><ShoppingCart className="h-3 w-3" aria-hidden="true" /> Order</span> :
+																										row.latestTransaction.sourceLabel}
 												</span>
 											) : (
 												<span className="text-[10px] text-muted-foreground">—</span>
@@ -5553,11 +5554,11 @@ function InventoryTable({
 									}
 									value={quickAdd.category || "kitchen"}
 								>
-									<option value="kitchen">🍳 kitchen</option>
-									<option value="bar">🥤 bar</option>
-									<option value="packaging">📦 packaging</option>
-									<option value="cleaning">🧹 cleaning</option>
-									<option value="other">🔧 other</option>
+									<option value="kitchen">kitchen</option>
+									<option value="bar">bar</option>
+									<option value="packaging">packaging</option>
+									<option value="cleaning">cleaning</option>
+									<option value="other">other</option>
 								</select>
 							</td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[11px] text-muted-foreground/40 italic">—</div></td>
@@ -5808,14 +5809,14 @@ function InventoryTable({
 											const hasAnomaly = anomalyItemIds.has(id);
 											if (!hasStockout && !hasSupplier && !hasAnomaly) return null;
 											const badges: string[] = [];
-											if (hasStockout) badges.push("🔴 Prediksi stok habis");
-											if (hasSupplier) badges.push("🔵 Rekomendasi supplier");
-											if (hasAnomaly) badges.push("🟣 Anomali pemakaian");
+											if (hasStockout) badges.push("Prediksi stok habis");
+											if (hasSupplier) badges.push("Rekomendasi supplier");
+											if (hasAnomaly) badges.push("Anomali pemakaian");
 											return (
 												<span className="group relative inline-flex cursor-help" title={badges.join(" · ")}>
 													<Sparkles className="h-3 w-3 text-violet-500/80" />
 													<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md z-50">
-														{badges.map((b, i) => (<span key={i} className="block">{b}</span>))}
+														{badges.map((b, i) => (<span key={i} className="flex items-center gap-1"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${b.startsWith("Prediksi") ? "bg-red-500" : b.startsWith("Rekomendasi") ? "bg-blue-500" : "bg-violet-500"}`} />{b}</span>))}
 													</span>
 												</span>
 											);
@@ -5885,11 +5886,11 @@ function InventoryTable({
 												}
 												value={inline.category}
 											>
-												<option value="kitchen">🍳 kitchen</option>
-												<option value="bar">🥤 bar</option>
-												<option value="packaging">📦 packaging</option>
-												<option value="cleaning">🧹 cleaning</option>
-												<option value="other">🔧 other</option>
+												<option value="kitchen">kitchen</option>
+												<option value="bar">bar</option>
+												<option value="packaging">packaging</option>
+												<option value="cleaning">cleaning</option>
+												<option value="other">other</option>
 											</select>
 										</td>
 										<td className="px-1.5 py-1 align-middle text-[11px] text-muted-foreground max-w-[200px]">

@@ -702,7 +702,7 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 			const result = await updateStatus({ order_no: orderNo, group_type: groupType, status, by, itemName });
 			if (result.success) {
 				if (itemName) {
-					toast.success(`✅ ${itemName} selesai oleh ${by}`);
+					toast.success(`${itemName} selesai oleh ${by}`);
 				} else {
 					toast.success(`#${orderNo} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
 				}

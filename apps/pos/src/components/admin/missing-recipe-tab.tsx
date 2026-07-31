@@ -1,4 +1,4 @@
-import { Search, AlertTriangle } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 
@@ -93,7 +93,7 @@ export function MissingRecipeTab({
 			<div className="space-y-1">
 				{missingProducts.length === 0 ? (
 					<div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
-						Semua produk sudah punya resep ✅
+						<CheckCircle2 className="inline h-4 w-4" aria-hidden="true" /> Semua produk sudah punya resep
 					</div>
 				) : (
 					missingProducts.map((product) => (

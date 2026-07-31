@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
-import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Pencil, TrendingUp, ChevronDown, ChevronUp, ClipboardList, Users } from "lucide-react";
+import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Pencil, TrendingUp, ChevronDown, ChevronUp, ClipboardList, Users, Flag } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -167,7 +167,7 @@ function CompactDoneCard({
 			{/* Badge + staff */}
 			<div className="flex items-center justify-between">
 				<span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold uppercase text-emerald-700 leading-none">
-					🏁 Selesai
+					<Flag aria-hidden="true" className="h-3 w-3" /> Selesai
 				</span>
 				<div className="flex items-center gap-1">
 					{order.selesai_by && order.selesai_by !== "Otomatis" && (

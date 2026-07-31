@@ -277,7 +277,7 @@ export default function KaryawanOverview() {
 						<Users className="h-4.5 w-4.5" />
 					</div>
 					<div>
-						<h1 className="text-base font-black tracking-tight uppercase">Karyawan</h1>
+						<h1 className="font-display text-base font-bold tracking-tight">Karyawan</h1>
 						<p className="text-[11px] font-medium text-muted-foreground">
 							{isLoading
 								? "Memuat..."
@@ -344,7 +344,7 @@ export default function KaryawanOverview() {
 			{isLoading ? (
 				<div className="space-y-2">
 					{[1,2,3,4,5].map((i) => (
-						<div key={i} className="h-16 w-full rounded-xl bg-muted animate-pulse" />
+						<Skeleton key={i} className="h-16 w-full rounded-xl" />
 					))}
 				</div>
 			) : isEmpty ? (

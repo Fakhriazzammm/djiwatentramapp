@@ -512,7 +512,7 @@ export default function AttendanceImportDialog({
                 <div className="rounded-lg border bg-card p-3">
                   <p className="text-xs text-muted-foreground">Warning</p>
                   <p className={`mt-1 text-lg font-semibold ${warnings.length > 0 ? "text-orange-500" : "text-green-500"}`}>
-                    {warnings.length || "✓"}
+                    {warnings.length || <Check className="h-3 w-3" aria-hidden="true" />}
                   </p>
                 </div>
               </div>

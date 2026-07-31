@@ -353,7 +353,7 @@ function ContractHistoryPage() {
 													{STATUS_LABELS[status] || status}
 												</Badge>
 												{app.raw?.pipelineStep === "contract_signed" && (
-													<Badge variant="default" className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">✓ TTD</Badge>
+													<Badge variant="default" className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">TTD</Badge>
 												)}
 											</td>
 											<td className="px-4 py-3 text-right">

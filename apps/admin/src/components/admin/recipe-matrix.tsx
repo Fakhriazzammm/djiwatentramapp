@@ -3,7 +3,10 @@ import { Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import { convertToSmallestUnit, getSmallestUnitInfo, getSmallestUnitLabel } from "@/lib/inventory-units";
 import {
+	AlertTriangle,
+	BarChart3,
 	BookOpen,
+	ClipboardList,
 	Calculator,
 	CheckCircle2,
 	ChevronRight,
@@ -25,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -518,8 +522,8 @@ export function RecipeMatrixPage() {
 	if (loading) {
 		return (
 			<div className="p-4 space-y-3">
-				<div className="h-7 w-40 bg-muted animate-pulse rounded" />
-				<div className="h-[60vh] bg-muted animate-pulse rounded-lg" />
+				<Skeleton className="h-7 w-40 rounded-lg" />
+				<Skeleton className="h-[60vh] rounded-2xl" />
 			</div>
 		);
 	}
@@ -599,11 +603,11 @@ export function RecipeMatrixPage() {
 					onCreateNew={() => setShowQuickProductForm(true)}
 				/>
 				<div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-					<button className={cn("px-2.5 py-1 rounded text-[10px] font-medium transition-all", activeTab === 'all' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground')} onClick={() => setActiveTab('all')}>📋 Semua Resep</button>
-					<button className={cn("px-2.5 py-1 rounded text-[10px] font-medium transition-all flex items-center gap-1", activeTab === 'missing' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground')} onClick={() => setActiveTab('missing')}>⚠️ Perlu Resep{missingCount > 0 ? ` (${missingCount})` : ''}</button>
+					<button className={cn("px-2.5 py-1 rounded text-[10px] font-medium transition-all inline-flex items-center gap-1", activeTab === 'all' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground')} onClick={() => setActiveTab('all')}><ClipboardList className="h-3 w-3" aria-hidden="true" /> Semua Resep</button>
+					<button className={cn("px-2.5 py-1 rounded text-[10px] font-medium transition-all flex items-center gap-1", activeTab === 'missing' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground')} onClick={() => setActiveTab('missing')}><AlertTriangle className="h-3 w-3" aria-hidden="true" /> Perlu Resep{missingCount > 0 ? ` (${missingCount})` : ''}</button>
 				</div>
 				<button className={cn("px-2.5 py-1 rounded text-[10px] border transition-all", viewMode === 'per-product' ? 'bg-primary/10 border-primary/20 text-primary' : 'border-border text-muted-foreground')} onClick={() => setViewMode(viewMode === 'per-product' ? 'matrix' : 'per-product')}>
-					{viewMode === 'per-product' ? '📊 Matrix' : '🔍 Per Produk'}
+					{viewMode === 'per-product' ? <><BarChart3 className="h-3 w-3" aria-hidden="true" /> Matrix</> : <><Search className="h-3 w-3" aria-hidden="true" /> Per Produk</>}
 				</button>
 			</div>
 

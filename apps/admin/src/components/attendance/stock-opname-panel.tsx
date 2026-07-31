@@ -96,7 +96,7 @@ export function StockOpnamePanel({
   const totalItems = state.items.length;
   const roleColors = state.role === "bar" ? "from-sky-500 to-blue-600" : "from-amber-500 to-orange-600";
   const roleBg = state.role === "bar" ? "bg-sky-50 border-sky-200" : "bg-amber-50 border-amber-200";
-  const roleText = state.role === "bar" ? "☕ Bar" : "🍳 Kitchen";
+  const roleText = state.role === "bar" ? "Bar" : "Kitchen";
 
   // Adjust display quantity (simple adjustments)
   const adjustQty = (index: number, delta: number) => {

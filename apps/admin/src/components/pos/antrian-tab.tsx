@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Timer, User, ChevronDown, Pencil, AlertCircle, Lock, ShoppingBag, Square, CheckSquare } from "lucide-react";
+import { Clock, Coffee, ChefHat, Loader2, CheckCircle2, Timer, User, ChevronDown, Pencil, AlertCircle, Lock, ShoppingBag, Square, CheckSquare, Circle, Flag } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -282,7 +282,7 @@ export function CompletedDetailModal({
 					<DialogTitle className="flex items-center gap-2 text-base">
 						{order.group_type === "barista" ? <Coffee className="h-4 w-4 text-amber-600" /> : <ChefHat className="h-4 w-4 text-orange-600" />}
 						<span className="font-mono">{order.order_no}</span>
-						<span className="text-[10px] font-bold uppercase rounded-full border border-emerald-200 bg-emerald-100 text-emerald-700 px-2 py-0.5">🏁 Selesai</span>
+						<span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase rounded-full border border-emerald-200 bg-emerald-100 text-emerald-700 px-2 py-0.5"><Flag aria-hidden="true" className="h-3 w-3" /> Selesai</span>
 					</DialogTitle>
 				</DialogHeader>
 
@@ -505,7 +505,7 @@ canEdit?: boolean;
 						badge.color,
 					)}
 				>
-					{order.status === "selesai" ? "🏁" : order.status === "dibuat" ? "✅" : "🆕"} {badge.label}
+					{order.status === "selesai" ? <Flag aria-hidden="true" className="h-3 w-3" /> : order.status === "dibuat" ? <CheckCircle2 aria-hidden="true" className="h-3 w-3" /> : <Circle aria-hidden="true" className="h-3 w-3" />} {badge.label}
 				</span>
 
 				{/* KASUS 1: Baru — belum ada dari database → tampilkan dropdown + countdown */}
@@ -702,7 +702,7 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 			const result = await updateStatus({ order_no: orderNo, group_type: groupType, status, by, itemName });
 			if (result.success) {
 				if (itemName) {
-					toast.success(`✅ ${itemName} selesai oleh ${by}`);
+					toast.success(`${itemName} selesai oleh ${by}`);
 				} else {
 					toast.success(`#${orderNo} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
 				}
@@ -770,7 +770,7 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 				{totalActive === 0 ? (
 					<div className="rounded-xl border border-dashed border-border py-10 text-center">
 						<CheckCircle2 className="mx-auto h-8 w-8 text-emerald-400 mb-2" />
-						<p className="text-sm font-medium text-muted-foreground">Semua pesanan selesai ✅</p>
+						<p className="text-sm font-medium text-muted-foreground">Semua pesanan selesai</p>
 						<p className="text-[10px] text-muted-foreground/60 mt-0.5">Tidak ada antrian aktif</p>
 					</div>
 				) : (

@@ -447,7 +447,7 @@ export default function ImportInventoryModal({
 
             {unmatchedCount > 0 && (
               <p className="text-[10px] text-amber-600">
-                ⚠️ {unmatchedCount} bahan tidak ditemukan di inventory. Item baru
+                <AlertCircle className="h-4 w-4" aria-hidden="true" /> {unmatchedCount} bahan tidak ditemukan di inventory. Item baru
                 belum didukung — data tersebut akan dilewati.
               </p>
             )}

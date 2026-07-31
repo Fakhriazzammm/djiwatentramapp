@@ -154,7 +154,7 @@ export function ScanSplitModal({
 					</div>
 					<div className={`text-xs font-bold ${remainingColor}`}>
 						{Math.abs(remaining) < 1
-							? "✓ Terbagi rata"
+							? "Terbagi rata"
 							: remaining > 0
 							? `Sisa: ${formatRp(remaining)}`
 							: `Kelebihan: ${formatRp(-remaining)}`}

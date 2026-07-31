@@ -6,7 +6,7 @@ import {
 	getRangeFromPeriod,
 	type PeriodOption,
 } from "../../reports/-components/period-selector";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
 
 const PERIOD_BUTTONS: { value: PeriodOption; label: string }[] = [
 	{ value: "today", label: "Hari Ini" },
@@ -81,7 +81,7 @@ export function AccountingEntriesView() {
 						<div className={`mt-1 font-bold text-sm ${
 							summary.balance ? "text-emerald-800" : "text-red-800"
 						}`}>
-							{summary.balance ? "✅ SEIMBANG" : `⚠️ Rp${summary.selisih.toLocaleString("id-ID")}`}
+							{summary.balance ? <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> SEIMBANG</span> : <span className="inline-flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> Rp{summary.selisih.toLocaleString("id-ID")}</span>}
 						</div>
 						<div className="mt-0.5 text-[11px] text-slate-400">
 							{summary.count} entry

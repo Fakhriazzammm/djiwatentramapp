@@ -211,7 +211,7 @@ export default function PerProductRecipeEditor({
           <Input
             className="h-8 text-[11px]"
             list="pe-ingredient-options"
-            placeholder="➕ Tambah bahan (ketik untuk cari)..."
+            placeholder="Tambah bahan (ketik untuk cari)..."
             value={ingredientQuery}
             onChange={(e) => setIngredientQuery(e.target.value)}
             onKeyDown={(e) => {

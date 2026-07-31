@@ -964,7 +964,7 @@ export function ShiftReport({ range }: Props) {
 																	key={tier.thresholdPct}
 																	className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white/60 text-muted-foreground/50 border-border/30 dark:bg-muted/30"}`}
 																>
-																	{achieved ? "✓" : "○"} {tier.thresholdPct}% → {formatCurrencyIDR(tier.bonusAmount)}
+																	{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {formatCurrencyIDR(tier.bonusAmount)}
 																</span>
 															);
 														})}
@@ -1464,7 +1464,7 @@ function TargetBadge({
 		>
 			<div className="flex items-center justify-between gap-1.5 font-bold">
 				<span>{label}</span>
-				<span>{met ? "✓" : "✗"}</span>
+				<span>{met ? "Tercapai" : "Belum"}</span>
 			</div>
 			<div className="mt-0.5 text-[10px] font-medium opacity-90">
 				{formatCurrencyIDR(current, true)} / {formatCurrencyIDR(target, true)}

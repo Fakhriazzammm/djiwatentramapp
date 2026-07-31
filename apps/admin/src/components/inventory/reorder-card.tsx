@@ -46,7 +46,7 @@ export function ReorderCard({ items }: ReorderCardProps) {
 					</div>
 					<div>
 						<h3 className="font-bold text-sm text-amber-900 tracking-tight">
-							🛒 Belanja Rekomendasi
+							Belanja Rekomendasi
 						</h3>
 						<p className="text-[10px] font-medium text-amber-700">
 							{needsReorder.length} item perlu dibeli ulang

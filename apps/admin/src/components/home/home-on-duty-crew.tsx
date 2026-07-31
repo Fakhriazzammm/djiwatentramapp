@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { UserCheck, Clock, CheckCircle2 } from "lucide-react";
+import { UserCheck, Clock, CheckCircle2, Coffee, CookingPot, User } from "lucide-react";
 import { useHybridCrewProduction } from "@/hooks/use-hybrid-crew-data";
 import {
 	useHybridStaffUsers,
@@ -7,11 +7,11 @@ import {
 } from "@/hooks/use-hybrid-pos-data";
 import { isSameDayWIB } from "@/lib/wib-utils";
 
-const GROUP_EMOJI: Record<string, string> = {
-	barista: "☕",
-	kitchen: "🍳",
-	default: "👤",
-};
+function GroupRoleIcon({ groupType }: { groupType: string }) {
+	if (groupType === "barista") return <Coffee aria-hidden="true" className="h-3 w-3" />;
+	if (groupType === "kitchen") return <CookingPot aria-hidden="true" className="h-3 w-3" />;
+	return <User aria-hidden="true" className="h-3 w-3" />;
+}
 
 export function HomeOnDutyCrew() {
 	const crewStats = useHybridCrewProduction();
@@ -85,8 +85,6 @@ export function HomeOnDutyCrew() {
 			</h3>
 			<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
 				{crew.map((member) => {
-					const emoji =
-						GROUP_EMOJI[member.groupType] || GROUP_EMOJI.default;
 					return (
 						<div
 							key={member.name}
@@ -100,8 +98,8 @@ export function HomeOnDutyCrew() {
 									<p className="text-[11px] font-bold text-foreground truncate">
 										{member.name}
 									</p>
-									<p className="text-[10px] text-muted-foreground">
-										{emoji} {member.role}
+									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+										<GroupRoleIcon groupType={member.groupType} /> {member.role}
 									</p>
 								</div>
 							</div>

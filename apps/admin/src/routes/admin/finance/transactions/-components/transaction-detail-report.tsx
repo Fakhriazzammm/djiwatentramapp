@@ -777,13 +777,13 @@ export function TransactionDetailReport({
 								<div className="flex items-center divide-x divide-slate-200 text-[10px]">
 									<span className="pr-2 text-slate-500">{summary!.periodLabel}</span>
 									<span className="px-2 font-semibold text-sky-600">
-										💳 Debit: {formatCurrencyIDR(accData.summary.totalDebit)}
+										Debit: {formatCurrencyIDR(accData.summary.totalDebit)}
 									</span>
 									<span className="px-2 font-semibold text-violet-600">
-										💰 Kredit: {formatCurrencyIDR(accData.summary.totalKredit)}
+										Kredit: {formatCurrencyIDR(accData.summary.totalKredit)}
 									</span>
 									<span className={`pl-2 font-bold ${accData.summary.balance ? "text-emerald-600" : "text-red-600"}`}>
-										⚖️ {accData.summary.balance ? "BALANCE" : `Selisih ${formatCurrencyIDR(Math.abs(accData.summary.selisih))}`}
+										{accData.summary.balance ? "BALANCE" : `Selisih ${formatCurrencyIDR(Math.abs(accData.summary.selisih))}`}
 									</span>
 									<span className="pl-2 text-slate-500">{accData.summary.count} entries</span>
 								</div>
@@ -991,7 +991,7 @@ export function TransactionDetailReport({
 									<th className="border-b border-slate-200 px-2 py-1">Akun / COA</th>
 									<th className="border-b border-slate-200 bg-sky-50 px-2 py-1 text-right text-sky-700">Debit</th>
 									<th className="border-b border-slate-200 bg-violet-50 px-2 py-1 text-right text-violet-700">Kredit</th>
-									<th className="border-b border-slate-200 px-1 py-1 text-center">✅</th>
+									<th className="border-b border-slate-200 px-1 py-1 text-center">Status</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-slate-100 bg-white">
@@ -1021,7 +1021,7 @@ export function TransactionDetailReport({
 													<span className="font-mono text-[10px] text-slate-400">{String(e.transaction_source_id).slice(-10)}</span>
 												</td>
 												<td className="whitespace-nowrap px-2 py-0.5">
-													<span className="text-[11px] text-slate-600">{isDebit ? "💳" : "💰"}</span>
+													<span className="text-[11px] text-slate-600">{isDebit ? "Debit" : "Kredit"}</span>
 												</td>
 												<td className="px-2 py-0.5">
 													<span className="text-[10px] font-medium text-slate-800">
@@ -1037,7 +1037,7 @@ export function TransactionDetailReport({
 													{!isDebit ? formatCurrencyIDR(e.amount) : ""}
 												</td>
 												<td className="px-1 py-0.5 text-center text-[11px]">
-													<span>✅</span>
+													<span>Selesai</span>
 												</td>
 											</tr>
 										);
@@ -1232,11 +1232,11 @@ export function TransactionDetailReport({
 									const getPaymentIcon = (method: string | undefined): string => {
 										if (!method) return "";
 										const m = method.toLowerCase();
-										if (m.includes("cash") || m.includes("tunai")) return "💵";
-										if (m.includes("debit") || m.includes("kartu")) return "💳";
-										if (m.includes("qris") || m.includes("qr")) return "📱";
-										if (m.includes("transfer")) return "🏦";
-										return "💳";
+										if (m.includes("cash") || m.includes("tunai")) return "Tunai";
+										if (m.includes("debit") || m.includes("kartu")) return "Kartu";
+										if (m.includes("qris") || m.includes("qr")) return "QRIS";
+										if (m.includes("transfer")) return "Transfer";
+										return "Pembayaran";
 									};
 
 									const expandable = hasScanItems || hasReceiptMeta;
@@ -1299,7 +1299,7 @@ export function TransactionDetailReport({
 										{getSourceBadge(t)}
 										{t.metadata?.ocr && (
 											<span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700">
-												📸 OCR
+												OCR
 											</span>
 										)}
 										{isDuplicate && (

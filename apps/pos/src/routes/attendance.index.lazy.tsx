@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
 	Coffee, 
 	ArrowLeft, 
@@ -488,7 +489,7 @@ function AttendancePage() {
 								{!allStaff ? (
 									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:gap-3">
 										{Array.from({ length: 8 }).map((_, i) => (
-											<div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
+											<Skeleton key={i} className="aspect-square rounded-xl" />
 										))}
 									</div>
 								) : (
@@ -561,7 +562,7 @@ function AttendancePage() {
 											<div className="space-y-3 md:space-y-4">
 												{!currentlyIn ? (
 													Array.from({ length: 3 }).map((_, i) => (
-														<div key={i} className="h-10 w-full bg-muted/30 rounded-xl animate-pulse" />
+														<Skeleton key={i} className="h-10 w-full rounded-xl" />
 													))
 												) : currentlyIn.length === 0 ? (
 													<div className="py-8 text-center space-y-2">

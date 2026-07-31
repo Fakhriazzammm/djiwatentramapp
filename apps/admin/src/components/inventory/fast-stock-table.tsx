@@ -511,7 +511,7 @@ export function FastStockTable({
 			{productsWithoutRecipe.length > 0 && (
 				<div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
 					<p className="font-black text-[11px] uppercase tracking-wider">
-						⚠ {productsWithoutRecipe.length} menu belum punya recipe
+						<AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> {productsWithoutRecipe.length} menu belum punya recipe
 					</p>
 					<p className="mt-1 text-xs">
 						Menu tanpa recipe tidak bisa update stok sinkron bahan

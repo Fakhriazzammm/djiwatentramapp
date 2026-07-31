@@ -1,5 +1,5 @@
 ﻿import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Calendar, Sparkles, Bell, TrendingUp, X } from "lucide-react";
+import { AlertTriangle, Banknote, BarChart3, Bot, Calendar, Camera, ClipboardList, Sparkles, Bell, Telescope, TrendingUp, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -1074,31 +1074,31 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 														{isPOS ? (
 															<>
 																<button onClick={() => sendMessage("Catat pengeluaran")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">💰</span><p className="mt-1">Catat Pengeluaran</p>
+																	<Wallet className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Catat Pengeluaran</p>
 																</button>
 																<button onClick={() => sendMessage("Ringkas pesanan hari ini")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📋</span><p className="mt-1">Ringkas Pesanan</p>
+																	<ClipboardList className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Ringkas Pesanan</p>
 																</button>
 																<button onClick={() => sendMessage("Berapa total pendapatan hari ini?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">💵</span><p className="mt-1">Total Pendapatan</p>
+																	<Banknote className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Total Pendapatan</p>
 																</button>
 																<button onClick={() => sendMessage("Scan struk belanja")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📸</span><p className="mt-1">Scan Struk</p>
+																	<Camera className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Scan Struk</p>
 																</button>
 															</>
 														) : (
 															<>
 																<button onClick={() => sendMessage("Bagaimana performa toko hari ini?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📊</span><p className="mt-1">Performa Hari Ini</p>
+																	<BarChart3 className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Performa Hari Ini</p>
 																</button>
 																<button onClick={() => sendMessage("Apa saja stok yang rendah?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">⚠️</span><p className="mt-1">Cek Stok Rendah</p>
+																	<AlertTriangle className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Cek Stok Rendah</p>
 																</button>
 																<button onClick={() => sendMessage("Buatkan laporan laba rugi bulan ini")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📈</span><p className="mt-1">Laporan Laba Rugi</p>
+																	<TrendingUp className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Laporan Laba Rugi</p>
 																</button>
 																<button onClick={() => sendMessage("Prediksi jam sibuk besok")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">🔮</span><p className="mt-1">Prediksi Jam Sibuk</p>
+																	<Telescope className="mx-auto h-4 w-4" aria-hidden="true" /><p className="mt-1">Prediksi Jam Sibuk</p>
 																</button>
 															</>
 														)}

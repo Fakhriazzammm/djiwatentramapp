@@ -209,7 +209,7 @@ export function ExpensesTable() {
 				{/* ── Header ── */}
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
 					<div>
-						<h1 className="text-xl font-bold text-slate-900">📋 Pengeluaran</h1>
+						<h1 className="font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl"><Receipt className="mr-2 inline h-5 w-5 text-primary" />Pengeluaran</h1>
 						<p className="text-sm text-slate-500 mt-0.5">
 							{filtered.length > 0
 								? `${filtered.length} transaksi • Total Rp ${formatCurrencyIDR(totalAmount)}`
@@ -217,7 +217,7 @@ export function ExpensesTable() {
 						</p>
 					</div>
 					<button
-						className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						onClick={() =>
 							exportExpensesCSV(filtered.length > 0 ? filtered : allTransactions, dateRange.label)
 						}
@@ -266,7 +266,7 @@ export function ExpensesTable() {
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
 						<input
-							className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+							className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-12 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
 							onChange={(e) => setSearchQuery(e.target.value)}
 							placeholder="Cari deskripsi / merchant..."
 							type="text"
@@ -274,7 +274,8 @@ export function ExpensesTable() {
 						/>
 						{searchQuery && (
 							<button
-								className="absolute right-2 top-1/2 -translate-y-1/2"
+								className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								aria-label="Hapus pencarian"
 								onClick={() => setSearchQuery("")}
 							>
 								<X className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600" />

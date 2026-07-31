@@ -111,8 +111,8 @@ export const ChatInput = ({
 							{toolCalls.map((tool, i) => (
 								<div key={i} className="flex items-center gap-1.5 text-xs bg-background rounded-full px-3 py-1 border border-border/40">
 									{tool.status === "executing" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-									{tool.status === "success" && <span className="text-green-500 text-xs">✓</span>}
-									{tool.status === "error" && <span className="text-destructive text-xs">✗</span>}
+									{tool.status === "success" && <span className="text-green-500 text-xs">Selesai</span>}
+									{tool.status === "error" && <span className="text-destructive text-xs">Gagal</span>}
 									<span className="font-medium">{TOOL_LABELS[tool.name] || tool.name}</span>
 								</div>
 							))}

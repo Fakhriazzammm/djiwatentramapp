@@ -5,6 +5,7 @@
  */
 
 import type { HTMLAttributes } from "react";
+import { Skeleton as SharedSkeleton } from "@yumipos/web-shared";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -44,16 +45,11 @@ export function Skeleton({
 	...props
 }: BaseSkeletonProps) {
 	return (
-		<div
-			className={cn(
-				"bg-muted",
-				shimmer && "animate-pulse",
-				shape === "circle" && "rounded-full",
-				shape === "square" && "rounded-none",
-				shape === "rounded" && "rounded-md",
-				className
-			)}
-			style={{ width: width ?? "100%", height: height ?? "1em" }}
+		<SharedSkeleton
+			className={cn(!shimmer && "before:hidden", className)}
+			height={height ?? "1em"}
+			shape={shape}
+			width={width ?? "100%"}
 			{...props}
 		/>
 	);
@@ -78,7 +74,7 @@ export function ShimmerSkeleton({
 				"relative overflow-hidden bg-muted",
 				shape === "circle" && "rounded-full",
 				shape === "square" && "rounded-none",
-				shape === "rounded" && "rounded-md",
+				shape === "rounded" && "rounded-xl",
 				className
 			)}
 			style={{ width: width ?? "100%", height: height ?? "1em" }}

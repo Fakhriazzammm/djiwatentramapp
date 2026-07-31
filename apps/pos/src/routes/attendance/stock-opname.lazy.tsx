@@ -126,7 +126,7 @@ function StockOpnamePage() {
         </button>
         <div>
           <h1 className="text-sm font-black uppercase tracking-tight">
-            Stock Opname — {role === "bar" ? "☕ Bar" : "🍳 Kitchen"}
+            Stock Opname — {role === "bar" ? "Bar" : "Kitchen"}
           </h1>
           <p className="text-[10px] text-muted-foreground font-medium">
             {search.userName} · {search.shiftName || "Shift"}

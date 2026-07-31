@@ -453,9 +453,9 @@ function AdminOrders() {
 			<div className="p-1 md:rounded-xl md:border md:border-border md:bg-card md:p-3 md:shadow-sm">
 				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
 					<div>
-						<h2 className="font-bold text-xl tracking-tight md:text-2xl">
+						<h1 className="font-display text-xl font-bold tracking-tight md:text-2xl">
 							Riwayat Pesanan
-						</h2>
+						</h1>
 						<p className="hidden text-muted-foreground text-xs md:block">
 							Fokus data pesanan.
 						</p>
@@ -665,8 +665,10 @@ function AdminOrders() {
 			<div>
 				<div className="space-y-2 pb-24 md:hidden">
 					{filteredOrders?.length === 0 ? (
-						<div className="rounded-xl border border-dashed border-border bg-card py-12 text-center text-muted-foreground text-sm">
-							Tidak ada pesanan ditemukan.
+						<div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-card px-4 py-12 text-center">
+							<ShoppingBag className="mb-3 h-9 w-9 text-muted-foreground/40" />
+							<p className="font-display text-base font-bold text-foreground">Tidak ada pesanan ditemukan</p>
+							<p className="mt-1 text-sm text-muted-foreground">Coba ubah pencarian, status, atau periode tanggal.</p>
 						</div>
 					) : (
 						filteredOrders?.map((order: Order) => {
@@ -705,7 +707,7 @@ function AdminOrders() {
 												</Badge>
 											</div>
 											<div className="text-[11px] text-muted-foreground">
-												{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null} ·{" "}
+												{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black uppercase text-amber-700"><Star className="h-2.5 w-2.5" /> Member</span> : null} ·{" "}
 												{(order.paymentMethod || "-").toUpperCase()}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
@@ -773,6 +775,15 @@ function AdminOrders() {
 													setSelectedOrder(order as any);
 													setIsDetailOpen(true);
 												}}
+												onKeyDown={(event) => {
+													if (event.key === "Enter" || event.key === " ") {
+														event.preventDefault();
+														setSelectedOrder(order as any);
+														setIsDetailOpen(true);
+													}
+												}}
+												role="button"
+												tabIndex={0}
 											>
 												<td className="px-3 py-2.5 align-top">
 													<div className="flex flex-col leading-tight">
@@ -793,8 +804,8 @@ function AdminOrders() {
 															<User className="h-3 w-3" />
 														</div>
 														<div className="min-w-0 leading-tight">
-															<p className="max-w-[170px] truncate font-medium text-[11px]">
-																{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
+															<p className="max-w-[170px] break-words font-medium text-[11px]">
+																{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black uppercase text-amber-700"><Star className="h-2.5 w-2.5" /> Member</span> : null}
 															</p>
 															<p className="text-[10px] text-muted-foreground uppercase">
 																{(order.paymentMethod || "-").toUpperCase()}
@@ -885,7 +896,7 @@ function AdminOrders() {
 													</div>
 												</td>
 												<td className="px-3 py-2.5 text-center align-top">
-													<div className="flex items-center justify-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+													<div className="flex items-center justify-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
 														<Button
 															className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
 															onClick={(e) => {
@@ -961,7 +972,7 @@ function AdminOrders() {
 														Pelanggan
 													</p>
 													<p className="font-bold text-sm">
-														{selectedOrder.customerName || "Tanpa Nama"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1">⭐ Member</span> : null}
+														{selectedOrder.customerName || "Tanpa Nama"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1"><Star className="h-3 w-3" aria-hidden="true" /> Member</span> : null}
 													</p>
 												</div>
 											</div>

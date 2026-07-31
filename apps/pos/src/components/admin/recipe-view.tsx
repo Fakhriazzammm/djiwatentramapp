@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	useHybridAllProducts,
 	useHybridCategories,
@@ -296,9 +297,9 @@ export function RecipeViewPage() {
 	if (loading) {
 		return (
 			<div className="mx-auto max-w-4xl space-y-3 p-4">
-				<div className="h-7 w-48 bg-muted animate-pulse rounded" />
-				<div className="h-8 w-full bg-muted animate-pulse rounded" />
-				<div className="h-96 bg-muted animate-pulse rounded-2xl" />
+				<Skeleton className="h-7 w-48 rounded-lg" />
+				<Skeleton className="h-8 w-full rounded-lg" />
+				<Skeleton className="h-96 rounded-2xl" />
 			</div>
 		);
 	}

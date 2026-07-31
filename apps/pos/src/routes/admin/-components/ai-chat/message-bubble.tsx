@@ -192,7 +192,7 @@ export const MessageBubble = ({
 											onClick={() => onScanAction(btn, index)}
 											disabled={isDone || isBtnLoading}
 										>
-											{isBtnLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : isDone ? "✓ " : `${btn.icon} `}
+											{isBtnLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : isDone ? "" : `${btn.icon} `}
 											{btn.label}
 										</Button>
 									);

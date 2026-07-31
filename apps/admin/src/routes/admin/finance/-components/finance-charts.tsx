@@ -110,7 +110,7 @@ export function PeriodComparisonCards() {
 				return (
 					<div
 						key={item.label}
-						className={`rounded-lg border ${item.border} ${item.bg} p-2 flex flex-col justify-between transition-colors group`}
+						className={`rounded-2xl border ${item.border} ${item.bg} p-3 flex flex-col justify-between transition-colors group`}
 					>
 						<div className="flex items-center justify-between mb-1.5">
 							<div className="flex items-center gap-1.5">
@@ -190,7 +190,7 @@ export function TrendChart() {
 	};
 
 	return (
-		<div className="rounded-lg border border-border bg-card p-2.5">
+		<div className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
 			<div className="mb-2 flex items-center justify-between">
 				<h3 className="font-bold text-xs">Tren Keuangan</h3>
 				<div className="flex gap-1">
@@ -200,7 +200,7 @@ export function TrendChart() {
 								key={m}
 								type="button"
 								onClick={() => setMode(m)}
-								className={`px-1.5 py-0.5 font-medium transition-colors ${
+								className={`min-h-11 px-2 py-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 ${
 									mode === m
 										? "bg-primary text-primary-foreground"
 										: "text-muted-foreground hover:bg-muted"
@@ -216,7 +216,7 @@ export function TrendChart() {
 								key={t}
 								type="button"
 								onClick={() => setChartType(t)}
-								className={`px-1.5 py-0.5 font-medium transition-colors ${
+								className={`min-h-11 px-2 py-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 ${
 									chartType === t
 										? "bg-primary text-primary-foreground"
 										: "text-muted-foreground hover:bg-muted"
@@ -382,7 +382,7 @@ export function ExpenseCategoryPieChart() {
 	};
 
 	return (
-		<div className="rounded-xl border border-border bg-card p-5">
+		<div className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
 			<div className="mb-4 flex items-center justify-between">
 				<h3 className="font-bold text-base">Breakdown Kategori</h3>
 				<div className="flex rounded-lg border border-border overflow-hidden text-xs">
@@ -391,7 +391,7 @@ export function ExpenseCategoryPieChart() {
 							key={v}
 							type="button"
 							onClick={() => setView(v)}
-							className={`px-3 py-1.5 font-medium transition-colors ${
+							className={`min-h-11 px-3 py-1.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 ${
 								view === v
 									? "bg-primary text-primary-foreground"
 									: "text-muted-foreground hover:bg-muted"
@@ -404,8 +404,9 @@ export function ExpenseCategoryPieChart() {
 			</div>
 
 			{data.length === 0 ? (
-				<div className="flex h-40 items-center justify-center text-muted-foreground text-sm">
-					Belum ada data {view === "expense" ? "pengeluaran" : "pemasukan"} bulan ini
+				<div className="flex h-40 flex-col items-center justify-center px-4 text-center text-muted-foreground">
+					<p className="font-display text-base font-bold text-foreground">Belum ada data kategori</p>
+					<p className="mt-1 max-w-sm text-sm">Data {view === "expense" ? "pengeluaran" : "pemasukan"} bulan ini akan muncul setelah transaksi tercatat.</p>
 				</div>
 			) : (
 				<div className="flex flex-col gap-4 md:flex-row md:items-center">

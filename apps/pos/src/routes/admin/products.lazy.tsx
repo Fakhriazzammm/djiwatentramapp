@@ -20,6 +20,8 @@ import {
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+	AlertTriangle,
+	BarChart3,
 	CheckCircle2,
 	ChevronDown,
 	ChevronUp,
@@ -1036,8 +1038,8 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												return (
 													<div className="flex items-center gap-1.5 mt-1 flex-wrap">
 														{hasRecipe
-															? <span className="rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">✅ Ada Resep</span>
-															: <span className="rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">⚠️ Perlu Resep</span>
+															? <span className="rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"><CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Ada Resep</span>
+															: <span className="rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"><AlertTriangle className="h-3 w-3" aria-hidden="true" /> Perlu Resep</span>
 														}
 														<Link
 															to="/admin/recipe"
@@ -1461,7 +1463,7 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 																	: "bg-amber-50 text-amber-700 hover:bg-amber-100"
 																}`}
 														>
-															{hasRecipe ? "✅ Resep" : "⚠️ Atur"}
+															{hasRecipe ? <><CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Resep</> : <><AlertTriangle className="h-3 w-3" aria-hidden="true" /> Atur</>}
 														</Link>
 													</td>
 
@@ -1473,7 +1475,7 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 																	: "bg-muted text-muted-foreground"
 																}`}
 														>
-															{hpp ? "📊 HPP" : "—"}
+															{hpp ? <><BarChart3 className="h-3 w-3" aria-hidden="true" /> HPP</> : "—"}
 														</Link>
 													</td>
 															<td className="px-3 py-3">

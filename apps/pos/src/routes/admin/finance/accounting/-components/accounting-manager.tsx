@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createElement, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { createClient } from "@/lib/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,12 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import {
+	Banknote,
 	BookOpen,
+	CircleDollarSign,
+	CreditCard,
+	Landmark,
+	TrendingDown,
 	Plus,
 	Pencil,
 	Trash2,
@@ -41,11 +46,11 @@ interface COAAccount {
 }
 
 const ACCOUNT_TYPES = [
-	{ value: "asset", label: "Aset", icon: "💵" },
-	{ value: "liability", label: "Kewajiban", icon: "💳" },
-	{ value: "equity", label: "Modal", icon: "🏦" },
-	{ value: "revenue", label: "Pendapatan", icon: "💰" },
-	{ value: "expense", label: "Beban", icon: "💸" },
+	{ value: "asset", label: "Aset", icon: Banknote },
+	{ value: "liability", label: "Kewajiban", icon: CreditCard },
+	{ value: "equity", label: "Modal", icon: Landmark },
+	{ value: "revenue", label: "Pendapatan", icon: CircleDollarSign },
+	{ value: "expense", label: "Beban", icon: TrendingDown },
 ] as const;
 
 const supabase = createClient();
@@ -327,7 +332,7 @@ export function AccountingManager() {
 							<Card key={group.value}>
 								<CardHeader className="py-2.5 px-4">
 									<CardTitle className="flex items-center gap-2 text-sm font-medium">
-										<span>{group.icon}</span>
+										{createElement(group.icon, { className: "h-4 w-4", "aria-hidden": true })}
 										{group.label}
 										<Badge className="ml-auto text-[10px]" variant="outline">
 											{group.accounts.length}
@@ -448,7 +453,7 @@ export function AccountingManager() {
 									<SelectContent>
 										{ACCOUNT_TYPES.map((t) => (
 											<SelectItem key={t.value} value={t.value}>
-												{t.icon} {t.label}
+												{createElement(t.icon, { className: "mr-1 inline h-3.5 w-3.5", "aria-hidden": true })} {t.label}
 											</SelectItem>
 										))}
 									</SelectContent>

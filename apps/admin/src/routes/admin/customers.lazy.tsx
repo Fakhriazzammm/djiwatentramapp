@@ -193,9 +193,9 @@ function AdminCustomers() {
 							<tr className="text-[10px] text-muted-foreground">
 								<th className="px-2.5 py-2">Nama</th>
 								<th className="px-2.5 py-2">Email</th>
-								<th className="px-2.5 py-2 text-center">⭐ Poin</th>
-								<th className="px-2.5 py-2 text-center">📦 Orders</th>
-								<th className="px-2.5 py-2 text-right">💰 Total Spending</th>
+								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" aria-hidden="true" /> Poin</span></th>
+								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" /> Orders</span></th>
+								<th className="px-2.5 py-2 text-right"><span className="inline-flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" aria-hidden="true" /> Total Spending</span></th>
 								<th className="px-2.5 py-2">Terakhir Order</th>
 							</tr>
 						</thead>

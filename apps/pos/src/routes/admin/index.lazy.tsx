@@ -5,8 +5,7 @@ import {
 	ArrowUpRight,
 	Clock,
 	Coffee,
-	DollarSign,
-	Loader2,
+	FileBarChart,
 	Package,
 	ShoppingCart,
 	TrendingUp,
@@ -74,49 +73,58 @@ function DashboardAdmin() {
 	const sevenDayRevenue = stats.revenueLast7Days.reduce((sum: number, day: any) => sum + day.revenue, 0);
 
 	return (
-		<div className="space-y-3 pb-6">
-			<div className="flex items-center justify-between gap-4 border-border border-b pb-2">
-				<div className="flex items-center gap-3 min-w-0">
-					<span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-primary/10">
-						<TrendingUp className="h-2.5 w-2.5 text-primary" />
-					</span>
-					<div className="min-w-0">
-						<h1 className="font-bold text-sm tracking-tight text-foreground truncate">
-							Pusat Pantau Operasional
-						</h1>
-						<p className="text-[10px] text-muted-foreground truncate">
-							Monitor pesanan, selisih kas &amp; anomali harian
+		<div className="space-y-4 pb-6">
+			<section className="grid gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
+				<div className="min-w-0">
+					<div className="mb-3 flex items-center gap-2 text-primary">
+						<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+							<TrendingUp className="h-4 w-4" />
+						</span>
+						<span className="text-xs font-semibold uppercase tracking-[0.12em]">Ringkasan 7 hari</span>
+					</div>
+					<h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+						Pusat Pantau Operasional
+					</h1>
+					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+						Monitor pesanan, selisih kas, dan anomali yang perlu ditindaklanjuti.
+					</p>
+					<div className="mt-5">
+						<p className="text-xs font-medium text-muted-foreground">Pendapatan 7 hari</p>
+						<p className="mt-1 break-words font-display text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
+							{formatCurrencyIDR(sevenDayRevenue)}
 						</p>
 					</div>
-				</div>
-				<div className="flex items-center gap-1.5 shrink-0">
-					<div className="rounded-md border border-border bg-muted/30 px-2 py-1">
-						<p className="text-[11px] font-semibold text-muted-foreground">Anomali <span className="text-foreground">{stats.anomalies.length}</span></p>
-					</div>
-					<div className="rounded-md border border-amber-200/60 bg-amber-50/60 px-2 py-1">
-						<p className="text-[11px] font-semibold text-amber-700">Reconcile <span className="text-amber-800">{stats.paymentReconciliation.pendingNonCashCount}</span></p>
-					</div>
-					<div className="rounded-md border border-emerald-200/60 bg-emerald-50/60 px-2 py-1">
-						<p className="text-[11px] font-semibold text-emerald-700">7D {formatCurrencyIDR(sevenDayRevenue)}</p>
+					<div className="mt-4 flex flex-wrap gap-2">
+						<Link className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" to="/admin/finance">
+							<Wallet className="h-4 w-4" /> Buka Keuangan
+						</Link>
+						<Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" to="/admin/finance/reports">
+							<FileBarChart className="h-4 w-4" /> Lihat Laporan
+						</Link>
 					</div>
 				</div>
-			</div>
+				<div className="grid content-start gap-2 sm:grid-cols-2 lg:grid-cols-1">
+					<div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-3">
+						<p className="text-xs font-semibold text-amber-800">Rekonsiliasi tertunda</p>
+						<p className="mt-1 text-xl font-bold tabular-nums text-amber-900">{stats.paymentReconciliation.pendingNonCashCount}</p>
+						<p className="text-xs text-amber-800/80">transaksi QRIS/transfer perlu diperiksa</p>
+					</div>
+					<div className="rounded-2xl border border-border bg-muted/30 p-3">
+						<p className="text-xs font-semibold text-muted-foreground">Anomali hari ini</p>
+						<p className="mt-1 text-xl font-bold tabular-nums text-foreground">{stats.anomalies.length}</p>
+						<p className="text-xs text-muted-foreground">temuan otomatis pada operasional</p>
+					</div>
+				</div>
+			</section>
 
-			{/* Stats Cards */}
-			<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+			{/* Supporting metrics */}
+			<section aria-label="Metrik operasional hari ini" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
 				<CompactStat
 					icon={<ShoppingCart className="w-3.5 h-3.5" />}
 					label="Pesanan Hari Ini"
 					value={stats.todayOrders.toString()}
 					sub={`${stats.pendingOrders} menunggu`}
 					color="primary"
-				/>
-				<CompactStat
-					icon={<DollarSign className="w-3.5 h-3.5" />}
-					label="Pendapatan Hari Ini"
-					value={formatCurrencyIDR(stats.todayRevenue)}
-					sub={`Net: ${formatCurrencyIDR(stats.todayRevenue)}`}
-					color="green"
 				/>
 				<CompactStat
 					icon={<Coffee className="w-3.5 h-3.5" />}
@@ -132,7 +140,7 @@ function DashboardAdmin() {
 					trend={stats.netBalance >= 0 ? "up" : "down"}
 					color={stats.netBalance >= 0 ? "green" : "red"}
 				/>
-			</div>
+			</section>
 
 			<div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
 				<div className="rounded-xl border border-border bg-card p-3">
@@ -215,13 +223,14 @@ function DashboardAdmin() {
 							const isActive = !shift.endTime;
 							
 							return (
-								<div 
-									key={i} 
+								<button
+									key={i}
 									onClick={() => {
 										setSelectedShift(shift);
 										setIsShiftModalOpen(true);
 									}}
-									className={`p-2.5 rounded-lg border transition-all hover:bg-muted/50 cursor-pointer ${isActive ? 'border-emerald-200 bg-emerald-50/50 ring-1 ring-emerald-100' : 'border-border bg-muted/20'}`}
+									type="button"
+									className={`min-h-11 w-full rounded-xl border p-2.5 text-left transition-all hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${isActive ? 'border-emerald-200 bg-emerald-50/50 ring-1 ring-emerald-100' : 'border-border bg-muted/20'}`}
 								>
 									<div className="flex justify-between items-start mb-1.5">
 										<div>
@@ -253,7 +262,7 @@ function DashboardAdmin() {
 											<span className="text-primary">{formatCurrencyIDR(shift.revenue)}</span>
 										</div>
 									</div>
-								</div>
+								</button>
 							);
 						})}
 					</div>
@@ -504,14 +513,14 @@ function DashboardAdmin() {
 					</div>
 				</div>
 				<div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
-					<a href="/admin/finance/reports" className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground transition-all hover:opacity-90">
-						<svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+					<Link to="/admin/finance/reports" className="flex min-h-11 items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+						<FileBarChart className="h-4 w-4" />
 						Unduh Laporan
-					</a>
-					<a href="/admin/finance" className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-bold text-muted-foreground transition-all hover:bg-muted hover:text-foreground">
-						<svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+					</Link>
+					<Link to="/admin/finance" className="flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+						<Wallet className="h-4 w-4" />
 						Transaksi
-					</a>
+					</Link>
 				</div>
 			</div>
 

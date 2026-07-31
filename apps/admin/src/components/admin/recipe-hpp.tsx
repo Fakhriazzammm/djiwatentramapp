@@ -13,7 +13,14 @@ import {
 	CheckCircle2,
 	ChevronDown,
 	CircleDollarSign,
+	BarChart3,
+	Bot,
 	Database,
+	FileText,
+	Lightbulb,
+	PartyPopper,
+	Pencil,
+	Tag,
 	Link2,
 	Package,
 	Plus,
@@ -202,10 +209,10 @@ function computeHpp(form: HppFormData): HppMetrics {
 
 function getPriceSourceBadge(source: PriceSource) {
 	switch (source) {
-		case "inventory": return { icon: "💾", label: "Inventory", class: "bg-blue-50 text-blue-700" };
-		case "transaction": return { icon: "📄", label: "Transaksi", class: "bg-purple-50 text-purple-700" };
-		case "manual": return { icon: "✏️", label: "Manual", class: "bg-amber-50 text-amber-700" };
-		case "ai": return { icon: "🤖", label: "AI", class: "bg-emerald-50 text-emerald-700" };
+		case "inventory": return { icon: Database, label: "Inventory", class: "bg-blue-50 text-blue-700" };
+		case "transaction": return { icon: FileText, label: "Transaksi", class: "bg-purple-50 text-purple-700" };
+		case "manual": return { icon: Pencil, label: "Manual", class: "bg-amber-50 text-amber-700" };
+		case "ai": return { icon: Bot, label: "AI", class: "bg-emerald-50 text-emerald-700" };
 	}
 }
 
@@ -955,6 +962,7 @@ function IngredientsTableCard({
 										? ing.purchasePrice * ing.usagePerServing
 										: 0;
 									const badge = getPriceSourceBadge(ing.costSource);
+					const BadgeIcon = badge.icon;
 									const usageOptions = ing.usageUnit ? [ing.usageUnit, "ml", "gram", "pcs", "sdm", "sdt"] : ["ml", "gram", "pcs"];
 									return (
 										<motion.tr
@@ -1012,7 +1020,7 @@ function IngredientsTableCard({
 														className={`inline-block rounded px-1 py-0.5 text-[11px] font-bold leading-none ${badge.class}`}
 														title={badge.label}
 													>
-														{badge.icon}
+														<BadgeIcon className="h-3 w-3" aria-hidden="true" />
 													</span>
 												)}
 											</td>
@@ -1143,7 +1151,7 @@ function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(form.sellingPrice)}</p>
 					</div>
 					<div>
-						<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">🎉 Happy Hour</p>
+						<p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground"><PartyPopper className="h-3 w-3" aria-hidden="true" /> Happy Hour</p>
 						{activeHappyHour ? (
 							<div className="group relative mt-0.5">
 								<p className="cursor-pointer text-sm font-bold tabular-nums text-amber-600 transition-colors hover:text-amber-700"
@@ -1153,7 +1161,7 @@ function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 								</p>
 								<div className="mt-0.5 flex items-center gap-1">
 									<span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700">
-										💾 {activeHappyHour.discountName}
+										<Tag className="h-3 w-3" aria-hidden="true" /> {activeHappyHour.discountName}
 									</span>
 									{activeHappyHour.timeRange && (
 										<span className="text-[10px] text-muted-foreground/60">{activeHappyHour.timeRange}</span>
@@ -1272,7 +1280,7 @@ function AiInsightsPanel({
 					<div className="grid gap-2 text-xs sm:grid-cols-3">
 						<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
 							<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-								💡 Bahan Termahal
+								<Lightbulb className="h-3.5 w-3.5" aria-hidden="true" /> Bahan Termahal
 							</p>
 							<p className="mt-1 font-medium">
 								{mostExpensive.name
@@ -1282,7 +1290,7 @@ function AiInsightsPanel({
 						</div>
 						<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
 							<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-								💰 Harga Jual Rekomendasi
+								<CircleDollarSign className="h-3.5 w-3.5" aria-hidden="true" /> Harga Jual Rekomendasi
 							</p>
 							<p className="mt-1 font-medium">
 								{metrics.totalHppPerServing > 0
@@ -1292,7 +1300,7 @@ function AiInsightsPanel({
 						</div>
 						<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
 							<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-								📊 Jumlah Bahan
+								<BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> Jumlah Bahan
 							</p>
 							<p className="mt-1 font-medium">
 								{form.ingredients.length} bahan
@@ -1946,7 +1954,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 					overheadCosts: form.overheadCosts,
 					sourceType: form.sourceType,
 				});
-				toast.success("HPP berhasil diperbarui ✅");
+				toast.success("HPP berhasil diperbarui");
 			} else {
 				const newId = await createHpp({
 					productId: form.productId,
@@ -1960,7 +1968,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 					sourceType: form.sourceType,
 				});
 				setEditingId(newId);
-				toast.success("HPP berhasil disimpan ✅");
+				toast.success("HPP berhasil disimpan");
 			}
 			triggerHybridRefresh();
 			hasUnsavedChanges.current = false;
@@ -2001,7 +2009,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 				productId: selectedProductId,
 				overheadCosts: form.overheadCosts,
 			});
-			toast.success("HPP tersinkron dari resep ✅");
+			toast.success("HPP tersinkron dari resep");
 			triggerHybridRefresh();
 		} catch (err: any) {
 			toast.error(err?.message ?? "Gagal sinkron");
@@ -2056,7 +2064,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 		hasUnsavedChanges.current = true;
 
 		if (synced > 0) {
-			toast.success(`${synced} harga bahan disinkron dari Inventory ✅` + (unmatched > 0 ? ` (${unmatched} tidak cocok)` : ""));
+			toast.success(`${synced} harga bahan disinkron dari Inventory` + (unmatched > 0 ? ` (${unmatched} tidak cocok)` : ""));
 		} else {
 			toast.error("Tidak ada bahan yang bisa disinkron — periksa nama bahan atau data inventory");
 		}
@@ -2071,7 +2079,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 		setTimeout(() => {
 			setAiAnalyzing(false);
 			setAiPanelOpen(true);
-			toast.success("Analisis AI selesai 🤖");
+			toast.success("Analisis AI selesai");
 		}, 1500);
 	}, [form]);
 
@@ -2082,7 +2090,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 		}
 		try {
 			await linkProductToRecipe(selectedRecipe._id, productId);
-			toast.success("Produk berhasil ditautkan ✅");
+			toast.success("Produk berhasil ditautkan");
 			triggerHybridRefresh();
 			setLinkProductModalOpen(false);
 			setLinkProductSearch("");

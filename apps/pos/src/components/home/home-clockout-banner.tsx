@@ -106,7 +106,7 @@ export function HomeClockOutBanner({ userId }: Props) {
   };
 
   return (
-    <div className="relative mb-4 overflow-hidden rounded-xllll border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 shadow-sm dark:border-red-800/40 dark:from-red-950/20 dark:to-orange-950/10">
+    <div className="relative mb-4 overflow-hidden rounded-3xl border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 shadow-sm dark:border-red-800/40 dark:from-red-950/20 dark:to-orange-950/10">
       <button
         type="button"
         onClick={handleDismiss}

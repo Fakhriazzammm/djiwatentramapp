@@ -60,7 +60,7 @@ function CardShell({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="rounded-xllll border border-border bg-card p-4 md:p-6 shadow-sm">
+		<div className="rounded-3xl border border-border bg-card p-4 md:p-6 shadow-sm">
 			<div className="mb-4 flex items-center gap-2">
 				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
 					<Icon className="h-4 w-4" />
@@ -87,7 +87,7 @@ function RealtimeStatusSection({
 		return (
 			<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
 				{[1, 2, 3, 4].map((i) => (
-					<div key={i} className="rounded-xllll border bg-card p-4">
+					<div key={i} className="rounded-3xl border bg-card p-4">
 						<Skeleton className="mb-2 h-3 w-20" />
 						<Skeleton className="mb-1 h-7 w-32" />
 						<Skeleton className="h-3 w-24" />
@@ -145,7 +145,7 @@ function RealtimeStatusSection({
 			{cards.map((card) => (
 				<div
 					key={card.label}
-					className="rounded-xllll border border-border bg-card p-4 shadow-sm transition-all hover:shadow-md"
+					className="rounded-3xl border border-border bg-card p-4 shadow-sm transition-all hover:shadow-md"
 				>
 					<div className="mb-3 flex items-center gap-2">
 						<div
@@ -469,11 +469,11 @@ function ShiftSummarySection({ shiftStatus }: { shiftStatus: any }) {
 	const latestShift = allShifts[0];
 
 	if (!shiftStatus) {
-		return <Skeleton className="h-32 w-full rounded-xllll" />;
+		return <Skeleton className="h-32 w-full rounded-3xl" />;
 	}
 
 	return (
-		<section className="rounded-xllll border border-border bg-card p-4 shadow-sm md:p-6">
+		<section className="rounded-3xl border border-border bg-card p-4 shadow-sm md:p-6">
 			<div className="mb-4 flex items-center gap-2">
 				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
 					<Clock className="h-4 w-4" />

@@ -5,7 +5,10 @@ import {
 	CheckCircle2,
 	ChefHat,
 	ClipboardList,
+	Circle,
 	Clock,
+	Flag,
+	Wrench,
 	Minus,
 	Plus,
 	RotateCcw,
@@ -302,10 +305,11 @@ function KanbanCard({
 	const isLate = minutesAgo > 20;
 	const botStatus = botStatusMap.get(item.orderNumber) || null;
 
-	const botBadge = botStatus === "new" ? { label: "🆕", class: "bg-amber-100 text-amber-700" }
-		: botStatus === "dibuat" ? { label: "🔧", class: "bg-indigo-100 text-indigo-700" }
-		: botStatus === "selesai" ? { label: "✅", class: "bg-green-100 text-green-700" }
+	const botBadge = botStatus === "new" ? { label: "Baru", icon: Circle, class: "bg-amber-100 text-amber-700" }
+		: botStatus === "dibuat" ? { label: "Dibuat", icon: Wrench, class: "bg-indigo-100 text-indigo-700" }
+		: botStatus === "selesai" ? { label: "Selesai", icon: CheckCircle2, class: "bg-green-100 text-green-700" }
 		: null;
+	const BotBadgeIcon = botBadge?.icon;
 
 	return (
 		<motion.div
@@ -326,8 +330,8 @@ function KanbanCard({
 							<span>Meja {item.tableNumber || "Takeaway"}</span>
 							<span>•</span>
 							<span>#{item.orderNumber.split("-").pop()}</span>
-							{botBadge && (
-								<span className={`ml-1 rounded px-1 py-px text-[10px] ${botBadge.class}`}>{botBadge.label}</span>
+							{botBadge && BotBadgeIcon && (
+															<span className={`ml-1 inline-flex items-center gap-0.5 rounded px-1 py-px text-[10px] ${botBadge.class}`}><BotBadgeIcon className="h-2.5 w-2.5" aria-hidden="true" />{botBadge.label}</span>
 							)}
 						</div>
 					</div>
@@ -435,17 +439,18 @@ function BotOrdersView({ orders, track }: { orders: any[]; track: string }) {
 						dibuat: "border-l-4 border-l-indigo-400 bg-indigo-50/50",
 						selesai: "border-l-4 border-l-green-400 bg-green-50/50 opacity-70",
 					};
-					const statusBadge: Record<string, { label: string; class: string }> = {
-						new: { label: "🆕 Baru", class: "bg-amber-100 text-amber-800" },
-						dibuat: { label: "🔧 Dibuat", class: "bg-indigo-100 text-indigo-800" },
-						selesai: { label: "✅ Selesai", class: "bg-green-100 text-green-800" },
+					const statusBadge: Record<string, { label: string; icon: typeof Circle; class: string }> = {
+						new: { label: "Baru", icon: Circle, class: "bg-amber-100 text-amber-800" },
+						dibuat: { label: "Dibuat", icon: Wrench, class: "bg-indigo-100 text-indigo-800" },
+						selesai: { label: "Selesai", icon: CheckCircle2, class: "bg-green-100 text-green-800" },
 					};
 					const badge = statusBadge[order.status] || statusBadge.new;
+					const StatusIcon = badge.icon;
 
 					const timerText = order.status === "new"
-						? "Klik tombol ✅ Dibuat atau otomatis dalam 10 detik"
+						? "Klik tombol Dibuat atau otomatis dalam 10 detik"
 						: order.status === "dibuat"
-							? "Klik tombol 🏁 Selesai atau otomatis dalam 10 menit"
+							? "Klik tombol Selesai atau otomatis dalam 10 menit"
 							: null;
 
 					return (
@@ -470,12 +475,12 @@ function BotOrdersView({ orders, track }: { orders: any[]; track: string }) {
 							)}
 							{order.dibuat_by && (
 								<p className="mt-1 text-[10px] font-bold text-indigo-600">
-									Dibuat oleh: {order.dibuat_by} {dibuatAt ? `🕐 ${dibuatAt}` : ""}
+									Dibuat oleh: {order.dibuat_by} {dibuatAt ? <span className="inline-flex items-center gap-0.5"><Clock className="h-3 w-3" aria-hidden="true" />{dibuatAt}</span> : null}
 								</p>
 							)}
 							{order.selesai_by && (
 								<p className="mt-1 text-[10px] font-bold text-green-600">
-									Selesai oleh: {order.selesai_by} {selesaiAt ? `🕐 ${selesaiAt}` : ""}
+									Selesai oleh: {order.selesai_by} {selesaiAt ? <span className="inline-flex items-center gap-0.5"><Clock className="h-3 w-3" aria-hidden="true" />{selesaiAt}</span> : null}
 								</p>
 							)}
 							{order.status !== "selesai" && (
@@ -486,7 +491,7 @@ function BotOrdersView({ orders, track }: { orders: any[]; track: string }) {
 											disabled={refreshing}
 											onClick={() => updateStatus(order.order_no, "dibuat")}
 										>
-											✅ Dibuat
+											<CheckCircle2 className="mr-1 inline h-3 w-3" aria-hidden="true" /> Dibuat
 										</button>
 									)}
 									{(order.status === "new" || order.status === "dibuat") && (
@@ -495,7 +500,7 @@ function BotOrdersView({ orders, track }: { orders: any[]; track: string }) {
 											disabled={refreshing}
 											onClick={() => updateStatus(order.order_no, "selesai")}
 										>
-											🏁 Selesai
+											<Flag className="mr-1 inline h-3 w-3" aria-hidden="true" /> Selesai
 										</button>
 									)}
 								</div>

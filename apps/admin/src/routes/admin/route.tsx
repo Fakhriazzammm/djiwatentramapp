@@ -816,7 +816,8 @@ function AdminLayout() {
 								render={(props) => (
 									<button
 										{...props}
-										className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs transition-all hover:scale-105 hover:bg-primary/20 active:scale-95"
+										className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs transition-all hover:scale-105 hover:bg-primary/20 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+										aria-label="Buka menu akun"
 										type="button"
 									>
 										{authUser?.name?.charAt(0) || "U"}
@@ -903,7 +904,8 @@ function AdminLayout() {
 							<div className="mb-4 flex items-center justify-between">
 								<h3 className="font-semibold text-foreground">Menu</h3>
 								<button
-									className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 active:scale-95"
+									className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									aria-label="Tutup menu"
 									onClick={() => setIsQuickMenuOpen(false)}
 									type="button"
 								>

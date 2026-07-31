@@ -1,4 +1,4 @@
-import { Check, Edit3, Loader2, Scissors, X } from "lucide-react";
+import { Check, Edit3, Loader2, Scissors, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
@@ -128,7 +128,10 @@ export function ScanEditModal({ isOpen, params, allowSplit = true, onSave, onSpl
 											: "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
 									}`}
 								>
-									{t === "expense" ? "💸 Pengeluaran" : "💰 Pemasukan"}
+									<span className="flex items-center justify-center gap-1.5">
+										{t === "expense" ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
+										{t === "expense" ? "Pengeluaran" : "Pemasukan"}
+									</span>
 								</button>
 							))}
 						</div>
