@@ -16,10 +16,10 @@ function Skeleton({
 	return (
 		<div
 			className={cn(
-				"animate-shimmer bg-muted",
+				"relative overflow-hidden bg-muted before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/55 before:to-transparent motion-reduce:before:animate-none",
 				shape === "circle" && "rounded-full",
 				shape === "square" && "rounded-none",
-				shape === "rounded" && "rounded-md",
+				shape === "rounded" && "rounded-xl",
 				className
 			)}
 			data-slot="skeleton"

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
+import { Skeleton } from "./skeleton";
 
 /**
  * EmptyState — DNA v2.0 §12
@@ -105,8 +106,42 @@ function CardSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-4 p-5">
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />
+        <Skeleton key={i} className="h-20 rounded-2xl" />
       ))}
+    </div>
+  );
+}
+
+/**
+ * SuccessState — concise confirmation after a completed task.
+ */
+function SuccessState({
+  className,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  className?: string;
+  title: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div
+      className={cn("flex flex-col items-center justify-center px-6 py-10 text-center", className)}
+      data-slot="success-state"
+      role="status"
+    >
+      <div className="mb-3 flex size-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700">
+        <svg viewBox="0 0 24 24" fill="none" className="size-5 stroke-2" aria-hidden="true">
+          <path d="m5 12 4 4L19 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <h3 className="font-display text-base font-bold text-foreground">{title}</h3>
+      {description && <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">{description}</p>}
+      {actionLabel && onAction && <Button className="mt-5" onClick={onAction}>{actionLabel}</Button>}
     </div>
   );
 }
@@ -134,4 +169,4 @@ function AsyncBoundary<T>({
   return <>{children(data)}</>;
 }
 
-export { AsyncBoundary, CardSkeleton, EmptyState, ErrorState };
+export { AsyncBoundary, CardSkeleton, EmptyState, ErrorState, SuccessState };

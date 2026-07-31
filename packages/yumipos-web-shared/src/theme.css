@@ -326,6 +326,7 @@
 	h4,
 	h5,
 	h6 {
+		font-family: var(--font-display);
 		font-weight: 700;
 		letter-spacing: -0.02em;
 		line-height: 1.15;
@@ -444,7 +445,7 @@
 .app-card {
 	background: color-mix(in srgb, var(--card) 97%, white 3%);
 	border: 1px solid color-mix(in srgb, var(--border) 92%, white 8%);
-	border-radius: calc(var(--radius-panel) - 0.25rem);
+	border-radius: var(--radius-panel);
 	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
 }
 .card-elevated {
@@ -480,6 +481,7 @@
 	color: color-mix(in srgb, var(--primary) 74%, var(--foreground) 26%);
 }
 .app-section-title {
+	font-family: var(--font-display);
 	font-size: 1.25rem;
 	font-weight: 900;
 	letter-spacing: -0.03em;
