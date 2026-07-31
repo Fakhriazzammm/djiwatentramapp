@@ -7,7 +7,6 @@ import {
 	useState,
 	type ReactNode,
 } from "react";
-import { createClient } from "../lib/client";
 import { toast } from "sonner";
 import {
 	logoutYumiSession,
@@ -83,48 +82,6 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 		[clearSession]
 	);
 
-	// Try Supabase session recovery when no custom token exists
-	const recoverFromSupabaseSession = useCallback(async () => {
-		if (isLoggingOutRef.current) return;
-		try {
-			const supabase = createClient();
-			const { data: { session: sbSession } } = await supabase.auth.getSession();
-			if (!sbSession?.user) return;
-
-			const { data: claims, error: claimsError } = await supabase.rpc("get_yumi_user_claims");
-			if (claimsError || !claims?.role_name) return;
-
-			const userMeta = sbSession.user.user_metadata || {};
-			if (userMeta.is_active === false) return;
-
-			// Supabase mengirim expires_at dalam DETIK epoch, bukan milidetik.
-			const expiresAt = (sbSession.expires_at ?? 0) * 1000;
-			if (expiresAt && Date.now() > expiresAt) return;
-
-			const recoveredSession = {
-				user: {
-					_id: claims.source_id || userMeta.source_id || "",
-					name: claims.name || userMeta.name || "",
-					username: (sbSession.user.email?.split("@")[0] ?? "") || "",
-					slug: userMeta.slug || "",
-					roleId: userMeta.role_source_id || "",
-					hasFace: false,
-					requiresPinChange: false,
-				},
-				role: {
-					_id: userMeta.role_source_id || "",
-					name: claims.role_name || "staff",
-					permissions: Array.isArray(claims.permissions) ? claims.permissions : [],
-				},
-				expiresAt,
-			} as YumiValidatedSession;
-
-			setSession(recoveredSession);
-		} catch {
-			// Silent — no session to recover
-		}
-	}, []);
-
 	useEffect(() => {
 		let cancelled = false;
 
@@ -134,8 +91,10 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 				if (token) {
 					await refreshSession(token);
 				} else {
-					// No custom token — try Supabase session recovery
-					await recoverFromSupabaseSession();
+					// Custom Yumi token adalah source of truth. Jangan memulihkan sesi
+					// Supabase secara paralel di halaman login karena dapat race dengan
+					// setSession() setelah PIN berhasil diverifikasi.
+					setSession(null);
 				}
 			} finally {
 				// Tandai selesai hanya kalau efek ini belum digantikan oleh token baru,
@@ -147,7 +106,7 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 		return () => {
 			cancelled = true;
 		};
-	}, [refreshSession, recoverFromSupabaseSession, token]);
+	}, [refreshSession, token]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -163,10 +122,7 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const isAuthenticated = !!session;
-	// Loading selama verifikasi awal belum selesai. Pemakaian lama
-	// (`token !== null && session === null`) melewatkan jalur "tanpa token" —
-	// pemulihan sesi Supabase masih berjalan tapi isLoading sudah false,
-	// sehingga guard sempat melihat "belum login" dan redirect ke /login.
+	// Loading selama verifikasi awal custom token belum selesai.
 	const isLoading = !isResolved;
 	const user = session?.user;
 	const role = session?.role;
