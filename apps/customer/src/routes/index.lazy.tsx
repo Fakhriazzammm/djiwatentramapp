@@ -130,6 +130,11 @@ function BrandCustomerIndex() {
 									Mulai pesan
 								</button>
 
+								{/* ── Ajakan daftar member ─────────────── */}
+								<p className="mt-3 text-[10px] font-semibold leading-relaxed text-muted-foreground">
+									Daftar menjadi member untuk mendapatkan benefit dibawah ini
+								</p>
+
 								{/* ── Benefit list ────────────────────── */}
 								<div className="mt-4 grid grid-cols-3 gap-1.5">
 									{[
