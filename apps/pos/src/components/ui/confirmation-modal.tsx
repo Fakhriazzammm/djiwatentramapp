@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 interface ConfirmationModalProps {
 	isOpen: boolean;
@@ -29,10 +29,20 @@ export function ConfirmationModal({
 	loading = false,
 }: ConfirmationModalProps) {
 	const [mounted, setMounted] = useState(false);
+	const titleId = useId();
 
 	useEffect(() => {
 		setMounted(true);
 	}, []);
+
+	useEffect(() => {
+		if (!isOpen) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape" && !loading) onClose();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [isOpen, loading, onClose]);
 
 	const variantConfig = {
 		danger: {
@@ -74,15 +84,20 @@ export function ConfirmationModal({
 						exit={{ opacity: 0 }}
 						initial={{ opacity: 0 }}
 						onClick={onClose}
+						transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
 					/>
 
 					{/* Modal Content */}
 					<motion.div
 						animate={{ opacity: 1, scale: 1, y: 0 }}
-						className="relative w-full max-w-xs overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-2xl"
+						aria-labelledby={titleId}
+						aria-modal="true"
+						className="relative w-full max-w-xs overflow-hidden rounded-[24px] border border-border bg-card p-6 shadow-2xl"
 						data-slot="confirmation-modal-card"
 						exit={{ opacity: 0, scale: 0.95, y: 10 }}
 						initial={{ opacity: 0, scale: 0.95, y: 10 }}
+						role="dialog"
+						transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
 					>
 						<div className="flex flex-col items-center text-center">
 							<div
@@ -91,7 +106,7 @@ export function ConfirmationModal({
 								<Icon className="h-7 w-7" />
 							</div>
 
-							<h3 className="font-black text-foreground text-lg tracking-tight">{title}</h3>
+							<h3 className="font-display font-black text-foreground text-lg tracking-tight" id={titleId}>{title}</h3>
 							{subtitle && (
 								<p className="mt-1 text-muted-foreground text-xs italic">{subtitle}</p>
 							)}
@@ -99,14 +114,14 @@ export function ConfirmationModal({
 
 							<div className="mt-8 flex w-full gap-3">
 								<button
-									className="flex-1 rounded-xl border border-border bg-background py-3 font-bold text-muted-foreground text-xs uppercase tracking-widest transition-all hover:bg-muted active:scale-95"
+									className="min-h-11 flex-1 rounded-[14px] border border-border bg-background py-3 font-bold text-muted-foreground text-xs uppercase tracking-widest transition-all duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] hover:bg-muted active:scale-[.97]"
 									onClick={onClose}
 									type="button"
 								>
 									{cancelText}
 								</button>
 								<button
-									className={`flex-1 rounded-xl py-3 font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg ${config.confirmBg}`}
+									className={`min-h-11 flex-1 rounded-[14px] py-3 font-black text-xs uppercase tracking-widest transition-all duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] shadow-lg ${config.confirmBg}`}
 									disabled={loading}
 									onClick={() => {
 										onConfirm();

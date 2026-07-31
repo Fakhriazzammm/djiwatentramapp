@@ -433,9 +433,10 @@ export function CheckoutSidebar({
 
 	return (
 		<div className="relative flex h-full flex-col border-l border-border bg-[#f8f9fa] shadow-sm dark:bg-background">
-			<div className="flex items-center justify-between border-b border-border bg-background px-3 py-2">
-				<div className="flex flex-1 items-center gap-1.5 sm:gap-2 md:gap-2">
-					<div className="flex items-center gap-1.5 sm:gap-2">
+			<div className="flex items-center justify-between gap-2 border-b border-border bg-background px-3 py-2">
+				<nav aria-label="Tahapan checkout" className="no-scrollbar min-w-0 flex-1 overflow-x-auto">
+				<div className="flex w-max min-w-full items-center gap-1.5 sm:gap-2 md:gap-2">
+					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
 						<div className={cn(
 							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
 							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
@@ -443,7 +444,7 @@ export function CheckoutSidebar({
 						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
 					</div>
 					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
-					<div className="flex items-center gap-1.5 sm:gap-2">
+					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
 						<div className={cn(
 							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
 							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
@@ -451,7 +452,7 @@ export function CheckoutSidebar({
 						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
 					</div>
 					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
-					<div className="flex items-center gap-1.5 sm:gap-2">
+					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
 						<div className={cn(
 							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
 							activeStep === "payment" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
@@ -459,15 +460,16 @@ export function CheckoutSidebar({
 						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
 					</div>
 					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
-					<div className="flex items-center gap-1.5 sm:gap-2">
+					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
 						<div className={cn(
 							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
 							activeStep === "assign" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>4</div>
-						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "assign" ? "text-foreground" : "text-muted-foreground")}>Assign</span>
+						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "assign" ? "text-foreground" : "text-muted-foreground")}>Tim</span>
 					</div>
 				</div>
-				<div className="flex items-center gap-2 text-muted-foreground">
+				</nav>
+				<div className="flex shrink-0 items-center gap-2 text-muted-foreground">
 					{lastOrderId && onPrintLastOrder && (
 						<Button
 							variant="outline"
@@ -483,7 +485,7 @@ export function CheckoutSidebar({
 						<Button 
 							variant="ghost" 
 							size="sm" 
-							className="h-8 w-8 shrink-0 rounded-full p-0 md:h-8 md:w-8" 
+							className="size-11 shrink-0 rounded-full p-0 md:size-8"
 							onClick={onClose}
 							aria-label="Tutup"
 						>

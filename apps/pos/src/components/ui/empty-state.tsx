@@ -189,13 +189,13 @@ export function EmptyState({
 				/>
 			) : null}
 			{!illustration && showIcon && (icon || Icon) ? (
-				<div className="mb-4 text-muted-foreground/30">
+				<div className="mb-4 text-muted-foreground/60 [&_svg]:stroke-2">
 					{icon ?? <Icon className={iconSizes[size]} />}
 				</div>
 			) : null}
 
 			{/* Title */}
-			<h3 className="mb-2 font-bold text-foreground">
+			<h3 className="mb-2 font-display font-bold text-foreground">
 				{title ?? content.title}
 			</h3>
 
@@ -245,7 +245,7 @@ export function EmptyStateCard({
 	return (
 		<div
 			className={cn(
-				"rounded-xl",
+				"rounded-[24px]",
 				bordered && "border border-border border-dashed",
 				bgStyles[background],
 				className
