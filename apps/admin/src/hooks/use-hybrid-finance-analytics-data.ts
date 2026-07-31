@@ -36,6 +36,35 @@ function groupBy(items: any[], key: (item: any) => string) {
 	return map;
 }
 
+const REST_IN_FILTER_BATCH_SIZE = 50;
+
+async function fetchOrderRowsInBatches(
+	column: "_id" | "orderNumber",
+	values: unknown[],
+	select: string
+) {
+	const supabase = createClient();
+	const uniqueValues = [...new Set(values.filter((value) => value != null && value !== ""))];
+	const rows: any[] = [];
+
+	for (let index = 0; index < uniqueValues.length; index += REST_IN_FILTER_BATCH_SIZE) {
+		const batch = uniqueValues.slice(index, index + REST_IN_FILTER_BATCH_SIZE);
+		const { data, error } = await supabase
+			.from("pos_orders")
+			.select(select)
+			.in(column, batch);
+
+		if (error) {
+			console.warn(`[finance] Gagal memuat enrichment order berdasarkan ${column}`, error);
+			return [];
+		}
+
+		rows.push(...(data ?? []));
+	}
+
+	return rows;
+}
+
 async function fetchFinancialTransactions(args?: {
 	type?: "income" | "expense";
 	startDate?: number;
@@ -81,11 +110,8 @@ async function fetchFinancialTransactions(args?: {
 		.map((tx: any) => tx.metadata.orderNumber);
 	if (orderTxIds.length > 0) {
 		// items ada di view public.pos_orders (kolom JSONB `items`)
-		const { data: orders, error: oError } = await supabase
-			.from("pos_orders")
-			.select("_id, items")
-			.in("_id", orderTxIds);
-		if (!oError && orders) {
+		const orders = await fetchOrderRowsInBatches("_id", orderTxIds, "_id, items");
+		if (orders.length > 0) {
 			const itemsByOrder = new Map<string, any[]>();
 			for (const order of orders) {
 				const orderItems = Array.isArray(order.items) ? order.items : [];
@@ -109,11 +135,12 @@ async function fetchFinancialTransactions(args?: {
 	}
 	// ── Fallback: cari pos_orders by orderNumber untuk transaksi tanpa orderId ──
 	if (orderNumTxIds.length > 0) {
-		const { data: ordersByNum, error: onError } = await supabase
-			.from("pos_orders")
-			.select("_id, items, orderNumber")
-			.in("orderNumber", orderNumTxIds);
-		if (!onError && ordersByNum) {
+		const ordersByNum = await fetchOrderRowsInBatches(
+			"orderNumber",
+			orderNumTxIds,
+			"_id, items, orderNumber"
+		);
+		if (ordersByNum.length > 0) {
 			const itemsByOrderNum = new Map<string, any[]>();
 			for (const order of ordersByNum) {
 				const orderItems = Array.isArray(order.items) ? order.items : [];

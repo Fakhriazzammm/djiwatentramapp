@@ -15,12 +15,8 @@ interface FaceRecognitionProps {
   className?: string;
 }
 
-// Model path — self-hosted first, CDN fallback
-const MODEL_PATHS = [
-  "/face-models",
-  "https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights",
-  "https://unpkg.com/face-api.js@0.22.2/weights",
-];
+// Models are bundled in public/face-models so biometric login never depends on a CDN.
+const MODEL_PATHS = ["/face-models"];
 
 let preloadPromise: Promise<boolean> | null = null;
 

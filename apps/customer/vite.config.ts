@@ -43,6 +43,9 @@ export default defineConfig({
 				navigateFallbackDenylist: [/^\/api\//],
 				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
 				globPatterns: ["**/*.{js,css,html,png,svg,gif,ico,webmanifest}"],
+				skipWaiting: true,
+				clientsClaim: true,
+				cleanupOutdatedCaches: true,
 				runtimeCaching: [
 					{
 						urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/api/"),
@@ -63,9 +66,10 @@ export default defineConfig({
 					},
 					{
 						urlPattern: /\.(?:js|css)$/,
-						handler: "StaleWhileRevalidate",
+						handler: "NetworkFirst",
 						options: {
 							cacheName: "menu-assets",
+							networkTimeoutSeconds: 5,
 							expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
 						},
 					},

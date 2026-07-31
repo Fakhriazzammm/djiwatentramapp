@@ -1,16 +1,3 @@
-import { createBrowserClient } from "@supabase/ssr";
-
-let browserClient:
-	| ReturnType<typeof createBrowserClient>
-	| null = null;
-
-export function createClient() {
-	if (!browserClient) {
-		browserClient = createBrowserClient(
-			import.meta.env.VITE_SUPABASE_URL!,
-			import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!
-		);
-	}
-
-	return browserClient;
-}
+// Keep one browser Supabase client across app-local and shared modules.
+// Multiple clients with the same auth storage key can race session refreshes.
+export { createClient } from "@yumipos/web-shared/lib/client";

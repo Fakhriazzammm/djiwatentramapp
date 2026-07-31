@@ -47,6 +47,9 @@ export default defineConfig({
 				navigateFallback: "/index.html",
 				maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
 				globPatterns: ["**/*.{js,css,html,png,svg,gif,ico,webmanifest}"],
+				skipWaiting: true,
+				clientsClaim: true,
+				cleanupOutdatedCaches: true,
 				runtimeCaching: [
 					{
 						urlPattern: ({ request }) => request.mode === "navigate",
@@ -59,9 +62,10 @@ export default defineConfig({
 					},
 					{
 						urlPattern: /\.(?:js|css)$/,
-						handler: "StaleWhileRevalidate",
+						handler: "NetworkFirst",
 						options: {
 							cacheName: "pos-assets",
+							networkTimeoutSeconds: 5,
 							expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
 						},
 					},
