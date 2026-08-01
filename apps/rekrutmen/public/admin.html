@@ -1161,6 +1161,10 @@ function openDrawer(tab, id) {
         <div class="detail-item"><strong>Sosial media</strong><span>${escapeHtml(f['Sosial Media Instagram/Tiktok'] || '-')}</span></div>
       </div>
       <div class="detail-card">
+        <h4>Curriculum Vitae</h4>
+        ${f['CV URL'] ? `<a href="${escapeHtml(f['CV URL'])}" target="_blank" rel="noopener noreferrer" class="small-btn" style="min-height:44px;width:100%;justify-content:center;">Buka / Download CV</a>` : '<div class="detail-item"><strong>CV</strong><span>Belum ada CV yang diupload</span></div>'}
+      </div>
+      <div class="detail-card">
         <h4>Catatan</h4>
         <div class="detail-item"><strong>Notes</strong><span>${escapeHtml(f.Notes || 'Belum ada catatan')}</span></div>
       </div>
