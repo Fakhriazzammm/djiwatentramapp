@@ -660,7 +660,7 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{tanggal_akhir}}": formatDateId(endDateStr) || "-",
 		"{{durasi_kontrak}}": String(durationMonths) + " (" + numberToWords(durationMonths) + ")",
 		"{{tipe_kontrak}}": employmentTypeLabel(employment.employmentType),
-		"{{lokasi_kerja}}": employment.location || "-",
+		"{{lokasi_kerja}}": employment.location || "Djiwa Tentram",
 		"{{nama_atasan}}": "-",
 		"{{nomor_dokumen}}": `PKWT/${employment.slug || employment.username || "KARYAWAN"}/${new Date(startDate + "T00:00:00").getFullYear()}`,
 		"{{versi_dokumen}}": "2.0",
