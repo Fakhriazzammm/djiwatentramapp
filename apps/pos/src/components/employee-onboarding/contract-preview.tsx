@@ -117,12 +117,12 @@ type ContractPreviewProps = {
 export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, signatoryName, signatorySignatureUrl, editable, onSignatureChange }: ContractPreviewProps) {
 	const displayPlainText = (() => {
 		const normalized = contract.plainText
-			? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
+			? contract.plainText.replace(new RegExp(`^\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\s*\n+`, "i"), "")
 			: "";
-		const lines = normalized.split("\\n");
+		const lines = normalized.split("\n");
 		if (lines[0]?.trim() && /^(perjanjian kerja|pkwt)/i.test(lines[0].trim())) lines.shift();
 		if (lines[0]?.trim() && /^[A-Z][A-Z0-9 &/.-]{1,40}$/.test(lines[0].trim())) lines.shift();
-		return lines.join("\\n");
+		return lines.join("\n");
 	})();
 	// Prefer the deterministic parser for legacy/full-text contracts. This avoids
 	// carrying old floating-column markup into the PDF renderer.
