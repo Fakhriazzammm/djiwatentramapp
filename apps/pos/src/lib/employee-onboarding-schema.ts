@@ -183,7 +183,7 @@ export function buildEmployeeOnboardingPayload(
 		},
 		contract: {
 			...draft.contract,
-			templateVersion: 1,
+			templateVersion: 2,
 			generatedAt: new Date().toISOString(),
 		},
 		signature_url: files?.signatureUrl ?? null,
@@ -249,29 +249,28 @@ export function buildCompensationBody(
 		return "Kompensasi akan diatur sesuai kebijakan perusahaan.";
 	}
 
-	const items: string[] = [];
 	const details: string[] = [];
 
 	if (monthly > 0) {
-		items.push(`gaji bulanan ${formatMoney(monthly)}`);
 		details.push(`Gaji pokok: ${formatMoney(monthly)}/bulan`);
 	}
 	if (daily > 0) {
 		const estMonthly = daily * WORKING_DAYS_PER_MONTH;
-		items.push(`tunjangan transportasi ${formatMoney(daily)}/hari`);
 		details.push(`Tunjangan transportasi: ${formatMoney(daily)}/hari × ${WORKING_DAYS_PER_MONTH} hari = ${formatMoney(estMonthly)}/bulan`);
 	}
 	if (shift > 0) {
 		const estMonthly = shift * WORKING_DAYS_PER_MONTH;
-		items.push(`rate shift ${formatMoney(shift)}/shift`);
 		details.push(`Rate shift: ${formatMoney(shift)}/shift × ${WORKING_DAYS_PER_MONTH} shift = ${formatMoney(estMonthly)}/bulan`);
 	}
 
 	const totalMonthly = calculateEstimatedMonthlySalary(employment);
-	const itemsText = items.join(", ");
-	const detailsText = details.join(". ");
-
-	let result = `${itemsText}. ${detailsText}. Estimasi total penghasilan per bulan: ${formatMoney(totalMonthly)}. Perhitungan berdasarkan ${WORKING_DAYS_PER_MONTH} hari kerja per bulan.`;
+	const compensationLines = [
+		...details,
+		`Estimasi total penghasilan per bulan: ${formatMoney(totalMonthly)}`,
+		`Perhitungan estimasi berdasarkan ${WORKING_DAYS_PER_MONTH} hari kerja per bulan`,
+		"Pembayaran dilakukan sesuai jadwal payroll perusahaan melalui metode pembayaran yang disepakati Para Pihak",
+	];
+	let result = compensationLines.join("\n");
 
 	// Tambah keterangan bonus insentif
 	if (bonusConfig && Array.isArray(bonusConfig.tiers) && bonusConfig.tiers.length > 0) {
@@ -343,16 +342,27 @@ export function buildEmployeeContractTemplate(
 	// ── Conditional: Masa Percobaan (only for probation) ──
 	const probationClause: EmployeeContractClause[] = employment.employmentType === "probation"
 		? [{
-			title: "Pasal 4 — Masa Percobaan",
-			body: `(1) Dalam hal PIHAK KEDUA berstatus Masa Percobaan (Probation), maka PIHAK KEDUA menjalani masa percobaan sesuai ketentuan undang-undang yang berlaku.
+			title: "Pasal 4 — Orientasi dan Evaluasi Kerja",
+			body: `(1) Pada masa awal kerja, PIHAK PERTAMA dapat memberikan orientasi, pelatihan, dan evaluasi kerja kepada PIHAK KEDUA sesuai kebutuhan operasional.
 
-(2) Selama masa percobaan, PIHAK PERTAMA berhak melakukan evaluasi berkala terhadap kinerja PIHAK KEDUA.
+(2) Orientasi dan evaluasi kerja merupakan bagian dari proses onboarding dan tidak mengurangi hak PIHAK KEDUA berdasarkan perjanjian ini dan peraturan yang berlaku.
 
-(3) PiHAK PERTAMA berhak mengakhiri hubungan kerja tanpa kewajiban memberikan pesangon apabila PIHAK KEDUA tidak memenuhi standar kinerja yang ditetapkan selama masa percobaan, sesuai dengan ketentuan peraturan perundang-undangan.`,
+(3) Hasil evaluasi, kelanjutan hubungan kerja, dan keputusan Para Pihak akan disampaikan secara wajar dan diproses sesuai ketentuan perjanjian serta peraturan perundang-undangan yang berlaku.`,
 		}]
-		: [];
+		: [{
+			title: "Pasal 4 — Orientasi dan Evaluasi Kerja",
+			body: `(1) Pada masa awal kerja, PIHAK PERTAMA dapat memberikan orientasi, pelatihan, dan evaluasi kerja kepada PIHAK KEDUA sesuai kebutuhan operasional.
+
+(2) Orientasi dan evaluasi kerja merupakan bagian dari proses onboarding dan tidak mengurangi hak PIHAK KEDUA berdasarkan perjanjian ini dan peraturan yang berlaku.`,
+		}];
 
 	const clauseList: EmployeeContractClause[] = [
+		{
+			title: "Informasi Dokumen",
+			body: `Nomor dokumen: PKWT/${employment.slug || employment.username || "KARYAWAN"}/${new Date((employment.startDate || new Date().toISOString().slice(0, 10)) + "T00:00:00").getFullYear()}
+Versi dokumen: 2.0
+Tanggal mulai berlaku: ${employment.startDate ? formatDateId(employment.startDate) : "-"}`,
+		},
 		{
 			title: "Pasal 1 — Para Pihak",
 			body: `Yang bertanda tangan di bawah ini:
@@ -375,9 +385,9 @@ PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut "Para Pihak" sepakat u
 
 (2) Status hubungan kerja PIHAK KEDUA adalah {{tipe_kontrak}}.
 
-(3) Perjanjian ini dapat diperpanjang kembali atas kesepakatan tertulis Para Pihak dengan mengadakan perjanjian baru atau addendum.
+(3) Perjanjian ini dapat diperpanjang atau diperbarui berdasarkan kesepakatan tertulis Para Pihak sebelum tanggal berakhirnya perjanjian.
 
-(4) Apabila perjanjian ini berakhir dan PIHAK KEDUA tetap bekerja, maka perjanjian ini dinyatakan diperpanjang secara otomatis untuk jangka waktu yang sama, kecuali Para Pihak menyatakan lain secara tertulis.`,
+(4) Tidak ada perpanjangan otomatis. Setiap perubahan jangka waktu, status, atau ketentuan kerja dituangkan dalam perjanjian baru atau addendum tertulis yang disetujui Para Pihak.`,
 		},
 		...probationClause,
 		{
@@ -386,19 +396,22 @@ PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut "Para Pihak" sepakat u
 		},
 		{
 			title: "Pasal 6 — Waktu Kerja",
-			body: `(1) Waktu kerja ditentukan oleh PIHAK PERTAMA sesuai dengan kebutuhan operasional dan ketentuan peraturan perundang-undangan yang berlaku.
+			body: `(1) Waktu kerja ditentukan oleh PIHAK PERTAMA sesuai kebutuhan operasional dan peraturan yang berlaku, dengan memperhatikan jadwal shift, waktu istirahat, dan ketentuan kerja yang diinformasikan kepada PIHAK KEDUA.
 
 (2) PIHAK KEDUA wajib mematuhi jadwal kerja yang ditetapkan dan hadir tepat waktu.
 
-(3) Setiap perubahan jadwal kerja akan diberitahukan oleh PIHAK PERTAMA kepada PIHAK KEDUA dalam waktu yang wajar.`,
+(3) Setiap perubahan jadwal kerja akan diberitahukan oleh PIHAK PERTAMA dalam waktu yang wajar.
+
+(4) Pekerjaan di luar jadwal normal, pada hari istirahat, atau pada hari libur harus mendapatkan persetujuan PIHAK PERTAMA dan diproses sesuai ketentuan lembur serta peraturan yang berlaku.`,
 		},
 		{
 			title: "Pasal 7 — Hak dan Kewajiban PIHAK KEDUA",
 			body: `PIHAK KEDUA berhak atas:
 a) Gaji dan tunjangan sebagaimana diatur dalam Pasal 5;
-b) Lingkungan kerja yang aman dan layak;
-c) Cuti sesuai ketentuan yang berlaku;
-d) Perlindungan keselamatan dan kesehatan kerja.
+b) Pembayaran sesuai jadwal payroll yang disepakati;
+c) Lingkungan kerja yang aman dan layak;
+d) Cuti, waktu istirahat, jaminan sosial, dan tunjangan hari raya sesuai peraturan yang berlaku;
+e) Perlindungan keselamatan dan kesehatan kerja.
 
 PIHAK KEDUA berkewajiban untuk:
 a) Melaksanakan tugas dan pekerjaan dengan penuh tanggung jawab, jujur, dan disiplin;
@@ -432,13 +445,13 @@ c) Memberikan pelatihan dan pengembangan yang diperlukan.`,
 			title: "Pasal 10 — Disiplin dan Tata Tertib",
 			body: `(1) PIHAK KEDUA wajib mematuhi seluruh peraturan disiplin dan tata tertib yang ditetapkan oleh PIHAK PERTAMA.
 
-(2) Pelanggaran disiplin akan dikenakan sanksi bertahap berupa:
+(2) Pelanggaran disiplin akan dikenakan sanksi secara proporsional dan bertahap sesuai kebijakan perusahaan serta peraturan yang berlaku, antara lain:
 a) Teguran lisan;
 b) Teguran tertulis;
 c) Skorsing; dan/atau
-d) Pemutusan hubungan kerja (PHK).
+d) Tindakan lain sesuai ketentuan yang berlaku.
 
-(3) PIHAK KEDUA yang tidak masuk kerja tanpa keterangan yang sah selama 5 (lima) hari kerja berturut-turut dianggap mengundurkan diri.`,
+(3) Ketidakhadiran tanpa keterangan akan dicatat dan ditindaklanjuti melalui upaya komunikasi serta klarifikasi kepada PIHAK KEDUA sebelum keputusan lebih lanjut diambil sesuai peraturan yang berlaku.`,
 		},
 		{
 			title: "Pasal 11 — Pengakhiran Hubungan Kerja",
@@ -462,11 +475,29 @@ f) Keadaan memaksa (force majeure).
 		},
 		{
 			title: "Pasal 13 — Penutup",
-			body: `(1) Perjanjian ini dibuat dalam rangkap 2 (dua) bermeterai cukup, masing-masing memiliki kekuatan hukum yang sama.
+			body: `(1) Perjanjian ini dibuat dalam rangkap 2 (dua) atau tersedia dalam bentuk elektronik, masing-masing untuk Para Pihak dan memiliki kekuatan sesuai peraturan yang berlaku.
 
 (2) Hal-hal yang belum diatur dalam perjanjian ini akan diatur kemudian melalui addendum yang merupakan satu kesatuan dan bagian yang tidak terpisahkan dari perjanjian ini.
 
-(3) Perjanjian ini berlaku setelah ditandatangani secara digital oleh Para Pihak dan disetujui oleh admin/perwakilan perusahaan.`,
+(3) Perjanjian ini berlaku setelah ditandatangani oleh Para Pihak dan disetujui oleh admin/perwakilan perusahaan.
+
+(4) Tanda tangan elektronik, waktu penandatanganan, nomor dokumen, dan versi dokumen dicatat sebagai bagian dari metadata kontrak.`,
+		},
+		{
+			title: "Lampiran A — Uraian Jabatan",
+			body: `Jabatan: {{jabatan}}
+
+PIHAK KEDUA melaksanakan tugas sesuai uraian jabatan, SOP, arahan atasan, dan kebutuhan operasional PIHAK PERTAMA. Uraian tugas dapat diperbarui secara wajar sesuai kebutuhan operasional tanpa mengubah status hubungan kerja.` ,
+		},
+		{
+			title: "Lampiran B — Kompensasi dan Insentif",
+			body: `Rincian kompensasi mengikuti Pasal 5. Bonus atau insentif, apabila tersedia, mengikuti pencapaian target dan kebijakan perusahaan yang diinformasikan kepada PIHAK KEDUA. Perubahan skema bonus berlaku untuk periode berikutnya setelah disampaikan kepada PIHAK KEDUA.`,
+		},
+		{
+			title: "Penandatanganan",
+			body: `Dibuat di Tasikmalaya, pada tanggal ${formatDateId(new Date().toISOString().slice(0, 10))}.
+
+Dengan menandatangani perjanjian ini, Para Pihak menyatakan telah membaca, memahami, dan menyetujui seluruh isi perjanjian tanpa paksaan dari pihak mana pun.`,
 		},
 	];
 
@@ -577,6 +608,10 @@ export function formatDateId(isoDate: string): string {
 	return `${d.getDate()} ${MONTHS_INDONESIA[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+export function findUnresolvedContractVariables(text: string): string[] {
+	return Array.from(new Set(text.match(/{{[^{}]+}}|\[[A-Z][A-Z0-9_]+\]/g) ?? []));
+}
+
 export function replaceContractVariables(text: string, ctx: ContractVariableContext, bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] }): string {
 	const { personal, employment, company } = ctx;
 
@@ -604,6 +639,8 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{tempat_lahir}}": personal.placeOfBirth || "-",
 		"{{tanggal_lahir}}": formatDateId(personal.birthDate),
 		"{{alamat}}": personal.address || "-",
+		"[ALAMAT_KARYAWAN]": personal.address || "-",
+		"[NAMA_LENGKAP_KARYAWAN]": personal.fullName || "Karyawan",
 		"{{agama}}": personal.religion || "-",
 		"{{status_pernikahan}}": personal.maritalStatus || "-",
 		"{{telepon}}": personal.phone || "-",
@@ -625,6 +662,9 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{tipe_kontrak}}": employmentTypeLabel(employment.employmentType),
 		"{{lokasi_kerja}}": employment.location || "-",
 		"{{nama_atasan}}": "-",
+		"{{nomor_dokumen}}": `PKWT/${employment.slug || employment.username || "KARYAWAN"}/${new Date(startDate + "T00:00:00").getFullYear()}`,
+		"{{versi_dokumen}}": "2.0",
+		"{{tanggal_dokumen}}": formatDateId(now.toISOString().slice(0, 10)),
 
 		// --- Compensation ---
 		"{{gaji_pokok}}": formatMoney(monthly),

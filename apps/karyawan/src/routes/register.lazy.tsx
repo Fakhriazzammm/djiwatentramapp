@@ -19,133 +19,100 @@ const JABATAN_LIST = [
 
 const STAFF_ROLE_ID = "role_4f72262209bd";
 
-// ── Template Kontrak Profesional (16 Pasal) ──
-const CONTRACT_TEMPLATE = `Perjanjian Kerja [{JABATAN}]
+// ── Template Kontrak Profesional (13 Pasal + 2 Lampiran) ──
+const CONTRACT_TEMPLATE = `Perjanjian Kerja Waktu Tertentu (PKWT) [{JABATAN}]
+
+Versi dokumen: 2.0
+Nomor dokumen dan tanggal efektif ditetapkan pada proses administrasi kontrak.
 
 Pasal 1 — Para Pihak
 Yang bertanda tangan di bawah ini:
 
-1. Djiwa Tentram, berkedudukan di Jalan Bojong Tengah No. 34 dengan Nomor Induk Berusaha (NIB) sesuai dokumen perusahaan, dalam hal ini diwakili oleh Fakhri Azzam, selaku Owner, yang selanjutnya disebut sebagai "PIHAK PERTAMA" atau "Perusahaan".
+1. Djiwa Tentram, berkedudukan di Jalan Bojong Tengah No. 34 dengan Nomor Induk Berusaha (NIB) sesuai dokumen perusahaan, dalam hal ini diwakili oleh Fakhri Azzam selaku Owner, yang selanjutnya disebut PIHAK PERTAMA.
 
-2. {NAMA}, NIK {NIK}, bertempat tinggal di {ALAMAT}, lahir di {TEMPAT_LAHIR}, {TGL_LAHIR}, yang selanjutnya disebut sebagai "PIHAK KEDUA" atau "Karyawan".
+2. {NAMA}, NIK {NIK}, bertempat tinggal di {ALAMAT}, lahir di {TEMPAT_LAHIR}, {TGL_LAHIR}, yang selanjutnya disebut PIHAK KEDUA.
 
-PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut "Para Pihak" sepakat untuk mengadakan Perjanjian Kerja dengan ketentuan sebagai berikut.
+PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut Para Pihak.
 
 Pasal 2 — Kedudukan dan Penempatan
-(1) PIHAK KEDUA diangkat dan ditempatkan sebagai {JABATAN} di Djiwa Tentram atau lokasi lain yang ditetapkan oleh PIHAK PERTAMA sesuai kebutuhan operasional perusahaan.
-(2) PIHAK PERTAMA berhak melakukan mutasi, rotasi, atau promosi jabatan dengan memberikan pemberitahuan tertulis kepada PIHAK KEDUA paling lambat 7 (tujuh) hari sebelum perubahan berlaku.
-(3) Dalam hal mutasi ke lokasi yang berbeda, PIHAK PERTAMA akan memberikan kompensasi atau dukungan relokasi sesuai kebijakan perusahaan.
+(1) PIHAK KEDUA ditempatkan sebagai {JABATAN} di Djiwa Tentram atau lokasi lain yang ditetapkan PIHAK PERTAMA sesuai kebutuhan operasional.
+
+(2) Perubahan penempatan, rotasi, atau penyesuaian tugas diberitahukan secara wajar dan tidak mengubah status hubungan kerja tanpa persetujuan atau dasar yang sesuai.
 
 Pasal 3 — Masa Perjanjian dan Status Kerja
-(1) Perjanjian kerja ini berlaku untuk jangka waktu 1 (satu) tahun, terhitung sejak tanggal mulai kerja yang ditetapkan oleh PIHAK PERTAMA, dan dapat diperpanjang berdasarkan evaluasi kinerja.
-(2) Status hubungan kerja PIHAK KEDUA adalah {TIPE}.
-(3) Perpanjangan perjanjian akan dikomunikasikan secara tertulis paling lambat 30 (tiga puluh) hari sebelum masa berlaku berakhir.
+(1) Jangka waktu, tanggal mulai, tanggal berakhir, dan rincian kompensasi ditetapkan dalam dokumen administrasi kontrak dan/atau lampiran yang menjadi bagian tidak terpisahkan dari perjanjian ini.
 
-Pasal 4 — Masa Training
-(1) PIHAK KEDUA menjalani masa training selama 1 (satu) bulan terhitung sejak tanggal mulai kerja.
-(2) Selama masa training, PIHAK PERTAMA berhak melakukan evaluasi berkala terhadap kinerja, disiplin, dan kepatuhan PIHAK KEDUA terhadap peraturan perusahaan.
-(3) PIHAK PERTAMA berhak mengakhiri hubungan kerja selama masa training dengan pemberitahuan 7 (tujuh) hari sebelumnya, tanpa kewajiban memberikan kompensasi tambahan di luar hak yang telah menjadi kewajiban perusahaan.
-(4) Setelah masa training dinyatakan lulus, status PIHAK KEDUA dikonfirmasi sesuai Pasal 3 ayat (2).
+(2) Status hubungan kerja PIHAK KEDUA adalah {TIPE}.
+
+(3) Perpanjangan atau pembaruan hanya berlaku berdasarkan persetujuan tertulis Para Pihak sebelum masa perjanjian berakhir. Tidak ada perpanjangan otomatis.
+
+Pasal 4 — Orientasi dan Evaluasi Kerja
+(1) Pada masa awal kerja, PIHAK PERTAMA dapat memberikan orientasi, pelatihan, dan evaluasi kerja sesuai kebutuhan operasional.
+
+(2) Orientasi dan evaluasi merupakan bagian dari onboarding dan tidak mengurangi hak PIHAK KEDUA berdasarkan perjanjian ini dan peraturan yang berlaku.
+
+(3) Hasil evaluasi dan keputusan lanjutan disampaikan secara wajar serta diproses sesuai perjanjian dan peraturan yang berlaku.
 
 Pasal 5 — Kompensasi dan Tunjangan
-(1) Gaji Pokok ditetapkan berdasarkan jabatan dan akan diinformasikan secara terpisah dalam lampiran kompensasi yang merupakan bagian tidak terpisahkan dari perjanjian ini.
-(2) Tunjangan Transportasi diberikan sesuai kebijakan perusahaan dan dibayarkan bersamaan dengan gaji pokok.
-(3) Bonus Kinerja diberikan berdasarkan pencapaian target yang ditetapkan oleh PIHAK PERTAMA dan dievaluasi setiap periode tertentu.
-(4) Pembayaran gaji dan tunjangan dilakukan setiap akhir bulan melalui transfer bank ke rekening yang didaftarkan oleh PIHAK KEDUA.
+(1) Gaji, tunjangan transportasi, rate shift, bonus, dan insentif ditetapkan dalam lampiran kompensasi atau dokumen administrasi yang disepakati Para Pihak.
+
+(2) Pembayaran dilakukan sesuai jadwal payroll perusahaan melalui metode pembayaran yang disepakati.
+
+(3) Perubahan skema bonus atau insentif berlaku untuk periode berikutnya setelah disampaikan kepada PIHAK KEDUA.
 
 Pasal 6 — Waktu Kerja
-(1) Waktu kerja mengikuti jadwal shift yang ditetapkan oleh PIHAK PERTAMA sesuai kebutuhan operasional outlet.
-(2) Jam operasional perusahaan adalah setiap hari Senin sampai dengan Minggu, dengan pembagian shift yang diatur oleh Manajer Operasional.
-(3) Setiap shift memiliki durasi maksimal 8 (delapan) jam kerja dan 1 (satu) jam istirahat.
-(4) PIHAK KEDUA wajib hadir tepat waktu sesuai jadwal shift yang telah ditentukan. Keterlambatan lebih dari 15 (lima belas) menit dikenakan sanksi sesuai peraturan perusahaan.
-(5) Perubahan jadwal shift akan diinformasikan minimal 1 (satu) hari sebelumnya, kecuali dalam keadaan darurat.
+(1) Waktu kerja mengikuti jadwal shift yang ditetapkan PIHAK PERTAMA dengan memperhatikan waktu istirahat dan peraturan yang berlaku.
 
-Pasal 7 — Cuti dan Waktu Istirahat
-(1) Cuti Tahunan: PIHAK KEDUA berhak atas cuti tahunan selama 12 (dua belas) hari kerja setelah masa kerja mencapai 1 (satu) tahun secara terus-menerus.
-(2) Cuti Sakit: PIHAK KEDUA berhak atas cuti sakit dengan melampirkan surat keterangan dokter yang sah.
-(3) Cuti Khusus: PIHAK KEDUA berhak atas cuti karena pernikahan (3 hari), pernikahan anak (2 hari), khitanan/pembaptisan anak (2 hari), istri melahirkan/keguguran (2 hari), anggota keluarga meninggal (2 hari), dan anggota serumah meninggal (1 hari).
-(4) Cuti Melahirkan: PIHAK KEDUA perempuan berhak atas cuti melahirkan selama 3 (tiga) bulan sesuai ketentuan peraturan perundang-undangan yang berlaku.
-(5) Cuti di luar ketentuan di atas dapat dinegosiasikan dengan PIHAK PERTAMA dan wajib mendapatkan persetujuan tertulis.
+(2) PIHAK KEDUA wajib hadir tepat waktu dan mematuhi jadwal kerja.
 
-Pasal 8 — Hak dan Kewajiban Karyawan
-(1) PIHAK KEDUA berhak untuk:
-    a. Menerima gaji, tunjangan, dan kompensasi lainnya tepat waktu;
-    b. Mendapatkan lingkungan kerja yang aman, nyaman, dan sehat;
-    c. Mendapatkan cuti sesuai ketentuan dalam perjanjian ini;
-    d. Mendapatkan perlindungan keselamatan dan kesehatan kerja;
-    e. Mendapatkan kesempatan pengembangan diri dan karier;
-    f. Mendapatkan perlakukan yang adil tanpa diskriminasi.
-(2) PIHAK KEDUA wajib untuk:
-    a. Melaksanakan tugas dan tanggung jawab dengan itikad baik, jujur, dan profesional;
-    b. Menaati seluruh peraturan perusahaan, SOP, dan kode etik yang berlaku;
-    c. Menjaga kerahasiaan data perusahaan, pelanggan, dan informasi bisnis;
-    d. Menjaga dan merawat aset perusahaan yang dipercayakan;
-    e. Menjaga nama baik perusahaan di dalam maupun di luar lingkungan kerja;
-    f. Berpakaian rapi dan menjaga kebersihan diri sesuai standar perusahaan;
-    g. Mengikuti pelatihan dan pengembangan yang diselenggarakan oleh perusahaan.
+(3) Pekerjaan di luar jadwal normal, pada hari istirahat, atau pada hari libur harus mendapatkan persetujuan dan diproses sesuai ketentuan lembur serta peraturan yang berlaku.
 
-Pasal 9 — Hak dan Kewajiban Perusahaan
-(1) PIHAK PERTAMA berhak untuk:
-    a. Mengatur dan mengawasi pelaksanaan pekerjaan PIHAK KEDUA;
-    b. Menetapkan target dan standar kinerja yang harus dicapai;
-    c. Memberikan sanksi atas pelanggaran disiplin sesuai peraturan perusahaan;
-    d. Melakukan evaluasi kinerja secara berkala;
-    e. Mengubah struktur organisasi dan penempatan kerja sesuai kebutuhan bisnis.
-(2) PIHAK PERTAMA wajib untuk:
-    a. Membayar gaji dan tunjangan tepat waktu;
-    b. Menyediakan lingkungan kerja yang aman dan sehat;
-    c. Memberikan perlindungan keselamatan kerja sesuai peraturan perundang-undangan;
-    d. Memberikan pembinaan dan pengembangan kompetensi.
+Pasal 7 — Hak dan Kewajiban PIHAK KEDUA
+PIHAK KEDUA berhak atas pembayaran sesuai kesepakatan, lingkungan kerja yang aman dan layak, cuti, waktu istirahat, jaminan sosial, tunjangan hari raya, serta perlindungan keselamatan dan kesehatan kerja sesuai peraturan yang berlaku.
 
-Pasal 10 — Kerahasiaan dan Perlindungan Data
-(1) PIHAK KEDUA wajib menjaga kerahasiaan seluruh informasi perusahaan termasuk namun tidak terbatas pada resep, data keuangan, strategi bisnis, data pelanggan, data karyawan, dan informasi rahasia lainnya yang diketahui selama masa kerja.
-(2) Kewajiban kerahasiaan ini tetap berlaku meskipun hubungan kerja telah berakhir, tanpa batas waktu.
-(3) PIHAK KEDUA dilarang memperbanyak, menggandakan, menyimpan secara pribadi, atau menyebarluaskan dokumen dan informasi rahasia perusahaan tanpa izin tertulis dari PIHAK PERTAMA.
-(4) PIHAK PERTAMA berhak menuntut ganti rugi secara hukum atas pelanggaran ketentuan kerahasiaan ini.
+PIHAK KEDUA berkewajiban melaksanakan pekerjaan dengan jujur dan disiplin, menaati SOP dan kebijakan perusahaan, menjaga kerahasiaan data, menjaga aset perusahaan, dan melaporkan hambatan kerja kepada atasan.
 
-Pasal 11 — Larangan Rangkap Jabatan dan Benturan Kepentingan
-(1) Selama masa kerja, PIHAK KEDUA dilarang bekerja di tempat lain atau menjalankan usaha yang dapat menimbulkan benturan kepentingan dengan bisnis PIHAK PERTAMA.
-(2) PIHAK KEDUA wajib melaporkan kepada PIHAK PERTAMA apabila terdapat potensi benturan kepentingan dalam pelaksanaan tugasnya.
-(3) PIHAK KEDUA dilarang menggunakan fasilitas, aset, atau informasi perusahaan untuk kepentingan pribadi atau pihak ketiga tanpa izin tertulis.
-(4) Selama 6 (enam) bulan setelah berakhirnya hubungan kerja, PIHAK KEDUA tidak diperkenankan bekerja atau membuka usaha sejenis dalam radius 5 (lima) kilometer dari lokasi operasional PIHAK PERTAMA.
+Pasal 8 — Hak dan Kewajiban PIHAK PERTAMA
+PIHAK PERTAMA berhak mengatur pekerjaan, menetapkan standar operasional, mengevaluasi kinerja, dan mengambil tindakan yang proporsional sesuai peraturan yang berlaku.
 
-Pasal 12 — Disiplin dan Sanksi
-(1) PIHAK KEDUA wajib mematuhi peraturan perusahaan, instruksi atasan, dan ketentuan dalam perjanjian ini.
-(2) Pelanggaran disiplin kerja akan dikenakan sanksi secara bertahap sesuai tingkat pelanggaran:
-    a. Pelanggaran Ringan: Teguran lisan dan pembinaan;
-    b. Pelanggaran Sedang: Surat Peringatan (SP1, SP2, SP3);
-    c. Pelanggaran Berat: Skorsing hingga Pemutusan Hubungan Kerja (PHK).
-(3) Jenis pelanggaran berat yang dapat mengakibatkan PHK langsung meliputi: pencurian, penggelapan, penipuan, kekerasan di tempat kerja, pelanggaran kerahasiaan berat, dan tindakan yang merugikan perusahaan secara signifikan.
+PIHAK PERTAMA berkewajiban membayar kompensasi sesuai kesepakatan, menyediakan lingkungan kerja yang layak, dan memenuhi hak PIHAK KEDUA sesuai peraturan yang berlaku.
 
-Pasal 13 — Pengakhiran Hubungan Kerja
-(1) Hubungan kerja antara PIHAK PERTAMA dan PIHAK KEDUA berakhir karena:
-    a. Berakhirnya jangka waktu perjanjian dan tidak diperpanjang;
-    b. Pengunduran diri PIHAK KEDUA dengan pemberitahuan tertulis minimal 30 (tiga puluh) hari sebelumnya;
-    c. Pemutusan Hubungan Kerja (PHK) oleh PIHAK PERTAMA sesuai peraturan perundang-undangan;
-    d. PIHAK KEDUA meninggal dunia;
-    e. PIHAK KEDUA memasuki usia pensiun sesuai ketentuan perusahaan;
-    f. Keadaan memaksa (force majeure) yang mengakibatkan perjanjian tidak dapat dilaksanakan.
-(2) Dalam hal pengunduran diri, PIHAK KEDUA wajib menyelesaikan seluruh tanggung jawab dan melakukan serah terima pekerjaan sebelum tanggal efektif pengunduran diri.
-(3) Apabila PIHAK KEDUA mengundurkan diri atau mengakhiri hubungan kerja sebelum jangka waktu perjanjian berakhir (1 tahun), PIHAK KEDUA wajib membayar ganti rugi kepada PIHAK PERTAMA sebesar 1 (satu) kali Gaji Pokok sebagai kompensasi atas biaya rekrutmen, pelatihan, dan kerugian operasional yang ditimbulkan.
-(4) Dalam hal PHK, PIHAK PERTAMA wajib memberikan hak-hak PIHAK KEDUA sesuai peraturan perundang-undangan yang berlaku.
+Pasal 9 — Kerahasiaan dan Perlindungan Data
+(1) PIHAK KEDUA wajib menjaga kerahasiaan informasi perusahaan, pelanggan, karyawan, resep, data keuangan, dan informasi bisnis lainnya.
 
-Pasal 14 — Penyelesaian Perselisihan
-(1) Segala perselisihan yang timbul dari pelaksanaan perjanjian ini akan diselesaikan secara musyawarah untuk mencapai mufakat antara Para Pihak.
-(2) Apabila musyawarah tidak mencapai kesepakatan, Para Pihak akan menempuh mediasi melalui Dinas Ketenagakerjaan setempat.
-(3) Apabila mediasi tidak berhasil, Para Pihak sepakat untuk menyelesaikan perselisihan melalui Pengadilan Hubungan Industrial pada Pengadilan Negeri yang berwenang.
+(2) Data pribadi Para Pihak digunakan untuk administrasi hubungan kerja dan diproses dengan memperhatikan ketentuan perlindungan data yang berlaku.
 
-Pasal 15 — Force Majeure
-(1) Force majeure adalah kejadian di luar kendali Para Pihak yang timbul setelah ditandatanganinya perjanjian ini, yang mengakibatkan salah satu atau Para Pihak tidak dapat memenuhi kewajibannya, termasuk namun tidak terbatas pada: bencana alam, kebakaran, banjir, gempa bumi, wabah penyakit, perang, huru-hara, sabotase, pemogokan umum, dan perubahan peraturan pemerintah yang berdampak langsung pada operasional perusahaan.
-(2) Dalam keadaan force majeure, Para Pihak dibebaskan dari tanggung jawab atas tidak terlaksananya kewajiban dalam perjanjian ini selama keadaan force majeure berlangsung.
-(3) Para Pihak wajib memberitahukan secara tertulis dalam waktu 7 (tujuh) hari sejak terjadinya force majeure.
+Pasal 10 — Disiplin dan Tata Tertib
+(1) PIHAK KEDUA wajib mematuhi peraturan disiplin dan tata tertib perusahaan.
 
-Pasal 16 — Ketentuan Penutup
-(1) Perjanjian ini dibuat dalam rangkap 2 (dua), masing-masing memiliki kekuatan hukum yang sama, ditandatangani oleh Para Pihak dan masing-masing pihak memegang 1 (satu) salinan.
-(2) Hal-hal yang belum diatur atau belum cukup diatur dalam perjanjian ini akan ditentukan kemudian oleh Para Pihak secara musyawarah dan akan dituangkan dalam bentuk addendum yang merupakan bagian tidak terpisahkan dari perjanjian ini.
-(3) Apabila di kemudian hari terdapat kekeliruan atau perubahan dalam perjanjian ini, Para Pihak sepakat untuk melakukan perbaikan sebagaimana mestinya.
-(4) Perjanjian ini tunduk dan diatur berdasarkan hukum dan peraturan perundang-undangan yang berlaku di Negara Republik Indonesia.
+(2) Pelanggaran diproses secara proporsional dan bertahap sesuai kebijakan perusahaan serta peraturan yang berlaku.
 
-Demikian perjanjian ini dibuat dan ditandatangani oleh Para Pihak dalam keadaan sehat jasmani dan rohani, tanpa ada paksaan dari pihak mana pun, untuk dilaksanakan dengan penuh tanggung jawab.`;
+(3) Ketidakhadiran tanpa keterangan dicatat dan ditindaklanjuti melalui komunikasi serta klarifikasi sebelum keputusan lebih lanjut diambil sesuai peraturan yang berlaku.
+
+Pasal 11 — Pengakhiran Hubungan Kerja
+(1) Hubungan kerja dapat berakhir karena berakhirnya jangka waktu, pengunduran diri, kesepakatan Para Pihak, keadaan memaksa, atau alasan lain sesuai peraturan yang berlaku.
+
+(2) Pengunduran diri dan serah terima pekerjaan dilakukan secara tertulis sesuai tata cara yang berlaku.
+
+(3) Hak dan kewajiban Para Pihak atas pengakhiran hubungan kerja diselesaikan sesuai peraturan perundang-undangan yang berlaku.
+
+Pasal 12 — Penyelesaian Perselisihan
+(1) Perselisihan diselesaikan terlebih dahulu melalui musyawarah.
+
+(2) Apabila tidak tercapai kesepakatan, Para Pihak menempuh mekanisme penyelesaian perselisihan sesuai peraturan ketenagakerjaan yang berlaku.
+
+Pasal 13 — Penutup
+(1) Perjanjian ini dapat tersedia dalam bentuk cetak maupun elektronik dan masing-masing salinan diperuntukkan bagi Para Pihak.
+
+(2) Hal-hal yang belum diatur dituangkan dalam addendum tertulis yang menjadi bagian tidak terpisahkan dari perjanjian ini.
+
+(3) Tanda tangan, waktu penandatanganan, nomor dokumen, dan versi dokumen dicatat sebagai metadata kontrak.
+
+Lampiran A — Uraian Jabatan
+PIHAK KEDUA menjalankan tugas sebagai {JABATAN} sesuai uraian jabatan, SOP, arahan atasan, dan kebutuhan operasional PIHAK PERTAMA.
+
+Lampiran B — Kompensasi dan Insentif
+Rincian kompensasi dan insentif mengikuti dokumen administrasi yang disepakati Para Pihak. Perubahan untuk periode berikutnya diberitahukan kepada PIHAK KEDUA.`
 
 function interpolate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
@@ -176,7 +143,7 @@ function RegisterPage() {
   const [address, setAddress] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
-  const [employmentType, setEmploymentType] = useState("probation");
+  const [employmentType, setEmploymentType] = useState("full_time");
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -191,10 +158,10 @@ function RegisterPage() {
     TGL_LAHIR: birthDate || "(belum diisi)",
     TEMPAT_LAHIR: birthPlace.trim() || "(belum diisi)",
     JABATAN: jabatan.toUpperCase(),
-    TIPE: { probation: "Percobaan (Probation)", full_time: "Tetap (Full-Time)", part_time: "Paruh Waktu (Part-Time)" }[employmentType] ?? "Percobaan (Probation)",
+    TIPE: { full_time: "PKWT - Penuh Waktu", part_time: "PKWT - Paruh Waktu" }[employmentType] ?? "PKWT - Penuh Waktu",
   };
 
-  const contractText = interpolate(CONTRACT_TEMPLATE, contractVars);
+  const contractText = `${interpolate(CONTRACT_TEMPLATE, contractVars)}\n\nDibuat di Tasikmalaya, pada tanggal ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}\n\nDengan menandatangani perjanjian ini, Para Pihak menyatakan telah membaca, memahami, dan menyetujui seluruh isi perjanjian tanpa paksaan dari pihak mana pun.`;
   const pasalBlocks = parsePasal(contractText);
 
   // ── Signature pad handlers ──
@@ -318,7 +285,7 @@ function RegisterPage() {
           registeredAt: new Date().toISOString(),
         },
         contract: {
-          title: `Perjanjian Kerja [${jabatan.toUpperCase()}]`,
+          title: `Perjanjian Kerja Waktu Tertentu (PKWT) [${jabatan.toUpperCase()}]`,
           agreedAt: new Date().toISOString(),
           templateUsed: "__default__",
           signature: signatureData,
@@ -537,8 +504,7 @@ function RegisterPage() {
                   className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   required
                 >
-                  <option value="probation">Percobaan (Probation)</option>
-                  <option value="full_time">Tetap (Full-Time)</option>
+                  <option value="full_time">PKWT - Penuh Waktu</option>
                   <option value="part_time">Paruh Waktu (Part-Time)</option>
                 </select>
               </div>

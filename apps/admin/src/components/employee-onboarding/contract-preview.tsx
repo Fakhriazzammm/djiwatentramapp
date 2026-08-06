@@ -6,6 +6,50 @@ function escapeRegExp(value: string) {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function escapeHtml(value: string) {
+	return value
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
+}
+
+/** Render legacy plain-text contracts in a deterministic single-column layout. */
+function plainTextToHtml(text: string) {
+	const lines = text.split("\n").map((line) => line.trim());
+	const blocks: string[] = [];
+	let paragraph: string[] = [];
+	const flush = () => {
+		if (paragraph.length > 0) {
+			blocks.push(`<p>${paragraph.map(escapeHtml).join("<br />")}</p>`);
+			paragraph = [];
+		}
+	};
+	for (const line of lines) {
+		if (!line) {
+			flush();
+			continue;
+		}
+		if (/^(Pasal|Bab|Klausul|Ketentuan)\s+\d+/i.test(line)) {
+			flush();
+			blocks.push(`<h3>${escapeHtml(line)}</h3>`);
+		} else {
+			paragraph.push(line);
+		}
+	}
+	flush();
+	return `<article>${blocks.join("\n")}</article>`;
+}
+
+function documentInfoToHtml(body: string) {
+	const rows = body.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
+		const separator = line.indexOf(":");
+		return separator > 0 ? [line.slice(0, separator).trim(), line.slice(separator + 1).trim()] : [line, ""];
+	});
+	return `<table class="contract-document-info"><tbody>${rows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}</tbody></table>`;
+}
+
 /**
  * Generate HTML from saved clauses for backward compatibility
  * (contracts saved before html field was added)
@@ -17,11 +61,15 @@ function clausesToHtml(clauses: { title: string; body: string }[], title?: strin
 		const h3 = document.createElement("h3");
 		h3.textContent = clause.title;
 		section.appendChild(h3);
-		const lines = clause.body.split("\n").map((l) => l.trim()).filter(Boolean);
-		for (const line of lines) {
-			const p = document.createElement("p");
-			p.textContent = line;
-			section.appendChild(p);
+		if (clause.title.toLowerCase() === "informasi dokumen") {
+			section.insertAdjacentHTML("beforeend", documentInfoToHtml(clause.body));
+		} else {
+			const lines = clause.body.split("\n").map((l) => l.trim()).filter(Boolean);
+			for (const line of lines) {
+				const p = document.createElement("p");
+				p.textContent = line;
+				section.appendChild(p);
+			}
 		}
 		article.appendChild(section);
 	}
@@ -67,22 +115,27 @@ type ContractPreviewProps = {
 };
 
 export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, signatoryName, signatorySignatureUrl, editable, onSignatureChange }: ContractPreviewProps) {
-	const rawHtml = contract.html
-		? contract.html
-		: contract.clauses?.length
-			? clausesToHtml(contract.clauses, contract.title)
+	const displayPlainText = (() => {
+		const normalized = contract.plainText
+			? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
 			: "";
-	// Fix old <br/>-based HTML, then sanitize
+		const lines = normalized.split("\\n");
+		if (lines[0]?.trim() && /^(perjanjian kerja|pkwt)/i.test(lines[0].trim())) lines.shift();
+		if (lines[0]?.trim() && /^[A-Z][A-Z0-9 &/.-]{1,40}$/.test(lines[0].trim())) lines.shift();
+		return lines.join("\\n");
+	})();
+	// Prefer the deterministic parser for legacy/full-text contracts. This avoids
+	// carrying old floating-column markup into the PDF renderer.
+	const rawHtml = contract.clauses?.length > 1
+		? clausesToHtml(contract.clauses, contract.title)
+		: plainTextToHtml(displayPlainText);
 	const safeHtml = rawHtml ? sanitizeContractHtml(fixBrBasedHtml(rawHtml)) : "";
-	const displayPlainText = contract.plainText
-		? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
-		: "";
 	const displayCompanyName = companyName || "Djiwa Tentram Cafe & Resto";
 	const displaySignatoryName = signatoryName || "Penanggung Jawab Perusahaan";
 
 	return (
 		<div
-			className="rounded-xl border bg-white p-4 text-slate-950 shadow-sm sm:rounded-2xl sm:p-8"
+			className="border border-slate-300 bg-white p-6 text-slate-950 sm:p-10"
 			id="employee-contract-preview"
 			style={{ fontFamily: "'Times New Roman', Times, Georgia, serif" }}
 		>
@@ -105,6 +158,9 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 						__html: safeHtml
 							.replace(/<h3>/g, '<h3 style="font-family: Times New Roman, Times, serif; font-size: 11pt; font-weight: bold; text-align: center; margin-top: 14px; margin-bottom: 6px;">')
 							.replace(/<\/h3>/g, "</h3>")
+							.replace(/<table class="contract-document-info">/g, '<table style="width:100%; border-collapse:collapse; margin:8px 0 14px; font-size:10.5pt;">')
+							.replace(/<th>/g, '<th style="width:38%; border:1px solid #cbd5e1; background:#f8fafc; padding:6px 8px; text-align:left; font-weight:bold;">')
+							.replace(/<td>/g, '<td style="border:1px solid #cbd5e1; padding:6px 8px;">')
 							.replace(/<p>/g, '<p style="font-family: Times New Roman, Times, serif; font-size: 11pt; text-align: justify; line-height: 1.8; margin-bottom: 4px;">')
 							.replace(/<\/p>/g, "</p>")
 					}}

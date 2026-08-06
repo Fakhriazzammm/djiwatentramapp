@@ -31,6 +31,7 @@ import {
   buildEmployeeContractTemplate,
   buildContractVariableContext,
   replaceContractVariables,
+  findUnresolvedContractVariables,
   type EmployeeOnboardingDraft,
 } from "@/lib/employee-onboarding-schema";
 import { dataUrlToBlob, generateContractPdfBlob } from "@/lib/contract-pdf";
@@ -335,6 +336,10 @@ function RegisterCompletePage() {
 
       // 2. Generate & upload PDF
       const contractText = contractPreview?.plainText || "";
+      const unresolvedVariables = findUnresolvedContractVariables(contractText);
+      if (unresolvedVariables.length > 0) {
+        throw new Error(`Kontrak belum lengkap. Data belum terisi: ${unresolvedVariables.join(", ")}`);
+      }
       const draft = { 
         personal: { fullName: app.full_name, email: "", phone: "", identityNumber: "", address: "", birthDate: "", emergencyContactName: "", emergencyContactPhone: "" }, 
         employment: app.employment || {}, 

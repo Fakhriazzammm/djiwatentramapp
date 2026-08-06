@@ -19,7 +19,7 @@ function KontrakPage() {
 			.from("employee_onboarding_applications")
 			.select("id, full_name, contract, contract_pdf_url, employment, raw, created_at, status")
 			.eq("approved_user_source_id", staff._id)
-			.in("status", ["approved", "expired", "completed"])
+			.in("status", ["approved", "contract_signed", "expired", "completed"])
 			.order("created_at", { ascending: false })
 			.maybeSingle()
 			.then((result: any) => {
