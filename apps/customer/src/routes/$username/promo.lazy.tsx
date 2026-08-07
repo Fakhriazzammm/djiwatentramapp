@@ -1,6 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, TicketPercent } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowLeft, Copy, TicketPercent } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useHybridActiveDiscounts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
@@ -27,6 +28,18 @@ function PromoPage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const discounts = useHybridActiveDiscounts();
+
+	const [copiedCode, setCopiedCode] = useState<string | null>(null);
+	const copyCode = async (code: string) => {
+		try {
+			await navigator.clipboard.writeText(code);
+			setCopiedCode(code);
+			toast.success("Kode promo disalin");
+			window.setTimeout(() => setCopiedCode(null), 1800);
+		} catch {
+			toast.error("Kode promo tidak bisa disalin otomatis");
+		}
+	};
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
@@ -66,7 +79,7 @@ function PromoPage() {
 							<button
 								type="button"
 								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
-								className="mt-4 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white shadow-sm"
+								className="mt-4 min-h-11 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 							>
 								Lihat menu
 							</button>
@@ -90,9 +103,9 @@ function PromoPage() {
 										{(promo.code || minOrder || validUntil) ? (
 											<div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
 												{promo.code ? (
-													<span className="rounded-md border border-dashed border-primary/40 bg-primary/5 px-2 py-0.5 text-[10px] font-black tracking-wider text-primary">
-														{promo.code}
-													</span>
+													<button type="button" onClick={() => copyCode(String(promo.code))} className="inline-flex min-h-11 items-center gap-1.5 rounded-[14px] border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1 text-[10px] font-black tracking-wider text-primary">
+														<Copy className="h-3 w-3" /> {copiedCode === String(promo.code) ? "Disalin" : promo.code}
+													</button>
 												) : null}
 												{minOrder ? (
 													<span className="text-[10px] text-muted-foreground">Min. order {currency(minOrder)}</span>
@@ -102,6 +115,7 @@ function PromoPage() {
 												) : null}
 											</div>
 										) : null}
+										<button type="button" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-border px-3 py-2.5 text-xs font-black text-primary hover:bg-primary/5">Gunakan promo <ArrowLeft className="h-3.5 w-3.5 rotate-180" /></button>
 									</div>
 								);
 							})}

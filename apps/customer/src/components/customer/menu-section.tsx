@@ -18,12 +18,14 @@ export interface MenuSectionProps {
 	isMenuLoading: boolean;
 	logoUrl: string;
 	manualCode: string;
+	catalogQuery: string;
 	menuMode: MenuMode;
 	orderedCategories: Doc<"categories">[];
 	partySize: number;
 	setActiveCategoryId: (value: Id<"categories"> | null) => void;
 	setCartOpen: (value: boolean) => void;
 	setManualCode: (value: string) => void;
+	setCatalogQuery: (value: string) => void;
 	setMenuMode: (value: MenuMode) => void;
 	setScannerOpen: (value: boolean) => void;
 	storeName: string;
@@ -83,11 +85,22 @@ export function renderMenuSection(props: MenuSectionProps) {
 				<div className="space-y-3">
 					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
-						<div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-							<button type="button" className={chipClassName(props.activeCategoryId === null)} onClick={() => props.setActiveCategoryId(null)}>Semua</button>
+						<div className="mt-3 relative">
+							<Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<input
+								aria-label="Cari menu"
+								className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2 pl-9 pr-3 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								placeholder="Cari nama atau nomor menu"
+								value={props.catalogQuery}
+								onChange={(event) => props.setCatalogQuery(event.target.value)}
+							/>
+						</div>
+						<div className="relative mt-3">
+							<div aria-label="Kategori menu" className="flex gap-1.5 overflow-x-auto pb-1 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 							{props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden").map((category) => <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>)}
 							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
 						</div>
+					</div>
 					</div>
 					{props.isMenuLoading ? (
 						<div className="grid grid-cols-2 gap-2.5">
@@ -109,7 +122,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
 							return (
 								<button type="button" key={product._id} className="overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
-									<div className="relative h-28 w-full bg-muted">{product.image ? <img alt={product.name} className="h-full w-full object-cover" src={product.image} /> : null}{product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}{pricing.isPromo ? <span className="absolute right-2 top-2 rounded-full px-2 py-0.5 font-bold text-[10px] text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}{quantity > 0 ? <span className="absolute right-2 top-9 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow">{quantity} di cart</span> : null}</div>
+									<div className="relative h-28 w-full bg-muted"><div className="flex h-full w-full items-center justify-center text-muted-foreground"><PackageSearch aria-hidden="true" className="h-7 w-7" strokeWidth={1.8} /></div>{product.image ? <img alt={product.name} className="absolute inset-0 h-full w-full object-cover" src={product.image} onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}{product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}{pricing.isPromo ? <span className="absolute right-2 top-2 rounded-full px-2 py-0.5 font-bold text-[10px] text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}{quantity > 0 ? <span className="absolute right-2 top-9 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow">{quantity} di cart</span> : null}</div>
 									<div className="space-y-1.5 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><div className="flex items-end justify-between gap-1.5"><div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div><div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-3.5 w-3.5" /></div></div></div>
 								</button>
 							);

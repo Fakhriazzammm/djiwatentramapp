@@ -140,7 +140,7 @@ function PoinPage() {
 							<button
 								type="button"
 								onClick={goHome}
-								className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
+								className="mt-4 flex min-h-11 items-center gap-1.5 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 							>
 								<LogIn className="h-3.5 w-3.5" /> Masuk / Daftar
 							</button>
@@ -292,7 +292,7 @@ function PoinPage() {
 									<button
 										type="button"
 										onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
-										className="mt-3 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white shadow-sm"
+										className="mt-3 min-h-11 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 									>
 										Pesan sekarang
 									</button>

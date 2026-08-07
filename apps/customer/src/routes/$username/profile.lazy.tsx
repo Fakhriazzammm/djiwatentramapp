@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, LogOut, Mail, Star, User } from "lucide-react";
+import { ArrowLeft, LogIn, LogOut, Mail, Star, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,9 +30,23 @@ function ProfilePage() {
 
 	if (!customer) {
 		return (
-			<div className="flex min-h-app items-center justify-center bg-background px-4">
-				<div className="text-center">
-					<p className="text-sm text-muted-foreground">Silakan login terlebih dahulu.</p>
+			<div className="app-page min-h-app">
+				<div className="app-shell mx-auto flex min-h-app max-w-md items-center justify-center bg-background px-4">
+				<div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
+					<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+						<User className="h-5 w-5" />
+					</div>
+					<h1 className="mt-3 font-display text-lg font-black">Profil member</h1>
+					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Masuk atau daftar untuk melihat poin, riwayat, dan mengelola profilmu.</p>
+					<div className="mt-4 space-y-2">
+						<button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-white" onClick={() => navigate({ to: "/" })}>
+							<LogIn className="h-3.5 w-3.5" /> Masuk / Daftar
+						</button>
+						<button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-border px-3 py-2.5 text-xs font-bold text-muted-foreground" onClick={() => navigate({ to: "/$username", params: { username } })}>
+							<ArrowLeft className="h-3.5 w-3.5" /> Kembali ke beranda
+						</button>
+					</div>
+				</div>
 				</div>
 			</div>
 		);
@@ -77,7 +91,8 @@ function ProfilePage() {
 	};
 
 	return (
-		<div className="app-page min-h-app bg-background">
+		<div className="app-page min-h-app">
+			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 			{/* Header */}
 			<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 				<div className="flex items-center gap-2">
@@ -93,7 +108,7 @@ function ProfilePage() {
 				</div>
 			</header>
 
-			<main className="px-3 py-3">
+			<main className="px-3 py-4">
 				{/* Avatar & Username */}
 				<div className="flex flex-col items-center py-4">
 					{customer.photoUrl ? (
@@ -212,6 +227,7 @@ function ProfilePage() {
 					</button>
 				</div>
 			</main>
+			</div>
 		</div>
 	);
 }

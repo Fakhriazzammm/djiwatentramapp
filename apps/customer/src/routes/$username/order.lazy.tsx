@@ -10,7 +10,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -38,9 +38,9 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode } from "@/components/customer/types";
-import { BottomButton, CartRow, SummaryCardLines } from "@/components/customer/shared-components";
-import { BarcodeScanner } from "@/components/customer/barcode-scanner";
-import { ProductSheet } from "@/components/customer/product-sheet";
+import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
+const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
+const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
 import { renderMenuSection } from "@/components/customer/menu-section";
 import { renderCheckoutSection } from "@/components/customer/checkout-section";
 import { renderReceiptSection } from "@/components/customer/receipt-section";
@@ -122,6 +122,7 @@ function OrderPage() {
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const isMenuLoading = categories === undefined || products === undefined;
+	const [catalogQuery, setCatalogQuery] = useState("");
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
 	const config = {
@@ -147,22 +148,34 @@ function OrderPage() {
 		[products]
 	);
 	const filteredProducts = useMemo(() => {
-		if (!activeCategoryId) return orderedProducts;
-		const validCategoryIds = new Set<Id<"categories">>([activeCategoryId]);
-		for (const category of orderedCategories) {
-			if (category.parentId === activeCategoryId) validCategoryIds.add(category._id);
-		}
-		return orderedProducts.filter((product) => validCategoryIds.has(product.categoryId));
-	}, [activeCategoryId, orderedCategories, orderedProducts]);
-	const productByMenuNumber = useMemo(() => {
+		const categoryFiltered = !activeCategoryId
+			? orderedProducts
+			: (() => {
+					const validCategoryIds = new Set<Id<"categories">>([activeCategoryId]);
+					for (const category of orderedCategories) {
+						if (category.parentId === activeCategoryId) validCategoryIds.add(category._id);
+					}
+					return orderedProducts.filter((product) => validCategoryIds.has(product.categoryId));
+			  })();
+		const query = catalogQuery.trim().toLowerCase();
+		if (!query) return categoryFiltered;
+		return categoryFiltered.filter((product) =>
+			product.name.toLowerCase().includes(query) ||
+			String(product.menuNumber ?? "").includes(query),
+		);
+	}, [activeCategoryId, catalogQuery, orderedCategories, orderedProducts]);
+	const menuNumberIndex = useMemo(() => {
 		const lookup = new Map<string, (typeof orderedProducts)[number]>();
+		const duplicates = new Set<string>();
 		for (const product of orderedProducts) {
-			if (product.menuNumber != null) {
-				lookup.set(normalizeMenuCode(product.menuNumber), product);
-			}
+			if (product.menuNumber == null) continue;
+			const code = normalizeMenuCode(product.menuNumber);
+			if (lookup.has(code)) duplicates.add(code);
+			else lookup.set(code, product);
 		}
-		return lookup;
+		return { lookup, duplicates };
 	}, [orderedProducts]);
+	const productByMenuNumber = menuNumberIndex.lookup;
 	const activeFreeRefillPromo = useMemo(() => {
 		if (!discounts) return null;
 		const now = new Date();
@@ -303,14 +316,19 @@ function OrderPage() {
 
 	useEffect(() => {
 		if (step !== "menu" || menuMode !== "number" || !manualCode.trim()) return;
-		const product = productByMenuNumber.get(normalizeMenuCode(manualCode));
+		const code = normalizeMenuCode(manualCode);
+		if (menuNumberIndex.duplicates.has(code)) {
+			setCodeFeedback(`Nomor menu ${code} belum unik. Pilih menu dari katalog atau minta staff memperbaiki nomor produk.`);
+			return;
+		}
+		const product = productByMenuNumber.get(code);
 		if (!product) return;
 		const timer = window.setTimeout(() => {
 			handleProductSelect(product);
 			setManualCode("");
 		}, 350);
 		return () => window.clearTimeout(timer);
-	}, [manualCode, menuMode, productByMenuNumber, step]);
+	}, [manualCode, menuMode, menuNumberIndex.duplicates, productByMenuNumber, setCodeFeedback, step]);
 
 	useEffect(() => {
 		const invoiceId =
@@ -628,9 +646,10 @@ function OrderPage() {
 							? "flex-1 overflow-y-auto pb-24"
 							: step === "receipt"
 								? "flex-1 overflow-y-auto pb-32"
-								: "flex-1 overflow-hidden pb-20"
+								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
+					<CustomerOrderProgress step={step === "payment" ? "checkout" : step} />
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -717,7 +736,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, cart, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setManualCode, setMenuMode, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
+						? renderMenuSection({ activeCategoryId, cart, catalogQuery, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
@@ -728,7 +747,7 @@ function OrderPage() {
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
-				{step !== "party" && step !== "refill" ? (
+				{step !== "party" && step !== "refill" && step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Grid2X2 className="h-3.5 w-3.5" />} onClick={() => setStep("menu")} />
@@ -746,14 +765,14 @@ function OrderPage() {
 					<div className="flex h-full flex-col">
 						<div className="border-b border-border px-4 pb-3 pt-4"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Review pesanan</p><h3 className="font-display text-lg font-black">Order basket</h3></div><button type="button" aria-label="Tutup keranjang" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={() => setCartOpen(false)}><X className="h-3.5 w-3.5" /></button></div></div>
 						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground"><ShoppingCart aria-hidden="true" className="h-7 w-7" strokeWidth={2} /><p className="mt-2 font-display text-sm font-bold text-foreground">Keranjang masih kosong</p><p className="mt-1 text-xs">Pilih menu untuk mulai memesan.</p></div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
-						<div className="border-t border-border px-4 pb-5 pt-3"><SummaryCardLines productGrossSubtotal={productGrossSubtotal} freeRefillCharge={freeRefillCharge} promoDiscount={promoDiscount} taxAmount={taxAmount} taxRate={taxRate} serviceChargeAmount={serviceChargeAmount} serviceChargeRate={serviceChargeRate} total={total} /><button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black text-white shadow-sm disabled:opacity-60" style={{ background: themeColor }} onClick={() => { setCartOpen(false); setStep("checkout"); }} disabled={!cart.length}>Lanjut checkout <ChevronRight className="h-4 w-4" /></button></div>
+						<div className="border-t border-border px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3"><SummaryCardLines productGrossSubtotal={productGrossSubtotal} freeRefillCharge={freeRefillCharge} promoDiscount={promoDiscount} taxAmount={taxAmount} taxRate={taxRate} serviceChargeAmount={serviceChargeAmount} serviceChargeRate={serviceChargeRate} total={total} /><button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black text-white shadow-sm disabled:opacity-60" style={{ background: themeColor }} onClick={() => { setCartOpen(false); setStep("checkout"); }} disabled={!cart.length}>Lanjut checkout <ChevronRight className="h-4 w-4" /></button></div>
 					</div>
 				</SheetContent>
 			</Sheet>
 
 			{/* ── Service Sheet ──────────────────────────────────── */}
 			<Sheet open={serviceOpen} onOpenChange={setServiceOpen}>
-				<SheetContent side="bottom" className="rounded-t-3xl p-0">
+				<SheetContent side="bottom" className="z-[60] max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-3xl p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
 					<div className="space-y-3 px-4 py-5">
 						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Layanan customer</p><h3 className="mt-0.5 text-lg font-black">Hubungi tim restoran</h3><p className="mt-1 text-xs text-muted-foreground">Request akan langsung muncul di halaman admin operasional.</p></div>
 						<button type="button" className="flex w-full items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#ef4444,#b91c1c)] px-3 py-4 text-white shadow-sm" onClick={() => requestService("call_staff")}><PhoneCall className="h-4 w-4" /><div><p className="font-black text-sm">Panggil staff</p><p className="text-xs text-white/75">Panggil staff ke meja customer.</p></div></button>
@@ -765,14 +784,18 @@ function OrderPage() {
 			{/* ── Scanner Sheet ──────────────────────────────────── */}
 			<Sheet open={scannerOpen} onOpenChange={setScannerOpen}>
 				<SheetContent side="bottom" showCloseButton={false} className="rounded-t-3xl p-0">
-					<BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={(rawValue) => { const product = productByMenuNumber.get(normalizeMenuCode(rawValue.replace(/\D/g, ""))) || productByMenuNumber.get(normalizeMenuCode(rawValue)); if (!product) { toast.error("Barcode tidak cocok dengan nomor produk"); return; } handleProductSelect(product); setScannerOpen(false); }} />
+					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan scanner...</div>}>
+						<BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={(rawValue) => { const product = productByMenuNumber.get(normalizeMenuCode(rawValue.replace(/\D/g, ""))) || productByMenuNumber.get(normalizeMenuCode(rawValue)); if (!product) { toast.error("Barcode tidak cocok dengan nomor produk"); return; } handleProductSelect(product); setScannerOpen(false); }} />
+					</Suspense>
 				</SheetContent>
 			</Sheet>
 
 			{/* ── Product Sheet ──────────────────────────────────── */}
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
 				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
-					<ProductSheet product={productSheet} discounts={discounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
+					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan detail menu...</div>}>
+						<ProductSheet product={productSheet} discounts={discounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
+					</Suspense>
 				</SheetContent>
 			</Sheet>
 		</div>

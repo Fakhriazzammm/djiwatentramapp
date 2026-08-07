@@ -1,9 +1,10 @@
-import { createLazyFileRoute, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, LogIn, LogOut, ShoppingCart, Star, User } from "lucide-react";
+import { ClipboardList, Coins, Home, UserRound, ChevronRight, LogIn, LogOut, ShoppingCart, Star, User } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
+import { CustomerBottomNav } from "@/components/customer/customer-shell";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 type GuestData = {
@@ -32,6 +33,7 @@ export const Route = createLazyFileRoute("/$username")({
 function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
@@ -41,6 +43,14 @@ function MemberHomePage() {
 
 	const matches = useMatches();
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
+	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
+	const customerNav = [
+		{ label: "Home", icon: <Home className="h-4 w-4" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
+		{ label: "Pesan", icon: <ShoppingCart className="h-4 w-4" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } }) },
+		{ label: "Riwayat", icon: <ClipboardList className="h-4 w-4" />, active: location.pathname.includes("/riwayat"), onSelect: () => navigate({ to: "/$username/riwayat", params: { username } }) },
+		{ label: "Poin", icon: <Coins className="h-4 w-4" />, active: location.pathname.includes("/poin"), onSelect: () => navigate({ to: "/$username/poin", params: { username } }) },
+		{ label: "Profil", icon: <UserRound className="h-4 w-4" />, active: location.pathname.includes("/profile"), onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
+	];
 
 	// ── Guest data dari localStorage (synchronous, no network) ──
 	// Langsung resolve kalau guest match — tanpa nunggu auth check
@@ -104,9 +114,10 @@ function MemberHomePage() {
 	if (isChildRoute) {
 		return (
 			<>
-				<div className="min-h-app">
+				<div className="min-h-app pb-24">
 					<Outlet />
 				</div>
+				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
 				{authModal}
 			</>
 		);
@@ -134,7 +145,7 @@ function MemberHomePage() {
 						</div>
 					</header>
 
-					<main className="flex-1 px-3 py-4">
+					<main className="flex-1 px-3 py-4 pb-24">
 						<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
 							<div className="flex items-center gap-3">
 								<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -176,15 +187,15 @@ function MemberHomePage() {
 
 							{/* ─── Menu (guest juga bisa akses semua tombol) ─── */}
 							<div className="mt-4">
-								<h2 className="text-xs font-black uppercase tracking-wider text-foreground mb-3">
-									Menu
-								</h2>
+								<h2 className="text-xs font-black uppercase tracking-wider text-foreground">Akses cepat</h2>
+								<p className="mt-1 text-[11px] text-muted-foreground">Pesan, cek promo, dan kelola akunmu dari sini.</p>
 								<CustomerMenuGrid baseRoute={username} />
 							</div>
 						</div>
 					</main>
 				</div>
 
+				<CustomerBottomNav items={customerNav} />
 				{authModal}
 			</div>
 		);
@@ -228,7 +239,7 @@ function MemberHomePage() {
 					</div>
 				</header>
 
-				<main className="flex-1 px-3 py-4">
+				<main className="flex-1 px-3 py-4 pb-24">
 					<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
 						<div className="flex items-center gap-3">
 							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -253,18 +264,23 @@ function MemberHomePage() {
 							) : null}
 						</div>
 
+						<button type="button" className="mt-4 flex min-h-12 w-full items-center justify-between rounded-[14px] bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}>
+							<span>Mulai pesan</span>
+							<ChevronRight className="h-4 w-4" />
+						</button>
+
 						{/* ─── Menu ─── */}
 						<div className="mt-4">
-							<h2 className="text-xs font-black uppercase tracking-wider text-foreground mb-3">
-								Menu
-							</h2>
+							<h2 className="text-xs font-black uppercase tracking-wider text-foreground">Akses cepat</h2>
+							<p className="mt-1 text-[11px] text-muted-foreground">Pesan, cek promo, dan kelola akunmu dari sini.</p>
 							<CustomerMenuGrid baseRoute={username} />
 						</div>
 					</div>
 				</main>
 				</div>
-				</div>
+			</div>
 
+			<CustomerBottomNav items={customerNav} />
 			{authModal}
 		</>
 	);

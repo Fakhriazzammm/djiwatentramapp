@@ -26,7 +26,7 @@ function ProductCard({ product, isFavorite, onToggle, onOrder }: {
 			) : (
 				<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-muted text-muted-foreground"><Utensils aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>
 			)}
-			<button type="button" className="min-w-0 flex-1 text-left" onClick={onOrder}>
+			<button type="button" className="min-h-11 min-w-0 flex-1 text-left" onClick={onOrder}>
 				<p className="break-words text-xs font-black leading-snug">{product.name}</p>
 				<p className="text-[11px] font-bold text-primary">{currency(Number(product.price ?? 0))}</p>
 				{product.menuNumber ? (
@@ -99,6 +99,9 @@ function FavoritPage() {
 									<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
 										Tandai menu kesukaanmu dengan tombol favorit supaya gampang dicari lagi.
 									</p>
+									<button type="button" onClick={goOrder} className="mt-4 min-h-11 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground shadow-sm">
+										Lihat menu
+									</button>
 								</div>
 							) : (
 								<div className="space-y-2">
@@ -115,7 +118,7 @@ function FavoritPage() {
 							)}
 
 							{/* ── Jelajahi menu ── */}
-							<h2 className="mt-6 mb-2 text-xs font-black uppercase tracking-wider text-foreground">Semua Menu</h2>
+							<h2 className="mt-6 mb-2 text-xs font-black uppercase tracking-wider text-foreground">Jelajahi menu</h2>
 							<div className="relative mb-2.5">
 								<Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 								<input
