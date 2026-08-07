@@ -59,3 +59,8 @@ venv/
 result_batch_analyze.txt
 =
 .vercel
+
+# Runtime state (must survive VPS git auto-pulls)
+.runtime/
+yumi-supervisor-agent/.yumi_supervisor_cursor.txt
+yumi-supervisor-agent/.shift_recap_cursor.txt

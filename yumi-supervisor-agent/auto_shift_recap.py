@@ -12,7 +12,10 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5182004468"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
-CURSOR_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".shift_recap_cursor.txt")
+AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+STATE_DIR = os.path.join(os.path.dirname(AGENT_DIR), ".runtime", "yumi-supervisor-agent")
+os.makedirs(STATE_DIR, exist_ok=True)
+CURSOR_FILE = os.path.join(STATE_DIR, "shift_recap_cursor.txt")
 
 G = {
     "barista": {"chat_id": BARISTA_GROUP_ID, "icon": "☕", "label": "Barista"},

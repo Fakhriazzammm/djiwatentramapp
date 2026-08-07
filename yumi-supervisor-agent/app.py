@@ -1239,9 +1239,13 @@ async def _handle_callback(update: Update, context):
 
 # ── Order polling ────────────────────────────────────────────────
 
-_CURSOR_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".yumi_supervisor_cursor.txt")
+_AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_STATE_DIR = os.path.join(os.path.dirname(_AGENT_DIR), ".runtime", "yumi-supervisor-agent")
+os.makedirs(_STATE_DIR, exist_ok=True)
+_LEGACY_CURSOR_FILE = os.path.join(_AGENT_DIR, ".yumi_supervisor_cursor.txt")
+_CURSOR_FILE = os.path.join(_STATE_DIR, "yumi_supervisor_cursor.txt")
 
-def _load_supervisor_cursor() -> tuple[int, set[str]]:
+def _load_supervisor_cursor() -> tuple[int, set[str], int]:
     """Load last check timestamp and reported order numbers from file."""
     try:
         with open(_CURSOR_FILE) as f:
@@ -1262,7 +1266,28 @@ def _load_supervisor_cursor() -> tuple[int, set[str]]:
                     break
             return ts, nos, csr_ts
     except (FileNotFoundError, ValueError, IndexError):
-        pass
+        # Backward-compatible one-time read from the old tracked state file.
+        # New writes always go to .runtime, which survives git auto-pulls.
+        try:
+            with open(_LEGACY_CURSOR_FILE) as f:
+                lines = [l.strip() for l in f if l.strip()]
+            if lines:
+                ts = int(lines[0])
+                nos: set[str] = set()
+                csr_ts: int = 0
+                mode = "orders"
+                for l in lines[1:]:
+                    if l == "---":
+                        mode = "csr"
+                        continue
+                    if mode == "orders":
+                        nos.add(l)
+                    else:
+                        csr_ts = int(l)
+                        break
+                return ts, nos, csr_ts
+        except (FileNotFoundError, ValueError, IndexError):
+            pass
     # Default: look back 24 hours on first run
     ts = int((_now_wib() - timedelta(hours=24)).timestamp() * 1000)
     return ts, set(), 0
@@ -1279,14 +1304,25 @@ def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0):
 _last_order_check_ms, _reported_order_nos, _last_csr_check_ms = _load_supervisor_cursor()
 
 # ── Shift recap cursor ──
-_SHIFT_RECAP_CURSOR_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".shift_recap_cursor.txt")
+_LEGACY_SHIFT_RECAP_CURSOR_FILE = os.path.join(_AGENT_DIR, ".shift_recap_cursor.txt")
+_SHIFT_RECAP_CURSOR_FILE = os.path.join(_STATE_DIR, "shift_recap_cursor.txt")
 
 def _load_shift_recap_cursor() -> int:
     try:
         with open(_SHIFT_RECAP_CURSOR_FILE) as f:
             return int(f.read().strip())
     except:
-        return 0
+        try:
+            with open(_LEGACY_SHIFT_RECAP_CURSOR_FILE) as f:
+                legacy_ts = int(f.read().strip())
+            now_ms = int(datetime.now().timestamp() * 1000)
+            # Never replay an unbounded historical backlog after deployment.
+            # A cursor older than two hours is treated as stale and starts fresh.
+            if now_ms - legacy_ts > 2 * 60 * 60 * 1000:
+                return now_ms
+            return legacy_ts
+        except (FileNotFoundError, ValueError):
+            return int(datetime.now().timestamp() * 1000)
 
 def _save_shift_recap_cursor(ts: int):
     with open(_SHIFT_RECAP_CURSOR_FILE, "w") as f:
@@ -1833,7 +1869,7 @@ async def _check_closed_shifts(bot: Bot):
         s_id = shift.get("source_id", "?")
         s_name = shift.get("shift_name", "Shift")
         s_start = shift.get("start_time", 0)
-        s_end = shift.get("end_time", 0)
+        s_end = int(shift.get("end_time") or 0)
         if not s_end or s_end <= last_ts:
             continue
         start_iso = _ms_to_iso(s_start)
