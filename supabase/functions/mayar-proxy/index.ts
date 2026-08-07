@@ -6,7 +6,7 @@ const corsHeaders = {
 		"authorization, x-client-info, apikey, content-type",
 };
 
-const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v1";
+const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY");
 
 function json(body: unknown, status = 200) {
@@ -32,10 +32,18 @@ async function createInvoice(payload: Record<string, unknown>) {
 		redirectUrl: (payload.redirectUrl as string)?.trim() || "https://zantara.myr.id",
 		description: payload.description || "",
 		expiredAt: payload.expiredAt || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-		items: payload.items || [],
+		items: (Array.isArray(payload.items) ? payload.items : []).map((item: any) => {
+			const description = String(item?.description || item?.name || "Item");
+			return {
+				description,
+				quantity: Number(item?.quantity ?? 1),
+				rate: Number(item?.rate ?? item?.price ?? 0),
+			};
+		}),
+		extraData: payload.extraData || {},
 	};
 
-	const resp = await fetch(`${MAYAR_API_BASE}/invoice/create`, {
+	const resp = await fetch(`${MAYAR_API_BASE}/invoices/create`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -47,9 +55,9 @@ async function createInvoice(payload: Record<string, unknown>) {
 	const result = await resp.json();
 
 	if (!resp.ok || result?.statusCode !== 200) {
-		const detail = JSON.stringify(result);
 		const msg = result?.messages || result?.message || `Mayar API error ${resp.status}`;
-		throw new Error(`${msg} — ${detail}`);
+		console.error("Mayar invoice create failed", resp.status, result);
+		throw new Error(String(msg));
 	}
 
 	return result;
@@ -60,7 +68,7 @@ async function getInvoiceDetail(invoiceId: string) {
 		throw new Error("MAYAR_API_KEY tidak dikonfigurasi");
 	}
 
-	const resp = await fetch(`${MAYAR_API_BASE}/invoice/${encodeURIComponent(invoiceId)}`, {
+	const resp = await fetch(`${MAYAR_API_BASE}/invoices/${encodeURIComponent(invoiceId)}`, {
 		method: "GET",
 		headers: {
 			"Authorization": `Bearer ${MAYAR_API_KEY}`,

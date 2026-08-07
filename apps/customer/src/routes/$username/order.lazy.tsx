@@ -483,6 +483,7 @@ function OrderPage() {
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
 						expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+						extraData: { orderId: String(orderId) },
 						items: [
 							...cart.map((item) => ({
 								quantity: item.quantity,

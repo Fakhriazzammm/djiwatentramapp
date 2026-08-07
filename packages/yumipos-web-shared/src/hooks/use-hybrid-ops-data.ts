@@ -14,11 +14,15 @@ function resolveMayarConfig() {
 	const baseUrl =
 		(import.meta.env.VITE_MAYAR_BASE_URL as string | undefined) ||
 		(import.meta.env.VITE_MAYAR_API_BASE as string | undefined) ||
-		"https://api.mayar.id/hl/v1";
+		"https://api.mayar.id/hl/v2";
 	const apiKey = (import.meta.env.VITE_MAYAR_API_KEY as string | undefined) || "";
+	const hasSupabaseProxy = Boolean(
+		import.meta.env.VITE_SUPABASE_URL &&
+			import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+	);
 	const missing: string[] = [];
 	if (!baseUrl) missing.push("MAYAR_BASE_URL");
-	if (!apiKey) missing.push("MAYAR_API_KEY");
+	if (!apiKey && !hasSupabaseProxy) missing.push("MAYAR_API_KEY");
 
 	return {
 		configured: missing.length === 0,

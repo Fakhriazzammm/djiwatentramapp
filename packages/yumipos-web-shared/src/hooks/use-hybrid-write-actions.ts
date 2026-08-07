@@ -5877,12 +5877,10 @@ export function useHybridMayarCreateInvoice() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase Mayar function not configured");
-			} catch {
-				return fallback(args);
-			}
+			return invokeEdgeFunction("mayar-proxy", {
+				action: "get-invoice-detail",
+				...args,
+			});
 		},
 		[fallback]
 	);
@@ -5893,12 +5891,10 @@ export function useHybridMayarGetInvoiceDetail() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase Mayar function not configured");
-			} catch {
-				return fallback(args);
-			}
+			return invokeEdgeFunction("mayar-proxy", {
+				action: "create-invoice",
+				...args,
+			});
 		},
 		[fallback]
 	);

@@ -33,6 +33,10 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.mayar-webhook]
+enabled = true
+verify_jwt = false
+
 [functions.verify-closing-link]
 enabled = true
 verify_jwt = false
