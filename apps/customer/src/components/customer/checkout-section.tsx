@@ -1,10 +1,11 @@
 import { Loader2, QrCode, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PaymentChoice } from "./types";
+import type { CartItem, PaymentChoice } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { SummaryCardLines } from "./shared-components";
 
 export interface CheckoutSectionProps {
+	cart: CartItem[];
 	checkout: () => Promise<void>;
 	config: typeof CUSTOMER_ORDERING_DEFAULTS;
 	currency: (v: number) => string;
@@ -42,6 +43,26 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 					<div>
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step akhir</p>
 						<h2 className="text-sm font-black">Checkout pesanan</h2>
+					</div>
+				</div>
+				<div className="mt-3 rounded-2xl border border-border bg-muted/25 p-3" aria-label="Detail pesanan">
+					<div className="mb-2 flex items-center justify-between">
+						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detail pesanan</p>
+						<span className="text-[10px] font-bold text-muted-foreground">{props.cart.reduce((sum, item) => sum + item.quantity, 0)} item</span>
+					</div>
+					<div className="space-y-2">
+						{props.cart.map((item) => (
+							<div key={`${item.productId}-${item.variant || "default"}`} className="flex items-center gap-2.5">
+								<div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-muted">
+									{item.image ? <img src={item.image} alt="" className="h-full w-full object-cover" /> : null}
+								</div>
+								<div className="min-w-0 flex-1">
+									<p className="truncate text-xs font-black">{item.name}</p>
+									<p className="mt-0.5 text-[10px] text-muted-foreground">{item.variant ? `${item.variant} · ` : ""}{item.quantity} × {currency(item.price)}</p>
+								</div>
+								<p className="shrink-0 text-xs font-black text-foreground">{currency(item.price * item.quantity)}</p>
+							</div>
+						))}
 					</div>
 				</div>
 				<div className="mt-2.5 space-y-2">

@@ -740,7 +740,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
