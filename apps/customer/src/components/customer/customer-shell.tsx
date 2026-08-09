@@ -1,5 +1,30 @@
 import type { ReactNode } from "react";
+import { Radio } from "lucide-react";
+import { useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
 import { cn } from "@/lib/utils";
+
+export function CustomerLiveShiftIndicator() {
+	const shiftStatus = useHybridShiftStatus();
+	if (!shiftStatus?.isOpen) return null;
+
+	const cashierName = shiftStatus.ongoingShift?.cashierName ?? shiftStatus.shiftInfo.cashierName ?? "Kasir";
+	const shiftName = shiftStatus.ongoingShift?.shiftName ?? shiftStatus.shiftInfo.shiftName ?? "Shift aktif";
+
+	return (
+		<div className="mx-auto flex w-full max-w-md items-center gap-2 border-b border-emerald-200/70 bg-emerald-50 px-3 py-2 text-xs text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100">
+			<span className="relative flex h-2.5 w-2.5 shrink-0">
+				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+				<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+			</span>
+			<Radio className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+			<span className="min-w-0 truncate">
+				<span className="font-black tracking-wide">KASIR LIVE</span>
+				<span className="mx-1 text-emerald-700/70 dark:text-emerald-300/70">•</span>
+				{cashierName} · {shiftName}
+			</span>
+		</div>
+	);
+}
 
 export function CustomerHeader({
 	backLabel = "Kembali",

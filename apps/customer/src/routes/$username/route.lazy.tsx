@@ -4,7 +4,7 @@ import { ClipboardList, Coins, Home, UserRound, ChevronRight, LogIn, LogOut, Sho
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
-import { CustomerBottomNav } from "@/components/customer/customer-shell";
+import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 type GuestData = {
@@ -115,6 +115,7 @@ function MemberHomePage() {
 		return (
 			<>
 				<div className="min-h-app pb-24">
+					<CustomerLiveShiftIndicator />
 					<Outlet />
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
@@ -144,6 +145,7 @@ function MemberHomePage() {
 							</div>
 						</div>
 					</header>
+					<CustomerLiveShiftIndicator />
 
 					<main className="flex-1 px-3 py-4 pb-24">
 						<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
@@ -238,6 +240,7 @@ function MemberHomePage() {
 						</button>
 					</div>
 				</header>
+				<CustomerLiveShiftIndicator />
 
 				<main className="flex-1 px-3 py-4 pb-24">
 					<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
