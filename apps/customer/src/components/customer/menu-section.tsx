@@ -125,10 +125,34 @@ export function renderMenuSection(props: MenuSectionProps) {
 						</div>
 						<div className="relative mt-3">
 							<div aria-label="Kategori menu" className="flex gap-1.5 overflow-x-auto pb-1 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-							{props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden").map((category) => <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>)}
+							{props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden").map((category) => {
+								const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
+								return <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>;
+							})}
 							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
+							</div>
 						</div>
-					</div>
+						{(() => {
+							const rootCategories = props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden");
+							const activeRoot = rootCategories.find((category) =>
+								category._id === props.activeCategoryId ||
+								props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId)
+							);
+							const subcategories = activeRoot
+								? props.orderedCategories.filter((category) => category.parentId === activeRoot._id && category.track !== "hidden")
+								: [];
+							if (!subcategories.length) return null;
+							return (
+								<div className="mt-2 rounded-[14px] bg-muted/40 p-1.5">
+									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+										<button type="button" className={chipClassName(props.activeCategoryId === activeRoot._id)} onClick={() => props.setActiveCategoryId(activeRoot._id)}>Semua {activeRoot.name}</button>
+										{subcategories.map((subcategory) => (
+											<button type="button" key={subcategory._id} className={chipClassName(props.activeCategoryId === subcategory._id)} onClick={() => props.setActiveCategoryId(subcategory._id)}>{subcategory.name}</button>
+										))}
+									</div>
+								</div>
+							);
+						})()}
 					</div>
 					{props.isMenuLoading ? (
 						<div className="grid grid-cols-2 gap-2.5">
