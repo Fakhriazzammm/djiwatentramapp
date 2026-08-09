@@ -37,7 +37,7 @@ import type { Doc, Id } from "@/types/backend-compat";
 import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
-import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode } from "@/components/customer/types";
+import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
 import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
@@ -123,6 +123,8 @@ function OrderPage() {
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const isMenuLoading = categories === undefined || products === undefined;
 	const [catalogQuery, setCatalogQuery] = useState("");
+	const [pendingNumberProduct, setPendingNumberProduct] = useState<Doc<"products"> | null>(null);
+	const [pendingNumberQuantity, setPendingNumberQuantity] = useState(1);
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
 	const config = {
@@ -324,8 +326,12 @@ function OrderPage() {
 		const product = productByMenuNumber.get(code);
 		if (!product) return;
 		const timer = window.setTimeout(() => {
-			handleProductSelect(product);
-			setManualCode("");
+			if (Array.isArray(product.variations) && product.variations.length > 0) {
+				handleProductSelect(product);
+				return;
+			}
+			setPendingNumberProduct(product);
+			setPendingNumberQuantity(1);
 		}, 350);
 		return () => window.clearTimeout(timer);
 	}, [manualCode, menuMode, menuNumberIndex.duplicates, productByMenuNumber, setCodeFeedback, step]);
@@ -407,6 +413,33 @@ function OrderPage() {
 		});
 	};
 
+	const approvePendingNumberProduct = () => {
+		if (!pendingNumberProduct) return;
+		const pricing = calculateEffectivePrice(
+			{ _id: pendingNumberProduct._id, price: pendingNumberProduct.price, categoryId: pendingNumberProduct.categoryId },
+			discounts
+		);
+		addToCart({
+			productId: pendingNumberProduct._id,
+			name: pendingNumberProduct.name,
+			price: pricing.finalPrice,
+			originalPrice: pricing.originalPrice,
+			quantity: pendingNumberQuantity,
+			image: pendingNumberProduct.image,
+			categoryId: pendingNumberProduct.categoryId,
+			menuNumber: pendingNumberProduct.menuNumber,
+		});
+		setPendingNumberProduct(null);
+		setPendingNumberQuantity(1);
+		setManualCode("");
+	};
+
+	const cancelPendingNumberProduct = () => {
+		setPendingNumberProduct(null);
+		setPendingNumberQuantity(1);
+		setManualCode("");
+	};
+
 	const requestService = async (type: ServiceRequestType) => {
 		const activeTable = tableNumber.trim() || search.table || undefined;
 		if (!activeTable && !receipt?.orderId) {
@@ -482,9 +515,10 @@ function OrderPage() {
 					paymentReceiptKind: "cashier_pending",
 					isOpenBill: true,
 				});
+				if (!isAuthenticated) rememberGuestOrder(String(orderId));
 				const redirectUrl =
 					typeof window !== "undefined"
-						? `${window.location.origin}/${brandSlug}?session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
+						? `${window.location.origin}/${brandSlug}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
 						: undefined;
 				let invoice:
 					| {
@@ -557,6 +591,7 @@ function OrderPage() {
 					paymentReceiptKind: "cashier_pending",
 					isOpenBill: true,
 				});
+				if (!isAuthenticated) rememberGuestOrder(String(orderId));
 				setReceipt({
 					orderId,
 					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
@@ -736,7 +771,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, cart, catalogQuery, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
+						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}

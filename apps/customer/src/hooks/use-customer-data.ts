@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { readGuestOrderReferences } from "@/components/customer/types";
 import { useCustomerAuth, type CustomerUser } from "@/hooks/use-customer-auth";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -85,8 +86,19 @@ export function useCustomerOrders() {
 	const data = useSupabaseLiveValue<CustomerOrder[]>(
 		`customer-orders-${sourceId ?? "guest"}`,
 		async () => {
-			if (!sourceId) return null;
 			const supabase = createClient();
+			if (!sourceId) {
+				const references = readGuestOrderReferences();
+				if (references.length === 0) return [];
+				const ids = references.map((item) => item.orderId);
+				const { data, error: queryError } = await supabase
+					.from("pos_orders")
+					.select("*")
+					.in("_id", ids);
+				if (queryError) throw queryError;
+				const byId = new Map((data ?? []).map((row: any) => [String(row._id ?? row.id), row]));
+				return references.map((item) => byId.get(item.orderId)).filter(Boolean).map((row) => mapOrder(row as Record<string, unknown>));
+			}
 			const { data, error: queryError } = await supabase
 				.from("pos_orders")
 				.select("*")

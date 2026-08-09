@@ -107,8 +107,12 @@ function RiwayatPage() {
 				<main className="px-3 py-4">
 					{authLoading ? (
 						<CustomerSectionSkeleton label="Memeriksa akun" />
-					) : !isAuthenticated ? (
-						/* ── Guest: ajak login ── */
+					) : isLoading ? (
+						<CustomerSectionSkeleton label="Memuat riwayat pesanan" />
+					) : error ? (
+						<CustomerErrorState message={error} />
+					) : !isAuthenticated && (!orders || orders.length === 0) ? (
+						/* ── Guest tanpa order aktif: ajak login ── */
 						<div className="flex flex-col items-center rounded-3xl border border-border bg-card px-4 py-10 text-center shadow-sm">
 							<ClipboardList aria-hidden="true" className="h-8 w-8 text-primary" strokeWidth={2} />
 							<h2 className="mt-3 font-display text-base font-black">Riwayat Pesanan</h2>
@@ -132,10 +136,6 @@ function RiwayatPage() {
 								</button>
 							</div>
 						</div>
-					) : isLoading ? (
-						<CustomerSectionSkeleton label="Memuat riwayat pesanan" />
-					) : error ? (
-						<CustomerErrorState message={error} />
 					) : !orders || orders.length === 0 ? (
 						<div className="flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-10 text-center">
 							<ClipboardList className="h-6 w-6 text-muted-foreground/50" />

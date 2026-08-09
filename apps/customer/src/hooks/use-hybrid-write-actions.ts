@@ -2977,8 +2977,9 @@ export function useHybridUpdateOrderPaymentGateway() {
 					const settledAt = Number(paymentGateway.paidAt ?? Date.now());
 					const { error: txError } = await pos
 						.from("financial_transactions")
-						.insert({
-							source_id: makeSourceId("fin"),
+						.upsert(
+							{
+								source_id: `fin_mayar_${id}`,
 							tx_type: "income",
 							amount: Number(order.total_amount ?? 0),
 							category: "Penjualan",
@@ -2997,7 +2998,9 @@ export function useHybridUpdateOrderPaymentGateway() {
 								kind: "order_gateway_paid",
 								orderId: id,
 							},
-						});
+						},
+						{ onConflict: "source_id", ignoreDuplicates: true },
+						);
 					if (txError) throw txError;
 				}
 
@@ -5893,6 +5896,7 @@ export function useHybridMayarCreateInvoice() {
 					redirectUrl: args.redirectUrl,
 					description: args.description,
 					expiredAt: args.expiredAt,
+					extraData: args.extraData,
 					items: args.items,
 				});
 				return {
