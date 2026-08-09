@@ -2083,6 +2083,48 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [shiftRefreshTrigger, setShiftRefreshTrigger] = useState(0);
 	const shiftStatus = useHybridShiftStatus(shiftRefreshTrigger);
 	const siteSettings = useHybridSiteSettings();
+	const [closingAttendance, setClosingAttendance] = useState<Array<{ name: string; userId: string; status: "active" | "checked_out" | "no_show" }>>([]);
+	const [closingAttendanceLoading, setClosingAttendanceLoading] = useState(false);
+	const [closingAttendanceError, setClosingAttendanceError] = useState<string | null>(null);
+	const activeClosingStaff = closingAttendance.filter((member) => member.status === "active");
+	useEffect(() => {
+		const teamText = shiftStatus?.ongoingShift?.teamMembers;
+		const shiftStart = Number(shiftStatus?.ongoingShift?.startTime ?? 0);
+		if (!shiftStatus?.isOpen || !teamText || !allUsers?.length || !shiftStart) {
+			setClosingAttendance([]);
+			setClosingAttendanceError(null);
+			return;
+		}
+		let cancelled = false;
+		const fetchClosingAttendance = async () => {
+			setClosingAttendanceLoading(true);
+			setClosingAttendanceError(null);
+			try {
+				const members = teamText.split(",").map((name: string) => name.trim()).filter(Boolean).map((name: string) => {
+					const user = allUsers.find((candidate: any) => candidate.name?.trim()?.toLowerCase() === name.toLowerCase());
+					return { name, userId: String(user?._id ?? "") };
+				});
+				const userIds = members.map((member) => member.userId).filter(Boolean);
+				if (!userIds.length) { if (!cancelled) setClosingAttendance(members.map((member) => ({ ...member, status: "no_show" as const }))); return; }
+				const { data, error } = await createClient().from("pos_attendance_logs").select("userId,type,timestamp").in("userId", userIds).gte("timestamp", shiftStart).lte("timestamp", Date.now()).order("timestamp", { ascending: false });
+				if (error) throw error;
+				const latestByUser = new Map<string, any>();
+				for (const log of data ?? []) if (!latestByUser.has(String(log.userId))) latestByUser.set(String(log.userId), log);
+				const result = members.map((member) => {
+					const latest = latestByUser.get(member.userId);
+					const status = !latest ? "no_show" : latest.type === "check_in" ? "active" : "checked_out";
+					return { ...member, status } as { name: string; userId: string; status: "active" | "checked_out" | "no_show" };
+				});
+				if (!cancelled) setClosingAttendance(result);
+			} catch (error) {
+				console.error("[shift-close-attendance]", error);
+				if (!cancelled) setClosingAttendanceError("Status absensi belum bisa dimuat. Refresh sebelum menutup kasir.");
+			} finally { if (!cancelled) setClosingAttendanceLoading(false); }
+		};
+		void fetchClosingAttendance();
+		const refresh = window.setInterval(() => void fetchClosingAttendance(), 30_000);
+		return () => { cancelled = true; window.clearInterval(refresh); };
+	}, [shiftStatus?.isOpen, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.ongoingShift?.startTime, allUsers]);
 	const todayOrders = useHybridOrders();
 	const selectedShiftSchedule = useMemo(() => {
 		return siteSettings?.shiftSettings?.shiftSchedules?.find(
@@ -2270,8 +2312,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			timeLine,
 		];
 		try {
-			await supabase.functions.invoke("send-telegram-report", {
-				body: { text: lines.join("\n"), chat_id: -1003991897388 }
+			const targetChatIds = [-1003991897388, -5044633519];
+			const results = await Promise.allSettled(targetChatIds.map((chat_id) => supabase.functions.invoke("send-telegram-report", {
+				body: { text: lines.join("\n"), chat_id }
+			})));
+			results.forEach((result, index) => {
+				if (result.status === "rejected" || result.value.error) console.error(`[shift-notif] Gagal kirim ke chat ${targetChatIds[index]}:`, result.status === "rejected" ? result.reason : result.value.error);
 			});
 		} catch (e) {
 			console.error("[shift-notif] Gagal kirim notifikasi:", e);
@@ -2279,6 +2325,19 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, []);
 
 	const handleEndShift = async () => {
+		if (closingAttendanceLoading) {
+			toast.error("Status absensi tim masih dimuat. Tunggu sebentar lalu coba lagi.");
+			return;
+		}
+		if (closingAttendanceError) {
+			toast.error(closingAttendanceError);
+			return;
+		}
+		if (activeClosingStaff.length > 0) {
+			toast.error(`Belum bisa tutup kasir. ${activeClosingStaff.length} karyawan masih belum absen keluar.`);
+			setSubmitError(`Karyawan yang belum absen keluar: ${activeClosingStaff.map((member) => member.name).join(", ")}`);
+			return;
+		}
 		if (!shiftStatus?.shiftInfo?.shiftId) {
 			// Fallback if it's a legacy shift without ID
 			toast.error("Shift ini dimulai dari versi lama. Mohon gunakan tombol legacy.");
@@ -2738,6 +2797,17 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				) : (
 					/* AKHIRI SHIFT UI */
 					<div className="space-y-3">
+						<Card className={`border ${activeClosingStaff.length > 0 ? "border-amber-300 bg-amber-50/50" : "border-emerald-200 bg-emerald-50/30"}`}>
+							<CardContent className="p-3">
+								<div className="flex items-center justify-between gap-2">
+									<h4 className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-foreground"><ClipboardList className="h-3.5 w-3.5 text-primary" /> Status Absensi Tim</h4>
+									{closingAttendanceLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+								</div>
+								{closingAttendanceError ? <p className="mt-2 text-[11px] font-semibold text-destructive">{closingAttendanceError}</p> : closingAttendanceLoading ? <p className="mt-2 text-[11px] text-muted-foreground">Memuat status absensi...</p> : closingAttendance.length === 0 ? <p className="mt-2 text-[11px] text-muted-foreground">Tidak ada anggota tim yang terdaftar pada shift ini.</p> : <div className="mt-2 space-y-1.5">{closingAttendance.map((member) => { const isActive = member.status === "active"; const isCheckedOut = member.status === "checked_out"; return <div key={`${member.userId}-${member.name}`} className="flex items-center justify-between gap-2 rounded-lg bg-background/70 px-2 py-1.5"><span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold"><span className={`h-2 w-2 shrink-0 rounded-full ${isActive ? "bg-amber-500" : isCheckedOut ? "bg-emerald-500" : "bg-muted-foreground/40"}`} /> <span className="truncate">{member.name}</span></span><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? "bg-amber-100 text-amber-800" : isCheckedOut ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>{isActive ? "Belum Absen Keluar" : isCheckedOut ? "Absen Keluar" : "Belum Absen Masuk"}</span></div>; })}</div>}
+								{activeClosingStaff.length > 0 && <div className="mt-2 flex items-start gap-1.5 border-t border-amber-200 pt-2 text-[11px] font-bold text-amber-800"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>Belum bisa tutup kasir. Minta {activeClosingStaff.map((member) => member.name).join(", ")} absen keluar melalui bot Telegram Yumi HRD.</span></div>}
+								{!closingAttendanceLoading && !closingAttendanceError && closingAttendance.length > 0 && activeClosingStaff.length === 0 && <p className="mt-2 text-[11px] font-bold text-emerald-700">Semua karyawan yang sudah masuk telah absen keluar. Data tutup kasir dapat dilanjutkan.</p>}
+							</CardContent>
+						</Card>
 						{/* Ringkasan Real-time */}
 						<Card className="border-border bg-emerald-50/30 overflow-hidden">
 							<CardContent className="p-2.5">
@@ -3014,7 +3084,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 
 				<Button
 					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : 'bg-destructive hover:bg-destructive/90'}`}
-					disabled={isSubmitting}
+					disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 : isSubmitting}
 					type={shiftType === 'mulai' ? 'submit' : 'button'}
 					onClick={shiftType === 'akhiri' ? () => setShowEndConfirm(true) : undefined}
 				>
