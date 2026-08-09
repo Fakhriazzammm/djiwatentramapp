@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import type { CartItem } from "./types";
@@ -30,25 +31,43 @@ export function BottomButton({
 	onClick: () => void;
 	primary?: boolean;
 }) {
+	const shouldReduceMotion = useReducedMotion();
+	const tapScale = shouldReduceMotion ? 1 : 0.92;
+	const spring = { type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 };
+
 	return (
-		<button
+		<motion.button
 			type="button"
+			whileTap={{ scale: tapScale }}
+			whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+			transition={spring}
 			className={cn(
-				"relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 py-1.5 text-[10px] font-bold transition-all duration-[180ms] active:scale-[.97]",
-				primary ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground",
+				"relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 py-1.5 text-[10px] font-bold",
+				primary ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
 				disabled ? "opacity-40" : ""
 			)}
 			disabled={disabled}
 			onClick={onClick}
 		>
 			{badge ? (
-				<span className="absolute right-1.5 top-0.5 flex min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-1 text-[11px] text-white">
+				<motion.span
+					initial={shouldReduceMotion ? false : { scale: 0.7, opacity: 0 }}
+					animate={{ scale: 1, opacity: 1 }}
+					transition={spring}
+					className="absolute right-1.5 top-0.5 flex min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-1 text-[11px] text-white"
+				>
 					{badge}
-				</span>
+				</motion.span>
 			) : null}
-			{icon}
+			<motion.span
+				animate={shouldReduceMotion ? { scale: 1 } : { scale: 1.06, y: -1 }}
+				transition={spring}
+				className="flex h-4 items-center justify-center"
+			>
+				{icon}
+			</motion.span>
 			<span>{label}</span>
-		</button>
+		</motion.button>
 	);
 }
 

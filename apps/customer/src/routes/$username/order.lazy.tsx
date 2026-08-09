@@ -11,6 +11,7 @@ import {
 	X,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -54,6 +55,8 @@ export const Route = createLazyFileRoute("/$username/order")({
 });
 
 function OrderPage() {
+	const shouldReduceMotion = useReducedMotion();
+	const popupTransition = { type: "spring" as const, stiffness: 320, damping: 30, mass: 0.8 };
 	const navigate = useNavigate();
 	const { username } = Route.useParams();
 	const search = Route.useSearch();
@@ -797,22 +800,32 @@ function OrderPage() {
 			{/* ── Cart Sheet ─────────────────────────────────────── */}
 			<Sheet open={cartOpen} onOpenChange={setCartOpen}>
 				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
-					<div className="flex h-full flex-col">
+					<motion.div
+						initial={shouldReduceMotion ? false : { opacity: 0, y: 28 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={popupTransition}
+						className="flex h-full flex-col"
+					>
 						<div className="border-b border-border px-4 pb-3 pt-4"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Review pesanan</p><h3 className="font-display text-lg font-black">Order basket</h3></div><button type="button" aria-label="Tutup keranjang" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={() => setCartOpen(false)}><X className="h-3.5 w-3.5" /></button></div></div>
 						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground"><ShoppingCart aria-hidden="true" className="h-7 w-7" strokeWidth={2} /><p className="mt-2 font-display text-sm font-bold text-foreground">Keranjang masih kosong</p><p className="mt-1 text-xs">Pilih menu untuk mulai memesan.</p></div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
 						<div className="border-t border-border px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3"><SummaryCardLines productGrossSubtotal={productGrossSubtotal} freeRefillCharge={freeRefillCharge} promoDiscount={promoDiscount} taxAmount={taxAmount} taxRate={taxRate} serviceChargeAmount={serviceChargeAmount} serviceChargeRate={serviceChargeRate} total={total} /><button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black text-white shadow-sm disabled:opacity-60" style={{ background: themeColor }} onClick={() => { setCartOpen(false); setStep("checkout"); }} disabled={!cart.length}>Lanjut checkout <ChevronRight className="h-4 w-4" /></button></div>
-					</div>
+					</motion.div>
 				</SheetContent>
 			</Sheet>
 
 			{/* ── Service Sheet ──────────────────────────────────── */}
 			<Sheet open={serviceOpen} onOpenChange={setServiceOpen}>
 				<SheetContent side="bottom" className="z-[60] max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-3xl p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-					<div className="space-y-3 px-4 py-5">
+					<motion.div
+						initial={shouldReduceMotion ? false : { opacity: 0, y: 28 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={popupTransition}
+						className="space-y-3 px-4 py-5"
+					>
 						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Layanan customer</p><h3 className="mt-0.5 text-lg font-black">Hubungi tim restoran</h3><p className="mt-1 text-xs text-muted-foreground">Request akan langsung muncul di halaman admin operasional.</p></div>
 						<button type="button" className="flex w-full items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#ef4444,#b91c1c)] px-3 py-4 text-white shadow-sm" onClick={() => requestService("call_staff")}><PhoneCall className="h-4 w-4" /><div><p className="font-black text-sm">Panggil staff</p><p className="text-xs text-white/75">Panggil staff ke meja customer.</p></div></button>
 						{config.enableDessertLater && receipt?.dessertLater ? <button type="button" className="flex w-full items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#f59e0b,#d97706)] px-3 py-4 text-white shadow-sm" onClick={() => requestService("bring_dessert")}><Bell className="h-4 w-4" /><div><p className="font-black text-sm">Bawa dessert sekarang</p><p className="text-xs text-white/75">Kirim pengingat agar dessert dibawakan sekarang.</p></div></button> : null}
-					</div>
+					</motion.div>
 				</SheetContent>
 			</Sheet>
 

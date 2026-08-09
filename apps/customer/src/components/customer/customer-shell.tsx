@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Radio } from "lucide-react";
 import { useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
 import { cn } from "@/lib/utils";
@@ -124,24 +125,39 @@ export function CustomerBottomNav({
 		onSelect?: () => void;
 	}>;
 }) {
+	const shouldReduceMotion = useReducedMotion();
+	const spring = { type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 };
+
 	return (
 		<nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 px-2 pb-[max(0.5rem,var(--safe-area-bottom))] pt-1.5 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/85" aria-label="Navigasi utama">
 			<div className="mx-auto grid max-w-md grid-cols-5 gap-1">
 				{items.map((item) => (
-					<button
+					<motion.button
 						key={item.label}
 						type="button"
+						whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+						whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+						transition={spring}
 						className={cn(
-							"relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1 text-[10px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]",
-							item.active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+							"relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+							item.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
 						)}
 						onClick={item.onSelect}
 						aria-current={item.active ? "page" : undefined}
 					>
-						{item.badge ? <span className="absolute right-1/4 top-0.5">{item.badge}</span> : null}
-						<span className="flex h-5 items-center justify-center">{item.icon}</span>
-						<span className="max-w-full truncate">{item.label}</span>
-					</button>
+						{item.active ? <motion.span layoutId="customer-bottom-nav-active" transition={spring} className="absolute inset-0 rounded-[14px] bg-primary/10" aria-hidden="true" /> : null}
+						{item.badge ? <span className="absolute right-1/4 top-0.5 z-[1]">{item.badge}</span> : null}
+						<motion.span
+							animate={item.active && !shouldReduceMotion ? { scale: 1.08, y: -1 } : { scale: 1, y: 0 }}
+							transition={spring}
+							className="relative z-[1] flex h-5 items-center justify-center"
+						>
+							{item.icon}
+						</motion.span>
+						<motion.span animate={item.active && !shouldReduceMotion ? { opacity: 1 } : { opacity: 0.86 }} transition={{ duration: 0.16, ease: "easeOut" }} className="relative z-[1] max-w-full truncate">
+							{item.label}
+						</motion.span>
+					</motion.button>
 				))}
 			</div>
 		</nav>
