@@ -1553,7 +1553,7 @@ async def _check_new_orders(app):
     # Customer self-service orders are created as `pending` and may become
     # `paid` later (cashier confirmation or Mayar polling). Their creation
     # timestamp is older than the main cursor by then, so include a bounded
-    # 24-hour settled-order lookback to detect that status transition without
+    # 7-day settled-order lookback to detect that status transition without
     # replaying the entire historical POS order set.
     try:
         customer_rows = await _fetch(
@@ -1561,7 +1561,7 @@ async def _check_new_orders(app):
             "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
             "&source=eq.customer_self_service"
             "&status=in.(completed,paid)"
-            f"&_creationTime=gte.{max(0, now_ms - 86_400_000)}"
+            f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
             f"&_creationTime=lte.{now_ms}"
             "&order=_creationTime.desc&limit=100",
         )
