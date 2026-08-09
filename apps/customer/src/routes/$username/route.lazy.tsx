@@ -4,6 +4,7 @@ import { ClipboardList, Coins, Home, UserRound, ChevronRight, LogIn, LogOut, Sho
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
+import { MemberOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
@@ -37,6 +38,7 @@ function MemberHomePage() {
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
+	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
@@ -84,6 +86,30 @@ function MemberHomePage() {
 	useEffect(() => {
 		setGuestData(loadGuestData());
 	}, [username]);
+
+	useEffect(() => {
+		if (!customer?.createdAt) return;
+		const createdAt = Date.parse(customer.createdAt);
+		if (!Number.isFinite(createdAt) || Date.now() - createdAt < 0 || Date.now() - createdAt > 24 * 60 * 60 * 1000) return;
+		try {
+			if (localStorage.getItem(`djiwa-member-onboarding:${customer.sourceId}`) !== "done") {
+				setShowMemberOnboarding(true);
+			}
+		} catch {
+			setShowMemberOnboarding(true);
+		}
+	}, [customer?.createdAt, customer?.sourceId]);
+
+	const dismissMemberOnboarding = () => {
+		if (customer) {
+			try {
+				localStorage.setItem(`djiwa-member-onboarding:${customer.sourceId}`, "done");
+			} catch {
+				// Onboarding tetap boleh ditutup jika storage tidak tersedia.
+			}
+		}
+		setShowMemberOnboarding(false);
+	};
 
 	const authModal = (
 		<AuthModal
@@ -285,6 +311,16 @@ function MemberHomePage() {
 
 			<CustomerBottomNav items={customerNav} />
 			{authModal}
+			{showMemberOnboarding && customer ? (
+				<MemberOnboarding
+					name={displayName}
+					onDismiss={dismissMemberOnboarding}
+					onStartOrdering={() => {
+						dismissMemberOnboarding();
+						navigate({ to: "/$username/order", params: { username }, search: { step: "party" } });
+					}}
+				/>
+			) : null}
 		</>
 	);
 }

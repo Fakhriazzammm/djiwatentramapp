@@ -36,7 +36,7 @@ const timeAgo = (ms: number) => {
 function NotifikasiPage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
-	const { isAuthenticated, isLoading: authLoading } = useCustomerAuth();
+	const { isAuthenticated, isLoading: authLoading, customer } = useCustomerAuth();
 	const { orders, isLoading } = useCustomerOrders();
 
 	// Timestamp terakhir kali halaman ini dibuka → penanda "belum dibaca"
@@ -62,9 +62,23 @@ function NotifikasiPage() {
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
+	const memberGreeting = useMemo(() => {
+		if (!customer?.sourceId || !customer.createdAt) return null;
+		const createdAt = Date.parse(customer.createdAt);
+		if (!Number.isFinite(createdAt) || Date.now() - createdAt < 0 || Date.now() - createdAt > 24 * 60 * 60 * 1000) return null;
+		return {
+			id: `member-greeting-${customer.sourceId}`,
+			title: `Selamat datang, ${customer.name || "Member"}!`,
+			message: "Akun member kamu sudah aktif. Mulai pesan, kumpulkan Yumi Poin, dan cek promo spesial untukmu.",
+			createdAt,
+			unread: true,
+			isGreeting: true,
+		};
+	}, [customer?.createdAt, customer?.name, customer?.sourceId]);
+
 	const notifications = useMemo(() => {
 		if (!orders) return undefined;
-		return orders.map((order) => {
+		const orderNotifications = orders.map((order) => {
 			const statusKey = order.status?.toLowerCase?.() ?? "";
 			return {
 				id: order.id,
@@ -72,9 +86,11 @@ function NotifikasiPage() {
 				message: `Pesananmu (${currency(order.totalAmount)}) ${STATUS_MESSAGE[statusKey] ?? `berstatus ${order.status}`}.`,
 				createdAt: order.createdAt,
 				unread: order.createdAt > lastSeen,
+				isGreeting: false,
 			};
 		});
-	}, [orders, lastSeen]);
+		return memberGreeting ? [memberGreeting, ...orderNotifications] : orderNotifications;
+	}, [memberGreeting, orders, lastSeen]);
 
 	return (
 		<div className="app-page min-h-app">
@@ -127,7 +143,7 @@ function NotifikasiPage() {
 								<button
 									type="button"
 									key={notif.id}
-									onClick={() => navigate({ to: "/$username/riwayat", params: { username } })}
+									onClick={() => notif.isGreeting ? goHome() : navigate({ to: "/$username/riwayat", params: { username } })}
 									className={`flex w-full gap-3 rounded-[20px] border px-3 py-3 text-left shadow-sm transition-all duration-[180ms] active:scale-[.98] ${notif.unread ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}
 								>
 									<div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${notif.unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
