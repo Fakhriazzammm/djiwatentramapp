@@ -1,4 +1,4 @@
-import { Barcode, Grid2X2, PackageSearch, Plus, Search } from "lucide-react";
+import { Barcode, Grid2X2, Minus, PackageSearch, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
@@ -22,6 +22,11 @@ export interface MenuSectionProps {
 	menuMode: MenuMode;
 	orderedCategories: Doc<"categories">[];
 	partySize: number;
+	pendingNumberProduct: Doc<"products"> | null;
+	pendingNumberQuantity: number;
+	approvePendingNumberProduct: () => void;
+	cancelPendingNumberProduct: () => void;
+	setPendingNumberQuantity: (value: number) => void;
 	setActiveCategoryId: (value: Id<"categories"> | null) => void;
 	setCartOpen: (value: boolean) => void;
 	setManualCode: (value: string) => void;
@@ -71,7 +76,30 @@ export function renderMenuSection(props: MenuSectionProps) {
 					<div className="mt-3 rounded-xl border border-border bg-background px-3 py-3 shadow-inner">
 						<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input className="w-full bg-transparent text-xl font-black tracking-[0.25em] outline-none placeholder:text-base placeholder:font-semibold placeholder:tracking-normal" inputMode="numeric" placeholder="Ketik nomor menu" value={props.manualCode} onChange={(event) => props.setManualCode(event.target.value.replace(/\D/g, ""))} /></div>
 					</div>
-					{props.codeFeedback ? <p className="mt-2.5 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700">{props.codeFeedback}</p> : <p className="mt-2.5 text-xs text-muted-foreground">Item akan langsung masuk ke keranjang saat nomor produk lengkap cocok.</p>}
+					{props.codeFeedback ? <p className="mt-2.5 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700">{props.codeFeedback}</p> : <p className="mt-2.5 text-xs text-muted-foreground">Masukkan nomor produk lengkap untuk mencari menu.</p>}
+					{props.pendingNumberProduct ? (
+						<div className="mt-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
+							<p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Konfirmasi Produk</p>
+							<div className="mt-1 flex items-start justify-between gap-3">
+								<div className="min-w-0">
+									<p className="truncate text-sm font-black text-foreground">{props.pendingNumberProduct.name}</p>
+									<p className="mt-0.5 text-xs text-muted-foreground">Nomor {props.pendingNumberProduct.menuNumber ?? props.manualCode}</p>
+								</div>
+								<p className="shrink-0 text-sm font-black text-primary">{currency(calculateEffectivePrice({ _id: props.pendingNumberProduct._id, price: props.pendingNumberProduct.price, categoryId: props.pendingNumberProduct.categoryId }, props.discounts).finalPrice)}</p>
+							</div>
+							<div className="mt-3 flex items-center justify-between gap-2">
+								<div className="flex items-center gap-1 rounded-xl border border-border bg-background p-1">
+									<button type="button" aria-label="Kurangi jumlah" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted" onClick={() => props.setPendingNumberQuantity(Math.max(1, props.pendingNumberQuantity - 1))}><Minus className="h-4 w-4" /></button>
+									<span className="min-w-8 text-center text-sm font-black">{props.pendingNumberQuantity}</span>
+									<button type="button" aria-label="Tambah jumlah" className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={() => props.setPendingNumberQuantity(props.pendingNumberQuantity + 1)}><Plus className="h-4 w-4" /></button>
+								</div>
+								<div className="flex items-center gap-1.5">
+									<button type="button" className="rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground" onClick={props.cancelPendingNumberProduct}>Batal</button>
+									<button type="button" className="rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground" onClick={props.approvePendingNumberProduct}>Tambah ke keranjang</button>
+								</div>
+							</div>
+						</div>
+					) : null}
 					<div className="mt-3 grid grid-cols-3 gap-2">
 						{["1","2","3","4","5","6","7","8","9"].map((digit) => <button type="button" key={digit} className="rounded-xl border border-border bg-background px-3 py-3 text-xl font-black shadow-sm" onClick={() => props.setManualCode(`${props.manualCode}${digit}`)}>{digit}</button>)}
 						<button type="button" className="rounded-xl border border-border bg-background px-3 py-3 text-xs font-black shadow-sm" onClick={() => props.setManualCode("")}>Clear</button>
