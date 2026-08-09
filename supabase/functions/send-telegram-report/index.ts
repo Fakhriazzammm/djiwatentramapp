@@ -28,7 +28,7 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    const { text, chat_id } = body
+    const { text, chat_id, sender = 'report' } = body
 
     if (!text || typeof text !== 'string') {
       return new Response(JSON.stringify({ success: false, error: { code: "VALIDATION_ERROR", message: "text is required" } }), {
@@ -40,17 +40,23 @@ serve(async (req) => {
       })
     }
 
-    console.log('[Edge Function] Sending to bot:', TELEGRAM_BOT_URL)
+    const supervisorToken = sender === 'supervisor' ? Deno.env.get('TELEGRAM_SUPERVISOR_BOT_TOKEN') : null
+    const botUrl = supervisorToken
+      ? `https://api.telegram.org/bot${supervisorToken}/sendMessage`
+      : TELEGRAM_BOT_URL
+
+    console.log('[Edge Function] Sending via:', sender, 'to:', botUrl.replace(/bot[^/]+/, 'bot***'))
     console.log('[Edge Function] Text length:', text.length)
     console.log('[Edge Function] Chat ID:', chat_id || 'default')
 
-    // Forward request to yumi-ai-bot
-    const botResponse = await fetch(TELEGRAM_BOT_URL, {
+    const botResponse = await fetch(botUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text, chat_id }),
+      body: supervisorToken
+        ? JSON.stringify({ chat_id, text })
+        : JSON.stringify({ text, chat_id }),
     })
 
     const data = await botResponse.json()

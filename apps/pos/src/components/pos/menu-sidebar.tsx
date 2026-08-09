@@ -2087,6 +2087,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [closingAttendanceLoading, setClosingAttendanceLoading] = useState(false);
 	const [closingAttendanceError, setClosingAttendanceError] = useState<string | null>(null);
 	const activeClosingStaff = closingAttendance.filter((member) => member.status === "active");
+	const [clockTick, setClockTick] = useState(() => Date.now());
+	useEffect(() => {
+		const timer = window.setInterval(() => setClockTick(Date.now()), 30_000);
+		return () => window.clearInterval(timer);
+	}, []);
 	useEffect(() => {
 		const teamText = shiftStatus?.ongoingShift?.teamMembers;
 		const shiftStart = Number(shiftStatus?.ongoingShift?.startTime ?? 0);
@@ -2127,11 +2132,27 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [shiftStatus?.isOpen, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.ongoingShift?.startTime, allUsers]);
 	const todayOrders = useHybridOrders();
 	const selectedShiftSchedule = useMemo(() => {
+		const activeShiftName = shiftStatus?.shiftInfo?.shiftName || shiftName;
 		return siteSettings?.shiftSettings?.shiftSchedules?.find(
 			(schedule: { name: string; openTime?: string; closeTime?: string }) =>
-				schedule.name === shiftName
+				schedule.name === activeShiftName
 		);
-	}, [siteSettings?.shiftSettings?.shiftSchedules, shiftName]);
+	}, [siteSettings?.shiftSettings?.shiftSchedules, shiftName, shiftStatus?.shiftInfo?.shiftName]);
+	const shiftTimeGate = useMemo(() => {
+		if (!shiftStatus?.isOpen) return { blocked: false, message: "" };
+		const closeTimeStr = selectedShiftSchedule?.closeTime;
+		if (!closeTimeStr) return { blocked: true, message: `Jadwal tutup untuk ${shiftStatus.shiftInfo?.shiftName || shiftName} belum dikonfigurasi. Tutup kasir diblokir.` };
+		const [closeHour, closeMin] = closeTimeStr.split(":").map(Number);
+		if (!Number.isFinite(closeHour) || !Number.isFinite(closeMin)) return { blocked: true, message: "Format jam tutup shift tidak valid. Tutup kasir diblokir." };
+		const now = new Date(clockTick);
+		const nowWib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+		const closeWib = new Date(nowWib);
+		closeWib.setHours(closeHour, closeMin, 0, 0);
+		if (nowWib.getTime() < closeWib.getTime()) {
+			return { blocked: true, message: `Shift ${shiftStatus.shiftInfo?.shiftName || shiftName} baru bisa ditutup setelah ${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")} WIB.` };
+		}
+		return { blocked: false, message: "" };
+	}, [clockTick, selectedShiftSchedule?.closeTime, shiftName, shiftStatus?.isOpen, shiftStatus?.shiftInfo?.shiftName]);
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -2312,9 +2333,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			timeLine,
 		];
 		try {
-			const targetChatIds = [-1003991897388, -5044633519];
+			const targetChatIds = [-1003991897388, -1003927364523];
 			const results = await Promise.allSettled(targetChatIds.map((chat_id) => supabase.functions.invoke("send-telegram-report", {
-				body: { text: lines.join("\n"), chat_id }
+				body: { text: lines.join("\n"), chat_id, sender: chat_id === -1003927364523 ? "supervisor" : "report" }
 			})));
 			results.forEach((result, index) => {
 				if (result.status === "rejected" || result.value.error) console.error(`[shift-notif] Gagal kirim ke chat ${targetChatIds[index]}:`, result.status === "rejected" ? result.reason : result.value.error);
@@ -2325,6 +2346,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, []);
 
 	const handleEndShift = async () => {
+		if (shiftTimeGate.blocked) {
+			toast.error(shiftTimeGate.message);
+			setSubmitError(shiftTimeGate.message);
+			return;
+		}
 		if (closingAttendanceLoading) {
 			toast.error("Status absensi tim masih dimuat. Tunggu sebentar lalu coba lagi.");
 			return;
@@ -2343,40 +2369,6 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			toast.error("Shift ini dimulai dari versi lama. Mohon gunakan tombol legacy.");
 			setIsSubmitting(false);
 			return;
-		}
-
-		// ── Validasi waktu tutup kasir ──
-		// Cegah kasir menutup shift sebelum closeTime - grace period
-		const closeTimeStr = selectedShiftSchedule?.closeTime; // "14:30"
-		if (closeTimeStr) {
-			const [closeHour, closeMin] = closeTimeStr.split(":").map(Number);
-			const now = new Date();
-			const nowWib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-
-			// Build today's closeTime in WIB
-			const closeWib = new Date(nowWib);
-			closeWib.setHours(closeHour, closeMin, 0, 0);
-
-			const nowEpoch = nowWib.getTime();
-			const closeEpoch = closeWib.getTime();
-			const graceDeadline = closeEpoch + 60 * 60 * 1000; // 1 jam setelah closeTime
-
-			if (nowEpoch < closeEpoch) {
-				const closeFmt = `${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")}`;
-				toast.error(
-					`Shift ${shiftName} baru tutup jam ${closeFmt} WIB. ` +
-					`Belum bisa ditutup sekarang (${String(nowWib.getHours()).padStart(2, "0")}:${String(nowWib.getMinutes()).padStart(2, "0")} WIB).`
-				);
-				setIsSubmitting(false);
-				return;
-			}
-
-			if (nowEpoch > graceDeadline) {
-				toast.warning(
-					`Shift ${shiftName} sudah lewat 1 jam dari jadwal (${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")} WIB). ` +
-					`Pastikan data sudah akurat.`
-				);
-			}
 		}
 
 		setIsSubmitting(true);
@@ -2803,6 +2795,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 									<h4 className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-foreground"><ClipboardList className="h-3.5 w-3.5 text-primary" /> Status Absensi Tim</h4>
 									{closingAttendanceLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
 								</div>
+								{shiftTimeGate.blocked && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-800"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{shiftTimeGate.message}</span></div>}
 								{closingAttendanceError ? <p className="mt-2 text-[11px] font-semibold text-destructive">{closingAttendanceError}</p> : closingAttendanceLoading ? <p className="mt-2 text-[11px] text-muted-foreground">Memuat status absensi...</p> : closingAttendance.length === 0 ? <p className="mt-2 text-[11px] text-muted-foreground">Tidak ada anggota tim yang terdaftar pada shift ini.</p> : <div className="mt-2 space-y-1.5">{closingAttendance.map((member) => { const isActive = member.status === "active"; const isCheckedOut = member.status === "checked_out"; return <div key={`${member.userId}-${member.name}`} className="flex items-center justify-between gap-2 rounded-lg bg-background/70 px-2 py-1.5"><span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold"><span className={`h-2 w-2 shrink-0 rounded-full ${isActive ? "bg-amber-500" : isCheckedOut ? "bg-emerald-500" : "bg-muted-foreground/40"}`} /> <span className="truncate">{member.name}</span></span><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? "bg-amber-100 text-amber-800" : isCheckedOut ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>{isActive ? "Belum Absen Keluar" : isCheckedOut ? "Absen Keluar" : "Belum Absen Masuk"}</span></div>; })}</div>}
 								{activeClosingStaff.length > 0 && <div className="mt-2 flex items-start gap-1.5 border-t border-amber-200 pt-2 text-[11px] font-bold text-amber-800"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>Belum bisa tutup kasir. Minta {activeClosingStaff.map((member) => member.name).join(", ")} absen keluar melalui bot Telegram Yumi HRD.</span></div>}
 								{!closingAttendanceLoading && !closingAttendanceError && closingAttendance.length > 0 && activeClosingStaff.length === 0 && <p className="mt-2 text-[11px] font-bold text-emerald-700">Semua karyawan yang sudah masuk telah absen keluar. Data tutup kasir dapat dilanjutkan.</p>}
@@ -3084,7 +3077,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 
 				<Button
 					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : 'bg-destructive hover:bg-destructive/90'}`}
-					disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 : isSubmitting}
+					disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 || shiftTimeGate.blocked : isSubmitting}
 					type={shiftType === 'mulai' ? 'submit' : 'button'}
 					onClick={shiftType === 'akhiri' ? () => setShowEndConfirm(true) : undefined}
 				>

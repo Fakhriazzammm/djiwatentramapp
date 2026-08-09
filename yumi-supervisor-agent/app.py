@@ -25,7 +25,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5182004468"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
-TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-5044633519"))
+TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-1003927364523"))
 
 WIB = timezone(timedelta(hours=7))
 logger = logging.getLogger(__name__)
