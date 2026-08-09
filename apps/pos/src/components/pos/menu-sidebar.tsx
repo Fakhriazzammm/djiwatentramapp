@@ -2140,8 +2140,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [siteSettings?.shiftSettings?.shiftSchedules, shiftName, shiftStatus?.shiftInfo?.shiftName]);
 	const shiftTimeGate = useMemo(() => {
 		if (!shiftStatus?.isOpen) return { blocked: false, message: "" };
+		const displayShiftName = (shiftStatus.shiftInfo?.shiftName || shiftName || "").replace(/^shift\s+/i, "");
 		const closeTimeStr = selectedShiftSchedule?.closeTime;
-		if (!closeTimeStr) return { blocked: true, message: `Jadwal tutup untuk ${shiftStatus.shiftInfo?.shiftName || shiftName} belum dikonfigurasi. Tutup kasir diblokir.` };
+		if (!closeTimeStr) return { blocked: true, message: `Jadwal tutup untuk ${displayShiftName || "shift ini"} belum dikonfigurasi. Tutup kasir diblokir.` };
 		const [closeHour, closeMin] = closeTimeStr.split(":").map(Number);
 		if (!Number.isFinite(closeHour) || !Number.isFinite(closeMin)) return { blocked: true, message: "Format jam tutup shift tidak valid. Tutup kasir diblokir." };
 		const now = new Date(clockTick);
@@ -2149,7 +2150,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		const closeWib = new Date(nowWib);
 		closeWib.setHours(closeHour, closeMin, 0, 0);
 		if (nowWib.getTime() < closeWib.getTime()) {
-			return { blocked: true, message: `Shift ${shiftStatus.shiftInfo?.shiftName || shiftName} baru bisa ditutup setelah ${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")} WIB.` };
+			return { blocked: true, message: `Shift ${displayShiftName || "ini"} baru bisa ditutup setelah ${String(closeHour).padStart(2, "0")}:${String(closeMin).padStart(2, "0")} WIB.` };
 		}
 		return { blocked: false, message: "" };
 	}, [clockTick, selectedShiftSchedule?.closeTime, shiftName, shiftStatus?.isOpen, shiftStatus?.shiftInfo?.shiftName]);
