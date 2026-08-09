@@ -1550,6 +1550,33 @@ async def _check_new_orders(app):
         logger.error("check_new_orders fetch failed: %s", e)
         return
 
+    # Customer self-service orders are created as `pending` and may become
+    # `paid` later (cashier confirmation or Mayar polling). Their creation
+    # timestamp is older than the main cursor by then, so include a bounded
+    # 24-hour settled-order lookback to detect that status transition without
+    # replaying the entire historical POS order set.
+    try:
+        customer_rows = await _fetch(
+            "pos_orders",
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
+            "&source=eq.customer_self_service"
+            "&status=in.(completed,paid)"
+            f"&_creationTime=gte.{max(0, now_ms - 86_400_000)}"
+            f"&_creationTime=lte.{now_ms}"
+            "&order=_creationTime.desc&limit=100",
+        )
+        by_id = {str(row.get("_id")): row for row in rows if row.get("_id")}
+        for row in customer_rows:
+            row_id = str(row.get("_id") or "")
+            if row_id and row_id not in by_id:
+                by_id[row_id] = row
+        rows = sorted(
+            by_id.values(),
+            key=lambda row: int(float(row.get("_creationTime") or 0)),
+        )
+    except Exception as e:
+        logger.warning("customer settled-order lookback failed: %s", e)
+
     if not rows:
         # Advance cursor to now so we don't re-scan stale window
         _last_order_check_ms = now_ms
