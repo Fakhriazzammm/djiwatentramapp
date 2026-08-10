@@ -68,7 +68,7 @@ type KebersihanArea = {
   id: string;
   label: string;
   icon: "cooking" | "seating" | "toilet";
-  status: "bersih" | "perlu_perbaikan";
+  status: "belum_dicek" | "bersih" | "perlu_perbaikan";
   /** Object URL — hanya untuk preview di layar. */
   foto: string | null;
   /** File aslinya; ini yang dikirim saat submit. */
@@ -130,9 +130,9 @@ const KITCHEN_INGREDIENTS = new Set([
 ]);
 
 const AREAS_KEBERSIHAN: KebersihanArea[] = [
-  { id: "bar_kitchen", label: "Bar & Kitchen", icon: "cooking", status: "bersih", foto: null, catatan: "" },
-  { id: "area_customer", label: "Area Customer", icon: "seating", status: "bersih", foto: null, catatan: "" },
-  { id: "wc", label: "Toilet/WC", icon: "toilet", status: "bersih", foto: null, catatan: "" },
+  { id: "bar_kitchen", label: "Bar & Kitchen", icon: "cooking", status: "belum_dicek", foto: null, catatan: "" },
+  { id: "area_customer", label: "Area Customer", icon: "seating", status: "belum_dicek", foto: null, catatan: "" },
+  { id: "wc", label: "Toilet/WC", icon: "toilet", status: "belum_dicek", foto: null, catatan: "" },
 ];
 
 const KEBERSIHAN_ICONS = { cooking: CookingPot, seating: Armchair, toilet: Toilet };
@@ -453,6 +453,13 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
   // ── Handle submit ──
   async function handleSubmit() {
     setSubmitError(null);
+    const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
+    const uncheckedAreas = areasKebersihan.filter((area) => area.status === "belum_dicek");
+    if (uncheckedAreas.length > 0) {
+      setSubmitError(`Pilih status kebersihan untuk: ${uncheckedAreas.map((area) => area.label).join(", ")}.`);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const opnameItems = opnameRef.current?.getItems() ?? [];
@@ -463,7 +470,6 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
       // Kebersihan: kecilkan foto lalu ikutkan ke payload. Sebelumnya data ini
       // hanya hidup di state dan hilang begitu submit, padahal layar sukses
       // sudah terlanjur bilang "kebersihan tersimpan".
-      const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
       const kebersihan = await Promise.all(
         areasKebersihan.map(async (a) => ({
           id: a.id,
@@ -854,7 +860,7 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
   const triggerFileInput = (id: string) => fileInputRefs.current[id]?.click();
   const removeFoto = (id: string) => setAreas((prev) => prev.map((a) => (a.id === id ? { ...a, foto: null, fotoFile: null } : a)));
 
-  const completedCount = areas.filter((a) => a.status === "bersih").length;
+  const checkedCount = areas.filter((a) => a.status !== "belum_dicek").length;
   const photoCount = areas.filter((a) => a.foto !== null).length;
 
   return (
@@ -866,7 +872,7 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
           </div>
           <div>
             <p className="flex items-center gap-1 font-bold text-xs"><Brush className="h-3.5 w-3.5" /> Checklist Kebersihan</p>
-            <p className="text-[11px] text-muted-foreground">{completedCount}/3 area bersih — {photoCount} foto</p>
+            <p className="text-[11px] text-muted-foreground">{checkedCount}/3 area dicek — {photoCount} foto</p>
           </div>
         </div>
       </div>

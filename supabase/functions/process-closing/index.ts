@@ -135,6 +135,18 @@ Deno.serve(async (req: Request) => {
       kebersihan: KebersihanArea[];
     };
 
+    if (source === "telegram_mini_app" && Array.isArray(kebersihan)) {
+      const invalidArea = kebersihan.find(
+        (area) => !area?.id || !["bersih", "perlu_perbaikan"].includes(String(area.status)),
+      );
+      if (invalidArea) {
+        return fail(
+          "CHECKLIST_INCOMPLETE",
+          "Semua area checklist kebersihan harus dipilih: Bersih atau Perlu Perbaikan.",
+        );
+      }
+    }
+
     if (!userId || !userName) {
       return fail("VALIDATION_ERROR", "userId and userName are required");
     }
