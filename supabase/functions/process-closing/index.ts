@@ -136,13 +136,18 @@ Deno.serve(async (req: Request) => {
     };
 
     if (source === "telegram_mini_app" && Array.isArray(kebersihan)) {
+      const requiredAreas = ["bar_kitchen", "area_customer", "wc"];
+      const areaIds = new Set(kebersihan.map((area) => area?.id));
+      const hasAllAreas =
+        kebersihan.length === requiredAreas.length &&
+        requiredAreas.every((areaId) => areaIds.has(areaId));
       const invalidArea = kebersihan.find(
         (area) => !area?.id || !["bersih", "perlu_perbaikan"].includes(String(area.status)),
       );
-      if (invalidArea) {
+      if (!hasAllAreas || invalidArea) {
         return fail(
           "CHECKLIST_INCOMPLETE",
-          "Semua area checklist kebersihan harus dipilih: Bersih atau Perlu Perbaikan.",
+          "Checklist wajib berisi Bar & Kitchen, Area Customer, dan Toilet/WC dengan status Bersih atau Perlu Perbaikan.",
         );
       }
     }
