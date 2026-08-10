@@ -33,9 +33,12 @@ async function hexHmacSha256(secret: string, data: string): Promise<string> {
 
 // ─── Shift detection ──────────────────────────────────────────────
 
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+
 async function detectShift(supabase: ReturnType<typeof createClient>): Promise<string> {
   try {
     const { data: settings } = await supabase
+      .schema("pos")
       .from("site_settings")
       .select("raw")
       .limit(1)
@@ -47,8 +50,9 @@ async function detectShift(supabase: ReturnType<typeof createClient>): Promise<s
       ((settings.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
         ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
 
-    const now = new Date();
-    const currentMin = now.getHours() * 60 + now.getMinutes();
+    // Edge Functions run in UTC; shift schedules are WIB.
+    const nowWib = new Date(Date.now() + WIB_OFFSET_MS);
+    const currentMin = nowWib.getUTCHours() * 60 + nowWib.getUTCMinutes();
     const matches: Array<{ name: string; openMin: number }> = [];
 
     for (const s of schedules) {

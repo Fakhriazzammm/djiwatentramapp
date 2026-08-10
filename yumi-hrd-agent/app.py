@@ -483,7 +483,18 @@ async def _upload_photo_to_storage(employee_id: str, photo_bytes: bytes) -> str 
 # ── Command Handlers ──
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Onboarding: beda pesan untuk user baru vs sudah daftar."""
+    """Handle /start onboarding and deep-link attendance actions."""
+    # Telegram deep-link `?start=checkin|checkout` arrives here as context.args.
+    # Dispatch it to the same verified location/photo flow as the reply keyboard;
+    # otherwise the Mini App only opens the generic welcome message.
+    action = (context.args[0].strip().lower() if context.args else "")
+    if action == "checkin":
+        await cmd_clockin(update, context)
+        return
+    if action == "checkout":
+        await cmd_clockout(update, context)
+        return
+
     # Cek apakah user sudah terdaftar
     emp = None
     if update.effective_user:
