@@ -127,7 +127,7 @@ async def _has_today_attendance(employee_user_id: str, att_type: str) -> tuple[b
     today_start = _start_of_day_ms(_now_wib())
     today_end = today_start + 86400000
     rows = await _fetch("pos_attendance_logs",
-        f"select=timestamp,type"
+        f"select=timestamp,type,shiftName"
         f"&userId=eq.{employee_user_id}"
         f"&type=eq.{att_type}"
         f"&timestamp=gte.{today_start}"
@@ -157,6 +157,8 @@ async def _insert_attendance(employee_user_id: str, att_type: str, notes: str = 
         }
         async with httpx.AsyncClient() as client:
             r = await client.post(url, json=payload, headers=headers, timeout=15)
+            if r.status_code >= 400:
+                logger.error("_insert_attendance rejected (%s): %s", r.status_code, r.text[:1000])
             r.raise_for_status()
         return True
     except Exception as e:
@@ -688,6 +690,8 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     emp_id = emp["employee_user_id"]
     emp_name = emp["employee_name"]
+    if not update.message:
+        return
 
     # ponytail: bar/kitchen must do stock opname via web app, not bot
     try:
@@ -726,6 +730,14 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_main_keyboard())
         return
 
+    if not log_in:
+        await update.message.reply_text(
+            f"⚠️ *{emp_name}*, data absen masuk hari ini belum terbaca. Coba lagi beberapa detik.",
+            parse_mode="Markdown",
+            reply_markup=_main_keyboard(),
+        )
+        return
+
     check_in_ts = int(float(log_in.get("timestamp", 0)))
     now_ms = int(_now_wib().timestamp() * 1000)
     elapsed = (now_ms - check_in_ts) // 60000
@@ -736,8 +748,13 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_main_keyboard())
         return
 
+    # Checkout must use the shift recorded at check-in. Detecting the shift
+    # from the current clock is wrong when a morning shift checks out after
+    # the afternoon shift window has opened.
+    check_in_shift = str(log_in.get("shiftName") or "")
     ok = await _insert_attendance(emp_id, "check_out",
-                                   notes="Absen via Telegram HRD")
+                                   notes="Absen via Telegram HRD",
+                                   shift_name=check_in_shift)
     if not ok:
         await update.message.reply_text("❌ Gagal absen keluar. Coba lagi.",
             reply_markup=_main_keyboard())

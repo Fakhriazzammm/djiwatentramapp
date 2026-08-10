@@ -190,8 +190,26 @@ Deno.serve(async (req: Request) => {
       area: raw.area ? String(raw.area) : null,
     };
 
-    // Detect shift
-    const shiftName = await detectShift(supabase);
+    // Checkout must keep the shift assigned at check-in. Detecting from the
+    // current clock can switch a morning employee to the afternoon shift.
+    const nowWibMs = Date.now();
+    const wibDate = new Date(nowWibMs + WIB_OFFSET_MS);
+    const wibDayStart = Date.UTC(
+      wibDate.getUTCFullYear(),
+      wibDate.getUTCMonth(),
+      wibDate.getUTCDate(),
+    ) - WIB_OFFSET_MS;
+    const { data: checkInLog } = await supabase
+      .from("pos_attendance_logs")
+      .select("shiftName, timestamp")
+      .eq("userId", uid)
+      .eq("type", "check_in")
+      .gte("timestamp", wibDayStart)
+      .lt("timestamp", wibDayStart + 86400000)
+      .order("timestamp", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const shiftName = String(checkInLog?.shiftName ?? "") || await detectShift(supabase);
 
     return jsonResponse({
       valid: true,
