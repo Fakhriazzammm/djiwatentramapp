@@ -407,7 +407,7 @@ function EmptyText({ text }: { text: string }) { return <div className="rounded-
 // ═══════════════════════════════════════════
 
 function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar" | "kitchen" | null; shiftName: string }) {
-  const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">("opname");
+  const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">(role === null ? "kebersihan" : "opname");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -554,7 +554,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
               <Check className="h-4 w-4 text-emerald-600" />
             </div>
             <p className="font-bold text-sm text-emerald-800">Absen Keluar Berhasil!</p>
-            <p className="text-xs text-emerald-600 mt-0.5">Stock opname & kebersihan tersimpan.</p>
+            <p className="text-xs text-emerald-600 mt-0.5">Laporan closing tersimpan.</p>
             <p className="text-[10px] text-emerald-500 mt-1">Menutup otomatis...</p>
           </motion.div>
         )}

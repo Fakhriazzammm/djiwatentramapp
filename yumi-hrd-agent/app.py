@@ -693,25 +693,39 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
 
-    # ponytail: bar/kitchen must do stock opname via web app, not bot
+    # Semua karyawan menyelesaikan closing melalui Mini App. BAR/KITCHEN
+    # mendapat Stock Opname + Kebersihan, role lain mendapat Kebersihan.
+    # PTB membutuhkan WebAppInfo object; mengirim URL string membuat helper
+    # melempar exception dan sebelumnya diam-diam jatuh ke flow checkout lama.
+    ts = int(_now_wib().timestamp() * 1000)
+    sig = hmac.new(
+        ATTENDANCE_HMAC_SECRET.encode(),
+        f"{emp_id}:{ts}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    mini_url = (
+        f"https://karyawan.yumme.id/absen-keluar-mini"
+        f"?uid={emp_id}&t={ts}&sig={sig}&mode=closing"
+    )
     try:
-        staff = await _fetch("pos_staff_users",
-            f"select=roleName&_id=eq.{emp_id}&limit=1")
-        if staff:
-            rn = staff[0].get("roleName") or ""
-            role = rn.lower()
-            if "bar" in role or "kitchen" in role:
-                # Telegram Mini App for stock opname
-                ts = int(_now_wib().timestamp() * 1000)
-                sig = hmac.new(ATTENDANCE_HMAC_SECRET.encode(), f"{emp_id}:{ts}".encode(), hashlib.sha256).hexdigest()
-                mini_url = f"https://karyawan.yumme.id/absen-keluar-mini?uid={emp_id}&t={ts}&sig={sig}"
-                # Auto-redirect ke Mini App (tanpa perlu klik tombol)
-                await update.message.reply_web_app_info(
-                    text=f"🔄 Membuka Stock Opname untuk role {rn}...",
-                    web_app=mini_url)
-                return
+        await update.message.reply_text(
+            "🔄 Silakan buka form Absen Keluar melalui tombol di bawah.",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton(
+                    "📋 Buka Form Absen Keluar",
+                    web_app=WebAppInfo(url=mini_url),
+                ),
+            ]]),
+        )
+        logger.info("Opening checkout Mini App for %s (%s)", emp_name, emp_id)
+        return
     except Exception:
-        pass
+        logger.exception("Failed opening checkout Mini App for %s", emp_id)
+        await update.message.reply_text(
+            "⚠️ Mini App sedang gagal dibuka. Silakan tekan Absen Keluar lagi beberapa saat lagi.",
+            reply_markup=_main_keyboard(),
+        )
+        return
 
     exists_in, log_in = await _has_today_attendance(emp_id, "check_in")
     if not exists_in:
