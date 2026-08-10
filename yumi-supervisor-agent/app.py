@@ -1955,6 +1955,32 @@ async def _check_closed_shifts(bot: Bot):
                 logger.info("shift_recap: sent to %s for shift %s", gt, s_id)
             except Exception as e:
                 logger.warning("shift_recap send %s: %s", gt, e)
+
+        # Kasir recap belongs to the transaction group, owned by this bot.
+        # Keep it separate from the production-track recaps above so one
+        # failed target does not prevent the other reports from being sent.
+        all_orders = barista_orders + kitchen_orders
+        unique_order_nos = {str(o.get("order_no") or "?") for o in all_orders}
+        dibuat_total = sum(1 for o in all_orders if o.get("dibuat_by"))
+        selesai_total = sum(1 for o in all_orders if o.get("selesai_by"))
+        transaction_lines = [
+            f"📊 *Rekap Kasir*\n\n{base_header}",
+            f"📋 Total order: {len(unique_order_nos)}",
+            f"🍳 Kitchen: {len(kitchen_orders)} item status",
+            f"☕ Barista: {len(barista_orders)} item status",
+            f"✅ Dibuat: {dibuat_total}",
+            f"🏁 Selesai: {selesai_total}",
+        ]
+        try:
+            await bot.send_message(
+                chat_id=TRANSACTION_GROUP_ID,
+                text="\n".join(transaction_lines),
+                parse_mode="Markdown",
+            )
+            logger.info("shift_recap: sent cashier recap to transaction for shift %s", s_id)
+        except Exception as e:
+            logger.warning("shift_recap send transaction for %s: %s", s_id, e)
+
         if s_end > last_ts:
             last_ts = s_end
     _save_shift_recap_cursor(last_ts)

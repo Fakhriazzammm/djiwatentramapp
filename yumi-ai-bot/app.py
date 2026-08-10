@@ -127,6 +127,7 @@ ALLOWED_USERS = {
 }
 TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
+SHIFT_REPORT_GROUP_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
 MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "-5288006237"))
 BROADCAST_CHANNEL_ID = int(os.getenv("BROADCAST_CHANNEL_ID", "-1003534335147"))
 
@@ -150,6 +151,28 @@ _reported_expense_ids: set[str] = set()
 
 # Polling state for real-time transaction monitoring
 _last_expense_check_ms = 0
+
+# Shift-close report state. Keep it outside Git so deploys cannot replay old shifts.
+_SHIFT_RECAP_STATE_FILE = os.path.join(os.path.dirname(__file__), ".runtime", "shift_recap_cursor.txt")
+
+def _load_shift_recap_cursor() -> int:
+    try:
+        with open(_SHIFT_RECAP_STATE_FILE, encoding="utf-8") as f:
+            return int(f.read().strip())
+    except (FileNotFoundError, ValueError, OSError):
+        # Bounded first-run recovery: report only recent closures, never history.
+        return int(datetime.now(tz=timezone(timedelta(hours=7))).timestamp() * 1000) - 2 * 60 * 60 * 1000
+
+
+def _save_shift_recap_cursor(timestamp_ms: int) -> None:
+    path = os.path.dirname(_SHIFT_RECAP_STATE_FILE)
+    os.makedirs(path, exist_ok=True)
+    tmp = f"{_SHIFT_RECAP_STATE_FILE}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(str(timestamp_ms))
+    os.replace(tmp, _SHIFT_RECAP_STATE_FILE)
+
+_SHIFT_RECAP_CURSOR_MS = _load_shift_recap_cursor()
 
 # Product categories for item grouping in order notifications
 _PRODUCT_CATEGORY_MAP: dict[str, str] = {}
@@ -2698,6 +2721,106 @@ async def _check_new_transactions(app):
         logger.warning("check_new_transactions failed: %s", e)
 
 
+async def _check_closed_shift_reports(app) -> None:
+    """Send each newly closed cashier recap to the GM-owned Report group."""
+    global _SHIFT_RECAP_CURSOR_MS
+    now_ms = int(_now_wib().timestamp() * 1000)
+    try:
+        headers = {
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "Accept-Profile": "pos",
+        }
+        query = (
+            "select=source_id,shift_name,cashier_name,team_members,start_time,end_time,summary,raw"
+            f"&end_time=gt.{_SHIFT_RECAP_CURSOR_MS}"
+            f"&end_time=lte.{now_ms}"
+            "&order=end_time.asc&limit=20"
+        )
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(f"{SUPABASE_URL}/rest/v1/shifts?{query}", headers=headers)
+            response.raise_for_status()
+            shifts = response.json() if isinstance(response.json(), list) else []
+    except Exception as e:
+        logger.warning("shift_report fetch failed: %s", e)
+        return
+
+    if not shifts:
+        return
+
+    last_cursor = _SHIFT_RECAP_CURSOR_MS
+    for shift in shifts:
+        shift_id = str(shift.get("source_id") or "?")
+        end_ms = int(shift.get("end_time") or 0)
+        if end_ms <= last_cursor:
+            continue
+        start_ms = int(shift.get("start_time") or 0)
+        start_iso = datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        end_iso = datetime.fromtimestamp(end_ms / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        try:
+            orders = await _fetch(
+                "pos_order_status",
+                f"select=order_no,group_type,status,dibuat_by,selesai_by,dibuat_at,selesai_at,created_at"
+                f"&created_at=gte.{start_iso}&created_at=lt.{end_iso}&order=created_at.asc",
+            )
+        except Exception as e:
+            logger.warning("shift_report order fetch %s failed: %s", shift_id, e)
+            orders = []
+
+        unique_orders = {str(o.get("order_no") or "?") for o in orders}
+        dibuat_by = {}
+        selesai_by = {}
+        for order in orders:
+            if order.get("dibuat_by"):
+                dibuat_by[order["dibuat_by"]] = dibuat_by.get(order["dibuat_by"], 0) + 1
+            if order.get("selesai_by"):
+                selesai_by[order["selesai_by"]] = selesai_by.get(order["selesai_by"], 0) + 1
+
+        summary = shift.get("summary") or {}
+        if isinstance(summary, str):
+            try:
+                summary = json.loads(summary)
+            except json.JSONDecodeError:
+                summary = {}
+        cashier = shift.get("cashier_name") or "—"
+        team = shift.get("team_members") or "—"
+        lines = [
+            "📊 *Rekap Kasir — Shift Ditutup*",
+            "",
+            f"🕐 Shift: *{shift.get('shift_name') or 'Shift'}*",
+            f"👤 Kasir: {cashier}",
+            f"👥 Tim: {team}",
+            f"📅 {_format_time_ms(start_ms)} — {_format_time_ms(end_ms)}",
+            "",
+            f"🧾 Total order: {len(unique_orders)}",
+            f"💰 Omzet: Rp{float(summary.get('totalRevenue') or 0):,.0f}",
+            f"💵 Tunai: Rp{float(summary.get('cashRevenue') or 0):,.0f}",
+            f"📱 QRIS: Rp{float(summary.get('qrisRevenue') or 0):,.0f}",
+            f"💸 Pengeluaran: Rp{float(summary.get('totalExpenses') or 0):,.0f}",
+            f"🏦 Kas fisik: Rp{float(summary.get('endingCashPhysical') or 0):,.0f}",
+        ]
+        if dibuat_by:
+            lines.append("\n✅ *Dibuat:* " + ", ".join(f"{name} {count}x" for name, count in dibuat_by.items()))
+        if selesai_by:
+            lines.append("🏁 *Selesai:* " + ", ".join(f"{name} {count}x" for name, count in selesai_by.items()))
+
+        try:
+            await app.bot.send_message(
+                chat_id=SHIFT_REPORT_GROUP_ID,
+                text="\n".join(lines),
+                parse_mode="Markdown",
+            )
+            logger.info("shift_report: sent to Report group for shift %s", shift_id)
+        except Exception as e:
+            logger.warning("shift_report send %s failed: %s", shift_id, e)
+        last_cursor = end_ms
+
+    if last_cursor > _SHIFT_RECAP_CURSOR_MS:
+        _SHIFT_RECAP_CURSOR_MS = last_cursor
+        _save_shift_recap_cursor(last_cursor)
+        logger.info("shift_report: cursor updated to %d", last_cursor)
+
+
 async def _send_daily_summary(app):
     """Send daily summary report to group at 22:00 WIB."""
     try:
@@ -2905,10 +3028,16 @@ async def _start_auto_reporter(app):
             logger.info("Auto-reporter: attendance catch-up complete")
         except Exception as e:
             logger.warning("Auto-reporter: attendance catch-up failed: %s", e)
+        try:
+            await _check_closed_shift_reports(app)
+            logger.info("Auto-reporter: shift report catch-up complete")
+        except Exception as e:
+            logger.warning("Auto-reporter: shift report catch-up failed: %s", e)
         while True:
             await asyncio.sleep(30)
             await _check_new_transactions(app)
             await _check_new_attendance(app)
+            await _check_closed_shift_reports(app)
 
     asyncio.create_task(_poll_loop())
     logger.info("Auto-reporter: real-time polling started (30s interval, immediate catch-up)")
