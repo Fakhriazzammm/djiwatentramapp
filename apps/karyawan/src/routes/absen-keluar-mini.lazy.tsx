@@ -15,6 +15,7 @@ import {
 import {
   submitClosingViaEdge,
   prepareKebersihanPhoto,
+  ClosingSubmitError,
   type OpnameItem,
 } from "../hooks/use-closing-submit";
 
@@ -411,6 +412,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 
   const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
   const kebersihanRef = useRef<{ getAreas: () => KebersihanArea[] }>(null);
@@ -453,6 +455,7 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
   // ── Handle submit ──
   async function handleSubmit() {
     setSubmitError(null);
+    setSubmitNotice(null);
     const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
     const uncheckedAreas = areasKebersihan.filter((area) => area.status === "belum_dicek");
     if (uncheckedAreas.length > 0) {
@@ -501,7 +504,13 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
       }
     } catch (err: any) {
       const msg = err?.message || err?.toString() || "Terjadi kesalahan";
-      setSubmitError(msg);
+      if (err instanceof ClosingSubmitError && err.code === "BEFORE_CLOSE_TIME") {
+        setSubmitNotice(`⏰ ${msg.replace(/^Closing belum bisa\.\s*/i, "Absen keluar belum tersedia. ")}`);
+        setSubmitError(null);
+      } else {
+        setSubmitError(msg);
+        setSubmitNotice(null);
+      }
       console.error("[mini] handleSubmit error:", err);
     } finally {
       setIsSubmitting(false);
@@ -539,6 +548,19 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
               <p className="text-xs text-rose-700">{submitError}</p>
+            </div>
+          </motion.div>
+        )}
+
+        {submitNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl bg-amber-50 border border-amber-200 p-3 mt-3"
+          >
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-800">{submitNotice}</p>
             </div>
           </motion.div>
         )}

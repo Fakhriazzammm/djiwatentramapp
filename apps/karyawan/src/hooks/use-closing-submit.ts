@@ -33,6 +33,16 @@ export interface ClosingEdgeResponse {
   error?: { code: string; message: string };
 }
 
+export class ClosingSubmitError extends Error {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = "ClosingSubmitError";
+    this.code = code;
+  }
+}
+
 // ─── Ingredient sets ────────────────────────────────────────
 
 const BAR_INGREDIENTS = new Set([
@@ -461,7 +471,10 @@ export async function submitClosingViaEdge(params: {
   });
   const result = await response.json();
   if (!response.ok || !result.success) {
-    throw new Error(result.error?.message || "Gagal memproses closing");
+    throw new ClosingSubmitError(
+      result.error?.message || "Gagal memproses closing",
+      result.error?.code,
+    );
   }
   return result as ClosingEdgeResponse;
 }
