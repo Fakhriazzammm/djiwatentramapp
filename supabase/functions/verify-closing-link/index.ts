@@ -146,7 +146,8 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ valid: false, error: "Staff not found" });
     }
 
-    // Get role name
+    // Role source of truth for the employee Mini App is pos_staff_users.
+    // yumi_users is the auth/profile mirror and does not always carry roleName.
     let roleName = "";
     const raw = (user.raw ?? {}) as Record<string, unknown>;
     if (raw.roleName) {
@@ -162,6 +163,33 @@ Deno.serve(async (req: Request) => {
       if (role) roleName = role.name;
     }
 
+    if (!roleName) {
+      const { data: staffRow } = await supabase
+        .from("pos_staff_users")
+        .select("roleName, slug, username")
+        .eq("_id", uid)
+        .maybeSingle();
+      roleName = String(staffRow?.roleName ?? "");
+    }
+
+    const username = user.slug || uid.slice(0, 8);
+    const profile = {
+      email: raw.email ? String(raw.email) : `${username}@djiwa.internal`,
+      phone: raw.phone ? String(raw.phone) : null,
+      identityNumber: raw.identityNumber ? String(raw.identityNumber) : null,
+      placeOfBirth: raw.placeOfBirth ? String(raw.placeOfBirth) : null,
+      birthDate: raw.birthDate ? String(raw.birthDate) : null,
+      address: raw.address ? String(raw.address) : null,
+      emergencyContactName: raw.emergencyContactName ? String(raw.emergencyContactName) : null,
+      emergencyContactPhone: raw.emergencyContactPhone ? String(raw.emergencyContactPhone) : null,
+      bankName: raw.bankName ? String(raw.bankName) : null,
+      bankAccount: raw.bankAccount ? String(raw.bankAccount) : null,
+      startDate: raw.startDate ? String(raw.startDate) : null,
+      employmentType: raw.employmentType ? String(raw.employmentType) : null,
+      location: raw.location ? String(raw.location) : null,
+      area: raw.area ? String(raw.area) : null,
+    };
+
     // Detect shift
     const shiftName = await detectShift(supabase);
 
@@ -171,7 +199,9 @@ Deno.serve(async (req: Request) => {
         sourceId: user.source_id,
         name: user.name,
         roleName,
-        username: user.slug || user.source_id.slice(0, 8),
+        username,
+        photoUrl: null,
+        profile,
       },
       shiftName,
     });
