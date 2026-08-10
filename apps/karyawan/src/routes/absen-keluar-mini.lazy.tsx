@@ -323,27 +323,43 @@ function MiniHrWorkspace({
   }, [staff.sourceId, leaves, payslips]);
 
   const currentlyIn = effectiveLogs[0]?.type === "check_in";
-  const openBot = (action: "checkin" | "checkout") => {
+  const attendanceAction: "checkin" | "checkout" = currentlyIn ? "checkout" : "checkin";
+  const attendanceLink = `https://t.me/yumihrdbot?start=${attendanceAction}`;
+  const openBot = (action: "checkin" | "checkout"): boolean => {
     const link = `https://t.me/yumihrdbot?start=${action}`;
     const tg = window.Telegram?.WebApp as any;
+    const actionLabel = action === "checkin" ? "Absen Masuk" : "Absen Keluar";
 
-    // Telegram Android tidak konsisten menjalankan openTelegramLink di semua
-    // versi WebView. Coba API resmi, lalu fallback ke navigasi browser yang
-    // tetap membuka deep-link bot tanpa melewati flow verifikasi Yumi HR.
+    setNotice(`Membuka flow ${actionLabel} di @yumihrdbot...`);
+
+    // Setelah Telegram menerima deep-link, tutup WebApp agar user kembali ke
+    // chat bot. Fallback native tetap tersedia untuk WebView yang tidak expose
+    // openTelegramLink/openLink.
+    const closeMiniApp = () => {
+      if (typeof tg?.close === "function") {
+        window.setTimeout(() => tg.close(), 350);
+      }
+    };
+
     try {
       if (typeof tg?.openTelegramLink === "function") {
         tg.openTelegramLink(link);
-        return;
+        closeMiniApp();
+        return true;
       }
       if (typeof tg?.openLink === "function") {
         tg.openLink(link);
-        return;
+        closeMiniApp();
+        return true;
       }
     } catch (error) {
       console.warn("[mini] gagal membuka deep-link Telegram:", error);
     }
 
+    // Fallback terakhir: navigasi native ke t.me. Ini juga bekerja ketika
+    // Mini App dibuka di browser biasa, bukan hanya di Telegram WebView.
     window.location.assign(link);
+    return true;
   };
   async function submitLeave() {
     if (!leaveStart || !leaveEnd || !leaveReason.trim()) { setNotice("Tanggal dan alasan wajib diisi."); return; }
@@ -362,8 +378,8 @@ function MiniHrWorkspace({
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md"><div className="mx-auto flex max-w-2xl items-center justify-between"><div className="flex items-center gap-2"><img src="/logo-djiwa.png" alt="Djiwa Tentram" className="h-7 w-7 shrink-0 rounded-lg object-cover shadow-sm" /><span className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground">Djiwa Tentram</span></div><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${currentlyIn ? "bg-amber-500" : "bg-emerald-500"}`} /><span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{currentlyIn ? "Sedang bertugas" : "Siap absen"}</span></div></div></header>
     <main className="space-y-3 px-4 py-4 pb-24">{notice && <div className="rounded-2xl border border-blue-200 bg-blue-50 p-3 text-xs font-semibold text-blue-700">{notice}</div>}
-      {section === "home" && <><MiniHomeHeader staff={staff} /><SmartBanner /><SaldoCard staffId={staff.sourceId} /><div className="grid grid-cols-3 gap-2"><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Shift</p><p className="text-sm font-black">{sharedStats?.sessionCount ?? 0}</p></div><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hadir</p><p className="text-sm font-black">{sharedStats?.attendanceRate ?? 0}<span className="text-[7px] font-normal text-muted-foreground">%</span></p></div><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hari</p><p className="text-sm font-black">{sharedStats?.daysWorked ?? 0}</p></div></div><div><h2 className="mb-3 text-xs font-black uppercase tracking-wider text-foreground">Menu</h2><MiniMenuGrid onSelect={setSection} onTelegram={() => window.open("https://t.me/addlist/076D_FFRNFw5ZWI1", "_blank")} /></div><button onClick={() => setSection("checkin")} className={`flex h-12 w-full items-center justify-center gap-1.5 rounded-[14px] text-sm font-bold text-white shadow-lg active:scale-[.97] ${currentlyIn ? "bg-amber-500 shadow-amber-500/20" : "bg-primary shadow-primary/20"}`}>{currentlyIn ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}{currentlyIn ? "ABSEN KELUAR" : "ABSEN MASUK"}</button>{role && <button onClick={goClosing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-sm font-bold text-white"><ClipboardList className="h-4 w-4" /> Stock Opname & Closing</button>}</>}
-      {section === "checkin" && <Panel title="Absensi" icon={currentlyIn ? LogOut : LogIn} subtitle="Lokasi, shift, dan foto tetap diverifikasi oleh flow resmi Yumi HR."><p className="text-sm font-bold">{currentlyIn ? "Kamu sedang tercatat masuk." : "Kamu belum tercatat masuk."}</p><p className="mt-1 text-xs text-slate-500">Tekan tombol untuk melanjutkan proses aman melalui @yumihrdbot.</p><button type="button" onClick={() => openBot(currentlyIn ? "checkout" : "checkin")} aria-label={currentlyIn ? "Lanjut Absen Keluar" : "Lanjut Absen Masuk"} className="relative z-10 mt-4 min-h-12 w-full touch-manipulation rounded-2xl bg-primary text-sm font-bold text-white">{currentlyIn ? "Lanjut Absen Keluar" : "Lanjut Absen Masuk"}</button></Panel>}
+      {section === "home" && <><MiniHomeHeader staff={staff} /><SmartBanner /><SaldoCard staffId={staff.sourceId} /><div className="grid grid-cols-3 gap-2"><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Shift</p><p className="text-sm font-black">{sharedStats?.sessionCount ?? 0}</p></div><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hadir</p><p className="text-sm font-black">{sharedStats?.attendanceRate ?? 0}<span className="text-[7px] font-normal text-muted-foreground">%</span></p></div><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hari</p><p className="text-sm font-black">{sharedStats?.daysWorked ?? 0}</p></div></div><div><h2 className="mb-3 text-xs font-black uppercase tracking-wider text-foreground">Menu</h2><MiniMenuGrid onSelect={setSection} onTelegram={() => window.open("https://t.me/addlist/076D_FFRNFw5ZWI1", "_blank")} /></div><button type="button" onClick={() => openBot(attendanceAction)} className={`relative z-10 flex h-12 w-full touch-manipulation items-center justify-center gap-1.5 rounded-[14px] text-sm font-bold text-white shadow-lg active:scale-[.97] ${currentlyIn ? "bg-amber-500 shadow-amber-500/20" : "bg-primary shadow-primary/20"}`}>{currentlyIn ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}{currentlyIn ? "ABSEN KELUAR" : "ABSEN MASUK"}</button>{role && <button onClick={goClosing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-sm font-bold text-white"><ClipboardList className="h-4 w-4" /> Stock Opname & Closing</button>}</>}
+      {section === "checkin" && <Panel title="Absensi" icon={currentlyIn ? LogOut : LogIn} subtitle="Lokasi, shift, dan foto tetap diverifikasi oleh flow resmi Yumi HR."><p className="text-sm font-bold">{currentlyIn ? "Kamu sedang tercatat masuk." : "Kamu belum tercatat masuk."}</p><p className="mt-1 text-xs text-slate-500">Tekan tombol untuk melanjutkan proses aman melalui @yumihrdbot.</p><a href={attendanceLink} onClick={(event) => { if (openBot(attendanceAction)) event.preventDefault(); }} aria-label={currentlyIn ? "Lanjut Absen Keluar" : "Lanjut Absen Masuk"} className="relative z-10 mt-4 flex min-h-12 w-full touch-manipulation items-center justify-center rounded-2xl bg-primary text-sm font-bold text-white">{currentlyIn ? "Lanjut Absen Keluar" : "Lanjut Absen Masuk"}</a></Panel>}
       {section === "schedule" && <Panel title="Jadwal Saya" icon={CalendarDays} subtitle="Jadwal shift bulan berjalan."><div className="rounded-2xl bg-white p-2 shadow-sm"><PersonalSchedule userId={staff.sourceId} userName={staff.name} userRole={staff.roleName} month={reportDate.getMonth() + 1} year={reportDate.getFullYear()} /></div>{loading ? <LoadingText /> : schedules.length ? schedules.map((s) => <div key={`${s.date}-${s.shift_name}`} className="mb-2 flex justify-between rounded-2xl bg-white p-4 shadow-sm"><span><b className="text-sm">{s.date}</b><br /><small className="text-slate-500">{s.shift_name || "OFF"}</small></span><CalendarDays className="h-5 w-5 text-primary" /></div>) : <EmptyText text="Belum ada jadwal." />}</Panel>}
       {section === "recap" && <Panel title="Rekap Absensi" icon={FileText} subtitle="Ringkasan bulan berjalan."><div className="grid grid-cols-2 gap-3"><Summary label="Total masuk" value={effectiveLogs.filter((x) => x.type === "check_in").length} /><Summary label="Total keluar" value={effectiveLogs.filter((x) => x.type === "check_out").length} /><Summary label="Hari kerja" value={sharedStats?.daysWorked ?? effectiveLogs.filter((x) => x.type === "check_in").length} /><Summary label="Bulan" value={monthStart.slice(0, 7)} /></div></Panel>}
       {section === "leave" && <Panel title="Ajukan Izin" icon={Send} subtitle="Pengajuan masuk ke HRD dengan status pending."><div className="space-y-2"><label className="block text-xs font-bold text-slate-500">Jenis pengajuan</label><select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="min-h-11 w-full rounded-xl border px-3 text-sm"><option value="izin">Izin</option><option value="cuti">Cuti</option><option value="sakit">Sakit</option><option value="other">Lainnya</option></select><div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-500">Mulai<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-2 text-xs" /></label><label className="text-xs font-bold text-slate-500">Selesai<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-2 text-xs" /></label></div><textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="Alasan pengajuan..." className="min-h-24 w-full rounded-xl border p-3 text-sm" /><button onClick={submitLeave} className="min-h-12 w-full rounded-2xl bg-primary text-sm font-bold text-white">Kirim Pengajuan</button></div>{leaves.map((l, i) => <div key={`${l.start_date}-${i}`} className="mt-2 rounded-2xl bg-slate-50 p-3 text-xs"><b>{l.leave_type.toUpperCase()}</b> · {l.start_date} — {l.end_date}<span className="float-right font-bold text-amber-600">{l.status}</span></div>)}</Panel>}
