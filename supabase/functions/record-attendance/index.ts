@@ -236,10 +236,12 @@ Deno.serve(async (req: Request) => {
             ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
               ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
 
+          let openTime = "";
           let closeTime = "";
           for (const s of schedules) {
             const name = String(s.name ?? s.shiftName ?? s.shift_name ?? "");
-            if (name === finalShiftName) {
+            if (name.trim().toUpperCase() === finalShiftName.trim().toUpperCase()) {
+              openTime = String(s.openTime ?? s.open_time ?? "");
               closeTime = String(s.closeTime ?? s.close_time ?? "");
               break;
             }
@@ -251,7 +253,16 @@ Deno.serve(async (req: Request) => {
               const closeMin = ch * 60 + cm;
               const currentMin = currentMinWib();
 
-              if (currentMin < closeMin) {
+              const [openHourText, openMinuteText] = openTime.split(":");
+              const openMin = openTime
+                ? Number(openHourText ?? "") * 60 + Number(openMinuteText ?? "")
+                : -1;
+              const isOvernight = openMin >= 0 && openMin > closeMin;
+              const beforeClose = isOvernight
+                ? currentMin >= openMin || currentMin < closeMin
+                : currentMin < closeMin;
+
+              if (beforeClose) {
                 const closeHour = String(ch).padStart(2, "0");
                 const closeMinStr = String(cm).padStart(2, "0");
                 return fail(
