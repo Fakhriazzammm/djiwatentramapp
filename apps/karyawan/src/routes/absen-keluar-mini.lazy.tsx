@@ -1,12 +1,16 @@
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import { createClient } from "@yumipos/web-shared/lib/client";
+import { useHybridStaffLogs, useHybridStaffStats, useHybridPayslips } from "@yumipos/web-shared";
+import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
+import { SmartBanner } from "@/components/karyawan/SmartBanner";
+import { SaldoCard } from "@/components/karyawan/SaldoCard";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Check, Camera, Upload,
-  Loader2, Sparkles, AlertTriangle, X, Brush, Save, Search,
-  Lightbulb, Coffee, ChefHat, CookingPot, Armchair, Toilet
+  Loader2, Sparkles, AlertTriangle, X, Brush, Save, Search, CheckCheck, Clock, ExternalLink,
+  Lightbulb, Coffee, ChefHat, CookingPot, Armchair, Toilet, CalendarDays, UserRound, FileText, Bell, LogIn, LogOut, Send, Home, CircleDollarSign, CalendarOff, Trophy, NotebookText, Megaphone, Info, Briefcase
 } from "lucide-react";
 import {
   submitClosingViaEdge,
@@ -18,8 +22,9 @@ import {
 
 const searchSchema = z.object({
   uid: z.string().optional(),
-  t: z.string().optional(),
+  t: z.union([z.string(), z.number()]).optional(),
   sig: z.string().optional(),
+  mode: z.enum(["home", "checkin", "checkout", "schedule", "recap", "leave", "profile", "closing"]).optional(),
 });
 
 // ─── Telegram WebApp Type ─────────────────
@@ -76,8 +81,28 @@ type StaffInfo = {
   name: string;
   roleName: string;
   username?: string;
+  photoUrl?: string | null;
+  profile?: StaffProfileData;
 };
 
+type StaffProfileData = {
+  email?: string | null;
+  phone?: string | null;
+  identityNumber?: string | null;
+  placeOfBirth?: string | null;
+  birthDate?: string | null;
+  address?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  bankName?: string | null;
+  bankAccount?: string | null;
+  startDate?: string | null;
+  employmentType?: string | null;
+  location?: string | null;
+  area?: string | null;
+};
+
+// ─── Constants
 // ─── Constants ────────────────────────────
 
 const BAR_INGREDIENTS = new Set([
@@ -149,6 +174,7 @@ function MiniClosingPage() {
   const uid = (search as any)?.uid || "";
   const t = (search as any)?.t || "";
   const sig = (search as any)?.sig || "";
+  const initialMode = (search as any)?.mode || "closing";
 
   useEffect(() => {
     if (!uid || !t || !sig) {
@@ -218,8 +244,147 @@ function MiniClosingPage() {
     return null;
   })();
 
-  return <ClosingForm staff={staff!} role={role} shiftName={shiftName} />;
+  if (initialMode === "closing" || (initialMode === "checkout" && role !== null)) {
+    return <ClosingForm staff={staff!} role={role} shiftName={shiftName} />;
+  }
+
+  const signedQuery = `?uid=${encodeURIComponent(uid)}&t=${encodeURIComponent(String(t))}&sig=${encodeURIComponent(sig)}`;
+  const workspaceSection = initialMode === "checkout" ? "checkin" : initialMode;
+  return <MiniHrWorkspace staff={staff!} role={role} shiftName={shiftName} initialSection={workspaceSection as WorkspaceSection} signedQuery={signedQuery} />;
 }
+
+type WorkspaceSection = "home" | "schedule" | "checkin" | "notifications" | "recap" | "leave" | "profile" | "salary" | "contract" | "leaderboard";
+
+type MiniLog = { type: string; timestamp: number };
+
+function MiniHrWorkspace({
+  staff,
+  role,
+  shiftName,
+  initialSection,
+  signedQuery,
+}: {
+  staff: StaffInfo;
+  role: "bar" | "kitchen" | null;
+  shiftName: string;
+  initialSection: WorkspaceSection;
+  signedQuery: string;
+}) {
+  const [section, setSection] = useState<WorkspaceSection>(initialSection);
+  const [logs, setLogs] = useState<MiniLog[]>([]);
+  const [schedules, setSchedules] = useState<Array<{ date: string; shift_name: string }>>([]);
+  const [leaves, setLeaves] = useState<Array<{ leave_type: string; start_date: string; end_date: string; status: string }>>([]);
+  const [leaveType, setLeaveType] = useState("izin");
+  const [leaveStart, setLeaveStart] = useState("");
+  const [leaveEnd, setLeaveEnd] = useState("");
+  const [leaveReason, setLeaveReason] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const monthStart = `${new Date().toISOString().slice(0, 7)}-01`;
+  const reportDate = new Date(`${monthStart}T00:00:00+07:00`);
+  const sharedLogs = useHybridStaffLogs({ userId: staff.sourceId, month: reportDate.getMonth() + 1, year: reportDate.getFullYear() });
+  const sharedStats = useHybridStaffStats({ userId: staff.sourceId, month: reportDate.getMonth() + 1, year: reportDate.getFullYear() });
+  const payslips = useHybridPayslips({ userId: staff.sourceId });
+  const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; type: string; date: string }>>([]);
+  const effectiveLogs = (sharedLogs ?? logs) as MiniLog[];
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const startMs = new Date(`${monthStart}T00:00:00+07:00`).getTime();
+        const [logRes, scheduleRes, leaveRes] = await Promise.all([
+          supabase.from("pos_attendance_logs").select("type,timestamp").eq("userId", staff.sourceId).gte("timestamp", startMs).order("timestamp", { ascending: false }).limit(200),
+          supabase.schema("pos").from("attendance_schedules").select("date,shift_name").eq("user_id", staff.sourceId).gte("date", monthStart).order("date", { ascending: true }).limit(31),
+          supabase.from("attendance_leave_requests").select("leave_type,start_date,end_date,status").eq("user_id", staff.sourceId).order("created_at", { ascending: false }).limit(5),
+        ]);
+        if (!mounted) return;
+        setLogs((logRes.data ?? []) as MiniLog[]);
+        setSchedules((scheduleRes.data ?? []) as Array<{ date: string; shift_name: string }>);
+        setLeaves((leaveRes.data ?? []) as Array<{ leave_type: string; start_date: string; end_date: string; status: string }>);
+      } finally { if (mounted) setLoading(false); }
+    })();
+    return () => { mounted = false; };
+  }, [monthStart, staff.sourceId]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const items: Array<{ id: string; title: string; message: string; type: string; date: string }> = [];
+      const supabase = createClient();
+      const { data: announcements } = await supabase.from("announcements").select("id,title,subtitle,created_at").eq("is_active", true).order("created_at", { ascending: false }).limit(10);
+      for (const item of announcements ?? []) items.push({ id: `ann-${item.id}`, title: item.title, message: item.subtitle || "Pengumuman terbaru", type: "announcement", date: new Date(item.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) });
+      for (const item of leaves.slice(0, 5)) items.push({ id: `leave-${item.start_date}-${item.end_date}`, title: `Pengajuan ${item.leave_type}`, message: `${item.start_date} — ${item.end_date} · ${item.status}`, type: "leave", date: item.start_date });
+      for (const item of (payslips ?? []).slice(0, 5) as any[]) items.push({ id: `slip-${item.id ?? item.period_name}`, title: `Slip Gaji ${item.period_name || ""}`.trim(), message: `Status: ${item.status || "tersedia"}`, type: "payslip", date: item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "" });
+      if (mounted) setNotifications(items);
+    })().catch(() => { if (mounted) setNotifications([]); });
+    return () => { mounted = false; };
+  }, [staff.sourceId, leaves, payslips]);
+
+  const currentlyIn = effectiveLogs[0]?.type === "check_in";
+  const openBot = (action: "checkin" | "checkout") => {
+    const link = `https://t.me/yumihrdbot?start=${action}`;
+    const tg = window.Telegram?.WebApp as any;
+
+    // Telegram Android tidak konsisten menjalankan openTelegramLink di semua
+    // versi WebView. Coba API resmi, lalu fallback ke navigasi browser yang
+    // tetap membuka deep-link bot tanpa melewati flow verifikasi Yumi HR.
+    try {
+      if (typeof tg?.openTelegramLink === "function") {
+        tg.openTelegramLink(link);
+        return;
+      }
+      if (typeof tg?.openLink === "function") {
+        tg.openLink(link);
+        return;
+      }
+    } catch (error) {
+      console.warn("[mini] gagal membuka deep-link Telegram:", error);
+    }
+
+    window.location.assign(link);
+  };
+  async function submitLeave() {
+    if (!leaveStart || !leaveEnd || !leaveReason.trim()) { setNotice("Tanggal dan alasan wajib diisi."); return; }
+    const { error } = await createClient().from("attendance_leave_requests").insert({ user_id: staff.sourceId, user_name: staff.name, leave_type: leaveType, start_date: leaveStart, end_date: leaveEnd, reason: leaveReason.trim(), status: "pending" });
+    if (error) setNotice(error.message); else { setNotice("Pengajuan berhasil dikirim ke HRD."); setLeaveReason(""); setLeaves((prev) => [{ leave_type: leaveType, start_date: leaveStart, end_date: leaveEnd, status: "pending" }, ...prev]); }
+  }
+  const items: Array<{ id: WorkspaceSection; label: string; icon: any }> = [
+    { id: "home", label: "Beranda", icon: Home },
+    { id: "schedule", label: "Jadwal", icon: CalendarDays },
+    { id: "checkin", label: "Absensi", icon: currentlyIn ? LogOut : LogIn },
+    { id: "notifications", label: "Notifikasi", icon: Bell },
+    { id: "profile", label: "Profil", icon: UserRound },
+  ];
+  const goClosing = () => { window.location.href = `${window.location.pathname}${signedQuery}&mode=closing`; };
+
+  return <div className="min-h-screen bg-slate-50 text-slate-900">
+    <header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md"><div className="mx-auto flex max-w-2xl items-center justify-between"><div className="flex items-center gap-2"><img src="/logo-djiwa.png" alt="Djiwa Tentram" className="h-7 w-7 shrink-0 rounded-lg object-cover shadow-sm" /><span className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground">Djiwa Tentram</span></div><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${currentlyIn ? "bg-amber-500" : "bg-emerald-500"}`} /><span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{currentlyIn ? "Sedang bertugas" : "Siap absen"}</span></div></div></header>
+    <main className="space-y-3 px-4 py-4 pb-24">{notice && <div className="rounded-2xl border border-blue-200 bg-blue-50 p-3 text-xs font-semibold text-blue-700">{notice}</div>}
+      {section === "home" && <><MiniHomeHeader staff={staff} /><SmartBanner /><SaldoCard staffId={staff.sourceId} /><div className="grid grid-cols-3 gap-2"><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Shift</p><p className="text-sm font-black">{sharedStats?.sessionCount ?? 0}</p></div><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hadir</p><p className="text-sm font-black">{sharedStats?.attendanceRate ?? 0}<span className="text-[7px] font-normal text-muted-foreground">%</span></p></div><div className="rounded-2xl border bg-card px-2 py-2 text-center"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Hari</p><p className="text-sm font-black">{sharedStats?.daysWorked ?? 0}</p></div></div><div><h2 className="mb-3 text-xs font-black uppercase tracking-wider text-foreground">Menu</h2><MiniMenuGrid onSelect={setSection} onTelegram={() => window.open("https://t.me/addlist/076D_FFRNFw5ZWI1", "_blank")} /></div><button onClick={() => setSection("checkin")} className={`flex h-12 w-full items-center justify-center gap-1.5 rounded-[14px] text-sm font-bold text-white shadow-lg active:scale-[.97] ${currentlyIn ? "bg-amber-500 shadow-amber-500/20" : "bg-primary shadow-primary/20"}`}>{currentlyIn ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}{currentlyIn ? "ABSEN KELUAR" : "ABSEN MASUK"}</button>{role && <button onClick={goClosing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-slate-900 text-sm font-bold text-white"><ClipboardList className="h-4 w-4" /> Stock Opname & Closing</button>}</>}
+      {section === "checkin" && <Panel title="Absensi" icon={currentlyIn ? LogOut : LogIn} subtitle="Lokasi, shift, dan foto tetap diverifikasi oleh flow resmi Yumi HR."><p className="text-sm font-bold">{currentlyIn ? "Kamu sedang tercatat masuk." : "Kamu belum tercatat masuk."}</p><p className="mt-1 text-xs text-slate-500">Tekan tombol untuk melanjutkan proses aman melalui @yumihrdbot.</p><button type="button" onClick={() => openBot(currentlyIn ? "checkout" : "checkin")} aria-label={currentlyIn ? "Lanjut Absen Keluar" : "Lanjut Absen Masuk"} className="relative z-10 mt-4 min-h-12 w-full touch-manipulation rounded-2xl bg-primary text-sm font-bold text-white">{currentlyIn ? "Lanjut Absen Keluar" : "Lanjut Absen Masuk"}</button></Panel>}
+      {section === "schedule" && <Panel title="Jadwal Saya" icon={CalendarDays} subtitle="Jadwal shift bulan berjalan."><div className="rounded-2xl bg-white p-2 shadow-sm"><PersonalSchedule userId={staff.sourceId} userName={staff.name} userRole={staff.roleName} month={reportDate.getMonth() + 1} year={reportDate.getFullYear()} /></div>{loading ? <LoadingText /> : schedules.length ? schedules.map((s) => <div key={`${s.date}-${s.shift_name}`} className="mb-2 flex justify-between rounded-2xl bg-white p-4 shadow-sm"><span><b className="text-sm">{s.date}</b><br /><small className="text-slate-500">{s.shift_name || "OFF"}</small></span><CalendarDays className="h-5 w-5 text-primary" /></div>) : <EmptyText text="Belum ada jadwal." />}</Panel>}
+      {section === "recap" && <Panel title="Rekap Absensi" icon={FileText} subtitle="Ringkasan bulan berjalan."><div className="grid grid-cols-2 gap-3"><Summary label="Total masuk" value={effectiveLogs.filter((x) => x.type === "check_in").length} /><Summary label="Total keluar" value={effectiveLogs.filter((x) => x.type === "check_out").length} /><Summary label="Hari kerja" value={sharedStats?.daysWorked ?? effectiveLogs.filter((x) => x.type === "check_in").length} /><Summary label="Bulan" value={monthStart.slice(0, 7)} /></div></Panel>}
+      {section === "leave" && <Panel title="Ajukan Izin" icon={Send} subtitle="Pengajuan masuk ke HRD dengan status pending."><div className="space-y-2"><label className="block text-xs font-bold text-slate-500">Jenis pengajuan</label><select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="min-h-11 w-full rounded-xl border px-3 text-sm"><option value="izin">Izin</option><option value="cuti">Cuti</option><option value="sakit">Sakit</option><option value="other">Lainnya</option></select><div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold text-slate-500">Mulai<input type="date" value={leaveStart} onChange={(e) => setLeaveStart(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-2 text-xs" /></label><label className="text-xs font-bold text-slate-500">Selesai<input type="date" value={leaveEnd} onChange={(e) => setLeaveEnd(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-2 text-xs" /></label></div><textarea value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} placeholder="Alasan pengajuan..." className="min-h-24 w-full rounded-xl border p-3 text-sm" /><button onClick={submitLeave} className="min-h-12 w-full rounded-2xl bg-primary text-sm font-bold text-white">Kirim Pengajuan</button></div>{leaves.map((l, i) => <div key={`${l.start_date}-${i}`} className="mt-2 rounded-2xl bg-slate-50 p-3 text-xs"><b>{l.leave_type.toUpperCase()}</b> · {l.start_date} — {l.end_date}<span className="float-right font-bold text-amber-600">{l.status}</span></div>)}</Panel>}
+      {section === "notifications" && <MiniNotifications items={notifications} storageKey={staff.sourceId} onNavigate={setSection} />}
+      {section === "salary" && <Panel title="Slip Gaji" icon={CircleDollarSign} subtitle="Data slip gaji production Karyawan.">{payslips?.length ? (payslips as any[]).map((p) => <div key={p.id || p.period_name} className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm"><div><p className="text-sm font-black">{p.period_name || "Periode gaji"}</p><p className="text-xs text-slate-500">Status: {p.status || "tersedia"}</p></div><span className="text-sm font-black text-primary">Rp {Number(p.net_pay || p.netPay || 0).toLocaleString("id-ID")}</span></div>) : <EmptyText text="Belum ada slip gaji yang tersedia." />}</Panel>}
+      {section === "contract" && <Panel title="Kontrak Kerja" icon={FileText} subtitle="Buka dokumen kontrak dari aplikasi Karyawan."><p className="text-sm font-bold">Kontrak kerja tersedia di portal Karyawan.</p><button onClick={() => window.open(`https://karyawan.yumme.id/${staff.username || staff.sourceId}/kontrak`, "_blank")} className="mt-3 min-h-12 w-full rounded-2xl bg-primary text-sm font-bold text-white">Buka Kontrak</button></Panel>}
+      {section === "leaderboard" && <Panel title="Leaderboard Bonus" icon={Trophy} subtitle="Peringkat bonus dari aplikasi Karyawan."><p className="text-sm font-bold">Leaderboard production tetap tersedia di portal Karyawan.</p><button onClick={() => window.open(`https://karyawan.yumme.id/${staff.username || staff.sourceId}/leaderboard`, "_blank")} className="mt-3 min-h-12 w-full rounded-2xl bg-primary text-sm font-bold text-white">Buka Leaderboard</button></Panel>}
+      {section === "profile" && <Panel title="Profil Saya" icon={UserRound} subtitle="Data pribadi dan pekerjaan dari profil Karyawan."><div className="rounded-3xl bg-gradient-to-br from-primary to-blue-700 p-5 text-white"><div className="flex items-center gap-3"><div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white/20 text-2xl font-black">{staff.photoUrl ? <img src={staff.photoUrl} alt={staff.name} className="h-full w-full object-cover" /> : staff.name.slice(0, 1).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-lg font-black">{staff.name}</p><p className="text-xs text-blue-100">@{staff.username || staff.sourceId.slice(0, 8)}</p><p className="mt-1 text-xs font-bold text-blue-100">{staff.roleName || "Karyawan"}</p></div></div></div><div className="rounded-2xl border bg-white p-4 shadow-sm"><h3 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider"><UserRound className="h-4 w-4 text-primary" /> Data Pribadi</h3><div className="space-y-1.5"><ProfileRow label="Nama" value={staff.name} /><ProfileRow label="Email" value={staff.profile?.email} /><ProfileRow label="Username" value={staff.username ? `@${staff.username}` : undefined} /><ProfileRow label="No HP" value={staff.profile?.phone} /><ProfileRow label="KTP" value={staff.profile?.identityNumber} /><ProfileRow label="Tmp/Tgl Lahir" value={[staff.profile?.placeOfBirth, staff.profile?.birthDate].filter(Boolean).join(", ")} /><ProfileRow label="Alamat" value={staff.profile?.address} /><ProfileRow label="Kontak Darurat" value={staff.profile?.emergencyContactName ? `${staff.profile.emergencyContactName} (${staff.profile.emergencyContactPhone || "-"})` : undefined} /></div></div><div className="rounded-2xl border bg-white p-4 shadow-sm"><h3 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-primary"><Briefcase className="h-4 w-4" /> Pekerjaan</h3><div className="space-y-1.5"><ProfileRow label="Role" value={staff.roleName} /><ProfileRow label="Area / Lokasi" value={staff.profile?.area || staff.profile?.location || (role === "bar" ? "Bar" : role === "kitchen" ? "Kitchen" : undefined)} /><ProfileRow label="Mulai" value={staff.profile?.startDate} /><ProfileRow label="Status" value={staff.profile?.employmentType} /></div></div><div className="rounded-2xl border bg-white p-4 shadow-sm"><h3 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider"><CircleDollarSign className="h-4 w-4 text-primary" /> Data Payroll</h3><div className="space-y-1.5"><ProfileRow label="Bank" value={staff.profile?.bankName} /><ProfileRow label="No Rekening" value={staff.profile?.bankAccount} /></div></div><button onClick={() => window.open(`https://karyawan.yumme.id/${staff.username || staff.sourceId}/profil`, "_blank")} className="min-h-12 w-full rounded-2xl border border-primary bg-white text-sm font-bold text-primary">Edit data di apps/karyawan</button></Panel>}
+    </main><nav aria-label="Navigasi utama karyawan" className="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_12px_rgba(0,0,0,0.05)]"><div className="mx-auto flex max-w-2xl px-1 py-1">{items.map(({ id, label, icon: Icon }) => { const active = section === id; return <button key={id} onClick={() => setSection(id)} className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-all duration-200 active:scale-95 ${active ? "text-blue-600" : "text-gray-400 hover:text-gray-600"}`}><Icon className={`h-6 w-6 transition-all ${active ? "drop-shadow-[0_0_5px_rgba(37,99,235,0.3)]" : ""}`} /><span className={`text-[11px] font-bold uppercase tracking-wider leading-none ${active ? "opacity-100" : "opacity-60"}`}>{label}</span>{active && <div className="absolute top-0 h-1 w-8 rounded-b-lg bg-blue-600" />}</button>; })}</div></nav>
+  </div>;
+}
+function Metric({ label, value }: { label: string; value: string | number }) { return <div className="rounded-2xl bg-white/15 p-2 text-center"><p className="text-lg font-black">{value}</p><p className="text-[10px] text-blue-100">{label}</p></div>; }
+function Summary({ label, value }: { label: string; value: string | number }) { return <div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xl font-black text-primary">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>; }
+function MiniNotifications({ items, storageKey, onNavigate }: { items: Array<{ id: string; title: string; message: string; type: string; date: string }>; storageKey: string; onNavigate: (section: WorkspaceSection) => void }) { const [filter, setFilter] = useState<"all" | "announcement" | "payslip" | "leave">("all"); const [dismissed, setDismissed] = useState<Set<string>>(() => { try { return new Set(JSON.parse(localStorage.getItem(`yumi_mini_notif_dismissed_${storageKey}`) || "[]")); } catch { return new Set(); } }); const visible = items.filter((n) => !dismissed.has(n.id)); const filtered = filter === "all" ? visible : visible.filter((n) => n.type === filter); const dismiss = (id: string) => { const next = new Set(dismissed); next.add(id); setDismissed(next); try { localStorage.setItem(`yumi_mini_notif_dismissed_${storageKey}`, JSON.stringify([...next])); } catch { /* storage unavailable */ } }; const dismissAll = () => { const next = new Set(items.map((n) => n.id)); setDismissed(next); try { localStorage.setItem(`yumi_mini_notif_dismissed_${storageKey}`, JSON.stringify([...next])); } catch { /* storage unavailable */ } }; const sources = [{ label: "Semua", key: "all" as const, icon: <Bell className="h-3 w-3" /> }, { label: "Pengumuman", key: "announcement" as const, icon: <Megaphone className="h-3 w-3" /> }, { label: "Penggajian", key: "payslip" as const, icon: <FileText className="h-3 w-3" /> }, { label: "Izin", key: "leave" as const, icon: <CalendarOff className="h-3 w-3" /> }]; const iconMap: Record<string, React.ReactNode> = { announcement: <Megaphone className="h-4 w-4 text-blue-500" />, payslip: <FileText className="h-4 w-4 text-emerald-500" />, leave: <CalendarOff className="h-4 w-4 text-purple-500" />, info: <Info className="h-4 w-4 text-muted-foreground" /> }; const typeBadge: Record<string, string> = { announcement: "bg-blue-100 text-blue-700", payslip: "bg-emerald-100 text-emerald-700", leave: "bg-purple-100 text-purple-700" }; const openNotification = (n: { id: string; type: string }) => { if (n.type === "payslip") onNavigate("salary"); else if (n.type === "leave") onNavigate("leave"); else dismiss(n.id); }; return <div className="space-y-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Bell className="h-4 w-4 text-blue-600" /><h1 className="text-lg font-bold tracking-tight">Notifikasi</h1>{visible.length > 0 && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">{visible.length}</span>}</div>{visible.length > 1 && <button onClick={dismissAll} className="karyawan-control flex items-center gap-1 bg-muted px-3 text-xs font-bold text-muted-foreground"><CheckCheck className="h-3 w-3" /> Tandai Semua Dibaca</button>}</div><div className="scrollbar-none -mx-1 flex gap-1 overflow-x-auto px-1">{sources.map((source) => { const active = filter === source.key; const count = source.key === "all" ? visible.length : visible.filter((n) => n.type === source.key).length; return <button key={source.key} onClick={() => setFilter(source.key)} aria-pressed={active} className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${active ? "bg-blue-600 text-white shadow-sm" : "bg-muted text-muted-foreground"}`}>{source.icon}<span>{source.label}</span>{count > 0 && <span className={`ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-black ${active ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}>{count}</span>}</button>; })}</div>{filtered.length === 0 ? <div className="karyawan-card border bg-card p-8 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">{filter === "all" ? <CheckCheck className="h-6 w-6 text-emerald-500" /> : <Bell className="h-6 w-6 text-muted-foreground/40" />}</div><p className="text-sm font-bold">{filter === "all" ? "Semua sudah dibaca" : `Tidak ada notifikasi ${sources.find((s) => s.key === filter)?.label.toLowerCase() || ""}`}</p><p className="mt-1 text-xs text-muted-foreground">{filter === "all" ? "Kamu sudah membaca semua notifikasi." : "Belum ada notifikasi jenis ini."}</p></div> : <div className="space-y-2">{filtered.map((n) => <div key={n.id} onClick={() => openNotification(n)} role={n.type === "announcement" ? undefined : "button"} className={`karyawan-card group relative overflow-hidden border bg-card p-4 ${n.type !== "announcement" ? "cursor-pointer active:scale-[.99]" : ""}`}><button onClick={(event) => { event.stopPropagation(); dismiss(n.id); }} aria-label={`Tandai ${n.title} sudah dibaca`} className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-3 w-3" /></button><div className="flex items-start gap-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">{iconMap[n.type] || iconMap.info}</div><div className="min-w-0 flex-1 pr-4"><div className="flex flex-wrap items-center gap-1.5"><p className="text-xs font-bold">{n.title}</p><span className={`rounded px-1.5 py-0 text-[7px] font-bold uppercase tracking-wider ${typeBadge[n.type] || "bg-gray-100 text-gray-600"}`}>{n.type === "announcement" ? "Info" : n.type === "payslip" ? "Gaji" : n.type === "leave" ? "Izin" : "Info"}</span></div>{n.message && <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{n.message}</p>}<div className="mt-1.5 flex items-center gap-2">{n.date && <span className="flex items-center gap-1 text-[10px] text-muted-foreground/50"><Clock className="h-2.5 w-2.5" />{n.date}</span>}{n.type === "payslip" && <button onClick={(event) => { event.stopPropagation(); onNavigate("salary"); }} className="karyawan-control inline-flex gap-1 bg-primary/10 px-3 text-xs font-bold text-primary">Lihat Slip Gaji <ExternalLink className="h-2.5 w-2.5" /></button>}{n.type === "leave" && <button onClick={(event) => { event.stopPropagation(); onNavigate("leave"); }} className="karyawan-control inline-flex gap-1 bg-primary/10 px-3 text-xs font-bold text-primary">Lihat Izin <ExternalLink className="h-2.5 w-2.5" /></button>}</div></div></div></div>)}</div>}</div>; }
+function MiniHomeHeader({ staff }: { staff: StaffInfo }) { const now = new Date(); const hour = now.getHours(); const greeting = hour < 11 ? "Selamat Pagi" : hour < 15 ? "Selamat Siang" : hour < 18 ? "Selamat Sore" : "Selamat Malam"; const time = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }); const date = now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" }); return <div className="flex items-start justify-between"><div className="flex min-w-0 items-center gap-2.5"><img src="/logo-djiwa.png" alt="Djiwa Tentram" className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm" /><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70">TENTREM KOFFIE</p><p className="truncate text-xs font-medium text-muted-foreground">{greeting}, ({time})</p><h1 className="text-lg font-bold tracking-tight [overflow-wrap:anywhere]">{staff.name}</h1><p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">{staff.roleName || "Karyawan"}</p></div></div><div className="flex shrink-0 flex-col items-end gap-0.5">{staff.photoUrl ? <img src={staff.photoUrl} alt={staff.name} className="h-10 w-10 rounded-xl border-2 border-border object-cover shadow-sm" /> : <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-border bg-primary/10 text-base font-black text-primary">{staff.name.charAt(0)}</div>}<span className="text-[10px] font-medium text-muted-foreground/60">{date}</span></div></div>; }
+function MiniMenuGrid({ onSelect, onTelegram }: { onSelect: (section: WorkspaceSection) => void; onTelegram: () => void }) { const items = [{ label: "Absensi", icon: LogIn, section: "checkin" as WorkspaceSection }, { label: "Rekap Absensi", icon: NotebookText, section: "recap" as WorkspaceSection }, { label: "Jadwal", icon: CalendarDays, section: "schedule" as WorkspaceSection }, { label: "Izin/Cuti/Sakit", icon: CalendarOff, section: "leave" as WorkspaceSection }, { label: "Slip Gaji", icon: CircleDollarSign, section: "salary" as WorkspaceSection }, { label: "Kontrak", icon: FileText, section: "contract" as WorkspaceSection }, { label: "Grup Telegram", icon: Send, external: true }, { label: "Leaderboard Bonus", icon: Trophy, section: "leaderboard" as WorkspaceSection }]; return <div className="grid grid-cols-4 gap-2 sm:gap-3">{items.map((item) => { const Icon = item.icon; return <button key={item.label} onClick={item.external ? onTelegram : () => onSelect(item.section!)} className="karyawan-card flex min-h-24 min-w-0 flex-col items-center justify-center gap-1 border border-border/60 bg-card p-2 transition-all active:scale-[.97]"><Icon aria-hidden="true" className="h-6 w-6 text-gray-700" strokeWidth={2} /><span className="text-center text-[11px] font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">{item.label}</span></button>; })}</div>; }
+function ProfileRow({ label, value }: { label: string; value?: string | null }) { return <div className="flex items-start justify-between gap-3 text-[11px]"><span className="shrink-0 text-slate-500">{label}</span><span className="text-right font-bold">{value || "---"}</span></div>; }
+function ActionCard({ icon: Icon, label, onClick, tone = "blue" }: { icon: any; label: string; onClick: () => void; tone?: "blue" | "green" | "amber" }) { return <button onClick={onClick} className={`flex min-h-28 flex-col items-start justify-between rounded-3xl p-4 text-left ${tone === "green" ? "bg-emerald-50 text-emerald-700" : tone === "amber" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}><Icon className="h-5 w-5" /><span className="text-sm font-black">{label}</span></button>; }
+function Panel({ title, subtitle, icon: Icon, children }: { title: string; subtitle: string; icon: any; children: any }) { return <section className="space-y-3"><div className="flex items-center gap-3"><div className="rounded-2xl bg-primary/10 p-3 text-primary"><Icon className="h-5 w-5" /></div><div><h2 className="text-lg font-black">{title}</h2><p className="text-xs text-slate-500">{subtitle}</p></div></div>{children}</section>; }
+function LoadingText() { return <div className="rounded-2xl bg-white p-6 text-center text-xs text-slate-500">Memuat data...</div>; }
+function EmptyText({ text }: { text: string }) { return <div className="rounded-2xl border border-dashed p-6 text-center text-xs text-slate-500">{text}</div>; }
 
 // ═══════════════════════════════════════════
 //  C L O S I N G   F O R M
