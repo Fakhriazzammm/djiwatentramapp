@@ -954,7 +954,8 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
 
       {saved && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-center">
-          <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700"><Check className="h-3.5 w-3.5" /> Checklist tersimpan!</p>
+          <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700"><Check className="h-3.5 w-3.5" /> Checklist siap dikirim</p>
+          <p className="mt-1 text-[10px] font-medium text-emerald-700">Tekan tombol Telegram “Kirim Laporan Closing” untuk menyelesaikan Absen Keluar.</p>
         </motion.div>
       )}
     </div>
