@@ -1985,7 +1985,6 @@ async def _check_closed_shifts(bot: Bot):
             await bot.send_message(
                 chat_id=TRANSACTION_GROUP_ID,
                 text="\n".join(transaction_lines),
-                parse_mode="Markdown",
             )
             logger.info("shift_recap: sent cashier recap to transaction for shift %s", s_id)
         except Exception as e:

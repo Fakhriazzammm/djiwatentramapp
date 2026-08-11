@@ -2815,16 +2815,18 @@ async def _check_closed_shift_reports(app) -> None:
         if selesai_by:
             lines.append("🏁 *Selesai:* " + ", ".join(f"{name} {count}x" for name, count in selesai_by.items()))
 
+        sent_ok = False
         try:
             await app.bot.send_message(
                 chat_id=SHIFT_REPORT_GROUP_ID,
                 text="\n".join(lines),
-                parse_mode="Markdown",
             )
+            sent_ok = True
             logger.info("shift_report: sent to Report group for shift %s", shift_id)
         except Exception as e:
             logger.warning("shift_report send %s failed: %s", shift_id, e)
-        last_cursor = end_ms
+        if sent_ok:
+            last_cursor = end_ms
 
     if last_cursor > _SHIFT_RECAP_CURSOR_MS:
         _SHIFT_RECAP_CURSOR_MS = last_cursor
