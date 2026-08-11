@@ -159,6 +159,8 @@ function MiniClosingPage() {
   const [verified, setVerified] = useState<boolean>(false);
   const [verifying, setVerifying] = useState<boolean>(true);
   const [shiftName, setShiftName] = useState<string>("Shift");
+  const [shiftOpenTime, setShiftOpenTime] = useState<string>("");
+  const [shiftCloseTime, setShiftCloseTime] = useState<string>("");
 
   // ── Telegram init ──
   useEffect(() => {
@@ -204,6 +206,8 @@ function MiniClosingPage() {
 
         setStaff(data.staff);
         setShiftName(data.shiftName || "Shift");
+        setShiftOpenTime(data.openTime || "");
+        setShiftCloseTime(data.closeTime || "");
         setVerified(true);
         setVerifying(false);
         setLoadingStaff(false);
@@ -246,7 +250,7 @@ function MiniClosingPage() {
   })();
 
   if (initialMode === "closing" || (initialMode === "checkout" && role !== null)) {
-    return <ClosingForm staff={staff!} role={role} shiftName={shiftName} />;
+    return <ClosingForm staff={staff!} role={role} shiftName={shiftName} openTime={shiftOpenTime} closeTime={shiftCloseTime} />;
   }
 
   const signedQuery = `?uid=${encodeURIComponent(uid)}&t=${encodeURIComponent(String(t))}&sig=${encodeURIComponent(sig)}`;
@@ -407,16 +411,38 @@ function EmptyText({ text }: { text: string }) { return <div className="rounded-
 //  C L O S I N G   F O R M
 // ═══════════════════════════════════════════
 
-function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar" | "kitchen" | null; shiftName: string }) {
+function ClosingForm({ staff, role, shiftName, openTime, closeTime }: { staff: StaffInfo; role: "bar" | "kitchen" | null; shiftName: string; openTime: string; closeTime: string }) {
   const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">(role === null ? "kebersihan" : "opname");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+  const [clockTick, setClockTick] = useState(() => Date.now());
 
   const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
   const kebersihanRef = useRef<{ getAreas: () => KebersihanArea[] }>(null);
   const needsOpname = role !== null;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockTick(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const closeScheduleNotice = useMemo(() => {
+    if (!closeTime) return null;
+    const [closeHour, closeMinute] = closeTime.split(":").map(Number);
+    if (!Number.isFinite(closeHour) || !Number.isFinite(closeMinute)) return null;
+    const [openHour, openMinute] = openTime.split(":").map(Number);
+    const current = new Date(new Date(clockTick).toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+    const currentMin = current.getHours() * 60 + current.getMinutes();
+    const closeMin = closeHour * 60 + closeMinute;
+    const openMin = Number.isFinite(openHour) && Number.isFinite(openMinute) ? openHour * 60 + openMinute : -1;
+    const beforeClose = openMin >= 0 && openMin > closeMin
+      ? currentMin >= openMin || currentMin < closeMin
+      : currentMin < closeMin;
+    if (!beforeClose) return null;
+    return `⏰ Belum waktunya Absen Keluar. Shift ${shiftName} berakhir pukul ${String(closeHour).padStart(2, "0")}:${String(closeMinute).padStart(2, "0")} WIB. Silakan tunggu sampai jam tersebut.`;
+  }, [clockTick, closeTime, openTime, shiftName]);
 
   const userId = staff.sourceId;
   const userName = staff.name;
@@ -428,15 +454,15 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
     if (!tg) return;
     if (submitDone) return;
 
-    tg.MainButton.setText("Kirim Laporan Closing");
+    tg.MainButton.setText(closeScheduleNotice ? `Tunggu sampai ${closeTime} WIB` : "Kirim Laporan Closing");
     tg.MainButton.show();
-    tg.MainButton.enable();
+    if (closeScheduleNotice) tg.MainButton.disable(); else tg.MainButton.enable();
     tg.MainButton.onClick(handleSubmit);
 
     return () => {
       tg.MainButton.offClick(handleSubmit);
     };
-  }, [submitDone, activeTab]);
+  }, [submitDone, activeTab, closeScheduleNotice, closeTime]);
 
   // ── Show/update MainButton ──
   useEffect(() => {
@@ -447,15 +473,16 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
       tg.MainButton.setText("Menyimpan...");
       tg.MainButton.disable();
     } else {
-      tg.MainButton.setText("Kirim Laporan Closing");
-      tg.MainButton.enable();
+      tg.MainButton.setText(closeScheduleNotice ? `Tunggu sampai ${closeTime} WIB` : "Kirim Laporan Closing");
+      if (closeScheduleNotice) tg.MainButton.disable(); else tg.MainButton.enable();
     }
-  }, [isSubmitting, submitDone]);
+  }, [isSubmitting, submitDone, closeScheduleNotice, closeTime]);
 
   // ── Handle submit ──
   async function handleSubmit() {
     setSubmitError(null);
-    setSubmitNotice(null);
+    setSubmitNotice(closeScheduleNotice);
+    if (closeScheduleNotice) return;
     const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
     const uncheckedAreas = areasKebersihan.filter((area) => area.status === "belum_dicek");
     if (uncheckedAreas.length > 0) {
@@ -561,6 +588,19 @@ function ClosingForm({ staff, role, shiftName }: { staff: StaffInfo; role: "bar"
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber-600 shrink-0" />
               <p className="text-xs text-amber-800">{submitNotice}</p>
+            </div>
+          </motion.div>
+        )}
+
+        {closeScheduleNotice && !submitNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl bg-amber-50 border border-amber-200 p-3 mt-3"
+          >
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-800">{closeScheduleNotice}</p>
             </div>
           </motion.div>
         )}

@@ -210,6 +210,25 @@ Deno.serve(async (req: Request) => {
       .limit(1)
       .maybeSingle();
     const shiftName = String(checkInLog?.shiftName ?? "") || await detectShift(supabase);
+    let openTime = "";
+    let closeTime = "";
+    const { data: settings } = await supabase
+      .schema("pos")
+      .from("site_settings")
+      .select("raw")
+      .limit(1)
+      .single();
+    const schedules =
+      ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
+        ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
+    const targetShift = shiftName.trim().toUpperCase();
+    const schedule = schedules.find((s) =>
+      String(s.name ?? s.shiftName ?? s.shift_name ?? "").trim().toUpperCase() === targetShift
+    );
+    if (schedule) {
+      openTime = String(schedule.openTime ?? schedule.open_time ?? "");
+      closeTime = String(schedule.closeTime ?? schedule.close_time ?? "");
+    }
 
     return jsonResponse({
       valid: true,
@@ -222,6 +241,8 @@ Deno.serve(async (req: Request) => {
         profile,
       },
       shiftName,
+      openTime,
+      closeTime,
     });
   } catch (err) {
     console.error("[verify-closing-link] Error:", err);
