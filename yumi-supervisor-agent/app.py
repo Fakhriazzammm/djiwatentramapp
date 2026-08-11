@@ -1877,7 +1877,7 @@ async def _check_closed_shifts(bot: Bot):
     now_ms = int(datetime.now().timestamp() * 1000)
     try:
         url = f"{SUPABASE_URL}/rest/v1/shifts"
-        q = (f"select=source_id,shift_name,cashier_name,team_members,start_time,end_time"
+        q = (f"select=source_id,shift_name,cashier_name,team_members,start_time,end_time,cash_breakdown"
              f"&end_time=gt.{cursor}"
              f"&end_time=lte.{now_ms}"
              f"&order=end_time.asc")
@@ -1963,6 +1963,14 @@ async def _check_closed_shifts(bot: Bot):
         unique_order_nos = {str(o.get("order_no") or "?") for o in all_orders}
         dibuat_total = sum(1 for o in all_orders if o.get("dibuat_by"))
         selesai_total = sum(1 for o in all_orders if o.get("selesai_by"))
+        cash_breakdown = shift.get("cash_breakdown") or {}
+        cash_lines = []
+        for key, count in sorted(cash_breakdown.items(), key=lambda item: int(str(item[0]).replace("bill", "")), reverse=True):
+            count = int(count or 0)
+            if count <= 0:
+                continue
+            nominal = int(str(key).replace("bill", ""))
+            cash_lines.append(f"   Rp{nominal:,.0f} × {count} = Rp{nominal * count:,.0f}")
         transaction_lines = [
             f"📊 *Rekap Kasir*\n\n{base_header}",
             f"📋 Total order: {len(unique_order_nos)}",
@@ -1971,6 +1979,8 @@ async def _check_closed_shifts(bot: Bot):
             f"✅ Dibuat: {dibuat_total}",
             f"🏁 Selesai: {selesai_total}",
         ]
+        if cash_lines:
+            transaction_lines.extend(["", "💵 *Rincian Tunai:", *cash_lines, f"   Total: Rp{sum(int(str(k).replace('bill', '')) * int(v or 0) for k, v in cash_breakdown.items()):,.0f}"])
         try:
             await bot.send_message(
                 chat_id=TRANSACTION_GROUP_ID,

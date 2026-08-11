@@ -2732,7 +2732,7 @@ async def _check_closed_shift_reports(app) -> None:
             "Accept-Profile": "pos",
         }
         query = (
-            "select=source_id,shift_name,cashier_name,team_members,start_time,end_time,summary,raw"
+            "select=source_id,shift_name,cashier_name,team_members,start_time,end_time,summary,raw,cash_breakdown"
             f"&end_time=gt.{_SHIFT_RECAP_CURSOR_MS}"
             f"&end_time=lte.{now_ms}"
             "&order=end_time.asc&limit=20"
@@ -2784,6 +2784,15 @@ async def _check_closed_shift_reports(app) -> None:
                 summary = {}
         cashier = shift.get("cashier_name") or "—"
         team = shift.get("team_members") or "—"
+        cash_breakdown = shift.get("cash_breakdown") or summary.get("cashBreakdown") or {}
+        cash_lines = []
+        for key, count in sorted(cash_breakdown.items(), key=lambda item: int(str(item[0]).replace("bill", "")), reverse=True):
+            count = int(count or 0)
+            if count <= 0:
+                continue
+            nominal = int(str(key).replace("bill", ""))
+            cash_lines.append(f"   Rp{nominal:,.0f} × {count} = Rp{nominal * count:,.0f}")
+        cash_total = sum(int(str(key).replace("bill", "")) * int(value or 0) for key, value in cash_breakdown.items())
         lines = [
             "📊 *Rekap Kasir — Shift Ditutup*",
             "",
@@ -2799,6 +2808,8 @@ async def _check_closed_shift_reports(app) -> None:
             f"💸 Pengeluaran: Rp{float(summary.get('totalExpenses') or 0):,.0f}",
             f"🏦 Kas fisik: Rp{float(summary.get('endingCashPhysical') or 0):,.0f}",
         ]
+        if cash_lines:
+            lines.extend(["", "💵 *Rincian Tunai:", *cash_lines, f"   Total: Rp{cash_total:,.0f}"])
         if dibuat_by:
             lines.append("\n✅ *Dibuat:* " + ", ".join(f"{name} {count}x" for name, count in dibuat_by.items()))
         if selesai_by:
