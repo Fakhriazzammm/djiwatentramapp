@@ -2073,6 +2073,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [endShiftExpenses, setEndShiftExpenses] = useState<{id: number; category: string; amount: string; description: string}[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
+	const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 	const [showEndConfirm, setShowEndConfirm] = useState(false);
 	
 	// Cash Breakdown State
@@ -2348,8 +2349,10 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 	const handleEndShift = async () => {
 		if (shiftTimeGate.blocked) {
-			toast.error(shiftTimeGate.message);
-			setSubmitError(shiftTimeGate.message);
+			setSubmitError(null);
+			setSubmitNotice(`⏰ ${shiftTimeGate.message}`);
+			toast.info(shiftTimeGate.message);
+			setShowEndConfirm(false);
 			return;
 		}
 		if (closingAttendanceLoading) {
@@ -2374,6 +2377,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 		setIsSubmitting(true);
 		setSubmitError(null);
+		setSubmitNotice(null);
 		try {
 			// Record any end-of-shift expenses first
 			for (const exp of endShiftExpenses) {
@@ -2557,8 +2561,14 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
-			setSubmitError(message);
-			toast.error(message);
+			if (/baru tutup jam|belum bisa.*tutup|belum.*tutup/i.test(message)) {
+				setSubmitError(null);
+				setSubmitNotice(`⏰ ${message}`);
+				toast.info(message);
+			} else {
+				setSubmitError(message);
+				toast.error(message);
+			}
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -2569,6 +2579,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		
 		setIsSubmitting(true);
 		setSubmitError(null);
+		setSubmitNotice(null);
 		try {
 			if (shiftType === "mulai") {
 				if (!amount || !cashierName) {
@@ -2613,8 +2624,14 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
-			setSubmitError(message);
-			toast.error(message);
+			if (/baru tutup jam|belum bisa.*tutup|belum.*tutup/i.test(message)) {
+				setSubmitError(null);
+				setSubmitNotice(`⏰ ${message}`);
+				toast.info(message);
+			} else {
+				setSubmitError(message);
+				toast.error(message);
+			}
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -3070,6 +3087,11 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					/>
 				</div>
 
+				{submitNotice && (
+					<div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[11px] font-semibold text-amber-800">
+						{submitNotice}
+					</div>
+				)}
 				{submitError && (
 					<div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-[11px] font-medium text-destructive">
 						{submitError}
