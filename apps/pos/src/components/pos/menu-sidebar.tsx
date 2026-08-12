@@ -2561,7 +2561,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
-			if (/baru tutup jam|belum bisa.*tutup|belum.*tutup/i.test(message)) {
+			if (/baru tutup jam|baru bisa ditutup setelah|belum waktunya|tunggu sampai|belum bisa.*tutup|belum.*tutup/i.test(message)) {
 				setSubmitError(null);
 				setSubmitNotice(`⏰ ${message}`);
 				toast.info(message);
@@ -2624,7 +2624,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
-			if (/baru tutup jam|belum bisa.*tutup|belum.*tutup/i.test(message)) {
+			if (/baru tutup jam|baru bisa ditutup setelah|belum waktunya|tunggu sampai|belum bisa.*tutup|belum.*tutup/i.test(message)) {
 				setSubmitError(null);
 				setSubmitNotice(`⏰ ${message}`);
 				toast.info(message);
@@ -2671,6 +2671,24 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			</div>
 
 			<form className="space-y-3 pb-6" onSubmit={handleSubmit}>
+				{shiftType === "akhiri" && selectedShiftSchedule?.closeTime && (
+					<div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-semibold ${
+						shiftTimeGate.blocked
+							? "border-amber-300 bg-amber-50 text-amber-900"
+							: "border-emerald-200 bg-emerald-50 text-emerald-800"
+					}`}>
+						<Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
+						<div>
+							<p className="font-black">Informasi Tutup Kasir</p>
+							<p>
+								Shift {shiftStatus?.shiftInfo?.shiftName || shiftName} dijadwalkan tutup pukul {selectedShiftSchedule.closeTime} WIB.
+								{shiftTimeGate.blocked
+									? " Belum waktunya tutup kasir. Tombol akan aktif setelah jadwal tersebut."
+									: " Waktu tutup sudah tercapai, silakan lanjutkan pemeriksaan kas."}
+							</p>
+						</div>
+					</div>
+				)}
 				{shiftType === "mulai" ? (
 					<>
 						<div className="grid grid-cols-2 gap-3">
@@ -3099,7 +3117,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				)}
 
 				<Button
-					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : 'bg-destructive hover:bg-destructive/90'}`}
+					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
 					disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 || shiftTimeGate.blocked : isSubmitting}
 					type={shiftType === 'mulai' ? 'submit' : 'button'}
 					onClick={shiftType === 'akhiri' ? () => setShowEndConfirm(true) : undefined}
@@ -3107,7 +3125,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					{isSubmitting ? (
 						<Loader2 className="mr-2 h-3 w-3 animate-spin text-white" />
 					) : (
-						shiftType === "mulai" ? <div className="flex items-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : <div className="flex items-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
+						shiftType === "mulai" ? <div className="flex items-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : shiftTimeGate.blocked ? <div className="flex items-center justify-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> Tunggu sampai {selectedShiftSchedule?.closeTime} WIB</div> : <div className="flex items-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
 					)}
 				</Button>
 			</form>
