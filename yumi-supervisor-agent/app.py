@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+from html import escape
 from datetime import datetime, timezone, timedelta
 
 import httpx
@@ -1971,20 +1972,37 @@ async def _check_closed_shifts(bot: Bot):
                 continue
             nominal = int(str(key).replace("bill", ""))
             cash_lines.append(f"   Rp{nominal:,.0f} × {count} = Rp{nominal * count:,.0f}")
+        cash_total = sum(
+            int(str(key).replace("bill", "")) * int(value or 0)
+            for key, value in cash_breakdown.items()
+        )
         transaction_lines = [
-            f"📊 *Rekap Kasir*\n\n{base_header}",
-            f"📋 Total order: {len(unique_order_nos)}",
+            "📊 <b>Rekap Kasir</b>",
+            "",
+            f"🕐 Shift: <b>{escape(str(s_name))}</b>",
+            f"👤 Kasir: {escape(str(cashier or '—'))}",
+            f"📅 {start_t} — {end_t}",
+            "",
+            f"📋 Total order: <b>{len(unique_order_nos)}</b>",
             f"🍳 Kitchen: {len(kitchen_orders)} item status",
             f"☕ Barista: {len(barista_orders)} item status",
             f"✅ Dibuat: {dibuat_total}",
             f"🏁 Selesai: {selesai_total}",
         ]
         if cash_lines:
-            transaction_lines.extend(["", "💵 *Rincian Tunai:", *cash_lines, f"   Total: Rp{sum(int(str(k).replace('bill', '')) * int(v or 0) for k, v in cash_breakdown.items()):,.0f}"])
+            transaction_lines.extend([
+                "",
+                "💵 <b>Rincian Tunai</b>",
+                *cash_lines,
+                f"<b>Total Tunai: Rp{cash_total:,.0f}</b>",
+            ])
+        else:
+            transaction_lines.extend(["", "💵 <b>Rincian Tunai</b>", "Tidak ada pecahan tunai."])
         try:
             await bot.send_message(
                 chat_id=TRANSACTION_GROUP_ID,
                 text="\n".join(transaction_lines),
+                parse_mode="HTML",
             )
             logger.info("shift_recap: sent cashier recap to transaction for shift %s", s_id)
         except Exception as e:
