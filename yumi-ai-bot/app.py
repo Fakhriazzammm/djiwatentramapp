@@ -3035,12 +3035,8 @@ async def _start_auto_reporter(app):
             logger.info("Auto-reporter: catch-up check complete")
         except Exception as e:
             logger.warning("Auto-reporter: catch-up check failed: %s", e)
-        # Also catch up attendance on startup
-        try:
-            await _check_new_attendance(app)
-            logger.info("Auto-reporter: attendance catch-up complete")
-        except Exception as e:
-            logger.warning("Auto-reporter: attendance catch-up failed: %s", e)
+        # Attendance notifications belong exclusively to yumi-hrd-agent.
+        # Do not duplicate check-in/check-out broadcasts from General Manager.
         try:
             await _check_closed_shift_reports(app)
             logger.info("Auto-reporter: shift report catch-up complete")
@@ -3049,7 +3045,7 @@ async def _start_auto_reporter(app):
         while True:
             await asyncio.sleep(30)
             await _check_new_transactions(app)
-            await _check_new_attendance(app)
+            # Attendance notifications belong exclusively to yumi-hrd-agent.
             await _check_closed_shift_reports(app)
 
     asyncio.create_task(_poll_loop())
