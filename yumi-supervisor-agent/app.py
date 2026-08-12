@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 from html import escape
+from collections import Counter
 from datetime import datetime, timezone, timedelta
 
 import httpx
@@ -1976,6 +1977,33 @@ async def _check_closed_shifts(bot: Bot):
             int(str(key).replace("bill", "")) * int(value or 0)
             for key, value in cash_breakdown.items()
         )
+        # Payment summary is read from settled POS orders for the same shift
+        # window. Keep this separate from order-status rows: one order can have
+        # both Kitchen and Barista status records.
+        payment_counts: Counter[str] = Counter()
+        payment_totals: dict[str, float] = {}
+        settled_order_count = 0
+        try:
+            payment_rows = await _fetch(
+                "pos_orders",
+                "select=orderNumber,totalAmount,paymentMethod"
+                f"&_creationTime=gte.{s_start}&_creationTime=lte.{s_end}"
+                "&status=in.(completed,paid)&order=_creationTime.asc&limit=500",
+            )
+            seen_payment_orders: set[str] = set()
+            for order in payment_rows:
+                order_no = str(order.get("orderNumber") or "")
+                if not order_no or order_no in seen_payment_orders:
+                    continue
+                seen_payment_orders.add(order_no)
+                method = _payment_label(str(order.get("paymentMethod") or "Tidak diketahui"))
+                amount = float(order.get("totalAmount") or 0)
+                payment_counts[method] += 1
+                payment_totals[method] = payment_totals.get(method, 0) + amount
+            settled_order_count = len(seen_payment_orders)
+        except Exception as e:
+            logger.warning("shift_recap payment summary %s: %s", s_id, e)
+
         transaction_lines = [
             "📊 <b>Rekap Kasir</b>",
             "",
@@ -1989,6 +2017,13 @@ async def _check_closed_shifts(bot: Bot):
             f"✅ Dibuat: {dibuat_total}",
             f"🏁 Selesai: {selesai_total}",
         ]
+        if payment_counts:
+            transaction_lines.extend(["", "💳 <b>Ringkasan Pembayaran</b>"])
+            for method, count in payment_counts.most_common():
+                transaction_lines.append(f"   {method}: {count} transaksi — Rp{payment_totals[method]:,.0f}")
+            transaction_lines.append(f"   Total transaksi terbayar: {settled_order_count}")
+        else:
+            transaction_lines.extend(["", "💳 <b>Ringkasan Pembayaran</b>", "Data pembayaran tidak tersedia."])
         if cash_lines:
             transaction_lines.extend([
                 "",
