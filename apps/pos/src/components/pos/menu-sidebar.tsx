@@ -2364,8 +2364,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			return;
 		}
 		if (activeClosingStaff.length > 0) {
-			toast.error(`Belum bisa tutup kasir. ${activeClosingStaff.length} karyawan masih belum absen keluar.`);
-			setSubmitError(`Karyawan yang belum absen keluar: ${activeClosingStaff.map((member) => member.name).join(", ")}`);
+			const staffNames = activeClosingStaff.map((member) => member.name).join(", ");
+			const message = `Belum bisa tutup kasir. ${staffNames} harus absen keluar terlebih dahulu melalui bot Telegram Yumi HRD.`;
+			setSubmitError(null);
+			setSubmitNotice(`⏳ ${message}`);
+			toast.info(message);
 			return;
 		}
 		if (!shiftStatus?.shiftInfo?.shiftId) {
@@ -2677,7 +2680,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							? "border-amber-300 bg-amber-50 text-amber-900"
 							: "border-emerald-200 bg-emerald-50 text-emerald-800"
 					}`}>
-						<Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
+						<Clock className="mt-0.5 h-4 w-4 shrink-0" />
 						<div>
 							<p className="font-black">Informasi Tutup Kasir</p>
 							<p>
@@ -2831,7 +2834,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 									<h4 className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-foreground"><ClipboardList className="h-3.5 w-3.5 text-primary" /> Status Absensi Tim</h4>
 									{closingAttendanceLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
 								</div>
-								{shiftTimeGate.blocked && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-800"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{shiftTimeGate.message}</span></div>}
+								{shiftTimeGate.blocked && <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-800"><Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{shiftTimeGate.message}</span></div>}
 								{closingAttendanceError ? <p className="mt-2 text-[11px] font-semibold text-destructive">{closingAttendanceError}</p> : closingAttendanceLoading ? <p className="mt-2 text-[11px] text-muted-foreground">Memuat status absensi...</p> : closingAttendance.length === 0 ? <p className="mt-2 text-[11px] text-muted-foreground">Tidak ada anggota tim yang terdaftar pada shift ini.</p> : <div className="mt-2 space-y-1.5">{closingAttendance.map((member) => { const isActive = member.status === "active"; const isCheckedOut = member.status === "checked_out"; return <div key={`${member.userId}-${member.name}`} className="flex items-center justify-between gap-2 rounded-lg bg-background/70 px-2 py-1.5"><span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold"><span className={`h-2 w-2 shrink-0 rounded-full ${isActive ? "bg-amber-500" : isCheckedOut ? "bg-emerald-500" : "bg-muted-foreground/40"}`} /> <span className="truncate">{member.name}</span></span><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? "bg-amber-100 text-amber-800" : isCheckedOut ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>{isActive ? "Belum Absen Keluar" : isCheckedOut ? "Absen Keluar" : "Belum Absen Masuk"}</span></div>; })}</div>}
 								{activeClosingStaff.length > 0 && <div className="mt-2 flex items-start gap-1.5 border-t border-amber-200 pt-2 text-[11px] font-bold text-amber-800"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>Belum bisa tutup kasir. Minta {activeClosingStaff.map((member) => member.name).join(", ")} absen keluar melalui bot Telegram Yumi HRD.</span></div>}
 								{!closingAttendanceLoading && !closingAttendanceError && closingAttendance.length > 0 && activeClosingStaff.length === 0 && <p className="mt-2 text-[11px] font-bold text-emerald-700">Semua karyawan yang sudah masuk telah absen keluar. Data tutup kasir dapat dilanjutkan.</p>}
@@ -3125,7 +3128,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					{isSubmitting ? (
 						<Loader2 className="mr-2 h-3 w-3 animate-spin text-white" />
 					) : (
-						shiftType === "mulai" ? <div className="flex items-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : shiftTimeGate.blocked ? <div className="flex items-center justify-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> Tunggu sampai {selectedShiftSchedule?.closeTime} WIB</div> : <div className="flex items-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
+						shiftType === "mulai" ? <div className="flex items-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : shiftTimeGate.blocked ? <div className="flex items-center justify-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Tunggu sampai {selectedShiftSchedule?.closeTime} WIB</div> : <div className="flex items-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
 					)}
 				</Button>
 			</form>
