@@ -1,6 +1,8 @@
 import os
 import logging
 import asyncio
+import json
+import tempfile
 import uuid
 import io
 from datetime import datetime, timezone, timedelta
@@ -1334,7 +1336,35 @@ async def _send_order_recap(bot: Bot, tg_id: int, emp_name: str):
 
 # ── Background: 30-min shift-end reminder ──
 
-_reminded_today: set[tuple[str, str, str]] = set()  # {(user_id, shift_name, date)}
+_REMINDER_STATE_FILE = os.path.join(
+    os.path.dirname(__file__), ".runtime", "yumi-hrd-agent", "shift_end_reminders.json"
+)
+
+
+def _load_reminder_state() -> set[str]:
+    try:
+        with open(_REMINDER_STATE_FILE, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        return {str(value) for value in data.get("sent", [])} if isinstance(data, dict) else set()
+    except (FileNotFoundError, OSError, json.JSONDecodeError, AttributeError):
+        return set()
+
+
+def _save_reminder_state(sent: set[str]) -> None:
+    state_dir = os.path.dirname(_REMINDER_STATE_FILE)
+    os.makedirs(state_dir, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(prefix="shift_end_reminders.", suffix=".tmp", dir=state_dir)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump({"sent": sorted(sent)}, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+        os.replace(temp_path, _REMINDER_STATE_FILE)
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
+_reminder_sent = _load_reminder_state()
 
 
 async def _shift_end_reminder_loop(app: Application):
@@ -1361,12 +1391,17 @@ async def _shift_end_reminder_loop(app: Application):
 
             # 2. Get today's attendance
             today_start = int(now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
+            attendance_from = today_start - 86400000  # supports overnight shifts
             today_end = today_start + 86400000
             checkins = await _fetch("pos_attendance_logs",
-                f"select=userId,timestamp&type=eq.check_in&timestamp=gte.{today_start}&timestamp=lt.{today_end}")
+                f"select=userId,timestamp,shiftName&type=eq.check_in&timestamp=gte.{attendance_from}&timestamp=lt.{today_end}&order=timestamp.desc&limit=500")
             checkouts = await _fetch("pos_attendance_logs",
-                f"select=userId&type=eq.check_out&timestamp=gte.{today_start}&timestamp=lt.{today_end}")
-            checked_out_ids = {co["userId"] for co in checkouts}
+                f"select=userId,timestamp&type=eq.check_out&timestamp=gte.{attendance_from}&timestamp=lt.{today_end}&order=timestamp.desc&limit=500")
+            latest_checkout_by_user = {}
+            for checkout in checkouts:
+                uid = str(checkout.get("userId") or "")
+                if uid and uid not in latest_checkout_by_user:
+                    latest_checkout_by_user[uid] = int(float(checkout.get("timestamp") or 0))
 
             # 3. For each shift, check if we're within 30 min of closeTime
             for sched in schedules:
@@ -1404,13 +1439,16 @@ async def _shift_end_reminder_loop(app: Application):
 
                 # 4. Find employees on this shift (based on check-in time window)
                 for ci in checkins:
-                    uid = ci["userId"]
-                    if uid in checked_out_ids:
+                    uid = str(ci.get("userId") or "")
+                    if not uid:
                         continue
 
                     # Check if user was on this shift based on check-in time
                     ci_ts = int(float(ci["timestamp"]))
                     ci_dt = datetime.fromtimestamp(ci_ts / 1000, tz=WIB)
+                    latest_checkout = latest_checkout_by_user.get(uid, 0)
+                    if latest_checkout > ci_ts:
+                        continue
                     ci_min = ci_dt.hour * 60 + ci_dt.minute
 
                     # Check if check-in falls within shift window (with tolerance)
@@ -1425,8 +1463,8 @@ async def _shift_end_reminder_loop(app: Application):
                     if not in_window:
                         continue
 
-                    reminder_key = (uid, name, date_str)
-                    if reminder_key in _reminded_today:
+                    reminder_key = f"{uid}|{name}|{ci_dt.strftime('%Y-%m-%d')}|{ct}"
+                    if reminder_key in _reminder_sent:
                         continue
 
                     # 5. Send reminder
@@ -1453,12 +1491,17 @@ async def _shift_end_reminder_loop(app: Application):
                     )
 
                     await app.bot.send_message(chat_id=tg_id, text=msg, parse_mode="Markdown")
-                    _reminded_today.add(reminder_key)
+                    _reminder_sent.add(reminder_key)
+                    _save_reminder_state(_reminder_sent)
                     logger.info("Shift-end reminder sent to %s (%s — %s)", emp_name, name, ct)
                     await asyncio.sleep(0.3)  # Rate limit
 
             # 6. Clean up old day entries
-            _reminded_today.difference_update({k for k in _reminded_today if k[2] != date_str})
+            stale_before = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+            stale_keys = {key for key in _reminder_sent if key.split("|")[2] < stale_before}
+            if stale_keys:
+                _reminder_sent.difference_update(stale_keys)
+                _save_reminder_state(_reminder_sent)
 
         except Exception as e:
             logger.warning("Shift-end reminder loop error: %s", e)
