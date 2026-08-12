@@ -565,6 +565,27 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime }: { staff: S
           )}
         </div>
 
+        {closeScheduleNotice && !submitDone && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-3.5 shadow-sm"
+          >
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-black text-amber-900">Belum waktunya Absen Keluar</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-amber-800">
+                  Shift {shiftName} berakhir pukul <strong>{closeTime} WIB</strong>. Silakan tunggu sampai waktunya.
+                </p>
+                <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-amber-700">Tombol kirim akan aktif otomatis</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Error banner */}
         {submitError && (
           <motion.div
@@ -592,18 +613,6 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime }: { staff: S
           </motion.div>
         )}
 
-        {closeScheduleNotice && !submitNotice && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-amber-50 border border-amber-200 p-3 mt-3"
-          >
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-800">{closeScheduleNotice}</p>
-            </div>
-          </motion.div>
-        )}
 
         {/* Success banner */}
         {submitDone && (
@@ -920,7 +929,6 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
   };
 
   const triggerFileInput = (id: string) => fileInputRefs.current[id]?.click();
-  const removeFoto = (id: string) => setAreas((prev) => prev.map((a) => (a.id === id ? { ...a, foto: null, fotoFile: null } : a)));
 
   const checkedCount = areas.filter((a) => a.status !== "belum_dicek").length;
   const photoCount = areas.filter((a) => a.foto !== null).length;
@@ -934,7 +942,7 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
           </div>
           <div>
             <p className="flex items-center gap-1 font-bold text-xs"><Brush className="h-3.5 w-3.5" /> Checklist Kebersihan</p>
-            <p className="text-[11px] text-muted-foreground">{checkedCount}/3 area dicek — {photoCount} foto</p>
+            <p className="text-[11px] text-muted-foreground">{checkedCount}/3 status dipilih · {photoCount}/3 foto</p>
           </div>
         </div>
       </div>
@@ -967,12 +975,12 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
             {area.foto ? (
               <div className="relative">
                 <img src={area.foto} alt={area.label} className="h-12 w-12 rounded-lg object-cover border" />
-                <button onClick={() => removeFoto(area.id)} className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white shadow">
-                  <X className="h-2.5 w-2.5" />
+                <button aria-label={`Ganti foto ${area.label}`} onClick={() => triggerFileInput(area.id)} className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-white shadow">
+                  <Camera className="h-2.5 w-2.5" />
                 </button>
               </div>
             ) : (
-              <button onClick={() => triggerFileInput(area.id)} className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50">
+              <button aria-label={`Tambah foto ${area.label}`} onClick={() => triggerFileInput(area.id)} className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50">
                 <Camera className="h-5 w-5" />
               </button>
             )}
@@ -989,13 +997,13 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
 
       <button onClick={() => setSaved(true)}
         className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 active:scale-[0.98]">
-        <Save className="h-3.5 w-3.5" /> Simpan Checklist
+        <Save className="h-3.5 w-3.5" /> Simpan Pemeriksaan
       </button>
 
       {saved && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-center">
-          <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700"><Check className="h-3.5 w-3.5" /> Checklist siap dikirim</p>
-          <p className="mt-1 text-[10px] font-medium text-emerald-700">Tekan tombol Telegram “Kirim Laporan Closing” untuk menyelesaikan Absen Keluar.</p>
+          <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700"><Check className="h-3.5 w-3.5" /> Pemeriksaan tersimpan</p>
+          <p className="mt-1 text-[10px] font-medium text-emerald-700">Absen Keluar belum selesai. Tekan “Kirim Laporan Closing” setelah waktunya tiba.</p>
         </motion.div>
       )}
     </div>
