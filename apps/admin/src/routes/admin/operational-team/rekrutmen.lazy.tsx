@@ -27,6 +27,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import "@/styles/rekrutmen-admin.css";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 export const Route = createLazyFileRoute("/admin/operational-team/rekrutmen")({
   component: AdminRekrutmen,
@@ -87,6 +88,7 @@ interface AirtableRecord {
 }
 
 function AdminRekrutmen() {
+  const { token } = useYumiAuth();
   const [activeTab, setActiveTab] = useState<TabKey>("candidates");
   const [allData, setAllData] = useState<Record<TabKey, AirtableRecord[]>>({
     candidates: [],
@@ -116,17 +118,21 @@ function AdminRekrutmen() {
   }, [activeTab]);
 
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    if (token) void fetchAllData();
+  }, [token]);
 
   async function fetchAllData() {
     setLoading(true);
     try {
+      const headers = { "X-Yumi-Session": token || "" };
       const [cRes, iRes, oRes] = await Promise.all([
-        fetch("/api/rekrutmen/table/Candidates"),
-        fetch("/api/rekrutmen/table/Interviews"),
-        fetch("/api/rekrutmen/table/Onboarding"),
+        fetch("/api/rekrutmen/table/Candidates", { headers }),
+        fetch("/api/rekrutmen/table/Interviews", { headers }),
+        fetch("/api/rekrutmen/table/Onboarding", { headers }),
       ]);
+      if ([cRes, iRes, oRes].some((response) => response.status === 401 || response.status === 403)) {
+        throw new Error("Sesi admin tidak valid atau akses ditolak");
+      }
       const [cData, iData, oData] = await Promise.all([cRes.json(), iRes.json(), oRes.json()]);
       setAllData({
         candidates: cData.records || [],
@@ -209,7 +215,7 @@ function AdminRekrutmen() {
     try {
       const res = await fetch(`/api/rekrutmen/table/${config.tableName}/${modalRecordId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Yumi-Session": token || "" },
         body: JSON.stringify(payload),
       });
       const data = await res.json();

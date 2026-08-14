@@ -15,6 +15,7 @@ import os
 import sys
 import json
 import httpx
+from html import escape
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,7 +29,8 @@ if not BOT_TOKEN:
 
 
 def fmt(v, default="-"):
-    return str(v).strip() if v else default
+    value = str(v).strip() if v else default
+    return escape(value, quote=True)
 
 
 def build_message(d):

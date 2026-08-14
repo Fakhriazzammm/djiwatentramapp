@@ -1338,7 +1338,7 @@ async function saveStatus() {
   try {
     const response = await fetch(`/api/table/${config.tableName}/${recordId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: recruitmentHeaders(true),
       body: JSON.stringify(payload)
     });
     const data = await response.json();
@@ -1353,13 +1353,21 @@ async function saveStatus() {
   }
 }
 
+function recruitmentHeaders(json = false) {
+  const headers = {};
+  if (json) headers['Content-Type'] = 'application/json';
+  const token = localStorage.getItem('yumi_session_token');
+  if (token) headers['X-Yumi-Session'] = token;
+  return headers;
+}
+
 async function refreshAll(showLoadingToast = true) {
   if (showLoadingToast) showToast('Memuat ulang data...', 'info');
   try {
     const [cRes, iRes, oRes] = await Promise.all([
-      fetch('/api/table/Candidates'),
-      fetch('/api/table/Interviews'),
-      fetch('/api/table/Onboarding')
+      fetch('/api/table/Candidates', { headers: recruitmentHeaders() }),
+      fetch('/api/table/Interviews', { headers: recruitmentHeaders() }),
+      fetch('/api/table/Onboarding', { headers: recruitmentHeaders() })
     ]);
     const [cData, iData, oData] = await Promise.all([cRes.json(), iRes.json(), oRes.json()]);
     state.allData.candidates = cData.records || [];

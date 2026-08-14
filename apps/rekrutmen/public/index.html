@@ -438,7 +438,6 @@ async function loadJobs() {
 }
 
 let selectedJob = null;
-let candidateRecords = [];
 let currentFilter = 'All';
 
 function escapeHtml(text) {
@@ -448,16 +447,13 @@ function escapeHtml(text) {
 }
 
 function getApplicantCountByJob(title) {
-  if (!candidateRecords.length) return 0;
-  return candidateRecords.filter(r => {
-    const pos = r.fields && r.fields['Posisi Dilamar'];
-    return pos && pos.toLowerCase() === title.toLowerCase();
-  }).length;
+  // Jumlah pelamar adalah data internal; jangan mengambil kandidat ke browser publik.
+  return '—';
 }
 
 // ── Filters ──
 function renderFilters() {
-  const tags = ['All', ...new Set(JOBS.flatMap(j => j.tags))];
+  const tags = ['All', ...new Set(JOBS.flatMap(j => Array.isArray(j.tags) ? j.tags : []))];
   const row = document.getElementById('filterRow');
   row.innerHTML = tags.map(t => `
     <button class="filter-chip min-h-[38px] rounded-[12px] px-3 border-2 border-border-ios bg-white text-ink-2 text-[12px] font-extrabold motion-safe ${currentFilter === t ? '!border-accent !bg-accent-soft !text-accent' : 'hover:border-accent-line hover:bg-accent-soft hover:text-accent'}"
@@ -497,7 +493,7 @@ function renderEmpty(q) {
 function renderJobs() {
   const list = document.getElementById('jobList');
   const q = (document.getElementById('searchInput').value || '').toLowerCase();
-  const filtered = (currentFilter === 'All' ? JOBS : JOBS.filter(j => j.tags.includes(currentFilter)))
+  const filtered = (currentFilter === 'All' ? JOBS : JOBS.filter(j => (Array.isArray(j.tags) ? j.tags : []).includes(currentFilter)))
     .filter(j => j.title.toLowerCase().includes(q));
 
   if (filtered.length === 0) {
@@ -569,7 +565,7 @@ function selectJob(title) {
 // ── Metrics ──
 function updateMetrics() {
   document.getElementById('metricPositions').textContent = JOBS.length;
-  document.getElementById('metricApplicants').textContent = candidateRecords.length;
+  document.getElementById('metricApplicants').textContent = '—';
 }
 
 // ── Toast ──
@@ -605,29 +601,6 @@ function showSkeleton() {
       </div>
     </div>
   `).join('');
-}
-
-// ── Load ──
-async function loadCandidates() {
-  showSkeleton();
-  try {
-    const res = await fetch('/api/table/Candidates');
-    const data = await res.json();
-    candidateRecords = data.records || [];
-    renderJobs();
-    updateMetrics();
-    renderFilters();
-    document.getElementById('totalBadge').textContent = JOBS.length + ' lowongan';
-  } catch (error) {
-    document.getElementById('jobList').innerHTML = `
-      <div class="bg-white rounded-card p-10 text-center border border-border-ios col-span-full">
-        <svg viewBox="0 0 120 120" class="size-[120px] mx-auto mb-5" fill="none"><circle cx="60" cy="60" r="56" fill="#f4f4f5"/><path d="M60 40v20M60 80h.01" stroke="#e11d48" stroke-width="4" stroke-linecap="round"/></svg>
-        <h3 class="font-display text-[18px] font-extrabold tracking-[-0.02em] mb-2">Gagal memuat data</h3>
-        <p class="text-ink-2 text-[14px] leading-[1.6] mb-5">Terjadi gangguan koneksi. Silakan coba beberapa saat lagi.</p>
-        <button onclick="loadJobs()" class="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-ctl px-5 bg-accent text-white font-display font-extrabold text-[13px] motion-safe">Coba lagi</button>
-      </div>`;
-    showToast('Gagal memuat data', 'error');
-  }
 }
 
 // ── Search ──
@@ -719,7 +692,7 @@ async function submitApplication() {
     document.getElementById('selectedRoleBox').classList.remove('hidden');
     document.getElementById('successDesc').innerHTML = 'Posisi <strong>' + escapeHtml(posisi) + '</strong> sudah masuk ke tim kami.';
     document.getElementById('successOverlay').classList.add('show');
-    await loadCandidates();
+
     // Lock form 3 detik biar user gak klik berkali, lalu reset & unlock
     const form = document.getElementById('applicationForm');
     form.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = true);
@@ -752,7 +725,6 @@ function fileToDataURL(file) {
 }
 
 loadJobs();
-loadCandidates();
 </script>
 </body>
 </html>

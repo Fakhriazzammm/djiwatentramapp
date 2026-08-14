@@ -1,11 +1,12 @@
 const express = require("express");
 const cors = require("cors");
-const { execSync } = require("child_process");
+const { execSync, spawn } = require("child_process");
+const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
 
 const app = express();
-const PORT = 3456;
+const PORT = Number(process.env.PORT || 3456);
 const TABLE = "recruitment_candidates";
 const UPLOAD_DIR = path.join(__dirname, "public", "uploads");
 
@@ -68,6 +69,63 @@ function psql(sql) {
   return result.trim();
 }
 
+async function validateRecruitmentAdmin(req, res, next) {
+  const headerToken = req.get("x-yumi-session") || req.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!headerToken || !SUPABASE_URL || !SUPABASE_SKEY) {
+    return res.status(401).json({ error: "Authentication diperlukan" });
+  }
+
+  try {
+    const authRes = await fetch(`${SUPABASE_URL}/functions/v1/yumi-auth`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SKEY,
+        Authorization: `Bearer ${SUPABASE_SKEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "validateSession", token: headerToken }),
+    });
+    if (!authRes.ok) return res.status(401).json({ error: "Sesi tidak valid" });
+    const payload = await authRes.json();
+    const session = payload?.session;
+    const roleName = String(session?.role?.name || "").trim().toLowerCase();
+    if (!session || roleName !== "admin") {
+      return res.status(403).json({ error: "Akses admin diperlukan" });
+    }
+    res.locals.recruitmentAdmin = session.user;
+    return next();
+  } catch (error) {
+    console.error("Recruitment auth validation failed:", error.message);
+    return res.status(503).json({ error: "Layanan autentikasi tidak tersedia" });
+  }
+}
+
+function validateCandidatePayload(body) {
+  const required = ["Nama Lengkap", "Jenis Kelamin", "Tanggal Lahir", "Email", "Nomor Telepon/HP", "Posisi Dilamar", "Full time/Part time"];
+  const missing = required.filter((key) => !String(body?.[key] ?? "").trim());
+  if (missing.length) return `Field wajib belum lengkap: ${missing.join(", ")}`;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.Email).trim())) return "Format email tidak valid";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(body["Tanggal Lahir"]).trim())) return "Format tanggal lahir tidak valid";
+  if (!/^[0-9+()\s.-]{8,30}$/.test(String(body["Nomor Telepon/HP"]).trim())) return "Format nomor telepon tidak valid";
+  return null;
+}
+
+function deleteUploadedObject(url) {
+  if (!url || !SUPABASE_URL || !SUPABASE_SKEY) return;
+  try {
+    const marker = `/storage/v1/object/public/${CV_BUCKET}/`;
+    const index = String(url).indexOf(marker);
+    if (index < 0) return;
+    const objectPath = decodeURIComponent(String(url).slice(index + marker.length));
+    fetch(`${SUPABASE_URL}/storage/v1/object/${CV_BUCKET}/${encodeURIComponent(objectPath)}`, {
+      method: "DELETE",
+      headers: { apikey: SUPABASE_SKEY, Authorization: `Bearer ${SUPABASE_SKEY}` },
+    }).catch((error) => console.warn("CV orphan cleanup failed:", error.message));
+  } catch (error) {
+    console.warn("CV orphan cleanup skipped:", error.message);
+  }
+}
+
 // ── GET /api/recruitment-positions (hanya yang is_open=true) ──
 app.get("/api/recruitment-positions", async (req, res) => {
   try {
@@ -83,7 +141,7 @@ app.get("/api/recruitment-positions", async (req, res) => {
 });
 
 // ── GET /api/table/Candidates ──
-app.get("/api/table/Candidates", async (req, res) => {
+app.get("/api/table/Candidates", validateRecruitmentAdmin, async (req, res) => {
   try {
     const sql = `SELECT json_build_object('id',id,'nama_lengkap',nama_lengkap,'jenis_kelamin',jenis_kelamin,'tanggal_lahir',tanggal_lahir,'email',email,'nomor_telepon',nomor_telepon,'sosial_media',sosial_media,'posisi_dilamar',posisi_dilamar,'tipe_kerja',tipe_kerja,'notes',notes,'status',status,'application_date',application_date,'created_at',created_at,'cv_url',cv_url)::text FROM pos.${TABLE} ORDER BY created_at DESC`;
     const raw = execSync(
@@ -123,92 +181,109 @@ app.get("/api/table/Candidates", async (req, res) => {
 // ── POST /api/upload-cv (ke Supabase Storage self-host) ──
 app.post("/api/upload-cv", async (req, res) => {
   try {
-    const { data, filename } = req.body;
-    if (!data || !filename) return res.status(400).json({ error: "data & filename required" });
-    const allowed = [".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"];
-    const ext = path.extname(filename).toLowerCase();
-    if (!allowed.includes(ext)) return res.status(400).json({ error: "Tipe file tidak didukung" });
-    const m = data.match(/^data:([A-Za-z0-9/+-]+);base64,(.+)$/);
-    if (!m) return res.status(400).json({ error: "Format base64 tidak valid" });
-    const contentType = m[1];
-    const buf = Buffer.from(m[2], "base64");
+    const { data, filename } = req.body || {};
+    const allowedTypes = {
+      ".pdf": "application/pdf",
+      ".doc": "application/msword",
+      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+    };
+    const originalName = path.basename(String(filename));
+    const ext = path.extname(originalName).toLowerCase();
+    if (!Object.hasOwn(allowedTypes, ext)) return res.status(400).json({ error: "Tipe file tidak didukung" });
+    const m = String(data).match(/^data:([A-Za-z0-9/+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/);
+    if (!m || m[1].toLowerCase() !== allowedTypes[ext]) return res.status(400).json({ error: "Format atau tipe file tidak valid" });
+    const encoded = m[2].replace(/\s/g, "");
+    if (!encoded || encoded.length % 4 === 1) return res.status(400).json({ error: "Format base64 tidak valid" });
+    const buf = Buffer.from(encoded, "base64");
+    if (!buf.length) return res.status(400).json({ error: "File kosong atau base64 tidak valid" });
     if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: "Maksimal 8MB" });
-    const safeName = Date.now() + "-" + filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const url = await uploadToStorage(safeName, buf, contentType);
+    const safeName = `${crypto.randomUUID()}-${originalName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const url = await uploadToStorage(safeName, buf, allowedTypes[ext]);
     res.json({ url });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("CV upload failed:", e.message);
+    res.status(500).json({ error: "CV tidak dapat diunggah saat ini" });
   }
 });
 
 // ── POST /api/table/Candidates ──
 app.post("/api/table/Candidates", async (req, res) => {
   try {
-    const b = req.body;
+    const b = req.body || {};
+    const validationError = validateCandidatePayload(b);
+    if (validationError) return res.status(400).json({ error: validationError });
     const esc = (v) => { if (v == null) return "NULL"; return "'" + String(v).replace(/'/g, "''") + "'"; };
+    const email = String(b["Email"]).trim();
+    const position = String(b["Posisi Dilamar"]).trim();
+    const lockKey = `${email.toLowerCase()}|${position.toLowerCase()}`;
+    const openPosition = psql(`SELECT 1 FROM pos.recruitment_positions WHERE title = ${esc(position)} AND is_open = true LIMIT 1`);
+    if (!openPosition) return res.status(400).json({ error: "Posisi yang dipilih sudah tidak tersedia" });
 
-    // ── Dedupe: cek duplikat dalam 5 menit terakhir (cegah looping notif) ──
-    const dupSql = `SELECT id FROM pos.${TABLE} WHERE email = ${esc(b["Email"])} AND posisi_dilamar = ${esc(b["Posisi Dilamar"])} AND created_at > NOW() - INTERVAL '5 minutes' ORDER BY created_at DESC LIMIT 1`;
-    let existingId = null;
-    try {
-      const dupRes = execSync(
-        `docker exec -i supabase-db psql -U postgres -d postgres -t -A -c '${dupSql.replace(/'/g, "'\"'\"'")}'`,
-        { encoding: "utf-8", timeout: 10000 }
-      );
-      existingId = dupRes.trim();
-    } catch (_) { /* ignore, lanjut insert */ }
-
-    if (existingId) {
-      // Duplikat terdeteksi → jangan insert & jangan notif (cegah loop)
-      return res.json({ records: [{ id: existingId, fields: b, duplicate: true }] });
+    // Advisory lock + dedupe check + insert berada dalam satu statement atomic.
+    const sql = `WITH lock AS (
+  SELECT pg_advisory_xact_lock(hashtext(${esc(lockKey)}))
+), existing AS (
+  SELECT c.id FROM pos.${TABLE} c, lock
+  WHERE lower(trim(c.email)) = lower(trim(${esc(email)}))
+    AND lower(trim(c.posisi_dilamar)) = lower(trim(${esc(position)}))
+    AND c.created_at > NOW() - INTERVAL '5 minutes'
+  ORDER BY c.created_at DESC LIMIT 1
+), inserted AS (
+  INSERT INTO pos.${TABLE}
+    (nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date, cv_url)
+  SELECT ${esc(String(b["Nama Lengkap"]).trim())}, ${esc(String(b["Jenis Kelamin"]).trim())}, ${esc(String(b["Tanggal Lahir"]).trim())}, ${esc(email)}, ${esc(String(b["Nomor Telepon/HP"]).trim())}, ${esc(String(b["Sosial Media Instagram/Tiktok"] || "").trim())}, ${esc(position)}, ${esc(String(b["Full time/Part time"]).trim())}, ${esc(String(b["Notes"] || "").trim())}, 'Application Received', CURRENT_DATE, ${esc(String(b["CV URL"] || "").trim())}
+  FROM lock WHERE NOT EXISTS (SELECT 1 FROM existing)
+  RETURNING id
+)
+SELECT json_build_object('duplicate', true, 'id', id)::text FROM existing
+UNION ALL
+SELECT json_build_object('duplicate', false, 'id', id)::text FROM inserted`;
+    const result = psql(sql);
+    const record = result ? JSON.parse(result.split("\n").filter(Boolean)[0]) : null;
+    if (!record?.id) throw new Error("Database tidak mengembalikan ID kandidat");
+    if (record.duplicate) {
+      deleteUploadedObject(b["CV URL"]);
+      return res.json({ records: [{ id: record.id, fields: b, duplicate: true }] });
     }
 
-    const sql = `INSERT INTO pos.${TABLE}
-(nama_lengkap, jenis_kelamin, tanggal_lahir, email, nomor_telepon, sosial_media, posisi_dilamar, tipe_kerja, notes, status, application_date, cv_url)
-VALUES (${esc(b["Nama Lengkap"])}, ${esc(b["Jenis Kelamin"])}, ${esc(b["Tanggal Lahir"])}, ${esc(b["Email"])}, ${esc(b["Nomor Telepon/HP"])}, ${esc(b["Sosial Media Instagram/Tiktok"])}, ${esc(b["Posisi Dilamar"])}, ${esc(b["Full time/Part time"])}, ${esc(b["Notes"])}, ${esc(b["Status"] || "Application Received")}, ${esc(b["Application Date"] || new Date().toISOString().split("T")[0])}, ${esc(b["CV URL"])}) RETURNING id`;
-    const result = execSync(
-      `docker exec -i supabase-db psql -U postgres -d postgres -t -A -c '${sql.replace(/'/g, "'\"'\"'")}'`,
-      { encoding: "utf-8", timeout: 10000 }
-    );
-    const newId = result.trim();
-    // ── Notifikasi ke grup [Report] via yumi-hrd-agent ──
-    try {
-      const notifPayload = JSON.stringify({
-        nama_lengkap: b["Nama Lengkap"],
-        jenis_kelamin: b["Jenis Kelamin"],
-        tanggal_lahir: b["Tanggal Lahir"],
-        email: b["Email"],
-        nomor_telepon: b["Nomor Telepon/HP"],
-        sosial_media: b["Sosial Media Instagram/Tiktok"],
-        posisi_dilamar: b["Posisi Dilamar"],
-        tipe_kerja: b["Full time/Part time"],
-        cv_url: b["CV URL"],
-        created_at: new Date().toISOString().split("T")[0],
-      });
-      const notifScript = "/opt/djiwatentramapp/yumi-hrd-agent/notify_new_applicant.py";
-      execSync(`python3 ${notifScript} '${notifPayload.replace(/'/g, "'\"'\"'")}'`, {
-        encoding: "utf-8",
-        timeout: 15000,
-      });
-    } catch (notifErr) {
-      console.error("Notif lamaran gagal (non-fatal):", notifErr.message);
-    }
-    res.json({ records: [{ id: newId, fields: b }] });
+    const notifPayload = JSON.stringify({
+      nama_lengkap: b["Nama Lengkap"], jenis_kelamin: b["Jenis Kelamin"], tanggal_lahir: b["Tanggal Lahir"],
+      email, nomor_telepon: b["Nomor Telepon/HP"], sosial_media: b["Sosial Media Instagram/Tiktok"],
+      posisi_dilamar: position, tipe_kerja: b["Full time/Part time"], cv_url: b["CV URL"],
+      created_at: new Date().toISOString().split("T")[0],
+    });
+    const notifScript = "/opt/djiwatentramapp/yumi-hrd-agent/notify_new_applicant.py";
+    const notifier = spawn("python3", [notifScript, notifPayload], { detached: true, stdio: "ignore" });
+    notifier.on("error", (error) => console.error("Notif lamaran gagal dijalankan:", error.message));
+    notifier.unref();
+    return res.json({ records: [{ id: record.id, fields: b }] });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("Candidate insert failed:", e.message);
+    return res.status(500).json({ error: "Lamaran tidak dapat disimpan saat ini" });
   }
 });
 
 // ── PATCH /api/table/Candidates/:id ──
-app.patch("/api/table/Candidates/:id", async (req, res) => {
+app.patch("/api/table/Candidates/:id", validateRecruitmentAdmin, async (req, res) => {
   try {
     const id = req.params.id;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+      return res.status(400).json({ error: "ID kandidat tidak valid" });
+    }
+    const body = req.body || {};
     const sets = [];
-    if (req.body.Status) sets.push(`status = '${req.body.Status.replace(/'/g, "''")}'`);
-    if (req.body.Notes) sets.push(`notes = '${req.body.Notes.replace(/'/g, "''")}'`);
+    if (Object.hasOwn(body, "Status")) {
+      const status = String(body.Status || "").trim();
+      if (!status) return res.status(400).json({ error: "Status tidak boleh kosong" });
+      sets.push(`status = '${status.replace(/'/g, "''")}'`);
+    }
+    if (Object.hasOwn(body, "Notes")) sets.push(`notes = ${body.Notes == null ? "NULL" : `'${String(body.Notes).replace(/'/g, "''")}'`}`);
     if (!sets.length) return res.status(400).json({ error: "No fields to update" });
     sets.push("updated_at = NOW()");
-    const sql = `UPDATE pos.${TABLE} SET ${sets.join(", ")} WHERE id = '${id}'`;
+    const sql = `UPDATE pos.${TABLE} SET ${sets.join(", ")} WHERE id = '${id}' RETURNING id`;
     execSync(
       `docker exec -i supabase-db psql -U postgres -d postgres -c '${sql.replace(/'/g, "'\"'\"'")}'`,
       { encoding: "utf-8", timeout: 10000 }
@@ -220,10 +295,13 @@ app.patch("/api/table/Candidates/:id", async (req, res) => {
 });
 
 // ── DELETE /api/table/Candidates/:id ──
-app.delete("/api/table/Candidates/:id", async (req, res) => {
+app.delete("/api/table/Candidates/:id", validateRecruitmentAdmin, async (req, res) => {
   try {
     const id = req.params.id;
-    const sql = `DELETE FROM pos.${TABLE} WHERE id = '${id}'`;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+      return res.status(400).json({ error: "ID kandidat tidak valid" });
+    }
+    const sql = `DELETE FROM pos.${TABLE} WHERE id = '${id}' RETURNING id`;
     execSync(
       `docker exec -i supabase-db psql -U postgres -d postgres -c '${sql.replace(/'/g, "'\"'\"'")}'`,
       { encoding: "utf-8", timeout: 10000 }
@@ -235,9 +313,9 @@ app.delete("/api/table/Candidates/:id", async (req, res) => {
 });
 
 // ── Other tables (Interviews / Onboarding) ──
-app.get("/api/table/:name", (req, res) => { res.json({ records: [] }); });
+app.get("/api/table/:name", validateRecruitmentAdmin, (req, res) => { res.json({ records: [] }); });
 app.post("/api/table/:name", (req, res) => { res.status(400).json({ error: "Table not supported" }); });
-app.patch("/api/table/:name/:id", (req, res) => { res.status(400).json({ error: "Table not supported" }); });
+app.patch("/api/table/:name/:id", validateRecruitmentAdmin, (req, res) => { res.status(400).json({ error: "Table not supported" }); });
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Rekrutmen UI at http://localhost:" + PORT);
