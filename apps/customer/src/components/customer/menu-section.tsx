@@ -43,7 +43,7 @@ export interface MenuSectionProps {
 export function renderMenuSection(props: MenuSectionProps) {
 	return (
 		<div className="space-y-3 px-3 py-3">
-			<div className="rounded-[24px] px-4 py-3.5 text-white shadow-[0_12px_32px_rgba(15,23,42,0.14)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
+			<div className="rounded-[24px] border border-white/10 px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]" style={{ backgroundColor: props.themeColor }}>
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">Session aktif</p>
