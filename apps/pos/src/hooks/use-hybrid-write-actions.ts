@@ -4425,82 +4425,50 @@ export function useHybridUpdateTransactionScanItem() {
 
 export function useHybridStartShift() {
 	const fallback = useMutation(api.finance.startShift);
+	const { user: currentUser } = useYumiAuth();
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
+			const startingCash = Number(args?.startingCash);
+			const shiftName = String(args?.shiftName ?? "").trim();
+			const cashierName = String(args?.cashierName ?? "").trim();
+			const openRequestId = String(args?.openRequestId ?? makeSourceId("open")).trim();
+			const shiftId = String(args?.shiftId ?? makeSourceId("shift")).trim();
+			const transactionId = String(args?.transactionId ?? makeSourceId("fin")).trim();
+			if (!shiftName) throw new Error("Nama shift wajib diisi");
+			if (!cashierName) throw new Error("Nama kasir wajib diisi");
+			if (!Number.isFinite(startingCash) || startingCash < 0) throw new Error("Modal kasir tidak valid");
+			if (!openRequestId) throw new Error("ID pembukaan shift tidak valid");
+			if (!hasSupabaseConfig) {
+				return fallback({ ...args, shiftId, transactionId, openRequestId, startTime: Number(args?.startTime ?? Date.now()) });
+			}
 			try {
 				const startTime = Number(args?.startTime ?? Date.now());
-				const shiftId = makeSourceId("shift");
 				const supabase = createClient();
-				const pos = supabase.schema("pos");
-
-				// Cegah shift ganda: tolak jika sudah ada shift AKTIF
-				const { data: existingActive, error: checkError } = await pos
-					.from("shifts")
-					.select("source_id, shift_name, cashier_name")
-					.is("end_time", null)
-					.limit(1);
-				if (checkError) throw checkError;
-				if (existingActive && existingActive.length > 0) {
-					const active = existingActive[0];
-					throw new Error(
-						`Shift masih berjalan: ${active.shift_name} oleh ${active.cashier_name ?? "?"}. Tutup shift aktif terlebih dahulu sebelum membuka shift baru.`
-					);
-				}
-
-				const { error: shiftError } = await pos.from("shifts").insert({
-					source_id: shiftId,
-					shift_name: args?.shiftName ?? "Shift",
-					cashier_name: args?.cashierName ?? null,
-					team_members: args?.teamMembers ?? null,
-					start_time: startTime,
-					starting_cash: Number(args?.startingCash ?? 0),
-					notes: args?.notes ?? null,
-					creation_time: startTime,
-					raw: args ?? {},
+				const { data, error } = await supabase.schema("pos").rpc("open_shift_atomic", {
+					p_source_id: shiftId,
+					p_transaction_id: transactionId,
+					p_shift_name: shiftName,
+					p_cashier_name: cashierName,
+					p_cashier_user_id: args?.cashierUserId ?? null,
+					p_team_members: args?.teamMembers ?? null,
+					p_team_member_ids: Array.isArray(args?.teamMemberIds) ? args.teamMemberIds : [],
+					p_starting_cash: startingCash,
+					p_notes: args?.notes ?? null,
+					p_opened_by_user_id: args?.openedByUserId ?? currentUser?._id ?? null,
+					p_open_request_id: openRequestId,
+					p_start_time: startTime,
+					p_raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
 				});
-				if (shiftError) throw shiftError;
-
-				const descParts = [
-					`Kasir: ${args?.cashierName ?? "-"}`,
-					`Shift: ${args?.shiftName ?? "-"}`,
-				];
-				if (args?.teamMembers) descParts.push(`Tim: ${args.teamMembers}`);
-				if (args?.notes) descParts.push(`Catatan: ${args.notes}`);
-				const metadata = enrichFinancialMetadataWithRef({
-					type: "income",
-					category: "Modal Awal",
-					date: startTime,
-					metadata: {
-						source: "shift_open",
-						sourceLabel: "Shift Open",
-					},
-					seed: `${startTime}:${args?.shiftName ?? ""}:${args?.cashierName ?? ""}`,
-				});
-				const { error: txError } = await pos.from("financial_transactions").insert({
-					source_id: makeSourceId("fin"),
-					tx_type: "income",
-					amount: Number(args?.startingCash ?? 0),
-					category: "Modal Awal",
-					description: descParts.join(" | "),
-					tx_date: startTime,
-					status: "completed",
-					payment_method: "tunai",
-					metadata,
-					creation_time: Date.now(),
-					raw: {
-						shiftId,
-						kind: "shift_open",
-					},
-				});
-				if (txError) throw txError;
-				return shiftId;
+				if (error) throw error;
+				const result = (Array.isArray(data) ? data[0] : data) as { shift_id?: string; duplicate?: boolean } | null;
+				if (!result?.shift_id) throw new Error("Database tidak mengembalikan ID shift");
+				return result.shift_id;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-start-shift]", error);
 				throw error;
 			}
 		},
-		[fallback]
+		[fallback, currentUser?._id]
 	);
 }
 

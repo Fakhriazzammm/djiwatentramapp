@@ -1132,14 +1132,15 @@ function DashboardTab({
 
 	// ── Fetch team attendance status for open shift ──
 	useEffect(() => {
-		if (!isShiftOpen || !shiftStatus?.ongoingShift?.teamMembers || !allStaffUsers?.length) {
+		const ongoingShift = shiftStatus?.ongoingShift;
+		if (!isShiftOpen || !ongoingShift?.teamMembers || !allStaffUsers?.length) {
 			setTeamAttendance({});
 			return;
 		}
 		const fetchAttendance = async () => {
 			setTeamAttendanceLoading(true);
 			const supabase = createClient();
-			const memberNames = shiftStatus.ongoingShift.teamMembers
+			const memberNames = (ongoingShift.teamMembers ?? "")
 				.split(",")
 				.map((n: string) => n.trim())
 				.filter(Boolean);
@@ -2075,6 +2076,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 	const [showEndConfirm, setShowEndConfirm] = useState(false);
+	const [showStartConfirm, setShowStartConfirm] = useState(false);
+	const [openRequestId, setOpenRequestId] = useState<string | null>(null);
 	
 	// Cash Breakdown State
 	const [breakdown, setBreakdown] = useState<Record<string, number>>({
@@ -2339,11 +2342,14 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			const results = await Promise.allSettled(targetChatIds.map((chat_id) => supabase.functions.invoke("send-telegram-report", {
 				body: { text: lines.join("\n"), chat_id, sender: chat_id === -1003927364523 ? "supervisor" : "report" }
 			})));
+			const delivered = results.every((result) => result.status === "fulfilled" && !result.value.error);
 			results.forEach((result, index) => {
 				if (result.status === "rejected" || result.value.error) console.error(`[shift-notif] Gagal kirim ke chat ${targetChatIds[index]}:`, result.status === "rejected" ? result.reason : result.value.error);
 			});
+			return delivered;
 		} catch (e) {
 			console.error("[shift-notif] Gagal kirim notifikasi:", e);
+			return false;
 		}
 	}, []);
 
@@ -2429,7 +2435,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			
 			// Kirim notifikasi text ke grup Report
 			if (summary && shiftInfo) {
-				const { summary: s, shift: si } = { summary, shiftInfo };
+				const { summary: s, shift: si } = { summary, shift: shiftInfo };
 				
 				// Format non-tunai breakdown
 				const pb = s.paymentBreakdown || {};
@@ -2577,67 +2583,90 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		}
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		
+	const confirmStartShift = async () => {
 		setIsSubmitting(true);
 		setSubmitError(null);
 		setSubmitNotice(null);
 		try {
-			if (shiftType === "mulai") {
-				if (!amount || !cashierName) {
-					toast.error("Nama kasir dan modal awal wajib diisi");
-					setIsSubmitting(false);
-					return;
-				}
-				await startShift({
-					cashierName,
-					shiftName,
-					teamMembers: teamMembers.join(", "),
-					startingCash: Number(amount),
-					notes,
-				});
-				toast.success("Shift berhasil dimulai");
-				// Kirim notifikasi ke grup Report
-				const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
-				console.log("[shift-notif] Sending open shift notification...");
-				sendTelegramNotif("✅ SHIFT DIBUKA", {
-					"🏪": "Djiwa Tentram",
-					"🔄 Shift": shiftName,
-					"👤 Kasir": cashierName,
-					"👥 Tim": `\n${teamFormatted}`,
-					"💰 Modal Kasir": `Rp ${Number(amount).toLocaleString("id-ID")}`,
-				});
-				setShiftRefreshTrigger((c) => c + 1);
+			const startingCash = Number(amount);
+			if (!cashierName.trim()) throw new Error("Nama kasir wajib diisi");
+			if (!shiftName.trim()) throw new Error("Nama shift wajib diisi");
+			if (!Number.isFinite(startingCash) || startingCash < 0) throw new Error("Modal kasir tidak valid");
+			const cashier = staffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === cashierName.trim().toLowerCase());
+			const selectedTeamIds = teamMembers
+				.map((name) => staffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.trim().toLowerCase())?._id)
+				.filter(Boolean);
+			await startShift({
+				cashierName: cashierName.trim(),
+				cashierUserId: cashier?._id ?? null,
+				shiftName: shiftName.trim(),
+				teamMembers: teamMembers.join(", "),
+				teamMemberIds: selectedTeamIds,
+				startingCash,
+				notes,
+				openRequestId: openRequestId ?? undefined,
+			});
+			setShowStartConfirm(false);
+			toast.success("Shift berhasil dimulai");
+			const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
+			const notificationDelivered = await sendTelegramNotif("✅ SHIFT DIBUKA", {
+				"🏪": "Djiwa Tentram",
+				"🔄 Shift": shiftName.trim(),
+				"👤 Kasir": cashierName.trim(),
+				"👥 Tim": `\n${teamFormatted}`,
+				"💰 Modal Kasir": `Rp ${startingCash.toLocaleString("id-ID")}`,
+			});
+			if (!notificationDelivered) {
+				toast.warning("Shift sudah dibuka, tetapi notifikasi belum terkirim ke semua grup.");
 			} else {
-				// "akhiri" — open confirmation dialog instead of direct submit
-				e.preventDefault();
-				setShowEndConfirm(true);
-				setIsSubmitting(false);
-				return;
+				toast.success("Notifikasi pembukaan shift terkirim");
 			}
-			
+			setShiftRefreshTrigger((c) => c + 1);
+			setOpenRequestId(null);
 			setAmount("");
-			setCashInRegister("");
-			setNonCashConfirmed("");
 			setNotes("");
 			setCashierName("");
 			setTeamMembers([]);
 			onClose();
 		} catch (error) {
 			console.error(error);
-			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
-			if (/baru tutup jam|baru bisa ditutup setelah|belum waktunya|tunggu sampai|belum bisa.*tutup|belum.*tutup/i.test(message)) {
-				setSubmitError(null);
-				setSubmitNotice(`⏰ ${message}`);
-				toast.info(message);
-			} else {
-				setSubmitError(message);
-				toast.error(message);
-			}
+			const message = error instanceof Error ? error.message : "Gagal membuka shift";
+			setSubmitError(message);
+			toast.error(message);
 		} finally {
 			setIsSubmitting(false);
 		}
+	};
+
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setSubmitError(null);
+		setSubmitNotice(null);
+		if (shiftType === "mulai") {
+			const startingCash = Number(amount);
+			if (!cashierName.trim() || !shiftName.trim()) {
+				toast.error("Nama kasir dan nama shift wajib diisi");
+				return;
+			}
+			if (!Number.isFinite(startingCash) || startingCash < 0) {
+				toast.error("Modal kasir harus berupa angka 0 atau lebih");
+				return;
+			}
+			if (!openRequestId) {
+				setOpenRequestId(
+					typeof crypto !== "undefined" && "randomUUID" in crypto
+						? crypto.randomUUID()
+						: `${Date.now()}-${Math.random().toString(36).slice(2)}`
+				);
+			}
+			setShowStartConfirm(true);
+			return;
+		}
+
+		// "akhiri" — open confirmation dialog instead of direct submit
+		setIsSubmitting(true);
+		setShowEndConfirm(true);
+		setIsSubmitting(false);
 	};
 
 	return (
@@ -3132,6 +3161,38 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					)}
 				</Button>
 			</form>
+
+			{/* Preview & konfirmasi buka shift */}
+			<Dialog open={showStartConfirm} onOpenChange={(open) => { if (!isSubmitting) setShowStartConfirm(open); }}>
+				<DialogContent className="max-w-sm rounded-2xl">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
+							<Wallet className="h-4 w-4 text-primary" />
+							Konfirmasi Buka Kasir
+						</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-3 text-xs">
+						<div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+							<div className="flex justify-between gap-3"><span className="text-muted-foreground">Kasir</span><span className="font-bold text-right">{cashierName || "-"}</span></div>
+							<div className="flex justify-between gap-3"><span className="text-muted-foreground">Shift</span><span className="font-bold text-right">{shiftName || "-"}</span></div>
+							{selectedShiftSchedule?.openTime && selectedShiftSchedule?.closeTime && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Jadwal</span><span className="font-bold text-right">{selectedShiftSchedule.openTime}–{selectedShiftSchedule.closeTime} WIB</span></div>}
+							<div className="flex justify-between gap-3 border-t pt-2"><span className="flex items-center gap-1 text-muted-foreground"><Banknote className="h-3.5 w-3.5" /> Modal awal</span><span className="font-black text-primary">Rp {Number(amount || 0).toLocaleString("id-ID")}</span></div>
+						</div>
+						<div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+							Shift dan transaksi <span className="font-bold text-foreground">Modal Awal</span> akan disimpan atomically. Jika koneksi timeout, jangan klik ulang dengan membuka form baru—request ini aman untuk dicoba ulang.
+						</div>
+						{isSubmitting && <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-semibold"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan shift dan mencatat modal...</div>}
+						{submitError && <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">{submitError}</div>}
+					</div>
+					<div className="flex gap-2">
+						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => setShowStartConfirm(false)}>Kembali</Button>
+						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={confirmStartShift}>
+							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 
 			{/* Konfirmasi Akhiri Shift */}
 			<Dialog open={showEndConfirm} onOpenChange={setShowEndConfirm}>
