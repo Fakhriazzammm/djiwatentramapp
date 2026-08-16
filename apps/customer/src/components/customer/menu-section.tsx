@@ -1,6 +1,6 @@
 import { Barcode, Grid2X2, Minus, PackageSearch, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { calculateEffectivePrice } from "@/lib/utils/pricing";
+import { calculateEffectivePrice, getActiveHappyHourBanner } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
@@ -41,13 +41,25 @@ export interface MenuSectionProps {
 }
 
 export function renderMenuSection(props: MenuSectionProps) {
+	const happyHourBanner = getActiveHappyHourBanner(props.discounts);
+
 	return (
 		<div className="space-y-3 px-3 py-3">
 			<div className="rounded-[24px] border border-white/10 px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]" style={{ backgroundColor: props.themeColor }}>
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">Session aktif</p>
-						<h2 className="mt-1 font-display text-xl font-black leading-none">Pilih menu</h2>
+						{happyHourBanner ? (
+							<>
+								<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">Happy Hour {happyHourBanner.session}</p>
+								<h2 className="mt-1 font-display text-xl font-black leading-tight">{happyHourBanner.priceLabel}</h2>
+								<p className="mt-1 text-xs text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB.</p>
+							</>
+						) : (
+							<>
+								<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">Session aktif</p>
+								<h2 className="mt-1 font-display text-xl font-black leading-none">Pilih menu</h2>
+							</>
+						)}
 					</div>
 					<div className="shrink-0 rounded-[14px] bg-white/12 px-3 py-2 text-right backdrop-blur">
 						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">Orang</p>

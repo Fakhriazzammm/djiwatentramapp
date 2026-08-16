@@ -114,6 +114,58 @@ function getPotentialPrice(
 	return originalPrice;
 }
 
+export interface HappyHourBanner {
+	name: string;
+	session: "siang" | "malam";
+	startTime: string;
+	endTime: string;
+	priceLabel: string;
+}
+
+export function getActiveHappyHourBanner(
+	activeDiscounts: Doc<"discounts">[] | undefined | null,
+): HappyHourBanner | null {
+	if (!activeDiscounts?.length) return null;
+
+	const now = new Date();
+	const timestamp = now.getTime();
+	const day = now.getDay();
+	const currentMinutes = now.getHours() * 60 + now.getMinutes();
+	const isWithinSchedule = (discount: Doc<"discounts">) => {
+		if (!discount.isActive || !discount.isHappyHour) return false;
+		if (discount.startDate && timestamp < discount.startDate) return false;
+		if (discount.endDate) {
+			const endOfDay = new Date(discount.endDate);
+			endOfDay.setHours(23, 59, 59, 999);
+			if (timestamp > endOfDay.getTime()) return false;
+		}
+		if (discount.days?.length && !discount.days.includes(day)) return false;
+		if (!discount.startTime || !discount.endTime) return false;
+		const [startHour, startMinute] = discount.startTime.split(":").map(Number);
+		const [endHour, endMinute] = discount.endTime.split(":").map(Number);
+		const start = startHour * 60 + startMinute;
+		const end = endHour * 60 + endMinute;
+		return currentMinutes >= start && currentMinutes <= end;
+	};
+
+	const discount = activeDiscounts.find(isWithinSchedule);
+	if (!discount || !discount.startTime || !discount.endTime) return null;
+	const [startHour] = discount.startTime.split(":").map(Number);
+	const session = /malam|dinner/i.test(discount.name || "") || startHour >= 16 ? "malam" : "siang";
+	const isAllFlatPrice = discount.targetType === "ALL" && discount.type === "FLAT_PRICE";
+	const priceLabel = isAllFlatPrice && discount.value > 0
+		? `Semua menu hanya ${currency(discount.value)}`
+		: "Harga spesial untuk menu pilihan";
+
+	return {
+		name: discount.name || `Happy Hour ${session}`,
+		session,
+		startTime: discount.startTime,
+		endTime: discount.endTime,
+		priceLabel,
+	};
+}
+
 export function calculateEffectivePrice(
 	product: { _id: string; price: number; categoryId: string },
 	activeDiscounts: Doc<"discounts">[] | undefined | null
