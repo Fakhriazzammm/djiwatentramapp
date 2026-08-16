@@ -28,6 +28,8 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5182004468"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
 TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-1003927364523"))
+MAYAR_RECONCILE_URL = os.getenv("MAYAR_RECONCILE_URL", "https://supabase.yumme.id/functions/v1/mayar-webhook")
+MAYAR_WEBHOOK_TOKEN = os.getenv("MAYAR_WEBHOOK_TOKEN", "")
 
 WIB = timezone(timedelta(hours=7))
 logger = logging.getLogger(__name__)
@@ -49,6 +51,7 @@ logging.basicConfig(
 # ── Global application reference ──────────────────────────────────────────
 
 _app: Application | None = None
+_last_mayar_reconcile_ms = 0
 
 def _bot() -> Bot:
     return _app.bot if _app else Bot(token=BOT_TOKEN)
@@ -86,6 +89,32 @@ async def _patch(table: str, query: str, payload: dict) -> dict:
         r.raise_for_status()
         data = r.json()
         return data[0] if isinstance(data, list) and data else {}
+
+async def _reconcile_mayar_payments(force: bool = False) -> None:
+    """Fallback settlement check so paid Mayar invoices never depend on webhook delivery."""
+    global _last_mayar_reconcile_ms
+    now_ms = int(_now_wib().timestamp() * 1000)
+    if not force and now_ms - _last_mayar_reconcile_ms < 30_000:
+        return
+    _last_mayar_reconcile_ms = now_ms
+    if not MAYAR_WEBHOOK_TOKEN:
+        logger.warning("Mayar reconciliation skipped: MAYAR_WEBHOOK_TOKEN is not configured")
+        return
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                MAYAR_RECONCILE_URL,
+                json={"action": "reconcile"},
+                headers={"x-webhook-token": MAYAR_WEBHOOK_TOKEN},
+                timeout=30,
+            )
+            response.raise_for_status()
+            result = response.json()
+        settled = result.get("settled") or []
+        logger.info("Mayar reconciliation: scanned=%s settled=%s", result.get("scanned", 0), len(settled))
+    except Exception as e:
+        logger.error("Mayar reconciliation failed: %s", e)
+
 
 def _service_role_headers():
     return {
@@ -2071,6 +2100,7 @@ async def _post_init(app):
     await _load_active_orders(app.bot)
 
     # First poll check (catch up with any orders since start)
+    await _reconcile_mayar_payments(force=True)
     await _check_new_orders(app)
 
     # Initial shift recap check
@@ -2081,6 +2111,7 @@ async def _post_init(app):
         refresh_counter = 0
         while True:
             await asyncio.sleep(5)
+            await _reconcile_mayar_payments()
             await _check_new_orders(app)
             await _check_new_csr(app)
             await _check_closed_shifts(app.bot)

@@ -97,6 +97,60 @@ async function verifyTransaction(transactionId: string) {
   return body?.data?.status === "paid" ? body.data : null;
 }
 
+function parseExtraData(value: unknown) {
+  if (typeof value === "object" && value !== null) return value as Record<string, unknown>;
+  if (typeof value !== "string") return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+async function settleOrder(order: Record<string, unknown>, transaction: Record<string, unknown>, invoiceId: string) {
+  const orderId = String(order.source_id || "");
+  const transactionId = String(transaction.id || "");
+  if (!orderId || !transactionId) return { updated: 0, transactionCreated: false };
+  const paymentGateway = {
+    provider: "mayar",
+    invoiceId: invoiceId || String(order.gateway_invoice_id || ""),
+    transactionId,
+    status: "paid",
+    paidAt: Number(transaction.updatedAt || transaction.createdAt || Date.now()),
+  };
+  const patch = {
+    payment_gateway: paymentGateway,
+    gateway_invoice_id: paymentGateway.invoiceId || null,
+    payment_receipt_kind: "gateway_paid",
+    status: "completed",
+  };
+  const updated = await patchOrder(`source_id=eq.${encodeURIComponent(orderId)}`, patch);
+  const settledOrder = updated[0] || order;
+  const transactionCreated = await insertFinancialTransaction(settledOrder, paymentGateway);
+  return { updated: updated.length, transactionCreated };
+}
+
+async function reconcilePendingOrders() {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway&source=eq.customer_self_service&status=eq.pending&payment_gateway->>provider=eq.mayar&order=created_at.asc&limit=50`,
+    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
+  );
+  if (!response.ok) throw new Error(`Pending order lookup failed (${response.status})`);
+  const orders = await response.json() as Array<Record<string, unknown>>;
+  const results = [];
+  for (const order of orders) {
+    const gateway = parseExtraData(order.payment_gateway);
+    const transactionId = String(gateway.transactionId || "");
+    if (!transactionId) continue;
+    const transaction = await verifyTransaction(transactionId);
+    if (!transaction) continue;
+    const result = await settleOrder(order, transaction, String(gateway.invoiceId || order.gateway_invoice_id || ""));
+    results.push({ orderId: order.source_id, ...result });
+  }
+  return { scanned: orders.length, settled: results };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method === "GET") return json({ status: "ok", service: "mayar-webhook" });
@@ -111,7 +165,10 @@ Deno.serve(async (req) => {
 
   try {
     const payload = await req.json();
-    const event = String(payload?.event?.received || "");
+    const event = String(payload?.event?.received || payload?.action || "");
+    if (event === "reconcile") {
+      return json({ ok: true, ...(await reconcilePendingOrders()) });
+    }
     const data = payload?.data || {};
     if (event !== "payment.received") {
       return json({ ok: true, ignored: true, event });
@@ -129,35 +186,22 @@ Deno.serve(async (req) => {
     const customFields = Array.isArray(data.custom_field) ? data.custom_field : [];
     const customOrderId = customFields.find((field: Record<string, unknown>) => field?.key === "order_id")?.value;
     const orderId = String(
-      data?.extraData?.orderId || transaction?.extraData?.orderId || customOrderId || "",
+      data?.extraData?.orderId || parseExtraData(transaction?.extraData).orderId || customOrderId || "",
     );
     const invoiceId = String(data.id || "");
-    const paymentGateway = {
-      provider: "mayar",
-      invoiceId,
-      transactionId,
-      status: "paid",
-      paidAt: Date.now(),
-    };
-    const patch = {
-      payment_gateway: paymentGateway,
-      gateway_invoice_id: invoiceId || null,
-      payment_receipt_kind: "gateway_paid",
-      status: "completed",
-    };
-
-    let updated = orderId
-      ? await patchOrder(`source_id=eq.${encodeURIComponent(String(orderId))}`, patch)
-      : [];
-    if (!updated.length && invoiceId) {
-      updated = await patchOrder(`gateway_invoice_id=eq.${encodeURIComponent(invoiceId)}`, patch);
+    let settled = orderId
+      ? await reconcilePendingOrders()
+      : { scanned: 0, settled: [] };
+    if (!settled.settled.length && invoiceId) {
+      const fallback = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&gateway_invoice_id=eq.${encodeURIComponent(invoiceId)}&limit=1`, { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Profile": "pos" } });
+      const orders = fallback.ok ? await fallback.json() as Array<Record<string, unknown>> : [];
+      if (orders[0]) {
+        const result = await settleOrder(orders[0], transaction, invoiceId);
+        settled = { scanned: orders.length, settled: [{ orderId: orders[0].source_id, ...result }] };
+      }
     }
-    const settledOrder = updated[0];
-    const transactionCreated = settledOrder
-      ? await insertFinancialTransaction(settledOrder, paymentGateway)
-      : false;
-
-    return json({ ok: true, updated: updated.length, transactionCreated });
+    const first = settled.settled[0];
+    return json({ ok: true, updated: first?.updated || 0, transactionCreated: first?.transactionCreated || false });
   } catch (error) {
     console.error("mayar-webhook failed", error);
     return json({ error: "Webhook processing failed" }, 500);
