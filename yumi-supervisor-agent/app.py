@@ -1635,11 +1635,13 @@ async def _check_new_orders(app):
         if customer_source_id:
             try:
                 m = await _fetch(
-                    "pos_customers",
-                    f"select=name,total_points&_id=eq.{customer_source_id}&limit=1",
+                    "pos_customers_view",
+                    f"select=name&source_id=eq.{customer_source_id}&limit=1",
                 )
                 if m:
                     member_name = m[0].get("name", customer)
+                    if member_name:
+                        customer = member_name
                     logger.info("Order %s from member: %s (id=%s)", order_no, member_name, customer_source_id)
             except Exception as e:
                 logger.warning("Failed to fetch member for order %s: %s", order_no, e)
