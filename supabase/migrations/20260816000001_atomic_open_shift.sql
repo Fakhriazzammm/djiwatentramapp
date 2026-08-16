@@ -5,7 +5,8 @@ ALTER TABLE pos.shifts
   ADD COLUMN IF NOT EXISTS cashier_user_id TEXT,
   ADD COLUMN IF NOT EXISTS team_member_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS opened_by_user_id TEXT,
-  ADD COLUMN IF NOT EXISTS open_request_id TEXT;
+  ADD COLUMN IF NOT EXISTS open_request_id TEXT,
+  ADD COLUMN IF NOT EXISTS online_food_checklist JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 ALTER TABLE pos.shifts
   DROP CONSTRAINT IF EXISTS shifts_starting_cash_nonnegative;
@@ -108,7 +109,7 @@ BEGIN
   INSERT INTO pos.shifts (
     source_id, shift_name, cashier_name, cashier_user_id, team_members,
     team_member_ids, start_time, starting_cash, notes, creation_time,
-    open_request_id, opened_by_user_id, raw
+    open_request_id, opened_by_user_id, online_food_checklist, raw
   ) VALUES (
     p_source_id,
     btrim(p_shift_name),
@@ -122,6 +123,7 @@ BEGIN
     p_start_time,
     p_open_request_id,
     NULLIF(btrim(p_opened_by_user_id), ''),
+    COALESCE(v_raw->'onlineFoodChecklist', '{}'::jsonb),
     v_raw || jsonb_build_object(
       'opening', jsonb_build_object(
         'cashierUserId', NULLIF(btrim(p_cashier_user_id), ''),
@@ -200,7 +202,8 @@ SELECT
   cashier_user_id AS "cashierUserId",
   team_member_ids AS "teamMemberIds",
   opened_by_user_id AS "openedByUserId",
-  open_request_id AS "openRequestId"
+  open_request_id AS "openRequestId",
+  online_food_checklist AS "onlineFoodChecklist"
 FROM pos.shifts;
 
 GRANT SELECT ON public.pos_shifts TO anon, authenticated, service_role;

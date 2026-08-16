@@ -145,6 +145,34 @@ interface TabItem {
 	iconColor: string;
 }
 
+type OnlineFoodStatus = "pending" | "active" | "problem" | "not_used";
+type OnlineFoodPlatform = "gofood" | "grabfood" | "shopeefood";
+type OnlineFoodChecklist = Record<OnlineFoodPlatform, {
+	status: OnlineFoodStatus;
+	note: string;
+}>;
+
+const ONLINE_FOOD_PLATFORMS: Array<{ key: OnlineFoodPlatform; label: string }> = [
+	{ key: "gofood", label: "GoFood" },
+	{ key: "grabfood", label: "GrabFood" },
+	{ key: "shopeefood", label: "ShopeeFood" },
+];
+
+const ONLINE_FOOD_STATUS_OPTIONS: Array<{ value: OnlineFoodStatus; label: string }> = [
+	{ value: "pending", label: "Belum dicek" },
+	{ value: "active", label: "Aktif dan siap menerima order" },
+	{ value: "problem", label: "Bermasalah" },
+	{ value: "not_used", label: "Tidak digunakan" },
+];
+
+function createEmptyOnlineFoodChecklist(): OnlineFoodChecklist {
+	return {
+		gofood: { status: "pending", note: "" },
+		grabfood: { status: "pending", note: "" },
+		shopeefood: { status: "pending", note: "" },
+	};
+}
+
 export function MenuSidebar({ 
 	triggerOpen, 
 	onOpenChange,
@@ -2077,6 +2105,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 	const [showEndConfirm, setShowEndConfirm] = useState(false);
 	const [showStartConfirm, setShowStartConfirm] = useState(false);
+	const [showStartChecklist, setShowStartChecklist] = useState(false);
+	const [onlineFoodChecklist, setOnlineFoodChecklist] = useState<OnlineFoodChecklist>(() => createEmptyOnlineFoodChecklist());
 	const [openRequestId, setOpenRequestId] = useState<string | null>(null);
 	
 	// Cash Breakdown State
@@ -2596,6 +2626,15 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			const selectedTeamIds = teamMembers
 				.map((name) => staffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.trim().toLowerCase())?._id)
 				.filter(Boolean);
+			const incompletePlatforms = ONLINE_FOOD_PLATFORMS.filter(({ key }) => onlineFoodChecklist[key].status === "pending");
+			if (incompletePlatforms.length > 0) {
+				throw new Error(`Checklist belum selesai: ${incompletePlatforms.map(({ label }) => label).join(", ")}`);
+			}
+			const checklistLines = ONLINE_FOOD_PLATFORMS.map(({ key, label }) => {
+				const item = onlineFoodChecklist[key];
+				const statusLabel = ONLINE_FOOD_STATUS_OPTIONS.find((option) => option.value === item.status)?.label ?? item.status;
+				return `${label}: ${statusLabel}${item.note.trim() ? ` — ${item.note.trim()}` : ""}`;
+			}).join("\n");
 			await startShift({
 				cashierName: cashierName.trim(),
 				cashierUserId: cashier?._id ?? null,
@@ -2604,9 +2643,11 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				teamMemberIds: selectedTeamIds,
 				startingCash,
 				notes,
+				onlineFoodChecklist,
 				openRequestId: openRequestId ?? undefined,
 			});
 			setShowStartConfirm(false);
+			setShowStartChecklist(false);
 			toast.success("Shift berhasil dimulai");
 			const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
 			const notificationDelivered = await sendTelegramNotif("✅ SHIFT DIBUKA", {
@@ -2615,6 +2656,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				"👤 Kasir": cashierName.trim(),
 				"👥 Tim": `\n${teamFormatted}`,
 				"💰 Modal Kasir": `Rp ${startingCash.toLocaleString("id-ID")}`,
+				"📱 Online Food": `\n${checklistLines}`,
 			});
 			if (!notificationDelivered) {
 				toast.warning("Shift sudah dibuka, tetapi notifikasi belum terkirim ke semua grup.");
@@ -3162,6 +3204,53 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				</Button>
 			</form>
 
+			{/* Checklist aktivasi online food */}
+			<Dialog open={showStartChecklist} onOpenChange={(open) => { if (!isSubmitting) setShowStartChecklist(open); }}>
+				<DialogContent className="max-w-md rounded-2xl">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
+							<CreditCard className="h-4 w-4 text-primary" />
+							Checklist Online Food
+						</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-2 text-xs">
+						<div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+							Buka aplikasi merchant masing-masing, pastikan siap menerima pesanan, lalu pilih statusnya. Jangan masukkan password atau data login ke sini.
+						</div>
+						{ONLINE_FOOD_PLATFORMS.map(({ key, label }) => {
+							const item = onlineFoodChecklist[key];
+							const isProblem = item.status === "problem";
+							return (
+								<div key={key} className={`rounded-xl border p-3 space-y-2 ${item.status === "active" ? "border-emerald-200 bg-emerald-50/50" : isProblem ? "border-amber-200 bg-amber-50/60" : "border-border bg-background"}`}>
+									<div className="flex items-center justify-between gap-2">
+										<div className="flex items-center gap-2 font-black"><span className={`h-2 w-2 rounded-full ${item.status === "active" ? "bg-emerald-500" : isProblem ? "bg-amber-500" : item.status === "not_used" ? "bg-muted-foreground/50" : "bg-muted-foreground/30"}`} />{label}</div>
+										{item.status === "active" && <span className="text-[10px] font-bold text-emerald-700">Siap menerima order</span>}
+									</div>
+									<select
+										className="h-9 w-full rounded-md border border-border bg-background px-2 text-xs font-semibold"
+										value={item.status}
+										onChange={(event) => setOnlineFoodChecklist((current) => ({ ...current, [key]: { ...current[key], status: event.target.value as OnlineFoodStatus } }))}
+									>
+										{ONLINE_FOOD_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+									</select>
+									{isProblem && <Input className="h-9 text-xs" placeholder="Contoh: aplikasi logout / printer offline" value={item.note} onChange={(event) => setOnlineFoodChecklist((current) => ({ ...current, [key]: { ...current[key], note: event.target.value } }))} />}
+								</div>
+							);
+						})}
+						{onlineFoodChecklist && !ONLINE_FOOD_PLATFORMS.every(({ key }) => onlineFoodChecklist[key].status !== "pending") && <p className="text-[11px] font-semibold text-amber-700">Semua platform harus diberi status sebelum kasir dibuka.</p>}
+						{submitError && <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">{submitError}</div>}
+						{isSubmitting && <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-semibold"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan shift, modal, dan checklist...</div>}
+					</div>
+					<div className="flex gap-2">
+						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => { setShowStartChecklist(false); setShowStartConfirm(true); }}>Kembali</Button>
+						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting || !ONLINE_FOOD_PLATFORMS.every(({ key }) => onlineFoodChecklist[key].status !== "pending")} onClick={confirmStartShift}>
+							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+							{isSubmitting ? "Menyimpan..." : "Buka Kasir & Kirim Notifikasi"}
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+
 			{/* Preview & konfirmasi buka shift */}
 			<Dialog open={showStartConfirm} onOpenChange={(open) => { if (!isSubmitting) setShowStartConfirm(open); }}>
 				<DialogContent className="max-w-sm rounded-2xl">
@@ -3186,9 +3275,9 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					</div>
 					<div className="flex gap-2">
 						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => setShowStartConfirm(false)}>Kembali</Button>
-						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={confirmStartShift}>
-							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
+						<Button type="button" className="flex-1 h-9 text-xs font-bold" onClick={() => { setShowStartConfirm(false); setShowStartChecklist(true); }}>
+							<ArrowDownCircle className="h-3.5 w-3.5" />
+							Lanjut Checklist Online Food
 						</Button>
 					</div>
 				</DialogContent>
