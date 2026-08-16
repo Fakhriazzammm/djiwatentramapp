@@ -59,40 +59,28 @@ async function insertFinancialTransaction(order: Record<string, unknown>, paymen
   const orderSourceId = String(order.source_id || "");
   if (!orderSourceId) return false;
   const existingResponse = await fetch(
-    `${SUPABASE_URL}/rest/v1/financial_transactions?order_source_id=eq.${encodeURIComponent(orderSourceId)}&select=source_id&limit=1`,
-    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Profile": "pos" } },
+    `${SUPABASE_URL}/rest/v1/pos_financial_transactions?orderId=eq.${encodeURIComponent(orderSourceId)}&select=_id&limit=1`,
+    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` } },
   );
   if (!existingResponse.ok) throw new Error(`Financial lookup failed (${existingResponse.status})`);
   const existing = (await existingResponse.json()) as Array<Record<string, unknown>>;
   if (existing.length > 0) return false;
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/financial_transactions`, {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_mayar_financial_transaction`, {
     method: "POST",
     headers: {
       apikey: SERVICE_ROLE_KEY,
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       "Content-Type": "application/json",
-      "Content-Profile": "pos",
-      Prefer: "resolution=merge-duplicates,return=minimal",
+      Prefer: "return=minimal",
     },
     body: JSON.stringify({
-      source_id: `fin_mayar_${orderSourceId}`,
-      tx_type: "income",
-      amount: Number(order.total_amount || 0),
-      category: "Penjualan",
-      description: `Penjualan Pesanan #${order.order_number || "-"}`,
-      merchant: order.customer_name || null,
-      tx_date: Number(paymentGateway.paidAt || Date.now()),
-      payment_method: "mayar",
-      status: "completed",
-      order_source_id: orderSourceId,
-      creation_time: Date.now(),
-      metadata: {
-        orderNumber: order.order_number || null,
-        source: "customer_self_service",
-        paymentGateway,
-      },
-      raw: { kind: "order_mayar_webhook_settlement", orderId: orderSourceId },
+      p_order_id: orderSourceId,
+      p_order_number: String(order.order_number || ""),
+      p_amount: Number(order.total_amount || 0),
+      p_customer_name: String(order.customer_name || ""),
+      p_paid_at: Number(paymentGateway.paidAt || Date.now()),
+      p_payment_gateway: paymentGateway,
     }),
   });
   if (!response.ok) throw new Error(`Financial transaction insert failed (${response.status})`);
