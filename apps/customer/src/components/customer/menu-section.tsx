@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Barcode, Grid2X2, Minus, PackageSearch, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice, getActiveHappyHourBanner } from "@/lib/utils/pricing";
@@ -6,6 +7,33 @@ import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { chipClassName } from "./shared-components";
 
+
+function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
+	const [isLoaded, setIsLoaded] = useState(false);
+	const [hasError, setHasError] = useState(false);
+	const hasImage = Boolean(src) && !hasError;
+
+	return (
+		<>
+			{hasImage && !isLoaded ? <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted via-muted/60 to-muted" /> : null}
+			{hasImage ? (
+				<img
+					alt={alt}
+					className={cn("absolute inset-0 h-full w-full object-cover transition-opacity duration-300", isLoaded ? "opacity-100" : "opacity-0")}
+					decoding="async"
+					loading="lazy"
+					onError={() => setHasError(true)}
+					onLoad={() => setIsLoaded(true)}
+					src={src as string}
+				/>
+			) : (
+				<div aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-muted text-muted-foreground">
+					<PackageSearch className="h-7 w-7" strokeWidth={1.8} />
+				</div>
+			)}
+		</>
+	);
+}
 export interface MenuSectionProps {
 	activeCategoryId: Id<"categories"> | null;
 	cart: CartItem[];
@@ -197,7 +225,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
 							return (
 								<button type="button" key={product._id} className="overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
-									<div className="relative h-28 w-full bg-muted"><div className="flex h-full w-full items-center justify-center text-muted-foreground"><PackageSearch aria-hidden="true" className="h-7 w-7" strokeWidth={1.8} /></div>{product.image ? <img alt={product.name} className="absolute inset-0 h-full w-full object-cover" src={product.image} onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}{product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}{pricing.isPromo ? <span className="absolute right-2 top-2 rounded-full px-2 py-0.5 font-bold text-[10px] text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}{quantity > 0 ? <span className="absolute right-2 top-9 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow">{quantity} di cart</span> : null}</div>
+									<div className="relative h-28 w-full bg-muted"><ProductImage src={product.image} alt={product.name} />{product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}{pricing.isPromo ? <span className="absolute right-2 top-2 rounded-full px-2 py-0.5 font-bold text-[10px] text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}{quantity > 0 ? <span className="absolute right-2 top-9 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow">{quantity} di cart</span> : null}</div>
 									<div className="space-y-1.5 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><div className="flex items-end justify-between gap-1.5"><div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div><div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-3.5 w-3.5" /></div></div></div>
 								</button>
 							);
