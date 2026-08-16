@@ -4,7 +4,7 @@ import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
-import { BadgePill, chipClassName } from "./shared-components";
+import { chipClassName } from "./shared-components";
 
 export interface MenuSectionProps {
 	activeCategoryId: Id<"categories"> | null;
@@ -43,29 +43,35 @@ export interface MenuSectionProps {
 export function renderMenuSection(props: MenuSectionProps) {
 	return (
 		<div className="space-y-3 px-3 py-3">
-			<div className="rounded-3xl px-4 py-4 text-white shadow-[0_16px_40px_rgba(15,23,42,0.16)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
+			<div className="rounded-[24px] px-4 py-3.5 text-white shadow-[0_12px_32px_rgba(15,23,42,0.14)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
 				<div className="flex items-start justify-between gap-3">
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">Session aktif</p>
+					<div className="min-w-0">
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">Session aktif</p>
 						<h2 className="mt-1 font-display text-xl font-black leading-none">Pilih menu</h2>
-						<p className="mt-1 text-xs text-white/75">Ketik nomor produk lengkap, scan barcode, atau pilih lewat katalog.</p>
 					</div>
-					<div className="rounded-xl bg-white/12 px-2.5 py-1.5 text-right backdrop-blur">
+					<div className="shrink-0 rounded-[14px] bg-white/12 px-3 py-2 text-right backdrop-blur">
 						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">Orang</p>
-						<p className="mt-0.5 text-lg font-black">{props.partySize}</p>
+						<p className="mt-0.5 text-base font-black leading-none">{props.partySize}</p>
 					</div>
 				</div>
-				<div className="mt-2.5 flex flex-wrap gap-1.5 text-[10px]">
-					<BadgePill label={props.tableNumber.trim() ? `Meja ${props.tableNumber.trim()}` : "Meja belum diisi"} />
-					{props.freeRefillCharge > 0 ? <BadgePill label={`Free refill ${currency(props.freeRefillCharge)}`} /> : null}
-					<BadgePill label={`${props.totalItems} item • ${currency(props.total)}`} />
+				<div className="mt-3 flex items-center justify-between gap-2 border-t border-white/15 pt-2.5 text-[11px]">
+					<div className="min-w-0">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">Meja</p>
+						<p className="truncate font-bold">{props.tableNumber.trim() ? props.tableNumber.trim() : "Belum dipilih"}</p>
+					</div>
+					<div className="shrink-0 text-right">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">Pesanan</p>
+						<p className="font-bold">{props.totalItems} item · {currency(props.total)}</p>
+					</div>
 				</div>
+				{props.freeRefillCharge > 0 ? <div className="mt-2 text-[10px] font-semibold text-white/75">Free refill · {currency(props.freeRefillCharge)}</div> : null}
 			</div>
 
-			<div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
-				<button type="button" className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("number")}>Nomor Produk</button>
-				<button type="button" className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground")} onClick={() => props.setMenuMode("catalog")}>Katalog Menu</button>
+			<div className="grid grid-cols-2 gap-2 rounded-[18px] border border-border bg-card p-1.5 shadow-sm" role="tablist" aria-label="Mode pemilihan menu">
+				<button type="button" role="tab" aria-selected={props.menuMode === "number"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("number")}>Kode menu</button>
+				<button type="button" role="tab" aria-selected={props.menuMode === "catalog"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("catalog")}>Katalog</button>
 			</div>
+			<p className="px-1 text-xs text-muted-foreground">{props.menuMode === "number" ? "Masukkan nomor yang tertera di menu meja." : "Pilih makanan dan minuman dari katalog."}</p>
 
 			{props.menuMode === "number" && props.config.enableMenuNumberEntry ? (
 				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">

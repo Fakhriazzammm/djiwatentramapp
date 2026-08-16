@@ -789,7 +789,7 @@ function OrderPage() {
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Grid2X2 className="h-3.5 w-3.5" />} onClick={() => setStep("menu")} />
-							<BottomButton label="Basket" icon={<ShoppingCart className="h-3.5 w-3.5" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
+							<BottomButton label="Keranjang" icon={<ShoppingCart className="h-3.5 w-3.5" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
 							<BottomButton label="Staff" icon={<Bell className="h-3.5 w-3.5" />} onClick={() => setServiceOpen(true)} />
 							<BottomButton label={receipt ? "Struk" : "Checkout"} icon={receipt ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />} onClick={() => setStep(receipt ? "receipt" : "checkout")} primary disabled={!receipt && !cart.length} />
 						</div>
