@@ -124,10 +124,34 @@ function OrderPage() {
 	} = useOrderContext();
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const memberDiscounts = useMemo(
+		() => isAuthenticated ? discounts : discounts?.filter((discount) => !discount.isHappyHour),
+		[discounts, isAuthenticated],
+	);
 	const isMenuLoading = categories === undefined || products === undefined;
 	const [catalogQuery, setCatalogQuery] = useState("");
 	const [pendingNumberProduct, setPendingNumberProduct] = useState<Doc<"products"> | null>(null);
 	const [pendingNumberQuantity, setPendingNumberQuantity] = useState(1);
+
+	useEffect(() => {
+		if (!products || !memberDiscounts) return;
+		setCart((currentCart) => {
+			let changed = false;
+			const nextCart = currentCart.map((item) => {
+				if (item.variant) return item;
+				const product = products.find((entry) => entry._id === item.productId);
+				if (!product) return item;
+				const pricing = calculateEffectivePrice(
+					{ _id: product._id, price: product.price, categoryId: product.categoryId },
+					memberDiscounts,
+				);
+				if (item.price === pricing.finalPrice && item.originalPrice === pricing.originalPrice) return item;
+				changed = true;
+				return { ...item, price: pricing.finalPrice, originalPrice: pricing.originalPrice };
+			});
+			return changed ? nextCart : currentCart;
+		});
+	}, [memberDiscounts, products, setCart]);
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
 	const config = {
@@ -402,7 +426,7 @@ function OrderPage() {
 		}
 		const pricing = calculateEffectivePrice(
 			{ _id: product._id, price: product.price, categoryId: product.categoryId },
-			discounts
+			memberDiscounts
 		);
 		addToCart({
 			productId: product._id,
@@ -420,7 +444,7 @@ function OrderPage() {
 		if (!pendingNumberProduct) return;
 		const pricing = calculateEffectivePrice(
 			{ _id: pendingNumberProduct._id, price: pendingNumberProduct.price, categoryId: pendingNumberProduct.categoryId },
-			discounts
+			memberDiscounts
 		);
 		addToCart({
 			productId: pendingNumberProduct._id,
@@ -774,7 +798,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
+						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
@@ -842,7 +866,7 @@ function OrderPage() {
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
 				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
 					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan detail menu...</div>}>
-						<ProductSheet product={productSheet} discounts={discounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
+						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
 					</Suspense>
 				</SheetContent>
 			</Sheet>
