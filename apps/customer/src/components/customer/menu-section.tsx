@@ -56,8 +56,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							</>
 						) : (
 							<>
-								<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">Session aktif</p>
-								<h2 className="mt-1 font-display text-xl font-black leading-none">Pilih menu</h2>
+								<h2 className="font-display text-xl font-black leading-none">Pilih menu</h2>
 							</>
 						)}
 					</div>
