@@ -42,10 +42,16 @@ export interface MenuSectionProps {
 
 export function renderMenuSection(props: MenuSectionProps) {
 	const happyHourBanner = getActiveHappyHourBanner(props.discounts);
+	const bannerVariant = happyHourBanner?.session ?? "default";
+	const bannerClassName = bannerVariant === "siang"
+		? "border-amber-200/20 bg-[#b45309]"
+		: bannerVariant === "malam"
+			? "border-indigo-200/20 bg-[#312e81]"
+			: "border-white/10";
 
 	return (
 		<div className="space-y-3 px-3 py-3">
-			<div className="rounded-[24px] border border-white/10 px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]" style={{ backgroundColor: props.themeColor }}>
+			<div data-banner-variant={bannerVariant} className={cn("rounded-[24px] border px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]", bannerClassName)} style={bannerVariant === "default" ? { backgroundColor: props.themeColor } : undefined}>
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
 						{happyHourBanner ? (
