@@ -206,6 +206,8 @@ function OrderForm() {
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const repackCount = repack ? kg * 10 : 0;
   const noodleTotal = kg * Number(mieYaminSettings.noodlePricePerKg);
@@ -214,7 +216,37 @@ function OrderForm() {
   const total = noodleTotal + readyPackTotal + repackTotal;
   const minDate = useMemo(() => getWibDateKey(), []);
 
-  async function submit() {
+  async function createPaymentInvoice(orderId: string) {
+    const redirectUrl = `${window.location.origin}/?stage=tracking&orderId=${encodeURIComponent(String(orderId))}`;
+    const invoice = await createInvoice({
+      name: name.trim(), mobile: phone.trim(), redirectUrl,
+      email: email.trim() || undefined,
+      description: `Order Mie Yamin B2B ${kg} kg${repack ? " + repack 100 gram" : ""}`,
+      expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT, deliveryProvider, shippingFee: "0", deliveryArea: String(mieYaminSettings.deliveryArea) },
+      items: [
+        { quantity: kg, rate: Number(mieYaminSettings.noodlePricePerKg), description: `Mie Yamin Mentah ${kg} kg` },
+        ...(readyPackCount > 0 ? [{ quantity: readyPackCount, rate: Number(mieYaminSettings.readyPackPrice), description: `Kemasan siap masak ${readyPackCount} pcs` }] : []),
+        ...(repack ? [{ quantity: repackCount, rate: Number(mieYaminSettings.repackFeePer100g), description: `Jasa repack 100 gram ${repackCount} pcs` }] : []),
+      ],
+    });
+    if (!invoice?.data?.link) throw new Error("Invoice pembayaran belum tersedia.");
+    await updateOrderPaymentGateway({
+      id: String(orderId),
+      paymentGateway: {
+        provider: "mayar",
+        invoiceId: invoice.data.id,
+        transactionId: invoice.data.transactionId ?? null,
+        status: "pending",
+      },
+      paymentReceiptKind: "gateway_pending",
+    });
+    setPendingPaymentOrderId(null);
+    rememberOrder(String(orderId));
+    window.location.assign(invoice.data.link);
+  }
+
+  function submit() {
     if (!deliveryProvider || !deliveryDate || !name.trim() || !phone.trim() || !address.trim()) {
       setError("Pilih pengiriman, lalu lengkapi tanggal pengiriman, nama, WhatsApp, dan alamat.");
       return;
@@ -223,6 +255,11 @@ function OrderForm() {
       setError("Format email belum benar.");
       return;
     }
+    setError("");
+    setReviewOpen(true);
+  }
+
+  async function confirmSubmit() {
     setSubmitting(true); setError("");
     try {
       const orderId = await createOrder({
@@ -251,34 +288,20 @@ function OrderForm() {
         paymentReceiptKind: "gateway_pending",
         isOpenBill: true,
       });
-      const redirectUrl = `${window.location.origin}/?stage=tracking&orderId=${encodeURIComponent(String(orderId))}`;
-      const invoice = await createInvoice({
-        name: name.trim(), mobile: phone.trim(), redirectUrl,
-        email: email.trim() || undefined,
-        description: `Order Mie Yamin B2B ${kg} kg${repack ? " + repack 100 gram" : ""}`,
-        expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT, deliveryProvider, shippingFee: "0", deliveryArea: String(mieYaminSettings.deliveryArea) },
-        items: [
-          { quantity: kg, rate: Number(mieYaminSettings.noodlePricePerKg), description: `Mie Yamin Mentah ${kg} kg` },
-          ...(readyPackCount > 0 ? [{ quantity: readyPackCount, rate: Number(mieYaminSettings.readyPackPrice), description: `Kemasan siap masak ${readyPackCount} pcs` }] : []),
-          ...(repack ? [{ quantity: repackCount, rate: Number(mieYaminSettings.repackFeePer100g), description: `Jasa repack 100 gram ${repackCount} pcs` }] : []),
-        ],
-      });
-      if (!invoice?.data?.link) throw new Error("Invoice pembayaran belum tersedia.");
-      await updateOrderPaymentGateway({
-        id: String(orderId),
-        paymentGateway: {
-          provider: "mayar",
-          invoiceId: invoice.data.id,
-          transactionId: invoice.data.transactionId ?? null,
-          status: "pending",
-        },
-        paymentReceiptKind: "gateway_pending",
-      });
-      rememberOrder(String(orderId));
-      window.location.assign(invoice.data.link);
+      setPendingPaymentOrderId(String(orderId));
+      await createPaymentInvoice(String(orderId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Checkout gagal. Coba lagi.");
+    } finally { setSubmitting(false); }
+  }
+
+  async function retryPayment() {
+    if (!pendingPaymentOrderId) return;
+    setSubmitting(true); setError("");
+    try {
+      await createPaymentInvoice(pendingPaymentOrderId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Invoice belum berhasil dibuat. Coba lagi.");
     } finally { setSubmitting(false); }
   }
 
@@ -298,8 +321,10 @@ function OrderForm() {
         <label className="block text-sm font-bold">Alamat lengkap<textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
         <label className="block text-sm font-bold">Catatan pengiriman <span className="font-normal text-muted-foreground">(opsional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
         <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Mie yamin ({kg} kg)</span><b>{formatRupiah(noodleTotal)}</b></div>{readyPackCount > 0 ? <div className="mt-2 flex justify-between"><span>Kemasan siap masak ({readyPackCount} pcs)</span><b>{formatRupiah(readyPackTotal)}</b></div> : null}{repack ? <div className="mt-2 flex justify-between"><span>Jasa repack ({repackCount} pcs)</span><b>{formatRupiah(repackTotal)}</b></div> : null}{deliveryProvider ? <div className="mt-2 flex justify-between"><span>Pengiriman {deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</span><b className="text-emerald-600">Gratis promo</b></div> : null}<div className="mt-3 flex justify-between border-t border-border pt-3 text-base"><b>Total</b><b className="text-primary">{formatRupiah(total)}</b></div></div>
+        {reviewOpen ? <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4"><div><p className="text-sm font-black text-primary">Review pesanan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pastikan jumlah, tanggal, dan alamat sudah benar sebelum lanjut ke pembayaran.</p></div><div className="space-y-1.5 text-xs"><p><b>{kg} kg</b> Mie Yamin Mentah</p>{readyPackCount > 0 ? <p><b>{readyPackCount} pcs</b> kemasan siap masak</p> : null}{repack ? <p>Jasa repack <b>{repackCount} pcs</b></p> : null}<p>Pengiriman <b>{deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</b> pada <b>{new Date(`${deliveryDate}T12:00:00+07:00`).toLocaleDateString("id-ID", { dateStyle: "long" })}</b></p><p>Penerima <b>{name}</b> · {phone}</p><p className="break-words">{address}</p>{email.trim() ? <p>Email bukti pembayaran <b>{email}</b></p> : null}</div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setReviewOpen(false)} className="h-11 rounded-xl border border-border bg-background text-xs font-black">Kembali edit</button><button type="button" disabled={submitting} onClick={confirmSubmit} className="h-11 rounded-xl bg-primary text-xs font-black text-white disabled:opacity-50">{submitting ? "Menyiapkan..." : "Konfirmasi & bayar"}</button></div></div> : null}
         {error ? <p className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{error}</p> : null}
-        <button disabled={submitting} onClick={submit} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white disabled:opacity-50">{submitting ? "Menyiapkan pembayaran..." : <>Lanjut ke pembayaran <ChevronRight className="h-4 w-4" /></>}</button>
+        {pendingPaymentOrderId ? <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-black text-amber-900">Order sudah tersimpan, tetapi invoice pembayaran belum berhasil dibuat.</p><p className="text-[11px] leading-relaxed text-amber-800">Coba lagi dengan order yang sama agar tidak membuat pesanan ganda.</p><button type="button" disabled={submitting} onClick={retryPayment} className="h-11 w-full rounded-xl bg-amber-600 text-xs font-black text-white disabled:opacity-50">{submitting ? "Mencoba lagi..." : "Coba buat pembayaran lagi"}</button></div> : null}
+        {!reviewOpen && !pendingPaymentOrderId ? <button disabled={submitting} onClick={submit} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white disabled:opacity-50">Review pesanan <ChevronRight className="h-4 w-4" /></button> : null}
       </div>
       <p className="mt-5 text-center text-xs text-muted-foreground">Pembayaran aman via Mayar. Setelah pembayaran, status order akan diperbarui secara live.</p>
     </main>
