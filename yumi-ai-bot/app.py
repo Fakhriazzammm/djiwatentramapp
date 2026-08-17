@@ -30,6 +30,28 @@ from hermes_adapter import (
 
 load_dotenv()
 
+
+def _sales_channel_label(payment_method: str, source: str = "", order_type: str = "") -> str:
+    """Normalize payment/source values for daily sales reporting."""
+    values = [str(value or "").strip().lower() for value in (payment_method, source, order_type)]
+    joined = " ".join(values)
+    if "gofood" in joined or "go_food" in joined:
+        return "GoFood"
+    if "grabfood" in joined or "grab_food" in joined or "grab" in joined:
+        return "GrabFood"
+    if "shopeefood" in joined or "shopee_food" in joined or "shopee" in joined:
+        return "ShopeeFood"
+    if "djiwaapp" in joined or "customer_self_service" in joined or "mayar" in joined:
+        return "DjiwaApp"
+    if any(value in ("cash", "tunai") for value in values):
+        return "Tunai"
+    if any(value in ("qris", "qris_mayar") for value in values):
+        return "QRIS"
+    if any(value in ("transfer", "bank_transfer") for value in values):
+        return "Transfer"
+    return str(payment_method or source or order_type or "Tidak diketahui").upper()
+
+
 # ── Category icon mapping (mirror dari yumi-finance-agent/categories.py) ──
 _CATEGORY_MAP = {
     "penjualan": "💰", "bahan_minuman": "☕", "bahan_makanan": "🍳",
@@ -2871,7 +2893,7 @@ async def _send_daily_summary(app):
         # ── Orders ──
         orders = await _fetch(
             "pos_orders",
-            f"select=orderNumber,totalAmount,paymentMethod,createdAt"
+            f"select=orderNumber,totalAmount,paymentMethod,source,orderType"
             f"&status=eq.completed"
             f"&_creationTime=gte.{start_ms}"
             f"&_creationTime=lte.{end_ms}"
@@ -2879,18 +2901,23 @@ async def _send_daily_summary(app):
         )
 
         total_omzet = 0.0
-        tunai = 0.0; qris = 0.0
+        channel_counts: Counter[str] = Counter()
+        channel_totals: dict[str, float] = {}
         order_lines = []
         for o in orders:
             ts = int(float(o.get("createdAt") or o.get("_creationTime") or 0))
             order_no = o.get("orderNumber", "???")
             amount = float(o.get("totalAmount") or 0)
-            payment = (o.get("paymentMethod") or "-").upper()
+            channel = _sales_channel_label(
+                str(o.get("paymentMethod") or ""),
+                str(o.get("source") or ""),
+                str(o.get("orderType") or ""),
+            )
             total_omzet += amount
-            if payment in ("TUNAI", "CASH"): tunai += amount
-            elif payment in ("QRIS", "TRANSFER"): qris += amount
+            channel_counts[channel] += 1
+            channel_totals[channel] = channel_totals.get(channel, 0) + amount
             order_lines.append(
-                f"✅ {order_no}  Rp{amount:,.0f}  {payment}  🕐{_format_time_ms(ts, '%H:%M')}"
+                f"✅ {order_no}  Rp{amount:,.0f}  {channel}  🕐{_format_time_ms(ts, '%H:%M')}"
             )
 
         # ── Expenses ──
@@ -2933,11 +2960,10 @@ async def _send_daily_summary(app):
         lines.append("")
 
         lines.append(f"🧾 {len(orders)} Transaksi Masuk")
-        if tunai or qris:
-            parts = []
-            if tunai: parts.append(f"Tunai Rp{tunai:,.0f}")
-            if qris: parts.append(f"QRIS Rp{qris:,.0f}")
-            lines.append(f"   {' | '.join(parts)}")
+        if channel_counts:
+            lines.append("💳 Penjualan per Kanal:")
+            for channel, count in channel_counts.most_common():
+                lines.append(f"   {channel}: {count} transaksi — Rp{channel_totals[channel]:,.0f}")
         lines.append(f"💰 Total Omzet: Rp{total_omzet:,.0f}")
         if total_expense > 0:
             lines.append(f"💸 {len(fin_rows)} Pengeluaran: Rp{total_expense:,.0f}")

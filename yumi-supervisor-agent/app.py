@@ -43,6 +43,27 @@ def _payment_label(raw: str) -> str:
         "mayar": "DjiwaApp",
     }
     return labels.get(raw.lower().strip(), raw.upper() if raw else "-")
+
+
+def _sales_channel_label(payment_method: str, source: str = "", order_type: str = "") -> str:
+    """Normalize payment/source values into the cashier report channel."""
+    values = [str(value or "").strip().lower() for value in (payment_method, source, order_type)]
+    joined = " ".join(values)
+    if "gofood" in joined or "go_food" in joined:
+        return "GoFood"
+    if "grabfood" in joined or "grab_food" in joined or "grab" in joined:
+        return "GrabFood"
+    if "shopeefood" in joined or "shopee_food" in joined or "shopee" in joined:
+        return "ShopeeFood"
+    if "djiwaapp" in joined or "customer_self_service" in joined or "mayar" in joined:
+        return "DjiwaApp"
+    if any(value in ("cash", "tunai") for value in values):
+        return "Tunai"
+    if any(value in ("qris", "qris_mayar") for value in values):
+        return "QRIS"
+    if any(value in ("transfer", "bank_transfer") for value in values):
+        return "Transfer"
+    return _payment_label(payment_method or source or order_type or "Tidak diketahui")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -2017,7 +2038,7 @@ async def _check_closed_shifts(bot: Bot):
         try:
             payment_rows = await _fetch(
                 "pos_orders",
-                "select=orderNumber,totalAmount,paymentMethod"
+                "select=orderNumber,totalAmount,paymentMethod,source,orderType"
                 f"&_creationTime=gte.{s_start}&_creationTime=lte.{s_end}"
                 "&status=in.(completed,paid)&order=_creationTime.asc&limit=500",
             )
@@ -2027,7 +2048,11 @@ async def _check_closed_shifts(bot: Bot):
                 if not order_no or order_no in seen_payment_orders:
                     continue
                 seen_payment_orders.add(order_no)
-                method = _payment_label(str(order.get("paymentMethod") or "Tidak diketahui"))
+                method = _sales_channel_label(
+                    str(order.get("paymentMethod") or ""),
+                    str(order.get("source") or ""),
+                    str(order.get("orderType") or ""),
+                )
                 amount = float(order.get("totalAmount") or 0)
                 payment_counts[method] += 1
                 payment_totals[method] = payment_totals.get(method, 0) + amount
