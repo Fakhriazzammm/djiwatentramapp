@@ -158,7 +158,7 @@ function OrderForm() {
         name: name.trim(), mobile: phone.trim(), redirectUrl,
         description: `Order Mie Yamin B2B ${kg} kg${repack ? " + repack 100 gram" : ""}`,
         expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT, deliveryProvider, shippingFee: 0, deliveryArea: "Tasikmalaya" },
+        extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT, deliveryProvider, shippingFee: "0", deliveryArea: "Tasikmalaya" },
         items: [
           { quantity: kg, rate: NOODLE_PRICE, description: `Mie Yamin Mentah ${kg} kg` },
           ...(readyPackCount > 0 ? [{ quantity: readyPackCount, rate: READY_PACK_PRICE, description: `Kemasan siap masak ${readyPackCount} pcs` }] : []),

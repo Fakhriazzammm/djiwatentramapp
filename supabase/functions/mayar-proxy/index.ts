@@ -20,6 +20,15 @@ function fail(code: string, message: string, status = 400) {
 	return json({ success: false, error: { code, message } }, status);
 }
 
+function normalizeExtraData(value: unknown): Record<string, string> {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+	return Object.entries(value as Record<string, unknown>).reduce<Record<string, string>>((result, [key, item]) => {
+		if (item === null || item === undefined) return result;
+		result[key] = typeof item === "string" ? item : JSON.stringify(item);
+		return result;
+	}, {});
+}
+
 async function createInvoice(payload: Record<string, unknown>) {
 	if (!MAYAR_API_KEY) {
 		throw new Error("MAYAR_API_KEY tidak dikonfigurasi");
@@ -40,7 +49,7 @@ async function createInvoice(payload: Record<string, unknown>) {
 				rate: Number(item?.rate ?? item?.price ?? 0),
 			};
 		}),
-		extraData: payload.extraData || {},
+		extraData: normalizeExtraData(payload.extraData),
 	};
 
 	const resp = await fetch(`${MAYAR_API_BASE}/invoices/create`, {
@@ -52,7 +61,7 @@ async function createInvoice(payload: Record<string, unknown>) {
 		body: JSON.stringify(body),
 	});
 
-	const result = await resp.json();
+	const result: any = await resp.json();
 
 	if (!resp.ok || result?.statusCode !== 200) {
 		const msg = result?.messages || result?.message || `Mayar API error ${resp.status}`;
@@ -60,7 +69,20 @@ async function createInvoice(payload: Record<string, unknown>) {
 		throw new Error(String(msg));
 	}
 
-	return result;
+	const createdData: any = result?.data || {};
+	let paymentUrl = createdData.paymentUrl;
+	if (!paymentUrl && createdData.id) {
+		const detail: any = await getInvoiceDetail(String(createdData.id));
+		paymentUrl = detail?.data?.paymentUrl;
+	}
+	return {
+		...result,
+		data: {
+			...createdData,
+			paymentUrl,
+			link: paymentUrl || createdData.link,
+		},
+	};
 }
 
 async function getInvoiceDetail(invoiceId: string) {
