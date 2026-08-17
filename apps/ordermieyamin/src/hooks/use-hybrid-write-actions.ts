@@ -77,6 +77,18 @@ function generateOrderNumber(args: {
 	return `ORD${noCode}-${typeCode}-${custCode}${dateCode}`;
 }
 
+function generateMieYaminOrderNumber(createdAt: number, dailyNo: number) {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Jakarta",
+		year: "2-digit",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(new Date(createdAt));
+	const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+	const dateCode = `${get("year")}${get("month")}${get("day")}`;
+	return `MY-${dateCode}-${String(dailyNo).padStart(3, "0")}`;
+}
+
 function generateBookingCode(timestamp: number) {
 	const rand = Math.random().toString(36).toUpperCase().slice(2, 6);
 	return `BK-${rand}${timestamp.toString(36).toUpperCase().slice(-3)}`;
@@ -2498,6 +2510,17 @@ export function useHybridCreateOrder() {
 					? "dine_in"
 					: "online";
 			let dailyReceiptNo = null;
+			const isMieYaminOrder = args?.businessUnit === "ordermieyamin";
+			let mieYaminOrderNo: number | null = null;
+			if (isMieYaminOrder) {
+				const { data: mieYaminNo, error: mieYaminCounterError } = await supabase.rpc(
+					"next_mie_yamin_order_no"
+				);
+				if (mieYaminCounterError || mieYaminNo == null) {
+					throw mieYaminCounterError || new Error("Counter Order Mie Yamin belum tersedia");
+				}
+				mieYaminOrderNo = Number(mieYaminNo);
+			}
 			try {
 				const { data: rpcData, error: rpcErr } = await supabase.rpc(
 					"next_daily_receipt_no",
@@ -2506,13 +2529,15 @@ export function useHybridCreateOrder() {
 				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
 			} catch (_) {} // best-effort
 
-			const orderNumber = generateOrderNumber({
+			const orderNumber = isMieYaminOrder && mieYaminOrderNo != null
+				? generateMieYaminOrderNumber(orderCreatedAt, mieYaminOrderNo)
+				: generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				createdAt: orderCreatedAt,
 				customerName: args?.customerName || undefined,
 				receiptNo: dailyReceiptNo ?? undefined,
-			});
+				});
 				const orderId = makeSourceId("order");
 
 				const orderRow = {
