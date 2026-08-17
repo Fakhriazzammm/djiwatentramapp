@@ -568,33 +568,37 @@ function AdminOrders() {
 						value={searchQuery}
 					/>
 				</div>
-				<div className="flex items-center gap-2">
-					<Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-					<Select
-						onValueChange={(val: string | null) => val && setStatusFilter(val)}
-						value={statusFilter}
-					>
-						<SelectTrigger size="sm">
-							<SelectValue placeholder="Status" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">Semua Status</SelectItem>
-							<SelectItem value="pending">Open Bill</SelectItem>
-							<SelectItem value="paid">Lunas</SelectItem>
-							<SelectItem value="completed">Selesai</SelectItem>
-							<SelectItem value="cancelled">Dibatalkan</SelectItem>
-						</SelectContent>
-					</Select>
-					<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
-						<SelectTrigger size="sm"><SelectValue placeholder="Bisnis" /></SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">Semua bisnis</SelectItem>
-							<SelectItem value="pos">POS Reguler</SelectItem>
-							<SelectItem value="mieyamin">Order Mie Yamin</SelectItem>
-							<SelectItem value="booking">Booking</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
+					<div className="flex min-w-0 flex-1 items-center gap-2">
+						<Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+						<div className="min-w-0 flex-1">
+							<Select
+								onValueChange={(val: string | null) => val && setStatusFilter(val)}
+								value={statusFilter}
+							>
+								<SelectTrigger className="min-w-0" size="sm">
+									<SelectValue className="truncate" placeholder="Status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">Semua Status</SelectItem>
+									<SelectItem value="pending">Open Bill</SelectItem>
+									<SelectItem value="paid">Lunas</SelectItem>
+									<SelectItem value="completed">Selesai</SelectItem>
+									<SelectItem value="cancelled">Dibatalkan</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="min-w-0 flex-1">
+							<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
+								<SelectTrigger className="min-w-0" size="sm"><SelectValue className="truncate" placeholder="Bisnis" /></SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">Semua bisnis</SelectItem>
+									<SelectItem value="pos">POS Reguler</SelectItem>
+									<SelectItem value="mieyamin">Order Mie Yamin</SelectItem>
+									<SelectItem value="booking">Booking</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
 				</div>
 
 				<div className="-mx-1 overflow-x-auto">
