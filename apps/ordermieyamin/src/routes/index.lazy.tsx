@@ -4,12 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, ClipboardList, Package, Plus, Truck } from "lucide-react";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
 import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/")({ component: OrderMieYaminPage });
 
-const NOODLE_PRICE = 10_000;
-const READY_PACK_PRICE = 5_000;
-const REPACK_FEE_PER_100G = 2_000;
+const DEFAULT_MIE_YAMIN_SETTINGS = {
+  noodlePricePerKg: 10_000,
+  readyPackPrice: 5_000,
+  repackFeePer100g: 2_000,
+  deliveryArea: "Tasikmalaya",
+  freeShippingPromo: true,
+  enabledProviders: ["gojek", "maxim"],
+};
 const BUSINESS_UNIT = "ordermieyamin";
 const BRAND_SLUG = "mie-yamin";
 const SAVED_ORDERS_KEY = "ordermieyamin:saved-orders";
@@ -187,21 +193,24 @@ function OrderForm() {
   const createOrder = useHybridCreateOrder();
   const createInvoice = useHybridMayarCreateInvoice();
   const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
+  const siteSettings = useHybridSiteSettings() as any;
+  const mieYaminSettings = { ...DEFAULT_MIE_YAMIN_SETTINGS, ...(siteSettings?.mieYaminSettings ?? {}) };
   const [kg, setKg] = useState(1);
   const [readyPackCount, setReadyPackCount] = useState(0);
   const [repack, setRepack] = useState(false);
   const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "maxim" | "">("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const repackCount = repack ? kg * 10 : 0;
-  const noodleTotal = kg * NOODLE_PRICE;
-  const readyPackTotal = readyPackCount * READY_PACK_PRICE;
-  const repackTotal = repackCount * REPACK_FEE_PER_100G;
+  const noodleTotal = kg * Number(mieYaminSettings.noodlePricePerKg);
+  const readyPackTotal = readyPackCount * Number(mieYaminSettings.readyPackPrice);
+  const repackTotal = repackCount * Number(mieYaminSettings.repackFeePer100g);
   const total = noodleTotal + readyPackTotal + repackTotal;
   const minDate = useMemo(() => getWibDateKey(), []);
 
@@ -210,17 +219,22 @@ function OrderForm() {
       setError("Pilih pengiriman, lalu lengkapi tanggal pengiriman, nama, WhatsApp, dan alamat.");
       return;
     }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Format email belum benar.");
+      return;
+    }
     setSubmitting(true); setError("");
     try {
       const orderId = await createOrder({
         items: [
-          { productName: "Mie Yamin Mentah", variant: `${kg} kg`, quantity: kg, price: NOODLE_PRICE, originalPrice: NOODLE_PRICE },
-          ...(readyPackCount > 0 ? [{ productName: "Kemasan siap masak", variant: `${readyPackCount} pcs`, quantity: readyPackCount, price: READY_PACK_PRICE, originalPrice: READY_PACK_PRICE }] : []),
-          ...(repack ? [{ productName: "Jasa repack 100 gram", variant: `${repackCount} pcs`, quantity: repackCount, price: REPACK_FEE_PER_100G, originalPrice: REPACK_FEE_PER_100G }] : []),
+          { productName: "Mie Yamin Mentah", variant: `${kg} kg`, quantity: kg, price: Number(mieYaminSettings.noodlePricePerKg), originalPrice: Number(mieYaminSettings.noodlePricePerKg) },
+          ...(readyPackCount > 0 ? [{ productName: "Kemasan siap masak", variant: `${readyPackCount} pcs`, quantity: readyPackCount, price: Number(mieYaminSettings.readyPackPrice), originalPrice: Number(mieYaminSettings.readyPackPrice) }] : []),
+          ...(repack ? [{ productName: "Jasa repack 100 gram", variant: `${repackCount} pcs`, quantity: repackCount, price: Number(mieYaminSettings.repackFeePer100g), originalPrice: Number(mieYaminSettings.repackFeePer100g) }] : []),
         ],
         totalAmount: total,
         paymentMethod: "djiwaapp",
         customerName: name.trim(),
+        customerEmail: email.trim() || null,
         source: "ordermieyamin_b2b",
         sourceApp: BUSINESS_UNIT,
         businessUnit: BUSINESS_UNIT,
@@ -240,13 +254,14 @@ function OrderForm() {
       const redirectUrl = `${window.location.origin}/?stage=tracking&orderId=${encodeURIComponent(String(orderId))}`;
       const invoice = await createInvoice({
         name: name.trim(), mobile: phone.trim(), redirectUrl,
+        email: email.trim() || undefined,
         description: `Order Mie Yamin B2B ${kg} kg${repack ? " + repack 100 gram" : ""}`,
         expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT, deliveryProvider, shippingFee: "0", deliveryArea: "Tasikmalaya" },
+        extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT, deliveryProvider, shippingFee: "0", deliveryArea: String(mieYaminSettings.deliveryArea) },
         items: [
-          { quantity: kg, rate: NOODLE_PRICE, description: `Mie Yamin Mentah ${kg} kg` },
-          ...(readyPackCount > 0 ? [{ quantity: readyPackCount, rate: READY_PACK_PRICE, description: `Kemasan siap masak ${readyPackCount} pcs` }] : []),
-          ...(repack ? [{ quantity: repackCount, rate: REPACK_FEE_PER_100G, description: `Jasa repack 100 gram ${repackCount} pcs` }] : []),
+          { quantity: kg, rate: Number(mieYaminSettings.noodlePricePerKg), description: `Mie Yamin Mentah ${kg} kg` },
+          ...(readyPackCount > 0 ? [{ quantity: readyPackCount, rate: Number(mieYaminSettings.readyPackPrice), description: `Kemasan siap masak ${readyPackCount} pcs` }] : []),
+          ...(repack ? [{ quantity: repackCount, rate: Number(mieYaminSettings.repackFeePer100g), description: `Jasa repack 100 gram ${repackCount} pcs` }] : []),
         ],
       });
       if (!invoice?.data?.link) throw new Error("Invoice pembayaran belum tersedia.");
@@ -273,12 +288,13 @@ function OrderForm() {
       <div className="space-y-4 rounded-[28px] border border-border bg-card p-5 shadow-sm">
         <label className="block text-sm font-bold">Jumlah mie (kg)<input min={1} type="number" value={kg} onChange={(e) => setKg(Math.max(1, Number(e.target.value) || 1))} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-4 text-base" /></label>
         <div className="space-y-3">
-          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><span className="pt-1 text-primary">＋</span><span className="flex-1"><b className="block text-sm">Kemasan siap masak</b><span className="text-xs text-muted-foreground">Rp5.000 per pcs</span><input min={0} type="number" value={readyPackCount} onChange={(e) => setReadyPackCount(Math.max(0, Number(e.target.value) || 0))} className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Jumlah pcs" /></span></label>
-          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack dari mie kiloan</b><span className="text-xs leading-relaxed text-muted-foreground">Tambahan Rp2.000 per 100 gram. {kg} kg = {kg * 10} pcs, biaya repack {formatRupiah(kg * 10 * REPACK_FEE_PER_100G)}.</span></span></label>
+          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><span className="pt-1 text-primary">＋</span><span className="flex-1"><b className="block text-sm">Kemasan siap masak</b><span className="text-xs text-muted-foreground">{formatRupiah(Number(mieYaminSettings.readyPackPrice))} per pcs</span><input min={0} type="number" value={readyPackCount} onChange={(e) => setReadyPackCount(Math.max(0, Number(e.target.value) || 0))} className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Jumlah pcs" /></span></label>
+          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack dari mie kiloan</b><span className="text-xs leading-relaxed text-muted-foreground">Tambahan {formatRupiah(Number(mieYaminSettings.repackFeePer100g))} per 100 gram. {kg} kg = {kg * 10} pcs, biaya repack {formatRupiah(kg * 10 * Number(mieYaminSettings.repackFeePer100g))}.</span></span></label>
         </div>
-        <div className="space-y-2"><p className="text-sm font-bold">Pilih pengiriman <span className="font-normal text-muted-foreground">(area Tasikmalaya)</span></p><div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setDeliveryProvider("gojek")} className={`h-14 rounded-2xl border text-sm font-black transition ${deliveryProvider === "gojek" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground"}`}>Gojek<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Gratis promo</span></button><button type="button" onClick={() => setDeliveryProvider("maxim")} className={`h-14 rounded-2xl border text-sm font-black transition ${deliveryProvider === "maxim" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground"}`}>Maxim<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Gratis promo</span></button></div></div>
+        <div className="space-y-2"><p className="text-sm font-bold">Pilih pengiriman <span className="font-normal text-muted-foreground">(area {String(mieYaminSettings.deliveryArea)})</span></p><div className="grid grid-cols-2 gap-3">{(["gojek", "maxim"] as const).filter((provider) => mieYaminSettings.enabledProviders.includes(provider)).map((provider) => <button key={provider} type="button" onClick={() => setDeliveryProvider(provider)} className={`h-14 rounded-2xl border text-sm font-black transition ${deliveryProvider === provider ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground"}`}>{provider === "gojek" ? "Gojek" : "Maxim"}<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">{mieYaminSettings.freeShippingPromo ? "Gratis promo" : "Tarif dihitung admin"}</span></button>)}</div></div>
         <div className="space-y-2"><p className="flex items-center gap-2 text-sm font-bold"><CalendarDays className="h-4 w-4 text-primary" />Tanggal pengiriman</p><CalendarDatePicker value={deliveryDate} onChange={setDeliveryDate} minDate={minDate} /></div>
         <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-bold">Nama penerima<input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label><label className="text-sm font-bold">WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label></div>
+        <label className="block text-sm font-bold">Email <span className="font-normal text-muted-foreground">(opsional, untuk bukti pembayaran)</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label>
         <label className="block text-sm font-bold">Alamat lengkap<textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
         <label className="block text-sm font-bold">Catatan pengiriman <span className="font-normal text-muted-foreground">(opsional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
         <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Mie yamin ({kg} kg)</span><b>{formatRupiah(noodleTotal)}</b></div>{readyPackCount > 0 ? <div className="mt-2 flex justify-between"><span>Kemasan siap masak ({readyPackCount} pcs)</span><b>{formatRupiah(readyPackTotal)}</b></div> : null}{repack ? <div className="mt-2 flex justify-between"><span>Jasa repack ({repackCount} pcs)</span><b>{formatRupiah(repackTotal)}</b></div> : null}{deliveryProvider ? <div className="mt-2 flex justify-between"><span>Pengiriman {deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</span><b className="text-emerald-600">Gratis promo</b></div> : null}<div className="mt-3 flex justify-between border-t border-border pt-3 text-base"><b>Total</b><b className="text-primary">{formatRupiah(total)}</b></div></div>

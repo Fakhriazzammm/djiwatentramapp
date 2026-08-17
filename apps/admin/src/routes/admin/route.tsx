@@ -78,6 +78,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/accounting": "Chart of Accounts",
 	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
+	"/admin/order-mie-yamin": "Order Mie Yamin",
 	"/admin/discounts": "Promosi",
 	"/admin/ai-chat": "Yumi AI",
 	"/admin/settings": "Pengaturan",
@@ -119,6 +120,7 @@ const BOTTOM_NAV_ITEMS = [
 
 // Pages that belong to "Lainnya" menu
 const MORE_MENU_PATHS = [
+	"/admin/order-mie-yamin",
 	"/admin/products",
 	"/admin/recipe",
 	"/admin/recipe/hpp",
@@ -148,6 +150,7 @@ const QUICK_MENU_SECTIONS = [
 	{
 		label: "Manajemen",
 		items: [
+			{ to: "/admin/order-mie-yamin", icon: ClipboardList, label: "Order Mie Yamin", permission: "orders:view" },
 			{ to: "/admin/products", icon: Package, label: "Produk", permission: "products:manage" },
 			{ to: "/admin/recipe", icon: BookOpen, label: "Resep", permission: "inventory:manage" },
 			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP", permission: "inventory:manage" },
@@ -429,8 +432,13 @@ function AdminLayout() {
 						to="/admin/orders"
 						permission="orders:view"
 					/>
-
-					{/* MANAJEMEN */}
+					<DesktopNavLink
+						icon={<ClipboardList />}
+						isCollapsed={isCollapsed}
+						label="Order Mie Yamin"
+						to="/admin/order-mie-yamin"
+						permission="orders:view"
+					/>
 					<SidebarSection isCollapsed={isCollapsed} label="Manajemen" />
 					<DesktopNavLink
 						icon={<Package />}

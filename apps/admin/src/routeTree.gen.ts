@@ -31,6 +31,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
+import { Route as AdminOrderMieYaminRouteImport } from './routes/admin/order-mie-yamin'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
 import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
@@ -201,6 +202,13 @@ const AdminOrdersRoute = AdminOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/orders.lazy').then((d) => d.Route))
+const AdminOrderMieYaminRoute = AdminOrderMieYaminRouteImport.update({
+  id: '/order-mie-yamin',
+  path: '/order-mie-yamin',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/order-mie-yamin.lazy').then((d) => d.Route),
+)
 const AdminOperationalTeamRoute = AdminOperationalTeamRouteImport.update({
   id: '/operational-team',
   path: '/operational-team',
@@ -565,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
+  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -628,6 +637,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
+  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -692,6 +702,7 @@ export interface FileRoutesById {
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
+  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -761,6 +772,7 @@ export interface FileRouteTypes {
     | '/admin/minigames'
     | '/admin/onboarding'
     | '/admin/operational-team'
+    | '/admin/order-mie-yamin'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
@@ -824,6 +836,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
+    | '/admin/order-mie-yamin'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -887,6 +900,7 @@ export interface FileRouteTypes {
     | '/admin/minigames'
     | '/admin/onboarding'
     | '/admin/operational-team'
+    | '/admin/order-mie-yamin'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
@@ -1093,6 +1107,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/admin/orders'
       preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/order-mie-yamin': {
+      id: '/admin/order-mie-yamin'
+      path: '/order-mie-yamin'
+      fullPath: '/admin/order-mie-yamin'
+      preLoaderRoute: typeof AdminOrderMieYaminRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/operational-team': {
@@ -1583,6 +1604,7 @@ interface AdminRouteRouteChildren {
   AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRouteWithChildren
+  AdminOrderMieYaminRoute: typeof AdminOrderMieYaminRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
@@ -1606,6 +1628,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminMinigamesRoute: AdminMinigamesRoute,
   AdminOnboardingRoute: AdminOnboardingRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRouteWithChildren,
+  AdminOrderMieYaminRoute: AdminOrderMieYaminRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminRecipeRoute: AdminRecipeRouteWithChildren,

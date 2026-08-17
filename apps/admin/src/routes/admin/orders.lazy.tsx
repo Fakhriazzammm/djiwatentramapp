@@ -112,6 +112,8 @@ type QuickDateFilter =
 	| "thisMonth"
 	| "lastMonth";
 
+type BusinessFilter = "all" | "pos" | "mieyamin" | "booking";
+
 const quickDateFilterOptions: Array<{
 	value: QuickDateFilter;
 	label: string;
@@ -139,6 +141,11 @@ function AdminOrders() {
 
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
+	const [businessFilter, setBusinessFilter] = useState<BusinessFilter>(() => {
+		if (typeof window === "undefined") return "all";
+		const value = new URLSearchParams(window.location.search).get("business");
+		return value === "pos" || value === "mieyamin" || value === "booking" ? value : "all";
+	});
 	const [searchQuery, setSearchQuery] = useState("");
 	const [quickDateFilter, setQuickDateFilter] =
 		useState<QuickDateFilter>("all");
@@ -198,6 +205,7 @@ function AdminOrders() {
 		const orders = (allOrders || []).map((o: any) => ({
 			...o,
 			type: "regular",
+			businessCategory: o.businessUnit === "ordermieyamin" || o.business_unit === "ordermieyamin" ? "mieyamin" : "pos",
 			id: o._id,
 			displayId: o.orderNumber,
 			date: o.createdAt,
@@ -206,6 +214,7 @@ function AdminOrders() {
 		const bookings = (allBookingOrders || []).map((b: any) => ({
 			...b,
 			type: "booking",
+			businessCategory: "booking",
 			id: b._id,
 			displayId: b.bookingCode,
 			status: b.bookingStatus, // Map bookingStatus to status for filtering
@@ -218,6 +227,7 @@ function AdminOrders() {
 
 	// Client-side filtering
 	const filteredOrders = unifiedOrders?.filter((order: any) => {
+		const matchesBusiness = businessFilter === "all" || order.businessCategory === businessFilter;
 		const matchesStatus =
 			statusFilter === "all" || order.status === statusFilter;
 		const matchesSearch =
@@ -230,7 +240,7 @@ function AdminOrders() {
 			!activeDateRange ||
 			(order.createdAt >= activeDateRange.start &&
 				order.createdAt <= activeDateRange.end);
-		return matchesStatus && matchesSearch && matchesQuickDate;
+		return matchesBusiness && matchesStatus && matchesSearch && matchesQuickDate;
 	});
 
 	const totalFiltered = filteredOrders?.length || 0;
@@ -573,6 +583,15 @@ function AdminOrders() {
 							<SelectItem value="paid">Lunas</SelectItem>
 							<SelectItem value="completed">Selesai</SelectItem>
 							<SelectItem value="cancelled">Dibatalkan</SelectItem>
+						</SelectContent>
+					</Select>
+					<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
+						<SelectTrigger size="sm"><SelectValue placeholder="Bisnis" /></SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">Semua bisnis</SelectItem>
+							<SelectItem value="pos">POS Reguler</SelectItem>
+							<SelectItem value="mieyamin">Order Mie Yamin</SelectItem>
+							<SelectItem value="booking">Booking</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
@@ -974,6 +993,7 @@ function AdminOrders() {
 													<p className="font-bold text-sm">
 														{selectedOrder.customerName || "Tanpa Nama"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1"><Star className="h-3 w-3" aria-hidden="true" /> Member</span> : null}
 													</p>
+													{(selectedOrder as any).customerEmail ? <p className="mt-1 text-[11px] text-muted-foreground">{(selectedOrder as any).customerEmail}</p> : null}
 												</div>
 											</div>
 											<div className="text-right">
