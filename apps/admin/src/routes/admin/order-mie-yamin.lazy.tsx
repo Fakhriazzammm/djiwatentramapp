@@ -21,6 +21,13 @@ type MieYaminSettings = {
   paymentReceiptEmailEnabled: boolean;
   adminNotificationEnabled: boolean;
   adminNotificationNote: string;
+  minimumOrderKg: number;
+  orderCutoffHour: number;
+  maxOrdersPerDate: number;
+  shippingFee: number;
+  supportWhatsapp: string;
+  productImageUrl: string;
+  storageInstructions: string;
 };
 
 const DEFAULTS: MieYaminSettings = {
@@ -33,6 +40,13 @@ const DEFAULTS: MieYaminSettings = {
   paymentReceiptEmailEnabled: true,
   adminNotificationEnabled: true,
   adminNotificationNote: "Order Mie Yamin baru perlu diproses setelah pembayaran terverifikasi.",
+  minimumOrderKg: 1,
+  orderCutoffHour: 15,
+  maxOrdersPerDate: 20,
+  shippingFee: 0,
+  supportWhatsapp: "",
+  productImageUrl: "/logo-djiwa.png",
+  storageInstructions: "Simpan sesuai petunjuk admin. Umumnya 1–3 hari di suhu ruang atau 3–7 hari di dalam kulkas.",
 };
 
 function money(value: number) {
@@ -142,6 +156,8 @@ function AdminMieYamin() {
             <label className="text-sm font-bold">Mie yamin per kg<Input className="mt-2" type="number" min={0} value={form.noodlePricePerKg} onChange={(e) => update("noodlePricePerKg", Number(e.target.value) || 0)} /></label>
             <label className="text-sm font-bold">Kemasan per pcs<Input className="mt-2" type="number" min={0} value={form.readyPackPrice} onChange={(e) => update("readyPackPrice", Number(e.target.value) || 0)} /></label>
             <label className="text-sm font-bold">Repack per 100 gram<Input className="mt-2" type="number" min={0} value={form.repackFeePer100g} onChange={(e) => update("repackFeePer100g", Number(e.target.value) || 0)} /></label>
+            <label className="text-sm font-bold">Minimum order (kg)<Input className="mt-2" type="number" min={0.1} step={0.1} value={form.minimumOrderKg} onChange={(e) => update("minimumOrderKg", Math.max(0.1, Number(e.target.value) || 0.1))} /></label>
+            <label className="text-sm font-bold">Maksimal order per tanggal<Input className="mt-2" type="number" min={1} value={form.maxOrdersPerDate} onChange={(e) => update("maxOrdersPerDate", Math.max(1, Number(e.target.value) || 1))} /></label>
           </div>
         </section>
       ) : null}
@@ -151,6 +167,8 @@ function AdminMieYamin() {
           <h2 className="font-bold">Pengaturan Pengiriman</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <label className="text-sm font-bold">Area layanan<Input className="mt-2" value={form.deliveryArea} onChange={(e) => update("deliveryArea", e.target.value)} /></label>
+            <label className="text-sm font-bold">Batas pemesanan hari ini (jam 0–23)<Input className="mt-2" type="number" min={0} max={23} value={form.orderCutoffHour} onChange={(e) => update("orderCutoffHour", Math.min(23, Math.max(0, Number(e.target.value) || 0)))} /></label>
+            <label className="text-sm font-bold">Biaya ongkir default<Input className="mt-2" type="number" min={0} value={form.shippingFee} onChange={(e) => update("shippingFee", Math.max(0, Number(e.target.value) || 0))} /></label>
             <div><p className="text-sm font-bold">Provider aktif</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => toggleProvider("gojek")} className={`flex h-11 items-center justify-center gap-2 rounded-xl border text-sm font-bold ${form.enabledProviders.includes("gojek") ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}><Bike className="h-4 w-4" /> Gojek {form.enabledProviders.includes("gojek") ? <Check className="h-4 w-4" /> : null}</button><button type="button" onClick={() => toggleProvider("maxim")} className={`flex h-11 items-center justify-center gap-2 rounded-xl border text-sm font-bold ${form.enabledProviders.includes("maxim") ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}><Truck className="h-4 w-4" /> Maxim {form.enabledProviders.includes("maxim") ? <Check className="h-4 w-4" /> : null}</button></div></div>
           </div>
           <button type="button" onClick={() => update("freeShippingPromo", !form.freeShippingPromo)} className={`mt-5 flex w-full items-center justify-between rounded-xl border p-3 text-left ${form.freeShippingPromo ? "border-emerald-300 bg-emerald-50" : "border-border"}`}><span><b className="block text-sm">Promo ongkir gratis</b><span className="text-xs text-muted-foreground">Tampilkan promo ongkir gratis di checkout.</span></span><span className={`h-5 w-9 rounded-full p-0.5 ${form.freeShippingPromo ? "bg-emerald-500" : "bg-muted"}`}><span className={`block h-4 w-4 rounded-full bg-white transition ${form.freeShippingPromo ? "translate-x-4" : ""}`} /></span></button>
@@ -164,6 +182,9 @@ function AdminMieYamin() {
             <button type="button" onClick={() => update("paymentReceiptEmailEnabled", !form.paymentReceiptEmailEnabled)} className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left"><span className="flex items-center gap-3"><Mail className="h-4 w-4 text-primary" /><span><b className="block text-sm">Email bukti pembayaran</b><span className="text-xs text-muted-foreground">Kirim email pelanggan jika alamat email diisi.</span></span></span><span className={`h-5 w-9 rounded-full p-0.5 ${form.paymentReceiptEmailEnabled ? "bg-primary" : "bg-muted"}`}><span className={`block h-4 w-4 rounded-full bg-white transition ${form.paymentReceiptEmailEnabled ? "translate-x-4" : ""}`} /></span></button>
             <button type="button" onClick={() => update("adminNotificationEnabled", !form.adminNotificationEnabled)} className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left"><span className="flex items-center gap-3"><Bell className="h-4 w-4 text-primary" /><span><b className="block text-sm">Notifikasi admin</b><span className="text-xs text-muted-foreground">Aktifkan penanda order Mie Yamin baru untuk operasional.</span></span></span><span className={`h-5 w-9 rounded-full p-0.5 ${form.adminNotificationEnabled ? "bg-primary" : "bg-muted"}`}><span className={`block h-4 w-4 rounded-full bg-white transition ${form.adminNotificationEnabled ? "translate-x-4" : ""}`} /></span></button>
             <label className="block text-sm font-bold">Catatan operasional<textarea value={form.adminNotificationNote} onChange={(e) => update("adminNotificationNote", e.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm" /></label>
+            <label className="block text-sm font-bold">Nomor WhatsApp support<Input value={form.supportWhatsapp} onChange={(e) => update("supportWhatsapp", e.target.value)} placeholder="628123456789" className="mt-2" /></label>
+            <label className="block text-sm font-bold">URL foto produk<Input value={form.productImageUrl} onChange={(e) => update("productImageUrl", e.target.value)} placeholder="/logo-djiwa.png atau URL gambar" className="mt-2" /></label>
+            <label className="block text-sm font-bold">Petunjuk penyimpanan<textarea value={form.storageInstructions} onChange={(e) => update("storageInstructions", e.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm" /></label>
           </div>
         </section>
       ) : null}
