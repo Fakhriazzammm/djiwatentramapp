@@ -1,4 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Package, Truck } from "lucide-react";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
@@ -65,6 +66,7 @@ function CalendarDatePicker({ value, onChange, minDate }: { value: string; onCha
 
 function Tracking({ orderId }: { orderId: string }) {
   const order = useHybridOrderById(orderId) as any;
+  const reduceMotion = useReducedMotion();
   const paymentSettled = order?.status === "paid" || order?.status === "completed";
   const deliveryStatus = String(order?.deliveryStatus || "");
   const status = paymentSettled && (!deliveryStatus || deliveryStatus === "pending_payment")
@@ -79,21 +81,39 @@ function Tracking({ orderId }: { orderId: string }) {
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Live order tracking</p>
         <h1 className="mt-2 text-2xl font-black">Order Mie Yamin</h1>
         <p className="mt-1 text-xs text-muted-foreground">#{order?.orderNumber || orderId.slice(-8)}</p>
-        <div className="mt-5 rounded-2xl bg-primary/10 p-4">
-          <p className="text-sm font-black text-primary">{current[1]}</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{current[2]}</p>
-        </div>
+        <motion.div
+          key={status}
+          initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring" as const, stiffness: 300, damping: 25 }}
+          className="relative mt-5 overflow-hidden rounded-2xl bg-primary/10 p-4"
+        >
+          {!reduceMotion ? <motion.span className="absolute -right-6 -top-8 h-24 w-24 rounded-full bg-primary/10" animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }} /> : null}
+          <p className="relative text-sm font-black text-primary">{current[1]}</p>
+          <p className="relative mt-1 text-xs leading-relaxed text-muted-foreground">{current[2]}</p>
+        </motion.div>
         <div className="mt-6 space-y-4">
           {STATUS_STEPS.map(([key, label]) => {
             const index = STATUS_STEPS.findIndex(([step]) => step === key);
             const done = index <= activeIndex;
             return (
-              <div className="flex items-center gap-3" key={key}>
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${done ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
-                  {done ? <Check className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
-                </div>
-                <p className={`text-sm font-bold ${done ? "text-foreground" : "text-muted-foreground"}`}>{label}</p>
-              </div>
+              <motion.div
+                className="flex items-center gap-3"
+                key={key}
+                initial={reduceMotion ? false : { opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: reduceMotion ? 0 : index * 0.035, duration: 0.25 }}
+              >
+                <motion.div
+                  animate={index === activeIndex && !reduceMotion ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+                  transition={{ duration: 1.8, repeat: index === activeIndex && !reduceMotion ? Infinity : 0, ease: "easeInOut" }}
+                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${done ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
+                >
+                  {index === activeIndex && !reduceMotion ? <span className="absolute inset-0 rounded-full bg-primary/25 animate-ping" /> : null}
+                  <span className="relative">{done ? <Check className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}</span>
+                </motion.div>
+                <p className={`text-sm font-bold ${index === activeIndex ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>{label}</p>
+              </motion.div>
             );
           })}
         </div>
