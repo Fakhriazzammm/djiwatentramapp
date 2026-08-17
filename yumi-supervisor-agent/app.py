@@ -1430,7 +1430,8 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 async def _send_transaction_notification(app, order_no: str, customer: str, totalAmount: float,
                                           payment_method: str, ts_ms: int, struk_line: str | None,
                                           items: list[dict], guest_count=None, notes="",
-                                          discount_amount=0.0, voucher_id=None, free_refill=None):
+                                          discount_amount=0.0, voucher_id=None, free_refill=None,
+                                          delivery_context: dict | None = None):
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
@@ -1482,6 +1483,28 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines.append(customer_line)
     lines.append(f"👥 Kasir: {cashier}")
     lines.extend(team_lines)
+
+    if delivery_context and delivery_context.get("businessUnit") == "ordermieyamin":
+        provider_labels = {"gojek": "Gojek", "maxim": "Maxim"}
+        provider = str(delivery_context.get("deliveryProvider") or "").lower()
+        delivery_date = str(delivery_context.get("deliveryDate") or "")
+        try:
+            delivery_date = datetime.fromisoformat(delivery_date.replace("Z", "+00:00")).astimezone(WIB).strftime("%d/%m/%Y")
+        except Exception:
+            delivery_date = delivery_date[:10] or "—"
+        lines.extend([
+            "",
+            "🚚 PENGIRIMAN MIE YAMIN",
+            f"📅 Tanggal kirim: {delivery_date}",
+            f"🛵 Kurir: {provider_labels.get(provider, provider.upper() or '—')}",
+            f"📍 Area: {delivery_context.get('deliveryArea') or 'Tasikmalaya'}",
+        ])
+        contact_phone = str(delivery_context.get("deliveryContactPhone") or "").strip()
+        address = str(delivery_context.get("deliveryAddress") or "").strip()
+        if contact_phone:
+            lines.append(f"📞 WhatsApp: {contact_phone}")
+        if address:
+            lines.append(f"🏠 Alamat: {address}")
 
     if notes:
         lines.append("")
@@ -1591,12 +1614,12 @@ async def _check_new_orders(app):
 
     try:
         rows = await _fetch(
-        	"pos_orders",
-        	"select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
-        	"&status=in.(completed,paid)"
-        	f"&_creationTime=gt.{scan_from}"
-        	f"&_creationTime=lte.{now_ms}"
-        	"&order=_creationTime.asc&limit=50",
+            "pos_orders",
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "&status=in.(completed,paid)"
+            f"&_creationTime=gt.{scan_from}"
+            f"&_creationTime=lte.{now_ms}"
+            "&order=_creationTime.asc&limit=50",
         )
     except Exception as e:
         logger.error("check_new_orders fetch failed: %s", e)
@@ -1610,7 +1633,7 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected"
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&source=eq.customer_self_service"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
@@ -1722,6 +1745,14 @@ async def _check_new_orders(app):
         voucher_id = row.get("voucherId")
         discount_amount = float(row.get("discountAmount") or 0)
         free_refill = row.get("freeRefillSelected")
+        delivery_context = {
+            "businessUnit": row.get("businessUnit") or "",
+            "deliveryDate": row.get("deliveryDate") or "",
+            "deliveryProvider": row.get("deliveryProvider") or "",
+            "deliveryContactPhone": row.get("deliveryContactPhone") or "",
+            "deliveryAddress": row.get("deliveryAddress") or "",
+            "deliveryArea": "Tasikmalaya" if row.get("businessUnit") == "ordermieyamin" else "",
+        }
 
         # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
@@ -1742,7 +1773,7 @@ async def _check_new_orders(app):
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill)
+        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context)
 
         # ⭐ Award points for member orders
         if customer_source_id:
