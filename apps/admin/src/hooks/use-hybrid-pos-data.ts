@@ -766,6 +766,8 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		tableNumber: row.tableNumber ?? null,
 		orderType: row.orderType ?? null,
 		source: row.source ?? null,
+		businessUnit: row.businessUnit ?? row.business_unit ?? null,
+		business_unit: row.business_unit ?? row.businessUnit ?? null,
 		brandSlug: row.brandSlug ?? null,
 		guestCount:
 			row.guestCount === null || row.guestCount === undefined

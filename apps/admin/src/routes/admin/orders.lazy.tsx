@@ -114,6 +114,44 @@ type QuickDateFilter =
 
 type BusinessFilter = "all" | "pos" | "mieyamin" | "booking";
 
+type OrderChannel = {
+	label: string;
+	className: string;
+};
+
+function resolveOrderChannel(order: any): OrderChannel {
+	const businessUnit = String(order.businessUnit ?? order.business_unit ?? "").trim().toLowerCase();
+	const source = String(order.source ?? order.sourceApp ?? order.source_app ?? "").trim().toLowerCase();
+	const orderType = String(order.orderType ?? "").trim().toLowerCase();
+	const joined = `${source} ${orderType}`;
+
+	if (order.type === "booking" || order.businessCategory === "booking") {
+		return { label: "Booking", className: "bg-blue-100 text-blue-700" };
+	}
+	if (businessUnit === "ordermieyamin" || businessUnit === "mieyamin") {
+		return { label: "Mie Yamin", className: "bg-amber-100 text-amber-800" };
+	}
+	if (joined.includes("gofood") || joined.includes("go_food")) {
+		return { label: "GoFood", className: "bg-green-100 text-green-700" };
+	}
+	if (joined.includes("grabfood") || joined.includes("grab_food")) {
+		return { label: "GrabFood", className: "bg-green-100 text-green-700" };
+	}
+	if (joined.includes("shopeefood") || joined.includes("shopee_food")) {
+		return { label: "ShopeeFood", className: "bg-orange-100 text-orange-700" };
+	}
+	if (joined.includes("djiwaapp") || joined.includes("customer_self_service") || joined.includes("customer-app")) {
+		return { label: "DjiwaApp", className: "bg-violet-100 text-violet-700" };
+	}
+	if (joined.includes("telegram")) {
+		return { label: "Telegram", className: "bg-sky-100 text-sky-700" };
+	}
+	if (source && !["pos", "kasir", "internal"].includes(source)) {
+		return { label: source.replace(/[_-]+/g, " ").replace(/\b\w/g, (char: string) => char.toUpperCase()), className: "bg-muted text-muted-foreground" };
+	}
+	return { label: "POS", className: "bg-gray-100 text-gray-700" };
+}
+
 const quickDateFilterOptions: Array<{
 	value: QuickDateFilter;
 	label: string;
@@ -901,12 +939,10 @@ function AdminOrders() {
 												</td>
 												<td className="px-3 py-2.5 align-top">
 													<div className="flex flex-col gap-1 leading-tight">
-														<Badge
-															className={`w-fit px-1.5 py-0 text-[11px] ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
-															variant="outline"
-														>
-															{order.type === "booking" ? "Booking" : "POS"}
-														</Badge>
+														{(() => {
+															const channel = resolveOrderChannel(order);
+															return <Badge className={`w-fit px-1.5 py-0 text-[11px] ${channel.className}`} variant="outline">{channel.label}</Badge>;
+														})()}
 														<span className="text-[10px] text-muted-foreground">
 															{order.orderType === "dine_in" ? "Dine in" : "Takeaway"}
 														</span>
