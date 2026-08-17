@@ -96,6 +96,10 @@ function Tracking({ orderId }: { orderId: string }) {
   const order = useHybridOrderById(orderId) as any;
   const reduceMotion = useReducedMotion();
   const status = getTrackingStatus(order);
+  useEffect(() => {
+    // Recovery path for orders created by an older bundle or another checkout context.
+    if (order?.orderNumber || order?.status) rememberOrder(orderId);
+  }, [orderId, order?.orderNumber, order?.status]);
   const activeIndex = Math.max(0, STATUS_STEPS.findIndex(([key]) => key === status));
   const current = STATUS_STEPS[activeIndex] || STATUS_STEPS[0];
 
