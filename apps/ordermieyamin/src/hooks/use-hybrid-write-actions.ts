@@ -2529,6 +2529,7 @@ export function useHybridCreateOrder() {
 					business_unit: args?.businessUnit ?? null,
 					source_app: args?.sourceApp ?? null,
 					delivery_date: args?.deliveryDate ?? null,
+					delivery_provider: args?.deliveryProvider ?? null,
 					delivery_status: args?.deliveryStatus ?? null,
 					delivery_contact_name: args?.deliveryContactName ?? null,
 					delivery_contact_phone: args?.deliveryContactPhone ?? null,

@@ -6,6 +6,7 @@ ALTER TABLE pos.orders
   ADD COLUMN IF NOT EXISTS business_unit text,
   ADD COLUMN IF NOT EXISTS source_app text,
   ADD COLUMN IF NOT EXISTS delivery_date timestamptz,
+  ADD COLUMN IF NOT EXISTS delivery_provider text,
   ADD COLUMN IF NOT EXISTS delivery_status text,
   ADD COLUMN IF NOT EXISTS delivery_contact_name text,
   ADD COLUMN IF NOT EXISTS delivery_contact_phone text,
@@ -32,6 +33,12 @@ ALTER TABLE pos.orders
     'pending_payment', 'paid', 'preparing', 'packing',
     'ready_to_ship', 'out_for_delivery', 'delivered', 'failed', 'cancelled'
   ));
+
+ALTER TABLE pos.orders
+  DROP CONSTRAINT IF EXISTS pos_orders_delivery_provider_check;
+ALTER TABLE pos.orders
+  ADD CONSTRAINT pos_orders_delivery_provider_check
+  CHECK (delivery_provider IS NULL OR delivery_provider IN ('gojek', 'maxim'));
 
 DROP VIEW IF EXISTS public.pos_orders CASCADE;
 CREATE OR REPLACE VIEW public.pos_orders AS
@@ -67,6 +74,7 @@ SELECT
   o.receipt_kind,
   o.customer_source_id AS "customerSourceId",
   o.delivery_date AS "deliveryDate",
+  o.delivery_provider AS "deliveryProvider",
   o.delivery_status AS "deliveryStatus",
   o.delivery_contact_name AS "deliveryContactName",
   o.delivery_contact_phone AS "deliveryContactPhone",
