@@ -55,6 +55,27 @@ async function patchOrder(filter: string, body: Record<string, unknown>) {
   return (await response.json()) as Array<Record<string, unknown>>;
 }
 
+async function tagFinancialTransaction(order: Record<string, unknown>) {
+  const orderSourceId = String(order.source_id || "");
+  const businessUnit = String(order.business_unit || "");
+  const sourceApp = String(order.source_app || "");
+  if (!orderSourceId || !businessUnit) return;
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/pos_financial_transactions?orderId=eq.${encodeURIComponent(orderSourceId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ businessUnit, sourceApp }),
+    },
+  );
+  if (!response.ok) throw new Error(`Financial classification failed (${response.status})`);
+}
+
 async function insertFinancialTransaction(order: Record<string, unknown>, paymentGateway: Record<string, unknown>) {
   const orderSourceId = String(order.source_id || "");
   if (!orderSourceId) return false;
@@ -128,6 +149,7 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
   const updated = await patchOrder(`source_id=eq.${encodeURIComponent(orderId)}`, patch);
   const settledOrder = updated[0] || order;
   const transactionCreated = await insertFinancialTransaction(settledOrder, paymentGateway);
+  await tagFinancialTransaction(settledOrder);
   return { updated: updated.length, transactionCreated };
 }
 
