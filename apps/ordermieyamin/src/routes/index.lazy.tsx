@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Package, Truck } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, ClipboardList, Package, Plus, Truck } from "lucide-react";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
 import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 
@@ -12,6 +12,26 @@ const READY_PACK_PRICE = 5_000;
 const REPACK_FEE_PER_100G = 2_000;
 const BUSINESS_UNIT = "ordermieyamin";
 const BRAND_SLUG = "mie-yamin";
+const SAVED_ORDERS_KEY = "ordermieyamin:saved-orders";
+
+type SavedOrderReference = { orderId: string; createdAt: number };
+
+function readSavedOrders(): SavedOrderReference[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const value = JSON.parse(window.localStorage.getItem(SAVED_ORDERS_KEY) || "[]");
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is SavedOrderReference => Boolean(item?.orderId)).slice(0, 20);
+  } catch {
+    return [];
+  }
+}
+
+function rememberOrder(orderId: string) {
+  if (typeof window === "undefined" || !orderId) return;
+  const next = [{ orderId, createdAt: Date.now() }, ...readSavedOrders().filter((item) => item.orderId !== orderId)].slice(0, 20);
+  window.localStorage.setItem(SAVED_ORDERS_KEY, JSON.stringify(next));
+}
 
 const STATUS_STEPS = [
   ["pending_payment", "Menunggu pembayaran", "Order menunggu pembayaran."],
@@ -25,6 +45,14 @@ const STATUS_STEPS = [
 
 function formatRupiah(value: number) {
   return `Rp${value.toLocaleString("id-ID")}`;
+}
+
+function getTrackingStatus(order: any) {
+  const paymentSettled = order?.status === "paid" || order?.status === "completed";
+  const deliveryStatus = String(order?.deliveryStatus || "");
+  return paymentSettled && (!deliveryStatus || deliveryStatus === "pending_payment")
+    ? "paid"
+    : deliveryStatus || (paymentSettled ? "paid" : "pending_payment");
 }
 
 function getWibDateKey(value = new Date()) {
@@ -67,11 +95,7 @@ function CalendarDatePicker({ value, onChange, minDate }: { value: string; onCha
 function Tracking({ orderId }: { orderId: string }) {
   const order = useHybridOrderById(orderId) as any;
   const reduceMotion = useReducedMotion();
-  const paymentSettled = order?.status === "paid" || order?.status === "completed";
-  const deliveryStatus = String(order?.deliveryStatus || "");
-  const status = paymentSettled && (!deliveryStatus || deliveryStatus === "pending_payment")
-    ? "paid"
-    : deliveryStatus || (paymentSettled ? "paid" : "pending_payment");
+  const status = getTrackingStatus(order);
   const activeIndex = Math.max(0, STATUS_STEPS.findIndex(([key]) => key === status));
   const current = STATUS_STEPS[activeIndex] || STATUS_STEPS[0];
 
@@ -119,6 +143,37 @@ function Tracking({ orderId }: { orderId: string }) {
         </div>
         {order?.deliveryDate ? <p className="mt-6 text-xs text-muted-foreground">Tanggal pengiriman: <b>{new Date(order.deliveryDate).toLocaleDateString("id-ID")}</b></p> : null}
       </div>
+    </main>
+  );
+}
+
+function SavedOrderCard({ reference, onOpen }: { reference: SavedOrderReference; onOpen: (orderId: string) => void }) {
+  const order = useHybridOrderById(reference.orderId) as any;
+  const status = getTrackingStatus(order);
+  const statusLabel = STATUS_STEPS.find(([key]) => key === status)?.[1] || "Memuat status...";
+  return (
+    <button type="button" onClick={() => onOpen(reference.orderId)} className="w-full rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md active:scale-[.99]">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Package className="h-5 w-5" /></div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-black">#{order?.orderNumber || reference.orderId.slice(-8)}</p>
+          <p className="mt-1 text-xs font-bold text-primary">{statusLabel}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{order?.totalAmount != null ? formatRupiah(Number(order.totalAmount)) : "Memuat total..."} · Ketuk untuk tracking</p>
+        </div>
+        <span className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" />
+      </div>
+    </button>
+  );
+}
+
+function MyOrders({ onOpen, onNewOrder }: { onOpen: (orderId: string) => void; onNewOrder: () => void }) {
+  const [orders, setOrders] = useState<SavedOrderReference[]>(() => readSavedOrders());
+  useEffect(() => setOrders(readSavedOrders()), []);
+  return (
+    <main className="mx-auto w-full max-w-md px-4 py-6">
+      <div className="mb-5 flex items-end justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Riwayat di perangkat ini</p><h1 className="mt-1 text-2xl font-black">Pesanan Saya</h1><p className="mt-1 text-xs text-muted-foreground">Pilih order untuk melihat status live.</p></div><ClipboardList className="h-7 w-7 text-primary" /></div>
+      {orders.length === 0 ? <div className="rounded-2xl border border-dashed border-border p-6 text-center"><p className="text-sm font-black">Belum ada pesanan tersimpan</p><p className="mt-1 text-xs text-muted-foreground">Order baru dari perangkat ini akan muncul di sini.</p><button type="button" onClick={onNewOrder} className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-black text-white"><Plus className="h-4 w-4" /> Pesan sekarang</button></div> : <div className="space-y-3">{orders.map((reference) => <SavedOrderCard key={reference.orderId} reference={reference} onOpen={onOpen} />)}</div>}
+      <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">Daftar ini tersimpan di browser/perangkat ini. Link tracking tetap bisa dibagikan untuk membuka order tertentu.</p>
     </main>
   );
 }
@@ -201,6 +256,7 @@ function OrderForm() {
         },
         paymentReceiptKind: "gateway_pending",
       });
+      rememberOrder(String(orderId));
       window.location.assign(invoice.data.link);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Checkout gagal. Coba lagi.");
@@ -232,6 +288,9 @@ function OrderForm() {
 
 function OrderMieYaminPage() {
   const search = Route.useSearch();
+  const navigate = useNavigate();
   const orderId = search.orderId;
-  return <div className="min-h-app bg-background font-sans text-foreground"><header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-md items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white"><Package className="h-5 w-5" /></div><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Djiwa Tentram</p><p className="text-sm font-black">Order Mie Yamin B2B</p></div><Truck className="ml-auto h-5 w-5 text-primary" /></div></header>{search.stage === "tracking" && orderId ? <Tracking orderId={orderId} /> : <OrderForm />}</div>;
+  const isTracking = search.stage === "tracking" && Boolean(orderId);
+  const isOrders = search.stage === "orders";
+  return <div className="min-h-app bg-background font-sans text-foreground"><header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-md items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white"><Package className="h-5 w-5" /></div><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Djiwa Tentram</p><p className="truncate text-sm font-black">Order Mie Yamin B2B</p></div><button type="button" onClick={() => navigate({ to: "/", search: { stage: isOrders ? "order" : "orders" } })} className="ml-auto flex h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-[11px] font-black text-primary">{isOrders ? <><Plus className="h-3.5 w-3.5" /> Pesan baru</> : <><ClipboardList className="h-3.5 w-3.5" /> Pesanan saya</>}</button></div></header>{isTracking && orderId ? <><Tracking orderId={orderId} /><div className="mx-auto flex max-w-md gap-2 px-4 pb-8"><button type="button" onClick={() => navigate({ to: "/", search: { stage: "order" } })} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white"><Plus className="h-4 w-4" /> Pesan lagi</button><button type="button" onClick={() => navigate({ to: "/", search: { stage: "orders" } })} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-border px-4 text-sm font-black"><ClipboardList className="h-4 w-4" /> Semua</button></div></> : isOrders ? <MyOrders onOpen={(id) => navigate({ to: "/", search: { stage: "tracking", orderId: id } })} onNewOrder={() => navigate({ to: "/", search: { stage: "order" } })} /> : <OrderForm />}</div>;
 }

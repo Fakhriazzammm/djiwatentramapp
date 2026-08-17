@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const searchSchema = z.object({
   orderId: z.string().optional(),
-  stage: z.enum(["order", "tracking"]).optional().default("order"),
+  stage: z.enum(["order", "tracking", "orders"]).optional().default("order"),
 });
 
 export const Route = createFileRoute("/")({
