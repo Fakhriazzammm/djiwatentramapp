@@ -1758,9 +1758,9 @@ async def _check_new_orders(app):
                             pid in _FOOD_PRODUCT_IDS if pid else False,
                             pid in _BEVERAGE_PRODUCT_IDS if pid else False)
 
-        # 🛡 Skip order with empty/incomplete items (JSONB race condition)
-        # Order akan di-retry di poll berikutnya (10 menit lookback window)
-        if not items or not any(i.get("productId") for i in items):
+        # B2B Mie Yamin items do not carry POS productId; productName is the source of truth.
+        is_mie_yamin_order = row.get("businessUnit") == "ordermieyamin"
+        if not items or (not any(i.get("productId") for i in items) and not is_mie_yamin_order):
             logger.warning("Order %s skipped — items empty/incomplete (will retry in next poll)", order_no)
             continue
 

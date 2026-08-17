@@ -222,9 +222,23 @@ Deno.serve(async (req) => {
       data?.extraData?.orderId || parseExtraData(transaction?.extraData).orderId || customOrderId || "",
     );
     const invoiceId = String(data.id || "");
-    let settled = orderId
-      ? await reconcilePendingOrders()
-      : { scanned: 0, settled: [] };
+    let settled = { scanned: 0, settled: [] as Array<Record<string, unknown>> };
+    if (orderId) {
+      const directOrderResponse = await fetchWithTimeout(
+        `${SUPABASE_URL}/rest/v1/orders?select=*&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+        { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
+      );
+      const directOrders = directOrderResponse.ok
+        ? await directOrderResponse.json() as Array<Record<string, unknown>>
+        : [];
+      if (directOrders[0]) {
+        const result = await settleOrder(directOrders[0], transaction, invoiceId);
+        settled = { scanned: directOrders.length, settled: [{ orderId, ...result }] };
+      }
+    }
+    if (!settled.settled.length && orderId) {
+      settled = await reconcilePendingOrders();
+    }
     if (!settled.settled.length && invoiceId) {
       const fallback = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders?select=*&gateway_invoice_id=eq.${encodeURIComponent(invoiceId)}&limit=1`, { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Profile": "pos" } });
       const orders = fallback.ok ? await fallback.json() as Array<Record<string, unknown>> : [];

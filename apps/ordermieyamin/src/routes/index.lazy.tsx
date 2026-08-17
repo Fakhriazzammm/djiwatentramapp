@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Package, Truck } from "lucide-react";
-import { useHybridCreateOrder, useHybridMayarCreateInvoice } from "@/hooks/use-hybrid-write-actions";
+import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
 import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 
 export const Route = createLazyFileRoute("/")({ component: OrderMieYaminPage });
@@ -103,6 +103,7 @@ function OrderForm() {
   const navigate = useNavigate();
   const createOrder = useHybridCreateOrder();
   const createInvoice = useHybridMayarCreateInvoice();
+  const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
   const [kg, setKg] = useState(1);
   const [readyPackCount, setReadyPackCount] = useState(0);
   const [repack, setRepack] = useState(false);
@@ -166,6 +167,16 @@ function OrderForm() {
         ],
       });
       if (!invoice?.data?.link) throw new Error("Invoice pembayaran belum tersedia.");
+      await updateOrderPaymentGateway({
+        id: String(orderId),
+        paymentGateway: {
+          provider: "mayar",
+          invoiceId: invoice.data.id,
+          transactionId: invoice.data.transactionId ?? null,
+          status: "pending",
+        },
+        paymentReceiptKind: "gateway_pending",
+      });
       window.location.assign(invoice.data.link);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Checkout gagal. Coba lagi.");
