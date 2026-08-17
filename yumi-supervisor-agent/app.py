@@ -1446,6 +1446,61 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         else:
             promo_parts.append(f"Diskon Rp{discount_amount:,.0f} (Happy Hour)")
 
+    # Order Mie Yamin memakai format operasional khusus.
+    if delivery_context and delivery_context.get("businessUnit") == "ordermieyamin":
+        provider_labels = {"gojek": "Gojek", "maxim": "Maxim"}
+        provider = str(delivery_context.get("deliveryProvider") or "").lower()
+        delivery_date = str(delivery_context.get("deliveryDate") or "")
+        try:
+            delivery_date = datetime.fromisoformat(delivery_date.replace("Z", "+00:00")).astimezone(WIB).strftime("%d/%m/%Y")
+        except Exception:
+            delivery_date = delivery_date[:10] or "—"
+
+        special_lines = [
+            "🍜 ORDER MIE YAMIN",
+            "",
+            "📋 Detail Pesanan",
+            f"🆔 {order_no}",
+            f"👤 {customer}",
+            f"💰 Total: Rp{totalAmount:,.0f}",
+            "",
+            "📦 Isi Pesanan",
+        ]
+        for index, item in enumerate(items, start=1):
+            name = str(item.get("productName") or "Item").strip()
+            quantity = int(float(item.get("quantity") or 1))
+            price = float(item.get("price") or 0)
+            variant = str(item.get("variant") or "").strip()
+            quantity_label = variant or f"{quantity} pcs"
+            special_lines.extend([
+                f"{index}. {name}",
+                f"   {quantity_label} × Rp{price:,.0f}",
+            ])
+
+        special_lines.extend([
+            "",
+            "🚚 Detail Pengiriman",
+            f"📅 Tanggal kirim: {delivery_date}",
+            f"🛵 Kurir: {provider_labels.get(provider, provider.upper() or '—')}",
+            f"📍 Area: {delivery_context.get('deliveryArea') or 'Tasikmalaya'}",
+        ])
+        contact_phone = str(delivery_context.get("deliveryContactPhone") or "").strip()
+        address = str(delivery_context.get("deliveryAddress") or "").strip()
+        if contact_phone:
+            special_lines.append(f"📞 WhatsApp: {contact_phone}")
+        if address:
+            special_lines.append(f"🏠 Alamat: {address}")
+        if notes:
+            special_lines.extend(["", f"📝 Catatan: {notes}"])
+        special_lines.extend(["", "✅ Status: Sudah dibayar"])
+
+        try:
+            await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(special_lines))
+            logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
+        except Exception as e:
+            logger.error("send_transaction_notification failed for %s: %s", order_no, e)
+        return
+
     # ── Parse team members into per-role lines ──
     team_lines = []
     if team:
