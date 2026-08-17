@@ -7,7 +7,8 @@ import { useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 export const Route = createLazyFileRoute("/")({ component: OrderMieYaminPage });
 
 const NOODLE_PRICE = 10_000;
-const PACK_PRICE = 5_000;
+const READY_PACK_PRICE = 5_000;
+const REPACK_FEE_PER_100G = 2_000;
 const BUSINESS_UNIT = "ordermieyamin";
 const BRAND_SLUG = "mie-yamin";
 
@@ -66,6 +67,7 @@ function OrderForm() {
   const createOrder = useHybridCreateOrder();
   const createInvoice = useHybridMayarCreateInvoice();
   const [kg, setKg] = useState(1);
+  const [readyPackCount, setReadyPackCount] = useState(0);
   const [repack, setRepack] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState("");
   const [name, setName] = useState("");
@@ -74,8 +76,11 @@ function OrderForm() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const packCount = repack ? kg * 10 : 0;
-  const total = kg * NOODLE_PRICE + packCount * PACK_PRICE;
+  const repackCount = repack ? kg * 10 : 0;
+  const noodleTotal = kg * NOODLE_PRICE;
+  const readyPackTotal = readyPackCount * READY_PACK_PRICE;
+  const repackTotal = repackCount * REPACK_FEE_PER_100G;
+  const total = noodleTotal + readyPackTotal + repackTotal;
   const minDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   async function submit() {
@@ -88,7 +93,8 @@ function OrderForm() {
       const orderId = await createOrder({
         items: [
           { productName: "Mie Yamin Mentah", variant: `${kg} kg`, quantity: kg, price: NOODLE_PRICE, originalPrice: NOODLE_PRICE },
-          ...(repack ? [{ productName: "Kemasan plastik 100 gram", variant: `${packCount} pcs`, quantity: packCount, price: PACK_PRICE, originalPrice: PACK_PRICE }] : []),
+          ...(readyPackCount > 0 ? [{ productName: "Kemasan siap masak", variant: `${readyPackCount} pcs`, quantity: readyPackCount, price: READY_PACK_PRICE, originalPrice: READY_PACK_PRICE }] : []),
+          ...(repack ? [{ productName: "Jasa repack 100 gram", variant: `${repackCount} pcs`, quantity: repackCount, price: REPACK_FEE_PER_100G, originalPrice: REPACK_FEE_PER_100G }] : []),
         ],
         totalAmount: total,
         paymentMethod: "djiwaapp",
@@ -111,12 +117,13 @@ function OrderForm() {
       const redirectUrl = `${window.location.origin}/?stage=tracking&orderId=${encodeURIComponent(String(orderId))}`;
       const invoice = await createInvoice({
         name: name.trim(), mobile: phone.trim(), redirectUrl,
-        description: `Order Mie Yamin B2B ${kg} kg`,
+        description: `Order Mie Yamin B2B ${kg} kg${repack ? " + repack 100 gram" : ""}`,
         expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT },
         items: [
           { quantity: kg, rate: NOODLE_PRICE, description: `Mie Yamin Mentah ${kg} kg` },
-          ...(repack ? [{ quantity: packCount, rate: PACK_PRICE, description: `Kemasan 100 gram ${packCount} pcs` }] : []),
+          ...(readyPackCount > 0 ? [{ quantity: readyPackCount, rate: READY_PACK_PRICE, description: `Kemasan siap masak ${readyPackCount} pcs` }] : []),
+          ...(repack ? [{ quantity: repackCount, rate: REPACK_FEE_PER_100G, description: `Jasa repack 100 gram ${repackCount} pcs` }] : []),
         ],
       });
       if (!invoice?.data?.link) throw new Error("Invoice pembayaran belum tersedia.");
@@ -128,15 +135,18 @@ function OrderForm() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-5">
-      <div className="mb-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Djiwa Tentram B2B</p><h1 className="mt-1 text-3xl font-black">Mie Yamin Mentah</h1><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Produksi sendiri, rasa tetap otentik. Cocok untuk stok rumah atau jualan kembali.</p></div>
+      <div className="mb-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Djiwa Tentram B2B</p><h1 className="mt-1 text-3xl font-black">Mie Yamin Mentah</h1><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Produksi sendiri tanpa bahan pengawet. Tahan 1–3 hari di suhu ruang, atau 3–7 hari di dalam pendingin/kulkas.</p></div>
       <div className="space-y-4 rounded-[28px] border border-border bg-card p-5 shadow-sm">
         <label className="block text-sm font-bold">Jumlah mie (kg)<input min={1} type="number" value={kg} onChange={(e) => setKg(Math.max(1, Number(e.target.value) || 1))} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-4 text-base" /></label>
-        <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack 100 gram</b><span className="text-xs text-muted-foreground">1 kg menjadi 10 plastik × Rp5.000</span></span></label>
+        <div className="space-y-3">
+          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><span className="pt-1 text-primary">＋</span><span className="flex-1"><b className="block text-sm">Kemasan siap masak</b><span className="text-xs text-muted-foreground">Rp5.000 per pcs</span><input min={0} type="number" value={readyPackCount} onChange={(e) => setReadyPackCount(Math.max(0, Number(e.target.value) || 0))} className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Jumlah pcs" /></span></label>
+          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack dari mie kiloan</b><span className="text-xs leading-relaxed text-muted-foreground">Tambahan Rp2.000 per 100 gram. {kg} kg = {kg * 10} pcs, biaya repack {formatRupiah(kg * 10 * REPACK_FEE_PER_100G)}.</span></span></label>
+        </div>
         <label className="block text-sm font-bold">Tanggal pengiriman<input min={minDate} type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-4 text-base" /></label>
         <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-bold">Nama penerima<input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label><label className="text-sm font-bold">WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label></div>
         <label className="block text-sm font-bold">Alamat lengkap<textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
         <label className="block text-sm font-bold">Catatan pengiriman <span className="font-normal text-muted-foreground">(opsional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
-        <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Mie yamin</span><b>{formatRupiah(kg * NOODLE_PRICE)}</b></div>{repack ? <div className="mt-2 flex justify-between"><span>{packCount} plastik</span><b>{formatRupiah(packCount * PACK_PRICE)}</b></div> : null}<div className="mt-3 flex justify-between border-t border-border pt-3 text-base"><b>Total</b><b className="text-primary">{formatRupiah(total)}</b></div></div>
+        <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Mie yamin ({kg} kg)</span><b>{formatRupiah(noodleTotal)}</b></div>{readyPackCount > 0 ? <div className="mt-2 flex justify-between"><span>Kemasan siap masak ({readyPackCount} pcs)</span><b>{formatRupiah(readyPackTotal)}</b></div> : null}{repack ? <div className="mt-2 flex justify-between"><span>Jasa repack ({repackCount} pcs)</span><b>{formatRupiah(repackTotal)}</b></div> : null}<div className="mt-3 flex justify-between border-t border-border pt-3 text-base"><b>Total</b><b className="text-primary">{formatRupiah(total)}</b></div></div>
         {error ? <p className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{error}</p> : null}
         <button disabled={submitting} onClick={submit} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white disabled:opacity-50">{submitting ? "Menyiapkan pembayaran..." : <>Lanjut ke pembayaran <ChevronRight className="h-4 w-4" /></>}</button>
       </div>

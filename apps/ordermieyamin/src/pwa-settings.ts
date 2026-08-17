@@ -4,7 +4,7 @@
 export const customerPwaSettings = {
 	"name": "Order Mie Yamin B2B",
 	"short_name": "Mie Yamin",
-	"description": "Pesan mie yamin mentah kiloan dan kemasan 100 gram",
+	"description": "Mie yamin mentah tanpa bahan pengawet — pesan kiloan, kemasan siap masak, atau repack 100 gram",
 	"theme_color": "#1a5dc6",
 	"background_color": "#ffffff",
 	"start_url": "/",
