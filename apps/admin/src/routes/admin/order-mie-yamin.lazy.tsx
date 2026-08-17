@@ -46,7 +46,7 @@ const DEFAULTS: MieYaminSettings = {
   shippingFee: 0,
   supportWhatsapp: "",
   productImageUrl: "/logo-djiwa.png",
-  storageInstructions: "Simpan sesuai petunjuk admin. Umumnya 1–3 hari di suhu ruang atau 3–7 hari di dalam kulkas.",
+  storageInstructions: "",
 };
 
 function money(value: number) {
