@@ -568,15 +568,15 @@ function AdminOrders() {
 						value={searchQuery}
 					/>
 				</div>
-					<div className="flex min-w-0 flex-1 items-center gap-2">
+					<div className="grid min-w-0 grid-cols-[16px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 overflow-hidden">
 						<Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-						<div className="min-w-0 flex-1">
+						<div className="w-0 min-w-0">
 							<Select
 								onValueChange={(val: string | null) => val && setStatusFilter(val)}
 								value={statusFilter}
 							>
-								<SelectTrigger className="min-w-0" size="sm">
-									<SelectValue className="truncate" placeholder="Status" />
+								<SelectTrigger className="w-full min-w-0 overflow-hidden" size="sm">
+									<SelectValue className="min-w-0 truncate" placeholder="Status" />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">Semua Status</SelectItem>
@@ -587,9 +587,9 @@ function AdminOrders() {
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="min-w-0 flex-1">
+						<div className="w-0 min-w-0">
 							<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
-								<SelectTrigger className="min-w-0" size="sm"><SelectValue className="truncate" placeholder="Bisnis" /></SelectTrigger>
+								<SelectTrigger className="w-full min-w-0 overflow-hidden" size="sm"><SelectValue className="min-w-0 truncate" placeholder="Bisnis" /></SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">Semua bisnis</SelectItem>
 									<SelectItem value="pos">POS Reguler</SelectItem>
