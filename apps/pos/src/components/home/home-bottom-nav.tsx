@@ -15,7 +15,7 @@ type BottomTab = {
 
 const BOTTOM_TABS: ReadonlyArray<BottomTab> = [
 	{
-		to: "/home",
+		to: "/menu",
 		label: "Home",
 		icon: LayoutDashboard,
 	},
@@ -38,8 +38,8 @@ const BOTTOM_TABS: ReadonlyArray<BottomTab> = [
 ] as const;
 
 function isActive(pathname: string, tabTo: string): boolean {
-	if (tabTo === "/home") {
-		return pathname === "/home";
+	if (tabTo === "/menu") {
+		return pathname === "/menu";
 	}
 	return pathname.startsWith(tabTo);
 }

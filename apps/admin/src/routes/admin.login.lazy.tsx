@@ -112,7 +112,7 @@ function AdminLoginPage() {
 			if (isAdmin) {
 				navigate({ to: "/admin" as any, replace: true });
 			} else {
-				navigate({ to: "/home" as any, replace: true });
+				navigate({ to: "/admin" as any, replace: true });
 			}
 		}
 	}, [isAuthenticated, isAdmin, navigate]);

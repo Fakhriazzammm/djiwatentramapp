@@ -381,7 +381,7 @@ function AttendancePage() {
 			
 			setTimeout(() => {
 				sessionStorage.setItem("__attendance_clockout__", "1");
-				navigate({ to: "/home" });
+				navigate({ to: "/admin" });
 			}, 3000);
 		} catch (err: any) {
 			toast.dismiss();
@@ -458,7 +458,7 @@ function AttendancePage() {
 					)}
 
 					<Button 
-						onClick={() => navigate({ to: "/home" })} 
+						onClick={() => navigate({ to: "/admin" })}
 						variant="ghost" 
 						size="sm"
 						className="rounded-xl px-2.5 hover:bg-muted/50 md:px-3"

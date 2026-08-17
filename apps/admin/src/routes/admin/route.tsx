@@ -987,7 +987,7 @@ function AdminLayout() {
 					<div className="flex items-stretch px-2">
 						<Link
 							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
-							to="/home"
+							to="/admin"
 						>
 							<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
 								<ArrowLeft className="h-4 w-4" />

@@ -27,7 +27,7 @@ function RouteComponent() {
 				<div style={{ padding: "2rem", textAlign: "center" }}>
 					<h2>Login Required</h2>
 					<p>You need to log in to access the dashboard.</p>
-					<Button onClick={() => navigate({ to: "/home" })}>
+					<Button onClick={() => navigate({ to: "/admin" })}>
 						Login dengan PIN
 					</Button>
 				</div>

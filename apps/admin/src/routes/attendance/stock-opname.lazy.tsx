@@ -93,7 +93,7 @@ function StockOpnamePage() {
       });
 
       toast.success("Stock opname tersimpan & Absen Keluar berhasil!");
-      navigate({ to: "/home" });
+      navigate({ to: "/admin" });
     } catch (err: any) {
       toast.error(err?.message || "Gagal menyimpan opname");
     } finally {
@@ -119,7 +119,7 @@ function StockOpnamePage() {
       {/* Header */}
       <header className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border/40 bg-background/90 px-4 backdrop-blur-xl">
         <button
-          onClick={() => navigate({ to: "/home" })}
+          onClick={() => navigate({ to: "/admin" })}
           className="flex h-8 w-8 items-center justify-center rounded-full border bg-white/80"
         >
           <ArrowLeft className="h-4 w-4" />
