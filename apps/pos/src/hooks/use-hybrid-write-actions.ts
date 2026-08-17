@@ -4472,6 +4472,48 @@ export function useHybridStartShift() {
 	);
 }
 
+async function assertShiftAttendanceComplete(
+		supabase: ReturnType<typeof createClient>,
+		shift: any,
+		endTime: number,
+	): Promise<void> {
+		const rawMemberIds = Array.isArray(shift.teamMemberIds) ? shift.teamMemberIds : [];
+		const memberIds = rawMemberIds.map((id: unknown) => String(id || "")).filter(Boolean);
+		if (memberIds.length === 0) {
+			throw new Error("Tutup kasir diblokir: daftar anggota shift tidak tersedia. Refresh data shift lalu coba lagi.");
+		}
+
+		const { data: logs, error: attendanceError } = await supabase
+			.from("pos_attendance_logs")
+			.select("userId,type,timestamp")
+			.in("userId", memberIds)
+			.gte("timestamp", Number(shift.startTime ?? 0))
+			.lte("timestamp", endTime)
+			.order("timestamp", { ascending: false });
+		if (attendanceError) {
+			throw new Error("Status absensi tim tidak dapat diverifikasi. Tutup kasir diblokir demi keamanan.");
+		}
+
+		const latestByUser = new Map<string, { type?: string }>();
+		for (const log of logs ?? []) {
+			const userId = String(log.userId || "");
+			if (userId && !latestByUser.has(userId)) latestByUser.set(userId, log);
+		}
+		const activeIds = memberIds.filter((userId: string) => latestByUser.get(userId)?.type === "check_in");
+		if (activeIds.length === 0) return;
+
+		let names = activeIds;
+		const { data: staffRows } = await supabase
+			.from("pos_staff_users")
+			.select("_id,name")
+			.in("_id", activeIds);
+		if (staffRows?.length) {
+			const nameById = new Map(staffRows.map((row: any) => [String(row._id), String(row.name || row._id)]));
+			names = activeIds.map((id: string) => nameById.get(id) || id);
+		}
+		throw new Error(`Tutup kasir diblokir. ${names.join(", ")} belum absen keluar melalui Yumi HRD.`);
+	}
+
 export function useHybridEndShift() {
 	const fallback = useMutation(api.finance.endShift);
 	return useCallback(
@@ -4494,6 +4536,9 @@ export function useHybridEndShift() {
 				if (endTime < Number(shift.startTime ?? 0)) {
 					throw new Error("Waktu akhir shift tidak boleh lebih awal dari waktu mulai");
 				}
+
+				// Write-path defense: attendance must be closed before financial close.
+				await assertShiftAttendanceComplete(supabase, shift, endTime);
 
 				// ── Defense-in-depth: validasi waktu tutup kasir ──
 				// Cegah menutup shift sebelum closeTime - grace period (30 menit)
