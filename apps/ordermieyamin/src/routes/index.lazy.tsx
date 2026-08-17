@@ -1,8 +1,8 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Clock3, MapPin, Package, Truck } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Package, Truck } from "lucide-react";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice } from "@/hooks/use-hybrid-write-actions";
-import { useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
+import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 
 export const Route = createLazyFileRoute("/")({ component: OrderMieYaminPage });
 
@@ -24,6 +24,43 @@ const STATUS_STEPS = [
 
 function formatRupiah(value: number) {
   return `Rp${value.toLocaleString("id-ID")}`;
+}
+
+function getWibDateKey(value = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function getMonthKey(value: Date) {
+  return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function CalendarDatePicker({ value, onChange, minDate }: { value: string; onChange: (date: string) => void; minDate: string }) {
+  const today = new Date(`${minDate}T00:00:00+07:00`);
+  const [month, setMonth] = useState(() => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
+  const monthKey = getMonthKey(month);
+  const counts = useHybridDeliveryOrderCounts(monthKey);
+  const firstWeekday = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0)).getUTCDate();
+  const cells = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)];
+  const currentMonthKey = getMonthKey(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
+  const monthLabel = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(month);
+  const selectedCount = value ? counts?.[value] ?? 0 : 0;
+  const goMonth = (offset: number) => setMonth((current) => new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + offset, 1)));
+
+  return (
+    <div className="rounded-2xl border border-border bg-background p-4">
+      <div className="flex items-center justify-between">
+        <div><p className="text-sm font-black capitalize">{monthLabel}</p><p className="mt-0.5 text-[11px] text-muted-foreground">Pilih tanggal pengiriman</p></div>
+        <div className="flex gap-1"><button type="button" aria-label="Bulan sebelumnya" disabled={monthKey <= currentMonthKey} onClick={() => goMonth(-1)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><button type="button" aria-label="Bulan berikutnya" onClick={() => goMonth(1)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border"><ChevronRight className="h-4 w-4" /></button></div>
+      </div>
+      <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-muted-foreground"><span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span></div>
+      <div className="mt-2 grid grid-cols-7 gap-1">{cells.map((day, index) => { const dateKey = day ? `${monthKey}-${String(day).padStart(2, "0")}` : ""; const disabled = !day || dateKey < minDate; const count = dateKey ? counts?.[dateKey] ?? 0 : 0; const selected = dateKey === value; return <button key={`${monthKey}-${index}`} type="button" disabled={disabled} onClick={() => onChange(dateKey)} className={`min-h-[52px] rounded-xl border p-1 text-center transition ${selected ? "border-primary bg-primary text-white" : disabled ? "border-transparent text-muted-foreground/30" : "border-transparent hover:border-primary/40 hover:bg-primary/5"}`}><span className="block text-sm font-black">{day || ""}</span>{day && counts === undefined ? <span className="mx-auto mt-1 block h-1 w-1 animate-pulse rounded-full bg-muted-foreground/40" /> : null}{count > 0 ? <span className={`mt-1 block text-[9px] font-black ${selected ? "text-white/90" : count >= 8 ? "text-orange-600" : "text-primary"}`}>{count >= 8 ? "🔥" : ""}{count}</span> : null}</button>; })}</div>
+      <div className="mt-4 rounded-xl bg-primary/5 p-3 text-xs">{value ? <><p className="font-black text-primary">{selectedCount > 0 ? "Banyak pembeli memilih tanggal ini" : "Tanggal ini tersedia"}</p><p className="mt-1 text-muted-foreground">{counts === undefined ? "Memuat jumlah pesanan..." : selectedCount > 0 ? `${selectedCount} pesanan terjadwal yang sudah dibayar.` : "Belum ada pesanan terjadwal di tanggal ini."}</p></> : <p className="font-medium text-muted-foreground">Tanggal bertanda angka menunjukkan jumlah pesanan yang sudah dibayar.</p>}</div>
+      {counts === null ? <p className="mt-2 text-[11px] text-red-600">Jumlah pesanan belum dapat dimuat. Tanggal tetap bisa dipilih.</p> : null}
+    </div>
+  );
 }
 
 function Tracking({ orderId }: { orderId: string }) {
@@ -82,7 +119,7 @@ function OrderForm() {
   const readyPackTotal = readyPackCount * READY_PACK_PRICE;
   const repackTotal = repackCount * REPACK_FEE_PER_100G;
   const total = noodleTotal + readyPackTotal + repackTotal;
-  const minDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const minDate = useMemo(() => getWibDateKey(), []);
 
   async function submit() {
     if (!deliveryProvider || !deliveryDate || !name.trim() || !phone.trim() || !address.trim()) {
@@ -145,7 +182,7 @@ function OrderForm() {
           <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack dari mie kiloan</b><span className="text-xs leading-relaxed text-muted-foreground">Tambahan Rp2.000 per 100 gram. {kg} kg = {kg * 10} pcs, biaya repack {formatRupiah(kg * 10 * REPACK_FEE_PER_100G)}.</span></span></label>
         </div>
         <div className="space-y-2"><p className="text-sm font-bold">Pilih pengiriman <span className="font-normal text-muted-foreground">(area Tasikmalaya)</span></p><div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setDeliveryProvider("gojek")} className={`h-14 rounded-2xl border text-sm font-black transition ${deliveryProvider === "gojek" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground"}`}>Gojek<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Gratis promo</span></button><button type="button" onClick={() => setDeliveryProvider("maxim")} className={`h-14 rounded-2xl border text-sm font-black transition ${deliveryProvider === "maxim" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground"}`}>Maxim<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Gratis promo</span></button></div></div>
-        <label className="block text-sm font-bold">Tanggal pengiriman<input min={minDate} type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-4 text-base" /></label>
+        <div className="space-y-2"><p className="flex items-center gap-2 text-sm font-bold"><CalendarDays className="h-4 w-4 text-primary" />Tanggal pengiriman</p><CalendarDatePicker value={deliveryDate} onChange={setDeliveryDate} minDate={minDate} /></div>
         <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-bold">Nama penerima<input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label><label className="text-sm font-bold">WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label></div>
         <label className="block text-sm font-bold">Alamat lengkap<textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
         <label className="block text-sm font-bold">Catatan pengiriman <span className="font-normal text-muted-foreground">(opsional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
