@@ -5909,7 +5909,7 @@ export function useHybridMayarCreateInvoice() {
 					expiredAt: args.expiredAt,
 					extraData: args.extraData,
 					items: args.items,
-				});
+				}, { timeoutMs: 15_000 });
 				return {
 					statusCode: 200,
 					messages: "success",

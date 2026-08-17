@@ -11,6 +11,17 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const WEBHOOK_TOKEN = Deno.env.get("MAYAR_WEBHOOK_TOKEN") || "";
 const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY") || "";
+const FUNCTION_REQUEST_TIMEOUT_MS = 12_000;
+
+async function fetchWithTimeout(input: string, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FUNCTION_REQUEST_TIMEOUT_MS);
+  try {
+    return await globalThis.fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -40,7 +51,7 @@ function safeTokenEqual(left: string, right: string) {
 }
 
 async function patchOrder(filter: string, body: Record<string, unknown>) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?${filter}`, {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders?${filter}`, {
     method: "PATCH",
     headers: {
       apikey: SERVICE_ROLE_KEY,
@@ -60,7 +71,7 @@ async function tagFinancialTransaction(order: Record<string, unknown>) {
   const businessUnit = String(order.business_unit || "");
   const sourceApp = String(order.source_app || "");
   if (!orderSourceId || !businessUnit) return;
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${SUPABASE_URL}/rest/v1/pos_financial_transactions?orderId=eq.${encodeURIComponent(orderSourceId)}`,
     {
       method: "PATCH",
@@ -79,7 +90,7 @@ async function tagFinancialTransaction(order: Record<string, unknown>) {
 async function insertFinancialTransaction(order: Record<string, unknown>, paymentGateway: Record<string, unknown>) {
   const orderSourceId = String(order.source_id || "");
   if (!orderSourceId) return false;
-  const existingResponse = await fetch(
+  const existingResponse = await fetchWithTimeout(
     `${SUPABASE_URL}/rest/v1/pos_financial_transactions?orderId=eq.${encodeURIComponent(orderSourceId)}&select=_id&limit=1`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` } },
   );
@@ -87,7 +98,7 @@ async function insertFinancialTransaction(order: Record<string, unknown>, paymen
   const existing = (await existingResponse.json()) as Array<Record<string, unknown>>;
   if (existing.length > 0) return false;
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_mayar_financial_transaction`, {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/record_mayar_financial_transaction`, {
     method: "POST",
     headers: {
       apikey: SERVICE_ROLE_KEY,
@@ -109,7 +120,7 @@ async function insertFinancialTransaction(order: Record<string, unknown>, paymen
 }
 
 async function verifyTransaction(transactionId: string) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${MAYAR_API_BASE}/transactions/${encodeURIComponent(transactionId)}`,
     { headers: { Authorization: `Bearer ${MAYAR_API_KEY}` } },
   );
@@ -154,7 +165,7 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
 }
 
 async function reconcilePendingOrders() {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway&source=eq.customer_self_service&status=eq.pending&payment_gateway->>provider=eq.mayar&order=created_at.asc&limit=50`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
   );
@@ -215,7 +226,7 @@ Deno.serve(async (req) => {
       ? await reconcilePendingOrders()
       : { scanned: 0, settled: [] };
     if (!settled.settled.length && invoiceId) {
-      const fallback = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&gateway_invoice_id=eq.${encodeURIComponent(invoiceId)}&limit=1`, { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Profile": "pos" } });
+      const fallback = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders?select=*&gateway_invoice_id=eq.${encodeURIComponent(invoiceId)}&limit=1`, { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Profile": "pos" } });
       const orders = fallback.ok ? await fallback.json() as Array<Record<string, unknown>> : [];
       if (orders[0]) {
         const result = await settleOrder(orders[0], transaction, invoiceId);

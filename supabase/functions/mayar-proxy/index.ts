@@ -8,6 +8,22 @@ const corsHeaders = {
 
 const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY");
+const MAYAR_REQUEST_TIMEOUT_MS = 12_000;
+
+async function fetchMayar(input: string, init: RequestInit = {}) {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), MAYAR_REQUEST_TIMEOUT_MS);
+	try {
+		return await fetch(input, { ...init, signal: controller.signal });
+	} catch (error) {
+		if (error instanceof DOMException && error.name === "AbortError") {
+			throw new Error("Mayar tidak merespons dalam 12 detik");
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeout);
+	}
+}
 
 function json(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -52,7 +68,7 @@ async function createInvoice(payload: Record<string, unknown>) {
 		extraData: normalizeExtraData(payload.extraData),
 	};
 
-	const resp = await fetch(`${MAYAR_API_BASE}/invoices/create`, {
+	const resp = await fetchMayar(`${MAYAR_API_BASE}/invoices/create`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -90,7 +106,7 @@ async function getInvoiceDetail(invoiceId: string) {
 		throw new Error("MAYAR_API_KEY tidak dikonfigurasi");
 	}
 
-	const resp = await fetch(`${MAYAR_API_BASE}/invoices/${encodeURIComponent(invoiceId)}`, {
+	const resp = await fetchMayar(`${MAYAR_API_BASE}/invoices/${encodeURIComponent(invoiceId)}`, {
 		method: "GET",
 		headers: {
 			"Authorization": `Bearer ${MAYAR_API_KEY}`,
@@ -147,10 +163,13 @@ Deno.serve(async (req) => {
 		}
 	} catch (error) {
 		console.error("mayar-proxy failed", error);
+		const message = error instanceof Error && error.message.includes("Mayar tidak merespons")
+			? error.message
+			: "Gagal menyiapkan pembayaran Mayar. Silakan coba lagi.";
 		return fail(
 			"INTERNAL_ERROR",
-			error instanceof Error ? error.message : JSON.stringify(error),
-			400
+			message,
+			error instanceof Error && error.message.includes("Mayar tidak merespons") ? 504 : 400
 		);
 	}
 });

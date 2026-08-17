@@ -131,10 +131,18 @@ export function parseEdgeFunctionResponse<T>(
  */
 export async function invokeEdgeFunction<T = Record<string, unknown>>(
 	fnName: string,
-	body: Record<string, unknown>
+	body: Record<string, unknown>,
+	options: { timeoutMs?: number } = {}
 ): Promise<T> {
 	const supabase = createClient();
-	const { data, error } = await supabase.functions.invoke(fnName, { body });
+	const timeoutMs = options.timeoutMs ?? 20_000;
+	const request = supabase.functions.invoke(fnName, { body });
+	const { data, error } = await Promise.race([
+		request,
+		new Promise<never>((_, reject) => {
+			setTimeout(() => reject(new ApiError("FUNCTION_TIMEOUT", "Permintaan pembayaran terlalu lama. Silakan coba lagi.", 504)), timeoutMs);
+		}),
+	]);
 
 	if (error) {
 		// FunctionsHttpError — try to extract body for structured error
