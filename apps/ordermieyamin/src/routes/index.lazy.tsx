@@ -65,7 +65,11 @@ function CalendarDatePicker({ value, onChange, minDate }: { value: string; onCha
 
 function Tracking({ orderId }: { orderId: string }) {
   const order = useHybridOrderById(orderId) as any;
-  const status = String(order?.deliveryStatus || (order?.status === "pending" ? "pending_payment" : "paid"));
+  const paymentSettled = order?.status === "paid" || order?.status === "completed";
+  const deliveryStatus = String(order?.deliveryStatus || "");
+  const status = paymentSettled && (!deliveryStatus || deliveryStatus === "pending_payment")
+    ? "paid"
+    : deliveryStatus || (paymentSettled ? "paid" : "pending_payment");
   const activeIndex = Math.max(0, STATUS_STEPS.findIndex(([key]) => key === status));
   const current = STATUS_STEPS[activeIndex] || STATUS_STEPS[0];
 

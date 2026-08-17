@@ -155,6 +155,7 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
     payment_gateway: paymentGateway,
     gateway_invoice_id: paymentGateway.invoiceId || null,
     payment_receipt_kind: "gateway_paid",
+    delivery_status: "paid",
     status: "completed",
   };
   const updated = await patchOrder(`source_id=eq.${encodeURIComponent(orderId)}`, patch);
