@@ -1228,15 +1228,18 @@ function AdminOrders() {
 												<div className="flex items-start justify-between gap-3">
 													<div>
 														<h4 className="text-xs font-black text-amber-900">Tracking Mie Yamin</h4>
-														<p className="mt-0.5 text-[10px] leading-relaxed text-amber-800/80">Status ini tampil pada halaman tracking customer.</p>
+														<p className="mt-0.5 text-[10px] leading-relaxed text-amber-800/80">Pilih status di kotak bawah. Perubahannya tampil di tracking customer.</p>
 													</div>
-													<Badge className="border-amber-200 bg-white px-1.5 py-0 text-[10px] text-amber-800" variant="outline">{getMieYaminDeliveryLabel(selectedOrder.deliveryStatus)}</Badge>
+													<div className="text-right">
+														<p className="text-[9px] font-bold uppercase tracking-wide text-amber-800/70">Status saat ini</p>
+														<Badge className="mt-0.5 border-amber-200 bg-white px-1.5 py-0 text-[10px] text-amber-800" variant="outline">{getMieYaminDeliveryLabel(selectedOrder.deliveryStatus)}</Badge>
+													</div>
 												</div>
 												<Select
 													value={selectedOrder.deliveryStatus || (selectedOrder.status === "paid" || selectedOrder.status === "completed" ? "paid" : "pending_payment")}
 													onValueChange={(value: string | null) => { if (value) void handleMieYaminDeliveryStatusUpdate(value as MieYaminDeliveryStatus); }}
 												>
-													<SelectTrigger className="mt-2 h-10 w-full border-amber-200 bg-background text-xs"><SelectValue placeholder="Pilih status tracking" /></SelectTrigger>
+													<SelectTrigger aria-label="Ubah status tracking Mie Yamin" className="mt-2 h-11 w-full border-amber-200 bg-background text-sm font-semibold shadow-sm"><SelectValue placeholder="Pilih status tracking" /></SelectTrigger>
 													<SelectContent>
 														{MIE_YAMIN_DELIVERY_STATUSES.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
 													</SelectContent>
