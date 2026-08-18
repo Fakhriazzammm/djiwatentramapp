@@ -3,12 +3,9 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bell,
-  ClipboardList,
-  Coins,
   Gamepad2,
   Star,
   Tags,
-  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,12 +21,9 @@ interface CustomerMenuGridProps {
 }
 
 const menuItems: MenuItem[] = [
-  { label: "Riwayat", icon: ClipboardList, menuId: "riwayat", route: "/$username/riwayat" },
-  { label: "Poin Saya", icon: Coins, menuId: "poin", route: "/$username/poin" },
   { label: "Minigames", icon: Gamepad2, menuId: "minigames", route: "/$username/minigames" },
   { label: "Promo", icon: Tags, menuId: "promo", route: "/$username/promo" },
   { label: "Favorit", icon: Star, menuId: "favorit", route: "/$username/favorit" },
-  { label: "Profil", icon: UserRound, menuId: "profile", route: "/$username/profile" },
   { label: "Notifikasi", icon: Bell, menuId: "notifikasi", route: "/$username/notifikasi" },
 ];
 
@@ -44,7 +38,7 @@ export function CustomerMenuGrid({ baseRoute }: CustomerMenuGridProps) {
       initial={reduceMotion ? false : "hidden"}
       animate="visible"
       variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
-      className="mt-3 grid grid-cols-3 gap-2.5"
+      className={`mt-3 grid gap-2.5 ${visibleMenuItems.length === 4 ? "grid-cols-2" : "grid-cols-3"}`}
     >
       {visibleMenuItems.map((item) => {
         const Icon = item.icon;

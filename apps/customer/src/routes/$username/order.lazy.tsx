@@ -61,11 +61,12 @@ function OrderPage() {
 	const { username } = Route.useParams();
 	const search = Route.useSearch();
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
+	const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0);
 
 	const siteSettings = useHybridSiteSettings();
 	const brandSettings = useHybridBookingSettings(brandSlug);
-	const categories = useHybridCategories();
-	const products = useHybridProducts();
+	const categories = useHybridCategories(menuRefreshTrigger);
+	const products = useHybridProducts(null, menuRefreshTrigger);
 	const discounts = useHybridActiveDiscounts();
 	const createOrder = useHybridCreateOrder();
 	const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
@@ -129,6 +130,7 @@ function OrderPage() {
 		[discounts, isAuthenticated],
 	);
 	const isMenuLoading = categories === undefined || products === undefined;
+	const isMenuError = categories === null || products === null;
 	const [catalogQuery, setCatalogQuery] = useState("");
 	const [pendingNumberProduct, setPendingNumberProduct] = useState<Doc<"products"> | null>(null);
 	const [pendingNumberQuantity, setPendingNumberQuantity] = useState(1);
@@ -705,7 +707,7 @@ function OrderPage() {
 				<main
 					className={
 						step === "menu"
-							? "flex-1 overflow-y-auto pb-24"
+							? "flex-1 overflow-y-auto pb-safe-with-nav"
 							: step === "receipt"
 								? "flex-1 overflow-y-auto pb-32"
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
@@ -798,11 +800,11 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuLoading, logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
+						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems })
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}

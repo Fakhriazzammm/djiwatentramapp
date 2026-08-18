@@ -6,22 +6,21 @@ import { cn } from "@/lib/utils";
 
 export function CustomerLiveShiftIndicator() {
 	const shiftStatus = useHybridShiftStatus();
-	if (!shiftStatus?.isOpen) return null;
-
-	const cashierName = shiftStatus.ongoingShift?.cashierName ?? shiftStatus.shiftInfo.cashierName ?? "Kasir";
-	const shiftName = shiftStatus.ongoingShift?.shiftName ?? shiftStatus.shiftInfo.shiftName ?? "Shift aktif";
+	const ongoingShift = shiftStatus?.ongoingShift;
+	const isLive = Boolean(shiftStatus?.isOpen && ongoingShift);
+	const shiftName = ongoingShift?.shiftName ?? "Shift berjalan";
+	const label = shiftStatus === undefined ? "Memeriksa layanan" : isLive ? "Layanan aktif" : "Layanan sedang offline";
+	const tone = isLive
+		? "border-emerald-200/70 bg-emerald-50/80 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-100"
+		: "border-border/70 bg-muted/40 text-muted-foreground";
 
 	return (
-		<div className="mx-auto flex w-full max-w-md items-center gap-2 border-b border-emerald-200/70 bg-emerald-50 px-3 py-2 text-xs text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100">
-			<span className="relative flex h-2.5 w-2.5 shrink-0">
-				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-				<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-			</span>
-			<Radio className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+		<div className={cn("mx-auto flex w-full max-w-md items-center gap-1.5 border-b px-3 py-1.5 text-[11px]", tone)} role="status" aria-live="polite">
+			<span className={cn("relative flex h-2 w-2 shrink-0 rounded-full", isLive ? "bg-emerald-500" : "bg-muted-foreground/50")} aria-hidden="true" />
+			<Radio className={cn("h-3.5 w-3.5 shrink-0", isLive ? "text-emerald-600" : "text-muted-foreground")} aria-hidden="true" />
 			<span className="min-w-0 truncate">
-				<span className="font-black tracking-wide">KASIR LIVE</span>
-				<span className="mx-1 text-emerald-700/70 dark:text-emerald-300/70">•</span>
-				{cashierName} · {shiftName}
+				<span className="font-bold">{label}</span>
+				{isLive ? <><span className="mx-1 opacity-60">•</span>{shiftName}</> : null}
 			</span>
 		</div>
 	);
@@ -140,7 +139,7 @@ export function CustomerBottomNav({
 						transition={spring}
 						className={cn(
 							"relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-							item.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+							item.active ? "text-primary" : "text-foreground/70 hover:text-foreground"
 						)}
 						onClick={item.onSelect}
 						aria-current={item.active ? "page" : undefined}

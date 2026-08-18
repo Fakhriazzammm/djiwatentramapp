@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Barcode, Grid2X2, Minus, PackageSearch, Plus, Search } from "lucide-react";
+import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice, getActiveHappyHourBanner } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
@@ -43,7 +43,9 @@ export interface MenuSectionProps {
 	filteredProducts: Doc<"products">[];
 	freeRefillCharge: number;
 	handleProductSelect: (product: Doc<"products">) => void;
+	isMenuError: boolean;
 	isMenuLoading: boolean;
+	onRetryMenu: () => void;
 	logoUrl: string;
 	manualCode: string;
 	catalogQuery: string;
@@ -76,6 +78,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 		: bannerVariant === "malam"
 			? "border-indigo-200/20 bg-[#312e81]"
 			: "border-white/10";
+	const isCodeFeedbackError = /belum unik|tidak|gagal|error/i.test(props.codeFeedback);
 
 	return (
 		<div className="space-y-3 px-3 py-3">
@@ -127,7 +130,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 					<div className="mt-3 rounded-xl border border-border bg-background px-3 py-3 shadow-inner">
 						<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input className="w-full bg-transparent text-xl font-black tracking-[0.25em] outline-none placeholder:text-base placeholder:font-semibold placeholder:tracking-normal" inputMode="numeric" placeholder="Ketik nomor menu" value={props.manualCode} onChange={(event) => props.setManualCode(event.target.value.replace(/\D/g, ""))} /></div>
 					</div>
-					{props.codeFeedback ? <p className="mt-2.5 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700">{props.codeFeedback}</p> : <p className="mt-2.5 text-xs text-muted-foreground">Masukkan nomor produk lengkap untuk mencari menu.</p>}
+					{props.codeFeedback ? <p role={isCodeFeedbackError ? "alert" : "status"} className={cn("mt-2.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold", isCodeFeedbackError ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700")}>{props.codeFeedback}</p> : <p className="mt-2.5 text-xs text-muted-foreground">Masukkan nomor produk lengkap untuk mencari menu.</p>}
 					{props.pendingNumberProduct ? (
 						<div className="mt-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
 							<p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Konfirmasi Produk</p>
@@ -140,13 +143,13 @@ export function renderMenuSection(props: MenuSectionProps) {
 							</div>
 							<div className="mt-3 flex items-center justify-between gap-2">
 								<div className="flex items-center gap-1 rounded-xl border border-border bg-background p-1">
-									<button type="button" aria-label="Kurangi jumlah" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted" onClick={() => props.setPendingNumberQuantity(Math.max(1, props.pendingNumberQuantity - 1))}><Minus className="h-4 w-4" /></button>
+									<button type="button" aria-label="Kurangi jumlah" className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted" onClick={() => props.setPendingNumberQuantity(Math.max(1, props.pendingNumberQuantity - 1))}><Minus className="h-4 w-4" /></button>
 									<span className="min-w-8 text-center text-sm font-black">{props.pendingNumberQuantity}</span>
-									<button type="button" aria-label="Tambah jumlah" className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={() => props.setPendingNumberQuantity(props.pendingNumberQuantity + 1)}><Plus className="h-4 w-4" /></button>
+									<button type="button" aria-label="Tambah jumlah" className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={() => props.setPendingNumberQuantity(props.pendingNumberQuantity + 1)}><Plus className="h-4 w-4" /></button>
 								</div>
 								<div className="flex items-center gap-1.5">
-									<button type="button" className="rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground" onClick={props.cancelPendingNumberProduct}>Batal</button>
-									<button type="button" className="rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground" onClick={props.approvePendingNumberProduct}>Tambah ke keranjang</button>
+									<button type="button" className="min-h-11 rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground" onClick={props.cancelPendingNumberProduct}>Batal</button>
+									<button type="button" className="min-h-11 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground" onClick={props.approvePendingNumberProduct}>Tambah ke keranjang</button>
 								</div>
 							</div>
 						</div>
@@ -205,7 +208,14 @@ export function renderMenuSection(props: MenuSectionProps) {
 							);
 						})()}
 					</div>
-					{props.isMenuLoading ? (
+					{props.isMenuError ? (
+						<div role="alert" className="col-span-2 flex flex-col items-center rounded-3xl border border-red-200 bg-red-50 px-4 py-10 text-center text-red-800">
+							<PackageSearch aria-hidden="true" className="h-7 w-7" strokeWidth={2} />
+							<p className="mt-3 font-display text-sm font-bold">Menu gagal dimuat</p>
+							<p className="mt-1 text-xs text-red-700/80">Periksa koneksi lalu coba lagi.</p>
+							<button type="button" onClick={props.onRetryMenu} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-[14px] bg-red-700 px-4 py-2.5 text-xs font-black text-white"><RefreshCw className="h-3.5 w-3.5" />Coba lagi</button>
+						</div>
+					) : props.isMenuLoading ? (
 						<div className="grid grid-cols-2 gap-2.5">
 							{[1,2,3,4].map((i) => (
 								<div key={i} className="relative overflow-hidden rounded-[20px] border border-border bg-card shadow-sm before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-full before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent before:animate-shimmer">

@@ -123,9 +123,9 @@ function RiwayatPage() {
 								<button
 									type="button"
 									onClick={goHome}
-									className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
+									className="flex min-h-11 items-center gap-1.5 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 								>
-									<LogIn className="h-3.5 w-3.5" /> Masuk / Daftar
+									<LogIn className="h-3.5 w-3.5" /> Kembali ke beranda untuk masuk
 								</button>
 								<button
 									type="button"

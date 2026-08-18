@@ -92,10 +92,11 @@ export function ProductSheet({
 									{group.options.map((option) => (
 										<button
 											type="button"
+											aria-pressed={variants[group.type] === option.name}
 											key={option.name}
 											className={cn(
-												"rounded-full border px-2.5 py-1.5 text-xs font-bold transition-all",
-												variants[group.type] === option.name
+								"min-h-11 rounded-full border px-2.5 py-1.5 text-xs font-bold transition-all",
+								variants[group.type] === option.name
 													? "border-primary bg-primary text-primary-foreground"
 													: "border-border bg-background"
 											)}

@@ -140,7 +140,7 @@ function MemberHomePage() {
 	if (isChildRoute) {
 		return (
 			<>
-				<div className="min-h-app pb-24">
+				<div className="min-h-app pb-safe-with-nav">
 					<CustomerLiveShiftIndicator />
 					<Outlet />
 				</div>
@@ -173,7 +173,7 @@ function MemberHomePage() {
 					</header>
 					<CustomerLiveShiftIndicator />
 
-					<main className="flex-1 px-3 py-4 pb-24">
+					<main className="flex-1 px-3 py-4 pb-safe-with-nav">
 						<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
 							<div className="flex items-center gap-3">
 								<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -209,14 +209,14 @@ function MemberHomePage() {
 									onClick={() => setAuthModalOpen(true)}
 								>
 									<LogIn className="h-3.5 w-3.5" />
-									Masuk / Daftar untuk poin
+									Masuk / Daftar untuk Poin
 								</button>
 							</div>
 
 							{/* ─── Menu (guest juga bisa akses semua tombol) ─── */}
 							<div className="mt-4">
 								<h2 className="text-xs font-black uppercase tracking-wider text-foreground">Akses cepat</h2>
-								<p className="mt-1 text-[11px] text-muted-foreground">Pesan, cek promo, dan kelola akunmu dari sini.</p>
+								<p className="mt-1 text-[11px] text-muted-foreground">Cek promo, favorit, notifikasi, dan fitur lainnya dari sini.</p>
 								<CustomerMenuGrid baseRoute={username} />
 							</div>
 						</div>
@@ -268,7 +268,7 @@ function MemberHomePage() {
 				</header>
 				<CustomerLiveShiftIndicator />
 
-				<main className="flex-1 px-3 py-4 pb-24">
+				<main className="flex-1 px-3 py-4 pb-safe-with-nav">
 					<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
 						<div className="flex items-center gap-3">
 							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -284,12 +284,12 @@ function MemberHomePage() {
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Star className="h-4 w-4 text-amber-500" />
-									<span className="text-xs font-bold text-muted-foreground">Yumi Poin</span>
+									<span className="text-xs font-bold text-muted-foreground">Poin</span>
 								</div>
 								<span className="text-lg font-black">{customer.totalPoints.toLocaleString("id-ID")}</span>
 							</div>
 							{customer.lifetimePoints > 0 ? (
-								<p className="mt-0.5 text-[10px] text-muted-foreground">Total: {customer.lifetimePoints.toLocaleString("id-ID")} poin seumur hidup</p>
+								<p className="mt-0.5 text-[10px] text-muted-foreground">Total: {customer.lifetimePoints.toLocaleString("id-ID")} Poin seumur hidup</p>
 							) : null}
 						</div>
 
@@ -301,7 +301,7 @@ function MemberHomePage() {
 						{/* ─── Menu ─── */}
 						<div className="mt-4">
 							<h2 className="text-xs font-black uppercase tracking-wider text-foreground">Akses cepat</h2>
-							<p className="mt-1 text-[11px] text-muted-foreground">Pesan, cek promo, dan kelola akunmu dari sini.</p>
+							<p className="mt-1 text-[11px] text-muted-foreground">Cek promo, favorit, notifikasi, dan fitur lainnya dari sini.</p>
 							<CustomerMenuGrid baseRoute={username} />
 						</div>
 					</div>

@@ -1,4 +1,4 @@
-import { Loader2, QrCode, Wallet } from "lucide-react";
+import { Loader2, QrCode, ShoppingCart, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CartItem, PaymentChoice } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
@@ -27,12 +27,26 @@ export interface CheckoutSectionProps {
 	setPaymentChoice: (v: PaymentChoice) => void;
 	setTableNumber: (v: string) => void;
 	tableNumber: string;
+	onBackToMenu: () => void;
 	taxAmount: number;
 	taxRate: number;
 	total: number;
 }
 
 export function renderCheckoutSection(props: CheckoutSectionProps) {
+	if (!props.cart.length) {
+		return (
+			<div className="space-y-2 px-2 py-2">
+				<div className="rounded-3xl border border-dashed border-border bg-card p-6 text-center shadow-sm">
+					<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><ShoppingCart className="h-6 w-6" aria-hidden="true" /></div>
+					<h2 className="mt-3 text-base font-black">Keranjang masih kosong</h2>
+					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tambahkan menu terlebih dahulu untuk melanjutkan checkout.</p>
+					<button type="button" onClick={props.onBackToMenu} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground">Kembali ke menu</button>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="space-y-2 px-2 py-2">
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
@@ -83,7 +97,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 			</div>
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 				<div className="flex items-center gap-1.5"><QrCode className="h-3.5 w-3.5 text-primary" /><h3 className="text-sm font-black">Pilih pembayaran</h3></div>
-				<div className="mt-2.5 space-y-1.5">{props.paymentOptions.map((option) => <button type="button" key={option.key} className={cn("flex w-full items-start justify-between rounded-lg border px-2.5 py-2.5 text-left transition-all", props.paymentChoice === option.key ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background")} onClick={() => props.setPaymentChoice(option.key)}><div><p className="font-black text-xs">{option.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{option.description}</p></div><div className={cn("mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2", props.paymentChoice === option.key ? "border-primary bg-primary" : "border-muted-foreground/30")}>{props.paymentChoice === option.key ? <div className="h-1.5 w-1.5 rounded-full bg-white" /> : null}</div></button>)}</div>
+				<div className="mt-2.5 space-y-1.5" role="radiogroup" aria-label="Metode pembayaran">{props.paymentOptions.map((option) => <button type="button" role="radio" aria-checked={props.paymentChoice === option.key} key={option.key} className={cn("flex min-h-11 w-full items-start justify-between rounded-lg border px-2.5 py-2.5 text-left transition-all", props.paymentChoice === option.key ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background")} onClick={() => props.setPaymentChoice(option.key)}><div><p className="font-black text-xs">{option.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{option.description}</p></div><div aria-hidden="true" className={cn("mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2", props.paymentChoice === option.key ? "border-primary bg-primary" : "border-muted-foreground/30")}>{props.paymentChoice === option.key ? <div className="h-1.5 w-1.5 rounded-full bg-white" /> : null}</div></button>)}</div>
 			</div>
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} taxAmount={props.taxAmount} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />

@@ -11,7 +11,7 @@ export function BadgePill({ label }: { label: string }) {
 
 export function chipClassName(active: boolean) {
 	return cn(
-		"whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-all",
+		"min-h-11 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-all",
 		active ? "bg-primary text-primary-foreground shadow-sm" : "border border-border bg-background text-muted-foreground"
 	);
 }

@@ -122,7 +122,7 @@ function PoinPage() {
 						<button type="button" onClick={goHome} className="flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
 							<ArrowLeft className="h-4 w-4" /> Kembali
 						</button>
-						<h1 className="ml-1 text-sm font-black tracking-tight">Poin Saya</h1>
+						<h1 className="ml-1 text-sm font-black tracking-tight">Poin</h1>
 					</div>
 				</header>
 
@@ -142,7 +142,7 @@ function PoinPage() {
 								onClick={goHome}
 								className="mt-4 flex min-h-11 items-center gap-1.5 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 							>
-								<LogIn className="h-3.5 w-3.5" /> Masuk / Daftar
+								<LogIn className="h-3.5 w-3.5" /> Kembali ke beranda untuk masuk
 							</button>
 						</div>
 					) : (
@@ -151,7 +151,7 @@ function PoinPage() {
 							<div className="rounded-3xl bg-gradient-to-r from-primary/15 to-primary/5 border border-border px-4 py-5 shadow-sm">
 								<div className="flex items-center gap-2">
 									<Star className="h-4 w-4 text-amber-500" />
-									<span className="text-xs font-bold text-muted-foreground">Yumi Poin</span>
+									<span className="text-xs font-bold text-muted-foreground">Poin</span>
 									{tierInfo?.current ? (
 										<span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
 											<Sparkles className="h-3 w-3" /> {tierInfo.current.name}
