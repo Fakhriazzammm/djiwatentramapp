@@ -2865,6 +2865,32 @@ export function useHybridDeleteOrder() {
 	);
 }
 
+export function useHybridUpdateMieYaminDeliveryStatus() {
+	const [isLoading, setIsLoading] = useState(false);
+
+	return useCallback(async ({ id, deliveryStatus }: {
+		id: string;
+		deliveryStatus: "pending_payment" | "paid" | "preparing" | "packing" | "ready_to_ship" | "out_for_delivery" | "delivered" | "failed" | "cancelled";
+	}) => {
+		if (!id || !deliveryStatus) throw new Error("Order dan status pengiriman wajib diisi");
+		if (!hasSupabaseConfig) throw new Error("Update status Mie Yamin membutuhkan koneksi Supabase");
+
+		setIsLoading(true);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase
+				.schema("pos")
+				.from("orders")
+				.update({ delivery_status: deliveryStatus })
+				.eq("source_id", id)
+				.eq("business_unit", "ordermieyamin");
+			if (error) throw error;
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
+}
+
 export function useHybridUpdateOrderStatus() {
 	const fallback = useMutation(api.orders.updateOrderStatus);
 	const deductInventory = useHybridDeductOrderInventory();

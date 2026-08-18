@@ -48,6 +48,7 @@ import {
 	useHybridDeleteBookingOrder,
 	useHybridDeleteOrder,
 	useHybridUpdateBookingStatus,
+	useHybridUpdateMieYaminDeliveryStatus,
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
 import {
@@ -83,6 +84,7 @@ interface Order {
 	_creationTime: number;
 	orderNumber: string;
 	status: "pending" | "paid" | "completed" | "cancelled";
+	deliveryStatus?: string | null;
 	totalAmount: number;
 	paymentMethod: string;
 	customerName?: string;
@@ -152,6 +154,24 @@ function resolveOrderChannel(order: any): OrderChannel {
 	return { label: "POS", className: "bg-gray-100 text-gray-700" };
 }
 
+const MIE_YAMIN_DELIVERY_STATUSES = [
+	{ value: "pending_payment", label: "Menunggu pembayaran" },
+	{ value: "paid", label: "Pembayaran diterima" },
+	{ value: "preparing", label: "Sedang dibuat" },
+	{ value: "packing", label: "Sedang dipacking" },
+	{ value: "ready_to_ship", label: "Siap dikirim" },
+	{ value: "out_for_delivery", label: "Sedang dikirim" },
+	{ value: "delivered", label: "Selesai" },
+	{ value: "failed", label: "Gagal" },
+	{ value: "cancelled", label: "Dibatalkan" },
+] as const;
+
+type MieYaminDeliveryStatus = (typeof MIE_YAMIN_DELIVERY_STATUSES)[number]["value"];
+
+function getMieYaminDeliveryLabel(status?: string | null) {
+	return MIE_YAMIN_DELIVERY_STATUSES.find((item) => item.value === status)?.label ?? "Belum diatur";
+}
+
 const quickDateFilterOptions: Array<{
 	value: QuickDateFilter;
 	label: string;
@@ -169,6 +189,7 @@ function AdminOrders() {
 	const allBookingOrders = useHybridBookingOrders({ slug: "booking" });
 	
 	const updateStatus = useHybridUpdateOrderStatus();
+	const updateMieYaminDeliveryStatus = useHybridUpdateMieYaminDeliveryStatus();
 	const updateBookingStatus = useHybridUpdateBookingStatus();
 	const deleteOrder = useHybridDeleteOrder();
 	const deleteBookingOrder = useHybridDeleteBookingOrder();
@@ -389,6 +410,18 @@ function AdminOrders() {
 			}
 		} catch (_error) {
 			toast.error("Gagal memperbarui status pesanan");
+		}
+	};
+
+	const handleMieYaminDeliveryStatusUpdate = async (newStatus: MieYaminDeliveryStatus) => {
+		if (!selectedOrder || resolveOrderChannel(selectedOrder).label !== "Mie Yamin") return;
+		try {
+			await updateMieYaminDeliveryStatus({ id: String(selectedOrder._id), deliveryStatus: newStatus });
+			setSelectedOrder({ ...selectedOrder, deliveryStatus: newStatus });
+			triggerHybridRefresh();
+			toast.success(`Tracking Mie Yamin diperbarui menjadi ${getMieYaminDeliveryLabel(newStatus)}`);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Gagal memperbarui tracking Mie Yamin");
 		}
 	};
 
@@ -1190,6 +1223,26 @@ function AdminOrders() {
 							<div className="sticky bottom-0 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 								<div className="space-y-3">
 									<div className="space-y-2">
+										{resolveOrderChannel(selectedOrder).label === "Mie Yamin" ? (
+											<div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+												<div className="flex items-start justify-between gap-3">
+													<div>
+														<h4 className="text-xs font-black text-amber-900">Tracking Mie Yamin</h4>
+														<p className="mt-0.5 text-[10px] leading-relaxed text-amber-800/80">Status ini tampil pada halaman tracking customer.</p>
+													</div>
+													<Badge className="border-amber-200 bg-white px-1.5 py-0 text-[10px] text-amber-800" variant="outline">{getMieYaminDeliveryLabel(selectedOrder.deliveryStatus)}</Badge>
+												</div>
+												<Select
+													value={selectedOrder.deliveryStatus || (selectedOrder.status === "paid" || selectedOrder.status === "completed" ? "paid" : "pending_payment")}
+													onValueChange={(value: string | null) => { if (value) void handleMieYaminDeliveryStatusUpdate(value as MieYaminDeliveryStatus); }}
+												>
+													<SelectTrigger className="mt-2 h-10 w-full border-amber-200 bg-background text-xs"><SelectValue placeholder="Pilih status tracking" /></SelectTrigger>
+													<SelectContent>
+														{MIE_YAMIN_DELIVERY_STATUSES.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+													</SelectContent>
+												</Select>
+											</div>
+										) : null}
 										<h4 className="font-medium text-[10px] text-muted-foreground uppercase tracking-widest">
 											Ubah Status Pesanan
 										</h4>
