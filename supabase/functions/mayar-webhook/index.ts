@@ -167,7 +167,7 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
 
 async function reconcilePendingOrders() {
   const response = await fetchWithTimeout(
-    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway&source=eq.customer_self_service&status=eq.pending&payment_gateway->>provider=eq.mayar&order=created_at.asc&limit=50`,
+    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway&source=in.(customer_self_service,ordermieyamin_b2b)&status=eq.pending&payment_gateway->>provider=eq.mayar&order=created_at.asc&limit=50`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
   );
   if (!response.ok) throw new Error(`Pending order lookup failed (${response.status})`);

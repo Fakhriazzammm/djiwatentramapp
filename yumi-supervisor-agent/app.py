@@ -1689,7 +1689,7 @@ async def _check_new_orders(app):
         customer_rows = await _fetch(
             "pos_orders",
             "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
-            "&source=eq.customer_self_service"
+            "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
             f"&_creationTime=lte.{now_ms}"
