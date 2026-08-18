@@ -8,10 +8,10 @@ import { LogIn, User } from "lucide-react";
 type CustomerData = {
   name: string;
   email: string;
-  photo_url?: string;
-  total_points?: number;
-  total_orders?: number;
-  total_spent?: number;
+  photoUrl?: string | null;
+  totalPoints?: number;
+  totalOrders?: number;
+  totalSpent?: number;
 };
 
 type AuthHeaderProps = {

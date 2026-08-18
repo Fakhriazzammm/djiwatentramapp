@@ -8,6 +8,11 @@ import { currency } from "./types";
 type CustomerData = {
   name: string;
   email: string;
+  photoUrl?: string | null;
+  totalPoints?: number;
+  totalOrders?: number;
+  totalSpent?: number;
+  // Legacy aliases kept for callers that still pass database-shaped rows.
   photo_url?: string;
   total_points?: number;
   total_orders?: number;
@@ -52,9 +57,9 @@ export function ProfileCard({
     >
       {/* Avatar & Info */}
       <div className="flex items-center gap-3">
-        {customer.photo_url ? (
+        {(customer.photoUrl ?? customer.photo_url) ? (
           <img
-            src={customer.photo_url}
+            src={customer.photoUrl ?? customer.photo_url ?? undefined}
             alt={customer.name}
             className="h-10 w-10 rounded-full object-cover ring-2 ring-border"
           />
@@ -90,17 +95,17 @@ export function ProfileCard({
         <Stat
           icon={<Star className="h-3 w-3 text-amber-500" />}
           label="Yumi Poin"
-          value={String(customer.total_points ?? 0)}
+          value={String(customer.totalPoints ?? customer.total_points ?? 0)}
         />
         <Stat
           icon={<Package className="h-3 w-3 text-blue-500" />}
           label="Pesanan"
-          value={String(customer.total_orders ?? 0)}
+          value={String(customer.totalOrders ?? customer.total_orders ?? 0)}
         />
         <Stat
           icon={<Wallet className="h-3 w-3 text-emerald-500" />}
           label="Total"
-          value={currency(customer.total_spent ?? 0)}
+          value={currency(customer.totalSpent ?? customer.total_spent ?? 0)}
         />
       </div>
     </div>
