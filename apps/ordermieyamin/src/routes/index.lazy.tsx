@@ -23,6 +23,7 @@ const DEFAULT_MIE_YAMIN_SETTINGS = {
 const BUSINESS_UNIT = "ordermieyamin";
 const BRAND_SLUG = "mie-yamin";
 const NORMAL_NOODLE_PRICE_PER_KG = 30_000;
+const PROMO_END_AT = new Date("2026-08-20T23:59:59+07:00").getTime();
 const SAVED_ORDERS_KEY = "ordermieyamin:saved-orders";
 const DRAFT_ORDER_KEY = "ordermieyamin:checkout-draft";
 const PENDING_PAYMENT_KEY = "ordermieyamin:pending-payment";
@@ -274,6 +275,7 @@ function OrderForm() {
   const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<string | null>(() => readPendingPayment()?.orderId ?? null);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [error, setError] = useState("");
+  const [promoRemainingMs, setPromoRemainingMs] = useState(() => Math.max(0, PROMO_END_AT - Date.now()));
   const repackCount = repack ? kg * 10 : 0;
   const noodleTotal = kg * Number(mieYaminSettings.noodlePricePerKg);
   const readyPackTotal = readyPackCount * Number(mieYaminSettings.readyPackPrice);
@@ -286,6 +288,22 @@ function OrderForm() {
   const supportWhatsapp = formatPhoneForWhatsApp(String(mieYaminSettings.supportWhatsapp || ""));
   const supportHref = supportWhatsapp ? `https://wa.me/${supportWhatsapp}?text=${encodeURIComponent(`Halo, saya perlu bantuan order Mie Yamin${pendingPaymentOrderId ? ` #${pendingPaymentOrderId}` : ""}.`)}` : "";
   const minDate = useMemo(() => getNextAvailableDate(orderCutoffHour), [orderCutoffHour]);
+  const promoCountdown = useMemo(() => {
+    const totalSeconds = Math.floor(promoRemainingMs / 1000);
+    return {
+      days: Math.floor(totalSeconds / 86_400),
+      hours: Math.floor((totalSeconds % 86_400) / 3_600),
+      minutes: Math.floor((totalSeconds % 3_600) / 60),
+      seconds: totalSeconds % 60,
+    };
+  }, [promoRemainingMs]);
+
+  useEffect(() => {
+    const updatePromoTimer = () => setPromoRemainingMs(Math.max(0, PROMO_END_AT - Date.now()));
+    updatePromoTimer();
+    const timer = window.setInterval(updatePromoTimer, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     try {
@@ -473,7 +491,7 @@ function OrderForm() {
   return (
     <main className="mx-auto w-full max-w-md px-4 py-5 pb-24 md:pb-5"><div className="mb-4 overflow-hidden rounded-[28px] border border-border bg-card shadow-sm"><div className="grid grid-cols-[88px_1fr] items-center gap-4 p-4"><img src={String(mieYaminSettings.productImageUrl || "/logo-djiwa.png")} alt="Produk Mie Yamin" className="h-20 w-20 rounded-2xl bg-primary/5 object-contain p-2" /><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Djiwa Tentram B2B</p><h1 className="mt-1 text-2xl font-black tracking-tight">Mie Yamin Mentah</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Produksi sendiri tanpa bahan pengawet. Cocok untuk reseller, warung, dan katering.</p></div></div><div className="grid grid-cols-3 border-t border-border/70 text-center text-[10px] font-bold text-muted-foreground"><span className="px-2 py-3">Min. {minOrderKg} kg</span><span className="border-x border-border/70 px-2 py-3">Area {String(mieYaminSettings.deliveryArea)}</span><span className="px-2 py-3">Cutoff {String(orderCutoffHour).padStart(2, "0")}:00</span></div></div>
       <div className="space-y-4 rounded-[28px] border border-border bg-card p-5 shadow-sm">
-        <div className="rounded-2xl border border-border bg-background p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black">Jumlah mie</p><p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">Minimum {minOrderKg} kg · <span className="font-medium text-muted-foreground line-through">{formatRupiah(NORMAL_NOODLE_PRICE_PER_KG)}</span> <span className="font-black text-primary">{formatRupiah(Number(mieYaminSettings.noodlePricePerKg))}</span> per kg <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-700">PROMO</span></p></div><div className="flex items-center gap-2"><button type="button" aria-label="Kurangi jumlah mie" onClick={() => setKg(Math.max(minOrderKg, kg - 1))} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-lg font-black">−</button><output className="min-w-16 text-center text-lg font-black" aria-live="polite">{kg} kg</output><button type="button" aria-label="Tambah jumlah mie" onClick={() => setKg(kg + 1)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-lg font-black">+</button></div></div><div className="mt-3 flex gap-2 overflow-x-auto pb-1">{[1, 5, 10, 25].filter((preset) => preset >= minOrderKg).map((preset) => <button key={preset} type="button" onClick={() => setKg(preset)} className={`min-h-10 shrink-0 rounded-xl border px-3 text-xs font-black ${kg === preset ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{preset} kg</button>)}</div></div>
+        <div className="rounded-2xl border border-border bg-background p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black">Jumlah mie</p><p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">Minimum {minOrderKg} kg · <span className="font-medium text-muted-foreground line-through">{formatRupiah(NORMAL_NOODLE_PRICE_PER_KG)}</span> <span className="font-black text-primary">{formatRupiah(Number(mieYaminSettings.noodlePricePerKg))}</span> per kg <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-700">PROMO</span></p><div className={`mt-2 inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[11px] font-black ${promoRemainingMs > 0 ? "bg-amber-50 text-amber-800" : "bg-muted text-muted-foreground"}`}><Clock3 className="h-3.5 w-3.5" />{promoRemainingMs > 0 ? <>Promo berakhir dalam <span className="tabular-nums">{promoCountdown.days}h {String(promoCountdown.hours).padStart(2, "0")}j {String(promoCountdown.minutes).padStart(2, "0")}m {String(promoCountdown.seconds).padStart(2, "0")}d</span></> : "Promo telah berakhir"}</div></div><div className="flex items-center gap-2"><button type="button" aria-label="Kurangi jumlah mie" onClick={() => setKg(Math.max(minOrderKg, kg - 1))} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-lg font-black">−</button><output className="min-w-16 text-center text-lg font-black" aria-live="polite">{kg} kg</output><button type="button" aria-label="Tambah jumlah mie" onClick={() => setKg(kg + 1)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-lg font-black">+</button></div></div><div className="mt-3 flex gap-2 overflow-x-auto pb-1">{[1, 5, 10, 25].filter((preset) => preset >= minOrderKg).map((preset) => <button key={preset} type="button" onClick={() => setKg(preset)} className={`min-h-10 shrink-0 rounded-xl border px-3 text-xs font-black ${kg === preset ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{preset} kg</button>)}</div></div>
         <div className="space-y-3">
           <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><span className="pt-1 text-primary">＋</span><span className="flex-1"><b className="block text-sm">Kemasan siap masak</b><span className="text-xs text-muted-foreground">{formatRupiah(Number(mieYaminSettings.readyPackPrice))} per pcs</span><input min={0} type="number" value={readyPackCount} onChange={(e) => setReadyPackCount(Math.max(0, Number(e.target.value) || 0))} className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Jumlah pcs" /></span></label>
           <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack dari mie kiloan</b><span className="text-xs leading-relaxed text-muted-foreground">Tambahan {formatRupiah(Number(mieYaminSettings.repackFeePer100g))} per 100 gram. {kg} kg = {kg * 10} pcs, biaya repack {formatRupiah(kg * 10 * Number(mieYaminSettings.repackFeePer100g))}.</span></span></label>
