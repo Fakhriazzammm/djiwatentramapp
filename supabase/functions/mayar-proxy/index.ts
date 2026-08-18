@@ -36,6 +36,18 @@ function fail(code: string, message: string, status = 400) {
 	return json({ success: false, error: { code, message } }, status);
 }
 
+function extractMayarMessage(value: unknown, fallback: string) {
+	if (!value || typeof value !== "object") return fallback;
+	const body = value as Record<string, unknown>;
+	const messages = body.messages ?? body.message ?? body.error;
+	if (typeof messages === "string" && messages.trim()) return messages.trim();
+	if (messages && typeof messages === "object") {
+		const nested = messages as Record<string, unknown>;
+		if (typeof nested.message === "string" && nested.message.trim()) return nested.message.trim();
+	}
+	return fallback;
+}
+
 function normalizeExtraData(value: unknown): Record<string, string> {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return {};
 	return Object.entries(value as Record<string, unknown>).reduce<Record<string, string>>((result, [key, item]) => {
@@ -43,6 +55,16 @@ function normalizeExtraData(value: unknown): Record<string, string> {
 		result[key] = typeof item === "string" ? item : JSON.stringify(item);
 		return result;
 	}, {});
+}
+
+async function readJsonResponse(response: Response) {
+	const text = await response.text();
+	if (!text.trim()) return null;
+	try {
+		return JSON.parse(text) as Record<string, unknown>;
+	} catch {
+		return { message: text.slice(0, 300) };
+	}
 }
 
 async function createInvoice(payload: Record<string, unknown>) {
@@ -77,26 +99,28 @@ async function createInvoice(payload: Record<string, unknown>) {
 		body: JSON.stringify(body),
 	});
 
-	const result: any = await resp.json();
+	const result: any = await readJsonResponse(resp);
 
-	if (!resp.ok || result?.statusCode !== 200) {
-		const msg = result?.messages || result?.message || `Mayar API error ${resp.status}`;
-		console.error("Mayar invoice create failed", resp.status, result);
-		throw new Error(String(msg));
+	const statusCode = Number(result?.statusCode ?? result?.status ?? resp.status);
+	if (!resp.ok || (statusCode < 200 || statusCode >= 300)) {
+		const msg = extractMayarMessage(result, `Mayar API error ${resp.status}`);
+		console.error("Mayar invoice create failed", resp.status, msg);
+		throw new Error(msg);
 	}
 
-	const createdData: any = result?.data || {};
-	let paymentUrl = createdData.paymentUrl;
+	const createdData: any = result?.data && typeof result.data === "object" ? result.data : result || {};
+	let paymentUrl = createdData.paymentUrl || createdData.payment_url || createdData.link || createdData.url || createdData.checkoutUrl;
 	if (!paymentUrl && createdData.id) {
 		const detail: any = await getInvoiceDetail(String(createdData.id));
-		paymentUrl = detail?.data?.paymentUrl;
+		paymentUrl = detail?.data?.paymentUrl || detail?.data?.payment_url || detail?.data?.link || detail?.data?.url || detail?.paymentUrl || detail?.link;
 	}
+	if (!paymentUrl) throw new Error("Mayar belum mengembalikan link pembayaran. Silakan coba lagi.");
 	return {
 		...result,
 		data: {
 			...createdData,
 			paymentUrl,
-			link: paymentUrl || createdData.link,
+			link: paymentUrl,
 		},
 	};
 }
@@ -113,11 +137,13 @@ async function getInvoiceDetail(invoiceId: string) {
 		},
 	});
 
-	const result = await resp.json();
+	const result: any = await readJsonResponse(resp);
 
 	if (!resp.ok) {
-		const msg = result?.messages || result?.message || `Mayar API error ${resp.status}`;
-		throw new Error(msg);
+		throw new Error(extractMayarMessage(result, `Mayar API error ${resp.status}`));
+	}
+	if (!result || typeof result !== "object") {
+		throw new Error("Mayar mengembalikan detail invoice kosong.");
 	}
 
 	return result;
@@ -163,13 +189,14 @@ Deno.serve(async (req) => {
 		}
 	} catch (error) {
 		console.error("mayar-proxy failed", error);
-		const message = error instanceof Error && error.message.includes("Mayar tidak merespons")
-			? error.message
+		const detail = error instanceof Error ? error.message : "";
+		const safeMessage = detail && !/api[_ -]?key|bearer|token|authorization/i.test(detail)
+			? detail
 			: "Gagal menyiapkan pembayaran Mayar. Silakan coba lagi.";
 		return fail(
 			"INTERNAL_ERROR",
-			message,
-			error instanceof Error && error.message.includes("Mayar tidak merespons") ? 504 : 400
+			safeMessage,
+			detail.includes("tidak merespons") ? 504 : 400
 		);
 	}
 });
