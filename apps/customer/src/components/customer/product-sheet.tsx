@@ -41,7 +41,7 @@ export function ProductSheet({
 	}, 0);
 	const unitPrice = pricing.finalPrice + variantPrice;
 	return (
-		<div className="flex max-h-[85vh] flex-col">
+		<div className="flex h-full min-h-0 flex-col">
 			<div className="relative h-48 bg-muted">
 				{product.image ? (
 					<img
@@ -64,7 +64,7 @@ export function ProductSheet({
 					</span>
 				) : null}
 			</div>
-			<div className="flex-1 overflow-y-auto px-4 py-4">
+			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
 				<h3 className="font-display text-xl font-black tracking-tight">{product.name}</h3>
 				{product.description ? (
 					<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
