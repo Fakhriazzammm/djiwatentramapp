@@ -149,9 +149,16 @@ function buildReorderDraft(order: any) {
 }
 
 function Tracking({ orderId }: { orderId: string }) {
-  const order = useHybridOrderById(orderId) as any;
+  const [refreshTick, setRefreshTick] = useState(0);
+  const order = useHybridOrderById(orderId, refreshTick) as any;
   const reduceMotion = useReducedMotion();
   const status = getTrackingStatus(order);
+  useEffect(() => {
+    // Realtime is not guaranteed for the public order view. Refresh the same
+    // order so admin delivery-status changes reach the customer promptly.
+    const timer = window.setInterval(() => setRefreshTick((value) => value + 1), 3000);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => {
     // Recovery path for orders created by an older bundle or another checkout context.
     if (order?.orderNumber || order?.status) rememberOrder(orderId);
