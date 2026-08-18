@@ -922,12 +922,17 @@ function AdminOrders() {
 												</td>
 												<td className="px-3 py-2.5 align-top">
 													<div className="flex flex-col gap-1 leading-tight">
-														<Badge
-															className={`w-fit px-1.5 py-0 text-[11px] ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
-															variant="outline"
-														>
-															{order.type === "booking" ? "Booking" : "POS"}
-														</Badge>
+														{(() => {
+															const channel = resolveOrderChannel(order);
+															return (
+																<Badge
+																	className={`w-fit px-1.5 py-0 text-[11px] ${channel.className}`}
+																	variant="outline"
+																>
+																	{channel.label}
+																</Badge>
+															);
+														})()}
 														<span className="text-[10px] text-muted-foreground">
 															{order.orderType === "dine_in" ? "Dine in" : "Takeaway"}
 														</span>
