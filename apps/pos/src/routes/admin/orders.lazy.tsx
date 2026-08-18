@@ -112,6 +112,24 @@ type QuickDateFilter =
 	| "thisMonth"
 	| "lastMonth";
 
+type BusinessFilter = "all" | "pos" | "mieyamin" | "booking";
+
+type OrderChannel = { label: string; className: string };
+
+function resolveOrderChannel(order: any): OrderChannel {
+	const businessUnit = String(order.businessUnit ?? order.business_unit ?? "").trim().toLowerCase();
+	const source = String(order.source ?? order.sourceApp ?? order.source_app ?? "").trim().toLowerCase();
+	const joined = `${source} ${String(order.orderType ?? "").toLowerCase()}`;
+	if (order.type === "booking" || order.businessCategory === "booking") return { label: "Booking", className: "bg-blue-100 text-blue-700" };
+	if (businessUnit === "ordermieyamin" || businessUnit === "mieyamin") return { label: "Mie Yamin", className: "bg-amber-100 text-amber-800" };
+	if (joined.includes("gofood") || joined.includes("go_food")) return { label: "GoFood", className: "bg-green-100 text-green-700" };
+	if (joined.includes("grabfood") || joined.includes("grab_food")) return { label: "GrabFood", className: "bg-green-100 text-green-700" };
+	if (joined.includes("shopeefood") || joined.includes("shopee_food")) return { label: "ShopeeFood", className: "bg-orange-100 text-orange-700" };
+	if (joined.includes("djiwaapp") || joined.includes("customer_self_service") || joined.includes("customer-app")) return { label: "DjiwaApp", className: "bg-violet-100 text-violet-700" };
+	if (joined.includes("telegram")) return { label: "Telegram", className: "bg-sky-100 text-sky-700" };
+	return { label: "POS", className: "bg-gray-100 text-gray-700" };
+}
+
 const quickDateFilterOptions: Array<{
 	value: QuickDateFilter;
 	label: string;
@@ -139,6 +157,11 @@ function AdminOrders() {
 
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
+	const [businessFilter, setBusinessFilter] = useState<BusinessFilter>(() => {
+		if (typeof window === "undefined") return "all";
+		const value = new URLSearchParams(window.location.search).get("business");
+		return value === "pos" || value === "mieyamin" || value === "booking" ? value : "all";
+	});
 	const [searchQuery, setSearchQuery] = useState("");
 	const [quickDateFilter, setQuickDateFilter] =
 		useState<QuickDateFilter>("all");
@@ -198,6 +221,7 @@ function AdminOrders() {
 		const orders = (allOrders || []).map((o: any) => ({
 			...o,
 			type: "regular",
+			businessCategory: o.businessUnit === "ordermieyamin" || o.business_unit === "ordermieyamin" ? "mieyamin" : "pos",
 			id: o._id,
 			displayId: o.orderNumber,
 			date: o.createdAt,
@@ -206,6 +230,7 @@ function AdminOrders() {
 		const bookings = (allBookingOrders || []).map((b: any) => ({
 			...b,
 			type: "booking",
+			businessCategory: "booking",
 			id: b._id,
 			displayId: b.bookingCode,
 			status: b.bookingStatus, // Map bookingStatus to status for filtering
@@ -218,6 +243,7 @@ function AdminOrders() {
 
 	// Client-side filtering
 	const filteredOrders = unifiedOrders?.filter((order: any) => {
+		const matchesBusiness = businessFilter === "all" || order.businessCategory === businessFilter;
 		const matchesStatus =
 			statusFilter === "all" || order.status === statusFilter;
 		const matchesSearch =
@@ -230,7 +256,7 @@ function AdminOrders() {
 			!activeDateRange ||
 			(order.createdAt >= activeDateRange.start &&
 				order.createdAt <= activeDateRange.end);
-		return matchesStatus && matchesSearch && matchesQuickDate;
+		return matchesBusiness && matchesStatus && matchesSearch && matchesQuickDate;
 	});
 
 	const totalFiltered = filteredOrders?.length || 0;
@@ -575,6 +601,15 @@ function AdminOrders() {
 							<SelectItem value="cancelled">Dibatalkan</SelectItem>
 						</SelectContent>
 					</Select>
+					<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
+						<SelectTrigger size="sm"><SelectValue placeholder="Bisnis" /></SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">Semua bisnis</SelectItem>
+							<SelectItem value="pos">POS Reguler</SelectItem>
+							<SelectItem value="mieyamin">Order Mie Yamin</SelectItem>
+							<SelectItem value="booking">Booking</SelectItem>
+						</SelectContent>
+					</Select>
 				</div>
 				</div>
 
@@ -630,6 +665,15 @@ function AdminOrders() {
 								<SelectItem value="paid">Lunas</SelectItem>
 								<SelectItem value="completed">Selesai</SelectItem>
 								<SelectItem value="cancelled">Batal</SelectItem>
+							</SelectContent>
+						</Select>
+						<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
+							<SelectTrigger className="text-xs" size="sm"><SelectValue placeholder="Bisnis" /></SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">Semua bisnis</SelectItem>
+								<SelectItem value="pos">POS Reguler</SelectItem>
+								<SelectItem value="mieyamin">Mie Yamin</SelectItem>
+								<SelectItem value="booking">Booking</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
