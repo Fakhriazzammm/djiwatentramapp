@@ -45,6 +45,10 @@ function extractMayarMessage(value: unknown, fallback: string) {
 		const nested = messages as Record<string, unknown>;
 		if (typeof nested.message === "string" && nested.message.trim()) return nested.message.trim();
 	}
+	if (Array.isArray(body.data)) {
+		const firstError = body.data.find((item) => item && typeof item === "object" && typeof (item as Record<string, unknown>).message === "string") as Record<string, unknown> | undefined;
+		if (typeof firstError?.message === "string" && firstError.message.trim()) return firstError.message.trim();
+	}
 	return fallback;
 }
 
