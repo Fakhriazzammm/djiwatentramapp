@@ -809,7 +809,7 @@ function OrderPage() {
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
-				{step !== "party" && step !== "refill" && step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen ? (
+				{step !== "party" && step !== "refill" && step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Grid2X2 className="h-3.5 w-3.5" />} onClick={() => setStep("menu")} />
