@@ -312,17 +312,26 @@ function OrderForm() {
   }, [draftHydrated, pendingPaymentOrderId, kg, readyPackCount, repack, deliveryProvider, deliveryDate, name, email, phone, address, notes]);
 
   async function attachInvoiceAndRedirect(orderId: string, payment: { id: string; link: string; transactionId?: string | null }) {
-    await updateOrderPaymentGateway({
-      id: String(orderId),
-      paymentGateway: {
-        provider: "mayar",
-        invoiceId: payment.id,
-        invoiceUrl: payment.link,
-        transactionId: payment.transactionId ?? null,
-        status: "pending",
-      },
-      paymentReceiptKind: "gateway_pending",
-    });
+    const paymentGateway = {
+      provider: "mayar",
+      invoiceId: payment.id,
+      invoiceUrl: payment.link,
+      transactionId: payment.transactionId ?? null,
+      status: "pending",
+    };
+
+    // The Mayar invoice already carries extraData.orderId. A transient local
+    // metadata write must not prevent the customer from reaching payment.
+    try {
+      await updateOrderPaymentGateway({
+        id: String(orderId),
+        paymentGateway,
+        paymentReceiptKind: "gateway_pending",
+      });
+    } catch (error) {
+      console.warn("[mayar] Order metadata sync failed; continuing to payment", error);
+    }
+
     setPendingPaymentOrderId(null);
     clearPendingPayment();
     window.localStorage.removeItem(DRAFT_ORDER_KEY);
