@@ -17,6 +17,7 @@ import {
 	CheckCircle,
 	ChevronDown,
 	Clock,
+	Copy,
 	CreditCard,
 	Eye,
 	Filter,
@@ -32,6 +33,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { playSuccessSound } from "@/lib/play-success-sound";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -219,6 +221,7 @@ function AdminOrders() {
 	const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
 	const [updatingDeliveryId, setUpdatingDeliveryId] = useState<string | null>(null);
 	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+	const [deleteConfirmation, setDeleteConfirmation] = useState<{ ids: string[]; singleOrder?: Order } | null>(null);
 
 	const getQuickDateRange = (filter: QuickDateFilter) => {
 		const now = new Date();
@@ -471,7 +474,12 @@ function AdminOrders() {
 	const handleBulkDelete = async () => {
 		const ids = Array.from(selectedOrderIds);
 		if (!ids.length || isBulkDeleting) return;
-		if (!window.confirm(`Hapus ${ids.length} pesanan terpilih? Data transaksi dan tracking akan dihapus permanen.`)) return;
+		setDeleteConfirmation({ ids });
+	};
+
+	const confirmDelete = async () => {
+		if (!deleteConfirmation || isBulkDeleting) return;
+		const ids = deleteConfirmation.ids;
 		setIsBulkDeleting(true);
 		try {
 			for (const id of ids) {
@@ -481,6 +489,7 @@ function AdminOrders() {
 				else await deleteOrder({ id: order._id });
 			}
 			setSelectedOrderIds(new Set());
+			setDeleteConfirmation(null);
 			setIsDetailOpen(false);
 			triggerHybridRefresh();
 			toast.success(`${ids.length} pesanan berhasil dihapus`);
@@ -496,20 +505,27 @@ function AdminOrders() {
 	);
 
 	const handleDeleteOrder = async (order: any) => {
-		if (!confirm(`Hapus ${order.type === "booking" ? "booking" : "pesanan"} ini?`)) return;
-		
+		setDeleteConfirmation({ ids: [String(order._id)], singleOrder: order as Order });
+	};
+
+	const copyOrderId = async (order: Order) => {
+		const value = `${order.type === "booking" ? "BK-" : "#"}${order.displayId}`;
 		try {
-			if (order.type === "booking") {
-				await deleteBookingOrder({ id: order._id });
-			} else {
-				await deleteOrder({ id: order._id });
-			}
-			toast.success("Berhasil dihapus"); triggerHybridRefresh();
-			setIsDetailOpen(false);
-		} catch (_e) {
-			toast.error("Gagal menghapus");
+			await navigator.clipboard.writeText(value);
+			toast.success("ID order disalin");
+		} catch {
+			toast.error("ID order gagal disalin");
 		}
 	};
+
+	const getPaymentLabel = (order: Order) => {
+		if (order.status === "paid" || order.status === "completed") return "Lunas";
+		if (order.status === "cancelled") return "Dibatalkan";
+		return "Belum bayar";
+	};
+
+	const getTrackingValue = (order: Order) =>
+		order.deliveryStatus || (order.status === "paid" || order.status === "completed" ? "paid" : "pending_payment");
 
 	const formatrupiah = (amount: number) => {
 		return new Intl.NumberFormat("id-ID", {
@@ -600,15 +616,15 @@ function AdminOrders() {
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-2 duration-500 md:gap-2">
+		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-3 duration-500 md:gap-3">
 			<div className="p-1 md:rounded-xl md:border md:border-border md:bg-card md:p-3 md:shadow-sm">
 				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
 					<div>
 						<h1 className="font-display text-xl font-bold tracking-tight md:text-2xl">
-							Riwayat Pesanan
+							Pesanan
 						</h1>
 						<p className="hidden text-muted-foreground text-xs md:block">
-							Fokus data pesanan.
+							Pantau pembayaran, tracking, dan aktivitas order.
 						</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
@@ -637,13 +653,13 @@ function AdminOrders() {
 							</p>
 						</div>
 						<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
-							<p className="text-[10px] text-muted-foreground uppercase">COGS</p>
+							<p className="text-[10px] text-muted-foreground uppercase">COGS (HPP)</p>
 							<p className="font-semibold text-orange-600 text-sm md:text-base">
 								{formatrupiah(hppCogs.totalCogs)}
 							</p>
 						</div>
 						<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
-							<p className="text-[10px] text-muted-foreground uppercase">Laba</p>
+							<p className="text-[10px] text-muted-foreground uppercase">Laba kotor</p>
 							<p
 								className={`font-semibold text-sm md:text-base ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
 							>
@@ -681,7 +697,7 @@ function AdminOrders() {
 						{showMobileOverview && (
 							<div className="mt-2 grid grid-cols-2 gap-1.5 border-border border-t pt-2">
 								<div className="rounded-lg bg-muted/40 p-2">
-									<p className="text-[11px] text-muted-foreground uppercase">COGS</p>
+									<p className="text-[11px] text-muted-foreground uppercase">COGS (HPP)</p>
 									<p className="font-semibold text-[11px] text-orange-600">
 										{formatrupiah(hppCogs.totalCogs)}
 									</p>
@@ -709,15 +725,16 @@ function AdminOrders() {
 						value={searchQuery}
 					/>
 				</div>
-					<div className="grid min-w-0 grid-cols-[16px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 overflow-hidden">
-						<Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-						<div className="min-w-0">
-							<Select
+						<div className="grid min-w-0 grid-cols-[16px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 overflow-hidden">
+							<Filter className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+							<div className="min-w-0">
+								<label className="sr-only" htmlFor="orders-status-filter">Status pembayaran</label>
+								<Select
 								onValueChange={(val: string | null) => val && setStatusFilter(val)}
 								value={statusFilter}
 							>
-								<SelectTrigger className="w-full min-w-0 overflow-hidden" size="sm">
-									<SelectValue className="min-w-0 truncate" placeholder="Status" />
+								<SelectTrigger id="orders-status-filter" className="w-full min-w-0 overflow-hidden" size="sm">
+									<SelectValue className="min-w-0 truncate" placeholder="Status pembayaran" />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">Semua Status</SelectItem>
@@ -728,9 +745,10 @@ function AdminOrders() {
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="min-w-0">
-							<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
-								<SelectTrigger className="w-full min-w-0 overflow-hidden" size="sm"><SelectValue className="min-w-0 truncate" placeholder="Bisnis" /></SelectTrigger>
+								<div className="min-w-0">
+									<label className="sr-only" htmlFor="orders-business-filter">Bisnis</label>
+									<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
+										<SelectTrigger id="orders-business-filter" className="w-full min-w-0 overflow-hidden" size="sm"><SelectValue className="min-w-0 truncate" placeholder="Bisnis" /></SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">Semua bisnis</SelectItem>
 									<SelectItem value="pos">POS Reguler</SelectItem>
@@ -768,11 +786,17 @@ function AdminOrders() {
 					</div>
 				</div>
 				{selectedOrderIds.size > 0 && (
-					<div className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2">
-						<span className="text-xs font-semibold text-muted-foreground">{selectedOrderIds.size} dipilih</span>
+					<div className="flex flex-wrap items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2">
+						<div className="flex items-center gap-2 text-xs">
+							<span className="font-semibold text-foreground">{selectedOrderIds.size} pesanan dipilih</span>
+							<span className="text-muted-foreground">dari {totalFiltered} terlihat</span>
+						</div>
 						<Button className="ml-auto h-8 text-xs" disabled={isBulkDeleting} onClick={handleBulkDelete} size="sm" variant="destructive">
 							{isBulkDeleting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
-							Hapus terpilih
+							Hapus {selectedOrderIds.size} pesanan
+						</Button>
+						<Button className="h-8 text-xs" disabled={isBulkDeleting} onClick={() => setSelectedOrderIds(new Set())} size="sm" variant="ghost">
+							Batal pilih
 						</Button>
 					</div>
 				)}
@@ -795,10 +819,10 @@ function AdminOrders() {
 							value={statusFilter}
 						>
 							<SelectTrigger className="text-xs" size="sm">
-								<SelectValue placeholder="Status" />
+								<SelectValue placeholder="Status pembayaran" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="all">Semua</SelectItem>
+								<SelectItem value="all">Semua status pembayaran</SelectItem>
 								<SelectItem value="pending">Open Bill</SelectItem>
 								<SelectItem value="paid">Lunas</SelectItem>
 								<SelectItem value="completed">Selesai</SelectItem>
@@ -918,13 +942,13 @@ function AdminOrders() {
 									<th className="w-10 px-3 py-2.5 text-center">
 										<input aria-label="Pilih semua pesanan yang terlihat" checked={allVisibleSelected} onChange={toggleAllVisibleOrders} type="checkbox" />
 									</th>
-									<th className="px-3 py-2.5">ID</th>
-									<th className="px-3 py-2.5">Pelanggan</th>
+									<th className="w-[190px] px-3 py-2.5">ID order</th>
+									<th className="min-w-[190px] px-3 py-2.5">Pelanggan</th>
 									<th className="px-3 py-2.5">Lokasi</th>
 									<th className="px-3 py-2.5">Shift</th>
 									<th className="px-3 py-2.5 text-right">Total</th>
-									<th className="px-3 py-2.5 text-right">Laba</th>
-									<th className="px-3 py-2.5">Status</th>
+									<th className="px-3 py-2.5 text-right">Laba / HPP</th>
+									<th className="min-w-[190px] px-3 py-2.5">Pembayaran / Tracking</th>
 									<th className="px-3 py-2.5">Channel</th>
 									<th className="px-3 py-2.5 text-right">Waktu</th>
 									<th className="px-3 py-2.5 text-center">Aksi</th>
@@ -965,16 +989,16 @@ function AdminOrders() {
 													<input aria-label={`Pilih pesanan ${order.displayId}`} checked={selectedOrderIds.has(String(order._id))} onChange={() => toggleOrderSelection(String(order._id))} type="checkbox" />
 												</td>
 												<td className="px-3 py-2.5 align-top">
-													<div className="flex flex-col leading-tight">
-														<span className="font-bold font-mono text-[11px] text-primary">
-															{order.type === "booking" ? "BK-" : "#"}
-															{order.displayId}
-														</span>
-														{order.type === "booking" && (
-															<span className="text-[11px] text-blue-600 uppercase">
-																Reservasi
+													<div className="flex items-start gap-1.5">
+														<div className="min-w-0 leading-tight">
+															<span className="block whitespace-nowrap font-bold font-mono text-xs text-primary" title={`${order.type === "booking" ? "BK-" : "#"}${order.displayId}`}>
+																{order.type === "booking" ? "BK-" : "#"}{order.displayId}
 															</span>
-														)}
+															{order.type === "booking" && <span className="text-[11px] text-blue-600 uppercase">Reservasi</span>}
+														</div>
+														<Button aria-label={`Salin ID ${order.displayId}`} className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); void copyOrderId(order); }} size="icon" title="Salin ID" variant="ghost">
+															<Copy className="h-3.5 w-3.5" />
+														</Button>
 													</div>
 												</td>
 												<td className="px-3 py-2.5 align-top">
@@ -983,7 +1007,7 @@ function AdminOrders() {
 															<User className="h-3 w-3" />
 														</div>
 														<div className="min-w-0 leading-tight">
-															<p className="max-w-[170px] break-words font-medium text-[11px]">
+														<p className="max-w-[190px] break-words font-medium text-xs">
 																{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black uppercase text-amber-700"><Star className="h-2.5 w-2.5" /> Member</span> : null}
 															</p>
 															<p className="text-[10px] text-muted-foreground uppercase">
@@ -1009,7 +1033,7 @@ function AdminOrders() {
 														</span>
 													</div>
 												</td>
-												<td className="px-3 py-2.5 text-right align-top font-semibold text-[11px] tabular-nums">
+												<td className="px-3 py-2.5 text-right align-top font-semibold text-xs tabular-nums">
 													{formatrupiah(order.totalAmount)}
 												</td>
 												<td className="px-3 py-2.5 text-right align-top">
@@ -1039,39 +1063,33 @@ function AdminOrders() {
 														}
 														const profit = order.totalAmount - orderCogs;
 														return (
-															<span
-																className={`font-semibold text-[11px] ${profit >= 0 ? "text-green-600" : "text-red-600"}`}
-															>
+															<span title="Laba = total penjualan dikurangi HPP recipe yang terhubung" className={`font-semibold text-xs ${profit >= 0 ? "text-green-600" : "text-red-600"}`}>
 																{formatrupiah(profit)}
 															</span>
 														);
 													})()}
 												</td>
-												<td className="px-3 py-2.5 align-top" onClick={(event) => event.stopPropagation()}>
-													{resolveOrderChannel(order).label === "Mie Yamin" ? (
-														<div className="relative min-w-[170px]">
-															<Select
-																disabled={updatingDeliveryId === String(order._id)}
-																onValueChange={(value: string | null) => value && handleInlineMieYaminDeliveryStatusUpdate(order, value as MieYaminDeliveryStatus)}
-																value={order.deliveryStatus || (order.status === "paid" || order.status === "completed" ? "paid" : "pending_payment")}
-															>
-																<SelectTrigger className="h-8 w-full text-[10px]" size="sm">
-																	{updatingDeliveryId === String(order._id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SelectValue />}
-																</SelectTrigger>
-																<SelectContent>
-																	{MIE_YAMIN_DELIVERY_STATUSES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
-																</SelectContent>
-															</Select>
-														</div>
-													) : (
-														<Badge
-															className="rounded-md px-1.5 py-0 font-normal text-[10px]"
-															variant={getStatusBadgeVariant(order.status)}
-														>
-															{getStatusLabel(order.status)}
-														</Badge>
-													)}
-												</td>
+														<td className="px-3 py-2.5 align-top" onClick={(event) => event.stopPropagation()}>
+															<div className="min-w-[190px] space-y-1.5">
+																<div className="flex items-center justify-between gap-2">
+																	<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Pembayaran</span>
+																	<Badge className="rounded-md px-1.5 py-0 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getPaymentLabel(order)}</Badge>
+																</div>
+																{resolveOrderChannel(order).label === "Mie Yamin" && (
+																	<div className="flex items-center justify-between gap-2">
+																		<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tracking</span>
+																		<div className="min-w-0 flex-1">
+																			<Select disabled={updatingDeliveryId === String(order._id)} onValueChange={(value: string | null) => value && handleInlineMieYaminDeliveryStatusUpdate(order, value as MieYaminDeliveryStatus)} value={getTrackingValue(order)}>
+																				<SelectTrigger aria-label={`Ubah tracking order ${order.displayId}`} className="h-8 w-full text-[10px]" size="sm">
+																					{updatingDeliveryId === String(order._id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SelectValue />}
+																				</SelectTrigger>
+																				<SelectContent>{MIE_YAMIN_DELIVERY_STATUSES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+																			</Select>
+																		</div>
+																	</div>
+																)}
+															</div>
+													</td>
 												<td className="px-3 py-2.5 align-top">
 													<div className="flex flex-col gap-1 leading-tight">
 														{(() => {
@@ -1090,7 +1108,7 @@ function AdminOrders() {
 													</div>
 												</td>
 												<td className="px-3 py-2.5 text-center align-top">
-													<div className="flex items-center justify-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+													<div className="flex items-center justify-center gap-0.5">
 														<Button
 															className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
 															onClick={(e) => {
@@ -1456,6 +1474,16 @@ function AdminOrders() {
 					)}
 				</SheetContent>
 			</Sheet>
+			<ConfirmationModal
+				isOpen={deleteConfirmation !== null}
+				onClose={() => { if (!isBulkDeleting) setDeleteConfirmation(null); }}
+				onConfirm={() => void confirmDelete()}
+				title={deleteConfirmation?.ids.length === 1 ? "Hapus pesanan?" : `Hapus ${deleteConfirmation?.ids.length ?? 0} pesanan?`}
+				subtitle="Tindakan permanen"
+				message="Item, tracking, dan histori order terkait akan ikut dihapus. Tindakan ini tidak dapat dibatalkan."
+				confirmText={deleteConfirmation?.ids.length === 1 ? "Hapus pesanan" : `Hapus ${deleteConfirmation?.ids.length ?? 0} pesanan`}
+				loading={isBulkDeleting}
+			/>
 		</div>
 	);
 }
