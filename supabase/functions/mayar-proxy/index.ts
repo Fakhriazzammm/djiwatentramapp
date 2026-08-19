@@ -52,6 +52,14 @@ function extractMayarMessage(value: unknown, fallback: string) {
 	return fallback;
 }
 
+function normalizeMobile(value: unknown) {
+	const mobile = typeof value === "string" ? value.replace(/[^\d]/g, "") : "";
+	if (mobile.length < 10) {
+		throw new Error("Nomor WhatsApp harus minimal 10 digit, contoh: 081234567890.");
+	}
+	return mobile;
+}
+
 function normalizeExtraData(value: unknown): Record<string, string> {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return {};
 	return Object.entries(value as Record<string, unknown>).reduce<Record<string, string>>((result, [key, item]) => {
@@ -79,7 +87,7 @@ async function createInvoice(payload: Record<string, unknown>) {
 	const body: Record<string, unknown> = {
 		name: payload.name,
 		email: payload.email || "no-reply@restaurant.local",
-		mobile: payload.mobile || "085000000000",
+		mobile: normalizeMobile(payload.mobile),
 		redirectUrl: (payload.redirectUrl as string)?.trim() || "https://zantara.myr.id",
 		description: payload.description || "",
 		expiredAt: payload.expiredAt || new Date(Date.now() + 60 * 60 * 1000).toISOString(),

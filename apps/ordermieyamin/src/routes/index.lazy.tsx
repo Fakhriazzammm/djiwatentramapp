@@ -89,6 +89,10 @@ function getTrackingStatus(order: any) {
     : deliveryStatus || (paymentSettled ? "paid" : "pending_payment");
 }
 
+function normalizeMobile(value: unknown) {
+  return typeof value === "string" ? value.replace(/[^\d]/g, "") : "";
+}
+
 function getCheckoutErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
   if (error && typeof error === "object") {
@@ -403,7 +407,7 @@ function OrderForm() {
     }
 
     const invoice = await createInvoice({
-      name: name.trim(), mobile: phone.trim(), redirectUrl,
+      name: name.trim(), mobile: normalizeMobile(phone), redirectUrl,
       email: email.trim() || undefined,
       description: `Order Mie Yamin B2B ${kg} kg${repack ? " + repack 100 gram" : ""}`,
       expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
@@ -431,6 +435,11 @@ function OrderForm() {
     }
     if (!mieYaminSettings.enabledProviders.length) {
       setError("Provider pengiriman sedang tidak tersedia. Hubungi admin untuk bantuan.");
+      return;
+    }
+    const mobile = normalizeMobile(phone);
+    if (mobile.length < 10) {
+      setError("Nomor WhatsApp harus minimal 10 digit, contoh: 081234567890.");
       return;
     }
     if (!deliveryProvider || !deliveryDate || !name.trim() || !phone.trim() || !address.trim()) {
