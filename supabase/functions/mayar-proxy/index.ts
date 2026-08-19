@@ -90,7 +90,7 @@ async function createInvoice(payload: Record<string, unknown>) {
 		mobile: normalizeMobile(payload.mobile),
 		redirectUrl: (payload.redirectUrl as string)?.trim() || "https://zantara.myr.id",
 		description: payload.description || "",
-		expiredAt: payload.expiredAt || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		expiredAt: payload.expiredAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 		items: (Array.isArray(payload.items) ? payload.items : []).map((item: any) => {
 			const description = String(item?.description || item?.name || "Item");
 			return {

@@ -411,7 +411,7 @@ function OrderForm() {
       name: name.trim(), mobile: normalizeMobile(phone), redirectUrl,
       email: email.trim() || undefined,
       description: `Order Mie Yamin B2B ${kg} kg${repack ? " + repack 100 gram" : ""}`,
-      expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       extraData: { orderId: String(orderId), brandSlug: BRAND_SLUG, businessUnit: BUSINESS_UNIT, deliveryProvider, shippingFee: String(shippingFee), deliveryArea: String(mieYaminSettings.deliveryArea) },
       items: [
         { quantity: kg, rate: Number(mieYaminSettings.noodlePricePerKg), description: `Mie Yamin Mentah ${kg} kg` },
@@ -421,7 +421,7 @@ function OrderForm() {
       ],
     });
     if (!invoice?.data?.link || !invoice?.data?.id) throw new Error("Invoice pembayaran belum tersedia.");
-    savePendingPayment({ orderId: String(orderId), invoiceId: String(invoice.data.id), link: invoice.data.link, expiresAt: Date.now() + 60 * 60 * 1000 });
+    savePendingPayment({ orderId: String(orderId), invoiceId: String(invoice.data.id), link: invoice.data.link, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
     await attachInvoiceAndRedirect(String(orderId), invoice.data);
   }
 
