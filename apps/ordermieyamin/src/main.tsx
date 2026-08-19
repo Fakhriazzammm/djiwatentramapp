@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { Toaster } from "sonner";
 import { routeTree } from "./routeTree.gen";
 import { AppUpdatePrompt } from "@/components/app-update-prompt";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
@@ -47,6 +48,21 @@ if (rootEl) {
 	root.render(
 		<StrictMode>
 			<RouterProvider router={router} />
+			<Toaster
+				position="top-center"
+				richColors
+				toastOptions={{
+					classNames: {
+						toast: "cn-toast",
+					},
+				}}
+				style={{
+					"--normal-bg": "var(--popover)",
+					"--normal-text": "var(--popover-foreground)",
+					"--normal-border": "var(--border)",
+					"--border-radius": "var(--radius)",
+				} as React.CSSProperties}
+			/>
 			<AppUpdatePrompt />
 			<PwaInstallPrompt />
 		</StrictMode>,

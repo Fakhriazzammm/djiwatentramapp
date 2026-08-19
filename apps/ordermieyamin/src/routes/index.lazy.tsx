@@ -2,6 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, ClipboardList, Flame, Package, Plus, Truck } from "lucide-react";
+import { toast } from "sonner";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridMayarGetInvoiceDetail, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
 import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
@@ -470,28 +471,28 @@ function OrderForm() {
 
   function submit() {
     if (!settingsLoaded) {
-      setError("Harga dan ketersediaan sedang dimuat. Tunggu sebentar lalu coba lagi.");
+      toast.error("Harga dan ketersediaan sedang dimuat. Tunggu sebentar lalu coba lagi.");
       return;
     }
     if (kg < minOrderKg) {
-      setError(`Minimum order adalah ${minOrderKg} kg.`);
+      toast.error(`Minimum order adalah ${minOrderKg} kg.`);
       return;
     }
     if (!mieYaminSettings.enabledProviders.length) {
-      setError("Provider pengiriman sedang tidak tersedia. Hubungi admin untuk bantuan.");
+      toast.error("Provider pengiriman sedang tidak tersedia. Hubungi admin untuk bantuan.");
       return;
     }
     const mobile = normalizeMobile(phone);
     if (mobile.length < 10) {
-      setError("Nomor WhatsApp harus minimal 10 digit, contoh: 081234567890.");
+      toast.error("Nomor WhatsApp harus minimal 10 digit, contoh: 081234567890.");
       return;
     }
     if (!deliveryProvider || !deliveryDate || !name.trim() || !phone.trim() || !address.trim()) {
-      setError("Pilih pengiriman, lalu lengkapi tanggal pengiriman, nama, WhatsApp, dan alamat.");
+      toast.error("Pilih pengiriman, lalu lengkapi tanggal pengiriman, nama, WhatsApp, dan alamat.");
       return;
     }
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Format email belum benar.");
+      toast.error("Format email belum benar.");
       return;
     }
     setError("");
@@ -533,7 +534,7 @@ function OrderForm() {
       setPendingPaymentOrderId(String(orderId));
       await createPaymentInvoice(String(orderId));
     } catch (e) {
-      setError(getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi."));
+      toast.error(getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi."));
     } finally {
       checkoutLockRef.current = false;
       setSubmitting(false);
@@ -548,7 +549,7 @@ function OrderForm() {
     try {
       await createPaymentInvoice(pendingPaymentOrderId);
     } catch (e) {
-      setError(getCheckoutErrorMessage(e, "Invoice belum berhasil dibuat. Coba lagi."));
+      toast.error(getCheckoutErrorMessage(e, "Invoice belum berhasil dibuat. Coba lagi."));
     } finally {
       checkoutLockRef.current = false;
       setSubmitting(false);
@@ -588,7 +589,6 @@ function OrderForm() {
           {supportHref ? <a href={supportHref} target="_blank" rel="noopener noreferrer" className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-xs font-black text-white">Chat WhatsApp admin</a> : null}
         </div>
         {reviewOpen ? <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4"><div><p className="text-sm font-black text-primary">Review pesanan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pastikan jumlah, tanggal, dan alamat sudah benar sebelum lanjut ke pembayaran.</p></div><div className="space-y-1.5 text-xs"><p><b>{kg} kg</b> Mie Yamin Mentah</p>{readyPackCount > 0 ? <p><b>{readyPackCount} pcs</b> kemasan siap masak</p> : null}{repack ? <p>Jasa repack <b>{repackCount} pcs</b></p> : null}<p>Pengiriman <b>{deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</b> pada <b>{new Date(`${deliveryDate}T12:00:00+07:00`).toLocaleDateString("id-ID", { dateStyle: "long" })}</b></p><p>Penerima <b>{name}</b> · {phone}</p><p className="break-words">{address}</p>{email.trim() ? <p>Email bukti pembayaran <b>{email}</b></p> : null}</div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setReviewOpen(false)} className="h-11 rounded-xl border border-border bg-background text-xs font-black">Kembali edit</button><button type="button" disabled={submitting} onClick={confirmSubmit} className="h-11 rounded-xl bg-primary text-xs font-black text-white disabled:opacity-50">{submitting ? "Menyiapkan..." : "Konfirmasi & bayar"}</button></div></div> : null}
-        {error ? <div className="space-y-2"><p className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700" role="alert">{error}</p>{supportHref ? <a href={supportHref} target="_blank" rel="noopener noreferrer" className="flex h-10 items-center justify-center rounded-xl border border-border text-xs font-black text-primary">Butuh bantuan? Chat WhatsApp admin</a> : null}</div> : null}
         {pendingPaymentOrderId ? <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-black text-amber-900">Order sudah tersimpan, tetapi invoice pembayaran belum berhasil dibuat.</p><p className="text-[11px] leading-relaxed text-amber-800">Coba lagi dengan order yang sama agar tidak membuat pesanan ganda.</p><button type="button" disabled={submitting} onClick={retryPayment} className="h-11 w-full rounded-xl bg-amber-600 text-xs font-black text-white disabled:opacity-50">{submitting ? "Mencoba lagi..." : "Coba buat pembayaran lagi"}</button></div> : null}
         {!reviewOpen && !pendingPaymentOrderId ? <button disabled={submitting} onClick={submit} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white disabled:opacity-50">Cek pesanan & bayar <ChevronRight className="h-4 w-4" /></button> : null}
       </div>
