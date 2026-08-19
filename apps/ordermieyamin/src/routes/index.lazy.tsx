@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, ClipboardList, Package, Plus, Truck } from "lucide-react";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridMayarGetInvoiceDetail, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
 import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
@@ -286,6 +286,7 @@ function OrderForm() {
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const checkoutLockRef = useRef(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<string | null>(() => readPendingPayment()?.orderId ?? null);
   const [draftHydrated, setDraftHydrated] = useState(false);
@@ -455,6 +456,8 @@ function OrderForm() {
   }
 
   async function confirmSubmit() {
+    if (checkoutLockRef.current) return;
+    checkoutLockRef.current = true;
     setSubmitting(true); setError("");
     try {
       const orderId = await createOrder({
@@ -488,17 +491,25 @@ function OrderForm() {
       await createPaymentInvoice(String(orderId));
     } catch (e) {
       setError(getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi."));
-    } finally { setSubmitting(false); }
+    } finally {
+      checkoutLockRef.current = false;
+      setSubmitting(false);
+    }
   }
 
   async function retryPayment() {
     if (!pendingPaymentOrderId) return;
+    if (checkoutLockRef.current) return;
+    checkoutLockRef.current = true;
     setSubmitting(true); setError("");
     try {
       await createPaymentInvoice(pendingPaymentOrderId);
     } catch (e) {
       setError(getCheckoutErrorMessage(e, "Invoice belum berhasil dibuat. Coba lagi."));
-    } finally { setSubmitting(false); }
+    } finally {
+      checkoutLockRef.current = false;
+      setSubmitting(false);
+    }
   }
 
   if (siteSettings === null) {
