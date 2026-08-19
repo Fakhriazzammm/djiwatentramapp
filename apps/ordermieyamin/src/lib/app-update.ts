@@ -21,6 +21,8 @@ function normalizeVersionValue(value: unknown) {
 
 function isNewerBuild(payload: any) {
 	const latestVersion = normalizeVersionValue(payload?.version);
+	const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
+	if (latestCommit && latestCommit !== APP_VERSION.commitHash) return true;
 	if (latestVersion && latestVersion !== APP_VERSION.semantic) return true;
 	return false;
 }
@@ -47,19 +49,6 @@ export async function checkForAppUpdate() {
 	const INFLIGHT_KEY = "__app_update_inflight__";
 	const APPLIED_VERSION_KEY = "__app_update_applied_version__";
 
-	// Skip jika versi di version.json sudah pernah diapply sebelumnya
-	// Ini mencegah loop: user klik update → reload → bundle lama masih terload
-	// → polling deteksi version.json masih beda → popup lagi ♾️
-	const storedAppliedVersion = localStorage.getItem(APPLIED_VERSION_KEY);
-	if (storedAppliedVersion) {
-		const latestVersion = normalizeVersionValue(payload?.version);
-		if (latestVersion && latestVersion === storedAppliedVersion) {
-			return null;
-		}
-		// Applied version sudah obsolete, hapus
-		localStorage.removeItem(APPLIED_VERSION_KEY);
-	}
-
 	if (sessionStorage.getItem(INFLIGHT_KEY) === "1") {
 		sessionStorage.removeItem(INFLIGHT_KEY);
 		return null;
@@ -77,6 +66,10 @@ export async function checkForAppUpdate() {
 		if (!response.ok) return null;
 
 		const payload = await response.json();
+		const storedAppliedVersion = localStorage.getItem(APPLIED_VERSION_KEY);
+		const latestBuildKey = `${normalizeVersionValue(payload?.version)}:${normalizeVersionValue(payload?.commitHash ?? payload?.commit)}`;
+		if (storedAppliedVersion && latestBuildKey === storedAppliedVersion) return null;
+		if (storedAppliedVersion) localStorage.removeItem(APPLIED_VERSION_KEY);
 		if (!isNewerBuild(payload)) return null;
 
 		const updateInfo: AppUpdateInfo = {
@@ -114,7 +107,11 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
-	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
+	if (
+		latestUpdateInfo &&
+		latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion &&
+		latestUpdateInfo.currentCommit === latestUpdateInfo.latestCommit
+	) {
 		sessionStorage.setItem("__app_update_inflight__", "1");
 		if ("serviceWorker" in navigator) {
 			navigator.serviceWorker.getRegistrations().then((regs) => {
@@ -131,8 +128,11 @@ export async function applyAppUpdate() {
 
 	// Simpan versi yang sedang diapply — polling skip version.json yg sama
 	// setelah reload. Ini mencegah loop popup terus-terusan.
-	if (latestUpdateInfo?.latestVersion) {
-		localStorage.setItem("__app_update_applied_version__", latestUpdateInfo.latestVersion);
+	if (latestUpdateInfo) {
+		localStorage.setItem(
+			"__app_update_applied_version__",
+			`${latestUpdateInfo.latestVersion}:${latestUpdateInfo.latestCommit}`,
+		);
 	}
 
 	try {

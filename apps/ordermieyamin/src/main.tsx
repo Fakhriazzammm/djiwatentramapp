@@ -16,8 +16,13 @@ declare module "@tanstack/react-router" {
 	}
 }
 
-// Register service worker (autoUpdate mode — silent SW lifecycle)
-registerSW();
+// Register service worker and notify the global prompt when a new worker waits.
+registerSW({
+	immediate: true,
+	onNeedRefresh: () => {
+		void checkForAppUpdate();
+	},
+});
 
 // Start polling /version.json for update detection
 startAppUpdatePolling();
