@@ -715,7 +715,7 @@ function AdminOrders() {
 			)}
 
 			<div className="hidden space-y-2 rounded-xl border border-border bg-card p-2.5 shadow-sm md:block">
-				<div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_220px]">
+				<div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_360px]">
 					<div className="relative">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
@@ -734,7 +734,7 @@ function AdminOrders() {
 								value={statusFilter}
 							>
 								<SelectTrigger id="orders-status-filter" className="w-full min-w-0 overflow-hidden" size="sm">
-									<SelectValue className="min-w-0 truncate" placeholder="Status pembayaran" />
+									<SelectValue className="min-w-0 truncate">{statusFilter === "all" ? "Pembayaran: Semua" : statusFilter === "pending" ? "Pembayaran: Open Bill" : statusFilter === "paid" ? "Pembayaran: Lunas" : statusFilter === "completed" ? "Pembayaran: Selesai" : "Pembayaran: Dibatalkan"}</SelectValue>
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">Semua Status</SelectItem>
@@ -748,12 +748,12 @@ function AdminOrders() {
 								<div className="min-w-0">
 									<label className="sr-only" htmlFor="orders-business-filter">Bisnis</label>
 									<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
-										<SelectTrigger id="orders-business-filter" className="w-full min-w-0 overflow-hidden" size="sm"><SelectValue className="min-w-0 truncate" placeholder="Bisnis" /></SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">Semua bisnis</SelectItem>
-									<SelectItem value="pos">POS Reguler</SelectItem>
-									<SelectItem value="mieyamin">Order Mie Yamin</SelectItem>
-									<SelectItem value="booking">Booking</SelectItem>
+										<SelectTrigger id="orders-business-filter" className="w-full min-w-0 overflow-hidden" size="sm"><SelectValue className="min-w-0 truncate">{businessFilter === "all" ? "Bisnis: Semua" : businessFilter === "pos" ? "Bisnis: POS Reguler" : businessFilter === "mieyamin" ? "Bisnis: Mie Yamin" : "Bisnis: Booking"}</SelectValue></SelectTrigger>
+										<SelectContent className="min-w-[210px]">
+											<SelectItem className="whitespace-nowrap" value="all">Semua bisnis</SelectItem>
+											<SelectItem className="whitespace-nowrap" value="pos">POS Reguler</SelectItem>
+											<SelectItem className="whitespace-nowrap" value="mieyamin">Order Mie Yamin</SelectItem>
+											<SelectItem className="whitespace-nowrap" value="booking">Booking</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
