@@ -114,7 +114,7 @@ export async function mayarCreateInvoiceViaItems(payload: {
     mobile: payload.mobile || fallback.mobile,
     redirectUrl: payload.redirectUrl ?? "",
     description: payload.description ?? "",
-    expiredAt: payload.expiredAt ?? new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    expiredAt: payload.expiredAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     items: payload.items,
   };
   try {

@@ -1248,7 +1248,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							redirectUrl:
 								typeof window !== "undefined" ? window.location.href : undefined,
 							description: `POS order ${siteSettings.storeName || "YumiPOS"}`,
-							expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+							expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 							items: cartItems.map((item) => ({
 								quantity: item.quantity,
 								rate: item.price,

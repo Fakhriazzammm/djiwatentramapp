@@ -563,7 +563,7 @@ function OrderPage() {
 						mobile: siteSettings?.storePhone || "",
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
-						expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+						expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 						extraData: { orderId: String(orderId) },
 						items: [
 							...cart.map((item) => ({
