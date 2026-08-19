@@ -20,6 +20,7 @@ import {
 	CreditCard,
 	Eye,
 	Filter,
+	Loader2,
 	Search,
 	ShoppingBag,
 	Star,
@@ -211,6 +212,9 @@ function AdminOrders() {
 	const [isDetailOpen, setIsDetailOpen] = useState(false);
 	const [hasAppliedFocus, setHasAppliedFocus] = useState(false);
 	const [showMobileOverview, setShowMobileOverview] = useState(false);
+	const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+	const [updatingDeliveryId, setUpdatingDeliveryId] = useState<string | null>(null);
+	const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
 	const getQuickDateRange = (filter: QuickDateFilter) => {
 		const now = new Date();
@@ -424,6 +428,68 @@ function AdminOrders() {
 			toast.error(error instanceof Error ? error.message : "Gagal memperbarui tracking Mie Yamin");
 		}
 	};
+
+	const handleInlineMieYaminDeliveryStatusUpdate = async (order: Order, newStatus: MieYaminDeliveryStatus) => {
+		if (resolveOrderChannel(order).label !== "Mie Yamin") return;
+		setUpdatingDeliveryId(String(order._id));
+		try {
+			await updateMieYaminDeliveryStatus({ id: String(order._id), deliveryStatus: newStatus });
+			if (selectedOrder?._id === order._id) {
+				setSelectedOrder({ ...selectedOrder, deliveryStatus: newStatus });
+			}
+			triggerHybridRefresh();
+			toast.success(`Tracking diperbarui menjadi ${getMieYaminDeliveryLabel(newStatus)}`);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Gagal memperbarui tracking Mie Yamin");
+		} finally {
+			setUpdatingDeliveryId(null);
+		}
+	};
+
+	const toggleOrderSelection = (id: string) => {
+		setSelectedOrderIds((current) => {
+			const next = new Set(current);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	};
+
+	const toggleAllVisibleOrders = () => {
+		const visibleIds = (filteredOrders ?? []).map((order: Order) => String(order._id));
+		setSelectedOrderIds((current) =>
+			visibleIds.length > 0 && visibleIds.every((id) => current.has(id))
+				? new Set()
+				: new Set(visibleIds),
+		);
+	};
+
+	const handleBulkDelete = async () => {
+		const ids = Array.from(selectedOrderIds);
+		if (!ids.length || isBulkDeleting) return;
+		if (!window.confirm(`Hapus ${ids.length} pesanan terpilih? Data transaksi dan tracking akan dihapus permanen.`)) return;
+		setIsBulkDeleting(true);
+		try {
+			for (const id of ids) {
+				const order = unifiedOrders?.find((item: any) => String(item._id) === id);
+				if (!order) continue;
+				if (order.type === "booking") await deleteBookingOrder({ id: order._id });
+				else await deleteOrder({ id: order._id });
+			}
+			setSelectedOrderIds(new Set());
+			setIsDetailOpen(false);
+			triggerHybridRefresh();
+			toast.success(`${ids.length} pesanan berhasil dihapus`);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Sebagian pesanan gagal dihapus");
+		} finally {
+			setIsBulkDeleting(false);
+		}
+	};
+
+	const allVisibleSelected = Boolean(
+		filteredOrders?.length && filteredOrders.every((order: Order) => selectedOrderIds.has(String(order._id))),
+	);
 
 	const handleDeleteOrder = async (order: any) => {
 		if (!confirm(`Hapus ${order.type === "booking" ? "booking" : "pesanan"} ini?`)) return;
@@ -697,6 +763,15 @@ function AdminOrders() {
 						))}
 					</div>
 				</div>
+				{selectedOrderIds.size > 0 && (
+					<div className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2">
+						<span className="text-xs font-semibold text-muted-foreground">{selectedOrderIds.size} dipilih</span>
+						<Button className="ml-auto h-8 text-xs" disabled={isBulkDeleting} onClick={handleBulkDelete} size="sm" variant="destructive">
+							{isBulkDeleting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
+							Hapus terpilih
+						</Button>
+					</div>
+				)}
 			</div>
 
 			<div className="sticky top-0 z-20 -mx-3 border-border border-y bg-background/95 px-3 py-2 backdrop-blur md:hidden">
@@ -836,6 +911,9 @@ function AdminOrders() {
 						<table className="w-full min-w-[980px] text-left text-sm">
 							<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 								<tr className="text-[11px] text-muted-foreground">
+									<th className="w-10 px-3 py-2.5 text-center">
+										<input aria-label="Pilih semua pesanan yang terlihat" checked={allVisibleSelected} onChange={toggleAllVisibleOrders} type="checkbox" />
+									</th>
 									<th className="px-3 py-2.5">ID</th>
 									<th className="px-3 py-2.5">Pelanggan</th>
 									<th className="px-3 py-2.5">Lokasi</th>
@@ -853,7 +931,7 @@ function AdminOrders() {
 									<tr>
 										<td
 											className="h-44 text-center text-muted-foreground text-sm"
-											colSpan={10}
+											colSpan={11}
 										>
 											Tidak ada pesanan yang cocok dengan filter.
 										</td>
@@ -879,6 +957,9 @@ function AdminOrders() {
 												role="button"
 												tabIndex={0}
 											>
+												<td className="px-3 py-2.5 text-center align-top" onClick={(event) => event.stopPropagation()}>
+													<input aria-label={`Pilih pesanan ${order.displayId}`} checked={selectedOrderIds.has(String(order._id))} onChange={() => toggleOrderSelection(String(order._id))} type="checkbox" />
+												</td>
 												<td className="px-3 py-2.5 align-top">
 													<div className="flex flex-col leading-tight">
 														<span className="font-bold font-mono text-[11px] text-primary">
@@ -962,13 +1043,30 @@ function AdminOrders() {
 														);
 													})()}
 												</td>
-												<td className="px-3 py-2.5 align-top">
-													<Badge
-														className="rounded-md px-1.5 py-0 font-normal text-[10px]"
-														variant={getStatusBadgeVariant(order.status)}
-													>
-														{getStatusLabel(order.status)}
-													</Badge>
+												<td className="px-3 py-2.5 align-top" onClick={(event) => event.stopPropagation()}>
+													{resolveOrderChannel(order).label === "Mie Yamin" ? (
+														<div className="relative min-w-[170px]">
+															<Select
+																disabled={updatingDeliveryId === String(order._id)}
+																onValueChange={(value: string | null) => value && handleInlineMieYaminDeliveryStatusUpdate(order, value as MieYaminDeliveryStatus)}
+																value={order.deliveryStatus || (order.status === "paid" || order.status === "completed" ? "paid" : "pending_payment")}
+															>
+																<SelectTrigger className="h-8 w-full text-[10px]" size="sm">
+																	{updatingDeliveryId === String(order._id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SelectValue />}
+																</SelectTrigger>
+																<SelectContent>
+																	{MIE_YAMIN_DELIVERY_STATUSES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+																</SelectContent>
+															</Select>
+														</div>
+													) : (
+														<Badge
+															className="rounded-md px-1.5 py-0 font-normal text-[10px]"
+															variant={getStatusBadgeVariant(order.status)}
+														>
+															{getStatusLabel(order.status)}
+														</Badge>
+													)}
 												</td>
 												<td className="px-3 py-2.5 align-top">
 													<div className="flex flex-col gap-1 leading-tight">
