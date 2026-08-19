@@ -89,6 +89,10 @@ interface Order {
 	totalAmount: number;
 	paymentMethod: string;
 	customerName?: string;
+	customerEmail?: string | null;
+	customerPhone?: string | null;
+	deliveryContactPhone?: string | null;
+	deliveryAddress?: string | null;
 	customer_source_id?: string;
 	items: OrderItem[];
 	createdAt: number;
@@ -1127,7 +1131,7 @@ function AdminOrders() {
 			{/* Order Detail Sheet */}
 			<Sheet onOpenChange={setIsDetailOpen} open={isDetailOpen}>
 				<SheetContent className="flex w-full flex-col sm:max-w-lg">
-					<SheetHeader className="border-border border-b px-4 py-3">
+					<SheetHeader className="border-border border-b px-4 py-3 pr-16">
 						<div className="flex items-center justify-between">
 							<SheetTitle className="text-lg">Detail Pesanan</SheetTitle>
 							<Badge
@@ -1162,9 +1166,11 @@ function AdminOrders() {
 														Pelanggan
 													</p>
 													<p className="font-bold text-sm">
-														{selectedOrder.customerName || "Tanpa Nama"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black text-amber-700 uppercase ml-1"><Star className="h-3 w-3" aria-hidden="true" /> Member</span> : null}
+														{selectedOrder.customerName || "Pelanggan Umum"}{selectedOrder.customer_source_id && selectedOrder.customer_source_id.trim() ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0 text-[10px] font-black text-amber-700 uppercase ml-1"><Star className="h-3 w-3" aria-hidden="true" /> Member</span> : null}
 													</p>
-													{(selectedOrder as any).customerEmail ? <p className="mt-1 text-[11px] text-muted-foreground">{(selectedOrder as any).customerEmail}</p> : null}
+													{selectedOrder.customerPhone || selectedOrder.deliveryContactPhone ? <p className="mt-1 text-[11px] text-muted-foreground">WA: {selectedOrder.customerPhone || selectedOrder.deliveryContactPhone}</p> : null}
+													{selectedOrder.customerEmail ? <p className="text-[11px] text-muted-foreground">{selectedOrder.customerEmail}</p> : null}
+													{selectedOrder.deliveryAddress ? <p className="mt-1 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">{selectedOrder.deliveryAddress}</p> : <p className="mt-1 text-[11px] text-muted-foreground">Kontak pelanggan tersimpan di order</p>}
 												</div>
 											</div>
 											<div className="text-right">
@@ -1330,7 +1336,7 @@ function AdminOrders() {
 													</div>
 													<div className="text-right">
 														<p className="text-[9px] font-bold uppercase tracking-wide text-amber-800/70">Status saat ini</p>
-														<Badge className="mt-0.5 border-amber-200 bg-white px-1.5 py-0 text-[10px] text-amber-800" variant="outline">{getMieYaminDeliveryLabel(selectedOrder.deliveryStatus)}</Badge>
+														<Badge className="mt-0.5 border-amber-200 bg-white px-1.5 py-0 text-[10px] text-amber-800" variant="outline">{getMieYaminDeliveryLabel(selectedOrder.deliveryStatus || (selectedOrder.status === "paid" || selectedOrder.status === "completed" ? "paid" : "pending_payment"))}</Badge>
 													</div>
 												</div>
 												<Select
@@ -1344,9 +1350,11 @@ function AdminOrders() {
 												</Select>
 											</div>
 										) : null}
-										<h4 className="font-medium text-[10px] text-muted-foreground uppercase tracking-widest">
-											Ubah Status Pesanan
-										</h4>
+										{resolveOrderChannel(selectedOrder).label !== "Mie Yamin" && (
+											<>
+											<h4 className="font-medium text-[10px] text-muted-foreground uppercase tracking-widest">
+												Ubah Status Pesanan
+											</h4>
 										<div className="grid grid-cols-2 gap-1.5">
 											<Button
 												className={`h-9 text-xs ${
@@ -1421,6 +1429,8 @@ function AdminOrders() {
 												Dibatalkan
 											</Button>
 										</div>
+										</>
+									)}
 									</div>
 
 									<div className="flex gap-2 border-t border-border/60 pt-3">
@@ -1432,12 +1442,12 @@ function AdminOrders() {
 											Tutup Detail
 										</Button>
 										<Button
-											className="h-9 w-9 text-destructive"
+											className="h-9 flex-1 gap-1.5 text-xs text-destructive hover:bg-destructive/10"
 											onClick={() => handleDeleteOrder(selectedOrder)}
 											variant="ghost"
-											size="icon"
 										>
 											<Trash2 className="h-4 w-4" />
+											Hapus pesanan
 										</Button>
 									</div>
 								</div>
