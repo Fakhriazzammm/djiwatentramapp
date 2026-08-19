@@ -2513,7 +2513,7 @@ export function useHybridCreateOrder() {
 			const isMieYaminOrder = args?.businessUnit === "ordermieyamin";
 			let mieYaminOrderNo: number | null = null;
 			if (isMieYaminOrder) {
-				const { data: mieYaminNo, error: mieYaminCounterError } = await supabase.rpc(
+				const { data: mieYaminNo, error: mieYaminCounterError } = await pos.rpc(
 					"next_mie_yamin_order_no"
 				);
 				if (mieYaminCounterError || mieYaminNo == null) {
