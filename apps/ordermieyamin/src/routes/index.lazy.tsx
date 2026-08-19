@@ -89,6 +89,17 @@ function getTrackingStatus(order: any) {
     : deliveryStatus || (paymentSettled ? "paid" : "pending_payment");
 }
 
+function getCheckoutErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (error && typeof error === "object") {
+    const value = error as Record<string, unknown>;
+    const nested = value.error && typeof value.error === "object" ? value.error as Record<string, unknown> : null;
+    const message = value.message ?? nested?.message ?? value.details ?? nested?.details;
+    if (typeof message === "string" && message.trim()) return message.trim();
+  }
+  return fallback;
+}
+
 function getWibDateKey(value = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
@@ -467,7 +478,7 @@ function OrderForm() {
       setPendingPaymentOrderId(String(orderId));
       await createPaymentInvoice(String(orderId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Checkout gagal. Coba lagi.");
+      setError(getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi."));
     } finally { setSubmitting(false); }
   }
 
@@ -477,7 +488,7 @@ function OrderForm() {
     try {
       await createPaymentInvoice(pendingPaymentOrderId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Invoice belum berhasil dibuat. Coba lagi.");
+      setError(getCheckoutErrorMessage(e, "Invoice belum berhasil dibuat. Coba lagi."));
     } finally { setSubmitting(false); }
   }
 
