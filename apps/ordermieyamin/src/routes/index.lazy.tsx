@@ -195,32 +195,16 @@ function Tracking({ orderId }: { orderId: string }) {
   const provider = String(order?.deliveryProvider || "");
   const providerLabel = provider === "gojek" ? "Gojek" : provider === "maxim" ? "Maxim" : provider || "Belum dipilih";
   const deliveryDate = order?.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString("id-ID", { dateStyle: "long" }) : "Tanggal belum tersedia";
+  const invoiceUrl = order?.paymentGateway?.invoiceUrl || order?.payment_gateway?.invoiceUrl;
 
   useEffect(() => {
     let timer: number | null = null;
-    const startPolling = () => {
-      if (timer != null) return;
-      timer = window.setInterval(() => setRefreshTick((value) => value + 1), 4000);
-    };
-    const stopPolling = () => {
-      if (timer != null) {
-        window.clearInterval(timer);
-        timer = null;
-      }
-    };
-    const handleVisibility = () => {
-      if (document.hidden) stopPolling();
-      else {
-        setRefreshTick((value) => value + 1);
-        startPolling();
-      }
-    };
+    const startPolling = () => { if (timer == null) timer = window.setInterval(() => setRefreshTick((value) => value + 1), 4000); };
+    const stopPolling = () => { if (timer != null) { window.clearInterval(timer); timer = null; } };
+    const handleVisibility = () => { if (document.hidden) stopPolling(); else { setRefreshTick((value) => value + 1); startPolling(); } };
     startPolling();
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      stopPolling();
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
+    return () => { stopPolling(); document.removeEventListener("visibilitychange", handleVisibility); };
   }, []);
 
   useEffect(() => {
@@ -228,53 +212,25 @@ function Tracking({ orderId }: { orderId: string }) {
   }, [orderId, order?.orderNumber, order?.status]);
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 py-5 pb-10">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Track order</p>
-          <h1 className="mt-1 font-display text-2xl font-black tracking-tight">Perjalanan pesanan</h1>
-        </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary"><PackageCheck className="h-5 w-5" /></div>
-      </div>
-
-      <motion.section
-        key={status}
-        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
-        className="relative overflow-hidden rounded-[28px] border border-primary/15 bg-card shadow-[0_12px_36px_rgba(26,93,198,0.10)]"
-      >
-        <div className="relative h-52 overflow-hidden bg-[linear-gradient(145deg,#eef5ff_0%,#f8fbff_48%,#e8f1ff_100%)] p-5">
-          <div className="absolute inset-x-6 top-8 h-24 rounded-[45%] border-2 border-dashed border-primary/25 rotate-[-8deg]" />
-          <div className="absolute left-8 top-14 h-14 w-14 rounded-full border-4 border-white bg-primary text-white shadow-lg"><Store className="mx-auto mt-3 h-6 w-6" /></div>
-          <div className="absolute right-8 bottom-12 h-14 w-14 rounded-full border-4 border-white bg-white text-primary shadow-lg"><MapPin className="mx-auto mt-3 h-6 w-6" /></div>
-          <div className="absolute left-[38%] top-[44%] flex items-center gap-2 rounded-full border border-white/80 bg-white/85 px-3 py-1.5 text-[10px] font-black text-primary shadow-sm backdrop-blur"><Truck className="h-3.5 w-3.5" /> {providerLabel}</div>
-          <div className="absolute bottom-4 left-5 right-5 flex items-center justify-between text-[10px] font-black text-primary/75"><span>Produksi Mie Yamin</span><span>Alamat tujuan</span></div>
-        </div>
-        <div className="border-t border-border/70 p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Status terbaru</p><p className="mt-1 text-lg font-black text-foreground">{current[1]}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{current[2]}</p></div>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white"><RefreshCw className="h-4 w-4" /></span>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-2xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Tanggal kirim</p><p className="mt-1 font-black">{deliveryDate}</p></div><div className="rounded-2xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Nomor order</p><p className="mt-1 truncate font-black">#{order?.orderNumber || orderId.slice(-8)}</p></div></div>
-          <p className="mt-3 flex items-center gap-2 text-[11px] font-bold text-muted-foreground"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Status diperbarui otomatis</p>
-        </div>
-      </motion.section>
-
-      <section className="mt-4 rounded-[28px] border border-border bg-card p-5 shadow-sm">
-        <div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Progress order</p><h2 className="mt-1 text-lg font-black">Tahapan pesanan</h2></div><span className="text-xs font-black text-primary">{Math.min(activeIndex + 1, STATUS_STEPS.length)}/{STATUS_STEPS.length}</span></div>
-        <div className="mt-5 space-y-1">
-          {STATUS_STEPS.map(([key, label, description], index) => {
-            const done = index < activeIndex;
-            const active = index === activeIndex;
-            return <motion.div key={key} initial={reduceMotion ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: reduceMotion ? 0 : index * 0.035, duration: 0.25 }} className="relative flex gap-3 pb-4 last:pb-0"><div className="flex w-8 shrink-0 flex-col items-center"><motion.span animate={active && !reduceMotion ? { scale: [1, 1.08, 1] } : { scale: 1 }} transition={{ duration: 1.8, repeat: active && !reduceMotion ? Infinity : 0, ease: "easeInOut" }} className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full ${done || active ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>{active && !reduceMotion ? <span className="absolute inset-0 rounded-full bg-primary/25 animate-ping" /> : null}<span className="relative">{done ? <Check className="h-4 w-4" /> : active ? <Clock3 className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}</span></motion.span>{index < STATUS_STEPS.length - 1 ? <span className={`mt-1 h-full min-h-5 w-px ${index < activeIndex ? "bg-primary" : "bg-border"}`} /> : null}</div><div className="min-w-0 pt-1"><p className={`text-sm font-black ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>{label}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{description}</p></div></motion.div>;
-          })}
-        </div>
+    <main className="mx-auto w-full max-w-md pb-10">
+      <section className="relative h-[330px] overflow-hidden bg-[#eaf3ff]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#ffffff_0%,transparent_36%),linear-gradient(145deg,#eaf3ff_0%,#f8fbff_55%,#e3efff_100%)]" />
+        <div className="absolute inset-x-[-18%] top-14 h-40 rounded-[50%] border-2 border-dashed border-primary/20 rotate-[-11deg]" />
+        <div className="absolute left-7 top-12 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-primary text-white shadow-lg"><Store className="h-6 w-6" /></div>
+        <div className="absolute right-8 bottom-20 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-white text-primary shadow-lg"><MapPin className="h-6 w-6" /></div>
+        <div className="absolute left-[36%] top-[43%] flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-black text-primary shadow-md backdrop-blur"><Truck className="h-3.5 w-3.5" /> {providerLabel}</div>
+        <div className="absolute inset-x-5 bottom-5 flex items-center justify-between text-[10px] font-black text-primary/70"><span>Produksi Mie Yamin</span><span>Alamat tujuan</span></div>
+        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/90 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Track order</span></div>
       </section>
 
-      {order?.paymentGateway?.invoiceUrl || order?.payment_gateway?.invoiceUrl ? <section className="mt-4 rounded-[24px] border border-amber-200 bg-amber-50 p-4"><div className="flex gap-3"><CreditCard className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" /><div><p className="text-sm font-black text-amber-900">Pembayaran belum selesai?</p><p className="mt-1 text-[11px] leading-relaxed text-amber-800">Gunakan invoice yang sama. Jangan membuat order baru.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><a href={order?.paymentGateway?.invoiceUrl || order?.payment_gateway?.invoiceUrl} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-xl bg-amber-600 text-xs font-black text-white transition active:scale-[.97]">Bayar sekarang</a><button type="button" onClick={() => navigator.clipboard?.writeText(order?.paymentGateway?.invoiceUrl || order?.payment_gateway?.invoiceUrl)} className="h-11 rounded-xl border border-amber-300 text-xs font-black text-amber-900 transition active:scale-[.97]">Salin link</button></div></section> : null}
+      <section className="relative z-10 -mt-12 mx-4 rounded-[30px] bg-card p-5 shadow-[0_16px_45px_rgba(9,9,11,0.12)]">
+        <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Order details</p><h1 className="mt-1 font-display text-2xl font-black tracking-tight">{current[1]}</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{current[2]}</p></div><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><PackageCheck className="h-5 w-5" /></span></div>
+        <div className="mt-5 space-y-2"><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Order ID</span><b>#{order?.orderNumber || orderId.slice(-8)}</b></div><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Payment method</span><b>Mayar</b></div><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Estimated delivery</span><b className="max-w-[58%] text-right">{deliveryDate}</b></div><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Total amount</span><b className="text-primary">{order?.totalAmount != null ? formatRupiah(Number(order.totalAmount)) : "Memuat..."}</b></div></div><p className="mt-4 flex items-center gap-2 text-[11px] font-bold text-muted-foreground"><span className="h-2 w-2 rounded-full bg-emerald-500" />Status diperbarui otomatis</p>
+      </section>
 
-      <section className="mt-4 rounded-[24px] border border-border bg-card p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div className="min-w-0"><p className="text-sm font-black">Detail pengiriman</p><p className="mt-1 text-xs text-muted-foreground">{providerLabel} · {deliveryDate}</p><p className="mt-2 break-words text-xs leading-relaxed text-foreground">{order?.deliveryAddress || order?.delivery_address || "Alamat tujuan tersedia di detail order."}</p></div></div></section>
+      <section className="mx-4 mt-4 rounded-[26px] border border-border bg-card p-5 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Progress</p><h2 className="mt-1 text-lg font-black">Tahapan pesanan</h2></div><span className="text-xs font-black text-primary">{Math.min(activeIndex + 1, STATUS_STEPS.length)}/{STATUS_STEPS.length}</span></div><div className="mt-4 space-y-3">{STATUS_STEPS.map(([key, label], index) => { const done = index < activeIndex; const active = index === activeIndex; return <div key={key} className="flex items-center gap-3"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${done || active ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>{done ? <Check className="h-4 w-4" /> : active ? <Clock3 className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}</span><span className={`text-sm font-black ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>{label}</span></div>; })}</div></section>
+
+      {invoiceUrl ? <section className="mx-4 mt-4 rounded-[24px] border border-amber-200 bg-amber-50 p-4"><div className="flex gap-3"><CreditCard className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" /><div><p className="text-sm font-black text-amber-900">Pembayaran belum selesai?</p><p className="mt-1 text-[11px] leading-relaxed text-amber-800">Gunakan invoice yang sama. Jangan membuat order baru.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-xl bg-amber-600 text-xs font-black text-white">Bayar sekarang</a><button type="button" onClick={() => navigator.clipboard?.writeText(invoiceUrl)} className="h-11 rounded-xl border border-amber-300 text-xs font-black text-amber-900">Salin link</button></div></section> : null}
     </main>
   );
 }
@@ -604,14 +560,18 @@ function OrderForm() {
 
   return (
     <main ref={checkoutTopRef} className="mx-auto w-full max-w-md scroll-mt-20 px-4 py-5 pb-32 md:pb-6">
-      <section className="mb-4 overflow-hidden rounded-[28px] border border-border bg-card shadow-[0_12px_36px_rgba(9,9,11,0.06)]">
-        <div className="grid grid-cols-[88px_1fr] items-center gap-4 p-5"><div className="flex h-[88px] items-center justify-center rounded-[24px] bg-primary/5 p-2"><img src={String(mieYaminSettings.productImageUrl || "/logo-djiwa.png")} alt="Produk Mie Yamin" className="h-full w-full object-contain" /></div><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Djiwa Tentram B2B</p><h1 className="mt-1 font-display text-2xl font-black tracking-tight">Mie Yamin Mentah</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Produksi sendiri tanpa bahan pengawet.</p><p className="mt-2 text-lg font-black text-primary">{formatRupiah(Number(mieYaminSettings.noodlePricePerKg))}<span className="ml-1 text-xs font-bold text-muted-foreground">/ kg</span></p></div></div>
-        <div className="grid grid-cols-3 border-t border-border/70 text-center text-[10px] font-black text-muted-foreground"><span className="px-2 py-3">Min. {minOrderKg} kg</span><span className="border-x border-border/70 px-2 py-3">Area {String(mieYaminSettings.deliveryArea)}</span><span className="px-2 py-3">Cutoff {String(orderCutoffHour).padStart(2, "0")}:00</span></div>
-      </section>
+      {checkoutStep === 1 ? <section className="relative -mx-4 -mt-5 mb-5 h-[390px] overflow-hidden bg-[#edf5ff]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_18%,#ffffff_0%,transparent_34%),linear-gradient(145deg,#e8f2ff_0%,#f9fcff_52%,#deedff_100%)]" />
+        <img src={String(mieYaminSettings.productImageUrl || "/logo-djiwa.png")} alt="Produk Mie Yamin" className="absolute inset-0 h-full w-full object-contain p-8" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/20 to-transparent" />
+        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm"><Package className="h-5 w-5" /></span><span className="rounded-full bg-white/90 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Djiwa Tentram B2B</span></div>
+        <div className="absolute bottom-4 left-4 right-4 rounded-[28px] bg-card p-5 shadow-[0_14px_36px_rgba(9,9,11,0.14)]"><div className="flex items-start justify-between gap-3"><div><h1 className="font-display text-2xl font-black tracking-tight">Mie Yamin Mentah</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Produksi sendiri tanpa bahan pengawet.</p></div><p className="text-lg font-black text-primary">{formatRupiah(Number(mieYaminSettings.noodlePricePerKg))}<span className="ml-1 text-xs font-bold text-muted-foreground">/ kg</span></p></div></div>
+      </section> : <section className="mb-4 flex items-center justify-between rounded-[24px] border border-border bg-card p-4 shadow-sm"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Djiwa Tentram B2B</p><p className="mt-1 text-base font-black">Order Mie Yamin</p></div><Package className="h-5 w-5 text-primary" /></section>}
+
 
       <section className="mb-4 rounded-[24px] border border-border bg-card p-4"><div className="flex items-center justify-between text-[11px] font-black text-muted-foreground">{stepLabels.map((label, index) => { const step = (index + 1) as 1 | 2 | 3; const active = checkoutStep === step; const complete = checkoutStep > step; return <button key={label} type="button" onClick={() => complete && setCheckoutStep(step)} disabled={!complete && !active} className={`flex items-center gap-1.5 transition active:scale-[.97] ${active ? "text-primary" : complete ? "text-foreground" : "text-muted-foreground/50"}`}><span className={`flex h-8 w-8 items-center justify-center rounded-full border text-[11px] ${active ? "border-primary bg-primary text-white" : complete ? "border-primary/30 bg-primary/10 text-primary" : "border-border"}`}>{complete ? <Check className="h-3.5 w-3.5" /> : step}</span><span className="hidden xs:inline">{label}</span></button>; })}</div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${(checkoutStep / 3) * 100}%` }} /></div></section>
 
-      <div className="space-y-4 rounded-[28px] border border-border bg-card p-5 shadow-sm">
+      <div className={`space-y-4 ${checkoutStep === 1 ? "rounded-[30px] border-0 bg-transparent p-0 shadow-none" : "rounded-[28px] border border-border bg-card p-5 shadow-sm"}`}>
         {checkoutStep === 1 ? <section aria-labelledby="product-step-title" className="space-y-5"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Langkah 1 dari 3</p><h2 id="product-step-title" className="mt-1 font-display text-2xl font-black">Atur pesanan Anda</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pilih jumlah mie dan layanan tambahan sesuai kebutuhan.</p></div>
           <div className="rounded-[24px] border border-border bg-background p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black">Jumlah mie</p><p className="mt-1 text-[11px] text-muted-foreground">Minimum order {minOrderKg} kg</p></div><p className="text-base font-black text-primary">{formatRupiah(noodleTotal)}</p></div><div className="mt-4 flex items-center justify-between rounded-2xl bg-muted/50 p-3"><span className="text-sm font-bold">Mie Yamin Mentah</span><div className="flex items-center gap-2"><button type="button" aria-label="Kurangi jumlah mie" onClick={() => setKg(Math.max(minOrderKg, kg - 1))} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-lg font-black transition active:scale-[.97]">−</button><output className="min-w-16 text-center text-lg font-black" aria-live="polite">{kg} kg</output><button type="button" aria-label="Tambah jumlah mie" onClick={() => setKg(kg + 1)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-lg font-black transition active:scale-[.97]">+</button></div></div></div>
           <div><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-black">Tambahan pesanan</p><p className="mt-1 text-[11px] text-muted-foreground">Opsional, total akan diperbarui otomatis.</p></div><Plus className="h-5 w-5 text-primary" /></div><div className="space-y-3"><div className={`rounded-[22px] border p-4 transition ${readyPackCount > 0 ? "border-primary bg-primary/5" : "border-border bg-background"}`}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-black">Kemasan siap masak</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Praktis untuk langsung dimasak · {formatRupiah(Number(mieYaminSettings.readyPackPrice))} / pcs</p></div><Package className="h-5 w-5 shrink-0 text-primary" /></div><div className="mt-3 flex items-center justify-between"><span className="text-xs font-bold">Jumlah kemasan</span><div className="flex items-center gap-2"><button type="button" aria-label="Kurangi kemasan" onClick={() => setReadyPackCount(Math.max(0, readyPackCount - 1))} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-lg font-black transition active:scale-[.97]">−</button><output className="min-w-12 text-center text-base font-black">{readyPackCount} pcs</output><button type="button" aria-label="Tambah kemasan" onClick={() => setReadyPackCount(readyPackCount + 1)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-lg font-black transition active:scale-[.97]">+</button></div></div></div>
