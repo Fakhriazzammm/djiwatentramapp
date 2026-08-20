@@ -431,6 +431,8 @@ function MenuPage() {
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
+	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
+	const hasSeededDjiwaAppOrdersRef = useRef(false);
 	const [offlinePendingCount, setOfflinePendingCount] = useState(0);
 	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
 const [priceDialogProduct, setPriceDialogProduct] = useState<{ product: Record<string, any>; defaultPrice: number } | null>(null);
@@ -453,6 +455,41 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		const id = setInterval(() => setCurrentTime(new Date()), 30000);
 		return () => clearInterval(id);
 	}, []);
+
+	useEffect(() => {
+		if (!orders) return;
+
+		const currentStatuses = new Map<string, string>();
+		const newlySettledDjiwaAppOrder = orders.some((order: any) => {
+			const source = String(order.source ?? order.sourceApp ?? order.source_app ?? "")
+				.trim()
+				.toLowerCase();
+			if (source !== "customer_self_service") return false;
+
+			const orderId = String(order._id ?? order.sourceId ?? order.orderNumber ?? "");
+			const status = String(order.status ?? "").toLowerCase();
+			if (!orderId) return false;
+			currentStatuses.set(orderId, status);
+
+			if (!hasSeededDjiwaAppOrdersRef.current) return false;
+			const previousStatus = djiwaAppOrderStatusRef.current.get(orderId);
+			return (
+				previousStatus === undefined &&
+				(status === "paid" || status === "completed")
+			) || (
+				previousStatus !== status &&
+				(status === "paid" || status === "completed")
+			);
+		});
+
+		if (!hasSeededDjiwaAppOrdersRef.current) {
+			hasSeededDjiwaAppOrdersRef.current = true;
+		} else if (newlySettledDjiwaAppOrder) {
+			playSuccessSound();
+		}
+
+		djiwaAppOrderStatusRef.current = currentStatuses;
+	}, [orders]);
 
 	useEffect(() => {
 		const offlineManager = getOfflineManager();
