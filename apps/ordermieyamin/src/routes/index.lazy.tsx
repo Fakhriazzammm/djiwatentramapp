@@ -203,13 +203,13 @@ function getDeliveryRoutePoint(progress: number) {
 }
 
 const RESTAURANT_TRACKING_MESSAGES: Record<string, string[]> = {
-  pending_payment: ["📍 Pesananmu menunggu pembayaran — dapur belum mulai bekerja."] ,
-  paid: ["📍 Pesanan sudah masuk — bahan terbaik sedang kami siapkan. 🥬", "🔥 Order sudah dikonfirmasi — tim Mie Yamin mulai bekerja."] ,
-  preparing: ["📍 Mie Yamin sedang direbus — aroma gurihnya mulai naik. 🍜", "👨‍🍳 Dapur sedang bekerja — pesananmu sebentar lagi siap."] ,
+  pending_payment: ["📍 Pesananmu menunggu pembayaran — produksi belum kami mulai."] ,
+  paid: ["📍 Pesanan sudah masuk — tim produksi sedang menyiapkan bahan. 🥬", "🔥 Order sudah dikonfirmasi — tim Mie Yamin mulai bekerja."] ,
+  preparing: ["📍 Mie Yamin mentah sedang disiapkan — kami cek takaran dan kualitasnya. 🍜", "🔥 Pesanan sedang diproses — mie mentah siap dikemas dengan rapi. 📦"] ,
   packing: ["📍 Mie Yamin sedang dikemas — kami cek lagi sebelum berangkat. 📦", "✨ Hampir siap dikirim — pesanan sedang dirapikan."] ,
   ready_to_ship: ["📍 Pesanan sudah siap — tinggal menunggu kurir berangkat. 🛵", "🏁 Mie Yamin sudah di garis start pengiriman."] ,
-  out_for_delivery: ["📍 Pesanan sudah berangkat — jangan lupa cek pagar rumah. 🏠", "🛵 Kurir sedang melaju — Mie Yamin segera sampai.", "🏁 Tinggal sedikit lagi — siap menikmati Mie Yamin? 😋"] ,
-  delivered: ["📍 Pesanan sudah diterima — selamat menikmati Mie Yamin! 🍜", "✅ Misi selesai — semoga makan siangnya makin nikmat."] ,
+  out_for_delivery: ["📍 Pesanan sudah berangkat — jangan lupa cek pagar rumah. 🏠", "🛵 Kurir sedang melaju — Mie Yamin segera sampai.", "🏁 Tinggal sedikit lagi — siap menerima pesananmu? 📦"] ,
+  delivered: ["📍 Pesanan sudah diterima — semoga mie mentahnya sampai dengan baik! 🍜", "✅ Misi selesai — selamat mengolah Mie Yamin di rumah."] ,
 };
 
 function getTrackingEmoji(status: string, index: number) {
