@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { Search, Star, User, ShoppingBag, DollarSign, Clock } from "lucide-react";
+import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +31,21 @@ function formatRupiah(amount: number) {
 		currency: "IDR",
 		minimumFractionDigits: 0,
 	}).format(amount);
+}
+
+function formatDate(value: string | null, withTime = false) {
+	if (!value) return "-";
+	return format(new Date(value), withTime ? "dd MMM yyyy HH:mm" : "dd MMM yyyy", { locale: id });
+}
+
+function CustomerAvatar({ customer }: { customer: Customer }) {
+	return customer.photo_url ? (
+		<img src={customer.photo_url} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+	) : (
+		<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+			<User className="h-3.5 w-3.5" />
+		</div>
+	);
 }
 
 function AdminCustomers() {
@@ -109,7 +124,7 @@ function AdminCustomers() {
 					</div>
 					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
 						<span className="rounded-md bg-muted px-2 py-1">
-							{filteredCustomers?.length ?? 0} pelanggan
+							{filteredCustomers?.length ?? 0} dari {customers.length} pelanggan
 						</span>
 					</div>
 				</div>
@@ -143,9 +158,7 @@ function AdminCustomers() {
 							<div className="flex items-start justify-between gap-3">
 								<div className="min-w-0 flex-1 space-y-1">
 									<div className="flex items-center gap-2">
-										<div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-											<User className="h-3 w-3" />
-										</div>
+										<CustomerAvatar customer={c} />
 										<span className="truncate font-semibold text-sm">
 											{c.name || "Tanpa Nama"}
 										</span>
@@ -155,10 +168,19 @@ function AdminCustomers() {
 											{c.email}
 										</p>
 									)}
+									{c.phone && (
+										<p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+											<Phone className="h-3 w-3 shrink-0" /> {c.phone}
+										</p>
+									)}
 									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
 										<span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700">
 											<Star className="h-3 w-3 fill-current" />
 											{c.total_points}
+										</span>
+										<span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-1.5 py-0.5 text-violet-700">
+											<Star className="h-3 w-3" />
+											{c.lifetime_points.toLocaleString("id-ID")} lifetime
 										</span>
 										<span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-blue-700">
 											<ShoppingBag className="h-3 w-3" />
@@ -178,9 +200,12 @@ function AdminCustomers() {
 											})}
 										</p>
 									)}
+									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+										<CalendarDays className="h-3 w-3" /> Bergabung {formatDate(c.created_at)}
+									</p>
 								</div>
-							</div>
 						</div>
+					</div>
 					))
 				)}
 			</div>
@@ -188,15 +213,18 @@ function AdminCustomers() {
 			{/* Desktop: Compact table */}
 			<div className="hidden rounded-2xl border border-border bg-card shadow-sm md:block">
 				<div className="overflow-x-auto">
-					<table className="w-full min-w-[700px] text-left text-xs">
+					<table className="w-full min-w-[1040px] text-left text-xs">
 						<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 							<tr className="text-[10px] text-muted-foreground">
 								<th className="px-2.5 py-2">Nama</th>
 								<th className="px-2.5 py-2">Email</th>
+								<th className="px-2.5 py-2">Telepon</th>
 								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" aria-hidden="true" /> Poin</span></th>
+								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" aria-hidden="true" /> Lifetime</span></th>
 								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" /> Orders</span></th>
 								<th className="px-2.5 py-2 text-right"><span className="inline-flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" aria-hidden="true" /> Total Spending</span></th>
 								<th className="px-2.5 py-2">Terakhir Order</th>
+								<th className="px-2.5 py-2">Bergabung</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
@@ -204,7 +232,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={6}
+										colSpan={9}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -217,9 +245,7 @@ function AdminCustomers() {
 									>
 										<td className="px-2.5 py-2 align-middle">
 											<div className="flex items-center gap-2">
-												<div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-													<User className="h-3 w-3" />
-												</div>
+												<CustomerAvatar customer={c} />
 												<span className="truncate font-medium text-xs">
 													{c.name || "Tanpa Nama"}
 												</span>
@@ -228,10 +254,18 @@ function AdminCustomers() {
 										<td className="max-w-[200px] truncate px-2.5 py-2 align-middle text-muted-foreground">
 											{c.email || "-"}
 										</td>
+										<td className="px-2.5 py-2 align-middle text-muted-foreground whitespace-nowrap">
+											{c.phone || "-"}
+										</td>
 										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
 											<span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
 												<Star className="h-3 w-3 fill-current" />
 												{c.total_points.toLocaleString("id-ID")}
+											</span>
+										</td>
+										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
+											<span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700">
+												{c.lifetime_points.toLocaleString("id-ID")}
 											</span>
 										</td>
 										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
@@ -241,13 +275,10 @@ function AdminCustomers() {
 											{formatRupiah(c.total_spent)}
 										</td>
 										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
-											{c.last_order_at ? (
-												format(new Date(c.last_order_at), "dd MMM yyyy HH:mm", {
-													locale: id,
-												})
-											) : (
-												<span className="text-muted-foreground">-</span>
-											)}
+											{formatDate(c.last_order_at, true)}
+										</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+											{formatDate(c.created_at)}
 										</td>
 									</tr>
 								))
