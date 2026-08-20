@@ -1008,7 +1008,8 @@ async def _send_with_retry(bot, chat_id: int, text: str, reply_markup=None, max_
 # ── Notifications with inline keyboard ───────────────────────────
 
 async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line=None,
-                                      guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None):
+                                      guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
+                                      source_label: str | None = None):
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1038,6 +1039,10 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         lines.append(f"📍 {struk_line}")
     lines.extend([
         f"☕ PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
+    ])
+    if source_label:
+        lines.append(f"📲 SUMBER: {source_label}")
+    lines.extend([
         "────────────",
         f"🆔 {order_no}",
     ])
@@ -1107,7 +1112,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         logger.error("send_barista_notification failed for %s: %s", order_no, e)
 
 async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line=None,
-                                      guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None):
+                                      guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
+                                      source_label: str | None = None):
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1137,6 +1143,10 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         lines.append(f"📍 {struk_line}")
     lines.extend([
         f"🍳 PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
+    ])
+    if source_label:
+        lines.append(f"📲 SUMBER: {source_label}")
+    lines.extend([
         "────────────",
         f"🆔 {order_no}",
     ])
@@ -1831,9 +1841,9 @@ async def _check_new_orders(app):
         # Kirim kitchen + barista paralel per order
         tasks = []
         if food_items:
-            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill))
+            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label))
         if bev_items:
-            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill))
+            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label))
 
         if tasks:
             await asyncio.gather(*tasks)
