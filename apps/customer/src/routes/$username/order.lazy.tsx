@@ -437,6 +437,12 @@ function OrderPage() {
 
 	// ── Handlers ────────────────────────────────────────────────
 
+	const addItemAndOfferUpsells = (item: CartItem) => {
+		addToCart(item);
+		setUpsellMainItem(item);
+		setUpsellSourceProductId(String(item.productId));
+	};
+
 	const handleProductSelect = (product: (typeof orderedProducts)[number]) => {
 		const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 		if (hasVariations) {
@@ -447,7 +453,7 @@ function OrderPage() {
 			{ _id: product._id, price: product.price, categoryId: product.categoryId },
 			memberDiscounts
 		);
-		addToCart({
+		addItemAndOfferUpsells({
 			productId: product._id,
 			name: product.name,
 			price: pricing.finalPrice,
@@ -465,7 +471,7 @@ function OrderPage() {
 			{ _id: pendingNumberProduct._id, price: pendingNumberProduct.price, categoryId: pendingNumberProduct.categoryId },
 			memberDiscounts
 		);
-		addToCart({
+		addItemAndOfferUpsells({
 			productId: pendingNumberProduct._id,
 			name: pendingNumberProduct.name,
 			price: pricing.finalPrice,
@@ -885,7 +891,7 @@ function OrderPage() {
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
 				<SheetContent side="bottom" showCloseButton={false} className="h-[min(85dvh,720px)] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-t-3xl p-0">
 					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan detail menu...</div>}>
-						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setUpsellMainItem(item); setUpsellSourceProductId(String(item.productId)); setProductSheet(null); }} />
+						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addItemAndOfferUpsells(item); setProductSheet(null); }} />
 					</Suspense>
 				</SheetContent>
 			</Sheet>
