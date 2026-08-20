@@ -287,10 +287,10 @@ function Tracking({ orderId }: { orderId: string }) {
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20" />
         <svg viewBox="0 0 400 220" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
-          <path d="M74 178 H142 V132 H236 V76 H306" fill="none" stroke="white" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.72" />
-          <motion.path d="M74 178 H142 V132 H236 V76 H306" fill="none" stroke="#1a5dc6" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" pathLength={1} initial={{ pathLength: 0 }} animate={{ pathLength: routeProgress }} transition={{ duration: 0.45, ease: "easeOut" }} />
-          <circle cx="74" cy="178" r="15" fill="#0f9f88" stroke="white" strokeWidth="4" />
-          <foreignObject x="64" y="168" width="20" height="20"><div className="flex h-5 w-5 items-center justify-center text-white"><Store className="h-3.5 w-3.5" /></div></foreignObject>
+          <path d="M186 99 H225 V135 H280 V76 H306" fill="none" stroke="white" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.72" />
+          <motion.path d="M186 99 H225 V135 H280 V76 H306" fill="none" stroke="#1a5dc6" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" pathLength={1} initial={{ pathLength: 0 }} animate={{ pathLength: routeProgress }} transition={{ duration: 0.45, ease: "easeOut" }} />
+          <circle cx="186" cy="99" r="15" fill="#0f9f88" stroke="white" strokeWidth="4" />
+          <foreignObject x="176" y="89" width="20" height="20"><div className="flex h-5 w-5 items-center justify-center text-white"><Store className="h-3.5 w-3.5" /></div></foreignObject>
           <circle cx="306" cy="76" r="15" fill="#49344f" stroke="white" strokeWidth="4" />
           <foreignObject x="296" y="66" width="20" height="20"><div className="flex h-5 w-5 items-center justify-center text-white"><MapPin className="h-3.5 w-3.5" /></div></foreignObject>
           <motion.g animate={{ x: routePoint.x - 236, y: routePoint.y - 132 }} transition={{ duration: 0.35, ease: "easeOut" }}>
