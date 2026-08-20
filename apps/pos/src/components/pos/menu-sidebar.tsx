@@ -1550,8 +1550,8 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 			const activeShiftEnd = activeShift.endTime ?? Date.now();
 			filtered = filtered.filter(
 				(o) =>
-					o.createdAt >= activeShift.startTime &&
-					o.createdAt <= activeShiftEnd
+					o.source === "customer_self_service" ||
+					(o.createdAt >= activeShift.startTime && o.createdAt <= activeShiftEnd)
 			);
 		} else if (shiftFilter !== "all") {
 			const selectedShift = shifts.find((shift: any) => shift._id === shiftFilter);
@@ -1727,6 +1727,11 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											<span className={`text-[11px] font-bold uppercase tracking-wider ${statusBadge}`}>
 												● {statusLabel}
 											</span>
+											{order.source === "customer_self_service" ? (
+												<span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
+													DjiwaApp
+												</span>
+											) : null}
 										</div>
 										{/* Line 1: Order ID */}
 										<div className="text-[10px] text-muted-foreground">
