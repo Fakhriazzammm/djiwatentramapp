@@ -185,6 +185,23 @@ function buildReorderDraft(order: any) {
   return { savedAt: Date.now(), kg: Number(mie?.quantity || 1), readyPackCount: Number(pack?.quantity || 0), repack };
 }
 
+function getDeliveryRoutePoint(progress: number) {
+  const points = [
+    { x: 74, y: 178 },
+    { x: 142, y: 178 },
+    { x: 142, y: 132 },
+    { x: 236, y: 132 },
+    { x: 236, y: 76 },
+    { x: 306, y: 76 },
+  ];
+  const scaled = Math.min(0.999, Math.max(0, progress)) * (points.length - 1);
+  const index = Math.floor(scaled);
+  const fraction = scaled - index;
+  const from = points[index] || points[0];
+  const to = points[index + 1] || points[points.length - 1];
+  return { x: from.x + (to.x - from.x) * fraction, y: from.y + (to.y - from.y) * fraction };
+}
+
 function Tracking({ orderId }: { orderId: string }) {
   const [refreshTick, setRefreshTick] = useState(0);
   const order = useHybridOrderById(orderId, refreshTick) as any;
@@ -196,6 +213,11 @@ function Tracking({ orderId }: { orderId: string }) {
   const providerLabel = provider === "gojek" ? "Gojek" : provider === "maxim" ? "Maxim" : provider || "Belum dipilih";
   const deliveryDate = order?.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString("id-ID", { dateStyle: "long" }) : "Tanggal belum tersedia";
   const invoiceUrl = order?.paymentGateway?.invoiceUrl || order?.payment_gateway?.invoiceUrl;
+  const [animationProgress, setAnimationProgress] = useState(0);
+  const isDeliveryActive = status === "out_for_delivery";
+  const routeProgress = status === "delivered" ? 1 : isDeliveryActive ? animationProgress : activeIndex >= 4 ? 0.72 : 0;
+  const routePoint = getDeliveryRoutePoint(routeProgress);
+  const etaMinutes = isDeliveryActive ? Math.max(1, 4 - Math.floor(animationProgress * 3)) : activeIndex >= 4 ? 8 : null;
 
   useEffect(() => {
     let timer: number | null = null;
@@ -206,6 +228,18 @@ function Tracking({ orderId }: { orderId: string }) {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => { stopPolling(); document.removeEventListener("visibilitychange", handleVisibility); };
   }, []);
+
+  useEffect(() => {
+    if (reduceMotion || !isDeliveryActive) {
+      setAnimationProgress(isDeliveryActive || status === "delivered" ? 1 : 0);
+      return;
+    }
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      setAnimationProgress(((Date.now() - startedAt) / 18000) % 1);
+    }, 80);
+    return () => window.clearInterval(timer);
+  }, [isDeliveryActive, reduceMotion, status]);
 
   useEffect(() => {
     if (order?.orderNumber || order?.status) rememberOrder(orderId);
@@ -221,10 +255,28 @@ function Tracking({ orderId }: { orderId: string }) {
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/25" />
-        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Peta pengiriman</span></div>
-        <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3"><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">Area Tasikmalaya</span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">{providerLabel}</span></div>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20" />
+        <svg viewBox="0 0 400 220" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
+          <motion.path d="M74 178 H142 V132 H236 V76 H306" fill="none" stroke="#ef5757" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" pathLength={1} initial={{ pathLength: 0 }} animate={{ pathLength: routeProgress }} transition={{ duration: 0.45, ease: "easeOut" }} />
+          <path d="M74 178 H142 V132 H236 V76 H306" fill="none" stroke="white" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.42" />
+          <circle cx="74" cy="178" r="12" fill="#0f9f88" stroke="white" strokeWidth="4" />
+          <circle cx="306" cy="76" r="12" fill="#49344f" stroke="white" strokeWidth="4" />
+          <motion.g animate={{ x: routePoint.x - 236, y: routePoint.y - 132 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+            <circle cx="236" cy="132" r="14" fill="#ef5757" stroke="white" strokeWidth="4" />
+            <circle cx="236" cy="132" r="20" fill="none" stroke="#ef5757" strokeWidth="2" opacity="0.45"><animate attributeName="r" values="14;24;14" dur="1.8s" repeatCount="indefinite" /></circle>
+          </motion.g>
+        </svg>
+        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Live delivery</span></div>
+        <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3"><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">Rumah</span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">{providerLabel}</span></div>
       </section>
+
+      <section className="relative z-10 -mt-8 mx-4 rounded-[26px] border border-[#f0d9d2] bg-[#fffdfa] p-5 shadow-[0_12px_34px_rgba(65,40,30,0.08)]">
+        <div className="flex items-start justify-between gap-3"><div><p className="text-xl font-black text-[#3d2d3d]">{isDeliveryActive ? `Tiba dalam ~${etaMinutes} menit` : current[1]}</p><p className="mt-1 text-xs font-bold text-[#8d707c]">Order #{order?.orderNumber || orderId.slice(-8)} · {order?.status === "paid" || order?.status === "completed" ? "Paid" : "Menunggu pembayaran"}</p></div><span className="rounded-2xl bg-emerald-500 px-3 py-3 text-center text-[10px] font-black text-white"><b className="block text-2xl leading-none">{etaMinutes ?? "—"}</b>MIN</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f1e2df]"><motion.div className="h-full rounded-full bg-[#ef5757]" animate={{ width: `${Math.max(8, routeProgress * 100)}%` }} transition={{ duration: 0.45 }} /></div><p className="mt-2 text-[10px] font-medium text-[#9b8088]">Animasi perjalanan simulasi · status order tetap mengikuti update server</p>
+      </section>
+
+      <section className="mx-4 mt-4 flex items-center gap-3 rounded-[24px] border border-[#f0d9d2] bg-[#fffdfa] p-4 shadow-sm"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fff4ee] text-2xl">🚚</span><div className="min-w-0 flex-1"><p className="text-sm font-black text-[#3d2d3d]">{providerLabel} sedang mengantar pesanan</p><p className="mt-1 text-[11px] font-bold text-[#9b8088]">Status pengiriman diperbarui otomatis</p></div><Truck className="h-5 w-5 text-[#ef5757]" /></section>
+
+      <section className="mx-4 mt-3 rounded-2xl border border-[#eadfca] bg-[#fffaf0] px-4 py-3 text-center text-xs font-bold text-[#795d26]">📍 {current[2]}</section>
 
       <section className="relative z-10 -mt-12 mx-4 rounded-[30px] bg-card p-5 shadow-[0_16px_45px_rgba(9,9,11,0.12)]">
         <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Order details</p><h1 className="mt-1 font-display text-2xl font-black tracking-tight">{current[1]}</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{current[2]}</p></div><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><PackageCheck className="h-5 w-5" /></span></div>
