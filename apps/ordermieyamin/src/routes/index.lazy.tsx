@@ -332,9 +332,11 @@ function OrderForm() {
   const [submitting, setSubmitting] = useState(false);
   const checkoutLockRef = useRef(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3>(1);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const checkoutTopRef = useRef<HTMLElement | null>(null);
   const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<string | null>(() => readPendingPayment()?.orderId ?? null);
   const [draftHydrated, setDraftHydrated] = useState(false);
-  const [error, setError] = useState("");
   const [promoRemainingMs, setPromoRemainingMs] = useState(() => Math.max(0, PROMO_END_AT - Date.now()));
   const repackCount = repack ? kg * 10 : 0;
   const noodleTotal = kg * Number(mieYaminSettings.noodlePricePerKg);
@@ -469,40 +471,62 @@ function OrderForm() {
     await attachInvoiceAndRedirect(String(orderId), invoice.data);
   }
 
-  function submit() {
+  useEffect(() => {
+    checkoutTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [checkoutStep]);
+
+  function validateCheckoutStep(step: 1 | 2 | 3) {
     if (!settingsLoaded) {
       toast.error("Harga dan ketersediaan sedang dimuat. Tunggu sebentar lalu coba lagi.");
-      return;
+      return false;
     }
-    if (kg < minOrderKg) {
-      toast.error(`Minimum order adalah ${minOrderKg} kg.`);
-      return;
+    if (step === 1) {
+      if (kg < minOrderKg) {
+        toast.error(`Minimum order adalah ${minOrderKg} kg.`);
+        return false;
+      }
+      return true;
     }
-    if (!mieYaminSettings.enabledProviders.length) {
-      toast.error("Provider pengiriman sedang tidak tersedia. Hubungi admin untuk bantuan.");
-      return;
+    if (step === 2) {
+      if (!mieYaminSettings.enabledProviders.length) {
+        toast.error("Provider pengiriman sedang tidak tersedia. Hubungi admin untuk bantuan.");
+        return false;
+      }
+      if (!deliveryProvider || !deliveryDate) {
+        toast.error("Pilih kurir dan tanggal pengiriman terlebih dahulu.");
+        return false;
+      }
+      return true;
     }
     const mobile = normalizeMobile(phone);
+    if (!name.trim() || !phone.trim() || !address.trim()) {
+      toast.error("Lengkapi nama, WhatsApp, dan alamat penerima terlebih dahulu.");
+      return false;
+    }
     if (mobile.length < 10) {
       toast.error("Nomor WhatsApp harus minimal 10 digit, contoh: 081234567890.");
-      return;
-    }
-    if (!deliveryProvider || !deliveryDate || !name.trim() || !phone.trim() || !address.trim()) {
-      toast.error("Pilih pengiriman, lalu lengkapi tanggal pengiriman, nama, WhatsApp, dan alamat.");
-      return;
+      return false;
     }
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       toast.error("Format email belum benar.");
+      return false;
+    }
+    return true;
+  }
+
+  function continueCheckout() {
+    if (!validateCheckoutStep(checkoutStep)) return;
+    if (checkoutStep < 3) {
+      setCheckoutStep((value) => (value + 1) as 1 | 2 | 3);
       return;
     }
-    setError("");
     setReviewOpen(true);
   }
 
   async function confirmSubmit() {
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
-    setSubmitting(true); setError("");
+    setSubmitting(true);
     try {
       const orderId = await createOrder({
         items: [
@@ -545,7 +569,7 @@ function OrderForm() {
     if (!pendingPaymentOrderId) return;
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
-    setSubmitting(true); setError("");
+    setSubmitting(true);
     try {
       await createPaymentInvoice(pendingPaymentOrderId);
     } catch (e) {
@@ -563,37 +587,81 @@ function OrderForm() {
     return <main className="mx-auto w-full max-w-md px-4 py-8"><div className="animate-pulse rounded-[28px] border border-border bg-card p-5"><div className="h-5 w-2/3 rounded bg-muted" /><div className="mt-3 h-3 w-full rounded bg-muted" /><div className="mt-2 h-3 w-5/6 rounded bg-muted" /><div className="mt-8 h-28 rounded-2xl bg-muted" /><div className="mt-4 h-12 rounded-2xl bg-muted" /></div><p className="mt-4 text-center text-xs text-muted-foreground">Memuat harga dan ketersediaan terbaru...</p></main>;
   }
 
+  const stepLabels = ["Produk", "Pengiriman", "Penerima"] as const;
+  const selectedDateLabel = deliveryDate
+    ? new Date(`${deliveryDate}T12:00:00+07:00`).toLocaleDateString("id-ID", { dateStyle: "long" })
+    : "Belum dipilih";
+
   return (
-    <main className="mx-auto w-full max-w-md px-4 py-5 pb-24 md:pb-5"><div className="mb-4 overflow-hidden rounded-[28px] border border-border bg-card shadow-sm"><div className="grid grid-cols-[88px_1fr] items-center gap-4 p-4"><img src={String(mieYaminSettings.productImageUrl || "/logo-djiwa.png")} alt="Produk Mie Yamin" className="h-20 w-20 rounded-2xl bg-primary/5 object-contain p-2" /><div><p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Djiwa Tentram B2B</p><h1 className="mt-1 font-display text-2xl font-black tracking-tight">Mie Yamin Mentah</h1><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Produksi sendiri tanpa bahan pengawet. Cocok untuk reseller, warung, dan katering.</p></div></div><div className="grid grid-cols-3 border-t border-border/70 text-center text-[11px] font-bold text-muted-foreground"><span className="px-2 py-3">Min. {minOrderKg} kg</span><span className="border-x border-border/70 px-2 py-3">Area {String(mieYaminSettings.deliveryArea)}</span><span className="px-2 py-3">Cutoff {String(orderCutoffHour).padStart(2, "0")}:00</span></div></div>
-      <div className="space-y-4 rounded-[28px] border border-border bg-card p-5 shadow-sm">
-        <div className="rounded-2xl border border-border bg-background p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div className="w-full min-w-0"><p className="text-sm font-black">Jumlah mie</p><p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">Minimum {minOrderKg} kg · <span className="font-medium text-muted-foreground line-through">{formatRupiah(NORMAL_NOODLE_PRICE_PER_KG)}</span> <span className="font-black text-primary">{formatRupiah(Number(mieYaminSettings.noodlePricePerKg))}</span> per kg <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[11px] font-black text-emerald-700">PROMO</span></p><div className={`mt-3 flex w-full items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-[11px] font-black ${promoRemainingMs > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-border bg-muted text-muted-foreground"}`}><span className="flex min-w-0 items-center gap-2"><Clock3 className="h-4 w-4 shrink-0" /><span>{promoRemainingMs > 0 ? "Promo berakhir dalam" : "Promo telah berakhir"}</span></span>{promoRemainingMs > 0 ? <span className="shrink-0 rounded-lg bg-white/80 px-2 py-1 tabular-nums tracking-tight">{promoCountdown.days}h {String(promoCountdown.hours).padStart(2, "0")}j {String(promoCountdown.minutes).padStart(2, "0")}m {String(promoCountdown.seconds).padStart(2, "0")}d</span> : null}</div></div><div className="flex items-center gap-2"><button type="button" aria-label="Kurangi jumlah mie" onClick={() => setKg(Math.max(minOrderKg, kg - 1))} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-lg font-black transition active:scale-[.97]">−</button><output className="min-w-16 text-center text-lg font-black" aria-live="polite">{kg} kg</output><button type="button" aria-label="Tambah jumlah mie" onClick={() => setKg(kg + 1)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-lg font-black transition active:scale-[.97]">+</button></div></div><div className="mt-3 flex gap-2 overflow-x-auto pb-1">{[1, 5, 10, 25].filter((preset) => preset >= minOrderKg).map((preset) => <button key={preset} type="button" onClick={() => setKg(preset)} className={`min-h-10 shrink-0 rounded-xl border px-3 text-xs font-black ${kg === preset ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{preset} kg</button>)}</div></div>
-        <div className="space-y-3">
-          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><span className="pt-1 text-primary">＋</span><span className="flex-1"><b className="block text-sm">Kemasan siap masak</b><span className="text-xs text-muted-foreground">{formatRupiah(Number(mieYaminSettings.readyPackPrice))} per pcs</span><input min={0} type="number" value={readyPackCount} onChange={(e) => setReadyPackCount(Math.max(0, Number(e.target.value) || 0))} className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Jumlah pcs" /></span></label>
-          <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack dari mie kiloan</b><span className="text-xs leading-relaxed text-muted-foreground">Tambahan {formatRupiah(Number(mieYaminSettings.repackFeePer100g))} per 100 gram. {kg} kg = {kg * 10} pcs, biaya repack {formatRupiah(kg * 10 * Number(mieYaminSettings.repackFeePer100g))}.</span></span></label>
+    <main ref={checkoutTopRef} className="mx-auto w-full max-w-md scroll-mt-20 px-4 py-5 pb-28 md:pb-5">
+      <div className="mb-4 overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
+        <div className="grid grid-cols-[72px_1fr] items-center gap-3 p-4">
+          <img src={String(mieYaminSettings.productImageUrl || "/logo-djiwa.png")} alt="Produk Mie Yamin" className="h-[72px] w-[72px] rounded-2xl bg-primary/5 object-contain p-2" />
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Djiwa Tentram B2B</p>
+            <h1 className="mt-1 font-display text-2xl font-black tracking-tight">Mie Yamin Mentah</h1>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Produksi sendiri tanpa bahan pengawet.</p>
+          </div>
         </div>
-        <div className="space-y-2"><p className="text-sm font-bold">Pilih pengiriman <span className="font-normal text-muted-foreground">(area {String(mieYaminSettings.deliveryArea)})</span></p><div className="grid grid-cols-2 gap-3">{(["gojek", "maxim"] as const).filter((provider) => mieYaminSettings.enabledProviders.includes(provider)).map((provider) => <button key={provider} type="button" onClick={() => setDeliveryProvider(provider)} className={`h-14 rounded-2xl border text-sm font-black transition active:scale-[.97] ${deliveryProvider === provider ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground"}`}>{provider === "gojek" ? "Gojek" : "Maxim"}<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">{mieYaminSettings.freeShippingPromo ? "Ongkir gratis selama promo" : shippingFee > 0 ? formatRupiah(shippingFee) : "Dikonfirmasi admin"}</span></button>)}</div></div>
-        <div className="space-y-2"><p className="flex items-center gap-2 text-sm font-bold"><CalendarDays className="h-4 w-4 text-primary" />Tanggal pengiriman</p><CalendarDatePicker value={deliveryDate} onChange={setDeliveryDate} minDate={minDate} maxOrdersPerDate={maxOrdersPerDate} /></div>
-        <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-bold">Nama penerima<input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama lengkap penerima" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label><label className="text-sm font-bold">WhatsApp<input autoComplete="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Contoh: 082112345678" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label></div>
-        <label className="block text-sm font-bold">Email <span className="font-normal text-muted-foreground">(opsional, untuk bukti pembayaran)</span><input autoComplete="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label>
-        <label className="block text-sm font-bold">Alamat lengkap<textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={3} placeholder="Contoh: Nama kos/jalan, nomor rumah, patokan terdekat, kecamatan" className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
-        <label className="block text-sm font-bold">Catatan pengiriman <span className="font-normal text-muted-foreground">(opsional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
-        <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Mie yamin ({kg} kg)</span><b>{formatRupiah(noodleTotal)}</b></div>{readyPackCount > 0 ? <div className="mt-2 flex justify-between"><span>Kemasan siap masak ({readyPackCount} pcs)</span><b>{formatRupiah(readyPackTotal)}</b></div> : null}{repack ? <div className="mt-2 flex justify-between"><span>Jasa repack ({repackCount} pcs)</span><b>{formatRupiah(repackTotal)}</b></div> : null}{deliveryProvider ? <div className="mt-2 flex justify-between"><span>Pengiriman {deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</span><b className={shippingFee > 0 ? "text-foreground" : "text-emerald-600"}>{mieYaminSettings.freeShippingPromo ? "Gratis promo" : shippingFee > 0 ? formatRupiah(shippingFee) : "Dikonfirmasi admin"}</b></div> : null}<div className="mt-3 flex justify-between border-t border-border pt-3 text-base"><b>Total</b><b className="text-primary">{formatRupiah(total)}</b></div></div>
-        <div className="space-y-2 rounded-2xl border border-border bg-background p-4">
-          <p className="text-sm font-black">Sebelum memesan</p>
-          <ul className="space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            <li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Order diproses setelah pembayaran terverifikasi</span></li>
-            <li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Pengiriman memakai Gojek/Maxim sesuai jadwal pilihan</span></li>
-            <li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Link pembayaran berlaku 24 jam</span></li>
-            <li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Status order dapat dipantau secara live</span></li>
-          </ul>
-          {supportHref ? <a href={supportHref} target="_blank" rel="noopener noreferrer" className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-xs font-black text-white">Chat WhatsApp admin</a> : null}
+        <div className="grid grid-cols-3 border-t border-border/70 text-center text-[11px] font-bold text-muted-foreground">
+          <span className="px-2 py-3">Min. {minOrderKg} kg</span>
+          <span className="border-x border-border/70 px-2 py-3">Area {String(mieYaminSettings.deliveryArea)}</span>
+          <span className="px-2 py-3">Cutoff {String(orderCutoffHour).padStart(2, "0")}:00</span>
         </div>
-        {reviewOpen ? <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4"><div><p className="text-sm font-black text-primary">Review pesanan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pastikan jumlah, tanggal, dan alamat sudah benar sebelum lanjut ke pembayaran.</p></div><div className="space-y-1.5 text-xs"><p><b>{kg} kg</b> Mie Yamin Mentah</p>{readyPackCount > 0 ? <p><b>{readyPackCount} pcs</b> kemasan siap masak</p> : null}{repack ? <p>Jasa repack <b>{repackCount} pcs</b></p> : null}<p>Pengiriman <b>{deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</b> pada <b>{new Date(`${deliveryDate}T12:00:00+07:00`).toLocaleDateString("id-ID", { dateStyle: "long" })}</b></p><p>Penerima <b>{name}</b> · {phone}</p><p className="break-words">{address}</p>{email.trim() ? <p>Email bukti pembayaran <b>{email}</b></p> : null}</div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setReviewOpen(false)} className="h-11 rounded-xl border border-border bg-background text-xs font-black transition active:scale-[.97]">Kembali edit</button><button type="button" disabled={submitting} onClick={confirmSubmit} className="h-11 rounded-xl bg-primary text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">{submitting ? "Menyiapkan..." : "Konfirmasi & bayar"}</button></div></div> : null}
-        {pendingPaymentOrderId ? <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-black text-amber-900">Order sudah tersimpan, tetapi invoice pembayaran belum berhasil dibuat.</p><p className="text-[11px] leading-relaxed text-amber-800">Coba lagi dengan order yang sama agar tidak membuat pesanan ganda.</p><button type="button" disabled={submitting} onClick={retryPayment} className="h-11 w-full rounded-xl bg-amber-600 text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">{submitting ? "Mencoba lagi..." : "Coba buat pembayaran lagi"}</button></div> : null}
-        {!reviewOpen && !pendingPaymentOrderId ? <button disabled={submitting} onClick={submit} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white transition active:scale-[.97] disabled:opacity-50">Cek pesanan & bayar <ChevronRight className="h-4 w-4" /></button> : null}
       </div>
-      {!reviewOpen && !pendingPaymentOrderId ? <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(9,9,11,0.08)] backdrop-blur-xl md:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}><div className="mx-auto flex max-w-md items-center gap-3"><div className="min-w-0 flex-1"><p className="text-[11px] font-bold text-muted-foreground">Total pesanan</p><p className="truncate text-base font-black text-primary">{formatRupiah(total)}</p></div><button disabled={submitting} onClick={submit} className="h-12 shrink-0 rounded-2xl bg-primary px-5 text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">Cek pesanan</button></div></div> : null}
-      <p className="mt-5 text-center text-xs text-muted-foreground">Pembayaran aman via Mayar. Setelah pembayaran, status order akan diperbarui secara live.</p>
+
+      <div className="mb-4 rounded-2xl border border-border bg-card px-4 py-3">
+        <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+          {stepLabels.map((label, index) => {
+            const step = (index + 1) as 1 | 2 | 3;
+            const active = checkoutStep === step;
+            const complete = checkoutStep > step;
+            return <button key={label} type="button" onClick={() => complete && setCheckoutStep(step)} disabled={!complete && !active} className={`flex items-center gap-1.5 transition active:scale-[.97] ${active ? "text-primary" : complete ? "text-foreground" : "text-muted-foreground/50"}`}><span className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${active ? "border-primary bg-primary text-white" : complete ? "border-primary/30 bg-primary/10 text-primary" : "border-border"}`}>{complete ? <Check className="h-3.5 w-3.5" /> : step}</span><span>{label}</span></button>;
+          })}
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${(checkoutStep / 3) * 100}%` }} /></div>
+      </div>
+
+      <div className="space-y-4 rounded-[28px] border border-border bg-card p-5 shadow-sm">
+        {checkoutStep === 1 ? <section aria-labelledby="product-step-title" className="space-y-4">
+          <div><p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Langkah 1 dari 3</p><h2 id="product-step-title" className="mt-1 font-display text-xl font-black">Pilih produk</h2><p className="mt-1 text-xs text-muted-foreground">Atur jumlah dan opsi kemasan yang Anda butuhkan.</p></div>
+          <div className="rounded-2xl border border-border bg-background p-4">
+            <div className="flex items-end justify-between gap-3"><div><p className="text-sm font-black">Mie Yamin Mentah</p><p className="mt-1 text-xs text-muted-foreground">{formatRupiah(Number(mieYaminSettings.noodlePricePerKg))} per kg</p></div><p className="text-lg font-black text-primary">{formatRupiah(noodleTotal)}</p></div>
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-muted/50 p-3"><span className="text-sm font-bold">Jumlah mie</span><div className="flex items-center gap-2"><button type="button" aria-label="Kurangi jumlah mie" onClick={() => setKg(Math.max(minOrderKg, kg - 1))} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-lg font-black transition active:scale-[.97]">−</button><output className="min-w-16 text-center text-lg font-black" aria-live="polite">{kg} kg</output><button type="button" aria-label="Tambah jumlah mie" onClick={() => setKg(kg + 1)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-lg font-black transition active:scale-[.97]">+</button></div></div>
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><span className="pt-1 text-primary">＋</span><span className="flex-1"><b className="block text-sm">Kemasan siap masak</b><span className="text-xs text-muted-foreground">{formatRupiah(Number(mieYaminSettings.readyPackPrice))} per pcs</span><input min={0} type="number" value={readyPackCount} onChange={(e) => setReadyPackCount(Math.max(0, Number(e.target.value) || 0))} className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Jumlah pcs" /></span></label>
+            <label className="flex items-start gap-3 rounded-2xl border border-border p-4"><input checked={repack} onChange={(e) => setRepack(e.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-primary" /><span><b className="block text-sm">Repack dari mie kiloan</b><span className="text-xs leading-relaxed text-muted-foreground">{formatRupiah(Number(mieYaminSettings.repackFeePer100g))} per 100 gram · {kg} kg = {kg * 10} pcs.</span></span></label>
+          </div>
+          <div className="flex items-center justify-between rounded-2xl bg-primary/5 p-4"><span className="text-sm font-bold">Total sementara</span><b className="text-lg text-primary">{formatRupiah(total)}</b></div>
+          <button type="button" onClick={continueCheckout} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white transition active:scale-[.97]">Lanjutkan ke pengiriman <ChevronRight className="h-4 w-4" /></button>
+        </section> : null}
+
+        {checkoutStep === 2 ? <section aria-labelledby="delivery-step-title" className="space-y-4">
+          <div><p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Langkah 2 dari 3</p><h2 id="delivery-step-title" className="mt-1 font-display text-xl font-black">Atur pengiriman</h2><p className="mt-1 text-xs text-muted-foreground">Pilih kurir dan waktu pengiriman ke area {String(mieYaminSettings.deliveryArea)}.</p></div>
+          <div className="space-y-2"><p className="text-sm font-bold">Pilih kurir</p><div className="grid grid-cols-2 gap-3">{(["gojek", "maxim"] as const).filter((provider) => mieYaminSettings.enabledProviders.includes(provider)).map((provider) => <button key={provider} type="button" onClick={() => setDeliveryProvider(provider)} className={`h-14 rounded-2xl border text-sm font-black transition active:scale-[.97] ${deliveryProvider === provider ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground"}`}>{provider === "gojek" ? "Gojek" : "Maxim"}<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">{mieYaminSettings.freeShippingPromo ? "Ongkir gratis selama promo" : shippingFee > 0 ? formatRupiah(shippingFee) : "Dikonfirmasi admin"}</span></button>)}</div></div>
+          <div className="space-y-2"><p className="flex items-center gap-2 text-sm font-bold"><CalendarDays className="h-4 w-4 text-primary" />Kapan dikirim?</p><button type="button" onClick={() => setCalendarOpen(true)} className="flex min-h-14 w-full items-center justify-between rounded-2xl border border-border bg-background px-4 text-left transition active:scale-[.99]"><span><span className="block text-sm font-black">{deliveryDate ? selectedDateLabel : "Pilih tanggal pengiriman"}</span><span className="mt-1 block text-[11px] text-muted-foreground">Besok, lusa, atau tanggal lain</span></span><CalendarDays className="h-5 w-5 text-primary" /></button></div>
+          <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Isi keranjang</span><b>{kg} kg mie{readyPackCount > 0 ? ` + ${readyPackCount} pcs kemasan` : ""}</b></div><div className="mt-2 flex justify-between"><span>Kurir</span><b>{deliveryProvider ? (deliveryProvider === "gojek" ? "Gojek" : "Maxim") : "Belum dipilih"}</b></div></div>
+          <div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setCheckoutStep(1)} className="h-12 rounded-2xl border border-border text-sm font-black transition active:scale-[.97]">Kembali</button><button type="button" onClick={continueCheckout} className="h-12 rounded-2xl bg-primary text-sm font-black text-white transition active:scale-[.97]">Lanjutkan <ChevronRight className="ml-1 inline h-4 w-4" /></button></div>
+        </section> : null}
+
+        {checkoutStep === 3 ? <section aria-labelledby="recipient-step-title" className="space-y-4">
+          <div><p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Langkah 3 dari 3</p><h2 id="recipient-step-title" className="mt-1 font-display text-xl font-black">Data penerima</h2><p className="mt-1 text-xs text-muted-foreground">Data ini digunakan kurir untuk mengantar pesanan.</p></div>
+          <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-bold">Nama penerima<input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama lengkap penerima" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label><label className="text-sm font-bold">WhatsApp<input autoComplete="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Contoh: 082112345678" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label></div>
+          <label className="block text-sm font-bold">Alamat lengkap<textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={4} placeholder="Contoh: Nama jalan, nomor rumah, patokan terdekat, kecamatan" className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
+          <label className="block text-sm font-bold">Catatan pengiriman <span className="font-normal text-muted-foreground">(opsional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Contoh: titip di satpam" className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
+          <label className="block text-sm font-bold">Email <span className="font-normal text-muted-foreground">(opsional, untuk bukti pembayaran)</span><input autoComplete="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label>
+          <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Pesanan</span><b>{kg} kg mie yamin</b></div><div className="mt-2 flex justify-between"><span>Dikirim</span><b className="max-w-[60%] text-right">{deliveryDate ? selectedDateLabel : "Belum dipilih"}</b></div><div className="mt-3 flex justify-between border-t border-border pt-3 text-base"><b>Total</b><b className="text-primary">{formatRupiah(total)}</b></div></div>
+          <div className="space-y-2 rounded-2xl border border-border bg-background p-4"><p className="text-sm font-black">Sebelum memesan</p><ul className="space-y-1.5 text-[11px] leading-relaxed text-muted-foreground"><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Order diproses setelah pembayaran terverifikasi</span></li><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Link pembayaran berlaku 24 jam</span></li><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Status order dapat dipantau secara live</span></li></ul>{supportHref ? <a href={supportHref} target="_blank" rel="noopener noreferrer" className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 text-xs font-black text-white transition active:scale-[.97]">Chat WhatsApp admin</a> : null}</div>
+          {reviewOpen ? <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4"><div><p className="text-sm font-black text-primary">Review pesanan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pastikan jumlah, pengiriman, dan alamat sudah benar sebelum lanjut ke pembayaran.</p></div><div className="space-y-1.5 text-xs"><p><b>{kg} kg</b> Mie Yamin Mentah</p>{readyPackCount > 0 ? <p><b>{readyPackCount} pcs</b> kemasan siap masak</p> : null}{repack ? <p>Jasa repack <b>{repackCount} pcs</b></p> : null}<p>Pengiriman <b>{deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</b> pada <b>{selectedDateLabel}</b></p><p>Penerima <b>{name}</b> · {phone}</p><p className="break-words">{address}</p>{email.trim() ? <p>Email bukti pembayaran <b>{email}</b></p> : null}</div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setReviewOpen(false)} className="h-11 rounded-xl border border-border bg-background text-xs font-black transition active:scale-[.97]">Kembali edit</button><button type="button" disabled={submitting} onClick={confirmSubmit} className="h-11 rounded-xl bg-primary text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">{submitting ? "Menyiapkan..." : "Konfirmasi & bayar"}</button></div></div> : null}
+          {pendingPaymentOrderId ? <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-black text-amber-900">Order sudah tersimpan, tetapi invoice pembayaran belum berhasil dibuat.</p><p className="text-[11px] leading-relaxed text-amber-800">Coba lagi dengan order yang sama agar tidak membuat pesanan ganda.</p><button type="button" disabled={submitting} onClick={retryPayment} className="h-11 w-full rounded-xl bg-amber-600 text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">{submitting ? "Mencoba lagi..." : "Coba buat pembayaran lagi"}</button></div> : null}
+          {!reviewOpen && !pendingPaymentOrderId ? <div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setCheckoutStep(2)} className="h-12 rounded-2xl border border-border text-sm font-black transition active:scale-[.97]">Kembali</button><button type="button" disabled={submitting} onClick={continueCheckout} className="h-12 rounded-2xl bg-primary text-sm font-black text-white transition active:scale-[.97] disabled:opacity-50">Review pesanan <ChevronRight className="ml-1 inline h-4 w-4" /></button></div> : null}
+        </section> : null}
+      </div>
+
+      {!reviewOpen && !pendingPaymentOrderId ? <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(9,9,11,0.08)] backdrop-blur-xl md:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}><div className="mx-auto flex max-w-md items-center gap-3"><div className="min-w-0 flex-1"><p className="text-[11px] font-bold text-muted-foreground">Total pesanan</p><p className="truncate text-base font-black text-primary">{formatRupiah(total)}</p></div><button disabled={submitting} onClick={continueCheckout} className="h-12 shrink-0 rounded-2xl bg-primary px-5 text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">{checkoutStep === 1 ? "Lanjutkan" : checkoutStep === 2 ? "Lanjutkan" : "Review pesanan"}</button></div></div> : null}
+
+      {calendarOpen ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-0 backdrop-blur-[2px]" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCalendarOpen(false); }}><div role="dialog" aria-modal="true" aria-labelledby="calendar-sheet-title" className="max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border border-border bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"><div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted" /><div className="flex items-center justify-between"><div><p id="calendar-sheet-title" className="font-display text-lg font-black">Pilih tanggal pengiriman</p><p className="mt-1 text-xs text-muted-foreground">Pesanan dikirim ke area {String(mieYaminSettings.deliveryArea)}</p></div><button type="button" aria-label="Tutup kalender" onClick={() => setCalendarOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-xl transition active:scale-[.97]">×</button></div><div className="mt-3"><CalendarDatePicker value={deliveryDate} onChange={(date) => { setDeliveryDate(date); setCalendarOpen(false); }} minDate={minDate} maxOrdersPerDate={maxOrdersPerDate} /></div></div></div> : null}
     </main>
   );
 }
