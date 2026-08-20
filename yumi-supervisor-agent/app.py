@@ -1524,10 +1524,12 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines = []
     if struk_line:
         lines.append(f"📍 {struk_line}")
+    lines.extend([
+        f"🧾 Pesanan Baru — {_format_time_hm(ts_ms)}",
+    ])
     if source_label:
         lines.append(f"📲 SUMBER: {source_label}")
     lines.extend([
-        f"🧾 Pesanan Baru — {_format_time_hm(ts_ms)}",
         "────────────",
         f"🆔 {order_no}",
         f"💰 Rp{totalAmount:,.0f} — {_payment_label(payment_method)}",
