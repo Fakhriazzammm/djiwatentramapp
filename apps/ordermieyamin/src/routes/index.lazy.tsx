@@ -185,13 +185,16 @@ function buildReorderDraft(order: any) {
   return { savedAt: Date.now(), productType: pack ? "ready_pack" : "noodle", kg: Number(mie?.quantity || 1), readyPackCount: Number(pack?.quantity || 1), repack };
 }
 
+// Origin verified from the existing attendance/admin geofence settings.
+const DELIVERY_ORIGIN = { lat: -7.316143, lng: 108.212601, label: "Djiwa Tentram Koffie" };
+
 function getDeliveryRoutePoint(progress: number) {
   const points = [
-    { x: 74, y: 178 },
-    { x: 142, y: 178 },
-    { x: 142, y: 132 },
-    { x: 236, y: 132 },
-    { x: 236, y: 76 },
+    { x: 186, y: 99 },
+    { x: 225, y: 99 },
+    { x: 225, y: 135 },
+    { x: 280, y: 135 },
+    { x: 280, y: 76 },
     { x: 306, y: 76 },
   ];
   const scaled = Math.min(0.999, Math.max(0, progress)) * (points.length - 1);
@@ -237,6 +240,7 @@ function Tracking({ orderId }: { orderId: string }) {
   const [messageIndex, setMessageIndex] = useState(0);
   const isDeliveryActive = status === "out_for_delivery";
   const isCompleted = status === "delivered";
+  const isMapActive = isDeliveryActive || isCompleted;
   const routeProgress = isCompleted ? 1 : isDeliveryActive ? animationProgress : activeIndex >= 4 ? 0.72 : 0;
   const routePoint = getDeliveryRoutePoint(routeProgress);
   const etaMinutes = isDeliveryActive ? Math.max(1, 4 - Math.floor(animationProgress * 3)) : activeIndex >= 4 && !isCompleted ? 8 : null;
@@ -277,16 +281,16 @@ function Tracking({ orderId }: { orderId: string }) {
 
   return (
     <main className="mx-auto w-full max-w-md pb-10">
-      <section className="relative h-[330px] overflow-hidden bg-[#eaf3ff]">
+      <section className={`relative overflow-hidden bg-[#eaf3ff] ${isMapActive ? "h-[330px]" : "h-[220px]"}`}>
         <iframe
           title="Peta area pengiriman Mie Yamin"
-          src="https://www.openstreetmap.org/export/embed.html?bbox=108.18%2C-7.36%2C108.25%2C-7.28&layer=mapnik&marker=-7.327%2C108.22"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=108.18%2C-7.36%2C108.25%2C-7.28&layer=mapnik"
           className="absolute inset-0 h-full w-full border-0"
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20" />
-        <svg viewBox="0 0 400 220" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
+        <svg viewBox="0 0 400 220" preserveAspectRatio="none" className={`pointer-events-none absolute inset-0 h-full w-full transition-opacity ${isMapActive ? "opacity-100" : "opacity-0"}`}>
           <path d="M186 99 H225 V135 H280 V76 H306" fill="none" stroke="white" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.72" />
           <motion.path d="M186 99 H225 V135 H280 V76 H306" fill="none" stroke="#1a5dc6" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" pathLength={1} initial={{ pathLength: 0 }} animate={{ pathLength: routeProgress }} transition={{ duration: 0.45, ease: "easeOut" }} />
           <circle cx="186" cy="99" r="15" fill="#0f9f88" stroke="white" strokeWidth="4" />
@@ -299,8 +303,8 @@ function Tracking({ orderId }: { orderId: string }) {
             <circle cx="236" cy="132" r="22" fill="none" stroke="#1a5dc6" strokeWidth="2" opacity="0.45"><animate attributeName="r" values="16;27;16" dur="1.8s" repeatCount="indefinite" /></circle>
           </motion.g>
         </svg>
-        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Live delivery</span></div>
-        <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3"><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">Rumah</span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">{providerLabel}</span></div>
+        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">{isDeliveryActive ? "Live delivery" : "Perjalanan pesanan"}</span></div>
+        <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3"><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">🏪 {DELIVERY_ORIGIN.label}</span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">{isDeliveryActive ? providerLabel : "Tujuan pengiriman"}</span></div>
       </section>
 
       <section className="mx-4 mt-4 rounded-[24px] border border-border bg-card p-5 shadow-sm">
