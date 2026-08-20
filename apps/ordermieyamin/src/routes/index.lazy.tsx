@@ -331,6 +331,7 @@ function OrderForm() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const checkoutLockRef = useRef(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3>(1);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -526,6 +527,7 @@ function OrderForm() {
   async function confirmSubmit() {
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
+    setCheckoutError(null);
     setSubmitting(true);
     try {
       const orderId = await createOrder({
@@ -558,7 +560,9 @@ function OrderForm() {
       setPendingPaymentOrderId(String(orderId));
       await createPaymentInvoice(String(orderId));
     } catch (e) {
-      toast.error(getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi."));
+      const message = getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi.");
+      setCheckoutError(message);
+      toast.error(message);
     } finally {
       checkoutLockRef.current = false;
       setSubmitting(false);
@@ -569,11 +573,14 @@ function OrderForm() {
     if (!pendingPaymentOrderId) return;
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
+    setCheckoutError(null);
     setSubmitting(true);
     try {
       await createPaymentInvoice(pendingPaymentOrderId);
     } catch (e) {
-      toast.error(getCheckoutErrorMessage(e, "Invoice belum berhasil dibuat. Coba lagi."));
+      const message = getCheckoutErrorMessage(e, "Invoice belum berhasil dibuat. Coba lagi.");
+      setCheckoutError(message);
+      toast.error(message);
     } finally {
       checkoutLockRef.current = false;
       setSubmitting(false);
@@ -652,7 +659,8 @@ function OrderForm() {
           <label className="block text-sm font-bold">Catatan pengiriman <span className="font-normal text-muted-foreground">(opsional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Contoh: titip di satpam" className="mt-2 w-full rounded-2xl border border-border bg-background p-3 text-sm" /></label>
           <label className="block text-sm font-bold">Email <span className="font-normal text-muted-foreground">(opsional, untuk bukti pembayaran)</span><input autoComplete="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" className="mt-2 h-12 w-full rounded-2xl border border-border bg-background px-3 text-sm" /></label>
           <div className="rounded-2xl bg-muted/50 p-4 text-sm"><div className="flex justify-between"><span>Pesanan</span><b>{kg} kg mie yamin</b></div><div className="mt-2 flex justify-between"><span>Dikirim</span><b className="max-w-[60%] text-right">{deliveryDate ? selectedDateLabel : "Belum dipilih"}</b></div><div className="mt-3 flex justify-between border-t border-border pt-3 text-base"><b>Total</b><b className="text-primary">{formatRupiah(total)}</b></div></div>
-          <div className="space-y-2 rounded-2xl border border-border bg-background p-4"><p className="text-sm font-black">Sebelum memesan</p><ul className="space-y-1.5 text-[11px] leading-relaxed text-muted-foreground"><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Order diproses setelah pembayaran terverifikasi</span></li><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Link pembayaran berlaku 24 jam</span></li><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Status order dapat dipantau secara live</span></li></ul>{supportHref ? <a href={supportHref} target="_blank" rel="noopener noreferrer" className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 text-xs font-black text-white transition active:scale-[.97]">Chat WhatsApp admin</a> : null}</div>
+          <div className="space-y-2 rounded-2xl border border-border bg-background p-4"><p className="text-sm font-black">Sebelum memesan</p><ul className="space-y-1.5 text-[11px] leading-relaxed text-muted-foreground"><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Order diproses setelah pembayaran terverifikasi</span></li><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Link pembayaran berlaku 24 jam</span></li><li className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Status order dapat dipantau secara live</span></li></ul></div>
+          {checkoutError ? <div role="alert" className="space-y-3 rounded-2xl border border-red-200 bg-red-50 p-4"><div><p className="text-sm font-black text-red-800">Checkout belum berhasil</p><p className="mt-1 text-xs leading-relaxed text-red-700">{checkoutError}</p></div>{supportHref ? <a href={supportHref} target="_blank" rel="noopener noreferrer" className="flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 text-xs font-black text-white transition active:scale-[.97]">Chat WhatsApp admin</a> : null}</div> : null}
           {reviewOpen ? <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4"><div><p className="text-sm font-black text-primary">Review pesanan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pastikan jumlah, pengiriman, dan alamat sudah benar sebelum lanjut ke pembayaran.</p></div><div className="space-y-1.5 text-xs"><p><b>{kg} kg</b> Mie Yamin Mentah</p>{readyPackCount > 0 ? <p><b>{readyPackCount} pcs</b> kemasan siap masak</p> : null}{repack ? <p>Jasa repack <b>{repackCount} pcs</b></p> : null}<p>Pengiriman <b>{deliveryProvider === "gojek" ? "Gojek" : "Maxim"}</b> pada <b>{selectedDateLabel}</b></p><p>Penerima <b>{name}</b> · {phone}</p><p className="break-words">{address}</p>{email.trim() ? <p>Email bukti pembayaran <b>{email}</b></p> : null}</div><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setReviewOpen(false)} className="h-11 rounded-xl border border-border bg-background text-xs font-black transition active:scale-[.97]">Kembali edit</button><button type="button" disabled={submitting} onClick={confirmSubmit} className="h-11 rounded-xl bg-primary text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">{submitting ? "Menyiapkan..." : "Konfirmasi & bayar"}</button></div></div> : null}
           {pendingPaymentOrderId ? <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-black text-amber-900">Order sudah tersimpan, tetapi invoice pembayaran belum berhasil dibuat.</p><p className="text-[11px] leading-relaxed text-amber-800">Coba lagi dengan order yang sama agar tidak membuat pesanan ganda.</p><button type="button" disabled={submitting} onClick={retryPayment} className="h-11 w-full rounded-xl bg-amber-600 text-xs font-black text-white transition active:scale-[.97] disabled:opacity-50">{submitting ? "Mencoba lagi..." : "Coba buat pembayaran lagi"}</button></div> : null}
           {!reviewOpen && !pendingPaymentOrderId ? <div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setCheckoutStep(2)} className="h-12 rounded-2xl border border-border text-sm font-black transition active:scale-[.97]">Kembali</button><button type="button" disabled={submitting} onClick={continueCheckout} className="h-12 rounded-2xl bg-primary text-sm font-black text-white transition active:scale-[.97] disabled:opacity-50">Review pesanan <ChevronRight className="ml-1 inline h-4 w-4" /></button></div> : null}
