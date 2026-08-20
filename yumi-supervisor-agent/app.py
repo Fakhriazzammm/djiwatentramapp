@@ -1432,7 +1432,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
                                           items: list[dict], guest_count=None, notes="",
                                           discount_amount=0.0, voucher_id=None, free_refill=None,
                                           delivery_context: dict | None = None,
-                                          source: str | None = None):
+                                          source_label: str | None = None):
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
@@ -1524,8 +1524,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines = []
     if struk_line:
         lines.append(f"📍 {struk_line}")
-    if source == "customer_self_service":
-        lines.append("📲 SUMBER: DjiwaApp Guest")
+    if source_label:
+        lines.append(f"📲 SUMBER: {source_label}")
     lines.extend([
         f"🧾 Pesanan Baru — {_format_time_hm(ts_ms)}",
         "────────────",
@@ -1812,6 +1812,14 @@ async def _check_new_orders(app):
             "deliveryArea": "Tasikmalaya" if row.get("businessUnit") == "ordermieyamin" else "",
         }
 
+        source_label = None
+        if row.get("businessUnit") == "ordermieyamin":
+            source_label = "Order Mie Yamin"
+        elif row.get("source") == "booking":
+            source_label = "Booking"
+        elif row.get("source") == "customer_self_service":
+            source_label = "DjiwaApp Member" if customer_source_id else "DjiwaApp Guest"
+
         # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
         bev_items = await _get_beverage_items(items)
@@ -1831,7 +1839,7 @@ async def _check_new_orders(app):
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, row.get("source"))
+        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label)
 
         # ⭐ Award points for member orders
         if customer_source_id:
