@@ -215,9 +215,10 @@ function Tracking({ orderId }: { orderId: string }) {
   const invoiceUrl = order?.paymentGateway?.invoiceUrl || order?.payment_gateway?.invoiceUrl;
   const [animationProgress, setAnimationProgress] = useState(0);
   const isDeliveryActive = status === "out_for_delivery";
-  const routeProgress = status === "delivered" ? 1 : isDeliveryActive ? animationProgress : activeIndex >= 4 ? 0.72 : 0;
+  const isCompleted = status === "delivered";
+  const routeProgress = isCompleted ? 1 : isDeliveryActive ? animationProgress : activeIndex >= 4 ? 0.72 : 0;
   const routePoint = getDeliveryRoutePoint(routeProgress);
-  const etaMinutes = isDeliveryActive ? Math.max(1, 4 - Math.floor(animationProgress * 3)) : activeIndex >= 4 ? 8 : null;
+  const etaMinutes = isDeliveryActive ? Math.max(1, 4 - Math.floor(animationProgress * 3)) : activeIndex >= 4 && !isCompleted ? 8 : null;
 
   useEffect(() => {
     let timer: number | null = null;
@@ -257,13 +258,16 @@ function Tracking({ orderId }: { orderId: string }) {
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20" />
         <svg viewBox="0 0 400 220" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
+          <path d="M74 178 H142 V132 H236 V76 H306" fill="none" stroke="white" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.72" />
           <motion.path d="M74 178 H142 V132 H236 V76 H306" fill="none" stroke="#ef5757" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" pathLength={1} initial={{ pathLength: 0 }} animate={{ pathLength: routeProgress }} transition={{ duration: 0.45, ease: "easeOut" }} />
-          <path d="M74 178 H142 V132 H236 V76 H306" fill="none" stroke="white" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.42" />
-          <circle cx="74" cy="178" r="12" fill="#0f9f88" stroke="white" strokeWidth="4" />
-          <circle cx="306" cy="76" r="12" fill="#49344f" stroke="white" strokeWidth="4" />
+          <circle cx="74" cy="178" r="15" fill="#0f9f88" stroke="white" strokeWidth="4" />
+          <foreignObject x="64" y="168" width="20" height="20"><div className="flex h-5 w-5 items-center justify-center text-white"><Store className="h-3.5 w-3.5" /></div></foreignObject>
+          <circle cx="306" cy="76" r="15" fill="#49344f" stroke="white" strokeWidth="4" />
+          <foreignObject x="296" y="66" width="20" height="20"><div className="flex h-5 w-5 items-center justify-center text-white"><MapPin className="h-3.5 w-3.5" /></div></foreignObject>
           <motion.g animate={{ x: routePoint.x - 236, y: routePoint.y - 132 }} transition={{ duration: 0.35, ease: "easeOut" }}>
-            <circle cx="236" cy="132" r="14" fill="#ef5757" stroke="white" strokeWidth="4" />
-            <circle cx="236" cy="132" r="20" fill="none" stroke="#ef5757" strokeWidth="2" opacity="0.45"><animate attributeName="r" values="14;24;14" dur="1.8s" repeatCount="indefinite" /></circle>
+            <circle cx="236" cy="132" r="16" fill="#ef5757" stroke="white" strokeWidth="4" />
+            <foreignObject x="225" y="121" width="22" height="22"><div className="flex h-[22px] w-[22px] items-center justify-center text-white"><Truck className="h-4 w-4" /></div></foreignObject>
+            <circle cx="236" cy="132" r="22" fill="none" stroke="#ef5757" strokeWidth="2" opacity="0.45"><animate attributeName="r" values="16;27;16" dur="1.8s" repeatCount="indefinite" /></circle>
           </motion.g>
         </svg>
         <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Live delivery</span></div>
@@ -271,10 +275,10 @@ function Tracking({ orderId }: { orderId: string }) {
       </section>
 
       <section className="relative z-10 -mt-8 mx-4 rounded-[26px] border border-[#f0d9d2] bg-[#fffdfa] p-5 shadow-[0_12px_34px_rgba(65,40,30,0.08)]">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-xl font-black text-[#3d2d3d]">{isDeliveryActive ? `Tiba dalam ~${etaMinutes} menit` : current[1]}</p><p className="mt-1 text-xs font-bold text-[#8d707c]">Order #{order?.orderNumber || orderId.slice(-8)} · {order?.status === "paid" || order?.status === "completed" ? "Paid" : "Menunggu pembayaran"}</p></div><span className="rounded-2xl bg-emerald-500 px-3 py-3 text-center text-[10px] font-black text-white"><b className="block text-2xl leading-none">{etaMinutes ?? "—"}</b>MIN</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f1e2df]"><motion.div className="h-full rounded-full bg-[#ef5757]" animate={{ width: `${Math.max(8, routeProgress * 100)}%` }} transition={{ duration: 0.45 }} /></div><p className="mt-2 text-[10px] font-medium text-[#9b8088]">Animasi perjalanan simulasi · status order tetap mengikuti update server</p>
+        <div className="flex items-start justify-between gap-3"><div><p className="text-xl font-black text-[#3d2d3d]">{isDeliveryActive ? `Tiba dalam ~${etaMinutes} menit` : isCompleted ? "Pesanan selesai" : current[1]}</p><p className="mt-1 text-xs font-bold text-[#8d707c]">Order #{order?.orderNumber || orderId.slice(-8)} · {order?.status === "paid" || order?.status === "completed" ? "Paid" : "Menunggu pembayaran"}</p></div><span className={`rounded-2xl px-3 py-3 text-center text-[10px] font-black text-white ${isCompleted ? "bg-primary" : "bg-emerald-500"}`}><b className="block text-2xl leading-none">{isCompleted ? "✓" : etaMinutes ?? "—"}</b>{isCompleted ? "DONE" : "MIN"}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f1e2df]"><motion.div className="h-full rounded-full bg-[#ef5757]" animate={{ width: `${Math.max(8, routeProgress * 100)}%` }} transition={{ duration: 0.45 }} /></div><p className="mt-2 text-[10px] font-medium text-[#9b8088]">Animasi perjalanan simulasi · status order tetap mengikuti update server</p>
       </section>
 
-      <section className="mx-4 mt-4 flex items-center gap-3 rounded-[24px] border border-[#f0d9d2] bg-[#fffdfa] p-4 shadow-sm"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fff4ee] text-2xl">🚚</span><div className="min-w-0 flex-1"><p className="text-sm font-black text-[#3d2d3d]">{providerLabel} sedang mengantar pesanan</p><p className="mt-1 text-[11px] font-bold text-[#9b8088]">Status pengiriman diperbarui otomatis</p></div><Truck className="h-5 w-5 text-[#ef5757]" /></section>
+      <section className="mx-4 mt-4 flex items-center gap-3 rounded-[24px] border border-[#f0d9d2] bg-[#fffdfa] p-4 shadow-sm"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fff4ee] text-[#ef5757]">{isCompleted ? <PackageCheck className="h-6 w-6" /> : <Truck className="h-6 w-6" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-black text-[#3d2d3d]">{isCompleted ? "Pesanan sudah diterima" : `${providerLabel} sedang mengantar pesanan`}</p><p className="mt-1 text-[11px] font-bold text-[#9b8088]">{isCompleted ? "Terima kasih, pesanan Mie Yamin selesai." : "Status pengiriman diperbarui otomatis"}</p></div>{isCompleted ? <Check className="h-5 w-5 text-emerald-500" /> : <Truck className="h-5 w-5 text-[#ef5757]" />}</section>
 
       <section className="mx-4 mt-3 rounded-2xl border border-[#eadfca] bg-[#fffaf0] px-4 py-3 text-center text-xs font-bold text-[#795d26]">📍 {current[2]}</section>
 
