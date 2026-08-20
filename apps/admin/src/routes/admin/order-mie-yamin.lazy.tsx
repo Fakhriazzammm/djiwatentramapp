@@ -74,12 +74,14 @@ function statusClass(value: string | null | undefined) {
 }
 
 function orderDate(value: unknown) {
-  const date = new Date(Number(value));
+  const raw = String(value ?? "");
+  const date = typeof value === "number" || /^\d+$/.test(raw) ? new Date(Number(value)) : new Date(raw);
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function orderTime(value: unknown) {
-  const date = new Date(Number(value));
+  const raw = String(value ?? "");
+  const date = typeof value === "number" || /^\d+$/.test(raw) ? new Date(Number(value)) : new Date(raw);
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
