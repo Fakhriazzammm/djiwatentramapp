@@ -1794,13 +1794,8 @@ async def _check_new_orders(app):
         else:
             struk_line = None
 
-        # ⭐ Tambah tag MEMBER di struk_line
-        if customer_source_id and member_name:
-            member_tag = " ⭐ MEMBER"
-            if struk_line:
-                struk_line += member_tag
-            else:
-                struk_line = member_tag.strip()
+        # Source member/guest sekarang ditampilkan di baris `📲 SUMBER`,
+        # bukan lagi sebagai suffix lama pada baris nomor struk.
 
         # Cek ulang nama customer dari items jika kosong
         if customer in ("", "Pelanggan") and items:
