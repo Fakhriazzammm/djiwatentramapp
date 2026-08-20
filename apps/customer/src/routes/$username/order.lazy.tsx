@@ -23,6 +23,7 @@ import {
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridBookingSettings } from "@/hooks/use-hybrid-booking-data";
 import { useHybridMayarConfig, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
+import { useProductUpsellRecommendations } from "@/hooks/use-product-upsells";
 import {
 	useHybridCreateOrder,
 	useHybridCreateServiceRequest,
@@ -45,6 +46,7 @@ const ProductSheet = lazy(() => import("@/components/customer/product-sheet").th
 import { renderMenuSection } from "@/components/customer/menu-section";
 import { renderCheckoutSection } from "@/components/customer/checkout-section";
 import { renderReceiptSection } from "@/components/customer/receipt-section";
+import { UpsellSheet } from "@/components/customer/upsell-sheet";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
@@ -134,6 +136,9 @@ function OrderPage() {
 	const [catalogQuery, setCatalogQuery] = useState("");
 	const [pendingNumberProduct, setPendingNumberProduct] = useState<Doc<"products"> | null>(null);
 	const [pendingNumberQuantity, setPendingNumberQuantity] = useState(1);
+	const [upsellMainItem, setUpsellMainItem] = useState<CartItem | null>(null);
+	const [upsellSourceProductId, setUpsellSourceProductId] = useState<string | null>(null);
+	const upsellRecommendations = useProductUpsellRecommendations(upsellSourceProductId, menuRefreshTrigger);
 
 	useEffect(() => {
 		if (!products || !memberDiscounts) return;
@@ -164,6 +169,18 @@ function OrderPage() {
 	const logoUrl = brandSettings?.logoUrl || siteSettings?.logoUrl || "";
 	const storeName = brandSettings?.title || siteSettings?.storeName || "Ordering";
 	const canUseMayar = Boolean(siteSettings?.mayarEnabled && mayarConfig?.configured);
+	const upsellEnabled = siteSettings?.upsellEnabled === true;
+	const upsellMaxRecommendations = Number(siteSettings?.upsellMaxRecommendations);
+	const upsellTitle = typeof siteSettings?.upsellTitle === "string" ? siteSettings.upsellTitle.trim() : "";
+	const upsellSkipLabel = typeof siteSettings?.upsellSkipLabel === "string" ? siteSettings.upsellSkipLabel.trim() : "";
+	const upsellAddedLabel = typeof siteSettings?.upsellAddedLabel === "string" ? siteSettings.upsellAddedLabel.trim() : "";
+	const visibleUpsellRecommendations = useMemo(() => {
+		if (!upsellEnabled || !Number.isInteger(upsellMaxRecommendations) || upsellMaxRecommendations <= 0) return [];
+		if (!upsellRecommendations) return [];
+		return upsellRecommendations
+			.filter((recommendation) => recommendation.ctaLabel?.trim())
+			.slice(0, upsellMaxRecommendations);
+	}, [upsellEnabled, upsellMaxRecommendations, upsellRecommendations]);
 
 	const orderedCategories = useMemo(
 		() => (categories ? [...categories].sort((a, b) => a.order - b.order) : []),
@@ -868,7 +885,41 @@ function OrderPage() {
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
 				<SheetContent side="bottom" showCloseButton={false} className="h-[min(85dvh,720px)] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-t-3xl p-0">
 					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan detail menu...</div>}>
-						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
+						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setUpsellMainItem(item); setUpsellSourceProductId(String(item.productId)); setProductSheet(null); }} />
+					</Suspense>
+				</SheetContent>
+			</Sheet>
+
+			<Sheet
+				open={Boolean(upsellMainItem && upsellSourceProductId && visibleUpsellRecommendations.length > 0 && upsellTitle && upsellSkipLabel && upsellAddedLabel)}
+				onOpenChange={(open) => {
+					if (!open) {
+						setUpsellMainItem(null);
+						setUpsellSourceProductId(null);
+					}
+				}}
+			>
+				<SheetContent side="bottom" showCloseButton={false} className="z-[70] h-[min(78dvh,640px)] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-t-3xl p-0">
+					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan rekomendasi...</div>}>
+						<UpsellSheet
+							open
+							mainItem={upsellMainItem}
+							recommendations={visibleUpsellRecommendations}
+							discounts={memberDiscounts ?? []}
+							title={upsellTitle}
+							skipLabel={upsellSkipLabel}
+							addedLabel={upsellAddedLabel}
+							onClose={() => { setUpsellMainItem(null); setUpsellSourceProductId(null); }}
+							onAdd={(_recommendation, item) => { addToCart(item); }}
+							onChooseOptions={(recommendation) => {
+							const product = products?.find((entry) => entry._id === recommendation.recommendedProductSourceId);
+							if (product) {
+								setUpsellMainItem(null);
+								setUpsellSourceProductId(null);
+								setProductSheet(product);
+							}
+						}}
+						/>
 					</Suspense>
 				</SheetContent>
 			</Sheet>
