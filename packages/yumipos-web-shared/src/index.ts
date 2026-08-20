@@ -34,5 +34,6 @@ export * from "./components/ui/skeleton";
 export * from "./components/ui/app-card";
 export * from "./components/ui/card-v2";
 export * from "./components/ui/states";
+export * from "./components/ui/djiwa-3d-icon";
 export * from "./context/cart-context";
 export * from "./context/app-data-context";

@@ -1,3 +1,4 @@
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,
@@ -143,6 +144,7 @@ interface TabItem {
 	label: string;
 	icon: LucideIcon;
 	iconColor: string;
+	illustration?: Djiwa3DIconName;
 }
 
 type OnlineFoodStatus = "pending" | "active" | "problem" | "not_used";
@@ -192,17 +194,19 @@ export function MenuSidebar({
 			label: "Dashboard",
 			icon: BarChart3,
 			iconColor: "text-primary",
+			illustration: "dashboard-overview",
 		},
-		{ value: "parkir", label: "Simpan Orderan", icon: ShoppingCart, iconColor: "text-orange-500" },
-		{ value: "history", label: "Riwayat Order", icon: Clock, iconColor: "text-blue-500" },
-		{ value: "kas", label: "Shift & Kas", icon: Wallet, iconColor: "text-primary" },
-		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
-		{ value: "antrian", label: "Antrian", icon: ClipboardList, iconColor: "text-emerald-600" },
+		{ value: "parkir", label: "Simpan Orderan", icon: ShoppingCart, iconColor: "text-orange-500", illustration: "shopping-cart-order" },
+		{ value: "history", label: "Riwayat Order", icon: Clock, iconColor: "text-blue-500", illustration: "order-receipt" },
+		{ value: "kas", label: "Shift & Kas", icon: Wallet, iconColor: "text-primary", illustration: "shift-closing" },
+		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent", illustration: "inventory-stock" },
+		{ value: "antrian", label: "Antrian", icon: ClipboardList, iconColor: "text-emerald-600", illustration: "order-queue" },
 		{
 			value: "yumi",
 			label: "Yumi AI",
 			icon: Bot,
 			iconColor: "text-primary",
+			illustration: "business-ai-assistant",
 		},
 		{
 			value: "settings",
@@ -546,8 +550,8 @@ export function MenuSidebar({
 							<div className="flex items-center gap-2">
 								{TABS.map(tab => tab.value === activeTab && (
 									<div key={tab.value} className="flex items-center gap-2 fade-in animate-in slide-in-from-left-2 duration-300">
-										<div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-muted ${tab.iconColor}`}>
-											<tab.icon className="h-4 w-4" />
+										<div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-muted ${tab.iconColor}`}>
+											{tab.illustration ? <Djiwa3DIcon name={tab.illustration} size="sm" alt="" className="h-12 w-12" /> : <tab.icon className="h-4 w-4" />}
 										</div>
 										<h2 className="font-bold text-sm uppercase tracking-wider">{tab.label}</h2>
 									</div>

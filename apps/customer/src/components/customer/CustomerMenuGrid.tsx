@@ -1,3 +1,4 @@
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { useHybridActiveMiniGameByBrand } from "@/hooks/use-hybrid-minigames-data";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
@@ -14,6 +15,7 @@ interface MenuItem {
   icon: LucideIcon;
   menuId: string;
   route: string;
+  illustration?: Djiwa3DIconName;
 }
 
 interface CustomerMenuGridProps {
@@ -22,9 +24,9 @@ interface CustomerMenuGridProps {
 
 const menuItems: MenuItem[] = [
   { label: "Minigames", icon: Gamepad2, menuId: "minigames", route: "/$username/minigames" },
-  { label: "Promo", icon: Tags, menuId: "promo", route: "/$username/promo" },
-  { label: "Favorit", icon: Star, menuId: "favorit", route: "/$username/favorit" },
-  { label: "Notifikasi", icon: Bell, menuId: "notifikasi", route: "/$username/notifikasi" },
+  { label: "Promo", icon: Tags, menuId: "promo", route: "/$username/promo", illustration: "promo-voucher" },
+  { label: "Favorit", icon: Star, menuId: "favorit", route: "/$username/favorit", illustration: "loyalty-points" },
+  { label: "Notifikasi", icon: Bell, menuId: "notifikasi", route: "/$username/notifikasi", illustration: "notifications-alerts" },
 ];
 
 export function CustomerMenuGrid({ baseRoute }: CustomerMenuGridProps) {
@@ -57,7 +59,11 @@ export function CustomerMenuGrid({ baseRoute }: CustomerMenuGridProps) {
           onClick={() => navigate({ to: item.route as any, params: { username: baseRoute.replace("/", "") } } as any)}
           className="flex h-20 w-full flex-col items-center justify-center gap-1 rounded-[20px] border border-border bg-card p-2 shadow-sm transition-all duration-[180ms] hover:border-primary/20 hover:shadow-md"
         >
-          <Icon aria-hidden="true" className="h-6 w-6 text-gray-700" strokeWidth={2} />
+          {item.illustration ? (
+            <Djiwa3DIcon name={item.illustration} size="sm" alt="" className="h-10 w-10" />
+          ) : (
+            <Icon aria-hidden="true" className="h-6 w-6 text-gray-700" strokeWidth={2} />
+          )}
           <span className="text-center text-[11px] font-bold text-gray-700 leading-tight">
             {item.label}
           </span>

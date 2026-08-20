@@ -1,6 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Clock, Coins, LogIn, MapPin, PartyPopper, Phone, ShoppingCart, Tags, UtensilsCrossed } from "lucide-react";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { Clock, LogIn, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
@@ -138,12 +139,12 @@ function BrandCustomerIndex() {
 								{/* ── Benefit list ────────────────────── */}
 								<div className="mt-4 grid grid-cols-3 gap-1.5">
 									{[
-										{ icon: Coins, label: "Poin Member" },
-										{ icon: PartyPopper, label: "Happy Hour 15rb" },
-										{ icon: Tags, label: "Promo Eksklusif" },
+										{ illustration: "loyalty-points" as Djiwa3DIconName, label: "Poin Member" },
+										{ illustration: "restaurant-cafe" as Djiwa3DIconName, label: "Happy Hour 15rb" },
+										{ illustration: "promo-voucher" as Djiwa3DIconName, label: "Promo Eksklusif" },
 									].map((b) => (
 										<div key={b.label} className="flex min-h-24 flex-col items-center justify-center rounded-[14px] border border-border/60 bg-muted/30 px-2 py-3 text-center">
-											<b.icon aria-hidden="true" className="mx-auto h-5 w-5 text-primary" strokeWidth={2} />
+											<Djiwa3DIcon name={b.illustration} size="sm" alt="" className="h-12 w-12" />
 											<p className="mt-1 text-[11px] font-bold leading-tight text-muted-foreground">{b.label}</p>
 										</div>
 									))}
