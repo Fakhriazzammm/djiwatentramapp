@@ -33,7 +33,7 @@ State/input existing yang wajib tetap berfungsi:
 | Input / State | Fungsi bisnis | Keputusan |
 |---|---|---|
 | `kg` | Jumlah Mie Yamin Mentah | Tetap, minimum order tetap berlaku |
-| `readyPackCount` | Jumlah produk Mie Yamin Kemasan Siap Masak | Tetap, ditampilkan sebagai produk kedua |
+| `readyPackCount` | Jumlah Mie Yamin Kemasan Siap Masak | Aktif hanya jika pilihan produk = kemasan |
 | `repack` | Layanan repack 100 gram | Tetap, ditampilkan sebagai service add-on |
 | `deliveryProvider` | Gojek/Maxim | Tetap di Langkah 2 |
 | `deliveryDate` | Tanggal pengiriman | Tetap di Langkah 2 |
@@ -152,12 +152,12 @@ Rp... / pcs
 [ − ]   0 pcs   [ + ]
 ```
 
-Input/state existing tetap memakai `readyPackCount` sebagai quantity produk kedua.
+Input/state existing tetap memakai `readyPackCount` sebagai quantity saat pilihan produk = kemasan.
 
 Aturan:
 
 - Nilai minimum tetap 0.
-- Total tetap `readyPackCount * readyPackPrice`.
+- Total kemasan = `readyPackCount * readyPackPrice`, dan hanya dihitung saat kemasan dipilih.
 - Jangan mengubah payload order.
 - Jangan mengubah item name/variant yang dikirim ke backend.
 
@@ -260,7 +260,7 @@ Aturan minimum, promo, informasi produksi
 Total sementara       [Lanjutkan]
 ```
 
-Tetap menggunakan state `kg`, `readyPackCount`, dan `repack`. Dua produk tetap dikirim dalam satu order yang sama; tidak membuat cart system baru.
+Tetap menggunakan state `productType`, `kg`, `readyPackCount`, dan `repack`. Hanya satu produk yang dikirim dalam satu order; `repack` hanya tersedia untuk mie mentah kiloan.
 
 ### 5.2 Langkah 2 — Atur pengiriman
 
@@ -572,7 +572,7 @@ Saat site settings belum tersedia:
 
 ### Empty / default
 
-- `readyPackCount = 0` tetap valid.
+- `readyPackCount` wajib minimal 1 saat produk kemasan dipilih; tidak relevan saat mie kiloan dipilih.
 - `repack = false` tetap valid.
 - Produk utama default mengikuti minimum order existing.
 
@@ -736,7 +736,7 @@ Tidak direncanakan berubah:
 4. Upgrade Langkah 1: product hero, dua product card, quantity, repack service, benefit, sticky total.
 5. Upgrade Langkah 2: courier cards, date selection summary, availability, promo shipping.
 6. Upgrade Langkah 3: recipient form grouping, helper text, validation presentation, summary.
-7. Upgrade review: dua produk, repack service, shipping, recipient, total, edit/back behavior.
+7. Upgrade review: satu produk terpilih, repack service bila mie kiloan, shipping, recipient, total, edit/back behavior.
 8. Upgrade submit/payment states: preparing, redirect, failed, retry, support fallback.
 9. Upgrade tracking timeline, invoice recovery, status hierarchy, dan CTA order ulang.
 10. Upgrade MyOrders card hanya pada presentation tanpa mengubah registry/order reference.
@@ -796,7 +796,7 @@ Tidak direncanakan berubah:
 | UI baru mengubah formula total | Pertahankan calculator existing dan uji kombinasi input |
 | Stepper menghilangkan kemampuan input angka | Pertahankan input numerik/aksesibilitas |
 | Sticky CTA menutupi konten | Tambahkan bottom padding dan uji mobile viewport |
-| Produk kedua terlihat seperti add-on | Gunakan hierarchy dan label dua produk yang eksplisit; repack tetap service terpisah |
+| Dua pilihan produk terlihat bisa digabung | Gunakan exclusive selector/radio dan kirim hanya produk yang dipilih; repack tetap service khusus mie kiloan |
 | Review tidak sinkron dengan state | Render review dari state yang sama dengan payload |
 | Payment failure membuat order ganda | Pertahankan pending payment order ID dan retry existing |
 | Harga tampak hardcoded | Semua angka berasal dari `mieYaminSettings` |
