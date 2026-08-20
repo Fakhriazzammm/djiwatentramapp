@@ -33,7 +33,7 @@ State/input existing yang wajib tetap berfungsi:
 | Input / State | Fungsi bisnis | Keputusan |
 |---|---|---|
 | `kg` | Jumlah Mie Yamin Mentah | Tetap, minimum order tetap berlaku |
-| `readyPackCount` | Jumlah kemasan siap masak | Tetap, hanya visualnya diubah menjadi add-on |
+| `readyPackCount` | Jumlah produk Mie Yamin Kemasan Siap Masak | Tetap, ditampilkan sebagai produk kedua |
 | `repack` | Layanan repack 100 gram | Tetap, ditampilkan sebagai service add-on |
 | `deliveryProvider` | Gojek/Maxim | Tetap di Langkah 2 |
 | `deliveryDate` | Tanggal pengiriman | Tetap di Langkah 2 |
@@ -70,7 +70,7 @@ Business logic yang tidak boleh berubah:
 | Product hero/image | Card produk utama Mie Yamin | Tidak menambah katalog baru |
 | Harga dan promo | Harga per kg dari site settings | Tidak hardcode harga |
 | Quantity selector | Stepper jumlah kg | Tidak menghapus input quantity |
-| Product option | Add-on kemasan siap masak | Tidak mengubah cara perhitungan |
+| Product card kedua | Mie Yamin Kemasan Siap Masak | Tidak mengubah cara perhitungan |
 | Service/variant option | Toggle repack 100 gram | Tidak mengubah formula repack |
 | Add to cart | `Lanjutkan ke pengiriman` / `Review pesanan` | Tidak membuat multi-item cart |
 | Sticky purchase bar | Ringkasan total + CTA di mobile | Tidak melewati langkah checkout |
@@ -140,7 +140,7 @@ Aturan:
 - Jika input manual tetap diperlukan, sediakan input numerik yang aksesibel atau tidak hilang dari DOM secara tidak aman.
 - Total produk langsung berubah ketika quantity berubah.
 
-### 4.4 Add-on: Kemasan siap masak
+### 4.4 Produk kedua: Mie Yamin Kemasan Siap Masak
 
 Tampilkan sebagai card opsional terpisah:
 
@@ -152,7 +152,7 @@ Rp... / pcs
 [ − ]   0 pcs   [ + ]
 ```
 
-Input/state existing tetap memakai `readyPackCount`.
+Input/state existing tetap memakai `readyPackCount` sebagai quantity produk kedua.
 
 Aturan:
 
@@ -246,8 +246,8 @@ Foto, deskripsi, harga per kg
 Jumlah mie
 [−] 1 kg [+]
 
-[Add-on]
-Kemasan siap masak
+[Produk 2]
+Mie Yamin Kemasan Siap Masak
 [−] 0 pcs [+]
 
 [Service]
@@ -260,7 +260,7 @@ Aturan minimum, promo, informasi produksi
 Total sementara       [Lanjutkan]
 ```
 
-Tetap menggunakan state `kg`, `readyPackCount`, dan `repack`. Tidak membuat cart system baru.
+Tetap menggunakan state `kg`, `readyPackCount`, dan `repack`. Dua produk tetap dikirim dalam satu order yang sama; tidak membuat cart system baru.
 
 ### 5.2 Langkah 2 — Atur pengiriman
 
@@ -733,10 +733,10 @@ Tidak direncanakan berubah:
 1. Audit penuh JSX checkout, Tracking, dan MyOrders; petakan semua state/handler yang dipakai.
 2. Tetapkan shared visual language untuk progress, cards, spacing, CTA, status, dan error surfaces.
 3. Refactor visual sections tanpa mengubah state atau handler.
-4. Upgrade Langkah 1: product hero, quantity, add-on, repack, benefit, sticky total.
+4. Upgrade Langkah 1: product hero, dua product card, quantity, repack service, benefit, sticky total.
 5. Upgrade Langkah 2: courier cards, date selection summary, availability, promo shipping.
 6. Upgrade Langkah 3: recipient form grouping, helper text, validation presentation, summary.
-7. Upgrade review: product, add-on, shipping, recipient, total, edit/back behavior.
+7. Upgrade review: dua produk, repack service, shipping, recipient, total, edit/back behavior.
 8. Upgrade submit/payment states: preparing, redirect, failed, retry, support fallback.
 9. Upgrade tracking timeline, invoice recovery, status hierarchy, dan CTA order ulang.
 10. Upgrade MyOrders card hanya pada presentation tanpa mengubah registry/order reference.
@@ -796,7 +796,7 @@ Tidak direncanakan berubah:
 | UI baru mengubah formula total | Pertahankan calculator existing dan uji kombinasi input |
 | Stepper menghilangkan kemampuan input angka | Pertahankan input numerik/aksesibilitas |
 | Sticky CTA menutupi konten | Tambahkan bottom padding dan uji mobile viewport |
-| Customer mengira add-on adalah produk berbeda | Gunakan label add-on/service yang eksplisit |
+| Produk kedua terlihat seperti add-on | Gunakan hierarchy dan label dua produk yang eksplisit; repack tetap service terpisah |
 | Review tidak sinkron dengan state | Render review dari state yang sama dengan payload |
 | Payment failure membuat order ganda | Pertahankan pending payment order ID dan retry existing |
 | Harga tampak hardcoded | Semua angka berasal dari `mieYaminSettings` |
