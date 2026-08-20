@@ -214,13 +214,16 @@ function Tracking({ orderId }: { orderId: string }) {
   return (
     <main className="mx-auto w-full max-w-md pb-10">
       <section className="relative h-[330px] overflow-hidden bg-[#eaf3ff]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#ffffff_0%,transparent_36%),linear-gradient(145deg,#eaf3ff_0%,#f8fbff_55%,#e3efff_100%)]" />
-        <div className="absolute inset-x-[-18%] top-14 h-40 rounded-[50%] border-2 border-dashed border-primary/20 rotate-[-11deg]" />
-        <div className="absolute left-7 top-12 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-primary text-white shadow-lg"><Store className="h-6 w-6" /></div>
-        <div className="absolute right-8 bottom-20 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-white text-primary shadow-lg"><MapPin className="h-6 w-6" /></div>
-        <div className="absolute left-[36%] top-[43%] flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-black text-primary shadow-md backdrop-blur"><Truck className="h-3.5 w-3.5" /> {providerLabel}</div>
-        <div className="absolute inset-x-5 bottom-5 flex items-center justify-between text-[10px] font-black text-primary/70"><span>Produksi Mie Yamin</span><span>Alamat tujuan</span></div>
-        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/90 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Track order</span></div>
+        <iframe
+          title="Peta area pengiriman Mie Yamin"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=108.18%2C-7.36%2C108.25%2C-7.28&layer=mapnik&marker=-7.327%2C108.22"
+          className="absolute inset-0 h-full w-full border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/25" />
+        <div className="absolute left-4 right-4 top-4 flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-primary shadow-sm"><ChevronLeft className="h-5 w-5" /></span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-primary shadow-sm">Peta pengiriman</span></div>
+        <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3"><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">Area Tasikmalaya</span><span className="rounded-full bg-white/95 px-3 py-2 text-[10px] font-black text-primary shadow-sm">{providerLabel}</span></div>
       </section>
 
       <section className="relative z-10 -mt-12 mx-4 rounded-[30px] bg-card p-5 shadow-[0_16px_45px_rgba(9,9,11,0.12)]">
