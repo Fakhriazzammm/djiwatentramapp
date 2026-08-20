@@ -889,7 +889,7 @@ function OrderPage() {
 
 			{/* ── Product Sheet ──────────────────────────────────── */}
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
-				<SheetContent side="bottom" showCloseButton={false} className="h-[min(85dvh,720px)] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-t-3xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="h-auto max-h-[calc(100dvh-0.75rem)] overflow-hidden rounded-t-3xl p-0">
 					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan detail menu...</div>}>
 						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addItemAndOfferUpsells(item); setProductSheet(null); }} />
 					</Suspense>
