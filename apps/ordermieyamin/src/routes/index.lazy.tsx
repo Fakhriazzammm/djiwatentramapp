@@ -202,6 +202,26 @@ function getDeliveryRoutePoint(progress: number) {
   return { x: from.x + (to.x - from.x) * fraction, y: from.y + (to.y - from.y) * fraction };
 }
 
+const RESTAURANT_TRACKING_MESSAGES: Record<string, string[]> = {
+  pending_payment: ["📍 Pesananmu menunggu pembayaran — dapur belum mulai bekerja."] ,
+  paid: ["📍 Pesanan sudah masuk — bahan terbaik sedang kami siapkan. 🥬", "🔥 Order sudah dikonfirmasi — tim Mie Yamin mulai bekerja."] ,
+  preparing: ["📍 Mie Yamin sedang direbus — aroma gurihnya mulai naik. 🍜", "👨‍🍳 Dapur sedang bekerja — pesananmu sebentar lagi siap."] ,
+  packing: ["📍 Mie Yamin sedang dikemas — kami cek lagi sebelum berangkat. 📦", "✨ Hampir siap dikirim — pesanan sedang dirapikan."] ,
+  ready_to_ship: ["📍 Pesanan sudah siap — tinggal menunggu kurir berangkat. 🛵", "🏁 Mie Yamin sudah di garis start pengiriman."] ,
+  out_for_delivery: ["📍 Pesanan sudah berangkat — jangan lupa cek pagar rumah. 🏠", "🛵 Kurir sedang melaju — Mie Yamin segera sampai.", "🏁 Tinggal sedikit lagi — siap menikmati Mie Yamin? 😋"] ,
+  delivered: ["📍 Pesanan sudah diterima — selamat menikmati Mie Yamin! 🍜", "✅ Misi selesai — semoga makan siangnya makin nikmat."] ,
+};
+
+function getTrackingEmoji(status: string, index: number) {
+  if (index === 0) return "✅";
+  if (status === "preparing" && index === 2) return "🍜";
+  if (status === "packing" && index === 3) return "📦";
+  if (index === 5) return "🛵";
+  if (index === 6) return "🏠";
+  if (index === 4) return "🏁";
+  return "🍜";
+}
+
 function Tracking({ orderId }: { orderId: string }) {
   const [refreshTick, setRefreshTick] = useState(0);
   const order = useHybridOrderById(orderId, refreshTick) as any;
@@ -214,11 +234,14 @@ function Tracking({ orderId }: { orderId: string }) {
   const deliveryDate = order?.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString("id-ID", { dateStyle: "long" }) : "Tanggal belum tersedia";
   const invoiceUrl = order?.paymentGateway?.invoiceUrl || order?.payment_gateway?.invoiceUrl;
   const [animationProgress, setAnimationProgress] = useState(0);
+  const [messageIndex, setMessageIndex] = useState(0);
   const isDeliveryActive = status === "out_for_delivery";
   const isCompleted = status === "delivered";
   const routeProgress = isCompleted ? 1 : isDeliveryActive ? animationProgress : activeIndex >= 4 ? 0.72 : 0;
   const routePoint = getDeliveryRoutePoint(routeProgress);
   const etaMinutes = isDeliveryActive ? Math.max(1, 4 - Math.floor(animationProgress * 3)) : activeIndex >= 4 && !isCompleted ? 8 : null;
+  const trackingMessages = RESTAURANT_TRACKING_MESSAGES[status] || RESTAURANT_TRACKING_MESSAGES.paid;
+  const trackingMessage = trackingMessages[messageIndex % trackingMessages.length];
 
   useEffect(() => {
     let timer: number | null = null;
@@ -241,6 +264,12 @@ function Tracking({ orderId }: { orderId: string }) {
     }, 80);
     return () => window.clearInterval(timer);
   }, [isDeliveryActive, reduceMotion, status]);
+
+  useEffect(() => {
+    setMessageIndex(0);
+    const timer = window.setInterval(() => setMessageIndex((value) => value + 1), 6000);
+    return () => window.clearInterval(timer);
+  }, [status]);
 
   useEffect(() => {
     if (order?.orderNumber || order?.status) rememberOrder(orderId);
@@ -287,7 +316,9 @@ function Tracking({ orderId }: { orderId: string }) {
         <div className="mt-5 space-y-2"><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Order ID</span><b>#{order?.orderNumber || orderId.slice(-8)}</b></div><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Payment method</span><b>Mayar</b></div><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Estimated delivery</span><b className="max-w-[58%] text-right">{deliveryDate}</b></div><div className="flex items-center justify-between rounded-2xl bg-muted/45 px-4 py-3 text-xs"><span className="font-bold text-muted-foreground">Total amount</span><b className="text-primary">{order?.totalAmount != null ? formatRupiah(Number(order.totalAmount)) : "Memuat..."}</b></div></div><p className="mt-4 flex items-center gap-2 text-[11px] font-bold text-muted-foreground"><span className="h-2 w-2 rounded-full bg-emerald-500" />Status diperbarui otomatis</p>
       </section>
 
-      <section className="mx-4 mt-4 rounded-[26px] border border-border bg-card p-5 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Progress</p><h2 className="mt-1 text-lg font-black">Tahapan pesanan</h2></div><span className="text-xs font-black text-primary">{Math.min(activeIndex + 1, STATUS_STEPS.length)}/{STATUS_STEPS.length}</span></div><div className="mt-4 space-y-3">{STATUS_STEPS.map(([key, label], index) => { const done = index < activeIndex; const active = index === activeIndex; return <div key={key} className="flex items-center gap-3"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${done || active ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>{done ? <Check className="h-4 w-4" /> : active ? <Clock3 className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}</span><span className={`text-sm font-black ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>{label}</span></div>; })}</div></section>
+      <section className="mx-4 mt-4 rounded-[20px] border border-primary/15 bg-primary/5 px-4 py-3 text-center"><p className="text-xs font-bold leading-relaxed text-primary">{trackingMessage}</p></section>
+
+      <section className="mx-4 mt-4 rounded-[26px] border border-border bg-card p-5 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Progress</p><h2 className="mt-1 text-lg font-black">Tahapan pesanan</h2></div><span className="text-xs font-black text-primary">{Math.min(activeIndex + 1, STATUS_STEPS.length)}/{STATUS_STEPS.length}</span></div><div className="mt-4 space-y-3">{STATUS_STEPS.map(([key, label], index) => { const done = index < activeIndex; const active = index === activeIndex; return <div key={key} className="flex items-center gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${active ? "bg-primary text-white shadow-sm" : done ? "bg-primary/10" : "bg-muted text-muted-foreground/70"}`}>{getTrackingEmoji(status, index)}</span><span className={`text-sm font-black ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>{label}</span></div>; })}</div></section>
 
       {invoiceUrl ? <section className="mx-4 mt-4 rounded-[24px] border border-amber-200 bg-amber-50 p-4"><div className="flex gap-3"><CreditCard className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" /><div><p className="text-sm font-black text-amber-900">Pembayaran belum selesai?</p><p className="mt-1 text-[11px] leading-relaxed text-amber-800">Gunakan invoice yang sama. Jangan membuat order baru.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center rounded-xl bg-amber-600 text-xs font-black text-white">Bayar sekarang</a><button type="button" onClick={() => navigator.clipboard?.writeText(invoiceUrl)} className="h-11 rounded-xl border border-amber-300 text-xs font-black text-amber-900">Salin link</button></div></section> : null}
     </main>
