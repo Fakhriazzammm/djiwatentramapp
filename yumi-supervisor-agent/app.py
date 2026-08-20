@@ -1431,7 +1431,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
                                           payment_method: str, ts_ms: int, struk_line: str | None,
                                           items: list[dict], guest_count=None, notes="",
                                           discount_amount=0.0, voucher_id=None, free_refill=None,
-                                          delivery_context: dict | None = None):
+                                          delivery_context: dict | None = None,
+                                          source: str | None = None):
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
@@ -1523,6 +1524,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines = []
     if struk_line:
         lines.append(f"📍 {struk_line}")
+    if source == "customer_self_service":
+        lines.append("📲 SUMBER: DjiwaApp Guest")
     lines.extend([
         f"🧾 Pesanan Baru — {_format_time_hm(ts_ms)}",
         "────────────",
@@ -1828,7 +1831,7 @@ async def _check_new_orders(app):
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context)
+        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, row.get("source"))
 
         # ⭐ Award points for member orders
         if customer_source_id:
