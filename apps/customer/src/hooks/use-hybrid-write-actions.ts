@@ -2812,10 +2812,11 @@ export function useHybridDeleteOrder() {
 				// Decrement daily receipt counter (fill gap — only if this was the highest number)
 				if (dailyReceiptNo != null && receiptKind) {
 					try {
-						await supabase.rpc("decrement_daily_receipt_no", {
-							p_order_kind: receiptKind,
+						const { error: decrementError } = await pos.rpc("decrement_daily_receipt_no", {
+							p_order_kind: "all",
 							p_last_no: dailyReceiptNo,
 						});
+						if (decrementError) console.warn("[delete-order] Counter decrement failed:", decrementError.message);
 					} catch (_) { /* best-effort */ }
 				}
 
