@@ -900,7 +900,7 @@ function OrderPage() {
 				}}
 			>
 				<SheetContent side="bottom" showCloseButton={false} className="z-[70] h-[min(78dvh,640px)] max-h-[calc(100dvh-1rem)] overflow-hidden rounded-t-3xl p-0">
-					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan rekomendasi...</div>}>
+					<Suspense fallback={<div className="space-y-3 p-4" aria-label="Memuat rekomendasi"><div className="h-5 w-2/3 animate-pulse rounded bg-muted" /><div className="h-20 animate-pulse rounded-2xl bg-muted" /><div className="h-20 animate-pulse rounded-2xl bg-muted" /></div>}>
 						<UpsellSheet
 							open
 							mainItem={upsellMainItem}
