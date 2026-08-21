@@ -104,16 +104,17 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .availability-legend i.limited { background: #d69e2e; }
 .availability-legend i.full { background: #b8c0cc; }
 .panel { margin-top: 18px; padding: 20px; }
-.selection-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; }
-.selection-date { margin: -5px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; }
-.selection-panel .stepper { grid-column: 2; grid-row: 1 / span 2; }
+.selection-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 24px; padding: 16px 18px; }
+.selection-date { margin: -2px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.35; }
+.selection-panel .stepper { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-content: center; gap: 10px; max-width: none; }
 .stepper strong small { color: var(--muted); font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; }
 .selection-panel .helper { grid-column: 1; }
-.field-label { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 12px; }
-.stepper { display: flex; align-items: center; justify-content: space-between; max-width: 240px; }
+.field-label { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 7px; }
+.stepper { display: flex; align-items: center; justify-content: flex-start; gap: 10px; max-width: 240px; }
 .stepper button, .quantity-control button { width: 44px; height: 44px; border-radius: 14px; color: var(--booking-accent); background: var(--booking-accent-soft); display: grid; place-items: center; }
-.stepper strong { font-size: 26px; }
-.helper { font-size: 13px; margin: 15px 0 0; }
+.selection-panel .stepper button { width: 42px; height: 42px; }
+.stepper strong { min-width: 64px; text-align: center; font-size: 26px; }
+.helper { font-size: 13px; margin: 8px 0 0; }
 .search-box { min-height: 50px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); display: flex; align-items: center; gap: 9px; padding: 0 15px; margin-bottom: 17px; color: var(--muted); }
 .search-box input { border: 0; outline: 0; flex: 1; min-width: 0; }
 .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -184,7 +185,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .calendar-day { border-radius: 13px; }
   .calendar-day small { font-size: 8px; }
   .selection-panel { grid-template-columns: 1fr; }
-  .selection-panel .stepper { grid-column: 1; grid-row: auto; justify-content: space-between; max-width: none; }
+  .selection-panel .stepper { grid-column: 1; grid-row: auto; justify-content: flex-start; max-width: none; }
   .selection-panel .helper { grid-column: 1; }
   .success { margin: 25px 0; padding: 25px 18px; }
   .success h1 { font-size: 36px; }
