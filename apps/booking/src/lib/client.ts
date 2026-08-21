@@ -7,7 +7,7 @@ export type Product = { id: string; name: string; description: string | null; im
 export type BookingDraft = { date: string; guests: number; tableCount: number; items: Array<{ productId: string; name: string; price: number; quantity: number }>; customer: { name: string; phone: string; email: string; notes: string } };
 export type BookingResult = { bookingCode: string; status: string; paymentStatus: string; date: string; guests: number; tableCount: number; items: BookingDraft["items"] };
 
-export function isDataConfigured() { return Boolean(import.meta.env.VITE_SUPABASE_URL && (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)); }
+export function isDataConfigured() { return Boolean((import.meta.env.VITE_SUPABASE_URL?.trim() || "https://supabase.yumme.id") && (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)); }
 
 export async function loadBookingData() {
   if (!isDataConfigured()) throw new Error("Supabase belum dikonfigurasi. Isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY.");
