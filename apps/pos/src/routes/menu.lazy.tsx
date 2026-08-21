@@ -2187,8 +2187,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				</main>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
-				<nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 px-1 pt-1.5 pb-safe-area-or-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur-md safe-area-bottom md:hidden">
-					<div className="mx-auto flex max-w-lg items-end justify-around gap-0.5 sm:max-w-none sm:gap-1">
+				<nav className="fixed inset-x-0 bottom-0 z-30 min-h-[76px] border-t border-border/60 bg-background/95 px-2 pt-2 pb-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur-md safe-area-bottom md:hidden">
+					<div className="mx-auto flex min-h-[60px] max-w-lg items-center justify-around gap-0.5 sm:max-w-none sm:gap-1">
 						{SIDEBAR_MENU_ITEMS.slice(0, 5).map((item, index) => {
 							const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
 							const isActive = isSidebarOpen && activeSidebarTab === item.id;
@@ -2207,23 +2207,23 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									whileHover={reduceMotion ? undefined : { y: -1 }}
 									transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
 									className={cn(
-										"flex min-w-[48px] flex-1 flex-col items-center gap-0.5 rounded-lg py-0.5 outline-none sm:min-w-[56px]",
+										"flex min-w-[48px] flex-1 flex-col items-center gap-1 rounded-lg py-1 outline-none sm:min-w-[56px]",
 										isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
 										isFocused && "ring-1 ring-primary",
 									)}
 									aria-label={item.label}
 								>
 									<span className={cn(
-										"flex h-9 w-10 items-center justify-center rounded-md",
+										"flex h-11 w-11 items-center justify-center rounded-xl",
 										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
 										needsAttention && "bg-rose-50 text-rose-600",
 									)}>
 										<motion.span
-											animate={reduceMotion ? undefined : isActive ? { scale: 1.08, y: -1 } : { scale: 1, y: 0 }}
+											animate={reduceMotion ? undefined : isActive ? { scale: 1.1, y: -2 } : { scale: 1, y: 0 }}
 											transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
-											className="flex h-8 w-8 items-center justify-center"
+											className="flex h-10 w-10 items-center justify-center"
 										>
-											<Djiwa3DIcon name={illustration} size="sm" alt="" className="h-8 w-8 object-contain" />
+											<Djiwa3DIcon name={illustration} size="sm" alt="" className="h-10 w-10 object-contain drop-shadow-[0_4px_5px_rgba(0,0,0,0.18)]" />
 										</motion.span>
 									</span>
 									<span className="block text-center text-[9px] font-bold uppercase leading-none tracking-tight sm:hidden">{item.label.split(" ")[0]}</span>
@@ -2237,15 +2237,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							whileTap={reduceMotion ? undefined : { scale: 0.92 }}
 							whileHover={reduceMotion ? undefined : { y: -1 }}
 							transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
-							className="flex min-w-[48px] flex-1 flex-col items-center gap-0.5 rounded-lg py-0.5 text-muted-foreground outline-none hover:text-foreground sm:min-w-[56px]"
+							className="flex min-w-[48px] flex-1 flex-col items-center gap-1 rounded-lg py-1 text-muted-foreground outline-none hover:text-foreground sm:min-w-[56px]"
 							aria-label="Laporan"
 						>
 							<span className="flex h-9 w-10 items-center justify-center rounded-md hover:bg-muted/50">
 								<motion.span
 									whileTap={reduceMotion ? undefined : { scale: 0.9 }}
-									className="flex h-8 w-8 items-center justify-center"
+									className="flex h-10 w-10 items-center justify-center"
 								>
-									<Djiwa3DIcon name={BOTTOM_NAV_REPORT_ICON} size="sm" alt="" className="h-8 w-8 object-contain" />
+									<Djiwa3DIcon name={BOTTOM_NAV_REPORT_ICON} size="sm" alt="" className="h-10 w-10 object-contain drop-shadow-[0_4px_5px_rgba(0,0,0,0.18)]" />
 								</motion.span>
 							</span>
 							<span className="block text-center text-[9px] font-bold uppercase leading-none tracking-tight sm:hidden">Laporan</span>
