@@ -118,7 +118,9 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .search-box { min-height: 50px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); display: flex; align-items: center; gap: 9px; padding: 0 15px; margin-bottom: 17px; color: var(--muted); }
 .search-box input { border: 0; outline: 0; flex: 1; min-width: 0; }
 .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.product-card { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.product-card { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.product-card:hover, .product-card:focus-visible { border-color: #b9d0f5; box-shadow: var(--shadow-soft); outline: 0; }
+.product-card.selected { border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 16%, transparent); }
 .product-card img, .product-image { width: 100%; height: 135px; object-fit: cover; background: #eef3fa; display: grid; place-items: center; color: #98a8bf; }
 .product-body { padding: 14px; }
 .menu-number { color: var(--booking-accent); font-size: 10px; font-weight: 800; }
@@ -196,9 +198,16 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .info-card .info-icon { grid-row: span 2; }
   .info-card strong { align-self: end; }
   .info-card span:last-child { align-self: start; }
-  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .product-card img, .product-image { height: 110px; }
-  .product-body { padding: 12px; }
+  .product-grid { display: flex; flex-direction: column; gap: 10px; }
+  .product-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); min-height: 124px; border-radius: 16px; }
+  .product-card img, .product-card .product-image { height: 100%; min-height: 124px; }
+  .product-body { min-width: 0; padding: 12px 13px; }
+  .product-body h3 { min-height: 0; margin: 4px 0 7px; font-size: 14px; }
+  .product-body > strong { font-size: 13px; }
+  .quantity-control { margin-top: 9px; gap: 7px; }
+  .quantity-control button { width: 38px; height: 38px; border-radius: 11px; }
+  .quantity-control .add-button { width: auto; min-width: 92px; min-height: 38px; padding: 0 14px; }
+  .quantity-control b { min-width: 24px; }
   .calendar-card { padding: 14px; }
   .calendar-toolbar { margin-bottom: 16px; }
   .calendar-toolbar strong { font-size: 15px; }
