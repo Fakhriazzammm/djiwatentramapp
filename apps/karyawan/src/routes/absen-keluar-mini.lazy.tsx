@@ -251,7 +251,7 @@ function MiniClosingPage() {
   })();
 
   if (initialMode === "closing" || (initialMode === "checkout" && role !== null)) {
-    return <ClosingForm staff={staff!} role={role} shiftName={shiftName} openTime={shiftOpenTime} closeTime={shiftCloseTime} />;
+    return <ClosingForm staff={staff!} role={role} shiftName={shiftName} openTime={shiftOpenTime} closeTime={shiftCloseTime} linkUid={uid} linkTimestamp={t} linkSignature={sig} />;
   }
 
   const signedQuery = `?uid=${encodeURIComponent(uid)}&t=${encodeURIComponent(String(t))}&sig=${encodeURIComponent(sig)}`;
@@ -412,7 +412,7 @@ function EmptyText({ text }: { text: string }) { return <div className="rounded-
 //  C L O S I N G   F O R M
 // ═══════════════════════════════════════════
 
-function ClosingForm({ staff, role, shiftName, openTime, closeTime }: { staff: StaffInfo; role: "bar" | "kitchen" | null; shiftName: string; openTime: string; closeTime: string }) {
+function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, linkTimestamp, linkSignature }: { staff: StaffInfo; role: "bar" | "kitchen" | null; shiftName: string; openTime: string; closeTime: string; linkUid: string; linkTimestamp: string | number; linkSignature: string }) {
   const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">(role === null ? "kebersihan" : "opname");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
@@ -520,6 +520,9 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime }: { staff: S
         items: markedChanged.length > 0 ? markedChanged : opnameItems,
         source: "telegram_mini_app",
         kebersihan,
+        linkUid,
+        linkTimestamp,
+        linkSignature,
       });
 
       setSubmitDone(true);

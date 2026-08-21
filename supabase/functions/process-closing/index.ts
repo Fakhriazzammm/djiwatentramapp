@@ -18,6 +18,36 @@ function fail(code: string, message: string, status = 400) {
   return jsonResponse({ success: false, error: { code, message } }, status);
 }
 
+const HMAC_MAX_AGE_MS = 5 * 60 * 1000;
+const HMAC_MAX_FUTURE_SKEW_MS = 60 * 1000;
+
+async function hexHmacSha256(secret: string, data: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(data),
+  );
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function signaturesEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
 function formatStockRemaining(qty: number, unit: string): string {
   const normalized = unit.toLowerCase().trim();
   if (qty <= 0) return "HABIS";
@@ -398,6 +428,9 @@ Deno.serve(async (req: Request) => {
       items = [],
       source = "karyawan_web",
       kebersihan = [],
+      linkUid = "",
+      linkTimestamp = "",
+      linkSignature = "",
     } = payload as {
       userId: string;
       userName: string;
@@ -407,7 +440,38 @@ Deno.serve(async (req: Request) => {
       items: OpnameItem[];
       source: string;
       kebersihan: KebersihanArea[];
+      linkUid?: string;
+      linkTimestamp?: string | number;
+      linkSignature?: string;
     };
+
+    if (source === "telegram_mini_app") {
+      if (!linkUid || !linkTimestamp || !linkSignature) {
+        return fail("AUTH_REQUIRED", "Link Mini App tidak lengkap. Buka ulang dari bot.", 401);
+      }
+      if (String(linkUid) !== String(userId)) {
+        return fail("AUTH_MISMATCH", "Identitas link tidak cocok dengan karyawan.", 403);
+      }
+
+      const timestamp = Number(linkTimestamp);
+      const now = Date.now();
+      if (!Number.isFinite(timestamp)) {
+        return fail("AUTH_INVALID", "Timestamp link tidak valid.", 401);
+      }
+      if (timestamp - now > HMAC_MAX_FUTURE_SKEW_MS) {
+        return fail("AUTH_INVALID", "Waktu link belum berlaku.", 401);
+      }
+      if (now - timestamp > HMAC_MAX_AGE_MS) {
+        return fail("AUTH_EXPIRED", "Link Mini App sudah kedaluwarsa. Buka ulang dari bot.", 401);
+      }
+
+      const secret = Deno.env.get("ATTENDANCE_HMAC_SECRET") ?? "";
+      if (!secret) return fail("CONFIG_ERROR", "Server attendance belum dikonfigurasi.", 500);
+      const expectedSignature = await hexHmacSha256(secret, `${linkUid}:${linkTimestamp}`);
+      if (!signaturesEqual(expectedSignature, String(linkSignature))) {
+        return fail("AUTH_INVALID", "Signature link tidak valid. Buka ulang dari bot.", 401);
+      }
+    }
 
     if (source === "telegram_mini_app" && Array.isArray(kebersihan)) {
       const requiredAreas = ["bar_kitchen", "area_customer", "wc"];
@@ -448,15 +512,45 @@ Deno.serve(async (req: Request) => {
       (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01,
     );
 
+    // Server-side attendance integrity: the closing form may only close an
+    // active check-in and must never create a second checkout.
+    const wibOffset = 7 * 60 * 60 * 1000;
+    const wibNow = new Date(now + wibOffset);
+    const todayStart = Date.UTC(
+      wibNow.getUTCFullYear(),
+      wibNow.getUTCMonth(),
+      wibNow.getUTCDate(),
+    ) - wibOffset;
+    const { data: todayLogs, error: attendanceError } = await supabase
+      .from("pos_attendance_logs")
+      .select("type,timestamp")
+      .eq("userId", userId)
+      .gte("timestamp", todayStart)
+      .lt("timestamp", todayStart + 86400000)
+      .order("timestamp", { ascending: false })
+      .limit(20);
+    if (attendanceError) throw attendanceError;
+    const latestAttendance = todayLogs?.[0];
+    if (!latestAttendance || latestAttendance.type !== "check_in") {
+      return fail("NOT_CHECKED_IN", "Karyawan belum memiliki Absen Masuk aktif hari ini.");
+    }
+
     // ── Close-time validation ──────────────────────────────────
     if (shiftName) {
       try {
-        const { data: settings } = await supabase
+        const { data: settings, error: settingsError } = await supabase
           .schema("pos")
           .from("site_settings")
           .select("raw")
           .limit(1)
           .single();
+        if (settingsError || !settings?.raw) {
+          return fail(
+            "SHIFT_SETTINGS_UNAVAILABLE",
+            "Jadwal shift belum dapat dibaca. Absen keluar ditahan, silakan coba lagi.",
+            503,
+          );
+        }
 
         const schedules =
           ((
@@ -505,8 +599,13 @@ Deno.serve(async (req: Request) => {
             }
           }
         }
-      } catch {
-        // If validation fails (e.g. no schedules configured), allow
+      } catch (error) {
+        console.error("[process-closing] Shift validation failed:", error);
+        return fail(
+          "SHIFT_SETTINGS_UNAVAILABLE",
+          "Jadwal shift belum dapat diverifikasi. Absen keluar ditahan, silakan coba lagi.",
+          503,
+        );
       }
     }
 
@@ -529,7 +628,7 @@ Deno.serve(async (req: Request) => {
         });
 
       if (lockError) {
-        // Check if lock is stale (>10 seconds)
+        // Check if lock is stale (>60 seconds)
         if (lockError.code === "23505") {
           const { data: existing } = await supabase
             .schema("pos")
@@ -539,7 +638,7 @@ Deno.serve(async (req: Request) => {
             .eq("role", lockScope)
             .maybeSingle();
 
-          if (existing && now - existing.locked_at > 10000) {
+          if (existing && now - existing.locked_at > 60_000) {
             // Stale lock — override
             await supabase
               .schema("pos")

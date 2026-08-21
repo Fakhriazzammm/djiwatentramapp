@@ -453,6 +453,9 @@ export async function submitClosingViaEdge(params: {
   items: OpnameItem[];
   source?: string;
   kebersihan?: KebersihanSubmitArea[];
+  linkUid?: string;
+  linkTimestamp?: string | number;
+  linkSignature?: string;
 }): Promise<ClosingEdgeResponse> {
   const supabaseUrl = "https://supabase.yumme.id";
   const response = await fetch(`${supabaseUrl}/functions/v1/process-closing`, {
@@ -467,6 +470,9 @@ export async function submitClosingViaEdge(params: {
       items: params.items,
       source: params.source || "karyawan_web",
       kebersihan: params.kebersihan ?? [],
+      linkUid: params.linkUid,
+      linkTimestamp: params.linkTimestamp,
+      linkSignature: params.linkSignature,
     }),
   });
   const result = await response.json();

@@ -109,7 +109,13 @@ Deno.serve(async (req: Request) => {
     // Verify timestamp (max 5 minutes)
     const now = Date.now();
     const ts = Number(t);
-    if (!ts || now - ts > 5 * 60 * 1000) {
+    if (!Number.isFinite(ts)) {
+      return jsonResponse({ valid: false, error: "Invalid timestamp" }, 400);
+    }
+    if (ts - now > 60 * 1000) {
+      return jsonResponse({ valid: false, error: "Link timestamp is not valid yet" });
+    }
+    if (now - ts > 5 * 60 * 1000) {
       return jsonResponse({ valid: false, error: "Link expired. Please request a new one from the bot." });
     }
 
