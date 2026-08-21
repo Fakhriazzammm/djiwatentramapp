@@ -1,11 +1,12 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays } from "lucide-react";
+import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export const Route = createLazyFileRoute("/admin/customers")({
 	component: AdminCustomers,
@@ -57,6 +58,8 @@ function CustomerAvatar({ customer }: { customer: Customer }) {
 function AdminCustomers() {
 	const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
+	const [deleting, setDeleting] = useState(false);
 
 	useEffect(() => {
 		let active = true;
@@ -116,6 +119,26 @@ function AdminCustomers() {
 			(c.phone || "").toLowerCase().includes(q)
 		);
 	});
+
+	const handleDeleteCustomer = async () => {
+		if (!deleteCustomer) return;
+		setDeleting(true);
+		const { error } = await createClient()
+			.schema("pos")
+			.from("customers")
+			.update({ is_active: false })
+			.eq("source_id", deleteCustomer.source_id);
+		if (error) {
+			console.warn("[customers] delete error:", error);
+			toast.error("Akun customer gagal dinonaktifkan");
+			setDeleting(false);
+			return;
+		}
+		setCustomers((current) => current?.filter((customer) => customer.source_id !== deleteCustomer.source_id));
+		toast.success("Akun customer dinonaktifkan");
+		setDeleteCustomer(null);
+		setDeleting(false);
+	};
 
 	// --- Loading state ---
 	if (customers === undefined) {
@@ -239,6 +262,9 @@ function AdminCustomers() {
 										<CalendarDays className="h-3 w-3" /> Bergabung {formatDate(c.created_at)}
 									</p>
 								</div>
+								<button type="button" aria-label={`Nonaktifkan akun ${c.name || "customer"}`} onClick={() => setDeleteCustomer(c)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-red-50 hover:text-red-600">
+									<Trash2 className="h-4 w-4" />
+								</button>
 						</div>
 					</div>
 					))
@@ -260,6 +286,7 @@ function AdminCustomers() {
 								<th className="px-2.5 py-2 text-right"><span className="inline-flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" aria-hidden="true" /> Total Spending</span></th>
 								<th className="px-2.5 py-2">Terakhir Order</th>
 								<th className="px-2.5 py-2">Bergabung</th>
+								<th className="px-2.5 py-2 text-center">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
@@ -267,7 +294,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={9}
+										colSpan={10}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -315,6 +342,11 @@ function AdminCustomers() {
 										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
 											{formatDate(c.created_at)}
 										</td>
+										<td className="px-2.5 py-2 text-center align-middle">
+											<button type="button" aria-label={`Nonaktifkan akun ${c.name || "customer"}`} onClick={() => setDeleteCustomer(c)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-red-50 hover:text-red-600">
+												<Trash2 className="h-4 w-4" />
+											</button>
+										</td>
 									</tr>
 								))
 							)}
@@ -322,6 +354,19 @@ function AdminCustomers() {
 					</table>
 				</div>
 			</div>
+
+			{deleteCustomer ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setDeleteCustomer(null); }}>
+					<div role="dialog" aria-modal="true" aria-labelledby="delete-customer-title" className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl">
+						<div className="flex items-start justify-between gap-4">
+							<div><p id="delete-customer-title" className="text-lg font-black">Nonaktifkan akun customer?</p><p className="mt-1 text-sm text-muted-foreground">{deleteCustomer.name || "Customer tanpa nama"}</p></div>
+							<button type="button" aria-label="Tutup" disabled={deleting} onClick={() => setDeleteCustomer(null)} className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
+						</div>
+						<div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">Akun akan dikeluarkan dari daftar customer aktif. Riwayat order dan poin tetap dipertahankan, tidak dihapus.</div>
+						<div className="mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={deleting} onClick={() => setDeleteCustomer(null)} className="h-11 rounded-xl border border-border text-sm font-bold">Batal</button><button type="button" disabled={deleting} onClick={handleDeleteCustomer} className="h-11 rounded-xl bg-red-600 text-sm font-black text-white disabled:opacity-50">{deleting ? "Menonaktifkan..." : "Ya, nonaktifkan"}</button></div>
+					</div>
+				</div>
+			) : null}
 		</div>
 	);
 }
