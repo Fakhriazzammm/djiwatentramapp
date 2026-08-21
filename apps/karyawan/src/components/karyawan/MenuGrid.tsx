@@ -1,3 +1,4 @@
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -18,6 +19,7 @@ interface MenuItem {
   menuId: string;
   route?: string;
   action?: "navigate" | "tab" | "external";
+  illustration?: Djiwa3DIconName;
 }
 
 interface MenuGridProps {
@@ -26,15 +28,15 @@ interface MenuGridProps {
 
 const menuItems: MenuItem[] = [
   // Row 1
-  { label: "Absensi", icon: Clock3, menuId: "absensi", route: "/$username/absensi", action: "navigate" },
-  { label: "Rekap Absensi", icon: NotebookText, menuId: "rekap", route: "/$username/rekap-absensi", action: "navigate" },
-  { label: "Jadwal", icon: CalendarDays, menuId: "jadwal", route: "/$username/jadwal", action: "navigate" },
-  { label: "Izin/Cuti/Sakit", icon: CalendarOff, menuId: "izin", route: "/$username/izin", action: "navigate" },
+  { label: "Absensi", icon: Clock3, menuId: "absensi", route: "/$username/absensi", action: "navigate", illustration: "employee-attendance-check-in" },
+  { label: "Rekap Absensi", icon: NotebookText, menuId: "rekap", route: "/$username/rekap-absensi", action: "navigate", illustration: "sales-report" },
+  { label: "Jadwal", icon: CalendarDays, menuId: "jadwal", route: "/$username/jadwal", action: "navigate", illustration: "work-schedule" },
+  { label: "Izin/Cuti/Sakit", icon: CalendarOff, menuId: "izin", route: "/$username/izin", action: "navigate", illustration: "notifications-alerts" },
   // Row 2
-  { label: "Slip Gaji", icon: CircleDollarSign, menuId: "slip-gaji", route: "/$username/slip-gaji", action: "navigate" },
-  { label: "Kontrak", icon: FileText, menuId: "kontrak", route: "/$username/kontrak", action: "navigate" },
-  { label: "Grup Telegram", icon: Send, menuId: "telegram", action: "external" },
-  { label: "Leaderboard Bonus", icon: Trophy, menuId: "leaderboard", route: "/$username/leaderboard", action: "navigate" },
+  { label: "Slip Gaji", icon: CircleDollarSign, menuId: "slip-gaji", route: "/$username/slip-gaji", action: "navigate", illustration: "payroll-payslip" },
+  { label: "Kontrak", icon: FileText, menuId: "kontrak", route: "/$username/kontrak", action: "navigate", illustration: "employee-profile" },
+  { label: "Grup Telegram", icon: Send, menuId: "telegram", action: "external", illustration: "notifications-alerts" },
+  { label: "Leaderboard Bonus", icon: Trophy, menuId: "leaderboard", route: "/$username/leaderboard", action: "navigate", illustration: "loyalty-points" },
 ];
 
 export function MenuGrid({ baseRoute }: MenuGridProps) {
@@ -61,7 +63,11 @@ export function MenuGrid({ baseRoute }: MenuGridProps) {
           aria-label={item.action === "external" ? `${item.label}, buka tautan eksternal` : item.label}
           className="karyawan-card flex min-h-24 w-full min-w-0 flex-col items-center justify-center gap-1 border border-border/60 bg-card p-2 transition-all hover:border-primary/20 active:scale-[.97]"
         >
-          <Icon aria-hidden="true" className="h-6 w-6 text-gray-700" strokeWidth={2} />
+          {item.illustration ? (
+            <Djiwa3DIcon alt="" className="h-10 w-10" name={item.illustration} size="sm" />
+          ) : (
+            <Icon aria-hidden="true" className="h-6 w-6 text-gray-700" strokeWidth={2} />
+          )}
           <span className="text-center text-[11px] font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">
             {item.label}
           </span>

@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Wallet, Banknote, Gift, Trophy, type LucideIcon } from "lucide-react";
+import { Eye, EyeOff, Wallet } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
-import { Skeleton } from "@yumipos/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName, Skeleton } from "@yumipos/web-shared";
 
 const spring = { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 };
 
 function fmtIDR(n: number) { return new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",minimumFractionDigits:0}).format(n); }
 
-function SaldoItem({ icon: Icon, label, value, visible, accentClass }: { icon: LucideIcon; label: string; value: number; visible: boolean; accentClass: string }) {
+function SaldoItem({ illustration, label, value, visible, accentClass }: { illustration: Djiwa3DIconName; label: string; value: number; visible: boolean; accentClass: string }) {
   return (
     <div className="flex flex-col items-center">
-      <Icon aria-hidden="true" className="mb-1 h-4 w-4 text-muted-foreground" />
+      <Djiwa3DIcon alt="" className="mb-1 h-8 w-8" name={illustration} size="sm" />
       <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       <AnimatePresence mode="wait">
         {visible ? (
@@ -70,9 +70,9 @@ export function SaldoCard({ staffId }: { staffId: string }) {
         </motion.button>
       </div>
       <div className="grid grid-cols-3">
-        <SaldoItem icon={Banknote} label="Gaji" value={d.gaji} visible={visible} accentClass="text-emerald-600" />
-        <SaldoItem icon={Gift} label="Tunjangan" value={d.tunjangan} visible={visible} accentClass="text-primary" />
-        <SaldoItem icon={Trophy} label="Bonus" value={d.bonus} visible={visible} accentClass="text-amber-600" />
+        <SaldoItem illustration="payment-wallet" label="Gaji" value={d.gaji} visible={visible} accentClass="text-emerald-600" />
+        <SaldoItem illustration="suppliers-purchase-order" label="Tunjangan" value={d.tunjangan} visible={visible} accentClass="text-primary" />
+        <SaldoItem illustration="loyalty-points" label="Bonus" value={d.bonus} visible={visible} accentClass="text-amber-600" />
       </div>
     </motion.div>
   );
