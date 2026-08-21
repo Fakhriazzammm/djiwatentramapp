@@ -18,3 +18,10 @@
 | 7 | **Build sukses tidak berarti production sudah berubah** — untuk SPA/PWA, verifikasi `index.html`, hashed bundle, `sw.js`, dan `version.json` dari domain canonical setelah deploy. HTTP 200 pada route dapat tetap menyajikan build lama. | deployment |
 | 8 | **Self-host PostgreSQL tidak selalu menyediakan helper JSONB yang diasumsikan** — RPC harus diuji pada engine production; gunakan operasi JSONB portable seperti `v_updates <> '{}'::jsonb` dan transactional rollback test sebelum rollout. | debug |
 | 9 | **Setiap app Vite wajib punya publishable Supabase key saat build** — fallback URL saja tidak cukup; `import.meta.env` dibekukan saat build sehingga app tanpa `VITE_SUPABASE_PUBLISHABLE_KEY` masuk state “Supabase belum dikonfigurasi”. Simpan key production di env ignored dan sediakan `.env.example`. | deployment |
+
+## Backend
+
+| # | Lesson | Sumber |
+|---|--------|--------|
+| 10 | **Auth custom Yumi menyimpan role lewat `role_source_id`** — jangan mengasumsikan `yumi_users.role_name`; resolve nama role melalui `yumi_roles` di server-side Edge Function. | debug |
+| 11 | **Notification dedupe harus server-side** — frontend polling/retry dapat memanggil sync berulang; gunakan `dedupe_key` UNIQUE dan `ON CONFLICT DO NOTHING`, lalu tambahkan guard audio di client. | notification |

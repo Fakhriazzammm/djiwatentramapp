@@ -30,6 +30,7 @@ import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-ove
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
+import { Route as AdminPosNotificationsRouteImport } from './routes/admin/pos-notifications'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminOrderMieYaminRouteImport } from './routes/admin/order-mie-yamin'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
@@ -196,6 +197,13 @@ const AdminProductsRoute = AdminProductsRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/products.lazy').then((d) => d.Route),
+)
+const AdminPosNotificationsRoute = AdminPosNotificationsRouteImport.update({
+  id: '/pos-notifications',
+  path: '/pos-notifications',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/pos-notifications.lazy').then((d) => d.Route),
 )
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
   id: '/orders',
@@ -575,6 +583,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
@@ -639,6 +648,7 @@ export interface FileRoutesByTo {
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
@@ -704,6 +714,7 @@ export interface FileRoutesById {
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
@@ -774,6 +785,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team'
     | '/admin/order-mie-yamin'
     | '/admin/orders'
+    | '/admin/pos-notifications'
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
@@ -838,6 +850,7 @@ export interface FileRouteTypes {
     | '/admin/onboarding'
     | '/admin/order-mie-yamin'
     | '/admin/orders'
+    | '/admin/pos-notifications'
     | '/admin/products'
     | '/admin/settings'
     | '/admin/stock-overview'
@@ -902,6 +915,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team'
     | '/admin/order-mie-yamin'
     | '/admin/orders'
+    | '/admin/pos-notifications'
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
@@ -1100,6 +1114,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/admin/products'
       preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/pos-notifications': {
+      id: '/admin/pos-notifications'
+      path: '/pos-notifications'
+      fullPath: '/admin/pos-notifications'
+      preLoaderRoute: typeof AdminPosNotificationsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/orders': {
@@ -1606,6 +1627,7 @@ interface AdminRouteRouteChildren {
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRouteWithChildren
   AdminOrderMieYaminRoute: typeof AdminOrderMieYaminRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminPosNotificationsRoute: typeof AdminPosNotificationsRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -1630,6 +1652,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminOperationalTeamRoute: AdminOperationalTeamRouteWithChildren,
   AdminOrderMieYaminRoute: AdminOrderMieYaminRoute,
   AdminOrdersRoute: AdminOrdersRoute,
+  AdminPosNotificationsRoute: AdminPosNotificationsRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminRecipeRoute: AdminRecipeRouteWithChildren,
   AdminSettingsRoute: AdminSettingsRoute,

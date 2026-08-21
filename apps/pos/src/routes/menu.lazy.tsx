@@ -74,6 +74,8 @@ import {
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
 import { playSuccessSound } from "@/lib/play-success-sound";
+import { NotificationBell, NotificationCenter } from "@/components/pos/notification-center";
+import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
 
@@ -418,6 +420,8 @@ function MenuPage() {
 	const mayarConfig = useHybridMayarConfig();
 	const categories = useHybridCategories();
 	const orders = useHybridOrders();
+	const orderRefreshKey = useMemo(() => (orders ?? []).slice(0, 50).map((order: any) => `${order._id}:${order.status}:${order.createdAt}`).join("|"), [orders]);
+	const { notifications, unreadCount, isLoading: notificationsLoading, error: notificationsError, markRead: markNotificationRead } = usePosNotifications(orderRefreshKey);
 	const activeDiscounts = useHybridActiveDiscounts();
 	const allDiscounts = useHybridAllDiscounts();
 	const roles = useHybridStaffRoles();
@@ -454,6 +458,9 @@ function MenuPage() {
 	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+	const notificationIdsRef = useRef<Set<string>>(new Set());
+	const hasSeededNotificationsRef = useRef(false);
 	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
@@ -535,6 +542,22 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 		djiwaAppOrderStatusRef.current = currentStatuses;
 	}, [orders]);
+
+	useEffect(() => {
+		if (!notifications) return;
+		const nextIds = new Set(notifications.map((item) => item.id));
+		if (!hasSeededNotificationsRef.current) {
+			hasSeededNotificationsRef.current = true;
+			notificationIdsRef.current = nextIds;
+			return;
+		}
+		const hasNewAlert = notifications.some((item) =>
+			!notificationIdsRef.current.has(item.id) &&
+			(item.notification_type === "order_cashier_pending" || (item.notification_type === "admin_briefing" && item.priority !== "normal"))
+		);
+		if (hasNewAlert) playSuccessSound();
+		notificationIdsRef.current = nextIds;
+	}, [notifications]);
 
 	useEffect(() => {
 		const offlineManager = getOfflineManager();
@@ -1618,16 +1641,20 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									<p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mt-0.5 opacity-60">POS Kasir & Inventory</p>
 								</div>
 							</div>
-							<button
-								type="button"
-								onClick={() => {
-									setActiveSidebarTab("yumi");
-									setIsSidebarOpen(true);
-								}}
-								className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
-							>
-								<MoreHorizontal className="h-4 w-4" />
-							</button>
+							<div className="flex items-center gap-1 shrink-0">
+								<NotificationBell unreadCount={unreadCount} onClick={() => setIsNotificationCenterOpen(true)} />
+								<button
+									type="button"
+									onClick={() => {
+										setActiveSidebarTab("yumi");
+										setIsSidebarOpen(true);
+									}}
+									className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
+									aria-label="Buka menu lainnya"
+								>
+									<MoreHorizontal className="h-4 w-4" />
+								</button>
+							</div>
 						</div>
 					</div>
 
@@ -1818,6 +1845,21 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						</div>
 					)}
 				</header>
+
+				<NotificationCenter
+					open={isNotificationCenterOpen}
+					onClose={() => setIsNotificationCenterOpen(false)}
+					notifications={notifications}
+					isLoading={notificationsLoading}
+					error={notificationsError}
+					onMarkRead={markNotificationRead}
+					onOpenOrder={(notification) => {
+						markNotificationRead(notification.id);
+						setIsNotificationCenterOpen(false);
+						setActiveSidebarTab("history");
+						setIsSidebarOpen(true);
+					}}
+				/>
 
 				{/* Hidden MenuSidebar for control */}
 				<MenuSidebar 

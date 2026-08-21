@@ -44,6 +44,10 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.pos-notifications]
+enabled = true
+verify_jwt = false
+
 [functions.process-closing]
 enabled = true
 verify_jwt = false
