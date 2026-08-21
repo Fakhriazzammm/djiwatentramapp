@@ -158,6 +158,28 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .status-result { margin: 18px 0 0; padding: 24px; text-align: left; }
 .status-result h2 { margin: 8px 0; }
 .status-result a { display: inline-flex; align-items: center; gap: 6px; color: var(--booking-accent); font-size: 13px; font-weight: 700; }
+.progress-wrap { margin-bottom: 18px; }
+.progress-label { margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.choice-list { display: grid; gap: 12px; }
+.choice-list.compact { gap: 9px; }
+.choice-card { width: 100%; min-height: 82px; padding: 16px; border: 1px solid var(--line); border-radius: 20px; color: var(--ink); background: var(--surface); display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 13px; text-align: left; box-shadow: var(--shadow-soft); transition: transform 180ms var(--ease-ios), border-color 180ms var(--ease-ios), background 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios); }
+.choice-card:hover { border-color: #c6d8f5; transform: translateY(-1px); }
+.choice-card.selected { border-color: var(--booking-accent); background: var(--booking-accent-soft); box-shadow: 0 9px 20px rgba(26,93,198,.13); }
+.choice-card > span:nth-child(2) { min-width: 0; }
+.choice-card strong, .choice-card small { display: block; }
+.choice-card strong { font-size: 15px; }
+.choice-card small { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.choice-icon { width: 44px; height: 44px; border-radius: 15px; color: var(--booking-accent); background: var(--booking-accent-soft); display: grid; place-items: center; }
+.choice-icon svg { width: 21px; height: 21px; }
+.context-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: -11px 0 16px 30px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.context-summary b { color: #b0bac8; }
+.form-field select { display: block; width: 100%; min-height: 48px; margin-top: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 0 14px; outline: 0; color: var(--ink); background: #fbfcfe; }
+.checkout-total { margin-top: 16px; padding: 15px 18px; border: 1px solid #cfe0fa; border-radius: 18px; color: var(--booking-accent); background: var(--booking-accent-soft); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; }
+.checkout-total span { color: var(--muted); font-size: 12px; font-weight: 700; }
+.checkout-total strong { font-size: 18px; }
+.checkout-total small { grid-column: 1 / -1; color: var(--muted); font-size: 10px; }
+.review-edit { margin-top: 12px; }
+.brand-logo { width: 34px; height: 34px; border-radius: 12px; object-fit: cover; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {

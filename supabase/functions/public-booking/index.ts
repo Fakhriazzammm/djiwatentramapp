@@ -34,6 +34,20 @@ async function callRpc(name: string, body: JsonRecord) {
   return parsed;
 }
 
+function normalizeBookingAnswers(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const input = value as JsonRecord;
+  const bookingType = text(input["Tipe booking"], 40);
+  const bookingTypeLabel = text(input["Tipe booking label"], 120);
+  const eventType = text(input["Jenis acara"], 80);
+  const eventTypeLabel = text(input["Jenis acara label"], 120);
+  const eventTypeOther = text(input["Jenis acara lainnya"], 120);
+  if (bookingType && !["group_meal", "event"].includes(bookingType)) throw Object.assign(new Error("Tipe booking tidak valid"), { status: 400 });
+  if (bookingType === "event" && !eventType) throw Object.assign(new Error("Jenis acara wajib dipilih"), { status: 400 });
+  if (eventType === "other" && !eventTypeOther) throw Object.assign(new Error("Jenis acara lainnya wajib diisi"), { status: 400 });
+  return { ...input, "Tipe booking": bookingType, "Tipe booking label": bookingTypeLabel, "Jenis acara": eventType || null, "Jenis acara label": eventTypeLabel || null, "Jenis acara lainnya": eventTypeOther || null };
+}
+
 async function createBooking(body: JsonRecord) {
   const accessToken = token(body.accessToken);
   const idempotencyKey = token(body.idempotencyKey);
@@ -41,7 +55,7 @@ async function createBooking(body: JsonRecord) {
   const payload = {
     slug: text(body.slug, 80), bookingDate: text(body.bookingDate, 10), customerName: text(body.customerName, 120),
     customerPhone: text(body.customerPhone, 40), customerEmail: text(body.customerEmail, 254), notes: text(body.notes, 1000),
-    guestCount: body.guestCount, paymentMethod: text(body.paymentMethod, 40), customAnswers: body.customAnswers && typeof body.customAnswers === "object" ? body.customAnswers : {},
+    guestCount: body.guestCount, paymentMethod: text(body.paymentMethod, 40), customAnswers: normalizeBookingAnswers(body.customAnswers),
     items: Array.isArray(body.items) ? body.items.slice(0, 50).map((item) => { const row = item && typeof item === "object" ? item as JsonRecord : {}; return { productId: text(row.productId, 120), quantity: row.quantity }; }) : [],
   };
   if (!payload.slug || !payload.bookingDate || !payload.customerName || !payload.customerPhone) throw Object.assign(new Error("slug, bookingDate, customerName, and customerPhone are required"), { status: 400 });

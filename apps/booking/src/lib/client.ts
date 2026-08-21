@@ -1,14 +1,76 @@
 import { createClient as createSharedClient } from "@yumipos/web-shared/lib/client";
-import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL } from "./booking-constants";
+import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL, type BookingOption } from "./booking-constants";
 
-export type BookingSettings = { slug: string; title: string | null; description: string | null; logoUrl: string | null; bannerUrl: string | null; themeColor: string | null; isActive: boolean; featuredProductIds: string[] | null; customFields: unknown[] | null; bookingWindowDays: number; defaultMaxPeople: number; defaultMaxTables: number; defaultPeoplePerTable: number };
+export type BookingCustomField = { id: string; label: string; type: string; options: string[]; placeholder: string; required: boolean; isBookingEventOption?: boolean };
+export type BookingSettings = {
+  slug: string;
+  title: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  themeColor: string | null;
+  isActive: boolean;
+  featuredProductIds: string[] | null;
+  customFields: BookingCustomField[];
+  bookingTypes: BookingOption[];
+  eventTypes: BookingOption[];
+  bookingWindowDays: number;
+  defaultMaxPeople: number;
+  defaultMaxTables: number;
+  defaultPeoplePerTable: number;
+};
 export type Capacity = { date: string; maxPeople: number; maxTables: number; peoplePerTable: number; notes: string | null; isClosed?: boolean };
 export type Product = { id: string; name: string; description: string | null; imageUrl: string | null; price: number; promoPrice: number | null; category: string | null; menuNumber: string | number | null };
-export type BookingDraft = { date: string; guests: number; tableCount: number; items: Array<{ productId: string; name: string; price: number; quantity: number }>; customer: { name: string; phone: string; email: string; notes: string } };
+export type BookingDraft = {
+  bookingType: string;
+  bookingTypeLabel: string;
+  eventType?: string;
+  eventTypeLabel?: string;
+  eventTypeOther?: string;
+  date: string;
+  guests: number;
+  tableCount: number;
+  items: Array<{ productId: string; name: string; price: number; quantity: number }>;
+  customer: { name: string; phone: string; email: string; notes: string };
+  customAnswers: Record<string, unknown>;
+};
 export type BookingResult = { bookingId?: string; bookingCode: string; status: string; paymentStatus: string; date: string; guests: number; tableCount: number; totalAmount?: number; items: BookingDraft["items"]; invoiceId?: string; invoiceUrl?: string };
 
 export function isDataConfigured() {
   return Boolean((import.meta.env.VITE_SUPABASE_URL?.trim() || SUPABASE_URL) && (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY));
+}
+
+function optionList(value: unknown): BookingOption[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)))
+    .map((item, index) => ({
+      key: String(item.key ?? "").trim(),
+      label: String(item.label ?? "").trim(),
+      description: String(item.description ?? "").trim(),
+      icon: typeof item.icon === "string" ? item.icon : undefined,
+      sortOrder: Number(item.sortOrder ?? index + 1),
+      isActive: item.isActive !== false,
+      requiresCustomText: item.requiresCustomText === true,
+    }))
+    .filter((item) => item.key && item.label && item.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function customFieldList(value: unknown): BookingCustomField[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)))
+    .map((item) => ({
+      id: String(item.id ?? "").trim(),
+      label: String(item.label ?? "").trim(),
+      type: String(item.type ?? "text").trim(),
+      options: Array.isArray(item.options) ? item.options.map(String).filter(Boolean) : [],
+      placeholder: String(item.placeholder ?? "").trim(),
+      required: item.required === true,
+      isBookingEventOption: item.isBookingEventOption === true,
+    }))
+    .filter((field) => field.id && field.label);
 }
 
 export async function loadBookingData() {
@@ -22,7 +84,29 @@ export async function loadBookingData() {
   if (settings.error) throw settings.error;
   if (capacities.error) throw capacities.error;
   if (products.error) throw products.error;
-  const settingsValue = settings.data ? { slug: settings.data.slug, title: settings.data.title, description: settings.data.description ?? null, logoUrl: settings.data.logoUrl ?? null, bannerUrl: settings.data.bannerUrl ?? null, themeColor: settings.data.themeColor ?? null, isActive: Boolean(settings.data.isActive), featuredProductIds: Array.isArray(settings.data.featuredProductIds) ? settings.data.featuredProductIds.map(String) : null, customFields: Array.isArray(settings.data.customFields) ? settings.data.customFields : null, bookingWindowDays: Math.max(1, Number(settings.data.bookingWindowDays ?? 90)), defaultMaxPeople: Math.max(0, Number(settings.data.defaultMaxPeople ?? 100)), defaultMaxTables: Math.max(0, Number(settings.data.defaultMaxTables ?? 25)), defaultPeoplePerTable: Math.max(1, Number(settings.data.defaultPeoplePerTable ?? 4)) } : null;
+
+  const raw = settings.data?.raw && typeof settings.data.raw === "object" ? settings.data.raw as Record<string, unknown> : {};
+  const customFields = customFieldList(settings.data?.customFields);
+  const bookingTypes = optionList(raw.bookingTypes);
+  const eventTypes = optionList(raw.eventTypes);
+  const settingsValue = settings.data ? {
+    slug: settings.data.slug,
+    title: settings.data.title,
+    description: settings.data.description ?? null,
+    logoUrl: settings.data.logoUrl ?? null,
+    bannerUrl: settings.data.bannerUrl ?? null,
+    themeColor: settings.data.themeColor ?? null,
+    isActive: Boolean(settings.data.isActive),
+    featuredProductIds: Array.isArray(settings.data.featuredProductIds) ? settings.data.featuredProductIds.map(String) : null,
+    customFields,
+    bookingTypes,
+    eventTypes,
+    bookingWindowDays: Math.max(1, Number(settings.data.bookingWindowDays ?? 90)),
+    defaultMaxPeople: Math.max(0, Number(settings.data.defaultMaxPeople ?? 100)),
+    defaultMaxTables: Math.max(0, Number(settings.data.defaultMaxTables ?? 25)),
+    defaultPeoplePerTable: Math.max(1, Number(settings.data.defaultPeoplePerTable ?? 4)),
+  } : null;
+
   const overrides = (capacities.data ?? []).map((row: any) => ({ date: row.date ?? row.bookingDate ?? "", maxPeople: Number(row.maxPeople ?? 0), maxTables: Number(row.maxTables ?? 0), peoplePerTable: Number(row.peoplePerTable ?? 4), notes: row.notes ?? null, isClosed: Boolean(row.isClosed ?? row.is_closed) }));
   const overrideByDate = new Map(overrides.map((entry) => [entry.date, entry]));
   const generated: Capacity[] = [];
@@ -75,11 +159,7 @@ function getPublishableKey() {
 
 async function callBookingApi(action: "create" | "status" | "attach-payment", body: Record<string, unknown>) {
   const key = getPublishableKey();
-  const response = await fetch(BOOKING_API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ action, ...body }),
-  });
+  const response = await fetch(BOOKING_API_URL, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ action, ...body }) });
   const result = await response.json().catch(() => null) as { success?: boolean; data?: unknown; error?: { message?: string } } | null;
   if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Booking gagal diproses.");
   return result.data as BookingResult & { bookingDate?: string; bookingStatus?: string; paymentStatus?: string; guestCount?: number; tableCount?: number; totalAmount?: number };
@@ -87,13 +167,9 @@ async function callBookingApi(action: "create" | "status" | "attach-payment", bo
 
 async function callMayar(body: Record<string, unknown>) {
   const key = getPublishableKey();
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/mayar-proxy`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
-    body: JSON.stringify(body),
-  });
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/mayar-proxy`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify(body) });
   const result = await response.json().catch(() => null) as { success?: boolean; data?: any; error?: { message?: string } } | null;
-  if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Pembayaran Pembayaran QRIS belum berhasil disiapkan.");
+  if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Pembayaran Mayar belum berhasil disiapkan.");
   return result.data;
 }
 
@@ -104,7 +180,13 @@ function normalizeResult(raw: BookingResult & { bookingId?: string; bookingDate?
 export async function createBooking(draft: BookingDraft): Promise<BookingResult> {
   if (BOOKING_API_URL) {
     const credentials = getGuestCredentials();
-    const result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, notes: draft.customer.notes, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
+    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
+    if (result.bookingId && result.bookingCode && result.items.length === 0) {
+      try {
+        const recovered = await lookupBooking(result.bookingCode);
+        result = { ...result, ...recovered, items: recovered.items.length ? recovered.items : result.items };
+      } catch { /* keep the create response; payment will report a clear error if items are unavailable */ }
+    }
     localStorage.setItem("booking-last-code", result.bookingCode);
     return result;
   }
@@ -117,26 +199,26 @@ export async function createBooking(draft: BookingDraft): Promise<BookingResult>
 }
 
 export async function createBookingPayment(booking: BookingResult, draft: BookingDraft) {
-  if (!booking.bookingId || !booking.bookingCode || !booking.totalAmount || booking.totalAmount <= 0 || !booking.items.length) {
-    throw new Error("Pilih minimal satu menu agar booking dapat dibayar melalui QRIS.");
-  }
+  if (!booking.bookingId || !booking.bookingCode || !booking.totalAmount || booking.totalAmount <= 0 || !booking.items.length) throw new Error("Pilih minimal satu menu agar booking dapat dibayar melalui Mayar.");
   const credentials = getGuestCredentials();
+  const storageKey = `booking-payment-${booking.bookingCode}`;
+  const stored = sessionStorage.getItem(storageKey);
+  if (stored) {
+    try {
+      const existing = JSON.parse(stored) as { invoiceId?: string; invoiceUrl?: string };
+      if (existing.invoiceId && existing.invoiceUrl) {
+        await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: existing.invoiceId, invoiceUrl: existing.invoiceUrl, status: "pending" } });
+        return existing;
+      }
+    } catch { sessionStorage.removeItem(storageKey); }
+  }
   const redirectUrl = `${window.location.origin}/booking/status?code=${encodeURIComponent(booking.bookingCode)}`;
-  const invoiceResponse = await callMayar({
-    action: "create-invoice",
-    name: draft.customer.name,
-    email: draft.customer.email || undefined,
-    mobile: draft.customer.phone,
-    redirectUrl,
-    description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`,
-    expiredAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG },
-    items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })),
-  });
+  const invoiceResponse = await callMayar({ action: "create-invoice", name: draft.customer.name, email: draft.customer.email || undefined, mobile: draft.customer.phone, redirectUrl, description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`, expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG }, items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })) });
   const payment = invoiceResponse?.data || invoiceResponse;
   const invoiceId = String(payment?.id || "");
   const invoiceUrl = String(payment?.link || payment?.paymentUrl || payment?.url || "");
-  if (!invoiceId || !invoiceUrl) throw new Error("Pembayaran QRIS belum mengembalikan link pembayaran.");
+  if (!invoiceId || !invoiceUrl) throw new Error("Mayar belum mengembalikan link pembayaran.");
+  sessionStorage.setItem(storageKey, JSON.stringify({ invoiceId, invoiceUrl }));
   await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId, invoiceUrl, transactionId: payment?.transactionId || null, status: "pending" } });
   return { invoiceId, invoiceUrl };
 }
