@@ -32,7 +32,7 @@ export function MemberOnboarding({ name, onStartOrdering, onDismiss }: MemberOnb
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Member baru</p>
               <h2 id="member-onboarding-title" className="mt-0.5 text-xl font-black tracking-tight">Selamat datang, {name}!</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Akun member kamu sudah aktif. Ini cara cepat menikmati fitur Djiwa Tentram Centrik.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Akun member kamu sudah aktif. Ini cara cepat menikmati fitur Djiwa Tentram.</p>
             </div>
           </div>
 

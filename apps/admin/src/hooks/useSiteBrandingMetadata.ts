@@ -30,7 +30,7 @@ export function useSiteBrandingMetadata() {
 	useEffect(() => {
 		if (!siteSettings) return;
 
-		const appName = siteSettings.appName || "Djiwa Tentram Centrik";
+		const appName = siteSettings.appName || "Djiwa Tentram";
 		const fallbackDescription =
 			siteSettings.landingDescription || "Aplikasi POS modern untuk bisnis Anda.";
 

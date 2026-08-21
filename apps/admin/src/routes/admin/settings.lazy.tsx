@@ -359,7 +359,7 @@ export function SettingsPage({
 		timezone: "UTC+7 (Jakarta)",
 		lowStockAlert: 10,
 		// App Branding
-		appName: "Djiwa Tentram Centrik",
+		appName: "Djiwa Tentram",
 		appVersion: "1.0.0",
 		developerName: "Zantara Technology",
 		headerLogoUrl: "",
@@ -708,7 +708,7 @@ export function SettingsPage({
 				allowOpenBillPrint: siteSettings.allowOpenBillPrint ?? true,
 				taxRate: siteSettings.taxRate ?? 0,
 				serviceChargeRate: siteSettings.serviceChargeRate ?? 0,
-				appName: siteSettings.appName ?? "Djiwa Tentram Centrik",
+				appName: siteSettings.appName ?? "Djiwa Tentram",
 				appVersion: siteSettings.appVersion ?? "1.0.0",
 				developerName: siteSettings.developerName ?? "Zantara Technology",
 				headerLogoUrl: siteSettings.headerLogoUrl ?? "",
@@ -1531,7 +1531,7 @@ export function SettingsPage({
 					{ id: "pos", label: "Konfigurasi Pembayaran", icon: CreditCard },
 					{ id: "store", label: "Informasi Toko", icon: MapPin },
 					{ id: "branding", label: "Branding & SEO", icon: Globe },
-					{ id: "yumiAI", label: "Centrik AI", icon: ShieldCheck },
+					{ id: "yumiAI", label: "Djiwa Tentram AI", icon: ShieldCheck },
 					{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
 				] as const);
 	const pageContainerClass =
@@ -3102,7 +3102,7 @@ export function SettingsPage({
 									</div>
 									<div>
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Lokasi</label>
-										<Input className="h-9 text-xs" value={employeeOnboardingSettings.defaultLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultLocation: e.target.value }))} placeholder="Djiwa Tentram Centrik" />
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.defaultLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultLocation: e.target.value }))} placeholder="Djiwa Tentram" />
 									</div>
 									<div className="flex items-end pb-0.5">
 										<label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-background px-3 py-2 text-xs transition-colors hover:bg-muted/50">
@@ -4291,7 +4291,7 @@ export function SettingsPage({
 								</div>
 								<div>
 									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-										Konfigurasi Centrik AI
+										Konfigurasi Djiwa Tentram AI
 									</h3>
 									<p className="text-muted-foreground text-sm">
 										Pilih model AI untuk OCR/Vision, Chat/Teks, Ringkas/Sintesis, Analitik, dan fallback.
@@ -4300,7 +4300,7 @@ export function SettingsPage({
 							</div>
 
 							<div className="rounded-3xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted-foreground leading-relaxed">
-								Perubahan model akan tersimpan di settings dan langsung dipakai di Centrik AI Chat admin, Centrik AI Chat POS, OCR scan struk, serta fitur ringkasan/sintesis.
+								Perubahan model akan tersimpan di settings dan langsung dipakai di Djiwa Tentram AI Chat admin, Djiwa Tentram AI Chat POS, OCR scan struk, serta fitur ringkasan/sintesis.
 							</div>
 
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">

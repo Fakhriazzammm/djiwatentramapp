@@ -81,7 +81,7 @@ export default function App() {
 function Shell({ settings, children, onBack }: { settings?: BookingSettings | null; children: React.ReactNode; onBack?: () => void }) {
   const configuredAccent = settings?.themeColor?.trim().toLowerCase();
   const accent = configuredAccent && configuredAccent !== "#000000" && /^#[0-9a-f]{6}$/i.test(configuredAccent) ? configuredAccent : "#1a5dc6";
-  return <div className="app-shell" style={{ "--booking-accent": accent } as React.CSSProperties}><header className="topbar"><div className="brand"><div className="brand-mark"><CalendarDays size={19} /></div><div><strong>{settings?.title || "Booking Djiwa Tentram Centrik"}</strong><span>Djiwa Tentram Centrik</span></div></div>{onBack && <button className="icon-button" aria-label="Kembali" onClick={onBack}><ArrowLeft size={20} /></button>}</header><main>{children}</main></div>;
+  return <div className="app-shell" style={{ "--booking-accent": accent } as React.CSSProperties}><header className="topbar"><div className="brand"><div className="brand-mark"><CalendarDays size={19} /></div><div><strong>{settings?.title || "Booking Djiwa Tentram"}</strong><span>Djiwa Tentram</span></div></div>{onBack && <button className="icon-button" aria-label="Kembali" onClick={onBack}><ArrowLeft size={20} /></button>}</header><main>{children}</main></div>;
 }
 
 function Landing({ settings, loading, error, retry, onStart, onStatus }: { settings?: BookingSettings | null; loading: boolean; error: string | null; retry: () => void; onStart: () => void; onStatus: () => void }) {

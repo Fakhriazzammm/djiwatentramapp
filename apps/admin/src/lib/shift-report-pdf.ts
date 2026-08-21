@@ -201,7 +201,7 @@ export function buildReportHTML(data: ShiftPDFData, logoBase64: string): string 
       : `<div style="width:26px;height:26px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#059669;">DT</div>`
     }
     <div style="flex:1;">
-      <div style="font-size:14px;font-weight:800;color:#fff;">Djiwa Tentram Centrik</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;">Djiwa Tentram</div>
       <div style="font-size:6.5px;color:rgba(255,255,255,0.7);">Kopi & Eatery</div>
     </div>
     <div style="text-align:right;">
@@ -321,7 +321,7 @@ export function buildReportHTML(data: ShiftPDFData, logoBase64: string): string 
 
   <!-- ═══ FOOTER ═══ -->
   <div style="padding:8px 16px 4px;text-align:center;font-size:6px;color:#9ca3af;">
-    Djiwa Tentram Centrik · Kopi & Eatery · ${tgl}
+    Djiwa Tentram · Kopi & Eatery · ${tgl}
   </div>
 
 </div>

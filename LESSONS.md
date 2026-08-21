@@ -25,3 +25,4 @@
 |---|--------|--------|
 | 10 | **Auth custom Yumi menyimpan role lewat `role_source_id`** — jangan mengasumsikan `yumi_users.role_name`; resolve nama role melalui `yumi_roles` di server-side Edge Function. | debug |
 | 11 | **Notification dedupe harus server-side** — frontend polling/retry dapat memanggil sync berulang; gunakan `dedupe_key` UNIQUE dan `ON CONFLICT DO NOTHING`, lalu tambahkan guard audio di client. | notification |
+| 12 | **Brand fallback harus mengikuti nama canonical terbaru** — hardcoded fallback di banyak app dapat mengalahkan konfigurasi database dan membuat nama brand lama muncul lintas UI/PWA/PDF; perubahan brand harus mencakup copy, manifest, cache identifier, dan deployment artifact. | branding |

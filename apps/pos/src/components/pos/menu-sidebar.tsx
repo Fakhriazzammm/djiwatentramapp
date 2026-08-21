@@ -203,7 +203,7 @@ export function MenuSidebar({
 		{ value: "antrian", label: "Antrian", icon: ClipboardList, iconColor: "text-emerald-600", illustration: "order-queue" },
 		{
 			value: "yumi",
-			label: "Centrik AI",
+			label: "Djiwa Tentram AI",
 			icon: Bot,
 			iconColor: "text-primary",
 			illustration: "business-ai-assistant",
@@ -2524,7 +2524,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
 				sendTelegramNotif("📊 LAPORAN SHIFT", {
-					"🏪": "Djiwa Tentram Centrik",
+					"🏪": "Djiwa Tentram",
 					"🔄 Shift": si.shiftName || shiftName || "-",
 					"👥 Tim": `\n${teamIndented}`,
 					"━━━ DI SISTEM ━━━": "━━━",
@@ -2660,7 +2660,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			toast.success("Shift berhasil dimulai");
 			const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
 			const notificationDelivered = await sendTelegramNotif("✅ SHIFT DIBUKA", {
-				"🏪": "Djiwa Tentram Centrik",
+				"🏪": "Djiwa Tentram",
 				"🔄 Shift": shiftName.trim(),
 				"👤 Kasir": cashierName.trim(),
 				"👥 Tim": `\n${teamFormatted}`,

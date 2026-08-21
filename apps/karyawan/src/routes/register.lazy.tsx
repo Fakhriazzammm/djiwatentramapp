@@ -28,14 +28,14 @@ Nomor dokumen dan tanggal efektif ditetapkan pada proses administrasi kontrak.
 Pasal 1 — Para Pihak
 Yang bertanda tangan di bawah ini:
 
-1. Djiwa Tentram Centrik, berkedudukan di Jalan Bojong Tengah No. 34 dengan Nomor Induk Berusaha (NIB) sesuai dokumen perusahaan, dalam hal ini diwakili oleh Fakhri Azzam selaku Owner, yang selanjutnya disebut PIHAK PERTAMA.
+1. Djiwa Tentram, berkedudukan di Jalan Bojong Tengah No. 34 dengan Nomor Induk Berusaha (NIB) sesuai dokumen perusahaan, dalam hal ini diwakili oleh Fakhri Azzam selaku Owner, yang selanjutnya disebut PIHAK PERTAMA.
 
 2. {NAMA}, NIK {NIK}, bertempat tinggal di {ALAMAT}, lahir di {TEMPAT_LAHIR}, {TGL_LAHIR}, yang selanjutnya disebut PIHAK KEDUA.
 
 PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut Para Pihak.
 
 Pasal 2 — Kedudukan dan Penempatan
-(1) PIHAK KEDUA ditempatkan sebagai {JABATAN} di Djiwa Tentram Centrik atau lokasi lain yang ditetapkan PIHAK PERTAMA sesuai kebutuhan operasional.
+(1) PIHAK KEDUA ditempatkan sebagai {JABATAN} di Djiwa Tentram atau lokasi lain yang ditetapkan PIHAK PERTAMA sesuai kebutuhan operasional.
 
 (2) Perubahan penempatan, rotasi, atau penyesuaian tugas diberitahukan secara wajar dan tidak mengubah status hubungan kerja tanpa persetujuan atau dasar yang sesuai.
 
@@ -563,7 +563,7 @@ function RegisterPage() {
                   <div className="mx-auto mb-2 flex items-center justify-center gap-2">
                     <div className="h-px w-8 bg-amber-300/50" />
                     <span className="font-serif text-[11px] uppercase tracking-[0.2em] text-amber-600/50">
-                      Djiwa Tentram Centrik
+                      Djiwa Tentram
                     </span>
                     <div className="h-px w-8 bg-amber-300/50" />
                   </div>
@@ -745,7 +745,7 @@ function RegisterPage() {
           <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Login
         </button>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground/40">Djiwa Tentram Centrik — Registrasi Karyawan</p>
+        <p className="mt-6 text-center text-xs text-muted-foreground/40">Djiwa Tentram — Registrasi Karyawan</p>
       </motion.div>
     </div>
   );

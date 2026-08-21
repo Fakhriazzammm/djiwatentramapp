@@ -72,7 +72,7 @@ export const SuggestionsPanel = ({
 				</div>
 				<h3 className="text-sm font-bold text-foreground mb-1">Belum Ada Saran</h3>
 				<p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
-					Centrik AI sedang menganalisis data bisnis Anda. Saran akan muncul secara otomatis.
+					Djiwa Tentram AI sedang menganalisis data bisnis Anda. Saran akan muncul secara otomatis.
 				</p>
 			</div>
 		);

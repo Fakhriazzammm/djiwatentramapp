@@ -2571,7 +2571,7 @@ function InventoryControlTowerSummary({
 						{viewPreset === "priceMonitor"
 							? "Monitoring harga realtime"
 							: viewPreset === "yumiAi"
-								? "Insight Centrik AI"
+								? "Insight Djiwa Tentram AI"
 								: "Operasional inventaris"}
 					</p>
 				</div>
@@ -3634,7 +3634,7 @@ function YumiAiInventoryPanel({
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div>
 						<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-							Centrik AI Inventory Assistant
+							Djiwa Tentram AI Inventory Assistant
 						</p>
 						<p className="mt-1 text-sm text-muted-foreground">
 							Deteksi nama sama/mirip + data harga/update terbaru, lalu kelola langsung dari AI.
@@ -6512,7 +6512,7 @@ function InventoryHeader({
 				{([
 					{ value: "operational" as const, label: "Operasional" },
 					{ value: "priceMonitor" as const, label: "Harga" },
-					{ value: "yumiAi" as const, label: "Centrik AI" },
+					{ value: "yumiAi" as const, label: "Djiwa Tentram AI" },
 				]).map((tab) => (
 					<button
 						key={tab.value}

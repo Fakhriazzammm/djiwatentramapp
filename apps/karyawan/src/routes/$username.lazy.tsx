@@ -323,11 +323,11 @@ function StaffProfileLayout() {
 						<div className="flex items-center gap-2">
 							<img
 								src="/logo-djiwa.png"
-								alt="Djiwa Tentram Centrik"
+								alt="Djiwa Tentram"
 								className="h-7 w-7 shrink-0 rounded-lg object-cover shadow-sm"
 							/>
 							<span className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground">
-								Djiwa Tentram Centrik
+								Djiwa Tentram
 							</span>
 						</div>
 						<div className="flex items-center gap-2">

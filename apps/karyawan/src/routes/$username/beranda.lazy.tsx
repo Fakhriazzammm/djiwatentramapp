@@ -49,10 +49,10 @@ function BerandaPage() {
 				className="flex items-start justify-between"
 			>
 				<div className="flex items-center gap-2.5 min-w-0">
-					{/* Logo Djiwa Tentram Centrik */}
+					{/* Logo Djiwa Tentram */}
 					<img
 						src="/logo-djiwa.png"
-						alt="Djiwa Tentram Centrik"
+						alt="Djiwa Tentram"
 						className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm"
 					/>
 					<div className="min-w-0">

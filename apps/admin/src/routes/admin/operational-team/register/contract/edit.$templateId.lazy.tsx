@@ -98,7 +98,7 @@ function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryN
 		{ fullName: "[Nama Karyawan]", phone: "" },
 		{
 			roleId: "", roleName, startDate: "[Tanggal Mulai]", employmentType: "probation",
-			location: "Djiwa Tentram Centrik", monthlySalary: salaryDefaults.monthlySalary ?? 0,
+			location: "Djiwa Tentram", monthlySalary: salaryDefaults.monthlySalary ?? 0,
 			dailyAllowance: salaryDefaults.dailyAllowance ?? 0, shiftRate: salaryDefaults.shiftRate ?? 0,
 			username: "", slug: "",
 		},
@@ -152,7 +152,7 @@ function ContractEditPage() {
 	);
 
 	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.signatoryName)));
-	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram Centrik");
+	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram");
 	const [signatoryPersonNameLocal, setSignatoryPersonNameLocal] = useState(onboardingSettings.signatoryPersonName || "");
 	const [signatorySigUrlLocal, setSignatorySigUrlLocal] = useState(onboardingSettings.signatorySignatureUrl || "");
 	const [companyAddressLocal, setCompanyAddressLocal] = useState(onboardingSettings.signatoryCompanyAddress || "");
@@ -187,7 +187,7 @@ function ContractEditPage() {
 		[contractTemplatesByRoleId]
 	);
 	const persistedTemplate = templateToString(templateId && !isNewTemplate ? contractTemplatesByRoleId[templateId] : null);
-	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryNameLocal || "Djiwa Tentram Centrik").trim();
+	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryNameLocal || "Djiwa Tentram").trim();
 
 	const contractPreview: EmployeeContractDraft = useMemo(() => ({
 		mode: "custom",
@@ -209,7 +209,7 @@ function ContractEditPage() {
 			{
 				roleId: selectedRole?._id || "", roleName: selectedRoleName === "Semua Jabatan (Default)" ? "[Jabatan]" : selectedRoleName,
 				startDate: new Date().toISOString().slice(0, 10), employmentType: selectedEmploymentType as any,
-				location: onboardingSettings.defaultLocation || "Djiwa Tentram Centrik",
+				location: onboardingSettings.defaultLocation || "Djiwa Tentram",
 				monthlySalary: selectedRole ? getRoleSalaryDefaults(selectedRole).monthlySalary : 0,
 				dailyAllowance: selectedRole ? getRoleSalaryDefaults(selectedRole).dailyAllowance : 0,
 				shiftRate: selectedRole ? getRoleSalaryDefaults(selectedRole).shiftRate : 0,
@@ -246,7 +246,7 @@ function ContractEditPage() {
 	}, [templateId, isNewTemplate, contractTemplatesByRoleId, roles, signatoryNameLocal]);
 
 	// Sync onboardingSettings to local state
-	useEffect(() => { setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Centrik"); }, [onboardingSettings.signatoryName]);
+	useEffect(() => { setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram"); }, [onboardingSettings.signatoryName]);
 	useEffect(() => { setSignatoryPersonNameLocal(onboardingSettings.signatoryPersonName || ""); }, [onboardingSettings.signatoryPersonName]);
 	useEffect(() => { setSignatorySigUrlLocal(onboardingSettings.signatorySignatureUrl || ""); }, [onboardingSettings.signatorySignatureUrl]);
 	useEffect(() => { setCompanyAddressLocal(onboardingSettings.signatoryCompanyAddress || ""); }, [onboardingSettings.signatoryCompanyAddress]);
@@ -404,7 +404,7 @@ function ContractEditPage() {
 		setIsGenerating(true);
 		try {
 			const roleName = selectedRoleName || "[Jabatan]";
-			const companyName = signatoryNameLocal || "Djiwa Tentram Centrik";
+			const companyName = signatoryNameLocal || "Djiwa Tentram";
 			const systemPrompt = `Kamu adalah asisten HR yang membantu membuat kontrak kerja perusahaan F&B.
 Buat kontrak kerja dalam bahasa Indonesia yang profesional dan lengkap.
 Format response HARUS JSON saja, tanpa markdown, tanpa teks lain di luar JSON:

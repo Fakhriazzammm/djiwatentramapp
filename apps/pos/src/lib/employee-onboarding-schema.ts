@@ -332,9 +332,9 @@ export function buildEmployeeContractTemplate(
 	bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] },
 	customAllowances?: { name?: string; amount?: number; type?: string }[],
 ): EmployeeContractDraft {
-	const _signatoryName = signatoryName || "Djiwa Tentram Centrik";
+	const _signatoryName = signatoryName || "Djiwa Tentram";
 	const roleName = cleanText(employment.roleName) || "Team";
-	const location = cleanText(employment.location) || "Djiwa Tentram Centrik";
+	const location = cleanText(employment.location) || "Djiwa Tentram";
 	const durationMonths = employment.contractDuration && employment.contractDuration >= 1 ? employment.contractDuration : 12;
 	const bonusBody = buildBonusClause(bonusConfig);
 	const allowancesBody = buildCustomAllowancesBody(customAllowances);
@@ -586,7 +586,7 @@ export function buildContractVariableContext(
 		personal,
 		employment,
 		company: {
-			name: companyName || "Djiwa Tentram Centrik",
+			name: companyName || "Djiwa Tentram",
 			address: companyAddress || "-",
 			nib: companyNib || "-",
 			signatoryName: signatoryName || companyName || "perwakilan perusahaan",
@@ -660,7 +660,7 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{tanggal_akhir}}": formatDateId(endDateStr) || "-",
 		"{{durasi_kontrak}}": String(durationMonths) + " (" + numberToWords(durationMonths) + ")",
 		"{{tipe_kontrak}}": employmentTypeLabel(employment.employmentType),
-		"{{lokasi_kerja}}": employment.location || "Djiwa Tentram Centrik",
+		"{{lokasi_kerja}}": employment.location || "Djiwa Tentram",
 		"{{nama_atasan}}": "-",
 		"{{nomor_dokumen}}": `PKWT/${employment.slug || employment.username || "KARYAWAN"}/${new Date(startDate + "T00:00:00").getFullYear()}`,
 		"{{versi_dokumen}}": "2.0",

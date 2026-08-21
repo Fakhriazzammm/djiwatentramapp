@@ -1003,7 +1003,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 							<Bot className="h-3.5 w-3.5 text-primary" />
 						</div>
 						<div>
-							<h1 className="text-sm font-semibold leading-tight">Centrik AI</h1>
+							<h1 className="text-sm font-semibold leading-tight">Djiwa Tentram AI</h1>
 							<p className="text-[10px] text-muted-foreground leading-tight">
 								{isPOS ? "Asisten Kasir" : "Asisten Bisnis"}
 							</p>

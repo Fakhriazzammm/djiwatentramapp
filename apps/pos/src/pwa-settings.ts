@@ -2,9 +2,9 @@
 // Defaults digunakan saat build script gagal fetch dari Supabase
 
 export const posPwaSettings = {
-	"name": "Djiwa Tentram Centrik POS",
-	"short_name": "Centrik POS",
-	"description": "Aplikasi kasir Djiwa Tentram Centrik",
+	"name": "Djiwa Tentram POS",
+	"short_name": "Djiwa Tentram POS",
+	"description": "Aplikasi kasir Djiwa Tentram",
 	"theme_color": "#fefefe",
 	"background_color": "#0a0a0b",
 	"start_url": "/menu",

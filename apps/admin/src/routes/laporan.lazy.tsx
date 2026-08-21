@@ -161,7 +161,7 @@ function LaporanPage() {
 			)
 			.join("\n") || "Tidak ada pengeluaran hari ini";
 
-		const shopName = siteSettings?.storeName || "Djiwa Tentram Centrik";
+		const shopName = siteSettings?.storeName || "Djiwa Tentram";
 
 		let allShiftsText = "";
 		if (shiftStatus?.allShifts && shiftStatus.allShifts.length > 0) {

@@ -79,7 +79,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
-	"/admin/ai-chat": "Centrik AI",
+	"/admin/ai-chat": "Djiwa Tentram AI",
 	"/admin/settings": "Pengaturan",
 	"/admin/operational-team": "Tim Operasional",
 	"/admin/operational-team/attendance": "Absensi",
@@ -102,7 +102,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/customers": "Pelanggan",
 };
 
-// Bottom nav items (Centrik AI at center index 2)
+// Bottom nav items (Djiwa Tentram AI at center index 2)
 const BOTTOM_NAV_ITEMS = [
 	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true, permission: "analytics:view" },
 	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan", permission: "orders:view" },
@@ -253,8 +253,8 @@ function AdminLayout() {
 	});
 
 	const settings = useHybridSiteSettings();
-	const storeName = settings?.storeName || "Djiwa Tentram Centrik";
-	const appName = settings?.appName || "Djiwa Tentram Centrik";
+	const storeName = settings?.storeName || "Djiwa Tentram";
+	const appName = settings?.appName || "Djiwa Tentram";
 	const developerName = settings?.developerName || "Zantara Technology";
 	const headerLogoUrl = settings?.headerLogoUrl || settings?.logoUrl || "";
 
@@ -404,11 +404,11 @@ function AdminLayout() {
 				</button>
 
 				<nav className="flex-1 overflow-y-auto p-2">
-					{/* Centrik AI - standalone at top */}
+					{/* Djiwa Tentram AI - standalone at top */}
 					<DesktopNavLink
 						icon={<Sparkles />}
 						isCollapsed={isCollapsed}
-						label="Centrik AI"
+						label="Djiwa Tentram AI"
 						to="/admin/ai-chat"
 					/>
 
@@ -1211,7 +1211,7 @@ function PermissionDenied({ onBack }: { onBack: () => void }) {
 				</button>
 				
 				<p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
-					Keamanan Sistem Djiwa Tentram Centrik
+					Keamanan Sistem Djiwa Tentram
 				</p>
 			</div>
 		</motion.div>

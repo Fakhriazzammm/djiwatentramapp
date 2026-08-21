@@ -97,9 +97,9 @@ function ContractPreviewPage() {
 		const bonusConfig = (selectedRole as any)?.bonusTargetConfig ?? undefined;
 		const ctx = buildContractVariableContext(
 			{ fullName: testName, phone: "", identityNumber: testNIK || undefined, address: testAddress || undefined, birthDate: undefined, placeOfBirth: undefined },
-			{ roleId: "", roleName: templateName, startDate: new Date().toISOString().slice(0, 10), employmentType: "full_time", location: onboardingSettings.defaultLocation || "Djiwa Tentram Centrik", monthlySalary: roleDefaults.monthlySalary, dailyAllowance: roleDefaults.dailyAllowance, shiftRate: roleDefaults.shiftRate, username: "", slug: "", contractDuration: 12 },
-			onboardingSettings.signatoryName || "Djiwa Tentram Centrik",
-			onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName || "Djiwa Tentram Centrik",
+			{ roleId: "", roleName: templateName, startDate: new Date().toISOString().slice(0, 10), employmentType: "full_time", location: onboardingSettings.defaultLocation || "Djiwa Tentram", monthlySalary: roleDefaults.monthlySalary, dailyAllowance: roleDefaults.dailyAllowance, shiftRate: roleDefaults.shiftRate, username: "", slug: "", contractDuration: 12 },
+			onboardingSettings.signatoryName || "Djiwa Tentram",
+			onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName || "Djiwa Tentram",
 			onboardingSettings.signatoryCompanyAddress,
 			onboardingSettings.signatoryCompanyNIB,
 			onboardingSettings.signatoryPersonTitle,
@@ -149,7 +149,7 @@ function ContractPreviewPage() {
 				}
 			}
 
-			const companyName = onboardingSettings.signatoryName || "Djiwa Tentram Centrik";
+			const companyName = onboardingSettings.signatoryName || "Djiwa Tentram";
 			const signatoryName = onboardingSettings.signatoryPersonName || companyName;
 
 			addWrappedText(companyName, 10, "bold", "center");
@@ -268,8 +268,8 @@ function ContractPreviewPage() {
 					<ContractPreview
 						contract={previewContract}
 						employeeName={testName || "[Nama Karyawan]"}
-						companyName={onboardingSettings.signatoryName || "Djiwa Tentram Centrik"}
-						signatoryName={onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName || "Djiwa Tentram Centrik"}
+						companyName={onboardingSettings.signatoryName || "Djiwa Tentram"}
+						signatoryName={onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName || "Djiwa Tentram"}
 						signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
 					/>
 				</div>

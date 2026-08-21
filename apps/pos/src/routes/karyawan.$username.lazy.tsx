@@ -718,7 +718,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							key="unlocked"
 							className="space-y-4"
 						>
-							{/* Hero Card — DJIWA TENTRAM CENTRIK + greeting, compact */}
+							{/* Hero Card — DJIWA TENTRAM + greeting, compact */}
 							<div className="app-card glass-strong relative overflow-hidden">
 								<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_30%)]" />
 								<div className="flex items-center gap-3 px-3 pt-3 pb-2">

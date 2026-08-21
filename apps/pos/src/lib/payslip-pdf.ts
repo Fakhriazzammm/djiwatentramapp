@@ -470,7 +470,7 @@ export function generatePayslipPDF(
 	);
 	y += 4;
 	doc.text(
-		"Dokumen ini digenerate secara otomatis oleh sistem Djiwa Tentram Centrik",
+		"Dokumen ini digenerate secara otomatis oleh sistem Djiwa Tentram",
 		PAGE_W / 2,
 		y,
 		{ align: "center" }

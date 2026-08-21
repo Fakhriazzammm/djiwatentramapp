@@ -711,7 +711,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const hasMoreProducts = displayedProducts.length < filteredProductsLength;
 
 	// Store info
-	const storeName = siteSettings?.storeName || "Djiwa Tentram Centrik";
+	const storeName = siteSettings?.storeName || "Djiwa Tentram";
 	const logoUrl = siteSettings?.logoUrl;
 	const themeColor = siteSettings?.themeColor;
 
@@ -1247,7 +1247,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							mobile: siteSettings.storePhone || "085000000000",
 							redirectUrl:
 								typeof window !== "undefined" ? window.location.href : undefined,
-							description: `POS order ${siteSettings.storeName || "Djiwa Tentram Centrik"}`,
+							description: `POS order ${siteSettings.storeName || "Djiwa Tentram"}`,
 							expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 							items: cartItems.map((item) => ({
 								quantity: item.quantity,

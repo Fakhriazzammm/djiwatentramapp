@@ -26,7 +26,7 @@ const validDraft: EmployeeOnboardingDraft = {
 		monthlySalary: 2500000,
 		dailyAllowance: 25000,
 		shiftRate: 100000,
-		location: "Djiwa Tentram Centrik",
+		location: "Djiwa Tentram",
 		username: "fakhri",
 		slug: "fakhri-azzam",
 		homePin: "311098",
@@ -84,7 +84,7 @@ describe("employee onboarding schema", () => {
 	});
 
 	it("builds readable Indonesian contract template", () => {
-		const contract = buildEmployeeContractTemplate(validDraft.personal, validDraft.employment, "Djiwa Tentram Centrik");
+		const contract = buildEmployeeContractTemplate(validDraft.personal, validDraft.employment, "Djiwa Tentram");
 
 		expect(contract.title).toContain("Perjanjian Kerja");
 		expect(contract.plainText).toContain("Fakhri Azzam");

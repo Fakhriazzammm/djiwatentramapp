@@ -2,8 +2,8 @@
 // Defaults digunakan saat build script gagal fetch dari Supabase
 
 export const customerPwaSettings = {
-	"name": "Djiwa Tentram Centrik — Order Mie Yamin",
-	"short_name": "Centrik Order",
+	"name": "Djiwa Tentram — Order Mie Yamin",
+	"short_name": "Djiwa Tentram Order",
 	"description": "Mie yamin mentah tanpa bahan pengawet — pesan kiloan, kemasan siap masak, atau repack 100 gram",
 	"theme_color": "#1a5dc6",
 	"background_color": "#ffffff",
