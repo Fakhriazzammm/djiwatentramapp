@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, Trash2, X } from "lucide-react";
+import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,7 +58,8 @@ function CustomerAvatar({ customer }: { customer: Customer }) {
 function AdminCustomers() {
 	const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [confirmDeleteCustomers, setConfirmDeleteCustomers] = useState<Customer[] | null>(null);
 	const [deleting, setDeleting] = useState(false);
 
 	useEffect(() => {
@@ -120,23 +121,42 @@ function AdminCustomers() {
 		);
 	});
 
-	const handleDeleteCustomer = async () => {
-		if (!deleteCustomer) return;
+	const toggleSelected = (sourceId: string) => {
+		setSelectedIds((current) => {
+			const next = new Set(current);
+			if (next.has(sourceId)) next.delete(sourceId);
+			else next.add(sourceId);
+			return next;
+		});
+	};
+
+	const toggleSelectAll = () => {
+		const visibleIds = filteredCustomers?.map((customer) => customer.source_id) ?? [];
+		setSelectedIds((current) => visibleIds.length > 0 && visibleIds.every((id) => current.has(id)) ? new Set() : new Set(visibleIds));
+	};
+
+	const selectedCustomers = (customers ?? []).filter((customer) => selectedIds.has(customer.source_id));
+	const allVisibleSelected = Boolean(filteredCustomers?.length) && (filteredCustomers ?? []).every((customer) => selectedIds.has(customer.source_id));
+
+	const handleBulkDelete = async () => {
+		if (!confirmDeleteCustomers?.length) return;
 		setDeleting(true);
+		const ids = confirmDeleteCustomers.map((customer) => customer.source_id);
 		const { error } = await createClient()
 			.schema("pos")
 			.from("customers")
 			.update({ is_active: false })
-			.eq("source_id", deleteCustomer.source_id);
+			.in("source_id", ids);
 		if (error) {
-			console.warn("[customers] delete error:", error);
+			console.warn("[customers] bulk delete error:", error);
 			toast.error("Akun customer gagal dinonaktifkan");
 			setDeleting(false);
 			return;
 		}
-		setCustomers((current) => current?.filter((customer) => customer.source_id !== deleteCustomer.source_id));
-		toast.success("Akun customer dinonaktifkan");
-		setDeleteCustomer(null);
+		setCustomers((current) => current?.filter((customer) => !ids.includes(customer.source_id)));
+		setSelectedIds(new Set());
+		toast.success(`${ids.length} akun customer dinonaktifkan`);
+		setConfirmDeleteCustomers(null);
 		setDeleting(false);
 	};
 
@@ -201,6 +221,13 @@ function AdminCustomers() {
 				</div>
 			</div>
 
+			{selectedCustomers.length > 0 ? (
+				<div className="flex items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-2.5 text-red-900">
+					<span className="text-xs font-bold">{selectedCustomers.length} customer dipilih</span>
+					<button type="button" onClick={() => setConfirmDeleteCustomers(selectedCustomers)} className="h-10 rounded-lg bg-red-600 px-3 text-xs font-black text-white">Hapus terpilih</button>
+				</div>
+			) : null}
+
 			{/* Mobile: Card list */}
 			<div className="space-y-2 pb-24 md:hidden">
 				{filteredCustomers?.length === 0 ? (
@@ -213,7 +240,8 @@ function AdminCustomers() {
 							key={c.source_id}
 							className="rounded-xl border border-border bg-card p-3 shadow-sm"
 						>
-							<div className="flex items-start justify-between gap-3">
+							<div className="flex items-start gap-3">
+								<input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onChange={() => toggleSelected(c.source_id)} className="mt-1 h-5 w-5 shrink-0 accent-red-600" />
 								<div className="min-w-0 flex-1 space-y-1">
 									<div className="flex items-center gap-2">
 										<CustomerAvatar customer={c} />
@@ -262,10 +290,7 @@ function AdminCustomers() {
 										<CalendarDays className="h-3 w-3" /> Bergabung {formatDate(c.created_at)}
 									</p>
 								</div>
-								<button type="button" aria-label={`Nonaktifkan akun ${c.name || "customer"}`} onClick={() => setDeleteCustomer(c)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-red-50 hover:text-red-600">
-									<Trash2 className="h-4 w-4" />
-								</button>
-						</div>
+							</div>
 					</div>
 					))
 				)}
@@ -277,6 +302,7 @@ function AdminCustomers() {
 					<table className="w-full min-w-[1040px] text-left text-xs">
 						<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 							<tr className="text-[10px] text-muted-foreground">
+								<th className="w-12 px-2.5 py-2 text-center"><input type="checkbox" aria-label="Pilih semua customer terlihat" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-5 w-5 accent-red-600" /></th>
 								<th className="px-2.5 py-2">Nama</th>
 								<th className="px-2.5 py-2">Email</th>
 								<th className="px-2.5 py-2">Telepon</th>
@@ -286,7 +312,6 @@ function AdminCustomers() {
 								<th className="px-2.5 py-2 text-right"><span className="inline-flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" aria-hidden="true" /> Total Spending</span></th>
 								<th className="px-2.5 py-2">Terakhir Order</th>
 								<th className="px-2.5 py-2">Bergabung</th>
-								<th className="px-2.5 py-2 text-center">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
@@ -305,6 +330,7 @@ function AdminCustomers() {
 										key={c.source_id}
 										className="transition-colors hover:bg-muted/30"
 									>
+										<td className="w-12 px-2.5 py-2 text-center align-middle"><input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onChange={() => toggleSelected(c.source_id)} className="h-5 w-5 accent-red-600" /></td>
 										<td className="px-2.5 py-2 align-middle">
 											<div className="flex items-center gap-2">
 												<CustomerAvatar customer={c} />
@@ -342,12 +368,7 @@ function AdminCustomers() {
 										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
 											{formatDate(c.created_at)}
 										</td>
-										<td className="px-2.5 py-2 text-center align-middle">
-											<button type="button" aria-label={`Nonaktifkan akun ${c.name || "customer"}`} onClick={() => setDeleteCustomer(c)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-red-50 hover:text-red-600">
-												<Trash2 className="h-4 w-4" />
-											</button>
-										</td>
-									</tr>
+										</tr>
 								))
 							)}
 						</tbody>
@@ -355,15 +376,15 @@ function AdminCustomers() {
 				</div>
 			</div>
 
-			{deleteCustomer ? (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setDeleteCustomer(null); }}>
-					<div role="dialog" aria-modal="true" aria-labelledby="delete-customer-title" className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl">
+			{confirmDeleteCustomers ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setConfirmDeleteCustomers(null); }}>
+					<div role="dialog" aria-modal="true" aria-labelledby="bulk-delete-customer-title" className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl">
 						<div className="flex items-start justify-between gap-4">
-							<div><p id="delete-customer-title" className="text-lg font-black">Nonaktifkan akun customer?</p><p className="mt-1 text-sm text-muted-foreground">{deleteCustomer.name || "Customer tanpa nama"}</p></div>
-							<button type="button" aria-label="Tutup" disabled={deleting} onClick={() => setDeleteCustomer(null)} className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
+							<div><p id="bulk-delete-customer-title" className="text-lg font-black">Hapus customer terpilih?</p><p className="mt-1 text-sm text-muted-foreground">{confirmDeleteCustomers.length} akun akan dinonaktifkan.</p></div>
+							<button type="button" aria-label="Tutup" disabled={deleting} onClick={() => setConfirmDeleteCustomers(null)} className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
 						</div>
 						<div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">Akun akan dikeluarkan dari daftar customer aktif. Riwayat order dan poin tetap dipertahankan, tidak dihapus.</div>
-						<div className="mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={deleting} onClick={() => setDeleteCustomer(null)} className="h-11 rounded-xl border border-border text-sm font-bold">Batal</button><button type="button" disabled={deleting} onClick={handleDeleteCustomer} className="h-11 rounded-xl bg-red-600 text-sm font-black text-white disabled:opacity-50">{deleting ? "Menonaktifkan..." : "Ya, nonaktifkan"}</button></div>
+						<div className="mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={deleting} onClick={() => setConfirmDeleteCustomers(null)} className="h-11 rounded-xl border border-border text-sm font-bold">Batal</button><button type="button" disabled={deleting} onClick={handleBulkDelete} className="h-11 rounded-xl bg-red-600 text-sm font-black text-white disabled:opacity-50">{deleting ? "Menghapus..." : "Ya, hapus terpilih"}</button></div>
 					</div>
 				</div>
 			) : null}
