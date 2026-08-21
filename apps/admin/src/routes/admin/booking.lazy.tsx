@@ -60,7 +60,7 @@ import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBookingDateCapacities,
 	useHybridBookingMonthSummary,
-	useHybridBookingOrders,
+	useHybridBookingOrdersState,
 	useHybridBookingSettings,
 } from "@/hooks/use-hybrid-booking-data";
 import {
@@ -586,12 +586,13 @@ function BookingSettingsPage() {
 	const yearMonth = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
 	const summary = useHybridBookingMonthSummary("booking", yearMonth);
 
-	const allOrders = useHybridBookingOrders({
+	const ordersState = useHybridBookingOrdersState({
 		slug: "booking",
 		date: selectedDate ?? undefined,
 		startDate: activeTab === "orders" ? startDate : undefined,
 		endDate: activeTab === "orders" ? endDate : undefined,
 	});
+	const allOrders = ordersState.data;
 
 	// Products search & filter
 	const [productSearch, setProductSearch] = useState("");
@@ -898,7 +899,7 @@ function BookingSettingsPage() {
 				<div className="flex gap-2">
 					<a
 						className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 font-medium text-foreground text-sm hover:bg-muted transition-colors"
-						href="https://Djiwa Tentram Centrik/"
+						href={(import.meta.env.VITE_PUBLIC_BOOKING_URL as string | undefined)?.trim() || "https://booking.yumme.id/"}
 						rel="noreferrer"
 						target="_blank"
 					>
@@ -968,11 +969,17 @@ function BookingSettingsPage() {
 									<X className="h-4 w-4" />
 								</button>
 							</div>
-							{!allOrders ? (
+							{ordersState.status === "loading" ? (
 								<div className="flex justify-center py-8">
 									<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 								</div>
-							) : allOrders.length === 0 ? (
+							) : ordersState.status === "error" ? (
+								<div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+									<p className="font-semibold">Gagal memuat booking.</p>
+									<p className="mt-1">{ordersState.error?.message || "Periksa koneksi lalu coba lagi."}</p>
+									<button className="mt-3 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white" onClick={() => void ordersState.reload()} type="button">Coba lagi</button>
+								</div>
+							) : (allOrders ?? []).length === 0 ? (
 								<div className="rounded-xl border border-border bg-card py-10 text-center text-muted-foreground text-sm">
 									Belum ada booking pada tanggal ini.
 								</div>
@@ -1144,7 +1151,7 @@ function BookingSettingsPage() {
 						)}
 					</div>
 
-					{!allOrders ? (
+					{ordersState.status === "loading" ? (
 						<div className="space-y-3">
 							{Array.from({ length: 5 }).map((_, i) => (
 								<div key={i} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -1158,6 +1165,12 @@ function BookingSettingsPage() {
 									</div>
 								</div>
 							))}
+						</div>
+					) : ordersState.status === "error" ? (
+						<div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+							<p className="font-semibold">Gagal memuat daftar booking.</p>
+							<p className="mt-1">{ordersState.error?.message || "Periksa koneksi lalu coba lagi."}</p>
+							<button className="mt-3 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white" onClick={() => void ordersState.reload()} type="button">Coba lagi</button>
 						</div>
 					) : filteredOrders?.length === 0 ? (
 						<div className="rounded-xl border border-border bg-card py-14 text-center text-muted-foreground text-sm">

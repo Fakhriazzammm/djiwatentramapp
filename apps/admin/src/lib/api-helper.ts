@@ -213,3 +213,20 @@ export async function invokeDirectFetch<T = Record<string, unknown>>(
 
 	return parseEdgeFunctionResponse<T>(body, response.status);
 }
+
+export async function invokeBookingAdmin<T = Record<string, unknown>>(
+	action: string,
+	payload: Record<string, unknown>
+): Promise<T> {
+	const url = `${String(import.meta.env.VITE_SUPABASE_URL).replace(/\/$/, "")}/functions/v1/booking-admin`;
+	const secret = String(import.meta.env.VITE_ADMIN_SECRET ?? "").trim();
+	if (!secret) throw new ApiError("ADMIN_SECRET_MISSING", "Admin booking secret belum dikonfigurasi", 500);
+	return invokeDirectFetch<T>(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-admin-secret": secret,
+		},
+		body: JSON.stringify({ action, ...payload }),
+	});
+}

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
-import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { useGlobalRefreshTrigger } from "@/hooks/use-hybrid-pos-data";
+import { useSupabaseLiveValue, useSupabaseLiveValueState } from "@/hooks/use-supabase-live-value";
 
 const publicAssetBaseUrl = (
 	import.meta.env.VITE_SUPABASE_STORAGE_PUBLIC_URL as string | undefined
@@ -26,7 +27,8 @@ function useSupabaseValue<T>(
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	const refreshTrigger = useGlobalRefreshTrigger();
+	return useSupabaseLiveValue(key, load, deps, { refreshTrigger });
 }
 
 async function fetchBookingSettings(slug: string) {
@@ -363,6 +365,32 @@ export function useHybridBookingOrders(
 		]
 	);
 	return supabaseData as any;
+}
+
+export function useHybridBookingOrdersState(
+	args:
+		| {
+				slug: string;
+				date?: string;
+				startDate?: string;
+				endDate?: string;
+		  }
+		| "skip"
+) {
+	const refreshTrigger = useGlobalRefreshTrigger();
+	return useSupabaseLiveValueState(
+		args === "skip"
+			? "booking-orders-state:skip"
+			: `booking-orders-state:${args.slug}:${args.date ?? ""}:${args.startDate ?? ""}:${args.endDate ?? ""}`,
+		() => (args === "skip" ? Promise.resolve(null) : fetchBookingOrders(args)),
+		[
+			args === "skip" ? "__skip__" : args.slug,
+			args === "skip" ? "" : args.date,
+			args === "skip" ? "" : args.startDate,
+			args === "skip" ? "" : args.endDate,
+		],
+		{ refreshTrigger }
+	);
 }
 
 export function useHybridBookingDateCapacities(slug: string) {

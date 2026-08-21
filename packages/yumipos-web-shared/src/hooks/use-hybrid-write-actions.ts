@@ -2,7 +2,7 @@
 import { useAction, useMutation } from "../lib/backend-bridge";
 import { useYumiAuth } from "./useYumiAuth";
 import { useCallback } from "react";
-import { invokeEdgeFunction } from "../lib/api-helper";
+import { invokeBookingAdmin, invokeEdgeFunction } from "../lib/api-helper";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -3031,9 +3031,10 @@ export function useHybridCreateBookingOrder() {
 	const fallback = useMutation(api.booking.createBookingOrder);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) {
-				return fallback(args);
-			}
+			if (!hasSupabaseConfig) return fallback(args);
+			const result = await invokeBookingAdmin<{ bookingId: string }>("createBooking", { payload: args });
+			return result.bookingId;
+			/* legacy direct-write path retained below only for offline fallback migration */
 			try {
 				const supabase = createClient();
 				const pos = supabase.schema("pos");
@@ -3132,7 +3133,10 @@ export function useHybridCreateBookingOrder() {
 					const { error: itemsError } = await pos
 						.from("booking_order_items")
 						.insert(bookingItems);
-					if (itemsError) throw itemsError;
+					if (itemsError) {
+						await pos.from("booking_orders").delete().eq("source_id", bookingId);
+						throw itemsError;
+					}
 				}
 
 				return bookingId;
@@ -3152,9 +3156,9 @@ export function useHybridUpdateBookingStatus() {
 	const fallback = useMutation(api.booking.updateBookingStatus);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) {
-				return fallback(args);
-			}
+			if (!hasSupabaseConfig) return fallback(args);
+			await invokeBookingAdmin("updateBookingStatus", { bookingId: args?.id, bookingStatus: args?.bookingStatus, paymentStatus: args?.paymentStatus, paymentDate: args?.paymentDate });
+			return;
 			try {
 				const id = args?.id as string | undefined;
 				if (!id) {
@@ -3228,9 +3232,9 @@ export function useHybridPatchBookingOrder() {
 	const fallback = useMutation(api.booking.patchBookingOrder);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) {
-				return fallback(args);
-			}
+			if (!hasSupabaseConfig) return fallback(args);
+			await invokeBookingAdmin("updateBooking", { bookingId: args?.id, payload: args, items: Array.isArray(args?.items) ? args.items : null });
+			return;
 			try {
 				const id = args?.id as string | undefined;
 				if (!id) {
@@ -3369,9 +3373,9 @@ export function useHybridDeleteBookingOrder() {
 	const fallback = useMutation(api.booking.deleteBookingOrder);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) {
-				return fallback(args);
-			}
+			if (!hasSupabaseConfig) return fallback(args);
+			await invokeBookingAdmin("deleteBooking", { bookingId: args?.id });
+			return;
 			try {
 				const id = args?.id as string | undefined;
 				if (!id) {
@@ -3380,11 +3384,20 @@ export function useHybridDeleteBookingOrder() {
 
 				const supabase = createClient();
 				const pos = supabase.schema("pos");
-				const { error: txError } = await pos
+				const { data: linkedTransactions, error: linkedTransactionsError } = await pos
 					.from("financial_transactions")
-					.delete()
-					.eq("booking_order_source_id", id);
-				if (txError) throw txError;
+					.select("booking_order_source_id")
+					.eq("booking_order_source_id", id)
+					.limit(1);
+				if (linkedTransactionsError) throw linkedTransactionsError;
+				if ((linkedTransactions ?? []).length > 0) {
+					const { error: cancelError } = await pos
+						.from("booking_orders")
+						.update({ booking_status: "cancelled", cancelled_at: Date.now() })
+						.eq("source_id", id);
+					if (cancelError) throw cancelError;
+					return;
+				}
 
 				const { error: itemsError } = await pos
 					.from("booking_order_items")
@@ -3493,9 +3506,8 @@ export function useHybridUpdateBookingSettings() {
 	const fallback = useMutation(api.booking.updateSettings);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) {
-				return fallback(args);
-			}
+			if (!hasSupabaseConfig) return fallback(args);
+			return (await invokeBookingAdmin<{ sourceId: string }>("upsertSettings", { payload: args })).sourceId;
 			try {
 				const slug = String(args?.slug ?? "");
 				if (!slug) {
@@ -3523,6 +3535,10 @@ export function useHybridUpdateBookingSettings() {
 					bank_details: args?.bankDetails ?? null,
 					qris_image: args?.qrisImage ?? null,
 					is_active: Boolean(args?.isActive),
+					booking_window_days: Math.max(1, Number(args?.bookingWindowDays ?? 90)),
+					default_max_people: Math.max(0, Number(args?.defaultMaxPeople ?? 100)),
+					default_max_tables: Math.max(0, Number(args?.defaultMaxTables ?? 25)),
+					default_people_per_table: Math.max(1, Number(args?.defaultPeoplePerTable ?? 4)),
 					custom_fields: args?.customFields ?? null,
 					raw: args ?? {},
 				};
@@ -3562,9 +3578,8 @@ export function useHybridSetBookingDateCapacity() {
 	const fallback = useMutation(api.booking.setDateCapacity);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) {
-				return fallback(args);
-			}
+			if (!hasSupabaseConfig) return fallback(args);
+			return await invokeBookingAdmin("upsertCapacity", { payload: args });
 			try {
 				const slug = String(args?.slug ?? "");
 				const date = String(args?.date ?? "");
@@ -3580,6 +3595,7 @@ export function useHybridSetBookingDateCapacity() {
 					max_people: Number(args?.maxPeople ?? 0),
 					max_tables: Number(args?.maxTables ?? 0),
 					people_per_table: Number(args?.peoplePerTable ?? 4),
+					is_closed: Boolean(args?.isClosed),
 					notes: args?.notes ?? null,
 					raw: args ?? {},
 				};
@@ -3626,9 +3642,8 @@ export function useHybridSetBookingBulkDateCapacity() {
 	const fallback = useMutation(api.booking.setBulkDateCapacity);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) {
-				return fallback(args);
-			}
+			if (!hasSupabaseConfig) return fallback(args);
+			return await invokeBookingAdmin("upsertBulkCapacity", { payload: args });
 			try {
 				const slug = String(args?.slug ?? "");
 				const startDate = new Date(String(args?.startDate ?? ""));
@@ -3637,7 +3652,11 @@ export function useHybridSetBookingBulkDateCapacity() {
 					throw new Error("slug, startDate, and endDate are required");
 				}
 
-				const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+				if (endDate.getTime() < startDate.getTime()) {
+					throw new Error("Tanggal akhir harus sama atau setelah tanggal mulai");
+				}
+
+				const diffTime = endDate.getTime() - startDate.getTime();
 				const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 				if (diffDays > 366) {
 					throw new Error("Date range cannot exceed 1 year");
@@ -3662,6 +3681,7 @@ export function useHybridSetBookingBulkDateCapacity() {
 						max_people: Number(args?.maxPeople ?? 0),
 						max_tables: Number(args?.maxTables ?? 0),
 						people_per_table: Number(args?.peoplePerTable ?? 4),
+						is_closed: Boolean(args?.isClosed),
 						notes: args?.notes ?? null,
 						raw: {
 							slug,
