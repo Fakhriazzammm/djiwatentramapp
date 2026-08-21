@@ -1009,7 +1009,8 @@ async def _send_with_retry(bot, chat_id: int, text: str, reply_markup=None, max_
 
 async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line=None,
                                       guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
-                                      source_label: str | None = None):
+                                      source_label: str | None = None,
+                                      payment_note: str | None = None):
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1042,6 +1043,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
     ])
     if source_label:
         lines.append(f"📲 SUMBER: {source_label}")
+    if payment_note:
+        lines.append(f"⚠️ {payment_note}")
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
@@ -1113,7 +1116,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
 
 async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line=None,
                                       guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
-                                      source_label: str | None = None):
+                                      source_label: str | None = None,
+                                      payment_note: str | None = None):
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1146,6 +1150,8 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
     ])
     if source_label:
         lines.append(f"📲 SUMBER: {source_label}")
+    if payment_note:
+        lines.append(f"⚠️ {payment_note}")
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
@@ -1307,8 +1313,8 @@ os.makedirs(_STATE_DIR, exist_ok=True)
 _LEGACY_CURSOR_FILE = os.path.join(_AGENT_DIR, ".yumi_supervisor_cursor.txt")
 _CURSOR_FILE = os.path.join(_STATE_DIR, "yumi_supervisor_cursor.txt")
 
-def _load_supervisor_cursor() -> tuple[int, set[str], int]:
-    """Load last check timestamp and reported order numbers from file."""
+def _load_supervisor_cursor() -> tuple[int, set[str], int, set[str]]:
+    """Load cursor, reported orders, CSR cursor, and paid-update orders."""
     try:
         with open(_CURSOR_FILE) as f:
             lines = [l.strip() for l in f if l.strip()]
@@ -1316,17 +1322,23 @@ def _load_supervisor_cursor() -> tuple[int, set[str], int]:
             ts = int(lines[0])
             nos: set[str] = set()
             csr_ts: int = 0
-            mode = "orders"  # 'orders' or 'csr'
+            paid_update_nos: set[str] = set()
+            mode = "orders"  # 'orders', 'csr', or 'paid_updates'
             for l in lines[1:]:
                 if l == "---":
                     mode = "csr"
                     continue
+                if l == "---paid-updates---":
+                    mode = "paid_updates"
+                    continue
                 if mode == "orders":
                     nos.add(l)
-                else:
+                elif mode == "csr":
                     csr_ts = int(l)
-                    break
-            return ts, nos, csr_ts
+                    mode = "paid_updates"
+                else:
+                    paid_update_nos.add(l)
+            return ts, nos, csr_ts, paid_update_nos
     except (FileNotFoundError, ValueError, IndexError):
         # Backward-compatible one-time read from the old tracked state file.
         # New writes always go to .runtime, which survives git auto-pulls.
@@ -1337,33 +1349,42 @@ def _load_supervisor_cursor() -> tuple[int, set[str], int]:
                 ts = int(lines[0])
                 nos: set[str] = set()
                 csr_ts: int = 0
+                paid_update_nos: set[str] = set()
                 mode = "orders"
                 for l in lines[1:]:
                     if l == "---":
                         mode = "csr"
                         continue
+                    if l == "---paid-updates---":
+                        mode = "paid_updates"
+                        continue
                     if mode == "orders":
                         nos.add(l)
-                    else:
+                    elif mode == "csr":
                         csr_ts = int(l)
-                        break
-                return ts, nos, csr_ts
+                        mode = "paid_updates"
+                    else:
+                        paid_update_nos.add(l)
+                return ts, nos, csr_ts, paid_update_nos
         except (FileNotFoundError, ValueError, IndexError):
             pass
     # Default: look back 24 hours on first run
     ts = int((_now_wib() - timedelta(hours=24)).timestamp() * 1000)
-    return ts, set(), 0
+    return ts, set(), 0, set()
 
-def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0):
-    """Persist cursor and reported order numbers."""
+def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0, paid_update_nos: set[str] | None = None):
+    """Persist cursor, reported order numbers, and paid-update dedupe."""
     with open(_CURSOR_FILE, "w") as f:
         f.write(f"{ts}\n")
         for no in sorted(nos):
             f.write(f"{no}\n")
         f.write("---\n")
         f.write(f"{csr_ts}\n")
+        f.write("---paid-updates---\n")
+        for no in sorted(paid_update_nos or set()):
+            f.write(f"{no}\n")
 
-_last_order_check_ms, _reported_order_nos, _last_csr_check_ms = _load_supervisor_cursor()
+_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos = _load_supervisor_cursor()
 
 # ── Shift recap cursor ──
 _LEGACY_SHIFT_RECAP_CURSOR_FILE = os.path.join(_AGENT_DIR, ".shift_recap_cursor.txt")
@@ -1435,6 +1456,38 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
         logger.warning("find_shift_at_time failed: %s", e)
     return {}
 
+# ── Cashier payment update notification ──
+
+async def _send_cashier_payment_update(app, row: dict):
+    """Notify transaction group when a cashier-paid customer order settles."""
+    order_no = str(row.get("orderNumber") or "-")
+    daily_no = row.get("daily_receipt_no")
+    order_type = str(row.get("orderType") or "dine_in")
+    kind_label = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}.get(order_type, order_type.upper())
+    struk_line = f"STRUK NO. {daily_no} - {kind_label}" if daily_no else None
+    source_label = "DjiwaApp Member" if row.get("customerSourceId") else "DjiwaApp Guest"
+    shift = await _find_shift_at_time(int(float(row.get("_creationTime") or row.get("createdAt") or 0)))
+    cashier = shift.get("cashier_name", "?")
+    lines = []
+    if struk_line:
+        lines.append(f"📍 {struk_line}")
+    lines.extend([
+        f"🔔 PEMBARUAN PEMBAYARAN — {_format_time_hm(int(float(row.get('_creationTime') or row.get('createdAt') or 0)))}",
+        f"📲 SUMBER: {source_label}",
+        "✅ SUDAH LUNAS — PEMBAYARAN DITERIMA DI KASIR",
+        "────────────",
+        f"🆔 {order_no}",
+        f"💰 Rp{float(row.get('totalAmount') or 0):,.0f} — Tunai",
+        f"👤 {row.get('customerName') or 'Pelanggan'}",
+        f"👥 Kasir: {cashier}",
+    ])
+    try:
+        await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(lines))
+        logger.info("Cashier payment update sent for %s", order_no)
+    except Exception as e:
+        logger.error("send_cashier_payment_update failed for %s: %s", order_no, e)
+
+
 # ── Transaction notification to group ──
 
 async def _send_transaction_notification(app, order_no: str, customer: str, totalAmount: float,
@@ -1442,7 +1495,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
                                           items: list[dict], guest_count=None, notes="",
                                           discount_amount=0.0, voucher_id=None, free_refill=None,
                                           delivery_context: dict | None = None,
-                                          source_label: str | None = None):
+                                          source_label: str | None = None,
+                                      payment_note: str | None = None):
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
@@ -1539,6 +1593,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     ])
     if source_label:
         lines.append(f"📲 SUMBER: {source_label}")
+    if payment_note:
+        lines.append(f"⚠️ {payment_note}")
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
@@ -1677,7 +1733,7 @@ async def _earn_customer_points(order_id: str, customer_source_id: str, total_am
 
 
 async def _check_new_orders(app):
-    global _last_order_check_ms, _reported_order_nos
+    global _last_order_check_ms, _reported_order_nos, _cashier_paid_update_nos
     now_ms = int(_now_wib().timestamp() * 1000)
     # min(cursor, now-10min) → backfill: pakai cursor (24h), normal: lookback 10m dari now
     scan_from = min(_last_order_check_ms, max(0, now_ms - _LOOKBACK_MS))
@@ -1739,7 +1795,7 @@ async def _check_new_orders(app):
     if not rows:
         # Advance cursor to now so we don't re-scan stale window
         _last_order_check_ms = now_ms
-        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
+        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
         return
 
     max_creation_time = _last_order_check_ms
@@ -1748,8 +1804,17 @@ async def _check_new_orders(app):
         ts = int(float(row.get("_creationTime") or 0))
         if ts > max_creation_time:
             max_creation_time = ts
-        # ⛔ Skip order yang sudah pernah dikirim (dedup by order number)
+        # Order cashier customer yang sudah dibayar mendapat satu notifikasi
+        # pembaruan, bukan notifikasi order baru kedua.
+        is_cashier_paid = (
+            row.get("source") == "customer_self_service"
+            and row.get("paymentReceiptKind") == "cashier_pending"
+            and row.get("status") in ("paid", "completed")
+        )
         if order_no in _reported_order_nos:
+            if is_cashier_paid and order_no not in _cashier_paid_update_nos:
+                await _send_cashier_payment_update(app, row)
+                _cashier_paid_update_nos.add(order_no)
             continue
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
@@ -1841,6 +1906,8 @@ async def _check_new_orders(app):
         elif row.get("source") == "customer_self_service":
             source_label = "DjiwaApp Member" if customer_source_id else "DjiwaApp Guest"
 
+        payment_note = "BELUM LUNAS — BAYAR KE KASIR" if row.get("paymentReceiptKind") == "cashier_pending" else None
+
         # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
         bev_items = await _get_beverage_items(items)
@@ -1850,9 +1917,9 @@ async def _check_new_orders(app):
         # Kirim kitchen + barista paralel per order
         tasks = []
         if food_items:
-            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label))
+            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, payment_note))
         if bev_items:
-            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label))
+            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, payment_note))
 
         if tasks:
             await asyncio.gather(*tasks)
@@ -1860,7 +1927,7 @@ async def _check_new_orders(app):
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label)
+        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, payment_note)
 
         # ⭐ Award points for member orders
         if customer_source_id:
@@ -1869,7 +1936,7 @@ async def _check_new_orders(app):
         _reported_order_nos.add(order_no)
 
     _last_order_check_ms = max_creation_time
-    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
+    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
 
 # ── Customer service request polling ──
 
@@ -1908,7 +1975,7 @@ async def _check_new_csr(app):
 
     if not rows:
         _last_csr_check_ms = now_ms
-        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
+        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
         return
 
     max_ts = _last_csr_check_ms
@@ -2039,7 +2106,7 @@ async def _check_new_csr(app):
             logger.warning("Failed to send CSR notification: %s", e)
 
     _last_csr_check_ms = max_ts
-    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms)
+    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
 
 
 # ── Auto shift recap ──
