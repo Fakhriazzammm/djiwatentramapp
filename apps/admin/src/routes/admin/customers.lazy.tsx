@@ -25,6 +25,12 @@ interface Customer {
 	created_at: string;
 }
 
+interface CustomerOrderSummary {
+	customerSourceId: string | null;
+	status: string | null;
+	totalAmount: number | null;
+}
+
 function formatRupiah(amount: number) {
 	return new Intl.NumberFormat("id-ID", {
 		style: "currency",
@@ -55,19 +61,48 @@ function AdminCustomers() {
 	useEffect(() => {
 		let active = true;
 		const supabase = createClient();
-		supabase
+		const customersQuery = supabase
 			.from("pos_customers_view")
 			.select("*")
-			.order("total_spent", { ascending: false })
-			.then(({ data, error }) => {
-				if (!active) return;
-				if (error) {
-					console.warn("[customers] fetch error:", error);
-					setCustomers(null as any);
-					return;
-				}
-				setCustomers((data as Customer[]) || []);
-			});
+			.order("total_spent", { ascending: false });
+		const ordersQuery = supabase
+			.from("pos_orders")
+			.select("customerSourceId,status,totalAmount")
+			.in("status", ["paid", "completed"])
+			.not("customerSourceId", "is", null);
+
+		Promise.all([customersQuery, ordersQuery]).then(([customersResult, ordersResult]) => {
+			if (!active) return;
+			if (customersResult.error) {
+				console.warn("[customers] customer fetch error:", customersResult.error);
+				setCustomers(null as any);
+				return;
+			}
+
+			const spendingByCustomer = new Map<string, { totalSpent: number; totalOrders: number }>();
+			for (const order of (ordersResult.data as CustomerOrderSummary[] | null) || []) {
+				if (!order.customerSourceId) continue;
+				const current = spendingByCustomer.get(order.customerSourceId) || { totalSpent: 0, totalOrders: 0 };
+				current.totalSpent += Number(order.totalAmount) || 0;
+				current.totalOrders += 1;
+				spendingByCustomer.set(order.customerSourceId, current);
+			}
+
+			setCustomers(
+				((customersResult.data as Customer[]) || []).map((customer) => {
+					const computed = spendingByCustomer.get(customer.source_id);
+					if (!computed) return customer;
+					return {
+						...customer,
+						total_spent: Math.max(Number(customer.total_spent) || 0, computed.totalSpent),
+						total_orders: Math.max(Number(customer.total_orders) || 0, computed.totalOrders),
+					};
+				}),
+			);
+		}).catch((error) => {
+			if (!active) return;
+			console.warn("[customers] order aggregation error:", error);
+		});
 		return () => {
 			active = false;
 		};
