@@ -18,6 +18,52 @@ function fail(code: string, message: string, status = 400) {
   return jsonResponse({ success: false, error: { code, message } }, status);
 }
 
+async function notifyCheckoutToReportGroup(params: {
+  userName: string;
+  roleName: string;
+  shiftName: string;
+  source: string;
+  timestamp: number;
+}): Promise<void> {
+  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+  const chatId = Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "";
+  if (!botToken || !chatId) {
+    console.warn("[process-closing] Telegram notification skipped: missing bot token or report chat id");
+    return;
+  }
+
+  const wib = new Date(params.timestamp + 7 * 60 * 60 * 1000);
+  const date = wib.toISOString().slice(8, 10) + "/" + wib.toISOString().slice(5, 7);
+  const time = wib.toISOString().slice(11, 16);
+  const text = [
+    `📤 Absen Keluar — ${date} ${time}`,
+    `👤 ${params.userName}${params.roleName ? ` • ${params.roleName}` : ""}`,
+    `🕐 ${time} WIB`,
+    `${params.shiftName ? `📌 ${params.shiftName}` : "📌 Tanpa shift"}`,
+    `🧾 Closing Mini App (${params.source})`,
+  ].join("\n");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      console.error(`[process-closing] Telegram notification failed (${response.status}): ${await response.text()}`);
+      return;
+    }
+    console.log(`[process-closing] Checkout notification sent to report group for ${params.userName}`);
+  } catch (error) {
+    console.error("[process-closing] Telegram notification error:", error);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 interface OpnameItem {
   inventoryId: string;
   name: string;
@@ -461,6 +507,15 @@ Deno.serve(async (req: Request) => {
         });
 
       if (checkoutError) throw checkoutError;
+
+      // Notifikasi non-fatal: checkout tetap sukses walaupun Telegram sedang gagal.
+      await notifyCheckoutToReportGroup({
+        userName,
+        roleName,
+        shiftName,
+        source,
+        timestamp: now,
+      });
 
       return jsonResponse({
         success: true,
