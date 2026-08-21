@@ -87,7 +87,8 @@ Deno.serve(async (req) => {
     const message = error instanceof Error ? error.message : "Booking request failed";
     const safeMessage = /key|token|authorization|secret/i.test(message) ? "Booking request failed" : message;
     const code = status === 404 || /not found/i.test(message) ? "BOOKING_NOT_FOUND" : status === 409 || /capacity|unavailable|full/i.test(message) ? "CAPACITY_CONFLICT" : status >= 500 ? "INTERNAL_ERROR" : "INVALID_REQUEST";
-    console.error("public-booking failed", { code, status, message: safeMessage });
-    return fail(code, safeMessage, status >= 400 && status <= 599 ? status : 500);
+    const responseStatus = code === "BOOKING_NOT_FOUND" ? 404 : code === "CAPACITY_CONFLICT" ? 409 : status >= 400 && status <= 599 ? status : 500;
+    console.error("public-booking failed", { code, status: responseStatus, message: safeMessage });
+    return fail(code, safeMessage, responseStatus);
   }
 });
