@@ -116,7 +116,11 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .stepper strong { min-width: 64px; text-align: center; font-size: 26px; }
 .helper { font-size: 13px; margin: 8px 0 0; }
 .search-box { min-height: 50px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); display: flex; align-items: center; gap: 9px; padding: 0 15px; margin-bottom: 17px; color: var(--muted); }
-.search-box input { border: 0; outline: 0; flex: 1; min-width: 0; }
+.menu-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: -3px 0 8px; }
+.menu-filters label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.menu-filters select { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 13px; padding: 0 12px; color: var(--ink); background: var(--surface); outline: 0; font-size: 13px; font-weight: 700; }
+.menu-filters select:focus { border-color: var(--booking-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--booking-accent) 14%, transparent); }
+.clear-filter { margin: 0 0 10px; color: var(--booking-accent); font-size: 11px; font-weight: 800; }
 .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .product-card { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
 .product-card:hover, .product-card:focus-visible { border-color: #b9d0f5; box-shadow: var(--shadow-soft); outline: 0; }
@@ -198,6 +202,10 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .info-card .info-icon { grid-row: span 2; }
   .info-card strong { align-self: end; }
   .info-card span:last-child { align-self: start; }
+  .menu-filters { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: -2px; }
+  .menu-filters select { min-height: 42px; padding: 0 9px; font-size: 12px; }
+  .menu-filters label { font-size: 9px; }
+  .clear-filter { margin-bottom: 8px; }
   .product-grid { display: flex; flex-direction: column; gap: 10px; }
   .product-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); min-height: 124px; border-radius: 16px; }
   .product-card img, .product-card .product-image { height: 100%; min-height: 124px; }

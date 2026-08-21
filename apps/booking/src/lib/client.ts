@@ -20,7 +20,8 @@ export type BookingSettings = {
   defaultPeoplePerTable: number;
 };
 export type Capacity = { date: string; maxPeople: number; maxTables: number; peoplePerTable: number; notes: string | null; isClosed?: boolean };
-export type Product = { id: string; name: string; description: string | null; imageUrl: string | null; price: number; promoPrice: number | null; category: string | null; menuNumber: string | number | null };
+export type Category = { id: string; name: string; parentId: string | null; displayOrder: number };
+export type Product = { id: string; name: string; description: string | null; imageUrl: string | null; price: number; promoPrice: number | null; categoryId: string | null; category: string | null; menuNumber: string | number | null };
 export type BookingDraft = {
   bookingType: string;
   bookingTypeLabel: string;
@@ -76,14 +77,16 @@ function customFieldList(value: unknown): BookingCustomField[] {
 export async function loadBookingData() {
   if (!isDataConfigured()) throw new Error("Supabase belum dikonfigurasi. Isi VITE_SUPABASE_URL dan VITE_SUPABASE_PUBLISHABLE_KEY (atau VITE_SUPABASE_ANON_KEY).");
   const supabase = createSharedClient();
-  const [settings, capacities, products] = await Promise.all([
+  const [settings, capacities, products, categories] = await Promise.all([
     supabase.from("pos_booking_settings").select("*").eq("slug", BOOKING_SLUG).maybeSingle(),
     supabase.from("pos_booking_date_capacity").select("*").eq("slug", BOOKING_SLUG).order("date", { ascending: true }),
     supabase.from("pos_products_all").select("*").eq("isAvailable", true).order("menuNumber", { ascending: true, nullsFirst: false }),
+    supabase.from("pos_categories").select("*").order("displayOrder", { ascending: true }),
   ]);
   if (settings.error) throw settings.error;
   if (capacities.error) throw capacities.error;
   if (products.error) throw products.error;
+  if (categories.error) throw categories.error;
 
   const raw = settings.data?.raw && typeof settings.data.raw === "object" ? settings.data.raw as Record<string, unknown> : {};
   const customFields = customFieldList(settings.data?.customFields);
@@ -124,8 +127,14 @@ export async function loadBookingData() {
   return {
     settings: settingsValue,
     capacities: generated,
+    categories: (categories.data ?? []).map((row: any) => ({
+      id: String(row._id ?? row.id ?? row.sourceId),
+      name: String(row.name ?? ""),
+      parentId: row.parentId == null ? null : String(row.parentId),
+      displayOrder: Number(row.displayOrder ?? 0),
+    })).filter((category) => category.id && category.name),
     products: (() => {
-      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: row.imageUrl ?? row.imagePath ?? row.image ?? null, price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
+      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: row.imageUrl ?? row.imagePath ?? row.image ?? null, price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), categoryId: row.categoryId == null ? null : String(row.categoryId), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
       const featuredIds = settingsValue?.featuredProductIds ?? [];
       if (featuredIds.length === 0) return mapped;
       const byId = new Map(mapped.map((product) => [product.id, product]));

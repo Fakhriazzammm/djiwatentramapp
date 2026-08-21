@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarDays, CalendarHeart, Check, ChevronRight, CircleAlert, Clock3, Copy, CreditCard, ExternalLink, GraduationCap, Handshake, HeartHandshake, Minus, Plus, Search, Sparkles, Users, UsersRound, UtensilsCrossed } from "lucide-react";
 import { BOOKING_STEPS, type BookingOption, type BookingStep } from "./lib/booking-constants";
 import { currency, estimatedTables, formatDate, todayIso } from "./lib/booking-formatters";
-import { type BookingCustomField, type BookingDraft, type BookingResult, type Capacity, type Product, type BookingSettings, createBooking, createBookingPayment, loadBookingData, lookupBooking } from "./lib/client";
+import { type BookingCustomField, type BookingDraft, type BookingResult, type Capacity, type Category, type Product, type BookingSettings, createBooking, createBookingPayment, loadBookingData, lookupBooking } from "./lib/client";
 import { validateCustomer, type CustomerForm } from "./lib/booking-validation";
 import "./index.css";
 
@@ -37,7 +37,7 @@ function loadDraft(): DraftState {
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>(readScreen);
-  const [data, setData] = useState<{ settings: BookingSettings | null; capacities: Capacity[]; products: Product[] } | null>(null);
+  const [data, setData] = useState<{ settings: BookingSettings | null; capacities: Capacity[]; products: Product[]; categories: Category[] } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>(loadDraft);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export default function App() {
     {screen === "type" && <BookingTypeStep settings={settings} selected={draft.bookingType} onSelect={(key) => updateDraft({ bookingType: key })} onNext={nextFromType} />}
     {screen === "event-type" && <EventTypeStep settings={settings} selected={draft.eventType} customText={draft.eventTypeOther} onSelect={(key) => updateDraft({ eventType: key })} onCustomText={(value) => updateDraft({ eventTypeOther: value })} onNext={nextFromEvent} />}
     {screen === "date" && <DateStep settings={settings} capacities={capacities} bookingType={selectedType} eventType={selectedEvent} selectedDate={draft.selectedDate} setSelectedDate={(value) => updateDraft({ selectedDate: value })} guests={draft.guests} setGuests={(value) => updateDraft({ guests: value })} onNext={nextFromDate} />}
-    {screen === "menu" && <MenuStep products={products} bookingType={selectedType} eventType={selectedEvent} date={draft.selectedDate} guests={draft.guests} cart={draft.cart} setQuantity={setQuantity} onNext={nextFromMenu} />}
+    {screen === "menu" && <MenuStep products={products} categories={data?.categories ?? []} bookingType={selectedType} eventType={selectedEvent} date={draft.selectedDate} guests={draft.guests} cart={draft.cart} setQuantity={setQuantity} onNext={nextFromMenu} />}
     {screen === "review" && <Review bookingType={selectedType} eventType={selectedEvent} eventTypeOther={draft.eventTypeOther} date={draft.selectedDate} guests={draft.guests} tableCount={tableCount} items={cartItems} total={total} onEdit={(step) => navigate(step)} onNext={() => navigate("checkout")} />}
     {screen === "checkout" && <Checkout settings={settings} bookingType={selectedType} eventType={selectedEvent} date={draft.selectedDate} guests={draft.guests} items={cartItems} total={total} customer={draft.customer} setCustomer={(customer) => updateDraft({ customer })} customAnswers={draft.customAnswers} setCustomAnswers={(customAnswers) => updateDraft({ customAnswers })} error={submitError} submitting={submitting} onNext={nextFromCheckout} />}
   </Shell>;
@@ -118,41 +118,52 @@ function EventTypeStep({ settings, selected, customText, onSelect, onCustomText,
 function ContextSummary({ bookingType, eventType, date, guests }: { bookingType?: BookingOption; eventType?: BookingOption; date?: string; guests?: number }) { return <div className="context-summary"><span>{bookingType?.label || "Booking"}</span>{eventType && <><b>·</b><span>{eventType.label}</span></>}{date && <><b>·</b><span>{formatDate(date)}</span></>}{guests && <><b>·</b><span>{guests} tamu</span></>}</div>; }
 function DateStep({ settings, capacities, bookingType, eventType, selectedDate, setSelectedDate, guests, setGuests, onNext }: { settings?: BookingSettings | null; capacities: Capacity[]; bookingType?: BookingOption; eventType?: BookingOption; selectedDate: string; setSelectedDate: (v: string) => void; guests: number; setGuests: (v: number) => void; onNext: () => void }) { const today = todayIso(); const available = capacities.filter((entry) => entry.date >= today && !entry.isClosed); const availableMonths = [...new Set(available.map((entry) => entry.date.slice(0, 7)))].sort(); const currentMonth = today.slice(0, 7); const [visibleMonth, setVisibleMonth] = useState(() => selectedDate ? selectedDate.slice(0, 7) : availableMonths.find((month) => month >= currentMonth) ?? currentMonth); const selectedCapacity = capacities.find((item) => item.date === selectedDate); const tooMany = selectedCapacity ? overCapacity(guests, selectedCapacity) : false; const monthIndex = availableMonths.indexOf(visibleMonth); const monthDate = new Date(`${visibleMonth}-01T12:00:00`); const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate(); const leadingDays = monthDate.getDay(); const monthEntries = available.filter((entry) => entry.date.slice(0, 7) === visibleMonth); const capacityByDate = new Map(monthEntries.map((entry) => [entry.date, entry])); const calendarCells = Array.from({ length: leadingDays + daysInMonth }, (_, index) => { if (index < leadingDays) return null; const day = index - leadingDays + 1; const date = `${visibleMonth}-${String(day).padStart(2, "0")}`; return { date, entry: capacityByDate.get(date) }; }); const monthLabel = monthDate.toLocaleDateString("id-ID", { month: "long", year: "numeric" }); const moveMonth = (direction: -1 | 1) => { const nextMonth = availableMonths[monthIndex + direction]; if (nextMonth) setVisibleMonth(nextMonth); }; const capacityState = (entry?: Capacity) => !entry ? "full" : entry.maxPeople > 0 && entry.maxPeople <= guests ? "limited" : "available"; return <section className="flow"><Progress active="date" hasEvent={bookingType?.key === "event"} /><StepHeader number="03" title="Kapan kamu datang?" detail="Pilih tanggal dan jumlah tamu." /><ContextSummary bookingType={bookingType} eventType={eventType} />{available.length === 0 ? <StateCard text={`Belum ada tanggal booking aktif dalam ${settings?.bookingWindowDays ?? 0} hari ke depan.`} error /> : <><div className="calendar-card"><div className="calendar-toolbar"><button className="month-arrow" aria-label="Bulan sebelumnya" disabled={monthIndex <= 0} onClick={() => moveMonth(-1)}><ArrowLeft size={17} /></button><div><strong>{monthLabel}</strong><button className="today-button" onClick={() => { const target = availableMonths.includes(currentMonth) ? currentMonth : availableMonths[0]; if (target) setVisibleMonth(target); }}>Hari ini</button></div><button className="month-arrow next" aria-label="Bulan berikutnya" disabled={monthIndex < 0 || monthIndex >= availableMonths.length - 1} onClick={() => moveMonth(1)}><ChevronRight size={17} /></button></div><div className="weekday-row">{["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((day) => <span key={day}>{day}</span>)}</div><div className="calendar-grid">{calendarCells.map((cell, index) => cell ? <button key={cell.date} className={`calendar-day ${selectedDate === cell.date ? "selected" : ""} ${cell.date === today ? "today" : ""} ${capacityState(cell.entry)}`} disabled={!cell.entry} onClick={() => cell.entry && setSelectedDate(cell.date)}><span>{new Date(`${cell.date}T12:00:00`).getDate()}</span><small>{capacityState(cell.entry) === "available" ? "Tersedia" : capacityState(cell.entry) === "limited" ? "Terbatas" : "Penuh"}</small></button> : <span className="calendar-empty" key={`empty-${index}`} />)}</div>{monthEntries.length === 0 && <p className="calendar-empty-state">Belum ada tanggal booking di bulan ini. Pilih bulan berikutnya.</p>}<div className="availability-legend"><span><i className="available" /> Tersedia</span><span><i className="limited" /> Terbatas</span><span><i className="full" /> Penuh</span></div></div><div className="panel selection-panel"><div><label className="field-label">Jumlah tamu</label><p className="selection-date">{selectedDate ? formatDate(selectedDate) : "Pilih tanggal terlebih dahulu"}</p></div><div className="stepper"><button aria-label="Kurangi tamu" onClick={() => setGuests(Math.max(1, guests - 1))}><Minus /></button><strong>{guests}<small> tamu</small></strong><button aria-label="Tambah tamu" onClick={() => setGuests(Math.min(100, guests + 1))}><Plus /></button></div><p className="helper">Perkiraan meja: <strong>{estimatedTables(guests, selectedCapacity?.peoplePerTable ?? settings?.defaultPeoplePerTable ?? 4)} meja</strong></p>{tooMany && <p className="form-error">Jumlah tamu atau meja melebihi kapasitas tanggal ini.</p>}</div><StickyAction disabled={!selectedDate || !selectedCapacity || tooMany} onClick={onNext}>Lanjut ke menu <ChevronRight size={18} /></StickyAction></>}</section>; }
 function overCapacity(guests: number, capacity: Capacity) { return Boolean((capacity.maxPeople > 0 && guests > capacity.maxPeople) || (capacity.maxTables > 0 && estimatedTables(guests, capacity.peoplePerTable) > capacity.maxTables)); }
-function MenuStep({ products, bookingType, eventType, date, guests, cart, setQuantity, onNext }: { products: Product[]; bookingType?: BookingOption; eventType?: BookingOption; date: string; guests: number; cart: Cart; setQuantity: (id: string, quantity: number) => void; onNext: () => void }) {
+function MenuStep({ products, categories, bookingType, eventType, date, guests, cart, setQuantity, onNext }: { products: Product[]; categories: Category[]; bookingType?: BookingOption; eventType?: BookingOption; date: string; guests: number; cart: Cart; setQuantity: (id: string, quantity: number) => void; onNext: () => void }) {
   const [query, setQuery] = useState("");
-  const filtered = products.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()) || String(item.menuNumber ?? "").includes(query));
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("all");
+  const roots = categories.filter((category) => !category.parentId).sort((a, b) => a.displayOrder - b.displayOrder);
+  const children = categories.filter((category) => category.parentId).sort((a, b) => a.displayOrder - b.displayOrder);
+  const visibleSubcategories = categoryFilter === "all" ? children : children.filter((category) => category.parentId === categoryFilter);
+  const categoryTree = (categoryId: string) => {
+    const ids = new Set([categoryId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      categories.forEach((category) => {
+        if (category.parentId && ids.has(category.parentId) && !ids.has(category.id)) { ids.add(category.id); changed = true; }
+      });
+    }
+    return ids;
+  };
+  const selectedCategoryIds = categoryFilter === "all" ? null : categoryTree(categoryFilter);
+  const selectedSubcategoryIds = subcategoryFilter === "all" ? null : categoryTree(subcategoryFilter);
+  const filtered = products.filter((item) => {
+    const matchesQuery = item.name.toLowerCase().includes(query.toLowerCase()) || String(item.menuNumber ?? "").includes(query);
+    const matchesCategory = !selectedCategoryIds || (item.categoryId != null && selectedCategoryIds.has(item.categoryId));
+    const matchesSubcategory = !selectedSubcategoryIds || (item.categoryId != null && selectedSubcategoryIds.has(item.categoryId));
+    return matchesQuery && matchesCategory && matchesSubcategory;
+  });
   const itemCount = Object.values(cart).reduce((a, b) => a + b, 0);
   const addOne = (id: string) => setQuantity(id, (cart[id] ?? 0) + 1);
   const stopCardClick = (event: React.MouseEvent) => event.stopPropagation();
+  const selectCategory = (value: string) => { setCategoryFilter(value); setSubcategoryFilter("all"); };
 
   return <section className="flow">
     <Progress active="menu" hasEvent={bookingType?.key === "event"} />
     <StepHeader number="04" title="Pilih menu untuk pre-order" detail="Klik card atau gunakan +/− untuk mengatur jumlah menu." />
     <ContextSummary bookingType={bookingType} eventType={eventType} date={date} guests={guests} />
     <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama atau nomor menu" /></div>
-    {products.length === 0 ? <StateCard text="Menu belum tersedia dari Supabase. Booking belum dapat dilanjutkan." error /> : filtered.length === 0 ? <StateCard text="Menu tidak ditemukan." /> : <div className="product-grid">
-      {filtered.map((item) => {
-        const quantity = cart[item.id] ?? 0;
-        return <article
-          className={`product-card ${quantity ? "selected" : ""}`}
-          key={item.id}
-          onClick={() => addOne(item.id)}
-          onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); addOne(item.id); } }}
-          role="button"
-          tabIndex={0}
-          aria-label={`${item.name}, ${quantity ? `jumlah ${quantity}` : "belum dipilih"}. Klik untuk tambah satu`}
-        >
-          {item.imageUrl ? <img src={item.imageUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="product-image"><UtensilsCrossed /></div>}
-          <div className="product-body">
-            <span className="menu-number">{item.menuNumber ? `#${item.menuNumber}` : "Menu"}</span>
-            <h3>{item.name}</h3>
-            <strong>{currency(item.promoPrice ?? item.price)}</strong>
-            <div className="quantity-control" onClick={stopCardClick}>
-              {quantity > 0 ? <><button aria-label={`Kurangi ${item.name}`} onClick={() => setQuantity(item.id, quantity - 1)}><Minus size={15} /></button><b aria-live="polite">{quantity}</b><button aria-label={`Tambah ${item.name}`} onClick={() => setQuantity(item.id, quantity + 1)}><Plus size={15} /></button></> : <button className="add-button" onClick={() => addOne(item.id)}>Tambah</button>}
-            </div>
-          </div>
-        </article>;
-      })}
+    <div className="menu-filters" aria-label="Filter menu">
+      <label><span>Kategori</span><select value={categoryFilter} onChange={(event) => selectCategory(event.target.value)}><option value="all">Semua kategori</option>{roots.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+      <label><span>Subkategori</span><select value={subcategoryFilter} onChange={(event) => setSubcategoryFilter(event.target.value)}><option value="all">Semua subkategori</option>{visibleSubcategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+    </div>
+    {(categoryFilter !== "all" || subcategoryFilter !== "all") && <button className="clear-filter" onClick={() => { setCategoryFilter("all"); setSubcategoryFilter("all"); }} type="button">Reset filter</button>}
+    {products.length === 0 ? <StateCard text="Menu belum tersedia dari Supabase. Booking belum dapat dilanjutkan." error /> : filtered.length === 0 ? <StateCard text="Menu tidak ditemukan pada filter ini." /> : <div className="product-grid">
+      {filtered.map((item) => { const quantity = cart[item.id] ?? 0; return <article className={`product-card ${quantity ? "selected" : ""}`} key={item.id} onClick={() => addOne(item.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); addOne(item.id); } }} role="button" tabIndex={0} aria-label={`${item.name}, ${quantity ? `jumlah ${quantity}` : "belum dipilih"}. Klik untuk tambah satu`}>
+        {item.imageUrl ? <img src={item.imageUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="product-image"><UtensilsCrossed /></div>}
+        <div className="product-body"><span className="menu-number">{item.menuNumber ? `#${item.menuNumber}` : "Menu"}</span><h3>{item.name}</h3><strong>{currency(item.promoPrice ?? item.price)}</strong><div className="quantity-control" onClick={stopCardClick}>{quantity > 0 ? <><button aria-label={`Kurangi ${item.name}`} onClick={() => setQuantity(item.id, quantity - 1)}><Minus size={15} /></button><b aria-live="polite">{quantity}</b><button aria-label={`Tambah ${item.name}`} onClick={() => setQuantity(item.id, quantity + 1)}><Plus size={15} /></button></> : <button className="add-button" onClick={() => addOne(item.id)}>Tambah</button>}</div></div>
+      </article>; })}
     </div>}
     <StickyAction disabled={!itemCount} onClick={onNext}>{itemCount ? `Lihat review · ${itemCount} item` : "Pilih menu untuk lanjut"}<ChevronRight size={18} /></StickyAction>
   </section>;
