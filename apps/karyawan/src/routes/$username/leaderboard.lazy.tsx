@@ -6,6 +6,7 @@ import {
   Users, ArrowLeft, Loader2, Sparkles, DollarSign,
 } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
+import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { Skeleton } from "@yumipos/web-shared";
 import { useStaffProfile } from "../$username.lazy";
 
@@ -364,7 +365,9 @@ function LoadingSkeleton() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <Trophy className="w-12 h-12 text-muted-foreground/30 mb-3" />
+      <div className="mb-3 flex h-24 w-24 items-center justify-center rounded-[24px] bg-muted/40">
+        <Djiwa3DIcon alt="Leaderboard bonus" className="h-20 w-20" name="sales-report" size="lg" />
+      </div>
       <p className="text-sm font-bold text-muted-foreground">Belum ada bonus shift bulan ini</p>
       <p className="text-xs text-muted-foreground/60 mt-1">Leaderboard akan muncul setelah shift selesai</p>
     </div>

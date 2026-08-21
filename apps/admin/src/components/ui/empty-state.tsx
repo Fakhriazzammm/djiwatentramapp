@@ -4,6 +4,7 @@
  * Reusable empty state components dengan illustration, message, dan action.
  */
 
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import {
 	FileText,
 	Inbox,
@@ -42,6 +43,15 @@ const iconMap: Record<EmptyStateVariant, LucideIcon> = {
 	inventory: Inbox,
 	offline: WifiOff,
 	custom: Inbox,
+};
+
+const illustrationMap: Partial<Record<EmptyStateVariant, Djiwa3DIconName>> = {
+	cart: "shopping-cart-order",
+	search: "customer-food-ordering",
+	orders: "order-receipt",
+	products: "restaurant-cafe",
+	inventory: "inventory-stock",
+	offline: "notifications-alerts",
 };
 
 // ============================================
@@ -126,6 +136,11 @@ export interface EmptyStateProps extends HTMLAttributes<HTMLDivElement> {
 	illustration?: string;
 
 	/**
+	 * Shared 3D illustration name. Overrides the variant default.
+	 */
+	illustrationName?: Djiwa3DIconName;
+
+	/**
 	 * Whether to show icon
 	 * @default true
 	 */
@@ -160,6 +175,7 @@ export function EmptyState({
 	description,
 	action,
 	illustration,
+	illustrationName,
 	showIcon = true,
 	centered = true,
 	className,
@@ -167,6 +183,7 @@ export function EmptyState({
 }: EmptyStateProps) {
 	const content = defaultContent[variant];
 	const Icon = iconMap[variant];
+	const sharedIllustration = illustrationName ?? illustrationMap[variant];
 
 	return (
 		<div
@@ -179,7 +196,11 @@ export function EmptyState({
 			{...props}
 		>
 			{/* Illustration or Icon */}
-			{illustration ? (
+			{sharedIllustration ? (
+				<div className="mb-4 flex h-28 w-28 items-center justify-center rounded-[24px] bg-muted/40">
+					<Djiwa3DIcon name={sharedIllustration} size="lg" alt={title ?? content.title} />
+				</div>
+			) : illustration ? (
 				<img
 					alt={title ?? content.title}
 					className="mb-4 max-h-32 w-auto opacity-50"
@@ -188,7 +209,7 @@ export function EmptyState({
 					width={128}
 				/>
 			) : null}
-			{!illustration && showIcon && (icon || Icon) ? (
+			{!sharedIllustration && !illustration && showIcon && (icon || Icon) ? (
 				<div className="mb-4 text-muted-foreground/60 [&_svg]:stroke-2">
 					{icon ?? <Icon className={iconSizes[size]} />}
 				</div>

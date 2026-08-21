@@ -1,5 +1,6 @@
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import type { ReactNode } from "react";
-import { AlertCircle, CheckCircle2, Inbox, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function CustomerPageSkeleton({ label = "Memuat halaman" }: { label?: string }) {
@@ -41,15 +42,17 @@ export function CustomerEmptyState({
 	action,
 	description,
 	title = "Belum ada data",
+	illustration = "order-receipt",
 }: {
 	action?: ReactNode;
 	description?: string;
 	title?: string;
+	illustration?: Djiwa3DIconName;
 }) {
 	return (
 		<div className="app-card flex flex-col items-center justify-center px-5 py-10 text-center" role="status">
-			<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-				<Inbox aria-hidden="true" className="h-5 w-5" strokeWidth={2} />
+			<div className="mb-2 flex h-20 w-20 items-center justify-center rounded-[22px] bg-muted/40">
+				<Djiwa3DIcon alt={title} className="h-16 w-16" name={illustration} size="lg" />
 			</div>
 			<h2 className="mt-4 font-display text-base font-extrabold">{title}</h2>
 			{description ? <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">{description}</p> : null}
