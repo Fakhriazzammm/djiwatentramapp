@@ -179,6 +179,33 @@ function parseTimeToMinutes(time?: string) {
 	return hours * 60 + minutes;
 }
 
+function isHappyHourCurrentlyActive(discounts: any[] | undefined, now: Date) {
+	const currentDay = now.getDay();
+	const currentMinutes = now.getHours() * 60 + now.getMinutes();
+	const timestamp = now.getTime();
+
+	return (discounts ?? []).some((discount) => {
+		if (!discount?.isActive || !discount?.isHappyHour) return false;
+		if (discount.startDate && timestamp < Number(discount.startDate)) return false;
+		if (discount.endDate) {
+			const endOfDay = new Date(Number(discount.endDate));
+			endOfDay.setHours(23, 59, 59, 999);
+			if (timestamp > endOfDay.getTime()) return false;
+		}
+		if (Array.isArray(discount.days) && discount.days.length > 0 && !discount.days.includes(currentDay)) {
+			return false;
+		}
+
+		const start = parseTimeToMinutes(discount.startTime);
+		const end = parseTimeToMinutes(discount.endTime);
+		if (start === null || end === null) return false;
+		return start <= end
+			? currentMinutes >= start && currentMinutes <= end
+			: currentMinutes >= start || currentMinutes <= end;
+	});
+}
+
+
 function formatClockTime(time?: string) {
 	return time || "--:--";
 }
@@ -445,6 +472,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const [currentTime, setCurrentTime] = useState(new Date());
+	const [happyHourNoticeOpen, setHappyHourNoticeOpen] = useState(false);
 	const [shiftReminderOpen, setShiftReminderOpen] = useState(false);
 	const [shiftReminderState, setShiftReminderState] = useState<"soon" | "overdue" | null>(null);
 
@@ -455,6 +483,23 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		const id = setInterval(() => setCurrentTime(new Date()), 30000);
 		return () => clearInterval(id);
 	}, []);
+
+	useEffect(() => {
+		if (!isHappyHourCurrentlyActive(activeDiscounts, currentTime) || typeof window === "undefined") {
+			return;
+		}
+
+		const activeIds = (activeDiscounts ?? [])
+			.filter((discount: any) => discount?.isActive && discount?.isHappyHour)
+			.map((discount: any) => String(discount._id ?? discount.name ?? "happy-hour"))
+			.sort()
+			.join("-");
+		const noticeKey = `pos-happy-hour-notice-${currentTime.toISOString().slice(0, 10)}-${activeIds}`;
+		if (window.sessionStorage.getItem(noticeKey) !== "seen") {
+			setHappyHourNoticeOpen(true);
+			window.sessionStorage.setItem(noticeKey, "seen");
+		}
+	}, [activeDiscounts, currentTime]);
 
 	useEffect(() => {
 		if (!orders) return;
@@ -1428,6 +1473,46 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 	return (
 		<div className="flex h-app flex-row bg-background overflow-hidden relative">
+			<Dialog open={happyHourNoticeOpen} onOpenChange={setHappyHourNoticeOpen}>
+				<DialogContent className="max-w-sm rounded-3xl border-primary/15 p-5 shadow-2xl sm:p-6">
+					<DialogHeader className="text-center">
+						<div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+							<ShoppingBag className="h-5 w-5" />
+						</div>
+						<DialogTitle className="text-xl font-black tracking-tight">Happy Hour sedang berlangsung</DialogTitle>
+						<DialogDescription className="text-sm leading-relaxed">
+							Benefit menu pilihan seharga <strong className="text-primary">Rp15.000</strong> khusus member DjiwaApp.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="mt-4 space-y-4">
+						<div className="flex justify-center rounded-2xl bg-white p-3 shadow-inner ring-1 ring-border">
+							<img
+								alt="Scan untuk membuka DjiwaApp dan mendapatkan benefit Happy Hour"
+								className="h-52 w-52 rounded-xl object-contain sm:h-56 sm:w-56"
+								src="/djiwaapp-happy-hour-qr.jpg"
+							/>
+						</div>
+						<div className="rounded-2xl bg-primary/[0.06] px-4 py-3 text-sm leading-relaxed text-foreground">
+							<p className="font-bold text-primary">Arahkan customer untuk:</p>
+							<ol className="mt-1 list-inside list-decimal text-muted-foreground">
+								<li>Scan QR DjiwaApp</li>
+								<li>Login atau daftar sebagai member</li>
+								<li>Pesan melalui DjiwaApp</li>
+							</ol>
+						</div>
+						<p className="text-center text-xs font-medium text-muted-foreground">
+							Harga Happy Hour tidak berlaku untuk transaksi kasir biasa.
+						</p>
+						<button
+							className="w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-opacity hover:opacity-90"
+							onClick={() => setHappyHourNoticeOpen(false)}
+							type="button"
+						>
+							Mengerti
+						</button>
+					</div>
+				</DialogContent>
+			</Dialog>
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden relative">
 				{/* Shift Closed Overlay — only show when shift status is known AND closed */}
