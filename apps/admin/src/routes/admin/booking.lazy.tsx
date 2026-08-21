@@ -878,11 +878,65 @@ function BookingSettingsPage() {
 		toast.success(`Ekspor ${format.toUpperCase()} berhasil`);
 	};
 
+	const categoryGroups = useMemo(() => {
+		if (!categories) return [];
+		const categoryList = categories as any[];
+		const roots = categoryList.filter((category) => !category.parentId);
+		const knownRootIds = new Set(roots.map((category) => String(category._id)));
+		const orphanRoots = categoryList.filter(
+			(category) => category.parentId && !knownRootIds.has(String(category.parentId))
+		);
+		return [...roots, ...orphanRoots].map((category) => ({
+			...category,
+			children: categoryList
+				.filter((child) => String(child.parentId) === String(category._id))
+				.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+		}));
+	}, [categories]);
+
+	const getCategoryTreeIds = (categoryId: string) => {
+		const ids = new Set([String(categoryId)]);
+		const categoryList = (categories ?? []) as any[];
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const category of categoryList) {
+				if (category.parentId && ids.has(String(category.parentId)) && !ids.has(String(category._id))) {
+					ids.add(String(category._id));
+					changed = true;
+				}
+			}
+		}
+		return ids;
+	};
+
+	const getProductsForCategory = (categoryId: string) => {
+		const categoryIds = getCategoryTreeIds(categoryId);
+		return (allProducts ?? [])
+			.filter((product: any) => categoryIds.has(String(product.categoryId)))
+			.map((product: any) => String(product._id));
+	};
+
+	const toggleProductIds = (productIds: string[]) => {
+		const selected = new Set(formData.featuredProductIds.map(String));
+		const allSelected = productIds.length > 0 && productIds.every((id) => selected.has(id));
+		if (allSelected) {
+			productIds.forEach((id) => selected.delete(id));
+		} else {
+			productIds.forEach((id) => selected.add(id));
+		}
+		setFormData({ ...formData, featuredProductIds: [...selected] });
+	};
+
 	const filteredProducts = allProducts?.filter((p: any) => {
 		const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
-		const matchesCategory = selectedCategoryId === "all" || p.categoryId === selectedCategoryId;
+		const matchesCategory = selectedCategoryId === "all" || getCategoryTreeIds(selectedCategoryId).has(String(p.categoryId));
 		return matchesSearch && matchesCategory;
 	});
+
+	const selectedProductIds = new Set(formData.featuredProductIds.map(String));
+	const filteredProductIds = (filteredProducts ?? []).map((product: any) => String(product._id));
+	const allFilteredSelected = filteredProductIds.length > 0 && filteredProductIds.every((id) => selectedProductIds.has(id));
 
 	return (
 		<div className="mx-auto max-w-5xl space-y-4 md:space-y-6">
@@ -1537,6 +1591,87 @@ function BookingSettingsPage() {
 						</select>
 					</div>
 
+					<div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-3">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<p className="text-xs font-bold text-foreground">Pilih cepat per kategori</p>
+								<p className="text-[11px] text-muted-foreground">
+									Klik kategori untuk memilih semua produknya, termasuk subkategori.
+								</p>
+							</div>
+							<div className="flex flex-wrap gap-1.5">
+								<button
+									className="rounded-lg border border-primary/20 bg-background px-2.5 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+									disabled={filteredProductIds.length === 0}
+									onClick={() => toggleProductIds(filteredProductIds)}
+									type="button"
+								>
+									{allFilteredSelected ? "Kosongkan hasil" : "Pilih semua hasil"}
+								</button>
+								{formData.featuredProductIds.length > 0 && (
+									<button
+										className="rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-muted-foreground hover:bg-muted"
+										onClick={() => setFormData({ ...formData, featuredProductIds: [] })}
+										type="button"
+									>
+										Kosongkan semua
+									</button>
+								)}
+							</div>
+						</div>
+						{categories && categories.length > 0 && (
+							<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								{categoryGroups.map((category: any) => {
+									const categoryProductIds = getProductsForCategory(String(category._id));
+									const selectedCount = categoryProductIds.filter((id) => selectedProductIds.has(id)).length;
+									const isCategorySelected = categoryProductIds.length > 0 && selectedCount === categoryProductIds.length;
+									return (
+										<div className="rounded-lg border border-border bg-background p-2.5" key={category._id}>
+											<button
+												className="flex w-full items-center justify-between gap-2 text-left"
+												onClick={() => toggleProductIds(categoryProductIds)}
+												type="button"
+											>
+												<span className="flex min-w-0 items-center gap-2">
+													<span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isCategorySelected ? "border-primary bg-primary text-primary-foreground" : selectedCount > 0 ? "border-primary bg-primary/15" : "border-border"}`}>
+														{isCategorySelected && <Check className="h-3 w-3" />}
+													</span>
+													<span className="truncate text-xs font-bold">{category.name}</span>
+												</span>
+												<span className="shrink-0 text-[10px] text-muted-foreground">{selectedCount}/{categoryProductIds.length}</span>
+											</button>
+											{category.children.length > 0 && (
+												<div className="mt-2 space-y-1 border-l border-border pl-3">
+													{category.children.map((child: any) => {
+														const childProductIds = getProductsForCategory(String(child._id));
+														const childSelectedCount = childProductIds.filter((id) => selectedProductIds.has(id)).length;
+														const childSelected = childProductIds.length > 0 && childSelectedCount === childProductIds.length;
+														return (
+															<button
+																className="flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1 text-left hover:bg-muted"
+																key={child._id}
+																onClick={() => toggleProductIds(childProductIds)}
+																type="button"
+															>
+																<span className="flex min-w-0 items-center gap-2">
+																	<span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${childSelected ? "border-primary bg-primary text-primary-foreground" : childSelectedCount > 0 ? "border-primary bg-primary/15" : "border-border"}`}>
+																		{childSelected && <Check className="h-2.5 w-2.5" />}
+																	</span>
+																	<span className="truncate text-[11px]">{child.name}</span>
+																</span>
+																<span className="shrink-0 text-[10px] text-muted-foreground">{childSelectedCount}/{childProductIds.length}</span>
+															</button>
+														);
+													})}
+												</div>
+											)}
+										</div>
+									);
+								})}
+							</div>
+						)}
+					</div>
+
 					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						{!allProducts ? (
 							Array.from({ length: 6 }).map((_, i) => (
@@ -1551,20 +1686,12 @@ function BookingSettingsPage() {
 						) : filteredProducts?.map((product: any) => (
 							<button
 								className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
-									formData.featuredProductIds.includes(product._id)
+									selectedProductIds.has(String(product._id))
 										? "border-primary bg-primary/5 ring-1 ring-primary"
 										: "border-border hover:bg-muted/50"
 								}`}
 								key={product._id}
-								onClick={() => {
-									const isSelected = formData.featuredProductIds.includes(product._id);
-									setFormData({
-										...formData,
-										featuredProductIds: isSelected
-											? formData.featuredProductIds.filter((id) => id !== product._id)
-											: [...formData.featuredProductIds, product._id],
-									});
-								}}
+								onClick={() => toggleProductIds([String(product._id)])}
 								type="button"
 							>
 								<div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -1582,7 +1709,7 @@ function BookingSettingsPage() {
 										Rp {product.price.toLocaleString("id-ID")}
 									</p>
 								</div>
-								{formData.featuredProductIds.includes(product._id) && (
+								{selectedProductIds.has(String(product._id)) && (
 									<Check className="h-4 w-4 text-primary shrink-0" />
 								)}
 							</button>
