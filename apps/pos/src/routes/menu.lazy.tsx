@@ -75,6 +75,8 @@ import {
 } from "@/lib/receipt-data";
 import { playSuccessSound } from "@/lib/play-success-sound";
 import { NotificationBell, NotificationCenter } from "@/components/pos/notification-center";
+import { TransactionAlertStack } from "@/components/pos/transaction-alert-popup";
+import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
@@ -459,6 +461,9 @@ function MenuPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+	const [transactionAlertIds, setTransactionAlertIds] = useState<string[]>([]);
+	const [selectedOrderNotification, setSelectedOrderNotification] = useState<any | null>(null);
+	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 	const notificationIdsRef = useRef<Set<string>>(new Set());
 	const hasSeededNotificationsRef = useRef(false);
 	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
@@ -466,6 +471,7 @@ function MenuPage() {
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
+	const transactionSoundIdsRef = useRef<Set<string>>(new Set());
 	const hasSeededDjiwaAppOrdersRef = useRef(false);
 	const [offlinePendingCount, setOfflinePendingCount] = useState(0);
 	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
@@ -512,32 +518,33 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		if (!orders) return;
 
 		const currentStatuses = new Map<string, string>();
-		const newlySettledDjiwaAppOrder = orders.some((order: any) => {
+		const newlySettledOrderIds: string[] = [];
+		orders.forEach((order: any) => {
 			const source = String(order.source ?? order.sourceApp ?? order.source_app ?? "")
 				.trim()
 				.toLowerCase();
-			if (source !== "customer_self_service") return false;
+			if (source !== "customer_self_service") return;
 
 			const orderId = String(order._id ?? order.sourceId ?? order.orderNumber ?? "");
 			const status = String(order.status ?? "").toLowerCase();
-			if (!orderId) return false;
+			if (!orderId) return;
 			currentStatuses.set(orderId, status);
 
-			if (!hasSeededDjiwaAppOrdersRef.current) return false;
+			if (!hasSeededDjiwaAppOrdersRef.current) return;
 			const previousStatus = djiwaAppOrderStatusRef.current.get(orderId);
-			return (
-				previousStatus === undefined &&
-				(status === "paid" || status === "completed")
-			) || (
-				previousStatus !== status &&
-				(status === "paid" || status === "completed")
-			);
+			if ((previousStatus === undefined || previousStatus !== status) && (status === "paid" || status === "completed")) {
+				newlySettledOrderIds.push(orderId);
+			}
 		});
 
 		if (!hasSeededDjiwaAppOrdersRef.current) {
 			hasSeededDjiwaAppOrdersRef.current = true;
-		} else if (newlySettledDjiwaAppOrder) {
-			playSuccessSound();
+		} else {
+			newlySettledOrderIds.forEach((orderId) => {
+				if (transactionSoundIdsRef.current.has(orderId)) return;
+				transactionSoundIdsRef.current.add(orderId);
+				playSuccessSound();
+			});
 		}
 
 		djiwaAppOrderStatusRef.current = currentStatuses;
@@ -551,11 +558,20 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			notificationIdsRef.current = nextIds;
 			return;
 		}
-		const hasNewAlert = notifications.some((item) =>
+		const newTransactionAlerts = notifications.filter((item) =>
 			!notificationIdsRef.current.has(item.id) &&
-			(item.notification_type === "order_cashier_pending" || (item.notification_type === "admin_briefing" && item.priority !== "normal"))
+			(item.notification_type === "order_cashier_pending" || item.notification_type === "order_paid") &&
+			String(item.source ?? item.action_payload?.source ?? "").toLowerCase() !== "admin"
 		);
-		if (hasNewAlert) playSuccessSound();
+		if (newTransactionAlerts.length > 0) {
+			newTransactionAlerts.forEach((item) => {
+				const orderId = String(item.action_payload?.orderId ?? item.order_source_id ?? item.id);
+				if (transactionSoundIdsRef.current.has(orderId)) return;
+				transactionSoundIdsRef.current.add(orderId);
+				playSuccessSound();
+			});
+			setTransactionAlertIds((current) => Array.from(new Set([...current, ...newTransactionAlerts.map((item) => item.id)])).slice(-3));
+		}
 		notificationIdsRef.current = nextIds;
 	}, [notifications]);
 
@@ -1846,20 +1862,39 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					)}
 				</header>
 
-				<NotificationCenter
-					open={isNotificationCenterOpen}
-					onClose={() => setIsNotificationCenterOpen(false)}
-					notifications={notifications}
-					isLoading={notificationsLoading}
-					error={notificationsError}
-					onMarkRead={markNotificationRead}
-					onOpenOrder={(notification) => {
-						markNotificationRead(notification.id);
-						setIsNotificationCenterOpen(false);
-						setActiveSidebarTab("history");
-						setIsSidebarOpen(true);
-					}}
-				/>
+				<TransactionAlertStack
+				notifications={notifications.filter((item) => transactionAlertIds.includes(item.id))}
+				onDismiss={(notificationId) => setTransactionAlertIds((current) => current.filter((id) => id !== notificationId))}
+				onOpenOrder={(notification) => {
+					markNotificationRead(notification.id);
+					setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
+					setSelectedOrderNotification(notification);
+					setSelectedOrderId(String(notification.action_payload?.orderId ?? notification.order_source_id ?? ""));
+				}}
+			/>
+
+			<NotificationCenter
+				open={isNotificationCenterOpen}
+				onClose={() => setIsNotificationCenterOpen(false)}
+				notifications={notifications}
+				isLoading={notificationsLoading}
+				error={notificationsError}
+				onMarkRead={markNotificationRead}
+				onOpenOrder={(notification) => {
+					markNotificationRead(notification.id);
+					setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
+					setSelectedOrderNotification(notification);
+					setSelectedOrderId(String(notification.action_payload?.orderId ?? notification.order_source_id ?? ""));
+					setIsNotificationCenterOpen(false);
+				}}
+			/>
+
+			<PosOrderDetailSheet
+				open={Boolean(selectedOrderNotification)}
+				order={(orders ?? []).find((order: any) => String(order._id ?? "") === selectedOrderId || String(order.orderNumber ?? "") === String(selectedOrderNotification?.order_number ?? "")) ?? null}
+				notification={selectedOrderNotification}
+				onClose={() => { setSelectedOrderNotification(null); setSelectedOrderId(null); }}
+			/>
 
 				{/* Hidden MenuSidebar for control */}
 				<MenuSidebar 

@@ -113,7 +113,7 @@ function paymentType(order: any) {
 async function syncRecentOrders() {
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const orders = await dbGet("pos_orders", {
-    select: "_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,source,sourceApp,createdAt,items",
+    select: "_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items",
     source: "eq.customer_self_service",
     createdAt: `gte.${Date.parse(since)}`,
     order: "createdAt.desc",
@@ -128,16 +128,16 @@ async function syncRecentOrders() {
     let message = "";
     if (status === "pending" && payment === "cashier") {
       type = "order_cashier_pending";
-      title = "Pesanan baru — Bayar di Kasir";
-      message = `${order.customerName || "Customer"} · ${Number(order.totalAmount ?? 0).toLocaleString("id-ID")} · ${Array.isArray(order.items) ? order.items.length : 0} item`;
+      title = "Pesanan Baru dari DjiwaApp";
+      message = "Menunggu Pembayaran di Kasir";
     } else if (status === "pending" && payment === "mayar") {
       type = "order_mayar_pending";
-      title = "Menunggu pembayaran DjiwaApp";
-      message = `${order.customerName || "Customer"} · ${Number(order.totalAmount ?? 0).toLocaleString("id-ID")}`;
-    } else if (status === "paid" || status === "completed") {
+      title = "Menunggu Pembayaran QRIS DjiwaApp";
+      message = "Pembayaran belum dikonfirmasi";
+    } else if ((status === "paid" || status === "completed") && payment === "mayar") {
       type = "order_paid";
-      title = "Pembayaran DjiwaApp diterima";
-      message = `${order.customerName || "Customer"} · ${Number(order.totalAmount ?? 0).toLocaleString("id-ID")}`;
+      title = "Pembayaran QRIS Berhasil";
+      message = "Pesanan DjiwaApp Sudah Lunas";
     }
     if (!type || !order._id) continue;
     const result = await dbWrite("pos_notifications", "POST", {
@@ -150,7 +150,19 @@ async function syncRecentOrders() {
       source: "customer_self_service",
       dedupe_key: `order:${order._id}:${type}`,
       action_type: "open_order",
-      action_payload: { orderId: order._id, orderNumber: order.orderNumber ?? null },
+      action_payload: {
+        orderId: order._id,
+        orderNumber: order.orderNumber ?? null,
+        source: "djiwaapp",
+        paymentMethod: payment === "mayar" ? "qris" : "cashier",
+        paymentStatus: status,
+        customerName: order.customerName ?? null,
+        tableNumber: order.tableNumber ?? null,
+        orderType: order.orderType ?? null,
+        itemCount: Array.isArray(order.items) ? order.items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0) : 0,
+        totalAmount: Number(order.totalAmount ?? 0),
+        items: Array.isArray(order.items) ? order.items : [],
+      },
       created_at: new Date().toISOString(),
       is_active: true,
     }, "?on_conflict=dedupe_key");
