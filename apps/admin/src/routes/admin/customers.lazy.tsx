@@ -132,7 +132,12 @@ function AdminCustomers() {
 
 	const toggleSelectAll = () => {
 		const visibleIds = filteredCustomers?.map((customer) => customer.source_id) ?? [];
-		setSelectedIds((current) => visibleIds.length > 0 && visibleIds.every((id) => current.has(id)) ? new Set() : new Set(visibleIds));
+		setSelectedIds((current) => {
+			const next = new Set(current);
+			const allVisibleAreSelected = visibleIds.length > 0 && visibleIds.every((id) => next.has(id));
+			visibleIds.forEach((id) => allVisibleAreSelected ? next.delete(id) : next.add(id));
+			return next;
+		});
 	};
 
 	const selectedCustomers = (customers ?? []).filter((customer) => selectedIds.has(customer.source_id));
