@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
-import { Clock, LogIn, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { CalendarDays, Clock, LogIn, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
@@ -130,6 +130,14 @@ function BrandCustomerIndex() {
 								>
 									Mulai pesan
 								</button>
+
+								<a
+									href="https://booking.yumme.id/"
+									className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary transition-all duration-[180ms] hover:bg-primary/10 active:scale-[.97]"
+								>
+									<CalendarDays className="h-3.5 w-3.5" />
+									Booking meja & menu
+								</a>
 
 								{/* ── Ajakan daftar member ─────────────── */}
 								<p className="mt-3 text-[10px] font-semibold leading-relaxed text-muted-foreground">
