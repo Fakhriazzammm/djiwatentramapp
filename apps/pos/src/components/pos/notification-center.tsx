@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bell, Check, ChevronRight, Info, Megaphone, WalletCards, X } from "lucide-react";
+import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { PosNotification } from "@/hooks/use-pos-notifications";
 
 function formatAge(value: string) {
@@ -29,20 +30,26 @@ function typeMeta(item: PosNotification) {
 }
 
 export function NotificationBell({ unreadCount, onClick }: { unreadCount: number; onClick: () => void }) {
+  const hasUnread = unreadCount > 0;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : "Buka notifikasi"}
-      className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
-    >
-      <Bell className="h-4 w-4" />
-      {unreadCount > 0 ? (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-none text-white ring-2 ring-background">
-          {unreadCount > 99 ? "99+" : unreadCount}
+    <>
+      <style>{`@keyframes notification-bell-wiggle { 0%, 100% { transform: rotate(0deg); } 12% { transform: rotate(14deg); } 24% { transform: rotate(-12deg); } 36% { transform: rotate(9deg); } 48% { transform: rotate(-6deg); } 60%, 100% { transform: rotate(0deg); } } @media (prefers-reduced-motion: reduce) { .notification-bell-wiggle { animation: none !important; } }`}</style>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={hasUnread ? `${unreadCount} notifikasi belum dibaca` : "Buka notifikasi"}
+        className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
+      >
+        <span className={hasUnread ? "notification-bell-wiggle inline-flex origin-top" : "inline-flex"} style={hasUnread ? { animation: "notification-bell-wiggle 1.8s ease-in-out infinite" } : undefined}>
+          <Djiwa3DIcon name="notifications-alerts" size="sm" alt="" className="h-7 w-7" />
         </span>
-      ) : null}
-    </button>
+        {hasUnread ? (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-none text-white ring-2 ring-background">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        ) : null}
+      </button>
+    </>
   );
 }
 
