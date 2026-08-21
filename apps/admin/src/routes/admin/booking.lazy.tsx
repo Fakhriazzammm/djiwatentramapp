@@ -5,6 +5,7 @@ import {
 	Check,
 	ChevronLeft,
 	ChevronRight,
+	Minus,
 	Link as LinkIcon,
 	List,
 	Loader2,
@@ -1620,28 +1621,28 @@ function BookingSettingsPage() {
 							</div>
 						</div>
 						{categories && categories.length > 0 && (
-							<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+							<div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-2">
 								{categoryGroups.map((category: any) => {
 									const categoryProductIds = getProductsForCategory(String(category._id));
 									const selectedCount = categoryProductIds.filter((id) => selectedProductIds.has(id)).length;
 									const isCategorySelected = categoryProductIds.length > 0 && selectedCount === categoryProductIds.length;
 									return (
-										<div className="rounded-lg border border-border bg-background p-2.5" key={category._id}>
+										<div className="h-fit rounded-xl border border-border bg-background p-2.5 shadow-sm" key={category._id}>
 											<button
 												className="flex w-full items-center justify-between gap-2 text-left"
 												onClick={() => toggleProductIds(categoryProductIds)}
 												type="button"
 											>
 												<span className="flex min-w-0 items-center gap-2">
-													<span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isCategorySelected ? "border-primary bg-primary text-primary-foreground" : selectedCount > 0 ? "border-primary bg-primary/15" : "border-border"}`}>
-														{isCategorySelected && <Check className="h-3 w-3" />}
+													<span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${isCategorySelected ? "border-primary bg-primary text-primary-foreground" : selectedCount > 0 ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"}`}>
+														{isCategorySelected ? <Check className="h-3 w-3" /> : selectedCount > 0 ? <Minus className="h-3 w-3" /> : null}
 													</span>
 													<span className="truncate text-xs font-bold">{category.name}</span>
 												</span>
 												<span className="shrink-0 text-[10px] text-muted-foreground">{selectedCount}/{categoryProductIds.length}</span>
 											</button>
 											{category.children.length > 0 && (
-												<div className="mt-2 space-y-1 border-l border-border pl-3">
+												<div className="mt-2 space-y-0.5 border-l-2 border-primary/10 pl-3">
 													{category.children.map((child: any) => {
 														const childProductIds = getProductsForCategory(String(child._id));
 														const childSelectedCount = childProductIds.filter((id) => selectedProductIds.has(id)).length;
@@ -1654,9 +1655,9 @@ function BookingSettingsPage() {
 																type="button"
 															>
 																<span className="flex min-w-0 items-center gap-2">
-																	<span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${childSelected ? "border-primary bg-primary text-primary-foreground" : childSelectedCount > 0 ? "border-primary bg-primary/15" : "border-border"}`}>
-																		{childSelected && <Check className="h-2.5 w-2.5" />}
-																	</span>
+																		<span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${childSelected ? "border-primary bg-primary text-primary-foreground" : childSelectedCount > 0 ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"}`}>
+																			{childSelected ? <Check className="h-2.5 w-2.5" /> : childSelectedCount > 0 ? <Minus className="h-2.5 w-2.5" /> : null}
+																		</span>
 																	<span className="truncate text-[11px]">{child.name}</span>
 																</span>
 																<span className="shrink-0 text-[10px] text-muted-foreground">{childSelectedCount}/{childProductIds.length}</span>
