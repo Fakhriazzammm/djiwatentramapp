@@ -21,55 +21,111 @@ function fail(code: string, message: string, status = 400) {
 function formatStockRemaining(qty: number, unit: string): string {
   const normalized = unit.toLowerCase().trim();
   if (qty <= 0) return "HABIS";
-  if (["gram", "g"].includes(normalized)) return qty < 1000 ? `sisa ${qty.toFixed(0)} gram` : `sisa ${(qty / 1000).toFixed(1)} kg`;
-  if (["ml", "milliliter"].includes(normalized)) return qty < 1000 ? `sisa ${qty.toFixed(0)} ml` : `sisa ${(qty / 1000).toFixed(1)} L`;
+  if (["gram", "g"].includes(normalized))
+    return qty < 1000
+      ? `sisa ${qty.toFixed(0)} gram`
+      : `sisa ${(qty / 1000).toFixed(1)} kg`;
+  if (["ml", "milliliter"].includes(normalized))
+    return qty < 1000
+      ? `sisa ${qty.toFixed(0)} ml`
+      : `sisa ${(qty / 1000).toFixed(1)} L`;
   if (["liter", "l"].includes(normalized)) return `sisa ${qty.toFixed(1)} L`;
   if (normalized === "kg") return `sisa ${qty.toFixed(1)} kg`;
   return `sisa ${qty.toFixed(0)} ${unit}`;
 }
 
-async function buildStockOpnameReport(supabase: ReturnType<typeof createClient>): Promise<string[]> {
+async function buildStockOpnameReport(
+  supabase: ReturnType<typeof createClient>,
+): Promise<string[]> {
   const [{ data: inventoryData }, { data: storesData }] = await Promise.all([
-    supabase.from("pos_inventory").select("ingredientName,unit,quantity,lowStockThreshold,preferredStoreId"),
-    supabase.from("pos_inventory_stores").select("_id,name,phone").eq("isActive", true),
+    supabase
+      .from("pos_inventory")
+      .select(
+        "ingredientName,unit,quantity,lowStockThreshold,preferredStoreId",
+      ),
+    supabase
+      .from("pos_inventory_stores")
+      .select("_id,name,phone")
+      .eq("isActive", true),
   ]);
   const inventory = (inventoryData ?? []) as Array<Record<string, unknown>>;
-  const stores = (storesData ?? []) as Array<{ _id?: string; name?: string; phone?: string }>;
+  const stores = (storesData ?? []) as Array<{
+    _id?: string;
+    name?: string;
+    phone?: string;
+  }>;
   const storeMap = new Map(stores.map((store) => [store._id ?? "", store]));
   const skipKeywords = [
-    "gas", "baterai", "kresek", "sedotan", "sendok garpu", "botol 1", "ekonomi",
-    "soklin", "lifebuoy", "cling", "bento tupai", "paperbowl", "cup 12", "multi tisu", "tutup cup",
+    "gas",
+    "baterai",
+    "kresek",
+    "sedotan",
+    "sendok garpu",
+    "botol 1",
+    "ekonomi",
+    "soklin",
+    "lifebuoy",
+    "cling",
+    "bento tupai",
+    "paperbowl",
+    "cup 12",
+    "multi tisu",
+    "tutup cup",
   ];
   const urgent = new Map<string, { phone: string; items: string[] }>();
   const menipis = new Map<string, { phone: string; items: string[] }>();
 
   for (const item of inventory ?? []) {
     const name = String(item.ingredientName ?? "");
-    if (!name || skipKeywords.some((keyword) => name.toLowerCase().includes(keyword))) continue;
+    if (
+      !name ||
+      skipKeywords.some((keyword) => name.toLowerCase().includes(keyword))
+    )
+      continue;
     const qty = Number(item.quantity ?? 0);
     const threshold = Number(item.lowStockThreshold ?? 0);
     if (threshold <= 0 || qty > threshold) continue;
-    const store = storeMap.get(String(item.preferredStoreId ?? "")) ?? { name: "Lainnya", phone: "" };
+    const store = storeMap.get(String(item.preferredStoreId ?? "")) ?? {
+      name: "Lainnya",
+      phone: "",
+    };
     const storeName = String(store.name ?? "Lainnya");
     const group = qty <= 0 || qty <= threshold * 0.3 ? urgent : menipis;
-    const current = group.get(storeName) ?? { phone: String(store.phone ?? ""), items: [] };
+    const current = group.get(storeName) ?? {
+      phone: String(store.phone ?? ""),
+      items: [],
+    };
     if (store.phone) current.phone = String(store.phone);
-    current.items.push(`${qty <= 0 || qty <= threshold * 0.3 ? "🔴" : "🟡"} ${name} — ${formatStockRemaining(qty, String(item.unit ?? ""))}`);
+    current.items.push(
+      `${qty <= 0 || qty <= threshold * 0.3 ? "🔴" : "🟡"} ${name} — ${formatStockRemaining(qty, String(item.unit ?? ""))}`,
+    );
     group.set(storeName, current);
   }
 
-  const sortStores = (groups: Map<string, { phone: string; items: string[] }>) =>
-    [...groups.entries()].sort((a, b) => b[1].items.length - a[1].items.length || a[0].localeCompare(b[0]));
+  const sortStores = (
+    groups: Map<string, { phone: string; items: string[] }>,
+  ) =>
+    [...groups.entries()].sort(
+      (a, b) =>
+        b[1].items.length - a[1].items.length || a[0].localeCompare(b[0]),
+    );
   const lines = [
     "📋 STOCK OPNAME",
     `🔴 Urgent: ${[...urgent.values()].reduce((sum, group) => sum + group.items.length, 0)} item  |  🟡 Menipis: ${[...menipis.values()].reduce((sum, group) => sum + group.items.length, 0)} item`,
     "",
   ];
-  for (const [title, groups, icon] of [["URGENT", urgent, "🔴"], ["MENIPIS", menipis, "🟡"]] as const) {
+  for (const [title, groups, icon] of [
+    ["URGENT", urgent, "🔴"],
+    ["MENIPIS", menipis, "🟡"],
+  ] as const) {
     if (!groups.size) continue;
     lines.push(`━━━ ${icon} ${title} ━━━`, "");
     sortStores(groups).forEach(([name, group], index) => {
-      lines.push(`${index + 1}. ${name}${group.phone ? `  ☎️ ${group.phone}` : ""}`, ...group.items, "");
+      lines.push(
+        `${index + 1}. ${name}${group.phone ? `  ☎️ ${group.phone}` : ""}`,
+        ...group.items,
+        "",
+      );
     });
     lines.push("");
   }
@@ -90,19 +146,27 @@ async function notifyCheckoutToReportGroup(params: {
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
   const chatId = Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "";
   if (!botToken || !chatId) {
-    console.warn("[process-closing] Telegram notification skipped: missing bot token or report chat id");
+    console.warn(
+      "[process-closing] Telegram notification skipped: missing bot token or report chat id",
+    );
     return;
   }
 
   const wib = new Date(params.timestamp + 7 * 60 * 60 * 1000);
-  const date = wib.toISOString().slice(8, 10) + "/" + wib.toISOString().slice(5, 7);
+  const date =
+    wib.toISOString().slice(8, 10) + "/" + wib.toISOString().slice(5, 7);
   const time = wib.toISOString().slice(11, 16);
-  const changedItems = params.items.filter((item) => Math.abs(item.qtyAfter - item.qtyBefore) > 0.01);
+  const changedItems = params.items.filter(
+    (item) => Math.abs(item.qtyAfter - item.qtyBefore) > 0.01,
+  );
   const stockLines = [
     `📦 Stock Opname — ${params.items.length} item dicek, ${changedItems.length} berubah`,
-    ...changedItems.slice(0, 20).map(
-      (item) => `• ${item.name}: ${item.qtyBefore} → ${item.qtyAfter} ${item.unit}`,
-    ),
+    ...changedItems
+      .slice(0, 20)
+      .map(
+        (item) =>
+          `• ${item.name}: ${item.qtyBefore} → ${item.qtyAfter} ${item.unit}`,
+      ),
   ];
   if (changedItems.length > 20) {
     stockLines.push(`• ...dan ${changedItems.length - 20} item lainnya`);
@@ -128,20 +192,27 @@ async function notifyCheckoutToReportGroup(params: {
     ...stockLines,
     "",
     ...cleaningLines,
-    ...(photoAreas.length > 0 ? ["", `📸 Foto kebersihan: ${photoAreas.length} terlampir`] : []),
+    ...(photoAreas.length > 0
+      ? ["", `📸 Foto kebersihan: ${photoAreas.length} terlampir`]
+      : []),
   ].join("\n");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
-      signal: controller.signal,
-    });
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text }),
+        signal: controller.signal,
+      },
+    );
     if (!response.ok) {
-      console.error(`[process-closing] Telegram notification failed (${response.status}): ${await response.text()}`);
+      console.error(
+        `[process-closing] Telegram notification failed (${response.status}): ${await response.text()}`,
+      );
       return;
     }
 
@@ -173,25 +244,35 @@ async function notifyCheckoutToReportGroup(params: {
 
     for (const area of photoAreas) {
       try {
-        const photoResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            photo: area.photoUrl,
-            caption: `📸 ${area.label || area.id} — ${area.status === "bersih" ? "Bersih" : "Perlu Perbaikan"}`,
-          }),
-          signal: controller.signal,
-        });
+        const photoResponse = await fetch(
+          `https://api.telegram.org/bot${botToken}/sendPhoto`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              photo: area.photoUrl,
+              caption: `📸 ${area.label || area.id} — ${area.status === "bersih" ? "Bersih" : "Perlu Perbaikan"}`,
+            }),
+            signal: controller.signal,
+          },
+        );
         if (!photoResponse.ok) {
-          console.error(`[process-closing] Cleaning photo failed for ${area.id} (${photoResponse.status}): ${await photoResponse.text()}`);
+          console.error(
+            `[process-closing] Cleaning photo failed for ${area.id} (${photoResponse.status}): ${await photoResponse.text()}`,
+          );
         }
       } catch (error) {
-        console.error(`[process-closing] Cleaning photo error for ${area.id}:`, error);
+        console.error(
+          `[process-closing] Cleaning photo error for ${area.id}:`,
+          error,
+        );
       }
     }
 
-    console.log(`[process-closing] Checkout notification sent to report group for ${params.userName}`);
+    console.log(
+      `[process-closing] Checkout notification sent to report group for ${params.userName}`,
+    );
   } catch (error) {
     console.error("[process-closing] Telegram notification error:", error);
   } finally {
@@ -261,7 +342,11 @@ async function uploadClosingPhoto(
   }
 
   const ext =
-    contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+    contentType === "image/png"
+      ? "png"
+      : contentType === "image/webp"
+        ? "webp"
+        : "jpg";
   const path = `${userId}/${Date.now()}_${areaId}.${ext}`;
 
   const res = await fetch(
@@ -278,7 +363,9 @@ async function uploadClosingPhoto(
     },
   );
   if (!res.ok) {
-    throw new Error(`Upload foto ${areaId} gagal (${res.status}): ${await res.text()}`);
+    throw new Error(
+      `Upload foto ${areaId} gagal (${res.status}): ${await res.text()}`,
+    );
   }
 
   return `${publicSupabaseUrl}/storage/v1/object/public/${CLOSING_PHOTO_BUCKET}/${path}`;
@@ -323,7 +410,9 @@ Deno.serve(async (req: Request) => {
         kebersihan.length === requiredAreas.length &&
         requiredAreas.every((areaId) => areaIds.has(areaId));
       const invalidArea = kebersihan.find(
-        (area) => !area?.id || !["bersih", "perlu_perbaikan"].includes(String(area.status)),
+        (area) =>
+          !area?.id ||
+          !["bersih", "perlu_perbaikan"].includes(String(area.status)),
       );
       if (!hasAllAreas || invalidArea) {
         return fail(
@@ -364,8 +453,12 @@ Deno.serve(async (req: Request) => {
           .single();
 
         const schedules =
-          ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)
-            ?.shiftSchedules as Array<Record<string, unknown>> ?? [];
+          ((
+            (settings?.raw as Record<string, unknown>)?.shiftSettings as Record<
+              string,
+              unknown
+            >
+          )?.shiftSchedules as Array<Record<string, unknown>>) ?? [];
 
         let openTime = "";
         let closeTime = "";
@@ -384,7 +477,8 @@ Deno.serve(async (req: Request) => {
           if (!isNaN(ch) && !isNaN(cm)) {
             const closeMin = ch * 60 + cm;
             const nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
-            const currentMin = nowWib.getUTCHours() * 60 + nowWib.getUTCMinutes();
+            const currentMin =
+              nowWib.getUTCHours() * 60 + nowWib.getUTCMinutes();
 
             const [openHourText, openMinuteText] = openTime.split(":");
             const openMin = openTime
@@ -462,9 +556,10 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
+      let opnameSourceId = "";
       // ── Step 2: Save stock opname per-person ────────────────
       if (needsOpname && items.length > 0) {
-        const opnameSourceId = makeSourceId("opn");
+        opnameSourceId = makeSourceId("opn");
         const submitItems = changedItems.length > 0 ? changedItems : items;
 
         const { error: opnameError } = await supabase
@@ -501,14 +596,18 @@ Deno.serve(async (req: Request) => {
           // Today's range in WIB
           const wibOffset = 7 * 60 * 60 * 1000;
           const wibNow = new Date(now + wibOffset);
-          const todayStart = new Date(
-            Date.UTC(
-              wibNow.getUTCFullYear(),
-              wibNow.getUTCMonth(),
-              wibNow.getUTCDate(),
-              0, 0, 0, 0,
-            ),
-          ).getTime() - wibOffset;
+          const todayStart =
+            new Date(
+              Date.UTC(
+                wibNow.getUTCFullYear(),
+                wibNow.getUTCMonth(),
+                wibNow.getUTCDate(),
+                0,
+                0,
+                0,
+                0,
+              ),
+            ).getTime() - wibOffset;
           const todayEnd = todayStart + 86400000;
 
           // Count check-ins for shift+role today
@@ -541,9 +640,49 @@ Deno.serve(async (req: Request) => {
 
           isLastPerson = stillWorking.length === 0;
         } catch (err) {
-          console.warn("[process-closing] checkIsLastPerson error, defaulting to true:", err);
+          console.warn(
+            "[process-closing] checkIsLastPerson error, defaulting to true:",
+            err,
+          );
           isLastPerson = true;
         }
+      }
+
+      // ── Step 3b: Mark the final opname and preserve audit chain ──
+      if (needsOpname && isLastPerson && opnameSourceId) {
+        const wibOffset = 7 * 60 * 60 * 1000;
+        const wibNow = new Date(now + wibOffset);
+        const todayStart =
+          Date.UTC(
+            wibNow.getUTCFullYear(),
+            wibNow.getUTCMonth(),
+            wibNow.getUTCDate(),
+          ) - wibOffset;
+        const { data: previousLogs } = await supabase
+          .schema("pos")
+          .from("stock_opname_logs")
+          .select("source_id")
+          .eq("role", lockScope)
+          .contains("raw", { shiftName, role: lockScope })
+          .gte("creation_time", todayStart)
+          .lt("creation_time", todayStart + 86400000)
+          .neq("source_id", opnameSourceId)
+          .order("creation_time", { ascending: true });
+        const previousOpnameIds = (
+          (previousLogs ?? []) as Array<{ source_id?: string }>
+        )
+          .map((row) => row.source_id)
+          .filter((id): id is string => Boolean(id));
+        const { error: finalLogError } = await supabase
+          .schema("pos")
+          .from("stock_opname_logs")
+          .update({
+            is_final: true,
+            previous_opname_ids: previousOpnameIds,
+            notes: `FINAL — Opname shift ${shiftName} oleh ${userName}; ${previousOpnameIds.length} opname sebelumnya`,
+          })
+          .eq("source_id", opnameSourceId);
+        if (finalLogError) throw finalLogError;
       }
 
       // ── Step 4: Apply final opname if last person ───────────
@@ -562,8 +701,7 @@ Deno.serve(async (req: Request) => {
               tx_type: "stock_opname_final",
               remaining_quantity: item.qtyAfter,
               tx_timestamp: now,
-              notes:
-                `[FINAL] Shift closing opname by ${userName}: ${item.qtyBefore} → ${item.qtyAfter}`,
+              notes: `[FINAL] Shift closing opname by ${userName}: ${item.qtyBefore} → ${item.qtyAfter}`,
               creation_time: now,
               raw: {
                 userId,
@@ -680,7 +818,10 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     console.error("[process-closing] Error:", err);
     return jsonResponse(
-      { success: false, error: { code: "INTERNAL_ERROR", message: String(err) } },
+      {
+        success: false,
+        error: { code: "INTERNAL_ERROR", message: String(err) },
+      },
       500,
     );
   }
