@@ -102,6 +102,12 @@ async function buildStockOpnameReport(
     group.set(storeName, current);
   }
 
+  for (const groups of [urgent, menipis]) {
+    for (const group of groups.values()) {
+      group.items.sort((a, b) => a.localeCompare(b));
+    }
+  }
+
   const sortStores = (
     groups: Map<string, { phone: string; items: string[] }>,
   ) =>
