@@ -5,7 +5,6 @@ import {
 	Check,
 	ChevronLeft,
 	ChevronRight,
-	Minus,
 	Link as LinkIcon,
 	List,
 	Loader2,
@@ -595,9 +594,10 @@ function BookingSettingsPage() {
 	});
 	const allOrders = ordersState.data;
 
-	// Products search & filter
+	// Products search & multi-category filter
 	const [productSearch, setProductSearch] = useState("");
-	const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+	const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+	const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
 	// Capacity form
 	const [capDate, setCapDate] = useState(todayStr());
@@ -929,9 +929,28 @@ function BookingSettingsPage() {
 		setFormData({ ...formData, featuredProductIds: [...selected] });
 	};
 
+	const toggleCategoryFilter = (categoryId: string) => {
+		const categoryProductIds = getProductsForCategory(categoryId);
+		const isActive = selectedCategoryIds.includes(categoryId);
+		setSelectedCategoryIds(
+			isActive
+				? selectedCategoryIds.filter((id) => id !== categoryId)
+				: [...selectedCategoryIds, categoryId]
+		);
+		toggleProductIds(categoryProductIds);
+	};
+
+	const selectedCategoryTreeIds = useMemo(() => {
+		const ids = new Set<string>();
+		selectedCategoryIds.forEach((categoryId) => {
+			getCategoryTreeIds(categoryId).forEach((id) => ids.add(id));
+		});
+		return ids;
+	}, [selectedCategoryIds, categories]);
+
 	const filteredProducts = allProducts?.filter((p: any) => {
 		const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
-		const matchesCategory = selectedCategoryId === "all" || getCategoryTreeIds(selectedCategoryId).has(String(p.categoryId));
+		const matchesCategory = selectedCategoryTreeIds.size === 0 || selectedCategoryTreeIds.has(String(p.categoryId));
 		return matchesSearch && matchesCategory;
 	});
 
@@ -1578,99 +1597,65 @@ function BookingSettingsPage() {
 								value={productSearch}
 							/>
 						</div>
-						<select
-							className="rounded-xl bg-muted/50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20"
-							onChange={(e) => setSelectedCategoryId(e.target.value)}
-							value={selectedCategoryId}
-						>
-							<option value="all">Semua Kategori</option>
-							{categories?.map((cat: any) => (
-								<option key={cat._id} value={cat._id}>
-									{cat.name}
-								</option>
-							))}
-						</select>
-					</div>
-
-					<div className="mx-auto w-full max-w-2xl rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-3">
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-							<div>
-								<p className="text-xs font-bold text-foreground">Pilih cepat per kategori</p>
-								<p className="text-[11px] text-muted-foreground">
-									Pilih kategori atau subkategori untuk memilih produk sekaligus.
-								</p>
-							</div>
-							<div className="flex flex-wrap gap-1.5">
-								<button
-									className="rounded-lg border border-primary/20 bg-background px-2.5 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-									disabled={filteredProductIds.length === 0}
-									onClick={() => toggleProductIds(filteredProductIds)}
-									type="button"
-								>
-									{allFilteredSelected ? "Kosongkan hasil" : "Pilih semua hasil"}
-								</button>
-								{formData.featuredProductIds.length > 0 && (
-									<button
-										className="rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-muted-foreground hover:bg-muted"
-										onClick={() => setFormData({ ...formData, featuredProductIds: [] })}
-										type="button"
-									>
-										Kosongkan semua
-									</button>
-								)}
-							</div>
-						</div>
-						{categories && categories.length > 0 && (
-							<div className="grid grid-cols-1 gap-2">
-								{categoryGroups.map((category: any) => {
-									const categoryProductIds = getProductsForCategory(String(category._id));
-									const selectedCount = categoryProductIds.filter((id) => selectedProductIds.has(id)).length;
-									const isCategorySelected = categoryProductIds.length > 0 && selectedCount === categoryProductIds.length;
-									return (
-										<div className="h-fit rounded-xl border border-border bg-background p-2.5 shadow-sm" key={category._id}>
+						<div className="relative shrink-0">
+							<button
+								className={`flex min-w-[220px] items-center justify-between gap-3 rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-bold outline-none transition-colors hover:bg-muted ${isCategoryMenuOpen ? "ring-2 ring-primary/20" : ""}`}
+								onClick={() => setIsCategoryMenuOpen((open) => !open)}
+								type="button"
+							>
+								<span className="truncate">
+									{selectedCategoryIds.length === 0
+										? "Semua Kategori"
+										: `${selectedCategoryIds.length} kategori dipilih`}
+								</span>
+								<ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${isCategoryMenuOpen ? "rotate-90" : ""}`} />
+							</button>
+							{isCategoryMenuOpen && (
+								<div className="absolute right-0 z-30 mt-2 w-[min(320px,calc(100vw-2rem))] rounded-xl border border-border bg-card p-2 shadow-xl">
+									<div className="flex items-center justify-between border-b border-border px-2 pb-2">
+										<span className="text-[11px] font-bold text-muted-foreground">Filter kategori</span>
+										{selectedCategoryIds.length > 0 && (
 											<button
-												className="flex w-full items-center justify-between gap-2 text-left"
-												onClick={() => toggleProductIds(categoryProductIds)}
+												className="text-[11px] font-bold text-primary hover:underline"
+												onClick={() => setSelectedCategoryIds([])}
 												type="button"
 											>
-												<span className="flex min-w-0 items-center gap-2">
-													<span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${isCategorySelected ? "border-primary bg-primary text-primary-foreground" : selectedCount > 0 ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"}`}>
-														{isCategorySelected ? <Check className="h-3 w-3" /> : selectedCount > 0 ? <Minus className="h-3 w-3" /> : null}
-													</span>
-													<span className="truncate text-xs font-bold">{category.name}</span>
-												</span>
-												<span className="shrink-0 text-[10px] text-muted-foreground">{selectedCount}/{categoryProductIds.length}</span>
+												Reset
 											</button>
-											{category.children.length > 0 && (
-												<div className="mt-2 space-y-0.5 border-l-2 border-primary/10 pl-3">
-													{category.children.map((child: any) => {
-														const childProductIds = getProductsForCategory(String(child._id));
-														const childSelectedCount = childProductIds.filter((id) => selectedProductIds.has(id)).length;
-														const childSelected = childProductIds.length > 0 && childSelectedCount === childProductIds.length;
-														return (
-															<button
-																className="flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1 text-left hover:bg-muted"
-																key={child._id}
-																onClick={() => toggleProductIds(childProductIds)}
-																type="button"
-															>
-																<span className="flex min-w-0 items-center gap-2">
-																		<span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${childSelected ? "border-primary bg-primary text-primary-foreground" : childSelectedCount > 0 ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"}`}>
-																			{childSelected ? <Check className="h-2.5 w-2.5" /> : childSelectedCount > 0 ? <Minus className="h-2.5 w-2.5" /> : null}
-																		</span>
-																	<span className="truncate text-[11px]">{child.name}</span>
-																</span>
-																<span className="shrink-0 text-[10px] text-muted-foreground">{childSelectedCount}/{childProductIds.length}</span>
-															</button>
-														);
-													})}
-												</div>
-											)}
-										</div>
-									);
-								})}
-							</div>
-						)}
+										)}
+									</div>
+									<div className="max-h-72 space-y-0.5 overflow-y-auto pt-1">
+										{categoryGroups.map((category: any) => (
+											<div key={category._id}>
+												<button
+													className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold hover:bg-muted"
+													onClick={() => toggleCategoryFilter(String(category._id))}
+													type="button"
+												>
+													<span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selectedCategoryIds.includes(String(category._id)) ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
+														{selectedCategoryIds.includes(String(category._id)) && <Check className="h-3 w-3" />}
+													</span>
+													<span className="truncate">{category.name}</span>
+												</button>
+												{category.children.map((child: any) => (
+													<button
+														className="ml-5 flex w-[calc(100%-1.25rem)] items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+														key={child._id}
+														onClick={() => toggleCategoryFilter(String(child._id))}
+														type="button"
+													>
+														<span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${selectedCategoryIds.includes(String(child._id)) ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
+															{selectedCategoryIds.includes(String(child._id)) && <Check className="h-2.5 w-2.5" />}
+														</span>
+														<span className="truncate">{child.name}</span>
+													</button>
+												))}
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
 					</div>
 
 					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
