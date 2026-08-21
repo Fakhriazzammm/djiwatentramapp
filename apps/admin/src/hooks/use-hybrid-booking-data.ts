@@ -58,6 +58,10 @@ async function fetchBookingSettings(slug: string) {
 		bankDetails: data.bankDetails ?? undefined,
 		qrisImage: toPublicAssetUrl(data.qrisImage),
 		isActive: Boolean(data.isActive),
+		bookingWindowDays: Math.max(1, Number(data.bookingWindowDays ?? 90)),
+		defaultMaxPeople: Math.max(0, Number(data.defaultMaxPeople ?? 100)),
+		defaultMaxTables: Math.max(0, Number(data.defaultMaxTables ?? 25)),
+		defaultPeoplePerTable: Math.max(1, Number(data.defaultPeoplePerTable ?? 4)),
 		customFields: Array.isArray(data.customFields) ? data.customFields : undefined,
 		raw: data.raw,
 	};
@@ -146,13 +150,15 @@ async function fetchDateCapacities(slug: string) {
 		maxPeople: Number(row.maxPeople ?? 0),
 		maxTables: Number(row.maxTables ?? 0),
 		peoplePerTable: Number(row.peoplePerTable ?? 4),
+		isClosed: Boolean(row.isClosed ?? row.is_closed),
 		notes: row.notes ?? undefined,
 	}));
 }
 
 function buildMonthSummary(
 	orders: Array<any>,
-	capacities: Array<any>
+	capacities: Array<any>,
+	settings: any
 ): Record<
 	string,
 	{
@@ -165,15 +171,17 @@ function buildMonthSummary(
 		bookedTables: number;
 		pending: number;
 		confirmed: number;
+		isClosed: boolean;
 	}
 > {
-	const capMap: Record<string, { people: number; tables: number; perTable: number }> = {};
+	const capMap: Record<string, { people: number; tables: number; perTable: number; isClosed: boolean }> = {};
 	for (const capacity of capacities) {
 		if (capacity.date) {
 			capMap[capacity.date] = {
 				people: Number(capacity.maxPeople ?? 0),
 				tables: Number(capacity.maxTables ?? 0),
 				perTable: Number(capacity.peoplePerTable ?? 4),
+				isClosed: Boolean(capacity.isClosed),
 			};
 		}
 	}
@@ -190,8 +198,25 @@ function buildMonthSummary(
 			bookedTables: number;
 			pending: number;
 			confirmed: number;
+			isClosed: boolean;
 		}
 	> = {};
+
+	const defaultCapacity = {
+		people: Number(settings?.defaultMaxPeople ?? 100),
+		tables: Number(settings?.defaultMaxTables ?? 25),
+		perTable: Number(settings?.defaultPeoplePerTable ?? 4),
+		isClosed: false,
+	};
+	const [year, month] = String(settings?._summaryMonth ?? "1970-01").split("-").map(Number);
+	if (year && month) {
+		const days = new Date(year, month, 0).getDate();
+		for (let day = 1; day <= days; day += 1) {
+			const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+			const cap = capMap[date] ?? defaultCapacity;
+			summary[date] = { count: 0, capacity: cap.people, maxPeople: cap.people, maxTables: cap.tables, peoplePerTable: cap.perTable, bookedPeople: 0, bookedTables: 0, pending: 0, confirmed: 0, isClosed: cap.isClosed };
+		}
+	}
 
 	for (const order of orders) {
 		const bookingDate = String(order.bookingDate ?? "");
@@ -200,7 +225,7 @@ function buildMonthSummary(
 		}
 
 		if (!summary[bookingDate]) {
-			const cap = capMap[bookingDate] ?? { people: 0, tables: 0, perTable: 4 };
+			const cap = capMap[bookingDate] ?? defaultCapacity;
 			summary[bookingDate] = {
 				count: 0,
 				capacity: cap.people,
@@ -211,6 +236,7 @@ function buildMonthSummary(
 				bookedTables: 0,
 				pending: 0,
 				confirmed: 0,
+				isClosed: cap.isClosed,
 			};
 		}
 
@@ -230,7 +256,7 @@ function buildMonthSummary(
 async function fetchMonthSummary(slug: string, yearMonth: string) {
 	const start = `${yearMonth}-01`;
 	const end = `${yearMonth}-31`;
-	const [orders, capacities] = await Promise.all([
+	const [orders, capacities, settings] = await Promise.all([
 		fetchBookingOrders({ slug, startDate: start, endDate: end }),
 		(async () => {
 			const supabase = createClient();
@@ -243,8 +269,9 @@ async function fetchMonthSummary(slug: string, yearMonth: string) {
 			if (error) throw error;
 			return data ?? [];
 		})(),
+		fetchBookingSettings(slug),
 	]);
-	return buildMonthSummary(orders, capacities);
+	return buildMonthSummary(orders, capacities, { ...(settings ?? {}), _summaryMonth: yearMonth });
 }
 
 async function fetchBookingProducts(slug: string) {

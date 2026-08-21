@@ -1,7 +1,7 @@
 import { createClient as createSharedClient } from "@yumipos/web-shared/lib/client";
 import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL } from "./booking-constants";
 
-export type BookingSettings = { slug: string; title: string | null; description: string | null; logoUrl: string | null; bannerUrl: string | null; themeColor: string | null; isActive: boolean; customFields: unknown[] | null };
+export type BookingSettings = { slug: string; title: string | null; description: string | null; logoUrl: string | null; bannerUrl: string | null; themeColor: string | null; isActive: boolean; customFields: unknown[] | null; bookingWindowDays: number; defaultMaxPeople: number; defaultMaxTables: number; defaultPeoplePerTable: number };
 export type Capacity = { date: string; maxPeople: number; maxTables: number; peoplePerTable: number; notes: string | null };
 export type Product = { id: string; name: string; description: string | null; imageUrl: string | null; price: number; promoPrice: number | null; category: string | null; menuNumber: string | number | null };
 export type BookingDraft = { date: string; guests: number; tableCount: number; items: Array<{ productId: string; name: string; price: number; quantity: number }>; customer: { name: string; phone: string; email: string; notes: string } };
@@ -22,9 +22,24 @@ export async function loadBookingData() {
   if (settings.error) throw settings.error;
   if (capacities.error) throw capacities.error;
   if (products.error) throw products.error;
+  const settingsValue = settings.data ? { slug: settings.data.slug, title: settings.data.title, description: settings.data.description ?? null, logoUrl: settings.data.logoUrl ?? null, bannerUrl: settings.data.bannerUrl ?? null, themeColor: settings.data.themeColor ?? null, isActive: Boolean(settings.data.isActive), customFields: Array.isArray(settings.data.customFields) ? settings.data.customFields : null, bookingWindowDays: Math.max(1, Number(settings.data.bookingWindowDays ?? 90)), defaultMaxPeople: Math.max(0, Number(settings.data.defaultMaxPeople ?? 100)), defaultMaxTables: Math.max(0, Number(settings.data.defaultMaxTables ?? 25)), defaultPeoplePerTable: Math.max(1, Number(settings.data.defaultPeoplePerTable ?? 4)) } : null;
+  const overrides = (capacities.data ?? []).map((row: any) => ({ date: row.date ?? row.bookingDate ?? "", maxPeople: Number(row.maxPeople ?? 0), maxTables: Number(row.maxTables ?? 0), peoplePerTable: Number(row.peoplePerTable ?? 4), notes: row.notes ?? null, isClosed: Boolean(row.isClosed ?? row.is_closed) }));
+  const overrideByDate = new Map(overrides.map((entry) => [entry.date, entry]));
+  const generated: Capacity[] = [];
+  if (settingsValue) {
+    const start = new Date(`${new Date().toISOString().slice(0, 10)}T12:00:00`);
+    for (let offset = 0; offset < settingsValue.bookingWindowDays; offset += 1) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + offset);
+      const dateKey = date.toISOString().slice(0, 10);
+      const override = overrideByDate.get(dateKey);
+      if (override?.isClosed) continue;
+      generated.push(override ? { date: override.date, maxPeople: override.maxPeople, maxTables: override.maxTables, peoplePerTable: override.peoplePerTable, notes: override.notes } : { date: dateKey, maxPeople: settingsValue.defaultMaxPeople, maxTables: settingsValue.defaultMaxTables, peoplePerTable: settingsValue.defaultPeoplePerTable, notes: null });
+    }
+  }
   return {
-    settings: settings.data ? { slug: settings.data.slug, title: settings.data.title, description: settings.data.description ?? null, logoUrl: settings.data.logoUrl ?? null, bannerUrl: settings.data.bannerUrl ?? null, themeColor: settings.data.themeColor ?? null, isActive: Boolean(settings.data.isActive), customFields: Array.isArray(settings.data.customFields) ? settings.data.customFields : null } : null,
-    capacities: (capacities.data ?? []).map((row: any) => ({ date: row.date ?? row.bookingDate ?? "", maxPeople: Number(row.maxPeople ?? 0), maxTables: Number(row.maxTables ?? 0), peoplePerTable: Number(row.peoplePerTable ?? 4), notes: row.notes ?? null })),
+    settings: settingsValue,
+    capacities: generated,
     products: (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: row.imageUrl ?? row.imagePath ?? null, price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null })),
   };
 }

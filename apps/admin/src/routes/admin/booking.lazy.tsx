@@ -188,7 +188,8 @@ function AdminCalendar({
 		bookedPeople: number; 
 		bookedTables: number; 
 		pending: number; 
-		confirmed: number 
+		confirmed: number;
+		isClosed: boolean;
 	}>;
 	onNavigate: (y: number, m: number) => void;
 	onDayClick: (date: string) => void;
@@ -252,10 +253,10 @@ function AdminCalendar({
 					const info = summary[dateStr];
 					const isSelected = selectedDate === dateStr;
 					const isToday = dateStr === today;
-					const isFull = info && (
+					const isFull = info?.isClosed || (info && (
 						(info.maxPeople > 0 && info.bookedPeople >= info.maxPeople) ||
 						(info.maxTables > 0 && info.bookedTables >= info.maxTables)
-					);
+					));
 
 					return (
 						<button
@@ -571,6 +572,10 @@ function BookingSettingsPage() {
 		themeColor: "#1a5dc6",
 		featuredProductIds: [] as string[],
 		customFields: [] as any[],
+		bookingWindowDays: 90,
+		defaultMaxPeople: 100,
+		defaultMaxTables: 25,
+		defaultPeoplePerTable: 4,
 		isActive: true,
 	});
 	const [activeTab, setActiveTab] = useState<
@@ -600,6 +605,7 @@ function BookingSettingsPage() {
 	const [capTables, setCapTables] = useState("0");
 	const [capPeoplePerTable, setCapPeoplePerTable] = useState("4");
 	const [capNotes, setCapNotes] = useState("");
+	const [capIsClosed, setCapIsClosed] = useState(false);
 	const [isSavingCap, setIsSavingCap] = useState(false);
 
 
@@ -615,6 +621,10 @@ function BookingSettingsPage() {
 				themeColor: settings.themeColor || "#1a2332",
 				featuredProductIds: settings.featuredProductIds || [],
 				customFields: settings.customFields || [],
+				bookingWindowDays: Number(settings.bookingWindowDays ?? 90),
+				defaultMaxPeople: Number(settings.defaultMaxPeople ?? 100),
+				defaultMaxTables: Number(settings.defaultMaxTables ?? 25),
+				defaultPeoplePerTable: Number(settings.defaultPeoplePerTable ?? 4),
 				isActive: settings.isActive,
 			});
 		}
@@ -711,6 +721,7 @@ function BookingSettingsPage() {
 					maxPeople: Number(capPeople),
 					maxTables: Number(capTables),
 					peoplePerTable: Number(capPeoplePerTable),
+					isClosed: capIsClosed,
 					notes: capNotes || undefined,
 				});
 				toast.success(
@@ -723,6 +734,7 @@ function BookingSettingsPage() {
 					maxPeople: Number(capPeople),
 					maxTables: Number(capTables),
 					peoplePerTable: Number(capPeoplePerTable),
+					isClosed: capIsClosed,
 					notes: capNotes || undefined,
 				});
 				toast.success(`Kapasitas untuk ${formatDate(capDate)} disimpan`);
@@ -892,7 +904,7 @@ function BookingSettingsPage() {
 					>
 						<LinkIcon className="h-4 w-4" /> Buka Halaman
 					</a>
-					{(activeTab === "general" || activeTab === "products" || activeTab === "form") && (
+					{(activeTab === "general" || activeTab === "products" || activeTab === "form" || activeTab === "capacity") && (
 						<button
 							className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground text-sm hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all"
 							disabled={isSaving}
@@ -1170,6 +1182,20 @@ function BookingSettingsPage() {
 			{/* ── CAPACITY TAB ── */}
 			{activeTab === "capacity" && (
 				<div className="space-y-6" ref={capacitySectionRef}>
+					<section className="rounded-2xl border border-primary/20 bg-primary/5 p-5 space-y-4">
+						<div>
+							<h3 className="font-bold">Kapasitas Default & Periode Booking</h3>
+							<p className="mt-1 text-muted-foreground text-sm">Atur sekali. Semua tanggal dalam periode ini otomatis tersedia, kecuali tanggal yang ditutup atau diberi override.</p>
+						</div>
+						<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+							<label className="space-y-1.5 text-xs font-bold"><span>Booking ke depan (hari)</span><Input min={1} type="number" value={formData.bookingWindowDays} onChange={(e) => setFormData({ ...formData, bookingWindowDays: Math.max(1, Number(e.target.value)) })} /></label>
+							<label className="space-y-1.5 text-xs font-bold"><span>Orang default</span><Input min={0} type="number" value={formData.defaultMaxPeople} onChange={(e) => setFormData({ ...formData, defaultMaxPeople: Math.max(0, Number(e.target.value)) })} /></label>
+							<label className="space-y-1.5 text-xs font-bold"><span>Meja default</span><Input min={0} type="number" value={formData.defaultMaxTables} onChange={(e) => setFormData({ ...formData, defaultMaxTables: Math.max(0, Number(e.target.value)) })} /></label>
+							<label className="space-y-1.5 text-xs font-bold"><span>Orang per meja</span><Input min={1} type="number" value={formData.defaultPeoplePerTable} onChange={(e) => setFormData({ ...formData, defaultPeoplePerTable: Math.max(1, Number(e.target.value)) })} /></label>
+						</div>
+						<p className="text-muted-foreground text-xs">Nilai 0 berarti tidak terbatas. Tanggal khusus tetap dapat diatur di bawah.</p>
+					</section>
+
 					{/* Add/edit capacity form */}
 					<section className="rounded-2xl border border-border bg-card p-5 space-y-4">
 						<div className="flex items-center gap-2">
@@ -1303,10 +1329,15 @@ function BookingSettingsPage() {
 										id="cap-notes"
 										onChange={(e) => setCapNotes(e.target.value)}
 										placeholder="Contoh: Event khusus"
+										type="text"
 										value={capNotes}
 									/>
-								</div>
+									<div className="mt-2 flex items-center gap-2">
+										<input checked={capIsClosed} className="h-4 w-4 rounded border-border text-primary" id="cap-closed" onChange={(e) => setCapIsClosed(e.target.checked)} type="checkbox" />
+										<label className="text-xs font-bold" htmlFor="cap-closed">Tutup tanggal ini</label>
+									</div>
 							</div>
+						</div>
 						</div>
 						<button
 							className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-sm hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all"
@@ -1349,14 +1380,7 @@ function BookingSettingsPage() {
 													<td className="px-4 py-3 font-medium">{formatDate(cap.date)}</td>
 													<td className="px-4 py-3 text-center">
 														<div className="flex flex-col gap-1 items-center">
-															<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-0.5 font-bold text-primary text-[10px]">
-																<Users className="h-3 w-3" />
-																{cap.maxPeople === 0 ? "∞" : cap.maxPeople} org
-															</span>
-															<span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-0.5 font-bold text-purple-700 text-[10px]">
-																<Smartphone className="h-3 w-3 rotate-90" />
-																{cap.maxTables === 0 ? "∞" : cap.maxTables} meja
-															</span>
+															{cap.isClosed ? "Ditutup" : <><span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-0.5 font-bold text-primary text-[10px]"><Users className="h-3 w-3" />{cap.maxPeople === 0 ? "∞" : cap.maxPeople} org</span><span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-0.5 font-bold text-purple-700 text-[10px]"><Smartphone className="h-3 w-3 rotate-90" />{cap.maxTables === 0 ? "∞" : cap.maxTables} meja</span></>}
 														</div>
 													</td>
 													<td className="px-4 py-3 text-muted-foreground text-xs">
@@ -1371,6 +1395,7 @@ function BookingSettingsPage() {
 																setCapPeople(String(cap.maxPeople));
 																setCapTables(String(cap.maxTables));
 																setCapPeoplePerTable(String(cap.peoplePerTable));
+																setCapIsClosed(Boolean(cap.isClosed));
 																setCapNotes(cap.notes || "");
 																capacitySectionRef.current?.scrollIntoView({ behavior: "smooth" });
 																toast.info(`Mengedit kapasitas ${formatDate(cap.date)}`);

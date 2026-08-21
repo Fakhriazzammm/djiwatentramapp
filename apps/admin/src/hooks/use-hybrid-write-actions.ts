@@ -3585,6 +3585,10 @@ export function useHybridUpdateBookingSettings() {
 					bank_details: args?.bankDetails ?? null,
 					qris_image: args?.qrisImage ?? null,
 					is_active: Boolean(args?.isActive),
+					booking_window_days: Math.max(1, Number(args?.bookingWindowDays ?? 90)),
+					default_max_people: Math.max(0, Number(args?.defaultMaxPeople ?? 100)),
+					default_max_tables: Math.max(0, Number(args?.defaultMaxTables ?? 25)),
+					default_people_per_table: Math.max(1, Number(args?.defaultPeoplePerTable ?? 4)),
 					custom_fields: args?.customFields ?? null,
 					raw: args ?? {},
 				};
@@ -3642,6 +3646,7 @@ export function useHybridSetBookingDateCapacity() {
 					max_people: Number(args?.maxPeople ?? 0),
 					max_tables: Number(args?.maxTables ?? 0),
 					people_per_table: Number(args?.peoplePerTable ?? 4),
+					is_closed: Boolean(args?.isClosed),
 					notes: args?.notes ?? null,
 					raw: args ?? {},
 				};
@@ -3724,6 +3729,7 @@ export function useHybridSetBookingBulkDateCapacity() {
 						max_people: Number(args?.maxPeople ?? 0),
 						max_tables: Number(args?.maxTables ?? 0),
 						people_per_table: Number(args?.peoplePerTable ?? 4),
+						is_closed: Boolean(args?.isClosed),
 						notes: args?.notes ?? null,
 						raw: {
 							slug,
