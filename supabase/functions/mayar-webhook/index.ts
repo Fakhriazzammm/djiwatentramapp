@@ -129,6 +129,28 @@ async function verifyTransaction(transactionId: string) {
   return body?.data?.status === "paid" ? body.data : null;
 }
 
+async function settleBooking(bookingId: string, invoiceId: string, transaction: Record<string, unknown>) {
+  const transactionId = String(transaction.id || "");
+  if (!bookingId || !transactionId) return null;
+  const paidAt = Number(transaction.updatedAt || transaction.createdAt || Date.now());
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/settle_public_booking_payment`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      p_booking_id: bookingId,
+      p_invoice_id: invoiceId,
+      p_transaction_id: transactionId,
+      p_paid_at: paidAt,
+    }),
+  });
+  if (!response.ok) throw new Error(`Booking settlement failed (${response.status})`);
+  return await response.json();
+}
+
 function parseExtraData(value: unknown) {
   if (typeof value === "object" && value !== null) return value as Record<string, unknown>;
   if (typeof value !== "string") return {};
@@ -218,11 +240,17 @@ Deno.serve(async (req) => {
     }
 
     const customFields = Array.isArray(data.custom_field) ? data.custom_field : [];
+    const transactionExtraData = parseExtraData(transaction.extraData);
+    const bookingId = String(data?.extraData?.bookingId || transactionExtraData.bookingId || "");
+    const invoiceId = String(data.id || "");
+    if (bookingId) {
+      const settledBooking = await settleBooking(bookingId, invoiceId, transaction);
+      return json({ ok: true, booking: settledBooking });
+    }
     const customOrderId = customFields.find((field: Record<string, unknown>) => field?.key === "order_id")?.value;
     const orderId = String(
       data?.extraData?.orderId || parseExtraData(transaction?.extraData).orderId || customOrderId || "",
     );
-    const invoiceId = String(data.id || "");
     let settled = { scanned: 0, settled: [] as Array<Record<string, unknown>> };
     if (orderId) {
       const directOrderResponse = await fetchWithTimeout(

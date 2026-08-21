@@ -54,13 +54,33 @@ async function getStatus(body: JsonRecord) {
   return callRpc("get_public_booking_status", { p_slug: slug, p_booking_code: code, p_access_token: accessToken });
 }
 
+async function attachPayment(body: JsonRecord) {
+  const slug = text(body.slug, 80), code = text(body.bookingCode, 40), accessToken = token(body.accessToken);
+  const gateway = body.paymentGateway && typeof body.paymentGateway === "object" ? body.paymentGateway : null;
+  if (!slug || !code || !accessToken || !gateway) {
+    throw Object.assign(new Error("slug, bookingCode, accessToken, and paymentGateway are required"), { status: 400 });
+  }
+  return callRpc("attach_public_booking_payment", {
+    p_slug: slug,
+    p_booking_code: code,
+    p_access_token: accessToken,
+    p_payment_gateway: gateway,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json({ ok: true });
   if (req.method !== "POST") return fail("METHOD_NOT_ALLOWED", "Method not allowed", 405);
   try {
     const body = await req.json() as JsonRecord;
     const action = text(body.action, 32);
-    const result = action === "create" ? await createBooking(body) : action === "status" ? await getStatus(body) : (() => { throw Object.assign(new Error("action must be create or status"), { status: 400 }); })();
+    const result = action === "create"
+      ? await createBooking(body)
+      : action === "status"
+        ? await getStatus(body)
+        : action === "attach-payment"
+          ? await attachPayment(body)
+          : (() => { throw Object.assign(new Error("action must be create, status, or attach-payment"), { status: 400 }); })();
     return json({ success: true, data: result });
   } catch (error) {
     const status = typeof error === "object" && error !== null && "status" in error ? Number((error as { status?: unknown }).status) : 500;

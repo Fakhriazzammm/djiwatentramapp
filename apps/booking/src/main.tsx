@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarDays, Check, ChevronRight, CircleAlert, Clock3, Copy, ExternalLink, Minus, Plus, Search, ShoppingBag, Users, UtensilsCrossed } from "lucide-react";
 import { BOOKING_STEPS, type BookingStep } from "./lib/booking-constants";
 import { currency, estimatedTables, formatDate, todayIso } from "./lib/booking-formatters";
-import { type BookingDraft, type BookingResult, type Capacity, type Product, type BookingSettings, createBooking, loadBookingData, lookupBooking } from "./lib/client";
+import { type BookingDraft, type BookingResult, type Capacity, type Product, type BookingSettings, createBooking, createBookingPayment, loadBookingData, lookupBooking } from "./lib/client";
 import { validateCustomer, type CustomerForm } from "./lib/booking-validation";
 import "./index.css";
 
@@ -35,7 +35,7 @@ export default function App() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<BookingResult | null>(null);
-  const [statusCode, setStatusCode] = useState("");
+  const [statusCode, setStatusCode] = useState(() => new URLSearchParams(window.location.search).get("code") || localStorage.getItem("booking-last-code") || "");
   const [statusResult, setStatusResult] = useState<BookingResult | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
 
@@ -61,8 +61,8 @@ export default function App() {
   const submit = async () => {
     setSubmitting(true); setSubmitError(null);
     const draft: BookingDraft = { date: selectedDate, guests, tableCount, items: cartItems.map((item) => ({ productId: item.id, name: item.name, price: item.promoPrice ?? item.price, quantity: item.quantity })), customer };
-    try { const created = await createBooking(draft); setResult(created); navigate("success"); }
-    catch (error: unknown) { setSubmitError(error instanceof Error ? error.message : "Booking belum berhasil dibuat."); }
+    try { const created = await createBooking(draft); const payment = await createBookingPayment(created, draft); window.location.assign(payment.invoiceUrl); }
+    catch (error: unknown) { setSubmitError(error instanceof Error ? error.message : "Pembayaran belum berhasil disiapkan."); }
     finally { setSubmitting(false); }
   };
 
@@ -72,7 +72,7 @@ export default function App() {
   return <Shell settings={settings} onBack={screen === "landing" ? undefined : () => navigate(screen === "date" ? "landing" : screen === "menu" ? "date" : screen === "customer" ? "menu" : "customer")}>
     {screen === "landing" && <Landing settings={settings} loading={!data && !loadError} error={loadError} retry={() => { setLoadError(null); loadBookingData().then(setData).catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Data booking tidak dapat dimuat.")); }} onStart={() => navigate("date")} onStatus={() => navigate("status")} />}
     {screen === "date" && <DateStep capacities={capacities} selectedDate={selectedDate} setSelectedDate={setSelectedDate} guests={guests} setGuests={setGuests} onNext={nextFromDate} />}
-    {screen === "menu" && <MenuStep products={products} cart={cart} setQuantity={setQuantity} onNext={() => navigate("customer")} onSkip={() => navigate("customer")} />}
+    {screen === "menu" && <MenuStep products={products} cart={cart} setQuantity={setQuantity} onNext={() => navigate("customer")} />}
     {screen === "customer" && <CustomerStep customer={customer} setCustomer={setCustomer} onNext={nextFromCustomer} />}
     {screen === "review" && <Review draft={{ date: selectedDate, guests, tableCount, items: cartItems, customer, total }} error={submitError} submitting={submitting} onEdit={(step) => navigate(step)} onSubmit={submit} />}
   </Shell>;
@@ -95,9 +95,9 @@ function DateStep({ capacities, selectedDate, setSelectedDate, guests, setGuests
 }
 function Progress({ active }: { active: BookingStep }) { return <div className="progress">{BOOKING_STEPS.map((step, index) => <span className={step === active ? "active" : BOOKING_STEPS.indexOf(active) > index ? "done" : ""} key={step}>{BOOKING_STEPS.indexOf(active) > index ? <Check size={13} /> : index + 1}</span>)}</div>; }
 
-function MenuStep({ products, cart, setQuantity, onNext, onSkip }: { products: Product[]; cart: Cart; setQuantity: (id: string, quantity: number) => void; onNext: () => void; onSkip: () => void }) {
+function MenuStep({ products, cart, setQuantity, onNext }: { products: Product[]; cart: Cart; setQuantity: (id: string, quantity: number) => void; onNext: () => void }) {
   const [query, setQuery] = useState(""); const filtered = products.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()) || String(item.menuNumber ?? "").includes(query));
-  return <section className="flow"><Progress active="menu" /><StepHeader number="02" title="Mau pre-order menu?" detail="Opsional. Harga mengikuti katalog aktif." /><div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama atau nomor menu" /></div>{products.length === 0 ? <StateCard text="Menu belum tersedia. Kamu tetap bisa lanjut booking tanpa pre-order." /> : filtered.length === 0 ? <StateCard text="Menu tidak ditemukan." /> : <div className="product-grid">{filtered.map((item) => <article className="product-card" key={item.id}>{item.imageUrl ? <img src={item.imageUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="product-image"><UtensilsCrossed /></div>}<div className="product-body"><span className="menu-number">{item.menuNumber ? `#${item.menuNumber}` : "Menu"}</span><h3>{item.name}</h3><strong>{currency(item.promoPrice ?? item.price)}</strong><div className="quantity-control">{cart[item.id] ? <><button aria-label={`Kurangi ${item.name}`} onClick={() => setQuantity(item.id, cart[item.id]! - 1)}><Minus size={15} /></button><b>{cart[item.id]}</b><button aria-label={`Tambah ${item.name}`} onClick={() => setQuantity(item.id, cart[item.id]! + 1)}><Plus size={15} /></button></> : <button className="add-button" onClick={() => setQuantity(item.id, 1)}>Tambah</button>}</div></div></article>)}</div>}<StickyAction onClick={onNext}>{Object.keys(cart).length ? `Lanjut (${Object.values(cart).reduce((a, b) => a + b, 0)} item)` : "Lanjut tanpa menu"}<ChevronRight size={18} /></StickyAction><button className="skip-link" onClick={onSkip}>Lewati, saya hanya booking meja</button></section>;
+  return <section className="flow"><Progress active="menu" /><StepHeader number="02" title="Pilih menu untuk dibayar" detail="Booking tanggal dan pre-order dikonfirmasi setelah pembayaran Mayar." /><div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama atau nomor menu" /></div>{products.length === 0 ? <StateCard text="Menu belum tersedia. Booking berbayar belum dapat dilanjutkan." error /> : filtered.length === 0 ? <StateCard text="Menu tidak ditemukan." /> : <div className="product-grid">{filtered.map((item) => <article className="product-card" key={item.id}>{item.imageUrl ? <img src={item.imageUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="product-image"><UtensilsCrossed /></div>}<div className="product-body"><span className="menu-number">{item.menuNumber ? `#${item.menuNumber}` : "Menu"}</span><h3>{item.name}</h3><strong>{currency(item.promoPrice ?? item.price)}</strong><div className="quantity-control">{cart[item.id] ? <><button aria-label={`Kurangi ${item.name}`} onClick={() => setQuantity(item.id, cart[item.id]! - 1)}><Minus size={15} /></button><b>{cart[item.id]}</b><button aria-label={`Tambah ${item.name}`} onClick={() => setQuantity(item.id, cart[item.id]! + 1)}><Plus size={15} /></button></> : <button className="add-button" onClick={() => setQuantity(item.id, 1)}>Tambah</button>}</div></div></article>)}</div>}<StickyAction disabled={!Object.keys(cart).length} onClick={onNext}>{Object.keys(cart).length ? `Lanjut (${Object.values(cart).reduce((a, b) => a + b, 0)} item)` : "Pilih menu untuk lanjut"}<ChevronRight size={18} /></StickyAction></section>;
 }
 
 function CustomerStep({ customer, setCustomer, onNext }: { customer: CustomerForm; setCustomer: React.Dispatch<React.SetStateAction<CustomerForm>>; onNext: () => void }) { const errors = validateCustomer(customer); const update = (field: keyof CustomerForm, value: string) => setCustomer((current) => ({ ...current, [field]: value })); return <section className="flow"><Progress active="customer" /><StepHeader number="03" title="Data pemesan" detail="Kami butuh ini untuk konfirmasi booking." /><div className="form-card">{([ ["name", "Nama lengkap", "Contoh: Fakhri Azzam", true], ["phone", "Nomor WhatsApp", "08… atau +62…", true], ["email", "Email", "opsional@email.com", false] ] as const).map(([field, label, placeholder, required]) => <label className="form-field" key={field}>{label}{required && <sup>*</sup>}<input value={customer[field]} onChange={(event) => update(field, event.target.value)} placeholder={placeholder} inputMode={field === "phone" ? "tel" : "text"} />{errors[field] && <small className="form-error">{errors[field]}</small>}</label>)}<label className="form-field">Catatan tambahan<textarea value={customer.notes} onChange={(event) => update("notes", event.target.value)} placeholder="Alergi, kebutuhan kursi bayi, atau permintaan lain" rows={3} /></label></div><StickyAction disabled={Object.keys(errors).length > 0} onClick={onNext}>Lihat review <ChevronRight size={18} /></StickyAction></section>; }

@@ -22,7 +22,7 @@ export default defineConfig({
         orientation: "portrait",
       },
       workbox: {
-        cacheId: "djiwa-booking-v2-apple-ui",
+        cacheId: "djiwa-booking-v3-mayar-payment",
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,webmanifest,svg,png}"],
         cleanupOutdatedCaches: true,

@@ -12,3 +12,4 @@
 |---|--------|--------|
 | 2 | **Bedakan cloud project dan custom self-hosted URL** — `supabase db query --linked` menargetkan project cloud, sedangkan aplikasi memakai `supabase.yumme.id`. Selalu smoke-test kedua endpoint dan apply migration/deploy function ke runtime yang benar. | deployment |
 | 3 | **Extension PostgreSQL dapat berada di schema `extensions`** — gunakan `extensions.digest(...)`, bukan `digest(...)`, pada function SECURITY DEFINER agar tidak bergantung pada `search_path`. | debug |
+| 4 | **Payment booking harus payment-first** — simpan booking sebagai `pending` dengan hold kapasitas singkat, buat invoice Mayar lewat Edge Function, korelasikan `extraData.bookingId`, dan ubah menjadi `confirmed/paid` hanya setelah webhook memverifikasi `GET /transactions/{id}` berstatus `paid`. Redirect browser bukan bukti settlement. | payment |
