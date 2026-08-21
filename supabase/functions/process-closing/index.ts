@@ -18,7 +18,66 @@ function fail(code: string, message: string, status = 400) {
   return jsonResponse({ success: false, error: { code, message } }, status);
 }
 
+function formatStockRemaining(qty: number, unit: string): string {
+  const normalized = unit.toLowerCase().trim();
+  if (qty <= 0) return "HABIS";
+  if (["gram", "g"].includes(normalized)) return qty < 1000 ? `sisa ${qty.toFixed(0)} gram` : `sisa ${(qty / 1000).toFixed(1)} kg`;
+  if (["ml", "milliliter"].includes(normalized)) return qty < 1000 ? `sisa ${qty.toFixed(0)} ml` : `sisa ${(qty / 1000).toFixed(1)} L`;
+  if (["liter", "l"].includes(normalized)) return `sisa ${qty.toFixed(1)} L`;
+  if (normalized === "kg") return `sisa ${qty.toFixed(1)} kg`;
+  return `sisa ${qty.toFixed(0)} ${unit}`;
+}
+
+async function buildStockOpnameReport(supabase: ReturnType<typeof createClient>): Promise<string[]> {
+  const [{ data: inventoryData }, { data: storesData }] = await Promise.all([
+    supabase.from("pos_inventory").select("ingredientName,unit,quantity,lowStockThreshold,preferredStoreId"),
+    supabase.from("pos_inventory_stores").select("_id,name,phone").eq("isActive", true),
+  ]);
+  const inventory = (inventoryData ?? []) as Array<Record<string, unknown>>;
+  const stores = (storesData ?? []) as Array<{ _id?: string; name?: string; phone?: string }>;
+  const storeMap = new Map(stores.map((store) => [store._id ?? "", store]));
+  const skipKeywords = [
+    "gas", "baterai", "kresek", "sedotan", "sendok garpu", "botol 1", "ekonomi",
+    "soklin", "lifebuoy", "cling", "bento tupai", "paperbowl", "cup 12", "multi tisu", "tutup cup",
+  ];
+  const urgent = new Map<string, { phone: string; items: string[] }>();
+  const menipis = new Map<string, { phone: string; items: string[] }>();
+
+  for (const item of inventory ?? []) {
+    const name = String(item.ingredientName ?? "");
+    if (!name || skipKeywords.some((keyword) => name.toLowerCase().includes(keyword))) continue;
+    const qty = Number(item.quantity ?? 0);
+    const threshold = Number(item.lowStockThreshold ?? 0);
+    if (threshold <= 0 || qty > threshold) continue;
+    const store = storeMap.get(String(item.preferredStoreId ?? "")) ?? { name: "Lainnya", phone: "" };
+    const storeName = String(store.name ?? "Lainnya");
+    const group = qty <= 0 || qty <= threshold * 0.3 ? urgent : menipis;
+    const current = group.get(storeName) ?? { phone: String(store.phone ?? ""), items: [] };
+    if (store.phone) current.phone = String(store.phone);
+    current.items.push(`${qty <= 0 || qty <= threshold * 0.3 ? "🔴" : "🟡"} ${name} — ${formatStockRemaining(qty, String(item.unit ?? ""))}`);
+    group.set(storeName, current);
+  }
+
+  const sortStores = (groups: Map<string, { phone: string; items: string[] }>) =>
+    [...groups.entries()].sort((a, b) => b[1].items.length - a[1].items.length || a[0].localeCompare(b[0]));
+  const lines = [
+    "📋 STOCK OPNAME",
+    `🔴 Urgent: ${[...urgent.values()].reduce((sum, group) => sum + group.items.length, 0)} item  |  🟡 Menipis: ${[...menipis.values()].reduce((sum, group) => sum + group.items.length, 0)} item`,
+    "",
+  ];
+  for (const [title, groups, icon] of [["URGENT", urgent, "🔴"], ["MENIPIS", menipis, "🟡"]] as const) {
+    if (!groups.size) continue;
+    lines.push(`━━━ ${icon} ${title} ━━━`, "");
+    sortStores(groups).forEach(([name, group], index) => {
+      lines.push(`${index + 1}. ${name}${group.phone ? `  ☎️ ${group.phone}` : ""}`, ...group.items, "");
+    });
+    lines.push("");
+  }
+  return lines;
+}
+
 async function notifyCheckoutToReportGroup(params: {
+  supabase: ReturnType<typeof createClient>;
   userName: string;
   roleName: string;
   shiftName: string;
@@ -26,6 +85,7 @@ async function notifyCheckoutToReportGroup(params: {
   timestamp: number;
   items: OpnameItem[];
   kebersihan: KebersihanArea[];
+  isLastPerson: boolean;
 }): Promise<void> {
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
   const chatId = Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "";
@@ -83,6 +143,32 @@ async function notifyCheckoutToReportGroup(params: {
     if (!response.ok) {
       console.error(`[process-closing] Telegram notification failed (${response.status}): ${await response.text()}`);
       return;
+    }
+
+    if (params.isLastPerson && (params.roleName || "").trim()) {
+      const reportLines = await buildStockOpnameReport(params.supabase);
+      let chunk = "";
+      for (const line of reportLines) {
+        if ((chunk + (chunk ? "\n" : "") + line).length > 3900) {
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: chunk }),
+            signal: controller.signal,
+          });
+          chunk = line;
+        } else {
+          chunk += (chunk ? "\n" : "") + line;
+        }
+      }
+      if (chunk.trim()) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: chunk }),
+          signal: controller.signal,
+        });
+      }
     }
 
     for (const area of photoAreas) {
@@ -559,6 +645,7 @@ Deno.serve(async (req: Request) => {
 
       // Notifikasi non-fatal: checkout tetap sukses walaupun Telegram sedang gagal.
       await notifyCheckoutToReportGroup({
+        supabase,
         userName,
         roleName,
         shiftName,
@@ -566,6 +653,7 @@ Deno.serve(async (req: Request) => {
         timestamp: now,
         items,
         kebersihan: kebersihanResult,
+        isLastPerson,
       });
 
       return jsonResponse({
