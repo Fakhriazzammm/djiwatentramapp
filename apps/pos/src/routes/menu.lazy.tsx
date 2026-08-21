@@ -23,7 +23,7 @@ import {
 	ChevronDown,
 	ClipboardList,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -80,6 +80,7 @@ import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 
 const fmt = (n: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -165,6 +166,16 @@ const SIDEBAR_MENU_ITEMS = [
 	{ id: "yumi", label: "Chat AI", icon: Bot },
 	{ id: "settings", label: "Pengaturan", icon: Settings2 },
 ];
+
+const BOTTOM_NAV_3D_ICONS: Record<string, Djiwa3DIconName> = {
+	dashboard: "dashboard-overview",
+	parkir: "shopping-cart-order",
+	history: "order-receipt",
+	kas: "payment-wallet",
+	antrian: "order-queue",
+};
+
+const BOTTOM_NAV_REPORT_ICON: Djiwa3DIconName = "sales-report";
 
 const INITIAL_PRODUCTS_BATCH = 12;
 const LOAD_MORE_PRODUCTS_BATCH = 8;
@@ -416,6 +427,7 @@ function PrinterStatusBadge() {
 }
 
 function MenuPage() {
+	const reduceMotion = useReducedMotion();
 	const navigate = useNavigate();
 	// Queries
 	const siteSettings = useHybridSiteSettings();
@@ -2175,65 +2187,70 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				</main>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
-				{/* Show first 5 items directly; overflow goes to "Lainnya" which opens the full sidebar drawer */}
-				<nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 backdrop-blur-md shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-2 pt-1.5 pb-safe-area-or-2 safe-area-bottom md:hidden">
-					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-0.5 sm:gap-1">
+				<nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 px-1 pt-1.5 pb-safe-area-or-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur-md safe-area-bottom md:hidden">
+					<div className="mx-auto flex max-w-lg items-end justify-around gap-0.5 sm:max-w-none sm:gap-1">
 						{SIDEBAR_MENU_ITEMS.slice(0, 5).map((item, index) => {
-							const Icon = item.icon;
 							const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
 							const isActive = isSidebarOpen && activeSidebarTab === item.id;
-							const needsAttention = item.id === "shift" && !isShiftOpen;
+							const needsAttention = item.id === "kas" && !isShiftOpen;
+							const illustration = BOTTOM_NAV_3D_ICONS[item.id];
 
 							return (
-								<button
+								<motion.button
 									key={item.id}
+									type="button"
 									onClick={() => {
 										setActiveSidebarTab(item.id);
 										setIsSidebarOpen(true);
 									}}
+									whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+									whileHover={reduceMotion ? undefined : { y: -1 }}
+									transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
 									className={cn(
-										"flex flex-col items-center gap-0.5 min-w-[40px] transition-all",
+										"flex min-w-[48px] flex-1 flex-col items-center gap-0.5 rounded-lg py-0.5 outline-none sm:min-w-[56px]",
 										isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
-										isFocused && "ring-1 ring-primary rounded-md p-0.5"
+										isFocused && "ring-1 ring-primary",
 									)}
-									type="button"
+									aria-label={item.label}
 								>
-									<div className={cn(
-										"flex h-9 w-9 items-center justify-center rounded-md transition-all",
+									<span className={cn(
+										"flex h-9 w-10 items-center justify-center rounded-md",
 										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
-										needsAttention && "bg-rose-50 text-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.2)]"
+										needsAttention && "bg-rose-50 text-rose-600",
 									)}>
-										<Icon className={cn("h-5 w-5", needsAttention && "animate-bounce")} />
-									</div>
-									<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
-										{item.label.split(' ')[0]}
+										<motion.span
+											animate={reduceMotion ? undefined : isActive ? { scale: 1.08, y: -1 } : { scale: 1, y: 0 }}
+											transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
+											className="flex h-8 w-8 items-center justify-center"
+										>
+											<Djiwa3DIcon name={illustration} size="sm" alt="" className="h-8 w-8 object-contain" />
+										</motion.span>
 									</span>
-									<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
-										{item.label}
-									</span>
-								</button>
+									<span className="block text-center text-[9px] font-bold uppercase leading-none tracking-tight sm:hidden">{item.label.split(" ")[0]}</span>
+									<span className="hidden text-center text-[10px] font-bold uppercase leading-none tracking-tight sm:block">{item.label}</span>
+								</motion.button>
 							);
 						})}
-						{/* Laporan — navigasi ke halaman laporan */}
-						<button
-							key="laporan"
-							onClick={() => navigate({ to: "/laporan" })}
-							className={cn(
-								"flex flex-col items-center gap-0.5 min-w-[40px] transition-all",
-								"text-muted-foreground hover:text-foreground"
-							)}
+						<motion.button
 							type="button"
+							onClick={() => navigate({ to: "/laporan" })}
+							whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+							whileHover={reduceMotion ? undefined : { y: -1 }}
+							transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
+							className="flex min-w-[48px] flex-1 flex-col items-center gap-0.5 rounded-lg py-0.5 text-muted-foreground outline-none hover:text-foreground sm:min-w-[56px]"
+							aria-label="Laporan"
 						>
-							<div className="flex h-9 w-9 items-center justify-center rounded-md transition-all bg-transparent hover:bg-muted/50">
-								<FileText className="h-5 w-5" />
-							</div>
-							<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
-								Laporan
+							<span className="flex h-9 w-10 items-center justify-center rounded-md hover:bg-muted/50">
+								<motion.span
+									whileTap={reduceMotion ? undefined : { scale: 0.9 }}
+									className="flex h-8 w-8 items-center justify-center"
+								>
+									<Djiwa3DIcon name={BOTTOM_NAV_REPORT_ICON} size="sm" alt="" className="h-8 w-8 object-contain" />
+								</motion.span>
 							</span>
-							<span className="text-[11px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
-								Laporan
-							</span>
-						</button>
+							<span className="block text-center text-[9px] font-bold uppercase leading-none tracking-tight sm:hidden">Laporan</span>
+							<span className="hidden text-center text-[10px] font-bold uppercase leading-none tracking-tight sm:block">Laporan</span>
+						</motion.button>
 					</div>
 				</nav>
 			</div>
