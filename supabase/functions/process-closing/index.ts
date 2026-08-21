@@ -57,6 +57,7 @@ async function notifyCheckoutToReportGroup(params: {
     }),
   ];
 
+  const photoAreas = params.kebersihan.filter((area) => Boolean(area.photoUrl));
   const text = [
     `📤 Absen Keluar — ${date} ${time}`,
     `👤 ${params.userName}${params.roleName ? ` • ${params.roleName}` : ""}`,
@@ -67,6 +68,7 @@ async function notifyCheckoutToReportGroup(params: {
     ...stockLines,
     "",
     ...cleaningLines,
+    ...(photoAreas.length > 0 ? ["", `📸 Foto kebersihan: ${photoAreas.length} terlampir`] : []),
   ].join("\n");
 
   const controller = new AbortController();
@@ -82,6 +84,27 @@ async function notifyCheckoutToReportGroup(params: {
       console.error(`[process-closing] Telegram notification failed (${response.status}): ${await response.text()}`);
       return;
     }
+
+    for (const area of photoAreas) {
+      try {
+        const photoResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            photo: area.photoUrl,
+            caption: `📸 ${area.label || area.id} — ${area.status === "bersih" ? "Bersih" : "Perlu Perbaikan"}`,
+          }),
+          signal: controller.signal,
+        });
+        if (!photoResponse.ok) {
+          console.error(`[process-closing] Cleaning photo failed for ${area.id} (${photoResponse.status}): ${await photoResponse.text()}`);
+        }
+      } catch (error) {
+        console.error(`[process-closing] Cleaning photo error for ${area.id}:`, error);
+      }
+    }
+
     console.log(`[process-closing] Checkout notification sent to report group for ${params.userName}`);
   } catch (error) {
     console.error("[process-closing] Telegram notification error:", error);
