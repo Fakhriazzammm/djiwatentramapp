@@ -826,7 +826,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							price: product.price,
 							categoryId: product.categoryId,
 						},
-						activeDiscounts
+						activeDiscounts,
+						{ allowHappyHour: false }
 					);
 					if (customerInfo.orderType === "online") { setPriceDialogProduct({ product, defaultPrice: pricing.finalPrice }); setPriceDialogValue(String(pricing.finalPrice)); return; }
 					addToCart({
@@ -1009,7 +1010,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					price: product.price,
 					categoryId: product.categoryId,
 				},
-				activeDiscounts
+				activeDiscounts,
+				{ allowHappyHour: false }
 			);
 			addToCart({
 				productId: product._id,
@@ -1867,7 +1869,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										price: product.price,
 										categoryId: product.categoryId,
 									},
-									activeDiscounts
+									activeDiscounts,
+									{ allowHappyHour: false }
 								);
 								const cartQty = getCartQty(product._id);
 								const isFocused = isKeyboardActive && isZoneFocused("products") && focusedIndex === index;
@@ -2302,7 +2305,8 @@ function ProductDetailSheet({
 			price: product.price,
 			categoryId: product.categoryId,
 		},
-		activeDiscounts
+		activeDiscounts,
+		{ allowHappyHour: false }
 	);
 
 	// Calculate variant price

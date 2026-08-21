@@ -76,6 +76,7 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const POS_CART_STORAGE_KEY = "pos_cart_regular_pricing_v1";
 
 export function CartProvider({ children }: { children: ReactNode }) {
 	const { siteSettings, activeDiscounts } = useAppData();
@@ -83,7 +84,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	const [items, setItems] = useState<CartItem[]>(() => {
 		// Load cart from localStorage on mount
 		if (typeof window !== "undefined") {
-			const savedCart = localStorage.getItem("pos_cart");
+			const savedCart = localStorage.getItem(POS_CART_STORAGE_KEY);
 			if (savedCart) {
 				try {
 					return JSON.parse(savedCart);
@@ -137,7 +138,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	// Save cart to localStorage whenever it changes
 	useEffect(() => {
 		if (typeof window !== "undefined") {
-			localStorage.setItem("pos_cart", JSON.stringify(items));
+			localStorage.setItem(POS_CART_STORAGE_KEY, JSON.stringify(items));
 		}
 	}, [items]);
 

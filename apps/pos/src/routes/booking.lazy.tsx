@@ -702,7 +702,8 @@ function BookingPage() {
 					price: product.price,
 					categoryId: product.categoryId || "",
 				},
-				activeDiscounts
+				activeDiscounts,
+				{ allowHappyHour: false }
 			);
 
 			setCart((prev) => {
@@ -1430,7 +1431,8 @@ function BookingPage() {
 										price: product.price,
 										categoryId: product.categoryId || "",
 									},
-									activeDiscounts
+									activeDiscounts,
+									{ allowHappyHour: false }
 								);
 
 								return (

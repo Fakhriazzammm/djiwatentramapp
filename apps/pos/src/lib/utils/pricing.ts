@@ -114,13 +114,21 @@ function getPotentialPrice(
 	return originalPrice;
 }
 
+export interface PricingOptions {
+	/** POS is regular-cashier by default; member-only Happy Hour must be explicit. */
+	allowHappyHour?: boolean;
+}
+
 export function calculateEffectivePrice(
 	product: { _id: string; price: number; categoryId: string },
-	activeDiscounts: Doc<"discounts">[] | undefined | null
+	activeDiscounts: Doc<"discounts">[] | undefined | null,
+	options: PricingOptions = {}
 ): PricingResult {
 	const originalPrice = product.price;
 
-	if (!activeDiscounts || activeDiscounts.length === 0) {
+	const eligibleDiscounts = (activeDiscounts ?? []).filter((discount) => options.allowHappyHour === true || !discount.isHappyHour);
+
+	if (eligibleDiscounts.length === 0) {
 		return {
 			finalPrice: originalPrice,
 			originalPrice,
@@ -141,7 +149,7 @@ export function calculateEffectivePrice(
 	let appliedDiscount: Doc<"discounts"> | undefined;
 
 	// Sort discounts: Happy Hour first, then others
-	const sortedDiscounts = [...activeDiscounts].sort((a, b) => {
+	const sortedDiscounts = [...eligibleDiscounts].sort((a, b) => {
 		if (a.isHappyHour && !b.isHappyHour) return -1;
 		if (!a.isHappyHour && b.isHappyHour) return 1;
 		return 0;
