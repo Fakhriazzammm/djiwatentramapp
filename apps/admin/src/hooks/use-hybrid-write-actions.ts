@@ -3569,68 +3569,14 @@ export function useHybridUpdateBookingSettings() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			return (await invokeBookingAdmin<{ sourceId: string }>("upsertSettings", { payload: args })).sourceId;
-			try {
-				const slug = String(args?.slug ?? "");
-				if (!slug) {
-					throw new Error("slug is required");
-				}
-				const supabase = createClient();
-				const pos = supabase.schema("pos");
-				const { data: existing, error: existingError } = await pos
-					.from("booking_settings")
-					.select("source_id")
-					.eq("slug", slug)
-					.maybeSingle();
-				if (existingError) throw existingError;
-
-				const row = {
-					slug,
-					title: args?.title ?? "",
-					description: args?.description ?? null,
-					logo_url: args?.logoUrl ?? null,
-					banner_url: args?.bannerUrl ?? null,
-					theme_color: args?.themeColor ?? null,
-					social_links: args?.socialLinks ?? null,
-					featured_product_ids: args?.featuredProductIds ?? null,
-					payment_methods: args?.paymentMethods ?? null,
-					bank_details: args?.bankDetails ?? null,
-					qris_image: args?.qrisImage ?? null,
-					is_active: Boolean(args?.isActive),
-					booking_window_days: Math.max(1, Number(args?.bookingWindowDays ?? 90)),
-					default_max_people: Math.max(0, Number(args?.defaultMaxPeople ?? 100)),
-					default_max_tables: Math.max(0, Number(args?.defaultMaxTables ?? 25)),
-					default_people_per_table: Math.max(1, Number(args?.defaultPeoplePerTable ?? 4)),
-					custom_fields: args?.customFields ?? null,
-					raw: args ?? {},
-				};
-
-				if (existing?.source_id) {
-					const { error: updateError } = await pos
-						.from("booking_settings")
-						.update(row)
-						.eq("source_id", existing.source_id);
-					if (updateError) throw updateError;
-					return existing.source_id;
-				}
-
-				const sourceId = makeSourceId("booking_settings");
-				const { error: insertError } = await pos
-					.from("booking_settings")
-					.insert({
-						source_id: sourceId,
-						creation_time: Date.now(),
-						...row,
-					});
-				if (insertError) throw insertError;
-				return sourceId;
-			} catch (error) {
-				console.warn(
-					"[supabase-hybrid:write-update-booking-settings]",
-					error
-				);
-				throw error;
-			}
+			const payload = {
+				...args,
+				slug: String(args?.slug ?? "booking"),
+				featuredProductIds: Array.from(
+					new Set((args?.featuredProductIds ?? []).map((id: unknown) => String(id)))
+				),
+			};
+			return (await invokeBookingAdmin<{ sourceId: string }>("upsertSettings", { payload })).sourceId;
 		},
 		[fallback]
 	);

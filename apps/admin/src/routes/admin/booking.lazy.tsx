@@ -637,8 +637,10 @@ function BookingSettingsPage() {
 			setIsSaving(true);
 			await updateSettings(formData);
 			toast.success("Pengaturan disimpan!");
-		} catch {
-			toast.error("Gagal menyimpan pengaturan");
+		} catch (error) {
+			console.error("[booking-admin] gagal menyimpan pengaturan", error);
+			const message = error instanceof Error ? error.message : "Gagal menyimpan pengaturan";
+			toast.error(message);
 		} finally {
 			setIsSaving(false);
 		}
