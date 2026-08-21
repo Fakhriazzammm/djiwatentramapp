@@ -80,16 +80,17 @@ export function usePosNotifications(orderRefreshKey?: string) {
   const unreadCount = useMemo(() => notifications.filter((item) => !item.isRead).length, [notifications]);
 
   const markRead = useCallback(async (notificationId: string, acknowledge = false) => {
-    if (!token) return;
+    const effectiveToken = getEffectiveToken();
+    if (!effectiveToken) return;
     setNotifications((current) => current.map((item) => item.id === notificationId
       ? { ...item, isRead: true, readAt: new Date().toISOString(), acknowledgedAt: acknowledge ? new Date().toISOString() : item.acknowledgedAt }
       : item));
     try {
-      await callNotifications(token, { action: acknowledge ? "acknowledge" : "mark_read", notificationId });
+      await callNotifications(effectiveToken, { action: acknowledge ? "acknowledge" : "mark_read", notificationId });
     } catch {
       void refresh(false);
     }
-  }, [refresh, token]);
+  }, [getEffectiveToken, refresh]);
 
   return { notifications, unreadCount, isLoading, error, refresh, markRead };
 }

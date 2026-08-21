@@ -19,8 +19,6 @@ function PosNotificationsAdminPage() {
   const [priority, setPriority] = useState<"normal" | "high" | "urgent">("normal");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [targetRole, setTargetRole] = useState("");
-  const [targetBranchId, setTargetBranchId] = useState("");
   const [sending, setSending] = useState(false);
 
   const submit = async () => {
@@ -43,8 +41,6 @@ function PosNotificationsAdminPage() {
           priority,
           title: title.trim(),
           message: message.trim(),
-          targetRole: targetRole.trim() || null,
-          targetBranchId: targetBranchId.trim() || null,
         }),
       });
       const result = await response.json().catch(() => ({}));
@@ -75,7 +71,7 @@ function PosNotificationsAdminPage() {
         </div>
         <label className="mt-4 block text-xs font-bold">Judul<Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Contoh: Briefing Shift Sore" className="mt-2" maxLength={160} /></label>
         <label className="mt-4 block text-xs font-bold">Isi pesan<Textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Tulis informasi atau instruksi untuk tim POS..." className="mt-2 min-h-32" maxLength={4000} /></label>
-        <div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-xs font-bold">Target role <Input value={targetRole} onChange={(event) => setTargetRole(event.target.value)} placeholder="Kosongkan untuk semua role" className="mt-2" /></label><label className="text-xs font-bold">Target branch ID <Input value={targetBranchId} onChange={(event) => setTargetBranchId(event.target.value)} placeholder="Kosongkan untuk semua cabang" className="mt-2" /></label></div>
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">Notifikasi ini bersifat global untuk seluruh POS karena operasional saat ini masih satu cabang.</div>
         <div className="mt-5 flex justify-end"><Button type="button" disabled={sending} onClick={submit} className="gap-2"><Send className="h-4 w-4" />{sending ? "Mengirim..." : "Kirim ke POS"}</Button></div>
       </section>
 

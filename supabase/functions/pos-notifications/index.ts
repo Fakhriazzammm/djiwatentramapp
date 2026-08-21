@@ -166,12 +166,6 @@ async function listNotifications(user: UserContext) {
     order: "created_at.desc",
     limit: "100",
   });
-  const reads = await dbGet("pos_notification_reads", {
-    select: "notification_id,read_at,acknowledged_at",
-    user_id: `eq.${user.id}`,
-    limit: "500",
-  });
-  const readMap = new Map((reads ?? []).map((item: any) => [String(item.notification_id), item]));
   const now = Date.now();
   const visible = (rows ?? []).filter((item: any) => {
     if (item.expires_at && Date.parse(item.expires_at) < now) return false;
@@ -181,9 +175,9 @@ async function listNotifications(user: UserContext) {
     return true;
   }).map((item: any) => ({
     ...item,
-    isRead: readMap.has(String(item.id)),
-    readAt: readMap.get(String(item.id))?.read_at ?? null,
-    acknowledgedAt: readMap.get(String(item.id))?.acknowledged_at ?? null,
+    isRead: Boolean(item.global_read_at),
+    readAt: item.global_read_at ?? null,
+    acknowledgedAt: item.global_acknowledged_at ?? null,
   }));
   return visible;
 }
@@ -208,12 +202,10 @@ Deno.serve(async (req) => {
     if (action === "mark_read" || action === "acknowledge") {
       const notificationId = String((payload as Json).notificationId ?? "");
       if (!notificationId) return response({ error: "notificationId is required" }, 400);
-      await dbWrite("pos_notification_reads", "POST", {
-        notification_id: notificationId,
-        user_id: user.id,
-        read_at: new Date().toISOString(),
-        acknowledged_at: action === "acknowledge" ? new Date().toISOString() : null,
-      }, "?on_conflict=notification_id,user_id");
+      await dbWrite("pos_notifications", "PATCH", {
+        global_read_at: new Date().toISOString(),
+        global_acknowledged_at: action === "acknowledge" ? new Date().toISOString() : null,
+      }, `?id=eq.${encodeURIComponent(notificationId)}`);
       return response({ success: true });
     }
 
