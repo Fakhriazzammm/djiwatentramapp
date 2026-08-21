@@ -1905,6 +1905,8 @@ async def _check_new_orders(app):
             source_label = "Booking"
         elif row.get("source") == "customer_self_service":
             source_label = "DjiwaApp Member" if customer_source_id else "DjiwaApp Guest"
+        elif row.get("source") == "pos":
+            source_label = "POS Kasir"
 
         payment_note = "BELUM LUNAS — BAYAR KE KASIR" if row.get("paymentReceiptKind") == "cashier_pending" else None
 
