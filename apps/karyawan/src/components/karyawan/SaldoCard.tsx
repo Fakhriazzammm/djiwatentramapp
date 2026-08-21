@@ -11,7 +11,7 @@ function fmtIDR(n: number) { return new Intl.NumberFormat("id-ID",{style:"curren
 function SaldoItem({ illustration, label, value, visible, accentClass }: { illustration: Djiwa3DIconName; label: string; value: number; visible: boolean; accentClass: string }) {
   return (
     <div className="flex flex-col items-center">
-      <Djiwa3DIcon alt="" className="mb-1 h-8 w-8" name={illustration} size="sm" />
+      <Djiwa3DIcon alt="" className="mb-1 h-10 w-10 origin-center scale-[1.25]" name={illustration} size="md" />
       <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       <AnimatePresence mode="wait">
         {visible ? (

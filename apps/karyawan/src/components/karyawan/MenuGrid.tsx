@@ -64,7 +64,7 @@ export function MenuGrid({ baseRoute }: MenuGridProps) {
           className="karyawan-card flex min-h-24 w-full min-w-0 flex-col items-center justify-center gap-1 border border-border/60 bg-card p-2 transition-all hover:border-primary/20 active:scale-[.97]"
         >
           {item.illustration ? (
-            <Djiwa3DIcon alt="" className="h-10 w-10" name={item.illustration} size="sm" />
+            <Djiwa3DIcon alt="" className="h-14 w-14 origin-center scale-[1.25]" name={item.illustration} size="md" />
           ) : (
             <Icon aria-hidden="true" className="h-6 w-6 text-gray-700" strokeWidth={2} />
           )}
