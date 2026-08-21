@@ -886,7 +886,7 @@ function BookingSettingsPage() {
 				<div className="flex gap-2">
 					<a
 						className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 font-medium text-foreground text-sm hover:bg-muted transition-colors"
-						href="/booking"
+						href="https://booking.yumme.id/"
 						rel="noreferrer"
 						target="_blank"
 					>
