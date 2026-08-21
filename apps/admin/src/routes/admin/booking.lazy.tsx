@@ -568,7 +568,7 @@ function BookingSettingsPage() {
 		description: "",
 		logoUrl: "",
 		bannerUrl: "",
-		themeColor: "#1a2332",
+		themeColor: "#1a5dc6",
 		featuredProductIds: [] as string[],
 		customFields: [] as any[],
 		isActive: true,

@@ -7,11 +7,11 @@
   font-synthesis: none;
   --booking-accent: #1a5dc6;
   --booking-accent-soft: #edf4ff;
-  --ink: #1a2332;
-  --muted: #7c8290;
-  --line: #e4e7eb;
+  --ink: #111827;
+  --muted: #667085;
+  --line: #e5e7eb;
   --surface: #ffffff;
-  --surface-muted: #f7f9fc;
+  --surface-muted: #fafafa;
   --shadow-soft: 0 10px 30px rgba(15, 23, 42, .08);
   --shadow-raised: 0 24px 60px rgba(15, 23, 42, .10);
   --ease-ios: cubic-bezier(.32, .72, 0, 1);
@@ -28,7 +28,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 h1, h2, h3, strong { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
 p { color: var(--muted); line-height: 1.6; }
 
-.app-shell { min-height: 100dvh; background: radial-gradient(circle at 0 0, #edf4ff 0, transparent 30%), var(--surface-muted); }
+.app-shell { min-height: 100dvh; background: var(--surface-muted); }
 .topbar { max-width: 1120px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 24px 16px; display: flex; align-items: center; justify-content: space-between; }
 .brand { display: flex; align-items: center; gap: 11px; }
 .brand-mark { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; color: var(--booking-accent); background: var(--booking-accent-soft); box-shadow: none; }
