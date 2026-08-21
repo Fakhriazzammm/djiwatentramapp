@@ -37,27 +37,39 @@ async function callNotifications(token: string, payload: Record<string, unknown>
 
 export function usePosNotifications(orderRefreshKey?: string) {
   const { token } = useYumiAuth();
+  const getEffectiveToken = useCallback(() => {
+    if (token) return token;
+    if (typeof window !== "undefined") return window.localStorage.getItem("yumi_session_token");
+    return null;
+  }, [token]);
   const [notifications, setNotifications] = useState<PosNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async (syncOrders = true) => {
-    if (!token) {
+    const effectiveToken = getEffectiveToken();
+    if (!effectiveToken) {
       setNotifications([]);
       setIsLoading(false);
       return;
     }
     try {
       setError(null);
-      if (syncOrders) await callNotifications(token, { action: "sync_recent" });
-      const result = await callNotifications(token, { action: "list" });
+      if (syncOrders) {
+        try {
+          await callNotifications(effectiveToken, { action: "sync_recent" });
+        } catch (syncError) {
+          console.warn("Gagal sinkronisasi order notifikasi; tetap memuat notifikasi admin", syncError);
+        }
+      }
+      const result = await callNotifications(effectiveToken, { action: "list" });
       setNotifications(Array.isArray(result.notifications) ? result.notifications : []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Gagal memuat notifikasi");
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [getEffectiveToken]);
 
   useEffect(() => {
     void refresh(true);
