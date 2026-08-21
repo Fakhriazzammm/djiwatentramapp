@@ -1703,15 +1703,29 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
             f"&_creationTime=lte.{now_ms}"
             "&order=_creationTime.desc&limit=100",
         )
+        # Bayar ke kasir adalah order operasional yang harus langsung terlihat
+        # oleh kitchen/barista/report, tetapi tetap pending sampai kasir
+        # menyelesaikan pembayaran. Ini bukan bukti order sudah lunas.
+        cashier_rows = await _fetch(
+            "pos_orders",
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "&source=eq.customer_self_service"
+            "&status=eq.pending"
+            "&paymentMethod=eq.cash"
+            "&paymentReceiptKind=eq.cashier_pending"
+            f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
+            f"&_creationTime=lte.{now_ms}"
+            "&order=_creationTime.desc&limit=100",
+        )
         by_id = {str(row.get("_id")): row for row in rows if row.get("_id")}
-        for row in customer_rows:
+        for row in [*customer_rows, *cashier_rows]:
             row_id = str(row.get("_id") or "")
             if row_id and row_id not in by_id:
                 by_id[row_id] = row
@@ -1720,7 +1734,7 @@ async def _check_new_orders(app):
             key=lambda row: int(float(row.get("_creationTime") or 0)),
         )
     except Exception as e:
-        logger.warning("customer settled-order lookback failed: %s", e)
+        logger.warning("customer settled/cashier-order lookback failed: %s", e)
 
     if not rows:
         # Advance cursor to now so we don't re-scan stale window
