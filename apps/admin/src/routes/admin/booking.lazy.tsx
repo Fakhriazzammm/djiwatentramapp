@@ -1592,12 +1592,12 @@ function BookingSettingsPage() {
 						</select>
 					</div>
 
-					<div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-3">
+					<div className="mx-auto w-full max-w-2xl rounded-xl border border-primary/15 bg-primary/[0.03] p-3 space-y-3">
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 							<div>
 								<p className="text-xs font-bold text-foreground">Pilih cepat per kategori</p>
 								<p className="text-[11px] text-muted-foreground">
-									Klik kategori untuk memilih semua produknya, termasuk subkategori.
+									Pilih kategori atau subkategori untuk memilih produk sekaligus.
 								</p>
 							</div>
 							<div className="flex flex-wrap gap-1.5">
@@ -1621,7 +1621,7 @@ function BookingSettingsPage() {
 							</div>
 						</div>
 						{categories && categories.length > 0 && (
-							<div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-2">
+							<div className="grid grid-cols-1 gap-2">
 								{categoryGroups.map((category: any) => {
 									const categoryProductIds = getProductsForCategory(String(category._id));
 									const selectedCount = categoryProductIds.filter((id) => selectedProductIds.has(id)).length;
