@@ -24,6 +24,8 @@ async function notifyCheckoutToReportGroup(params: {
   shiftName: string;
   source: string;
   timestamp: number;
+  items: OpnameItem[];
+  kebersihan: KebersihanArea[];
 }): Promise<void> {
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
   const chatId = Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "";
@@ -35,12 +37,36 @@ async function notifyCheckoutToReportGroup(params: {
   const wib = new Date(params.timestamp + 7 * 60 * 60 * 1000);
   const date = wib.toISOString().slice(8, 10) + "/" + wib.toISOString().slice(5, 7);
   const time = wib.toISOString().slice(11, 16);
+  const changedItems = params.items.filter((item) => Math.abs(item.qtyAfter - item.qtyBefore) > 0.01);
+  const stockLines = [
+    `📦 Stock Opname — ${params.items.length} item dicek, ${changedItems.length} berubah`,
+    ...changedItems.slice(0, 20).map(
+      (item) => `• ${item.name}: ${item.qtyBefore} → ${item.qtyAfter} ${item.unit}`,
+    ),
+  ];
+  if (changedItems.length > 20) {
+    stockLines.push(`• ...dan ${changedItems.length - 20} item lainnya`);
+  }
+
+  const cleaningLines = [
+    "🧼 Cek Kebersihan",
+    ...params.kebersihan.map((area) => {
+      const icon = area.status === "bersih" ? "✅" : "⚠️";
+      const note = area.catatan ? ` — ${area.catatan}` : "";
+      return `${icon} ${area.label || area.id}${note}`;
+    }),
+  ];
+
   const text = [
     `📤 Absen Keluar — ${date} ${time}`,
     `👤 ${params.userName}${params.roleName ? ` • ${params.roleName}` : ""}`,
     `🕐 ${time} WIB`,
     `${params.shiftName ? `📌 ${params.shiftName}` : "📌 Tanpa shift"}`,
     `🧾 Closing Mini App (${params.source})`,
+    "",
+    ...stockLines,
+    "",
+    ...cleaningLines,
   ].join("\n");
 
   const controller = new AbortController();
@@ -515,6 +541,8 @@ Deno.serve(async (req: Request) => {
         shiftName,
         source,
         timestamp: now,
+        items,
+        kebersihan: kebersihanResult,
       });
 
       return jsonResponse({
