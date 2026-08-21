@@ -59,6 +59,7 @@ function AdminCustomers() {
 	const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
 	const [confirmDeleteCustomers, setConfirmDeleteCustomers] = useState<Customer[] | null>(null);
 	const [deleting, setDeleting] = useState(false);
 
@@ -243,10 +244,11 @@ function AdminCustomers() {
 					filteredCustomers?.map((c) => (
 						<div
 							key={c.source_id}
-							className="rounded-xl border border-border bg-card p-3 shadow-sm"
+							className="cursor-pointer rounded-xl border border-border bg-card p-3 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+							onClick={() => setDetailCustomer(c)}
 						>
 							<div className="flex items-start gap-3">
-								<input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onChange={() => toggleSelected(c.source_id)} className="mt-1 h-5 w-5 shrink-0 accent-red-600" />
+								<input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(c.source_id)} className="mt-1 h-5 w-5 shrink-0 accent-red-600" />
 								<div className="min-w-0 flex-1 space-y-1">
 									<div className="flex items-center gap-2">
 										<CustomerAvatar customer={c} />
@@ -333,9 +335,10 @@ function AdminCustomers() {
 								filteredCustomers?.map((c) => (
 									<tr
 										key={c.source_id}
-										className="transition-colors hover:bg-muted/30"
+										className="cursor-pointer transition-colors hover:bg-muted/30"
+										onClick={() => setDetailCustomer(c)}
 									>
-										<td className="w-12 px-2.5 py-2 text-center align-middle"><input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onChange={() => toggleSelected(c.source_id)} className="h-5 w-5 accent-red-600" /></td>
+										<td className="w-12 px-2.5 py-2 text-center align-middle"><input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(c.source_id)} className="h-5 w-5 accent-red-600" /></td>
 										<td className="px-2.5 py-2 align-middle">
 											<div className="flex items-center gap-2">
 												<CustomerAvatar customer={c} />
@@ -380,6 +383,26 @@ function AdminCustomers() {
 					</table>
 				</div>
 			</div>
+
+			{detailCustomer ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailCustomer(null); }}>
+					<div role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-2xl">
+						<div className="flex items-start justify-between gap-4">
+							<div className="flex min-w-0 items-center gap-3"><CustomerAvatar customer={detailCustomer} /><div className="min-w-0"><p id="customer-detail-title" className="truncate text-lg font-black">{detailCustomer.name || "Tanpa Nama"}</p><p className="truncate text-sm text-muted-foreground">Detail customer</p></div></div>
+							<button type="button" aria-label="Tutup detail customer" onClick={() => setDetailCustomer(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
+						</div>
+						<div className="mt-5 grid grid-cols-2 gap-2 text-sm">
+							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Email</p><p className="mt-1 break-all font-semibold">{detailCustomer.email || "-"}</p></div>
+							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Telepon</p><p className="mt-1 font-semibold">{detailCustomer.phone || "-"}</p></div>
+							<div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">Poin aktif</p><p className="mt-1 font-black text-amber-900">{detailCustomer.total_points.toLocaleString("id-ID")}</p></div>
+							<div className="rounded-xl bg-violet-50 p-3"><p className="text-xs text-violet-700">Lifetime points</p><p className="mt-1 font-black text-violet-900">{detailCustomer.lifetime_points.toLocaleString("id-ID")}</p></div>
+							<div className="rounded-xl bg-blue-50 p-3"><p className="text-xs text-blue-700">Total orders</p><p className="mt-1 font-black text-blue-900">{detailCustomer.total_orders.toLocaleString("id-ID")}</p></div>
+							<div className="rounded-xl bg-green-50 p-3"><p className="text-xs text-green-700">Total spending</p><p className="mt-1 font-black text-green-900">{formatRupiah(detailCustomer.total_spent)}</p></div>
+						</div>
+						<div className="mt-4 grid gap-2 text-sm"><div className="flex justify-between gap-4 border-b border-border pb-2"><span className="text-muted-foreground">Bergabung</span><span className="font-semibold">{formatDate(detailCustomer.created_at, true)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Order terakhir</span><span className="font-semibold">{formatDate(detailCustomer.last_order_at, true)}</span></div></div>
+					</div>
+				</div>
+			) : null}
 
 			{confirmDeleteCustomers ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setConfirmDeleteCustomers(null); }}>
