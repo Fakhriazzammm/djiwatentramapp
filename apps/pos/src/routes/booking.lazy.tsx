@@ -118,7 +118,7 @@ function downloadReceiptJpg(
 	const PAD = 40;
 	const LINE = 1;
 	const themeColor = settings?.themeColor || "#1a2332";
-	const storeName = settings?.title || siteSettings?.storeName || "Djiwa Tentram";
+	const storeName = settings?.title || siteSettings?.storeName || "Djiwa Tentram Centrik";
 	const storeAddress = siteSettings?.storeAddress || "";
 	const storePhone = siteSettings?.storePhone || "";
 

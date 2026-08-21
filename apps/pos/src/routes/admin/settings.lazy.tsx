@@ -359,7 +359,7 @@ export function SettingsPage({
 		timezone: "UTC+7 (Jakarta)",
 		lowStockAlert: 10,
 		// App Branding
-		appName: "Yumi POS",
+		appName: "Djiwa Tentram Centrik",
 		appVersion: "1.0.0",
 		developerName: "Zantara Technology",
 		headerLogoUrl: "",
@@ -708,7 +708,7 @@ export function SettingsPage({
 				allowOpenBillPrint: siteSettings.allowOpenBillPrint ?? true,
 				taxRate: siteSettings.taxRate ?? 0,
 				serviceChargeRate: siteSettings.serviceChargeRate ?? 0,
-				appName: siteSettings.appName ?? "Yumi POS",
+				appName: siteSettings.appName ?? "Djiwa Tentram Centrik",
 				appVersion: siteSettings.appVersion ?? "1.0.0",
 				developerName: siteSettings.developerName ?? "Zantara Technology",
 				headerLogoUrl: siteSettings.headerLogoUrl ?? "",
@@ -854,7 +854,7 @@ export function SettingsPage({
 				seoShareDescription: settings.seoShareDescription,
 				seoShareImageUrl: settings.seoShareImageUrl,
 				seoCanonicalUrl: settings.seoCanonicalUrl,
-				// Mayar Payment Gateway
+				// Pembayaran QRIS
 				mayarEnabled: paymentSettings.mayarEnabled,
 				mayarTestMode: paymentSettings.mayarTestMode,
 				// Manual Payment
@@ -1531,7 +1531,7 @@ export function SettingsPage({
 					{ id: "pos", label: "Konfigurasi Pembayaran", icon: CreditCard },
 					{ id: "store", label: "Informasi Toko", icon: MapPin },
 					{ id: "branding", label: "Branding & SEO", icon: Globe },
-					{ id: "yumiAI", label: "Yumi AI", icon: ShieldCheck },
+					{ id: "yumiAI", label: "Centrik AI", icon: ShieldCheck },
 					{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
 				] as const);
 	const pageContainerClass =
@@ -3102,7 +3102,7 @@ export function SettingsPage({
 									</div>
 									<div>
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Lokasi</label>
-										<Input className="h-9 text-xs" value={employeeOnboardingSettings.defaultLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultLocation: e.target.value }))} placeholder="Djiwa Tentram" />
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.defaultLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultLocation: e.target.value }))} placeholder="Djiwa Tentram Centrik" />
 									</div>
 									<div className="flex items-end pb-0.5">
 										<label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-background px-3 py-2 text-xs transition-colors hover:bg-muted/50">
@@ -3677,13 +3677,13 @@ export function SettingsPage({
 									</div>
 								</div>
 
-								{/* Mayar Payment Gateway Section */}
+								{/* Pembayaran QRIS Section */}
 								<div className="space-y-4 rounded-3xl border border-border/50 bg-muted/30 p-4 md:p-6">
 									<div className="flex items-center gap-3 border-border/50 border-b pb-4">
 										<Wallet className="h-5 w-5 text-primary" />
 										<div>
 											<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
-												Payment Gateway Mayar.id
+												Pembayaran QRIS
 											</h4>
 											<p className="text-muted-foreground text-xs">
 												Integrasi pembayaran QRIS otomatis
@@ -3695,7 +3695,7 @@ export function SettingsPage({
 										<div className="flex items-center gap-3 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4">
 											<ShieldCheck className="h-5 w-5 text-amber-600" />
 											<p className="text-amber-700 text-xs">
-												API Key Mayar belum dikonfigurasi di environment. Hubungi administrator untuk mengaktifkan fitur ini.
+												Konfigurasi pembayaran QRIS belum tersedia. Hubungi administrator untuk mengaktifkan fitur ini.
 											</p>
 										</div>
 									)}
@@ -3705,10 +3705,10 @@ export function SettingsPage({
 											<div className="flex items-center justify-between rounded-3xl border border-border bg-card p-4">
 												<div>
 													<span className="block font-bold text-foreground text-sm tracking-tight">
-														Aktifkan Mayar Payment Gateway
+														Aktifkan Pembayaran QRIS
 													</span>
 													<span className="text-muted-foreground text-xs">
-														Izinkan pembayaran melalui invoice QRIS Mayar.id
+														Izinkan pembayaran melalui invoice QRIS
 													</span>
 												</div>
 												<button
@@ -3765,7 +3765,7 @@ export function SettingsPage({
 											{paymentSettings.mayarEnabled && !paymentSettings.mayarTestMode && (
 												<div className="rounded-3xl border border-green-500/20 bg-green-500/5 p-4">
 													<p className="text-green-700 text-xs">
-														<strong>Mode Production Aktif:</strong> Semua transaksi akan diproses secara nyata melalui Mayar.id
+														<strong>Mode Production Aktif:</strong> Semua transaksi akan diproses secara nyata melalui pembayaran QRIS
 													</p>
 												</div>
 											)}
@@ -4291,7 +4291,7 @@ export function SettingsPage({
 								</div>
 								<div>
 									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-										Konfigurasi Yumi AI
+										Konfigurasi Centrik AI
 									</h3>
 									<p className="text-muted-foreground text-sm">
 										Pilih model AI untuk OCR/Vision, Chat/Teks, Ringkas/Sintesis, Analitik, dan fallback.
@@ -4300,7 +4300,7 @@ export function SettingsPage({
 							</div>
 
 							<div className="rounded-3xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted-foreground leading-relaxed">
-								Perubahan model akan tersimpan di settings dan langsung dipakai di Yumi AI Chat admin, Yumi AI Chat POS, OCR scan struk, serta fitur ringkasan/sintesis.
+								Perubahan model akan tersimpan di settings dan langsung dipakai di Centrik AI Chat admin, Centrik AI Chat POS, OCR scan struk, serta fitur ringkasan/sintesis.
 							</div>
 
 							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">

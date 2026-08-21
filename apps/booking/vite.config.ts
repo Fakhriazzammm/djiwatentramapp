@@ -11,9 +11,9 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "Booking Djiwa Tentram",
+        name: "Booking Djiwa Tentram Centrik",
         short_name: "Booking",
-        description: "Booking meja dan pre-order menu Djiwa Tentram.",
+        description: "Booking meja dan pre-order menu Djiwa Tentram Centrik.",
         theme_color: "#1a5dc6",
         background_color: "#f7f9fc",
         display: "standalone",
@@ -22,7 +22,7 @@ export default defineConfig({
         orientation: "portrait",
       },
       workbox: {
-        cacheId: "djiwa-booking-v4-mayar-visible",
+        cacheId: "djiwa-booking-v4-centrik",
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,webmanifest,svg,png}"],
         cleanupOutdatedCaches: true,

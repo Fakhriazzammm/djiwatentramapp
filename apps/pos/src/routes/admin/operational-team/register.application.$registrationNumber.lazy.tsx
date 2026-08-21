@@ -34,7 +34,7 @@ function ApplicationDetailPage() {
 	const siteSettings = useHybridSiteSettings();
 	const roles = useHybridStaffRoles() ?? [];
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
-	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || onboardingSettings.signatoryName || "Djiwa Tentram").trim();
+	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || onboardingSettings.signatoryName || "Djiwa Tentram Centrik").trim();
 	const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
 
 	const approveApp = useHybridApproveApplication();
@@ -517,7 +517,7 @@ function ApplicationDetailPage() {
 									? `${app.employment.contractDuration} bulan`
 									: "-"
 							} />
-							<InfoRow label="Lokasi" value={app.employment?.location || "Djiwa Tentram"} />
+							<InfoRow label="Lokasi" value={app.employment?.location || "Djiwa Tentram Centrik"} />
 						</div>
 					</div>
 

@@ -234,7 +234,7 @@ function AdminMieYamin() {
       {activeTab === "pricing" ? (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h2 className="font-bold">Pengaturan Harga</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Nilai ini digunakan Order Mie Yamin dan invoice Mayar berikutnya.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Nilai ini digunakan Order Mie Yamin dan invoice pembayaran berikutnya.</p>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             <label className="text-sm font-bold">Mie yamin per kg<Input className="mt-2" type="number" min={0} value={form.noodlePricePerKg} onChange={(e) => update("noodlePricePerKg", Number(e.target.value) || 0)} /></label>
             <label className="text-sm font-bold">Kemasan per pcs<Input className="mt-2" type="number" min={0} value={form.readyPackPrice} onChange={(e) => update("readyPackPrice", Number(e.target.value) || 0)} /></label>

@@ -174,7 +174,7 @@ function generateFallbackPdf(
 		y += fontSize * 0.45 + 1.5;
 	};
 
-	addTextLine("Djiwa Tentram Cafe & Resto", 10, "bold", "center");
+	addTextLine("Djiwa Tentram Centrik", 10, "bold", "center");
 	addTextLine(draft.contract.title || "Perjanjian Kerja", 16, "bold", "center");
 	y += 2;
 	pdf.setDrawColor(190);

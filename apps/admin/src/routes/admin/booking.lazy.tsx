@@ -839,7 +839,7 @@ function BookingSettingsPage() {
 		}
 
 		const period = `${startDate} s/d ${endDate}`;
-		const storeName = settings?.title || "Djiwa Tentram";
+		const storeName = settings?.title || "Djiwa Tentram Centrik";
 
 		const exportData = filteredOrders.map((o: any) => ({
 			bookingCode: o.bookingCode,
@@ -886,7 +886,7 @@ function BookingSettingsPage() {
 				<div className="flex gap-2">
 					<a
 						className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 font-medium text-foreground text-sm hover:bg-muted transition-colors"
-						href="https://booking.yumme.id/"
+						href="https://Djiwa Tentram Centrik/"
 						rel="noreferrer"
 						target="_blank"
 					>
@@ -1402,7 +1402,7 @@ function BookingSettingsPage() {
 								className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
 								id="page-title"
 								onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-								placeholder="Djiwa Tentram Cafe"
+								placeholder="Djiwa Tentram Centrik Cafe"
 								value={formData.title}
 							/>
 						</div>

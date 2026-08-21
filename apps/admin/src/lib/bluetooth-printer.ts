@@ -598,7 +598,7 @@ export class BluetoothPrinterService {
 			}
 		}
 
-		const headerText = settings.receiptHeader || settings.storeName || "YUMI POS";
+		const headerText = settings.receiptHeader || settings.storeName || "Djiwa Tentram Centrik";
 		const fontSize = settings.receiptFontSize || "normal";
 		if (fontSize === "large") {
 			result.width(2).height(2);

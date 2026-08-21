@@ -39,10 +39,10 @@ async function callMayar<T>(path: string, init: RequestInit & { timeoutMs?: numb
         const sc = json?.statusCode ?? res.status;
         const msg = json?.messages ?? json?.message ?? res.statusText;
         const dataStr = json?.data ? `; data=${JSON.stringify(json.data)}` : "";
-        detail = `Mayar API error ${sc}: ${msg}${dataStr}`;
+        detail = `Payment provider error ${sc}: ${msg}${dataStr}`;
       } catch {
         const text = await res.text().catch(() => "");
-        detail = `Mayar API error ${res.status}: ${text || res.statusText}`;
+        detail = `Payment provider error ${res.status}: ${text || res.statusText}`;
       }
       throw new Error(detail);
     }
@@ -125,15 +125,15 @@ export async function mayarCreateInvoiceViaItems(payload: {
     const success = resp?.statusCode === 200 || resp?.messages === "success";
     return { success, id: resp?.data?.id, transactionId: resp?.data?.transactionId, link: resp?.data?.link, message: resp?.messages };
   } catch (err: any) {
-    let message = err?.message || "Gagal membuat invoice Mayar";
-    const match = /Mayar API error\s+\d+:\s+(.+)/.exec(message || "");
+    let message = err?.message || "Gagal membuat invoice pembayaran";
+    const match = /Payment provider error\s+\d+:\s+(.+)/.exec(message || "");
     if (match?.[1]) {
       try {
         const parsed = JSON.parse(match[1]);
         const msgs = Array.isArray((parsed as any)?.data)
           ? (parsed as any).data.map((d: any) => d?.message || d?.type).filter(Boolean).join("; ")
           : (parsed as any)?.messages || message;
-        message = `Validasi Mayar: ${msgs}`;
+        message = `Validasi pembayaran: ${msgs}`;
       } catch {
         // biarkan message apa adanya
       }
@@ -162,7 +162,7 @@ export async function mayarEditInvoice(payload: {
     const success = resp?.statusCode === 200 || resp?.messages === "success";
     return { success, id: resp?.data?.id, transactionId: resp?.data?.transactionId, link: resp?.data?.link, message: resp?.messages };
   } catch (err: any) {
-    return { success: false, message: err?.message || "Gagal mengedit invoice Mayar" };
+    return { success: false, message: err?.message || "Gagal mengedit invoice pembayaran" };
   }
 }
 

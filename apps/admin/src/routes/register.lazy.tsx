@@ -61,7 +61,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 		monthlySalary: 0,
 		dailyAllowance: 0,
 		shiftRate: 0,
-		location: "Djiwa Tentram",
+		location: "Djiwa Tentram Centrik",
 		username: "",
 		slug: "",
 		homePin: "",
@@ -216,7 +216,7 @@ function RegisterPage() {
 			const c = await generateContract({
 				employee: draft.personal,
 				employment: draft.employment,
-				company: { name: "Djiwa Tentram Cafe & Resto" },
+				company: { name: "Djiwa Tentram Centrik" },
 				options: { tone: "formal", customNotes: draft.contract.aiPrompt },
 			});
 			setDraft((p) => ({

@@ -6050,7 +6050,7 @@ export function useHybridMayarCreateInvoice() {
 			if (!hasSupabaseConfig) return fallback(args);
 			try {
 				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase Mayar function not configured");
+				throw new Error("Supabase payment function not configured");
 			} catch {
 				return fallback(args);
 			}
@@ -6066,7 +6066,7 @@ export function useHybridMayarGetInvoiceDetail() {
 			if (!hasSupabaseConfig) return fallback(args);
 			try {
 				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase Mayar function not configured");
+				throw new Error("Supabase payment function not configured");
 			} catch {
 				return fallback(args);
 			}

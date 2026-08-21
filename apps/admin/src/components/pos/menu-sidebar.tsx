@@ -175,7 +175,7 @@ export function MenuSidebar({
 		{ value: "antrian", label: "Antrian", icon: ClipboardList, iconColor: "text-emerald-600", illustration: "order-queue" },
 		{
 			value: "yumi",
-			label: "Yumi AI",
+			label: "Centrik AI",
 			icon: Bot,
 			iconColor: "text-primary",
 			illustration: "business-ai-assistant",
@@ -2424,7 +2424,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
 				sendTelegramNotif("📊 LAPORAN SHIFT", {
-					"🏪": "Djiwa Tentram",
+					"🏪": "Djiwa Tentram Centrik",
 					"🔄 Shift": si.shiftName || shiftName || "-",
 					"👥 Tim": `\n${teamIndented}`,
 					"━━━ DI SISTEM ━━━": "━━━",
@@ -2540,7 +2540,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
 				console.log("[shift-notif] Sending open shift notification...");
 				sendTelegramNotif("✅ SHIFT DIBUKA", {
-					"🏪": "Djiwa Tentram",
+					"🏪": "Djiwa Tentram Centrik",
 					"🔄 Shift": shiftName,
 					"👤 Kasir": cashierName,
 					"👥 Tim": `\n${teamFormatted}`,
@@ -2993,7 +2993,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 									/>
 								</div>
 								<p className="text-[10px] text-muted-foreground font-medium flex items-center gap-0.5 mt-0.5">
-									<AlertCircle className="h-2.5 w-2.5 text-amber-500" /> Total dari dashboard provider (Mayar/EDC)
+									<AlertCircle className="h-2.5 w-2.5 text-amber-500" /> Total dari dashboard pembayaran (QRIS/EDC)
 								</p>
 							</div>
 						</div>

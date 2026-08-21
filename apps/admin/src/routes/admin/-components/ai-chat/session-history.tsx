@@ -82,7 +82,7 @@ export const SessionHistory = ({
 						</div>
 						<h3 className="text-[11px] font-bold text-foreground mb-1">Mulai Percakapan</h3>
 						<p className="text-[11px] text-muted-foreground leading-relaxed">
-							Buat chat baru untuk mulai berdiskusi dengan Yumi AI
+							Buat chat baru untuk mulai berdiskusi dengan Centrik AI
 						</p>
 					</div>
 				) : filtered.length === 0 ? (

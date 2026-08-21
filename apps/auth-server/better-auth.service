@@ -1,5 +1,5 @@
 [Unit]
-Description=Better Auth Server for Djiwa Tentram
+Description=Better Auth Server for Djiwa Tentram Centrik
 After=network.target docker.service
 Requires=docker.service
 

@@ -191,7 +191,7 @@ export function AppUpdatePrompt() {
 								? "Mohon tunggu sebentar, aplikasi sedang diperbarui ke versi terbaru."
 								: (
 									<>
-										Ada versi baru Djiwa Tentram POS. Klik <strong>Update Sekarang</strong> agar
+										Ada versi baru Djiwa Tentram Centrik POS. Klik <strong>Update Sekarang</strong> agar
 										aplikasi melakukan hard refresh otomatis dan memakai bundle terbaru.
 									</>
 								)}

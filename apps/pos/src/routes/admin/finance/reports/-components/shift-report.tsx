@@ -158,7 +158,7 @@ function buildShiftSummaryText(shift: ShiftRow, details: any, allStaffUsers?: an
 	const totalItems = shift.totalItemsSold > 0 ? shift.totalItemsSold : derivedTotalItems;
 	const lines: string[] = [
 		"Daily Revenue Report",
-		"Djiwa Tentram Cafe & Resto",
+		"Djiwa Tentram Centrik",
 		`Tanggal: ${formatDateTime(shift.startTime)}`,
 		"",
 		`${shift.shiftName} (${shift.status})`,

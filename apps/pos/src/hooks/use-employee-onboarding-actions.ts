@@ -182,7 +182,7 @@ export function useHybridSubmitEmployeeApplication() {
 					});
 					const msg = [
 						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-						"📝 PENDAFTARAN MASUK — DJIWA TENTRAM",
+						"📝 PENDAFTARAN MASUK — DJIWA TENTRAM CENTRIK",
 						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
 						"",
 						"Ada pendaftar baru yang perlu direview! 👀",

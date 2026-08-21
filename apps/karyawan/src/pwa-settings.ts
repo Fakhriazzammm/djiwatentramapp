@@ -2,9 +2,9 @@
 	// Defaults digunakan saat build script gagal fetch dari Supabase
 
 	export const karyawanPwaSettings = {
-	"name": "Djiwa Tentram Karyawan",
-	"short_name": "Djiwa HR",
-	"description": "Portal karyawan Djiwa Tentram — absensi, jadwal, slip gaji",
+	"name": "Djiwa Tentram Centrik Karyawan",
+	"short_name": "Centrik HR",
+	"description": "Portal karyawan Djiwa Tentram Centrik — absensi, jadwal, slip gaji",
 	"theme_color": "#1a5dc6",
 	"background_color": "#ffffff",
 	"start_url": "/",

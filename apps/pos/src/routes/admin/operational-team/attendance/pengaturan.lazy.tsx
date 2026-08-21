@@ -538,7 +538,7 @@ function AttendancePengaturanPage() {
 							</h4>
 							<button
 								onClick={() => {
-									const label = window.prompt("Nama grup (contoh: DJIWA TENTRAM):");
+									const label = window.prompt("Nama grup (contoh: DJIWA TENTRAM CENTRIK):");
 									if (label?.trim()) {
 										setRosterTemplate((prev) => ({
 											...prev,

@@ -123,7 +123,7 @@ export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = 
 	defaultPassword: "djiwatentram123",
 	defaultRoleId: "",
 	defaultEmploymentType: "probation",
-	defaultLocation: "Djiwa Tentram",
+	defaultLocation: "Djiwa Tentram Centrik",
 	prefillSalaryFromRole: true,
 	salaryPreview: {
 		enabled: false,

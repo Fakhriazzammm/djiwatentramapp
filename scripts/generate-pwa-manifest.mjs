@@ -18,9 +18,9 @@ const SUPABASE_KEY =
 	process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 const DEFAULT_POS = {
-	name: "Djiwa Tentram POS",
-	short_name: "Djiwa POS",
-	description: "Aplikasi kasir Djiwa Tentram",
+	name: "Djiwa Tentram Centrik POS",
+	short_name: "Centrik POS",
+	description: "Aplikasi kasir Djiwa Tentram Centrik",
 	theme_color: "#fefefe",
 	background_color: "#0a0a0b",
 	start_url: "/menu",
@@ -30,9 +30,9 @@ const DEFAULT_POS = {
 };
 
 const DEFAULT_KARYAWAN = {
-	name: "Djiwa Tentram Karyawan",
-	short_name: "Djiwa HR",
-	description: "Portal karyawan Djiwa Tentram — absensi, jadwal, slip gaji",
+	name: "Djiwa Tentram Centrik Karyawan",
+	short_name: "Centrik HR",
+	description: "Portal karyawan Djiwa Tentram Centrik — absensi, jadwal, slip gaji",
 	theme_color: "#1a5dc6",
 	background_color: "#ffffff",
 	start_url: "/",
@@ -42,8 +42,8 @@ const DEFAULT_KARYAWAN = {
 };
 
 const DEFAULT_CUSTOMER = {
-	name: "Djiwa Tentram App",
-	short_name: "Djiwa App",
+	name: "Djiwa Tentram Centrik App",
+	short_name: "Centrik App",
 	description: "Pesan menu favorit dari meja",
 	theme_color: "#fefefe",
 	background_color: "#ffffff",

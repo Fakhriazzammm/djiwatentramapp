@@ -241,7 +241,7 @@ export function PaymentConfirmationModal({
 			options.push({ id: "transfer", label: "TRANSFER BANK" });
 		}
 		if (siteSettings?.mayarEnabled) {
-			options.push({ id: "qris_mayar", label: "QRIS DINAMIS (MAYAR)" });
+			options.push({ id: "qris_mayar", label: "QRIS DINAMIS" });
 		}
 
 		// Fallback default

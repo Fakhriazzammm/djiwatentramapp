@@ -8,7 +8,7 @@ export const Route = createLazyFileRoute("/")({
 
 function IndexPage() {
 	const settings = useHybridSiteSettings();
-	const appName = settings?.appName || "YumiPOS";
+	const appName = settings?.appName || "Djiwa Tentram Centrik";
 	const headerLogoUrl = settings?.headerLogoUrl || settings?.logoUrl || "";
 	const landingTitle = settings?.landingTitle || "Point of Sale Modern untuk Bisnis Anda";
 	const landingDescription =

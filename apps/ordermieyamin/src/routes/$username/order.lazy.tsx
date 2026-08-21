@@ -408,7 +408,7 @@ function OrderPage() {
 					paymentReceiptKind: "gateway_paid",
 				});
 				setReceipt((value) => (value ? { ...value, mode: "paid" } : value));
-				toast.success("Pembayaran Mayar terkonfirmasi");
+				toast.success("Pembayaran QRIS terkonfirmasi");
 			} catch {
 				// Retry quietly.
 			}
@@ -581,7 +581,7 @@ function OrderPage() {
 						],
 					});
 					if (!invoice?.data?.id) {
-						throw new Error(invoice?.messages || "Gagal membuat invoice Mayar");
+						throw new Error(invoice?.messages || "Gagal membuat invoice pembayaran");
 					}
 					await updateOrderPaymentGateway({
 						id: orderId,

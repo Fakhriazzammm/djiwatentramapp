@@ -1,5 +1,5 @@
 #!/bin/bash
-# Auto-deploy script for Djiwa Tentram apps (VPS)
+# Auto-deploy script for Djiwa Tentram Centrik apps (VPS)
 # Run after git pull to rebuild and redeploy all apps
 # Usage: ./scripts/deploy-vps.sh [pos|karyawan|customer|web|all]
 
@@ -9,7 +9,7 @@ cd "$SCRIPT_DIR"
 
 APP="${1:-all}"
 
-echo "🚀 Deploying Djiwa Tentram apps to VPS..."
+echo "🚀 Deploying Djiwa Tentram Centrik apps to VPS..."
 echo "Target: $APP"
 
 # ── Pre-flight checks ──

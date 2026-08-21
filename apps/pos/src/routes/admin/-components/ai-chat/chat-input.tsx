@@ -143,7 +143,7 @@ export const ChatInput = ({
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={onKeyDown}
-					placeholder={isListening ? "Mendengarkan..." : isScanMode ? "Instruksi analisis gambar..." : "Tanya Yumi AI..."}
+					placeholder={isListening ? "Mendengarkan..." : isScanMode ? "Instruksi analisis gambar..." : "Tanya Centrik AI..."}
 					className="min-h-[52px] max-h-[160px] w-full resize-none bg-transparent px-3 py-3 text-sm focus:outline-none placeholder:text-muted-foreground/50 md:max-h-[200px] md:px-5 md:py-4"
 					rows={1}
 					onInput={(e) => {
@@ -191,7 +191,7 @@ export const ChatInput = ({
 			</div>
 
 			<p className="mt-2 text-center text-[11px] text-muted-foreground/45">
-				Yumi AI dapat membuat kesalahan. Periksa informasi penting.
+				Centrik AI dapat membuat kesalahan. Periksa informasi penting.
 			</p>
 		</div>
 	);

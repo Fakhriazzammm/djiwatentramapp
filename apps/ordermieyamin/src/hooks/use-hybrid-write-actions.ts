@@ -5947,7 +5947,7 @@ export function useHybridMayarCreateInvoice() {
 					},
 				};
 			} catch (err: any) {
-				throw new Error(err?.message || "Gagal membuat invoice Mayar");
+				throw new Error(err?.message || "Gagal membuat invoice pembayaran");
 			}
 		},
 		[]
@@ -5964,7 +5964,7 @@ export function useHybridMayarGetInvoiceDetail() {
 				});
 				return { data: data?.data || null };
 			} catch (err: any) {
-				throw new Error(err?.message || "Gagal cek status Mayar");
+				throw new Error(err?.message || "Gagal cek status pembayaran");
 			}
 		},
 		[]

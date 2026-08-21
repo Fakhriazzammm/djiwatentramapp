@@ -260,7 +260,7 @@ function KaryawanLoginPage() {
 
 				{/* Footer */}
 				<p className="mt-4 text-center text-xs text-muted-foreground/50">
-					Djiwa Tentram — Kehadiran Karyawan
+					Djiwa Tentram Centrik — Kehadiran Karyawan
 				</p>
 			</motion.div>
 		</div>

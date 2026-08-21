@@ -2,8 +2,8 @@
 // Defaults digunakan saat build script gagal fetch dari Supabase
 
 export const customerPwaSettings = {
-	"name": "Djiwa Tentram App",
-	"short_name": "Djiwa App",
+	"name": "Djiwa Tentram Centrik App",
+	"short_name": "Centrik App",
 	"description": "Pesan menu favorit dari meja",
 	"theme_color": "#fefefe",
 	"background_color": "#ffffff",

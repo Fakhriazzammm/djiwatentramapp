@@ -332,9 +332,9 @@ export function buildEmployeeContractTemplate(
 	bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] },
 	customAllowances?: { name?: string; amount?: number; type?: string }[],
 ): EmployeeContractDraft {
-	const _signatoryName = signatoryName || "Djiwa Tentram Cafe & Resto";
+	const _signatoryName = signatoryName || "Djiwa Tentram Centrik";
 	const roleName = cleanText(employment.roleName) || "Team";
-	const location = cleanText(employment.location) || "Djiwa Tentram";
+	const location = cleanText(employment.location) || "Djiwa Tentram Centrik";
 	const durationMonths = employment.contractDuration && employment.contractDuration >= 1 ? employment.contractDuration : 12;
 	const bonusBody = buildBonusClause(bonusConfig);
 	const allowancesBody = buildCustomAllowancesBody(customAllowances);
@@ -586,7 +586,7 @@ export function buildContractVariableContext(
 		personal,
 		employment,
 		company: {
-			name: companyName || "Djiwa Tentram",
+			name: companyName || "Djiwa Tentram Centrik",
 			address: companyAddress || "-",
 			nib: companyNib || "-",
 			signatoryName: signatoryName || companyName || "perwakilan perusahaan",

@@ -72,7 +72,7 @@ async function callMayar(body: Record<string, unknown>) {
     body: JSON.stringify(body),
   });
   const result = await response.json().catch(() => null) as { success?: boolean; data?: any; error?: { message?: string } } | null;
-  if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Pembayaran Mayar belum berhasil disiapkan.");
+  if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Pembayaran Pembayaran QRIS belum berhasil disiapkan.");
   return result.data;
 }
 
@@ -97,7 +97,7 @@ export async function createBooking(draft: BookingDraft): Promise<BookingResult>
 
 export async function createBookingPayment(booking: BookingResult, draft: BookingDraft) {
   if (!booking.bookingId || !booking.bookingCode || !booking.totalAmount || booking.totalAmount <= 0 || !booking.items.length) {
-    throw new Error("Pilih minimal satu menu agar booking dapat dibayar melalui Mayar.");
+    throw new Error("Pilih minimal satu menu agar booking dapat dibayar melalui QRIS.");
   }
   const credentials = getGuestCredentials();
   const redirectUrl = `${window.location.origin}/booking/status?code=${encodeURIComponent(booking.bookingCode)}`;
@@ -115,7 +115,7 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
   const payment = invoiceResponse?.data || invoiceResponse;
   const invoiceId = String(payment?.id || "");
   const invoiceUrl = String(payment?.link || payment?.paymentUrl || payment?.url || "");
-  if (!invoiceId || !invoiceUrl) throw new Error("Mayar belum mengembalikan link pembayaran.");
+  if (!invoiceId || !invoiceUrl) throw new Error("Pembayaran QRIS belum mengembalikan link pembayaran.");
   await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId, invoiceUrl, transactionId: payment?.transactionId || null, status: "pending" } });
   return { invoiceId, invoiceUrl };
 }

@@ -22,7 +22,7 @@ export const exportReport = async (data: ExportData, format: ExportFormat) => {
 		
 		doc.setFontSize(11);
 		doc.setTextColor(100);
-		doc.text(`Dihasilkan oleh Yumi AI pada ${new Date().toLocaleString("id-ID")}`, 14, 30);
+		doc.text(`Dihasilkan oleh Centrik AI pada ${new Date().toLocaleString("id-ID")}`, 14, 30);
 
 		if (data.summary) {
 			doc.setFontSize(12);

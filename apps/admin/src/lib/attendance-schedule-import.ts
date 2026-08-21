@@ -438,7 +438,7 @@ export function parseSpreadsheetMatrix(
     if (i < dateCol + 2 && (i <= 2 || name === "MINGGU KE" || name === "HARI" || name === "TANGGAL")) continue;
     // Skip empty and likely header labels
     if (name === "" || name === "BARISTA" || name === "CHEF" || name === "7-9H (Full Time)" || name === "CEO / ADMIN") continue;
-    if (name.startsWith("JADWAL") || name === "DJIWA TENTRAM" || name === "TB WARMAN" || name === "Management / Lainnya") continue;
+    if (name.startsWith("JADWAL") || name === "DJIWA TENTRAM CENTRIK" || name === "TB WARMAN" || name === "Management / Lainnya") continue;
     staffNames.push(name);
   }
 

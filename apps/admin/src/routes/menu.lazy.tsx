@@ -711,7 +711,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const hasMoreProducts = displayedProducts.length < filteredProductsLength;
 
 	// Store info
-	const storeName = siteSettings?.storeName || "YumiPOS";
+	const storeName = siteSettings?.storeName || "Djiwa Tentram Centrik";
 	const logoUrl = siteSettings?.logoUrl;
 	const themeColor = siteSettings?.themeColor;
 
@@ -1236,10 +1236,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						| undefined;
 					if (useMayarGateway) {
 						if (!siteSettings?.mayarEnabled) {
-							throw new Error("Mayar belum diaktifkan di pengaturan sistem");
+							throw new Error("Pembayaran QRIS belum diaktifkan di pengaturan sistem");
 						}
 						if (!mayarConfig?.configured) {
-							throw new Error("Konfigurasi environment Mayar belum lengkap");
+							throw new Error("Konfigurasi pembayaran QRIS belum lengkap");
 						}
 						const invoiceResult = await createMayarInvoice({
 							name: customerInfo.name || "Pelanggan",
@@ -1247,7 +1247,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							mobile: siteSettings.storePhone || "085000000000",
 							redirectUrl:
 								typeof window !== "undefined" ? window.location.href : undefined,
-							description: `POS order ${siteSettings.storeName || "YumiPOS"}`,
+							description: `POS order ${siteSettings.storeName || "Djiwa Tentram Centrik"}`,
 							expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 							items: cartItems.map((item) => ({
 								quantity: item.quantity,
@@ -1258,7 +1258,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							})),
 						});
 						if (!invoiceResult.data?.id) {
-							throw new Error(invoiceResult.messages || "Gagal membuat invoice Mayar");
+							throw new Error(invoiceResult.messages || "Gagal membuat invoice pembayaran");
 						}
 						mayarInvoice = invoiceResult.data;
 					}
@@ -1324,7 +1324,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				if (shouldOpenBill) {
 					if (useMayarGateway) {
-						toast.success("Invoice Mayar berhasil dibuat"); triggerHybridRefresh(); playSuccessSound();
+						toast.success("Invoice pembayaran berhasil dibuat"); triggerHybridRefresh(); playSuccessSound();
 						if (mayarInvoice?.link && typeof window !== "undefined") {
 							window.open(mayarInvoice.link, "_blank", "noopener,noreferrer");
 						}

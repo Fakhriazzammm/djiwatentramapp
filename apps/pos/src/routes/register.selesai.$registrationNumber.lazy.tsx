@@ -159,7 +159,7 @@ function RegisterCompletePage() {
       siteSettings?.storeName ||
       siteSettings?.name ||
       onboardingSettings.signatoryName ||
-      "Djiwa Tentram",
+      "Djiwa Tentram Centrik",
   ).trim();
   const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
 

@@ -130,7 +130,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 		? clausesToHtml(contract.clauses, contract.title)
 		: plainTextToHtml(displayPlainText);
 	const safeHtml = rawHtml ? sanitizeContractHtml(fixBrBasedHtml(rawHtml)) : "";
-	const displayCompanyName = companyName || "Djiwa Tentram Cafe & Resto";
+	const displayCompanyName = companyName || "Djiwa Tentram Centrik";
 	const displaySignatoryName = signatoryName || "Penanggung Jawab Perusahaan";
 
 	return (
