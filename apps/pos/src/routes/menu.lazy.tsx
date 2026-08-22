@@ -435,7 +435,7 @@ function MenuPage() {
 	const categories = useHybridCategories();
 	const orders = useHybridOrders();
 	const orderRefreshKey = useMemo(() => (orders ?? []).slice(0, 50).map((order: any) => `${order._id}:${order.status}:${order.createdAt}`).join("|"), [orders]);
-	const { notifications, unreadCount, isLoading: notificationsLoading, error: notificationsError, markRead: markNotificationRead } = usePosNotifications(orderRefreshKey);
+	const { notifications, unreadCount, isLoading: notificationsLoading, error: notificationsError, refresh: refreshNotifications, markRead: markNotificationRead } = usePosNotifications(orderRefreshKey);
 	const activeDiscounts = useHybridActiveDiscounts();
 	const allDiscounts = useHybridAllDiscounts();
 	const roles = useHybridStaffRoles();
@@ -1684,7 +1684,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								</div>
 							</div>
 							<div className="flex items-center gap-1 shrink-0">
-								<NotificationBell unreadCount={unreadCount} onClick={() => setIsNotificationCenterOpen(true)} />
+								<NotificationBell unreadCount={unreadCount} onClick={() => { setIsNotificationCenterOpen(true); void refreshNotifications(true); }} />
 								<button
 									type="button"
 									onClick={() => {

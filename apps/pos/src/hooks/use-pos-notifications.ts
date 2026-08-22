@@ -50,6 +50,7 @@ export function usePosNotifications(orderRefreshKey?: string) {
     const effectiveToken = getEffectiveToken();
     if (!effectiveToken) {
       setNotifications([]);
+      setError("Sesi POS belum siap. Silakan tunggu sebentar atau login ulang.");
       setIsLoading(false);
       return;
     }
