@@ -4,6 +4,7 @@ import { id } from "date-fns/locale/id";
 import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -28,6 +29,15 @@ interface Customer {
 	wallet_total_debited: number;
 	wallet_status: "active" | "blocked";
 	last_order_at: string | null;
+	created_at: string;
+}
+
+interface WalletLedgerEntry {
+	id: number;
+	amount: number;
+	direction: "credit" | "debit";
+	transaction_type: string;
+	note: string | null;
 	created_at: string;
 }
 
@@ -65,6 +75,8 @@ function AdminCustomers() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
+	const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
+	const [walletLedgerLoading, setWalletLedgerLoading] = useState(false);
 	const [confirmDeleteCustomers, setConfirmDeleteCustomers] = useState<Customer[] | null>(null);
 	const [deleting, setDeleting] = useState(false);
 
@@ -145,6 +157,17 @@ function AdminCustomers() {
 			return next;
 		});
 	};
+
+	useEffect(() => {
+		if (!detailCustomer?.source_id || !detailCustomer.email) { setWalletLedger([]); return; }
+		let active = true;
+		setWalletLedgerLoading(true);
+		void invokeEdgeFunction<{ ledger?: WalletLedgerEntry[] }>("customer-wallet", { action: "get", sourceId: detailCustomer.source_id, email: detailCustomer.email })
+			.then((result) => { if (active) setWalletLedger(result.ledger ?? []); })
+			.catch((error) => { console.warn("[customers] wallet ledger error:", error); if (active) setWalletLedger([]); })
+			.finally(() => { if (active) setWalletLedgerLoading(false); });
+		return () => { active = false; };
+	}, [detailCustomer]);
 
 	const selectedCustomers = (customers ?? []).filter((customer) => selectedIds.has(customer.source_id));
 	const allVisibleSelected = Boolean(filteredCustomers?.length) && (filteredCustomers ?? []).every((customer) => selectedIds.has(customer.source_id));
@@ -411,6 +434,7 @@ function AdminCustomers() {
 							<div className="rounded-xl bg-green-50 p-3"><p className="text-xs text-green-700">Total spending</p><p className="mt-1 font-black text-green-900">{formatRupiah(detailCustomer.total_spent)}</p></div>
 						</div>
 						<div className="mt-4 grid gap-2 text-sm"><div className="flex justify-between gap-4 border-b border-border pb-2"><span className="text-muted-foreground">Bergabung</span><span className="font-semibold">{formatDate(detailCustomer.created_at, true)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Order terakhir</span><span className="font-semibold">{formatDate(detailCustomer.last_order_at, true)}</span></div></div>
+						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat saldo</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi saldo.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
 					</div>
 				</div>
 			) : null}
