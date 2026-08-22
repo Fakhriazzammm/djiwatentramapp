@@ -369,7 +369,7 @@ function OrderRow({
 						{PAY_LABEL[order.paymentStatus]}
 					</span>
 					<span className="font-bold text-xs">
-						Rp {order.totalAmount.toLocaleString("id-ID")}
+						Rp {Number(order.totalAmount ?? 0).toLocaleString("id-ID")}
 					</span>
 					
 					{/* Display custom answers in the collapsed row for quick viewing */}
@@ -427,11 +427,11 @@ function OrderRow({
 								<p className="text-sm">{order.notes}</p>
 							</div>
 						)}
-						{order.transferredAmount !== undefined && (
+						{order.transferredAmount != null && (
 							<div>
 								<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Nominal Ditransfer</p>
 								<p className="text-sm font-bold text-emerald-600">
-									Rp {order.transferredAmount.toLocaleString("id-ID")}
+									Rp {Number(order.transferredAmount ?? 0).toLocaleString("id-ID")}
 								</p>
 							</div>
 						)}
@@ -469,7 +469,7 @@ function OrderRow({
 							{order.items.map((item, i) => (
 								<div className="flex justify-between text-sm" key={i}>
 									<span>{item.name} ×{item.quantity}</span>
-									<span className="font-medium">Rp {(item.price * item.quantity).toLocaleString("id-ID")}</span>
+									<span className="font-medium">Rp {(Number(item.price ?? 0) * Number(item.quantity ?? 0)).toLocaleString("id-ID")}</span>
 								</div>
 							))}
 						</div>
@@ -1694,7 +1694,7 @@ function BookingSettingsPage() {
 								<div className="min-w-0 flex-1">
 									<p className="truncate font-bold text-sm">{product.name}</p>
 									<p className="text-muted-foreground text-xs">
-										Rp {product.price.toLocaleString("id-ID")}
+										Rp {Number(product.price ?? 0).toLocaleString("id-ID")}
 									</p>
 								</div>
 								{selectedProductIds.has(String(product._id)) && (
