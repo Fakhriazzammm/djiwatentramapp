@@ -525,8 +525,11 @@ function OrderPage() {
 		setIsSubmitting(true);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
-			const normalizedCustomerName =
-				customerName.trim() || `Customer ${tableNumber.trim() || "Walk In"}`;
+			const normalizedCustomerName = customerName.trim();
+			if (paymentChoice === "mayar" && !normalizedCustomerName) {
+				throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
+			}
+			const orderCustomerName = normalizedCustomerName || `Customer ${tableNumber.trim() || "Walk In"}`;
 			const normalizedCustomerDescription = customerDescription.trim().slice(0, 160) || undefined;
 			const normalizedTableNumber = tableNumber.trim() || undefined;
 			const normalizedNotes = notes.trim() || undefined;
@@ -544,7 +547,7 @@ function OrderPage() {
 				serviceChargeAmount,
 				paymentMethod: paymentChoice === "mayar" ? "djiwaapp" : "cash",
 				idempotencyKey: checkoutRequestKeyRef.current,
-				customerName: normalizedCustomerName,
+				customerName: orderCustomerName,
 				customerDescription: normalizedCustomerDescription,
 				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
