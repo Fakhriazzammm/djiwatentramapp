@@ -432,6 +432,12 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
                 confidence="high" if desc else "medium",
             )
 
+        # Multi-line manual expense harus diprioritaskan sebelum parser summary
+        # karena _TOTAL_RE juga dapat mencocokkan kata "pengeluaran".
+        multiline_result = self._parse_multiline_expense(text)
+        if multiline_result:
+            return multiline_result
+
         # Saldo
         m = self._BALANCE_RE.match(text_stripped)
         if m:
@@ -619,7 +625,7 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
         """
         text = text.strip()
         lines = [l.strip() for l in text.split(chr(10)) if l.strip()]
-        if len(lines) < 3:
+        if len(lines) < 2:
             return None
 
         # -- 1. Deteksi: apakah ini input manual pengeluaran? ------
@@ -635,6 +641,11 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
             r'(.*?)'                       # name body (non-greedy)
             r'\s+(\d+(?:\.\d{3})*(?:[.,]\d+)?)\s*$',  # trailing price
             re.DOTALL,
+        )
+        COLON_ITEM_RE = re.compile(
+            r'^(.+?)\s*:\s*(?:rp\.?\s*)?'
+            r'(\d+(?:\.\d{3})*(?:[.,]\d+)?)\s*$',
+            re.IGNORECASE,
         )
         _UNIT = '(?:ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|btl|kilo|kantong|dus|bal|krat|pax)'
 
@@ -664,6 +675,18 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
             # Skip date-only lines (e.g. "14 mei 2026" or "13/05")
             if re.match(r'^\d{1,2}\s+\w+\s+\d{4}$', line) or re.match(r'^\d{1,2}/\d{1,2}', line):
                 continue
+            colon_match = COLON_ITEM_RE.match(line)
+            if colon_match:
+                name = _clean_name(colon_match.group(1))
+                line_total = float(colon_match.group(2).replace('.', ''))
+                if name:
+                    item_lines.append({
+                        'name': name[:120],
+                        'qty': 1,
+                        'price': line_total,
+                        'total': line_total,
+                    })
+                continue
 
             m = ITEM_RE.match(line)
             if m:
@@ -687,7 +710,8 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
         first_idx = len(lines)
         for i, line in enumerate(lines):
             m = ITEM_RE.match(line)
-            if m and m.group(2).strip():
+            colon_m = COLON_ITEM_RE.match(line)
+            if (m and m.group(2).strip()) or (colon_m and colon_m.group(1).strip()):
                 first_idx = i
                 break
 
