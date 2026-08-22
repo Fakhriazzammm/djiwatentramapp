@@ -489,6 +489,7 @@ function MenuPage() {
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
 	const transactionSoundIdsRef = useRef<Set<string>>(new Set());
 	const autoPrintedCustomerOrderIdsRef = useRef<Set<string>>(new Set());
+	const autoPrintRetryTimersRef = useRef<Map<string, number>>(new Map());
 	const customerAutoPrintStatusRef = useRef<Map<string, string>>(new Map());
 	const hasSeededCustomerAutoPrintRef = useRef(false);
 	const hasSeededDjiwaAppOrdersRef = useRef(false);
@@ -1262,6 +1263,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		if (!bluetoothPrinter.isConnected()) {
 			const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
 			if (!connected) {
+				if (!autoPrintRetryTimersRef.current.has(orderId)) {
+					const timerId = window.setTimeout(() => {
+						autoPrintRetryTimersRef.current.delete(orderId);
+						void handleAutoPrintSettledCustomerOrder(orderId);
+					}, 15000);
+					autoPrintRetryTimersRef.current.set(orderId, timerId);
+				}
 				toast.warning("Printer belum terhubung. Hubungkan printer untuk mencetak struk customer.", { id: "auto-print" });
 				return false;
 			}
