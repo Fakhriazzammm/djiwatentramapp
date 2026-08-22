@@ -91,6 +91,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .calendar-day:hover:not(:disabled) { border-color: #c6d8f5; background: var(--booking-accent-soft); transform: translateY(-1px); }
 .calendar-day span { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 16px; font-weight: 800; line-height: 1; }
 .calendar-day small { color: #329960; font-size: 9px; font-weight: 700; }
+.calendar-day.available { background: #f4fbf7; }
 .calendar-day.limited small { color: #b7791f; }
 .calendar-day.full { color: #98a2b3; background: #f5f6f8; }
 .calendar-day.full small { color: #98a2b3; }
@@ -104,6 +105,18 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .availability-legend i.limited { background: #d69e2e; }
 .availability-legend i.full { background: #b8c0cc; }
 .panel { margin-top: 18px; padding: 20px; }
+.arrival-details { margin-top: 18px; padding: 20px; border: 1px solid #d8e4f3; border-radius: 24px; background: linear-gradient(145deg, #ffffff, #f8fbff); box-shadow: var(--shadow-soft); }
+.arrival-details.has-date { border-color: #c6d8f5; }
+.arrival-summary { padding-bottom: 17px; border-bottom: 1px solid var(--line); }
+.arrival-summary .field-label { margin-bottom: 5px; }
+.arrival-summary strong { display: block; color: var(--ink); font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 18px; letter-spacing: -.03em; }
+.arrival-summary small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+.arrival-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, .8fr); gap: 24px; padding-top: 17px; }
+.guest-field, .arrival-time-field { min-width: 0; }
+.arrival-time-field input { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 0 13px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: var(--surface); outline: 0; }
+.arrival-time-field input:disabled { background: #f3f5f8; color: #98a2b3; }
+.arrival-time-field small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+.arrival-time-field sup { color: var(--booking-accent); }
 .selection-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 24px; padding: 16px 18px; }
 .selection-date { margin: -2px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.35; }
 .selection-panel .stepper { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-content: center; gap: 10px; max-width: none; }
@@ -223,6 +236,11 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .calendar-day, .calendar-empty { min-height: 54px; }
   .calendar-day { border-radius: 13px; }
   .calendar-day small { font-size: 8px; }
+  .sticky-action { bottom: calc(8px + env(safe-area-inset-bottom)); padding: 24px 0 8px; }
+  .sticky-action .button { width: 100%; }
+  .arrival-details { padding: 17px; border-radius: 20px; }
+  .arrival-fields { grid-template-columns: 1fr; gap: 18px; }
+  .arrival-time-field input { min-height: 50px; }
   .selection-panel { grid-template-columns: 1fr; }
   .selection-panel .stepper { grid-column: 1; grid-row: auto; justify-content: flex-start; max-width: none; }
   .selection-panel .helper { grid-column: 1; }
