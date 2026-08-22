@@ -104,7 +104,7 @@ export function App() {
             </AnimatePresence>
           </div>
           <p className="mx-auto mt-3 max-w-[355px] text-sm leading-6 text-[#617594] sm:text-[15px]">
-            Temukan pilihan F&B, pengalaman kuliner, dan peluang bersama Djiwa Tentram.
+            Dari meja makan hingga momen spesial, temukan sajian restoran dan pengalaman kuliner Djiwa Tentram.
           </p>
           <div className="mt-5 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#1a5dc6]">
             <BadgeCheck className="h-4 w-4" strokeWidth={2.4} />
