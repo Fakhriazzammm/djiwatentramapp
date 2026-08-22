@@ -5923,7 +5923,7 @@ export function useHybridMayarCreateInvoice() {
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
 			return invokeEdgeFunction("mayar-proxy", {
-				action: "get-invoice-detail",
+				action: "create-invoice",
 				...args,
 			});
 		},
@@ -5937,7 +5937,7 @@ export function useHybridMayarGetInvoiceDetail() {
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
 			return invokeEdgeFunction("mayar-proxy", {
-				action: "create-invoice",
+				action: "get-invoice-detail",
 				...args,
 			});
 		},

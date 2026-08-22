@@ -16,6 +16,7 @@ import { User, Search, Star, Loader2 } from "lucide-react";
 interface CustomerSearchResult {
   source_id: string;
   name: string;
+  email?: string | null;
   phone?: string | null;
   point?: number | null;
 }
@@ -23,7 +24,7 @@ interface CustomerSearchResult {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (customer: { source_id: string; name: string }) => void;
+  onSelect: (customer: { source_id: string; name: string; email?: string | null }) => void;
 }
 
 export function CustomerSearchModal({ open, onOpenChange, onSelect }: Props) {
@@ -52,7 +53,7 @@ export function CustomerSearchModal({ open, onOpenChange, onSelect }: Props) {
         const supabase = createClient();
         const { data, error: err } = await supabase
           .from("pos_customers_view")
-          .select("source_id, name, phone, point")
+          .select("source_id, name, email, phone, point")
           .ilike("name", `%${trimmed}%`)
           .order("name", { ascending: true })
           .limit(20);

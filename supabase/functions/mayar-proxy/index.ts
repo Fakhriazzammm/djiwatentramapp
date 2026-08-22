@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY");
+const MAYAR_DEFAULT_EMAIL = Deno.env.get("MAYAR_DEFAULT_EMAIL") || "no-reply@restaurant.local";
 const MAYAR_REQUEST_TIMEOUT_MS = 12_000;
 
 async function fetchMayar(input: string, init: RequestInit = {}) {
@@ -52,6 +53,20 @@ function extractMayarMessage(value: unknown, fallback: string) {
 	return fallback;
 }
 
+
+function normalizeCustomerName(value: unknown) {
+	const name = typeof value === "string" ? value.trim() : "";
+	if (!name || /^pelanggan( umum)?$/i.test(name)) {
+		throw new Error("Nama customer wajib diisi untuk invoice Mayar");
+	}
+	return name;
+}
+
+function normalizeCustomerEmail(value: unknown) {
+	const email = typeof value === "string" ? value.trim().toLowerCase() : "";
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : MAYAR_DEFAULT_EMAIL;
+}
+
 function normalizeMobile(value: unknown) {
 	const mobile = typeof value === "string" ? value.replace(/[^\d]/g, "") : "";
 	if (mobile.length < 10) {
@@ -85,8 +100,8 @@ async function createInvoice(payload: Record<string, unknown>) {
 	}
 
 	const body: Record<string, unknown> = {
-		name: payload.name,
-		email: payload.email || "no-reply@restaurant.local",
+		name: normalizeCustomerName(payload.name),
+		email: normalizeCustomerEmail(payload.email),
 		mobile: normalizeMobile(payload.mobile),
 		redirectUrl: (payload.redirectUrl as string)?.trim() || "https://zantara.myr.id",
 		description: payload.description || "",

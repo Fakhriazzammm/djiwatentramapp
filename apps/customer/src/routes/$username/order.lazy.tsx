@@ -590,7 +590,7 @@ function OrderPage() {
 				try {
 					invoice = await createMayarInvoice({
 						name: normalizedCustomerName,
-						email: undefined,
+						email: customer?.email?.trim() || undefined,
 						mobile: siteSettings?.storePhone || "",
 						redirectUrl,
 						description: `Self-service order ${storeName}`,

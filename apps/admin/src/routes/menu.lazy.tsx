@@ -1242,9 +1242,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						if (!mayarConfig?.configured) {
 							throw new Error("Konfigurasi pembayaran QRIS belum lengkap");
 						}
+						const mayarCustomerName = customerInfo.name.trim();
+						if (!mayarCustomerName) throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
 						const invoiceResult = await createMayarInvoice({
-							name: customerInfo.name || "Pelanggan",
-							email: undefined,
+							name: mayarCustomerName,
+							email: customerInfo.email?.trim() || undefined,
 							mobile: siteSettings.storePhone || "085000000000",
 							redirectUrl:
 								typeof window !== "undefined" ? window.location.href : undefined,

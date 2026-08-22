@@ -1177,7 +1177,7 @@ export function CheckoutSidebar({
 				open={customerSearchOpen}
 				onOpenChange={setCustomerSearchOpen}
 				onSelect={(customer) => {
-					updateCustomerInfo({ name: customer.name, customer_source_id: customer.source_id });
+					updateCustomerInfo({ name: customer.name, email: customer.email || "", customer_source_id: customer.source_id });
 				}}
 			/>
 		</div>
