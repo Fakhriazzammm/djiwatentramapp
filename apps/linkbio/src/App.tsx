@@ -153,7 +153,7 @@ export function App() {
 
         <footer className="mt-auto flex flex-col items-center gap-3 pb-2 pt-12 text-center">
           <div className="flex items-center gap-4 text-[#7890b2]">
-            <a aria-label="Instagram Djiwa Tentram" href="https://www.instagram.com/djiwatentram" target="_blank" rel="noreferrer" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/80 bg-white/60 transition-colors hover:text-[#1a5dc6]"><Instagram className="h-4 w-4" /></a>
+            <a aria-label="Instagram Djiwa Tentram" href="https://instagram.com/djiwa.tentram" target="_blank" rel="noreferrer" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/80 bg-white/60 transition-colors hover:text-[#1a5dc6]"><Instagram className="h-4 w-4" /></a>
           </div>
           <p className="text-[11px] font-medium text-[#8ea0bb]">© {new Date().getFullYear()} Djiwa Tentram. Dibuat dengan ketenangan.</p>
         </footer>
