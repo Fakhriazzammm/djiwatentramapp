@@ -26,8 +26,8 @@ const links = [
   },
   {
     href: "https://ordermieyamin.yumme.id",
-    label: "Order Mie Yamin",
-    description: "Pesan favoritmu dengan praktis",
+    label: "Order Mie Yamin Mentah",
+    description: "Mulai 1 kg untuk reseller, warung, dan katering",
     icon: ShoppingBag,
     tone: "bg-[#f0edff] text-[#6b4fc4]",
   },
