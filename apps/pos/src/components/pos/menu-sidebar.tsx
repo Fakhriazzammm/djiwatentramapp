@@ -828,7 +828,7 @@ function OrderSimpleDetail({
 	const [tableNumber, setTableNumber] = useState(order.tableNumber || "");
 
 	const statusLabels: Record<string, string> = {
-		pending: "Pending",
+		pending: "Bayar di Kasir",
 		paid: "Lunas",
 		completed: "Selesai",
 		cancelled: "Batal",
@@ -842,7 +842,7 @@ function OrderSimpleDetail({
 		}).format(value);
 
 	const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
-	const promoLabels: string[] = order.receiptMeta?.promotionLabels ?? [];
+	const promoLabels: string[] = (order.receiptMeta?.promotionLabels ?? []).map((label: string) => normalizePromotionLabel(label, order.createdAt));
 	const subtotal = order.items?.reduce((sum: number, i: any) => sum + (i.originalPrice ?? i.price) * (i.quantity || 0), 0) ?? 0;
 	const totalDiscount = order.discountAmount ?? 0;
 	const orderTypeLabel =
@@ -945,7 +945,7 @@ function OrderSimpleDetail({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="pending">Pending</SelectItem>
+								<SelectItem value="pending">Bayar di Kasir</SelectItem>
 								<SelectItem value="paid">Lunas</SelectItem>
 								<SelectItem value="completed">Selesai</SelectItem>
 								<SelectItem value="cancelled">Batal</SelectItem>
@@ -1476,6 +1476,24 @@ function ParkirTab({
 	);
 }
 
+function normalizePromotionLabel(label: string, timestamp?: number) {
+	const normalized = label.trim();
+	const lower = normalized.toLowerCase();
+	if (lower.includes("happy hour") || lower.includes("happyhour")) {
+		if (lower.includes("siang") || lower.includes("lunch")) return "Happy Hour Makan Siang";
+		if (lower.includes("malam") || lower.includes("dinner")) return "Happy Hour Makan Malam";
+		if (timestamp) {
+			const hour = new Date(timestamp).getHours();
+			if (hour >= 11 && hour < 16) return "Happy Hour Makan Siang";
+			if (hour >= 17 && hour < 22) return "Happy Hour Makan Malam";
+		}
+		return "Happy Hour";
+	}
+	if (lower === "promosi aktif" || lower === "diskon" || lower === "promosi / diskon") return "Promo";
+	if (lower.startsWith("promosi - ")) return normalized.replace(/^Promosi - /i, "Promo - ");
+	return normalized;
+}
+
 function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"orders">) => void; onPrint?: (order: Doc<"orders">, mode: ReceiptPrintMode) => void }) {
 	const orders = useHybridOrders();
 	const shiftStatus = useHybridShiftStatus();
@@ -1484,6 +1502,18 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 	const [sortOrder, setSortOrder] = useState("desc");
 	const [shiftFilter, setShiftFilter] = useState("active");
 	const [deliveredToggles, setDeliveredToggles] = useState<Set<string>>(new Set());
+	const [cashierPaidIds, setCashierPaidIds] = useState<Set<string>>(new Set());
+	const updateOrder = useHybridUpdateOrder();
+	const markCashierPaid = useCallback(async (order: Doc<"orders">) => {
+		try {
+			await updateOrder({ id: order._id, status: "paid", paymentMethod: "cash", paymentReceiptKind: "cashier" });
+			setCashierPaidIds((current) => new Set(current).add(String(order._id)));
+			toast.success(`Pesanan #${order.orderNumber} ditandai sudah dibayar`);
+		} catch (error) {
+			console.error("[history-cashier-paid] failed", error);
+			toast.error("Gagal menandai pesanan sudah dibayar");
+		}
+	}, [updateOrder]);
 
 	// Optimistic is_delivered: local toggle overrides DB value
 	const getIsDelivered = useCallback(
@@ -1706,6 +1736,8 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 						const subtotal = order.items?.reduce((sum: number, i: any) => sum + (i.originalPrice ?? i.price) * (i.quantity || 0), 0) ?? 0;
 						const promoLabels: string[] = order.receiptMeta?.promotionLabels ?? [];
 						const delivered = getIsDelivered(order._id, !!order.is_delivered);
+						const isCashierPending = order.status === "pending" && ["cash", "cashier", "tunai"].includes(String(order.paymentMethod ?? "").toLowerCase());
+						const displayStatus = cashierPaidIds.has(String(order._id)) ? "paid" : order.status;
 						const orderTypeLabel =
 							order.orderType === "dine_in" ? "Makan di Tempat"
 							: order.orderType === "takeaway" ? "Bungkus"
@@ -1717,20 +1749,20 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 							: order.paymentMethod === "transfer" ? "Transfer"
 							: order.paymentMethod ?? "—";
 						const statusBadge =
-							order.status === "paid" || order.status === "completed"
+							displayStatus === "paid" || displayStatus === "completed"
 								? "text-emerald-600"
-								: order.status === "pending"
+								: displayStatus === "pending"
 									? "text-orange-600"
 									: "text-rose-600";
 						const statusLabel =
-							order.status === "paid" ? "Lunas"
-							: order.status === "completed" ? "Selesai"
-							: order.status === "pending" ? "Pending"
+							displayStatus === "paid" ? "Lunas"
+							: displayStatus === "completed" ? "Selesai"
+							: displayStatus === "pending" ? (isCashierPending ? "Bayar di Kasir" : "Menunggu Pembayaran")
 							: "Batal";
 						const statusBg =
-							order.status === "paid" || order.status === "completed"
+							displayStatus === "paid" || displayStatus === "completed"
 								? "bg-emerald-50"
-								: order.status === "pending"
+								: displayStatus === "pending"
 									? "bg-orange-50"
 									: "bg-rose-50";
 						const isDineIn = order.orderType === "dine_in";
@@ -1819,7 +1851,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											{order.discountAmount > 0 && !promoLabels.length && (
 												<>
 													<span className="text-muted-foreground/40">•</span>
-													<span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-500 uppercase tracking-wider leading-none">Diskon</span>
+													<span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 uppercase tracking-wider leading-none">Promo</span>
 												</>
 											)}
 										</div>
@@ -1827,7 +1859,13 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 									</div>
 									{/* RIGHT COLUMN: 4 tombol vertikal */}
 									<div className="flex-[1] flex flex-col gap-1.5 justify-center items-stretch px-1">
-										{/* 1. Delivered toggle */}
+										{/* 1. Payment confirmation */}
+										{isCashierPending && !cashierPaidIds.has(String(order._id)) && (
+											<button type="button" onClick={(event) => { event.stopPropagation(); void markCashierPaid(order); }} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100">
+												<CheckCircle className="h-3.5 w-3.5" /> Sudah Dibayar
+											</button>
+										)}
+										{/* 2. Delivered toggle */}
 										<button
 											onClick={async (e) => {
 												e.stopPropagation();

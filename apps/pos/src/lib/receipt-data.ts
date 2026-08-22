@@ -19,8 +19,15 @@ interface CartLikeItem {
 	category?: string;
 }
 
-interface AppliedVoucherLike {
-	_id: string;
+function getPromotionLabel(discount: Doc<"discounts">) {
+	if (!discount.isHappyHour) return `Promosi - ${discount.name}`;
+	const startHour = Number(String(discount.startTime ?? "").split(":")[0]);
+	if (startHour >= 11 && startHour < 16) return "Happy Hour Makan Siang";
+	if (startHour >= 17 && startHour < 22) return "Happy Hour Makan Malam";
+	return discount.name || "Happy Hour";
+}
+
+interface AppliedVoucherLike {	_id: string;
 	name: string;
 }
 
@@ -79,11 +86,7 @@ export function buildReceiptMetaFromCart({
 				return [];
 			}
 
-			return [
-							discount.isHappyHour
-								? discount.name
-								: `Promosi - ${discount.name}`,
-						];
+			return [getPromotionLabel(discount)];
 		}) ?? [];
 
 	if (appliedVoucher?.name) {
