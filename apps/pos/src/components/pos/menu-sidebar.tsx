@@ -196,8 +196,7 @@ export function MenuSidebar({
 			iconColor: "text-primary",
 			illustration: "dashboard-overview",
 		},
-		{ value: "parkir", label: "Simpan Orderan", icon: ShoppingCart, iconColor: "text-orange-500", illustration: "shopping-cart-order" },
-		{ value: "history", label: "Riwayat Order", icon: Clock, iconColor: "text-blue-500", illustration: "order-receipt" },
+		{ value: "transaksi", label: "Transaksi", icon: Receipt, iconColor: "text-blue-500", illustration: "order-receipt" },
 		{ value: "kas", label: "Shift & Kas", icon: Wallet, iconColor: "text-primary", illustration: "shift-closing" },
 		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent", illustration: "inventory-stock" },
 		{ value: "antrian", label: "Antrian", icon: ClipboardList, iconColor: "text-emerald-600", illustration: "order-queue" },
@@ -587,29 +586,26 @@ export function MenuSidebar({
 									</div>
 								</div>
 							)}
-							{activeTab === "parkir" && (
+							{activeTab === "transaksi" && (
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
-										<ParkirTab
-											onClose={() => setIsOpen(false)}
-											onRestore={handleRestoreOrder}
-											onSelectOrder={setSelectedOrder}
-											onPrint={
-												siteSettings?.allowOpenBillPrint !== false
-													? handlePrintOrder
-													: undefined
-											}
-										/>
-									</div>
-								</div>
-							)}
-							{activeTab === "history" && (
-								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
-									<div className="p-4 pb-20">
-						<HistoryTab
-							onSelectOrder={setSelectedOrder}
-							onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined}
-						/>
+										<Tabs defaultValue="history" className="w-full">
+											<TabsList className="grid h-9 w-full grid-cols-2">
+												<TabsTrigger value="history" className="text-xs">Riwayat Pesanan</TabsTrigger>
+												<TabsTrigger value="open_bill" className="text-xs">Open Bill</TabsTrigger>
+											</TabsList>
+											<TabsContent value="history" className="mt-3">
+												<HistoryTab onSelectOrder={setSelectedOrder} onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined} />
+											</TabsContent>
+											<TabsContent value="open_bill" className="mt-3">
+												<ParkirTab
+													onClose={() => setIsOpen(false)}
+													onRestore={handleRestoreOrder}
+													onSelectOrder={setSelectedOrder}
+													onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined}
+												/>
+											</TabsContent>
+										</Tabs>
 									</div>
 								</div>
 							)}

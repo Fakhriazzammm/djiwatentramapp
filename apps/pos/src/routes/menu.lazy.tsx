@@ -2,6 +2,7 @@
 import type { Id } from "@/types/backend-compat";
 import {
 	BarChart3,
+	Bell,
 	Bot,
 	Clock,
 	Coffee,
@@ -22,6 +23,7 @@ import {
 	ChevronUp,
 	ChevronDown,
 	ClipboardList,
+	Receipt,
 } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -74,7 +76,7 @@ import {
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
 import { playSuccessSound } from "@/lib/play-success-sound";
-import { NotificationBell, NotificationCenter } from "@/components/pos/notification-center";
+import { NotificationCenter } from "@/components/pos/notification-center";
 import { TransactionAlertStack } from "@/components/pos/transaction-alert-popup";
 import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
@@ -160,8 +162,7 @@ export const Route = createLazyFileRoute("/menu")({
 // Menu Sidebar items for the header
 const SIDEBAR_MENU_ITEMS = [
 	{ id: "dashboard", label: "Dashboard", icon: BarChart3 },
-	{ id: "parkir", label: "Simpan Orderan", icon: ShoppingCart },
-	{ id: "history", label: "Riwayat Order", icon: Clock },
+	{ id: "transaksi", label: "Transaksi", icon: Receipt },
 	{ id: "kas", label: "Kas", icon: Wallet },
 	{ id: "antrian", label: "Antrian", icon: ClipboardList },
 	{ id: "stok", label: "Stok", icon: Package },
@@ -169,10 +170,18 @@ const SIDEBAR_MENU_ITEMS = [
 	{ id: "settings", label: "Pengaturan", icon: Settings2 },
 ];
 
+const BOTTOM_NAV_ITEMS = [
+	SIDEBAR_MENU_ITEMS[0],
+	{ id: "notifications", label: "Notifikasi", icon: Bell, illustration: "notifications-alerts" as Djiwa3DIconName },
+	{ id: "transaksi", label: "Transaksi", icon: Receipt, illustration: "order-receipt" as Djiwa3DIconName },
+	SIDEBAR_MENU_ITEMS.find((item) => item.id === "kas")!,
+	SIDEBAR_MENU_ITEMS.find((item) => item.id === "antrian")!,
+];
+
 const BOTTOM_NAV_3D_ICONS: Record<string, Djiwa3DIconName> = {
 	dashboard: "dashboard-overview",
-	parkir: "shopping-cart-order",
-	history: "order-receipt",
+	transaksi: "order-receipt",
+	notifications: "notifications-alerts",
 	kas: "payment-wallet",
 	antrian: "order-queue",
 };
@@ -1755,7 +1764,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								</div>
 							</div>
 							<div className="flex items-center gap-1 shrink-0">
-								<NotificationBell unreadCount={unreadCount} onClick={() => { setIsNotificationCenterOpen(true); void refreshNotifications(true); }} />
 								<button
 									type="button"
 									onClick={() => {
@@ -2274,9 +2282,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
 				<nav className="fixed inset-x-0 bottom-0 z-30 min-h-[76px] border-t border-border/60 bg-background/95 px-2 pt-2 pb-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur-md safe-area-bottom md:hidden">
 					<div className="mx-auto flex min-h-[60px] max-w-lg items-center justify-around gap-0.5 sm:max-w-none sm:gap-1">
-						{SIDEBAR_MENU_ITEMS.slice(0, 5).map((item, index) => {
+						{BOTTOM_NAV_ITEMS.map((item, index) => {
 							const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
-							const isActive = isSidebarOpen && activeSidebarTab === item.id;
+							const isActive = item.id === "notifications"
+									? isNotificationCenterOpen
+									: isSidebarOpen && activeSidebarTab === item.id;
 							const needsAttention = item.id === "kas" && !isShiftOpen;
 							const illustration = BOTTOM_NAV_3D_ICONS[item.id];
 
@@ -2285,6 +2295,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									key={item.id}
 									type="button"
 									onClick={() => {
+										if (item.id === "notifications") {
+											setIsNotificationCenterOpen(true);
+											void refreshNotifications(true);
+											return;
+										}
 										setActiveSidebarTab(item.id);
 										setIsSidebarOpen(true);
 									}}
