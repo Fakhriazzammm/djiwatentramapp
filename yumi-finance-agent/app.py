@@ -43,8 +43,10 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 FINANCE_GROUP_ID = int(os.getenv("FINANCE_GROUP_ID", "-1003916990045"))
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_EDGE_URL = os.getenv("SUPABASE_EDGE_URL", "").rstrip("/") or SUPABASE_URL
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+# Finance Agent is a server-side trusted worker; prefer service role for finance views
+# because the public/anon key cannot read protected financial transaction data.
+SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY or os.getenv("SUPABASE_KEY", "")
 SUPABASE_ACCESS_TOKEN = os.getenv("SUPABASE_ACCESS_TOKEN", "")
 
 # SumoPod API — untuk AI chat & vision/OCR
