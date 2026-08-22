@@ -1731,7 +1731,9 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 											<span className={`text-[11px] font-bold uppercase tracking-wider ${statusBadge}`}>
 												● {statusLabel}
 											</span>
-											{order.source === "customer_self_service" ? (
+											{order.source === "booking" ? (
+												<span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-violet-700">Booking</span>
+											) : order.source === "customer_self_service" ? (
 												<span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
 													DjiwaApp
 												</span>

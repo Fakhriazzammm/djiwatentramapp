@@ -1741,7 +1741,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -1759,7 +1759,7 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
@@ -1771,7 +1771,7 @@ async def _check_new_orders(app):
         # menyelesaikan pembayaran. Ini bukan bukti order sudah lunas.
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=eq.customer_self_service"
             "&status=eq.pending"
             "&paymentMethod=eq.cash"
@@ -1886,6 +1886,17 @@ async def _check_new_orders(app):
         # Extract additional data for notifications
         guest_count = row.get("guestCount")
         notes = (row.get("notes") or "").strip()
+        if row.get("source") == "booking":
+            booking_context = [
+                f"Kode booking: {row.get('bookingCode') or order_no}",
+                f"Tanggal booking: {row.get('bookingDate')}" if row.get("bookingDate") else "",
+                f"Kebutuhan: {row.get('bookingTypeLabel')}" if row.get("bookingTypeLabel") else "",
+                f"Acara: {row.get('eventTypeLabel')}" if row.get("eventTypeLabel") else "",
+                f"Detail acara: {row.get('eventTypeOther')}" if row.get("eventTypeOther") else "",
+            ]
+            booking_context = [line for line in booking_context if line]
+            if booking_context:
+                notes = "\n".join([*booking_context, notes] if notes else booking_context)
         voucher_id = row.get("voucherId")
         discount_amount = float(row.get("discountAmount") or 0)
         free_refill = row.get("freeRefillSelected")

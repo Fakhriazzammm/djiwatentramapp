@@ -42,7 +42,6 @@ function normalizeBookingAnswers(value: unknown) {
   const eventType = text(input["Jenis acara"], 80);
   const eventTypeLabel = text(input["Jenis acara label"], 120);
   const eventTypeOther = text(input["Jenis acara lainnya"], 120);
-  if (bookingType && !["group_meal", "event"].includes(bookingType)) throw Object.assign(new Error("Tipe booking tidak valid"), { status: 400 });
   if (bookingType === "event" && !eventType) throw Object.assign(new Error("Jenis acara wajib dipilih"), { status: 400 });
   if (eventType === "other" && !eventTypeOther) throw Object.assign(new Error("Jenis acara lainnya wajib diisi"), { status: 400 });
   return { ...input, "Tipe booking": bookingType, "Tipe booking label": bookingTypeLabel, "Jenis acara": eventType || null, "Jenis acara label": eventTypeLabel || null, "Jenis acara lainnya": eventTypeOther || null };
