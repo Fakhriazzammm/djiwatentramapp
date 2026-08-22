@@ -1157,8 +1157,14 @@ function AdminOrders() {
 				<SheetContent className="flex w-full flex-col sm:max-w-lg">
 					<SheetHeader className="border-border border-b px-4 py-3 pr-16">
 						<div className="flex items-center justify-between">
-							<SheetTitle className="text-lg">Detail Pesanan</SheetTitle>
-							<Badge
+							<SheetTitle className="text-lg">
+								{(selectedOrder as any)?.type === "booking" ? "Detail Booking / Reservasi" : "Detail Pesanan"}
+							</SheetTitle>
+							<div className="flex items-center gap-2">
+								{(selectedOrder as any)?.type === "booking" && (
+									<Badge className="bg-blue-100 px-2 py-0.5 text-[10px] text-blue-700 hover:bg-blue-100">BOOKING</Badge>
+								)}
+								<Badge
 								className="px-2 py-0.5 text-[10px] capitalize"
 								variant={
 									selectedOrder
@@ -1168,6 +1174,7 @@ function AdminOrders() {
 							>
 								{selectedOrder ? getStatusLabel(selectedOrder.status) : ""}
 							</Badge>
+							</div>
 						</div>
 						<SheetDescription className="font-mono text-[10px] text-primary">
 							{(selectedOrder as any)?.type === "booking" ? "BK-" : "#"}{selectedOrder?.displayId}
@@ -1214,6 +1221,35 @@ function AdminOrders() {
 											</div>
 										</CardContent>
 									</Card>
+
+									{(selectedOrder as any).type === "booking" && (
+										<Card className="border-blue-200 bg-blue-50/60 shadow-none">
+											<CardContent className="space-y-3 p-3">
+												<div className="flex items-center justify-between">
+													<p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">Detail Reservasi</p>
+													<span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">BOOKING</span>
+												</div>
+												<div className="grid grid-cols-2 gap-3">
+													<div>
+														<p className="text-[10px] text-blue-700/70">Tanggal kedatangan</p>
+														<p className="text-sm font-bold text-blue-950">{(selectedOrder as any).bookingDate || "-"}</p>
+													</div>
+													<div>
+														<p className="text-[10px] text-blue-700/70">Jam kedatangan</p>
+														<p className="text-sm font-bold text-blue-950">{(selectedOrder as any).arrivalTime || "-"} WIB</p>
+													</div>
+													<div>
+														<p className="text-[10px] text-blue-700/70">Jumlah tamu</p>
+														<p className="text-sm font-bold text-blue-950">{Number((selectedOrder as any).guestCount ?? 0)} orang</p>
+													</div>
+													<div>
+														<p className="text-[10px] text-blue-700/70">Meja</p>
+														<p className="text-sm font-bold text-blue-950">{Number((selectedOrder as any).tableCount ?? 0)} meja</p>
+													</div>
+												</div>
+											</CardContent>
+										</Card>
+									)}
 
 									{/* Items List */}
 									{selectedOrder.notes && (
