@@ -375,14 +375,17 @@ function OrderRow({
 					{/* Display custom answers in the collapsed row for quick viewing */}
 					{(order as any).customAnswers && (
 						<div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-border/50">
-							{Object.entries((order as any).customAnswers).slice(0, 2).map(([label, answer]: [string, any]) => (
-								<span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-md font-medium max-w-[100px] truncate" key={label} title={`${label}: ${answer}`}>
+							{Object.entries((order as any).customAnswers)
+								.filter(([, answer]) => answer != null && String(answer).trim() !== "")
+								.slice(0, 2)
+								.map(([label, answer]: [string, any]) => (
+								<span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-md font-medium max-w-[100px] truncate" key={label} title={`${label}: ${String(answer)}`}>
 									<span className="text-muted-foreground mr-1">{label}:</span>
 									{String(answer)}
 								</span>
-							))}
-							{Object.keys((order as any).customAnswers).length > 2 && (
-								<span className="text-[10px] text-muted-foreground italic">+{Object.keys((order as any).customAnswers).length - 2} lagi</span>
+								))}
+							{Object.entries((order as any).customAnswers).filter(([, answer]) => answer != null && String(answer).trim() !== "").length > 2 && (
+								<span className="text-[10px] text-muted-foreground italic">+{Object.entries((order as any).customAnswers).filter(([, answer]) => answer != null && String(answer).trim() !== "").length - 2} lagi</span>
 							)}
 						</div>
 					)}
@@ -439,12 +442,14 @@ function OrderRow({
 							<div className="col-span-full border-t border-border pt-3 mt-1 space-y-3">
 								<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Informasi Tambahan</p>
 								<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-									{Object.entries((order as any).customAnswers).map(([label, answer]: [string, any]) => (
-										<div key={label}>
-											<p className="text-[10px] font-bold text-muted-foreground">{label}</p>
-											<p className="text-sm font-medium">{String(answer)}</p>
-										</div>
-									))}
+									{Object.entries((order as any).customAnswers)
+										.filter(([, answer]) => answer != null && String(answer).trim() !== "")
+										.map(([label, answer]: [string, any]) => (
+											<div key={label}>
+												<p className="text-[10px] font-bold text-muted-foreground">{label}</p>
+												<p className="text-sm font-medium">{String(answer)}</p>
+											</div>
+										))}
 								</div>
 							</div>
 						)}
