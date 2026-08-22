@@ -194,3 +194,42 @@ GRANT EXECUTE ON FUNCTION pos.wallet_ensure(text) TO service_role;
 GRANT EXECUTE ON FUNCTION pos.wallet_create_hold(text, text, bigint, text) TO service_role;
 GRANT EXECUTE ON FUNCTION pos.wallet_capture_hold(text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION pos.wallet_release_hold(text, text, text) TO service_role;
+
+
+CREATE OR REPLACE FUNCTION pos.wallet_admin_adjust(
+  p_customer_id text,
+  p_amount bigint,
+  p_direction text,
+  p_note text,
+  p_created_by text,
+  p_idempotency_key text
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pos, public AS $$
+DECLARE v_wallet pos.customer_wallets; v_balance bigint;
+BEGIN
+  IF p_amount <= 0 THEN RAISE EXCEPTION 'Nominal adjustment tidak valid'; END IF;
+  IF p_direction NOT IN ('credit', 'debit') THEN RAISE EXCEPTION 'Arah adjustment tidak valid'; END IF;
+  IF coalesce(trim(p_note), '') = '' THEN RAISE EXCEPTION 'Alasan adjustment wajib diisi'; END IF;
+  IF coalesce(trim(p_created_by), '') = '' THEN RAISE EXCEPTION 'Operator wajib diisi'; END IF;
+  IF EXISTS (SELECT 1 FROM pos.customer_wallet_ledger WHERE idempotency_key = p_idempotency_key) THEN
+    RETURN jsonb_build_object('ok', true, 'dedup', true);
+  END IF;
+  PERFORM pos.wallet_ensure(p_customer_id);
+  SELECT * INTO v_wallet FROM pos.customer_wallets WHERE customer_id = p_customer_id FOR UPDATE;
+  IF v_wallet.status <> 'active' THEN RAISE EXCEPTION 'Wallet sedang diblokir'; END IF;
+  IF p_direction = 'debit' AND v_wallet.available_balance < p_amount THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'INSUFFICIENT_BALANCE');
+  END IF;
+  v_balance := CASE WHEN p_direction = 'credit' THEN v_wallet.available_balance + p_amount ELSE v_wallet.available_balance - p_amount END;
+  UPDATE pos.customer_wallets
+  SET available_balance = v_balance,
+      total_credited = total_credited + CASE WHEN p_direction = 'credit' THEN p_amount ELSE 0 END,
+      total_debited = total_debited + CASE WHEN p_direction = 'debit' THEN p_amount ELSE 0 END,
+      updated_at = now()
+  WHERE customer_id = p_customer_id;
+  INSERT INTO pos.customer_wallet_ledger(customer_id, amount, direction, balance_after, status, transaction_type, reference_type, reference_id, idempotency_key, note, created_by)
+  VALUES (p_customer_id, p_amount, p_direction, v_balance, 'completed', 'adjustment', 'admin', p_created_by, p_idempotency_key, p_note, p_created_by);
+  RETURN jsonb_build_object('ok', true, 'dedup', false, 'balance', v_balance);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION pos.wallet_admin_adjust(text, bigint, text, text, text, text) TO service_role;

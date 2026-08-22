@@ -66,6 +66,47 @@ async function mutateHold(payload: Json, action: "capture" | "release") {
   return data;
 }
 
+
+async function verifyStaff(payload: Json) {
+  const token = text(payload.staffToken);
+  let staffId = text(payload.staffSourceId);
+  if (!token) throw new Error("Sesi staff wajib diisi");
+  if (token.startsWith("local_yumi_session:")) {
+    try {
+      const raw = token.slice("local_yumi_session:".length);
+      const decoded = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(raw), (c) => c.charCodeAt(0))));
+      if (Date.now() > Number(decoded?.expiresAt ?? 0)) throw new Error("Sesi staff kedaluwarsa");
+      staffId = text(decoded?.user?._id) || staffId;
+    } catch { throw new Error("Sesi staff tidak valid"); }
+  } else {
+    const { data: session, error } = await admin.from("yumi_sessions").select("user_source_id").eq("token", token).gt("expires_at", new Date().toISOString()).maybeSingle();
+    if (error) throw error;
+    staffId = text(session?.user_source_id) || staffId;
+  }
+  if (!staffId) throw new Error("Identitas staff tidak ditemukan");
+  const { data: user, error: userError } = await admin.from("yumi_users").select("source_id,role_source_id,is_active").eq("source_id", staffId).maybeSingle();
+  if (userError) throw userError;
+  if (!user?.is_active) throw new Error("Staff tidak aktif");
+  const { data: role, error: roleError } = await admin.from("yumi_roles").select("name").eq("source_id", user.role_source_id).maybeSingle();
+  if (roleError) throw roleError;
+  const roleName = text(role?.name).toLowerCase();
+  if (!/(admin|manager|owner|supervisor)/.test(roleName)) throw new Error("Role tidak memiliki akses wallet adjustment");
+  return staffId;
+}
+
+async function adminAdjust(payload: Json) {
+  const staffId = await verifyStaff(payload);
+  const customerId = text(payload.customerId);
+  const amount = Number(payload.amount);
+  const direction = text(payload.direction);
+  const note = text(payload.note);
+  if (!customerId || !Number.isSafeInteger(amount) || amount <= 0 || !['credit', 'debit'].includes(direction) || !note) throw new Error("Customer, nominal, arah, dan alasan wajib valid");
+  const key = idempotency(payload.idempotencyKey);
+  const { data, error } = await admin.schema("pos").rpc("wallet_admin_adjust", { p_customer_id: customerId, p_amount: amount, p_direction: direction, p_note: note, p_created_by: staffId, p_idempotency_key: key });
+  if (error) throw error;
+  return data;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return fail("METHOD_NOT_ALLOWED", "Method not allowed", 405);
@@ -76,7 +117,8 @@ Deno.serve(async (req) => {
     if (action === "hold") return response({ success: true, result: await createHold(body) });
     if (action === "capture") return response({ success: true, result: await mutateHold(body, "capture") });
     if (action === "release") return response({ success: true, result: await mutateHold(body, "release") });
-    return fail("UNKNOWN_ACTION", "Gunakan action get, hold, capture, atau release", 404);
+    if (action === "admin-adjustment") return response({ success: true, result: await adminAdjust(body) });
+    return fail("UNKNOWN_ACTION", "Gunakan action get, hold, capture, release, atau admin-adjustment", 404);
   } catch (error) {
     console.error("customer-wallet failed", error);
     const message = error instanceof Error ? error.message : "Gagal memproses wallet";
