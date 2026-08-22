@@ -157,7 +157,6 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/recipe/base", icon: FileText, label: "Base Recipe", permission: "inventory:manage" },
 			{ to: "/admin/inventory", icon: Archive, label: "Inventaris", permission: "inventory:manage" },
 			{ to: '/admin/stock-overview', icon: BarChart3, label: 'Ringkasan Stok', permission: 'inventory:manage' },
-			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
 		],
 	},
 	{
@@ -175,6 +174,7 @@ const QUICK_MENU_SECTIONS = [
 	{
 		label: "Operasional",
 		items: [
+			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
@@ -426,6 +426,13 @@ function AdminLayout() {
 						permission="analytics:view"
 					/>
 					<DesktopNavLink
+						icon={<Calendar />}
+						isCollapsed={isCollapsed}
+						label="Booking"
+						to="/admin/booking"
+						permission="orders:view"
+					/>
+					<DesktopNavLink
 						icon={<ClipboardList />}
 						isCollapsed={isCollapsed}
 						label="Pesanan"
@@ -475,14 +482,6 @@ function AdminLayout() {
 						to="/admin/stock-overview"
 						permission="inventory:manage"
 					/>
-					<DesktopNavLink
-						icon={<Calendar />}
-						isCollapsed={isCollapsed}
-						label="Booking"
-						to="/admin/booking"
-						permission="orders:view"
-					/>
-
 					{/* OPERASIONAL */}
 					<SidebarSection isCollapsed={isCollapsed} label="Operasional" />
 					<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />

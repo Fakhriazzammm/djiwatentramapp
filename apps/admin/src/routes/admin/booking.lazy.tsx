@@ -323,6 +323,7 @@ function OrderRow({
 		customerPhone: string;
 		customerEmail: string;
 		bookingDate: string;
+		arrivalTime?: string | null;
 		totalAmount: number;
 		paymentMethod: string;
 		paymentStatus: string;
@@ -550,6 +551,7 @@ function BookingSettingsPage() {
 	const [calMonth, setCalMonth] = useState(today.getMonth());
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
 	const [listFilter, setListFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
+	const [paymentFilter, setPaymentFilter] = useState<"all" | "pending" | "paid">("all");
 
 	// Edit dialog state
 	const [editingOrder, setEditingOrder] = useState<any>(null);
@@ -833,12 +835,13 @@ function BookingSettingsPage() {
 		return allOrders
 			.filter((o: any) => {
 				const matchesFilter = listFilter === "all" || o.bookingStatus === listFilter;
+				const matchesPayment = paymentFilter === "all" || (paymentFilter === "paid" ? o.paymentStatus === "paid" : o.paymentStatus !== "paid");
 				const matchesSearch = 
 					o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
 					o.bookingCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
 					o.customerPhone.includes(searchTerm);
 				
-				return matchesFilter && matchesSearch;
+				return matchesFilter && matchesPayment && matchesSearch;
 			})
 			.sort((a: any, b: any) => {
 				let comparison = 0;
@@ -851,7 +854,17 @@ function BookingSettingsPage() {
 				}
 				return sortOrder === "asc" ? comparison : -comparison;
 			});
-	}, [allOrders, listFilter, searchTerm, sortBy, sortOrder]);
+	}, [allOrders, listFilter, paymentFilter, searchTerm, sortBy, sortOrder]);
+
+	const bookingStats = useMemo(() => {
+		const orders = allOrders ?? [];
+		return {
+			total: orders.length,
+			guests: orders.reduce((sum: number, order: any) => sum + Number(order.guestCount ?? 0), 0),
+			pendingPayment: orders.filter((order: any) => order.paymentStatus !== "paid").length,
+			paid: orders.filter((order: any) => order.paymentStatus === "paid").length,
+		};
+	}, [allOrders]);
 
 	const handleExport = (format: "pdf" | "csv" | "jpg") => {
 		if (!filteredOrders || filteredOrders.length === 0) {
@@ -1066,7 +1079,7 @@ function BookingSettingsPage() {
 								</div>
 							) : (
 								<div className="space-y-2">
-									{allOrders.map((order: any) => (
+									{(allOrders ?? []).map((order: any) => (
 										<OrderRow
 											key={order._id}
 											order={order}
@@ -1091,6 +1104,20 @@ function BookingSettingsPage() {
 			{/* ── ORDERS TAB ── */}
 			{activeTab === "orders" && (
 				<div className="space-y-4">
+					<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+						{[
+							["Total booking", bookingStats.total, "bg-blue-50 text-blue-700"],
+							["Total tamu", bookingStats.guests, "bg-emerald-50 text-emerald-700"],
+							["Belum lunas", bookingStats.pendingPayment, "bg-amber-50 text-amber-700"],
+							["Sudah lunas", bookingStats.paid, "bg-violet-50 text-violet-700"],
+						].map(([label, value, tone]) => (
+							<div className={`rounded-xl border border-border p-3 ${tone}`} key={label}>
+								<p className="text-[10px] font-bold uppercase tracking-wider opacity-75">{label}</p>
+								<p className="mt-1 text-xl font-black tabular-nums">{value}</p>
+							</div>
+						))}
+					</div>
+
 					{/* Toolbar */}
 					<div className="flex flex-col gap-4 p-4 rounded-2xl border border-border bg-card shadow-sm lg:flex-row lg:items-end">
 						<div className="flex-1 space-y-1.5">
@@ -1223,6 +1250,18 @@ function BookingSettingsPage() {
 								type="button"
 							>
 								{f === "all" ? "Semua" : STATUS_LABEL[f]}
+							</button>
+						))}
+						{(["all", "pending", "paid"] as const).map((f) => (
+							<button
+								className={`rounded-full px-4 py-1.5 font-bold text-xs transition-all ${
+									paymentFilter === f ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+								}`}
+								key={`payment-${f}`}
+								onClick={() => setPaymentFilter(f)}
+								type="button"
+							>
+								{f === "all" ? "Semua pembayaran" : f === "paid" ? "Lunas" : "Belum lunas"}
 							</button>
 						))}
 						{allOrders && (
