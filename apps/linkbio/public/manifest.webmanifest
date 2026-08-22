@@ -1,0 +1,10 @@
+{
+  "name": "Djiwa Tentram — Link Resmi",
+  "short_name": "Djiwa Tentram",
+  "description": "Semua link resmi Djiwa Tentram",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f9ff",
+  "theme_color": "#1a5dc6",
+  "icons": [{ "src": "/logo-djiwa.png", "sizes": "512x512", "type": "image/png" }]
+}
