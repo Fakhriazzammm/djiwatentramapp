@@ -462,8 +462,10 @@ function MenuPage() {
 			toast.error("Order tidak ditemukan");
 			return;
 		}
+		if (cashierPaidInFlightRef.current.has(orderId)) return;
+		cashierPaidInFlightRef.current.add(orderId);
 		try {
-			await updateOrder({ id: orderId, status: "paid", paymentMethod: "cash" });
+			await updateOrder({ id: orderId, status: "paid", paymentMethod: "cash", paymentReceiptKind: "cashier" });
 			await removeNotification(notification.id);
 			setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
 			triggerHybridRefresh();
@@ -472,6 +474,8 @@ function MenuPage() {
 		} catch (error) {
 			console.error("[cashier-paid] failed", error);
 			toast.error("Gagal mencatat pembayaran kasir");
+		} finally {
+			cashierPaidInFlightRef.current.delete(orderId);
 		}
 	}, [refreshNotifications, removeNotification, updateOrder]);
 
@@ -508,6 +512,7 @@ function MenuPage() {
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 	const [transactionAlertIds, setTransactionAlertIds] = useState<string[]>([]);
+	const cashierPaidInFlightRef = useRef<Set<string>>(new Set());
 	const [selectedOrderNotification, setSelectedOrderNotification] = useState<any | null>(null);
 	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 	const notificationIdsRef = useRef<Set<string>>(new Set());

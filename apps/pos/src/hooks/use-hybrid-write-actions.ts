@@ -2715,6 +2715,9 @@ export function useHybridUpdateOrder() {
 				if (args.tableNumber !== undefined) {
 					updates.table_number = args.tableNumber ?? null;
 				}
+				if (args.paymentReceiptKind !== undefined) {
+					updates.payment_receipt_kind = args.paymentReceiptKind ?? null;
+				}
 
 				if (Object.keys(updates).length === 0) {
 					return;
@@ -2737,18 +2740,27 @@ export function useHybridUpdateOrder() {
 					const wasPaid =
 						order.status === "paid" || order.status === "completed";
 					if (!wasPaid) {
-						const txDate = Number(args?.date ?? order.created_at ?? Date.now());
-						const { error: txError } = await supabase
+						const { data: existingTransaction, error: existingTransactionError } = await supabase
 							.schema("pos")
 							.from("financial_transactions")
-							.insert({
+							.select("source_id")
+							.eq("order_source_id", id)
+							.limit(1)
+							.maybeSingle();
+						if (existingTransactionError) throw existingTransactionError;
+						if (!existingTransaction) {
+							const txDate = Number(args?.date ?? order.created_at ?? Date.now());
+							const { error: txError } = await supabase
+								.schema("pos")
+								.from("financial_transactions")
+								.insert({
 								source_id: makeSourceId("fin"),
 								tx_type: "income",
 								amount: Number(order.total_amount ?? 0),
 								category: "Penjualan",
 								description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
 								tx_date: txDate,
-								payment_method: order.payment_method ?? null,
+								payment_method: args?.paymentMethod ?? order.payment_method ?? null,
 								status: "completed",
 								order_source_id: id,
 								creation_time: Date.now(),
@@ -2762,7 +2774,8 @@ export function useHybridUpdateOrder() {
 									orderId: id,
 								},
 							});
-						if (txError) throw txError;
+							if (txError) throw txError;
+						}
 					}
 				}
 
