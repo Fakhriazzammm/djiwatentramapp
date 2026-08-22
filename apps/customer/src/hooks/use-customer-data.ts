@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 import { readGuestOrderReferences } from "@/components/customer/types";
 import { useCustomerAuth, type CustomerUser } from "@/hooks/use-customer-auth";
 
@@ -194,4 +195,63 @@ export function useCustomerPoints() {
 		totalPoints,
 		refetch: loadPoints,
 	};
+}
+
+
+export type CustomerWallet = {
+  customer_id: string;
+  currency: "IDR";
+  available_balance: number;
+  held_balance: number;
+  total_credited: number;
+  total_debited: number;
+  status: "active" | "blocked";
+  updated_at: string;
+};
+
+export type CustomerWalletLedgerEntry = {
+  id: number;
+  amount: number;
+  direction: "credit" | "debit";
+  balance_after: number;
+  status: string;
+  transaction_type: string;
+  reference_type: string | null;
+  reference_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export function useCustomerWallet() {
+  const { customer, isLoading: authLoading } = useCustomerAuth();
+  const [wallet, setWallet] = useState<CustomerWallet | null>(null);
+  const [ledger, setLedger] = useState<CustomerWalletLedgerEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadWallet = useCallback(async () => {
+    if (!customer?.sourceId || !customer.email) {
+      setWallet(null); setLedger([]); setIsLoading(false); return;
+    }
+    setIsLoading(true); setError(null);
+    try {
+      const result = await invokeEdgeFunction<{ wallet: CustomerWallet; ledger: CustomerWalletLedgerEntry[] }>("customer-wallet", {
+        action: "get", sourceId: customer.sourceId, email: customer.email,
+      });
+      setWallet(result.wallet ?? null);
+      setLedger(result.ledger ?? []);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal memuat saldo wallet";
+      console.error("[useCustomerWallet]", message);
+      setError(message);
+      setWallet(null); setLedger([]);
+    } finally { setIsLoading(false); }
+  }, [customer?.email, customer?.sourceId]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    void loadWallet();
+  }, [authLoading, loadWallet]);
+
+  return { wallet, ledger, isLoading: authLoading || isLoading, error, refetch: loadWallet };
 }

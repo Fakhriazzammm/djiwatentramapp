@@ -23,6 +23,11 @@ export type CustomerUser = {
   lifetimePoints: number;
   totalOrders: number;
   totalSpent: number;
+  walletBalance: number;
+  walletHeldBalance: number;
+  walletTotalCredited: number;
+  walletTotalDebited: number;
+  walletStatus: "active" | "blocked";
   lastOrderAt: string | null;
   createdAt: string | null;
 };
@@ -73,6 +78,11 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
     lifetimePoints: Number(row.lifetime_points ?? 0),
     totalOrders: Number(row.total_orders ?? 0),
     totalSpent: Number(row.total_spent ?? 0),
+    walletBalance: Number(row.wallet_balance ?? 0),
+    walletHeldBalance: Number(row.wallet_held_balance ?? 0),
+    walletTotalCredited: Number(row.wallet_total_credited ?? 0),
+    walletTotalDebited: Number(row.wallet_total_debited ?? 0),
+    walletStatus: row.wallet_status === "blocked" ? "blocked" : "active",
     lastOrderAt: (row.last_order_at as string) ?? null,
     createdAt: (row.created_at as string) ?? null,
   };
@@ -130,6 +140,11 @@ function buildFallbackCustomer(
     lifetimePoints: 0,
     totalOrders: 0,
     totalSpent: 0,
+    walletBalance: 0,
+    walletHeldBalance: 0,
+    walletTotalCredited: 0,
+    walletTotalDebited: 0,
+    walletStatus: "active",
     lastOrderAt: null,
     createdAt: null,
   };

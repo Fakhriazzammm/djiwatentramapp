@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DaftarRouteImport } from './routes/daftar'
 import { Route as UsernameRouteRouteImport } from './routes/$username/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsernameSaldoRouteImport } from './routes/$username/saldo'
 import { Route as UsernameRiwayatRouteImport } from './routes/$username/riwayat'
 import { Route as UsernamePromoRouteImport } from './routes/$username/promo'
 import { Route as UsernameProfileRouteImport } from './routes/$username/profile'
@@ -38,6 +39,13 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+const UsernameSaldoRoute = UsernameSaldoRouteImport.update({
+  id: '/saldo',
+  path: '/saldo',
+  getParentRoute: () => UsernameRouteRoute,
+} as any).lazy(() =>
+  import('./routes/$username/saldo.lazy').then((d) => d.Route),
+)
 const UsernameRiwayatRoute = UsernameRiwayatRouteImport.update({
   id: '/riwayat',
   path: '/riwayat',
@@ -107,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/$username/profile': typeof UsernameProfileRoute
   '/$username/promo': typeof UsernamePromoRoute
   '/$username/riwayat': typeof UsernameRiwayatRoute
+  '/$username/saldo': typeof UsernameSaldoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -120,6 +129,7 @@ export interface FileRoutesByTo {
   '/$username/profile': typeof UsernameProfileRoute
   '/$username/promo': typeof UsernamePromoRoute
   '/$username/riwayat': typeof UsernameRiwayatRoute
+  '/$username/saldo': typeof UsernameSaldoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +144,7 @@ export interface FileRoutesById {
   '/$username/profile': typeof UsernameProfileRoute
   '/$username/promo': typeof UsernamePromoRoute
   '/$username/riwayat': typeof UsernameRiwayatRoute
+  '/$username/saldo': typeof UsernameSaldoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/$username/profile'
     | '/$username/promo'
     | '/$username/riwayat'
+    | '/$username/saldo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -162,6 +174,7 @@ export interface FileRouteTypes {
     | '/$username/profile'
     | '/$username/promo'
     | '/$username/riwayat'
+    | '/$username/saldo'
   id:
     | '__root__'
     | '/'
@@ -175,6 +188,7 @@ export interface FileRouteTypes {
     | '/$username/profile'
     | '/$username/promo'
     | '/$username/riwayat'
+    | '/$username/saldo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -205,6 +219,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/$username/saldo': {
+      id: '/$username/saldo'
+      path: '/saldo'
+      fullPath: '/$username/saldo'
+      preLoaderRoute: typeof UsernameSaldoRouteImport
+      parentRoute: typeof UsernameRouteRoute
     }
     '/$username/riwayat': {
       id: '/$username/riwayat'
@@ -274,6 +295,7 @@ interface UsernameRouteRouteChildren {
   UsernameProfileRoute: typeof UsernameProfileRoute
   UsernamePromoRoute: typeof UsernamePromoRoute
   UsernameRiwayatRoute: typeof UsernameRiwayatRoute
+  UsernameSaldoRoute: typeof UsernameSaldoRoute
 }
 
 const UsernameRouteRouteChildren: UsernameRouteRouteChildren = {
@@ -285,6 +307,7 @@ const UsernameRouteRouteChildren: UsernameRouteRouteChildren = {
   UsernameProfileRoute: UsernameProfileRoute,
   UsernamePromoRoute: UsernamePromoRoute,
   UsernameRiwayatRoute: UsernameRiwayatRoute,
+  UsernameSaldoRoute: UsernameSaldoRoute,
 }
 
 const UsernameRouteRouteWithChildren = UsernameRouteRoute._addFileChildren(

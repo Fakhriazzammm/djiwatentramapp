@@ -12,6 +12,7 @@ type CustomerData = {
   totalPoints?: number;
   totalOrders?: number;
   totalSpent?: number;
+  walletBalance?: number;
   // Legacy aliases kept for callers that still pass database-shaped rows.
   photo_url?: string;
   total_points?: number;
@@ -93,9 +94,9 @@ export function ProfileCard({
       {/* Stats */}
       <div className="mt-2.5 grid grid-cols-3 gap-1.5">
         <Stat
-          icon={<Star className="h-3 w-3 text-amber-500" />}
-          label="Yumi Poin"
-          value={String(customer.totalPoints ?? customer.total_points ?? 0)}
+          icon={<Wallet className="h-3 w-3 text-emerald-500" />}
+          label="Saldo"
+          value={currency(customer.walletBalance ?? 0)}
         />
         <Stat
           icon={<Package className="h-3 w-3 text-blue-500" />}
@@ -103,9 +104,9 @@ export function ProfileCard({
           value={String(customer.totalOrders ?? customer.total_orders ?? 0)}
         />
         <Stat
-          icon={<Wallet className="h-3 w-3 text-emerald-500" />}
-          label="Total"
-          value={currency(customer.totalSpent ?? customer.total_spent ?? 0)}
+          icon={<Star className="h-3 w-3 text-amber-500" />}
+          label="Poin"
+          value={String(customer.totalPoints ?? customer.total_points ?? 0)}
         />
       </div>
     </div>

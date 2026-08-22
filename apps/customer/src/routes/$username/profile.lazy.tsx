@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, LogIn, LogOut, Mail, Star, User } from "lucide-react";
+import { ArrowLeft, LogIn, LogOut, Mail, Star, User, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -194,7 +194,12 @@ function ProfilePage() {
 				</div>
 
 				{/* Stats */}
-				<div className="mt-2.5 grid grid-cols-3 gap-1.5">
+				<div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+					<ProfileStat
+						icon={<Wallet className="h-4 w-4 text-emerald-500" />}
+						label="Saldo"
+						value={currency(customer.walletBalance ?? 0)}
+					/>
 					<ProfileStat
 						icon={<Star className="h-4 w-4 text-amber-500" />}
 						label="Yumi Poin"
@@ -207,9 +212,20 @@ function ProfilePage() {
 					/>
 					<ProfileStat
 						icon={<Star className="h-4 w-4 text-emerald-500" />}
-						label="Total"
-						value={currency(customer.totalSpent ?? 0)}
+						label="Total Dipakai"
+						value={currency(customer.walletTotalDebited ?? 0)}
 					/>
+				</div>
+
+				<div className="mt-3 grid grid-cols-2 gap-2">
+					<div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+						<p className="text-[10px] font-semibold text-emerald-700">Total saldo masuk / top up</p>
+						<p className="mt-1 text-sm font-black text-emerald-900">{currency(customer.walletTotalCredited ?? 0)}</p>
+					</div>
+					<div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
+						<p className="text-[10px] font-semibold text-amber-700">Saldo tertahan</p>
+						<p className="mt-1 text-sm font-black text-amber-900">{currency(customer.walletHeldBalance ?? 0)}</p>
+					</div>
 				</div>
 
 				{/* Logout */}

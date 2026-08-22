@@ -34,7 +34,7 @@ export function readGuestOrderReferences(now = Date.now()): GuestOrderReference[
 export type RouteSearch = { table?: string; session?: string; orderId?: string };
 export type Step = "welcome" | "party" | "refill" | "menu" | "checkout" | "receipt";
 export type MenuMode = "number" | "catalog";
-export type PaymentChoice = "cashier" | "mayar";
+export type PaymentChoice = "cashier" | "mayar" | "wallet";
 export type ServiceRequestType = "call_staff" | "bring_dessert";
 
 export type CartItem = {

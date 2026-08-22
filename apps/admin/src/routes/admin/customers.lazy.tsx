@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X } from "lucide-react";
+import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +22,11 @@ interface Customer {
 	lifetime_points: number;
 	total_orders: number;
 	total_spent: number;
+	wallet_balance: number;
+	wallet_held_balance: number;
+	wallet_total_credited: number;
+	wallet_total_debited: number;
+	wallet_status: "active" | "blocked";
 	last_order_at: string | null;
 	created_at: string;
 }
@@ -267,7 +272,10 @@ function AdminCustomers() {
 										</p>
 									)}
 									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-										<span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700">
+										<span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
+												<Wallet className="h-3 w-3" /> {formatRupiah(c.wallet_balance || 0)}
+											</span>
+											<span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700">
 											<Star className="h-3 w-3 fill-current" />
 											{c.total_points}
 										</span>
@@ -313,6 +321,7 @@ function AdminCustomers() {
 								<th className="px-2.5 py-2">Nama</th>
 								<th className="px-2.5 py-2">Email</th>
 								<th className="px-2.5 py-2">Telepon</th>
+									<th className="px-2.5 py-2 text-right">Saldo</th>
 								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" aria-hidden="true" /> Poin</span></th>
 								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" aria-hidden="true" /> Lifetime</span></th>
 								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" /> Orders</span></th>
@@ -394,9 +403,11 @@ function AdminCustomers() {
 						<div className="mt-5 grid grid-cols-2 gap-2 text-sm">
 							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Email</p><p className="mt-1 break-all font-semibold">{detailCustomer.email || "-"}</p></div>
 							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Telepon</p><p className="mt-1 font-semibold">{detailCustomer.phone || "-"}</p></div>
+							<div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Saldo tersedia</p><p className="mt-1 font-black text-emerald-900">{formatRupiah(detailCustomer.wallet_balance || 0)}</p></div>
 							<div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">Poin aktif</p><p className="mt-1 font-black text-amber-900">{detailCustomer.total_points.toLocaleString("id-ID")}</p></div>
 							<div className="rounded-xl bg-violet-50 p-3"><p className="text-xs text-violet-700">Lifetime points</p><p className="mt-1 font-black text-violet-900">{detailCustomer.lifetime_points.toLocaleString("id-ID")}</p></div>
 							<div className="rounded-xl bg-blue-50 p-3"><p className="text-xs text-blue-700">Total orders</p><p className="mt-1 font-black text-blue-900">{detailCustomer.total_orders.toLocaleString("id-ID")}</p></div>
+							<div className="rounded-xl bg-cyan-50 p-3"><p className="text-xs text-cyan-700">Total saldo masuk</p><p className="mt-1 font-black text-cyan-900">{formatRupiah(detailCustomer.wallet_total_credited || 0)}</p></div>
 							<div className="rounded-xl bg-green-50 p-3"><p className="text-xs text-green-700">Total spending</p><p className="mt-1 font-black text-green-900">{formatRupiah(detailCustomer.total_spent)}</p></div>
 						</div>
 						<div className="mt-4 grid gap-2 text-sm"><div className="flex justify-between gap-4 border-b border-border pb-2"><span className="text-muted-foreground">Bergabung</span><span className="font-semibold">{formatDate(detailCustomer.created_at, true)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Order terakhir</span><span className="font-semibold">{formatDate(detailCustomer.last_order_at, true)}</span></div></div>

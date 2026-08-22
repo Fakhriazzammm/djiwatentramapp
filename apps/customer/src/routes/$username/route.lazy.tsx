@@ -1,6 +1,6 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ClipboardList, Coins, Home, UserRound, ChevronRight, LogIn, LogOut, ShoppingCart, Star, User } from "lucide-react";
+import { ClipboardList, Coins, Home, UserRound, ChevronRight, LogIn, LogOut, ShoppingCart, Star, User, Wallet } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
@@ -50,7 +50,7 @@ function MemberHomePage() {
 		{ label: "Home", icon: <Home className="h-4 w-4" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
 		{ label: "Pesan", icon: <ShoppingCart className="h-4 w-4" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } }) },
 		{ label: "Riwayat", icon: <ClipboardList className="h-4 w-4" />, active: location.pathname.includes("/riwayat"), onSelect: () => navigate({ to: "/$username/riwayat", params: { username } }) },
-		{ label: "Poin", icon: <Coins className="h-4 w-4" />, active: location.pathname.includes("/poin"), onSelect: () => navigate({ to: "/$username/poin", params: { username } }) },
+				{ label: "Saldo", icon: <Wallet className="h-4 w-4" />, active: location.pathname.includes("/saldo"), onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
 		{ label: "Profil", icon: <UserRound className="h-4 w-4" />, active: location.pathname.includes("/profile"), onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
 	];
 

@@ -13,6 +13,7 @@ import {
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
@@ -172,6 +173,7 @@ function OrderPage() {
 	const logoUrl = brandSettings?.logoUrl || siteSettings?.logoUrl || "";
 	const storeName = brandSettings?.title || siteSettings?.storeName || "Ordering";
 	const canUseMayar = Boolean(siteSettings?.mayarEnabled && mayarConfig?.configured);
+	const canUseWallet = Boolean(isAuthenticated && customer && customer.walletStatus !== "blocked");
 	const upsellEnabled = siteSettings?.upsellEnabled === true;
 	const upsellMaxRecommendations = Number(siteSettings?.upsellMaxRecommendations);
 	const upsellTitle = typeof siteSettings?.upsellTitle === "string" ? siteSettings.upsellTitle.trim() : "";
@@ -269,6 +271,15 @@ function OrderPage() {
 			label: config.cashPaymentLabel,
 			description: "Tampilkan struk dan bayar langsung ke kasir.",
 		},
+		...(canUseWallet
+			? [
+					{
+						key: "wallet" as PaymentChoice,
+						label: "Saldo Wallet",
+						description: `Gunakan saldo ${currency(customer?.walletBalance ?? 0)} untuk membayar pesanan.`,
+					},
+			  ]
+			: []),
 		...(canUseMayar
 			? [
 					{
@@ -572,7 +583,43 @@ function OrderPage() {
 						: undefined,
 			};
 
-			if (paymentChoice === "mayar") {
+			if (paymentChoice === "wallet") {
+				if (!customer?.sourceId || !customer.email) throw new Error("Login customer diperlukan untuk pembayaran saldo");
+				const orderId = await createOrder({
+					...payload,
+					paymentMethod: "wallet",
+					paymentReceiptKind: "wallet_pending",
+					isOpenBill: true,
+				});
+				try {
+					const holdResponse = await invokeEdgeFunction<{ result?: { ok?: boolean; hold_id?: string; available_balance?: number; required?: number } }>("customer-wallet", {
+						action: "hold",
+						sourceId: customer.sourceId,
+						email: customer.email,
+						orderId: String(orderId),
+						amount: Math.round(total),
+						idempotencyKey: `${checkoutRequestKeyRef.current}:hold`,
+					});
+					const hold = holdResponse.result;
+					if (!hold?.ok || !hold.hold_id) {
+						const available = Number(hold?.available_balance ?? 0);
+						throw new Error(`Saldo tidak cukup. Saldo tersedia ${currency(available)}, total order ${currency(total)}.`);
+					}
+					await updateOrderStatus({ id: orderId, status: "paid" });
+					await invokeEdgeFunction("customer-wallet", {
+						action: "capture",
+						sourceId: customer.sourceId,
+						email: customer.email,
+						holdId: hold.hold_id,
+						idempotencyKey: `${checkoutRequestKeyRef.current}:capture`,
+					});
+					if (!isAuthenticated) rememberGuestOrder(String(orderId));
+					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, dessertLater, cartSnapshot: cart });
+				} catch (error) {
+					await updateOrderStatus({ id: orderId, status: "cancelled" }).catch(() => undefined);
+					throw error;
+				}
+			} else if (paymentChoice === "mayar") {
 				const orderId = await createOrder({
 					...payload,
 					paymentReceiptKind: "cashier_pending",
