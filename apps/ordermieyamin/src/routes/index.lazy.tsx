@@ -385,6 +385,7 @@ function OrderForm() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const checkoutLockRef = useRef(false);
+  const checkoutIdempotencyKeyRef = useRef<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3>(1);
@@ -585,6 +586,7 @@ function OrderForm() {
   async function confirmSubmit() {
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
+    checkoutIdempotencyKeyRef.current = checkoutIdempotencyKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `ordermieyamin-b2b-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     setCheckoutError(null);
     setSubmitting(true);
     try {
@@ -596,6 +598,7 @@ function OrderForm() {
         ],
         totalAmount: total,
         paymentMethod: "djiwaapp",
+        idempotencyKey: checkoutIdempotencyKeyRef.current,
         customerName: name.trim(),
         customerEmail: email.trim() || null,
         source: "ordermieyamin_b2b",
@@ -615,6 +618,7 @@ function OrderForm() {
         isOpenBill: true,
       });
       setPendingPaymentOrderId(String(orderId));
+      checkoutIdempotencyKeyRef.current = null;
       await createPaymentInvoice(String(orderId));
     } catch (e) {
       const message = getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi.");

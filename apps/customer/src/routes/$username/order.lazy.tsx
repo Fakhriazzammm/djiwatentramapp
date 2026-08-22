@@ -10,7 +10,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
@@ -64,6 +64,7 @@ function OrderPage() {
 	const search = Route.useSearch();
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
 	const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0);
+	const checkoutRequestKeyRef = useRef<string | null>(null);
 
 	const siteSettings = useHybridSiteSettings();
 	const brandSettings = useHybridBookingSettings(brandSlug);
@@ -512,6 +513,7 @@ function OrderPage() {
 	};
 
 	const checkout = async () => {
+		if (isSubmitting) return;
 		if (!cart.length) {
 			toast.error("Pilih minimal satu produk");
 			return;
@@ -521,6 +523,7 @@ function OrderPage() {
 			return;
 		}
 		setIsSubmitting(true);
+		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
 			const normalizedCustomerName =
 				customerName.trim() || `Customer ${tableNumber.trim() || "Walk In"}`;
@@ -540,6 +543,7 @@ function OrderPage() {
 				taxAmount,
 				serviceChargeAmount,
 				paymentMethod: paymentChoice === "mayar" ? "djiwaapp" : "cash",
+				idempotencyKey: checkoutRequestKeyRef.current,
 				customerName: normalizedCustomerName,
 				customerDescription: normalizedCustomerDescription,
 				tableNumber: normalizedTableNumber,
@@ -658,6 +662,7 @@ function OrderPage() {
 				});
 			}
 			setCart([]);
+			checkoutRequestKeyRef.current = null;
 			setStep("receipt");
 		} catch (error) {
 			toast.error((error as Error).message || "Checkout gagal");

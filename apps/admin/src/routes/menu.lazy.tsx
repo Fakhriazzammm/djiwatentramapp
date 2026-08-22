@@ -1220,6 +1220,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					assignments?: { groupType: "barista" | "kitchen"; assignedTo: string; items: { productName: string; quantity: number; assignedTo: string }[] }[];
 				}
 			) => {
+			const idempotencyKey = globalThis.crypto?.randomUUID?.() || `admin-pos-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 			if (!isShiftOpen) {
 				toast.error("Buka shift terlebih dahulu di Dashboard");
 				return;

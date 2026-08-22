@@ -2495,6 +2495,7 @@ export function useHybridCreateOrder() {
 				const pos = supabase.schema("pos");
 
 			const orderCreatedAt = Number(args?.createdAt ?? Date.now());
+			const idempotencyKey = String(args?.idempotencyKey ?? "").trim() || null;
 			const isOpenBill = Boolean(args?.isOpenBill);
 			const autoComplete = Boolean(args?.autoComplete);
 			const nextStatus = isOpenBill
@@ -2502,6 +2503,16 @@ export function useHybridCreateOrder() {
 				: autoComplete
 					? "completed"
 					: "paid";
+
+				if (idempotencyKey) {
+					const { data: existingOrder, error: existingError } = await pos
+						.from("orders")
+						.select("source_id")
+						.eq("idempotency_key", idempotencyKey)
+						.maybeSingle();
+					if (existingError) throw existingError;
+					if (existingOrder?.source_id) return existingOrder.source_id;
+				}
 
 			// Daily receipt numbering
 			const kind = args?.source === "pos"
@@ -2589,12 +2600,24 @@ export function useHybridCreateOrder() {
 					payment_gateway: args?.paymentGateway ?? null,
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
+					idempotency_key: idempotencyKey,
 					customer_source_id: args?.customerSourceId ?? null,
 					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
-				if (orderError) throw orderError;
+				if (orderError) {
+					if (idempotencyKey && orderError.code === "23505") {
+						const { data: concurrentOrder, error: concurrentError } = await pos
+							.from("orders")
+							.select("source_id")
+							.eq("idempotency_key", idempotencyKey)
+							.maybeSingle();
+						if (concurrentError) throw concurrentError;
+						if (concurrentOrder?.source_id) return concurrentOrder.source_id;
+					}
+					throw orderError;
+				}
 
 				const orderItems = Array.isArray(args?.items)
 					? args.items.map((item: any, index: number) => ({
