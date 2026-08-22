@@ -1741,7 +1741,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -1759,7 +1759,7 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
@@ -1771,7 +1771,7 @@ async def _check_new_orders(app):
         # menyelesaikan pembayaran. Ini bukan bukti order sudah lunas.
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=eq.customer_self_service"
             "&status=eq.pending"
             "&paymentMethod=eq.cash"
@@ -1787,7 +1787,11 @@ async def _check_new_orders(app):
                 by_id[row_id] = row
         rows = sorted(
             by_id.values(),
-            key=lambda row: int(float(row.get("_creationTime") or 0)),
+            key=lambda row: (
+                int(float(row.get("_creationTime") or 0)),
+                int(float(row.get("daily_receipt_no") or 0)),
+                str(row.get("orderNumber") or ""),
+            ),
         )
     except Exception as e:
         logger.warning("customer settled/cashier-order lookback failed: %s", e)
@@ -1800,6 +1804,8 @@ async def _check_new_orders(app):
 
     max_creation_time = _last_order_check_ms
     for row in rows:
+        if str(row.get("status") or "").lower() == "cancelled":
+            continue
         order_no = row.get("orderNumber", "???")
         ts = int(float(row.get("_creationTime") or 0))
         if ts > max_creation_time:
