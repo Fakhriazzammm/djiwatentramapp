@@ -163,7 +163,9 @@ async function syncRecentOrders() {
         totalAmount: Number(order.totalAmount ?? 0),
         items: Array.isArray(order.items) ? order.items : [],
       },
-      created_at: new Date().toISOString(),
+      created_at: Number.isFinite(Number(order.createdAt))
+        ? new Date(Number(order.createdAt)).toISOString()
+        : new Date().toISOString(),
       is_active: true,
     }, "?on_conflict=dedupe_key");
     if (Array.isArray(result) && result.length > 0) created++;
@@ -179,11 +181,24 @@ async function listNotifications(user: UserContext) {
     limit: "100",
   });
   const now = Date.now();
+  const orderIds = [...new Set((rows ?? []).map((item: any) => String(item.order_source_id ?? "")).filter(Boolean))];
+  const orderStatuses = new Map<string, string>();
+  if (orderIds.length > 0) {
+    const orders = await dbGet("pos_orders", {
+      select: "_id,status",
+      _id: `in.(${orderIds.join(",")})`,
+      limit: "200",
+    });
+    for (const order of orders ?? []) {
+      orderStatuses.set(String(order._id), String(order.status ?? "").toLowerCase());
+    }
+  }
   const visible = (rows ?? []).filter((item: any) => {
     if (item.expires_at && Date.parse(item.expires_at) < now) return false;
     if (item.target_user_id && item.target_user_id !== user.id) return false;
     if (item.target_role && item.target_role.toLowerCase() !== user.role) return false;
     if (item.target_branch_id && item.target_branch_id !== user.branchId) return false;
+    if (item.order_source_id && orderStatuses.get(String(item.order_source_id)) === "cancelled") return false;
     return true;
   }).map((item: any) => ({
     ...item,
