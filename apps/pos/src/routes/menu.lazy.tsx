@@ -151,6 +151,8 @@ function summarizeRoleBonus(achievementPct: number, config: RoleBonusConfig) {
 	};
 }
 
+const AUTO_PRINTED_CUSTOMER_ORDERS_KEY = "pos_auto_printed_customer_orders_v1";
+
 export const Route = createLazyFileRoute("/menu")({
 	component: MenuPage,
 });
@@ -486,6 +488,9 @@ function MenuPage() {
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
 	const transactionSoundIdsRef = useRef<Set<string>>(new Set());
+	const autoPrintedCustomerOrderIdsRef = useRef<Set<string>>(new Set());
+	const customerAutoPrintStatusRef = useRef<Map<string, string>>(new Map());
+	const hasSeededCustomerAutoPrintRef = useRef(false);
 	const hasSeededDjiwaAppOrdersRef = useRef(false);
 	const [offlinePendingCount, setOfflinePendingCount] = useState(0);
 	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
@@ -1121,18 +1126,18 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const handlePrint = useCallback(async (
 		orderId: Id<"orders">,
 		modeOverride?: ReceiptPrintMode
-	) => {
+	): Promise<boolean> => {
 		if (!siteSettings) {
 			toast.error("Data toko belum siap. Coba lagi sebentar.", { id: "printing" });
-			return;
+			return false;
 		}
 
 		try {
 			if (!navigator.bluetooth) {
 				toast.error("Browser ini tidak mendukung Web Bluetooth (gunakan Chrome/Edge).", { id: "printing" });
-				return;
+				return false;
 			}
-			
+
 			if (!bluetoothPrinter.isConnected()) {
 				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
 				if (!connected) {
@@ -1157,11 +1162,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			if (!order) {
 				console.warn("[Print] Order not found:", orderId);
 				toast.error("Order tidak ditemukan untuk dicetak", { id: "printing" });
-				return;
+				return false;
 			}
 
 			toast.loading("Mencetak struk...", { id: "printing" });
-			
 			const items = order.items.map((i: any) => ({
 				productId: i.productId,
 				name: i.productName,
@@ -1194,6 +1198,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						paymentMethod: order.paymentMethod,
 						createdAt: order.createdAt,
 						customerName: order.customerName,
+						customerDescription: order.customerDescription,
 						orderType: order.orderType,
 						tableNumber: order.tableNumber,
 						notes: order.notes,
@@ -1233,13 +1238,77 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					}
 				);
 			toast.success("Struk berhasil dicetak", { id: "printing" }); triggerHybridRefresh();
+			return true;
 		} catch (error) {
 			console.error("Print failed:", error);
 			const message =
 				error instanceof Error ? error.message : "Gagal mencetak";
 			toast.error(`Gagal mencetak: ${message}. ${!bluetoothPrinter.isConnected() ? 'Pastikan printer Bluetooth sudah terhubung — klik "Hubungkan Printer".' : ""}`, { id: "printing" });
+			return false;
 		}
 	}, [allDiscounts, orders, siteSettings, shiftStatus]);
+
+	const handleAutoPrintSettledCustomerOrder = useCallback(async (orderId: string) => {
+		let storedIds: string[] = [];
+		try {
+			const raw = window.localStorage.getItem(AUTO_PRINTED_CUSTOMER_ORDERS_KEY);
+			const parsed = raw ? JSON.parse(raw) : [];
+			if (Array.isArray(parsed)) storedIds = parsed.filter((value): value is string => typeof value === "string");
+		} catch {
+			storedIds = [];
+		}
+
+		if (storedIds.includes(orderId) || autoPrintedCustomerOrderIdsRef.current.has(orderId)) return true;
+		if (!bluetoothPrinter.isConnected()) {
+			const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
+			if (!connected) {
+				toast.warning("Printer belum terhubung. Hubungkan printer untuk mencetak struk customer.", { id: "auto-print" });
+				return false;
+			}
+		}
+
+		autoPrintedCustomerOrderIdsRef.current.add(orderId);
+		const nextStoredIds = [...new Set([...storedIds, orderId])].slice(-300);
+		try {
+			window.localStorage.setItem(AUTO_PRINTED_CUSTOMER_ORDERS_KEY, JSON.stringify(nextStoredIds));
+		} catch {
+			// Printing still proceeds; the in-memory guard protects this render.
+		}
+
+		const printed = await handlePrint(orderId as Id<"orders">, "paid");
+		if (!printed) {
+			autoPrintedCustomerOrderIdsRef.current.delete(orderId);
+			try {
+				window.localStorage.setItem(AUTO_PRINTED_CUSTOMER_ORDERS_KEY, JSON.stringify(storedIds));
+			} catch {
+				// Retry remains possible through the live status update.
+			}
+		}
+		return printed;
+	}, [handlePrint]);
+
+	useEffect(() => {
+		if (!orders) return;
+		const currentStatuses = new Map<string, string>();
+		const newlySettledOrderIds: string[] = [];
+		for (const order of orders as any[]) {
+			const source = String(order.source ?? order.sourceApp ?? order.source_app ?? "").trim().toLowerCase();
+			if (source !== "customer_self_service") continue;
+			const orderId = String(order._id ?? order.sourceId ?? "");
+			const status = String(order.status ?? "").toLowerCase();
+			if (!orderId) continue;
+			currentStatuses.set(orderId, status);
+			if (hasSeededCustomerAutoPrintRef.current && customerAutoPrintStatusRef.current.get(orderId) !== status && (status === "paid" || status === "completed")) {
+				newlySettledOrderIds.push(orderId);
+			}
+		}
+		if (!hasSeededCustomerAutoPrintRef.current) {
+			hasSeededCustomerAutoPrintRef.current = true;
+		} else {
+			newlySettledOrderIds.forEach((orderId) => { void handleAutoPrintSettledCustomerOrder(orderId); });
+		}
+		customerAutoPrintStatusRef.current = currentStatuses;
+	}, [handleAutoPrintSettledCustomerOrder, orders]);
 
 	const handlePrintCurrentOpenBill = useCallback(async () => {
 		if (!siteSettings || cartItems.length === 0) return;

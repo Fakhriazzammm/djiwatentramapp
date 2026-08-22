@@ -124,6 +124,7 @@ export interface ReceiptOrderPayload {
 	paymentMethod: string;
 	createdAt: number;
 	customerName?: string;
+	customerDescription?: string;
 	notes?: string;
 	orderType?: string;
 	tableNumber?: string;
@@ -681,10 +682,16 @@ export class BluetoothPrinterService {
 			printKeyValue("PELANGGAN", order.customerName.toUpperCase());
 		}
 
+		if (order.customerDescription) {
+			printSeparator("-");
+			result.bold(true).line("CIRI CUSTOMER").bold(false);
+			printWrappedLines(order.customerDescription);
+		}
+
 		if (settings.receiptShowNotes && order.notes) {
 			printSeparator("-");
 			result.bold(true).line("CATATAN").bold(false);
-			printWrappedLines(order.notes);
+			printWrappedLines(order.notes || "");
 		}
 
 		if (mode !== "kitchen" && order.receiptMeta?.promotionLabels?.length) {
