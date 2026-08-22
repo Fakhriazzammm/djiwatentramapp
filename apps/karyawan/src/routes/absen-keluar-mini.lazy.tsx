@@ -418,6 +418,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
   const [submitDone, setSubmitDone] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+  const submitInFlightRef = useRef(false);
   const [clockTick, setClockTick] = useState(() => Date.now());
 
   const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
@@ -481,6 +482,8 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
 
   // ── Handle submit ──
   async function handleSubmit() {
+    if (submitInFlightRef.current || submitDone) return;
+    submitInFlightRef.current = true;
     setSubmitError(null);
     setSubmitNotice(closeScheduleNotice);
     if (closeScheduleNotice) return;
@@ -544,6 +547,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
       }
       console.error("[mini] handleSubmit error:", err);
     } finally {
+      submitInFlightRef.current = false;
       setIsSubmitting(false);
     }
   }
@@ -669,10 +673,10 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
       {!submitDone && (
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {activeTab === "opname" && needsOpname && (
-            <StockOpnameSection ref={opnameRef} role={role!} mini />
+            <StockOpnameSection ref={opnameRef} role={role!} mini onSave={() => void handleSubmit()} />
           )}
           {activeTab === "kebersihan" && (
-            <KebersihanSection ref={kebersihanRef} />
+            <KebersihanSection ref={kebersihanRef} onSave={() => void handleSubmit()} />
           )}
         </div>
       )}
@@ -687,8 +691,8 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
 //  STOCK OPNAME SECTION (reused)
 // ═══════════════════════════════════════════
 
-const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: "bar" | "kitchen"; mini?: boolean }>(
-  function StockOpnameSection({ role, mini }, ref) {
+const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: "bar" | "kitchen"; mini?: boolean; onSave?: () => void }>(
+  function StockOpnameSection({ role, mini, onSave }, ref) {
     const [items, setItems] = useState<OpnameItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -812,8 +816,8 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
           <button onClick={markAllSame} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2 text-[11px] font-bold hover:bg-muted">
             <Check className="h-3.5 w-3.5" /> Semua Sama
           </button>
-          <button onClick={() => setSaved(true)} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-600">
-            <Save className="h-3.5 w-3.5" /> Simpan
+          <button onClick={() => { setSaved(true); onSave?.(); }} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-600">
+            <Save className="h-3.5 w-3.5" /> Simpan & Kirim
           </button>
         </div>
 
@@ -910,7 +914,7 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
 //  KEBERSIHAN SECTION (reused)
 // ═══════════════════════════════════════════
 
-const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(function KebersihanSection(_props, ref) {
+const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }, { onSave?: () => void }>(function KebersihanSection({ onSave }, ref) {
   const [areas, setAreas] = useState<KebersihanArea[]>(AREAS_KEBERSIHAN);
   const [saved, setSaved] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -1007,7 +1011,7 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }>(funct
       {saved && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-center">
           <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-700"><Check className="h-3.5 w-3.5" /> Pemeriksaan tersimpan</p>
-          <p className="mt-1 text-[10px] font-medium text-emerald-700">Absen Keluar belum selesai. Tekan “Kirim Laporan Closing” setelah waktunya tiba.</p>
+          <p className="mt-1 text-[10px] font-medium text-emerald-700">Data pemeriksaan sudah dikirim. Jika belum waktunya, laporan akan menunggu sampai jadwal closing.</p>
         </motion.div>
       )}
     </div>
