@@ -149,8 +149,12 @@ function getRangeDates(range: string): { start: string; end: string } {
 const STATUS_LABEL: Record<string, string> = {
 	pending: "Menunggu",
 	confirmed: "Dikonfirmasi",
+	arrived: "Tiba",
+	seated: "Duduk",
 	cancelled: "Dibatalkan",
 	completed: "Selesai",
+	no_show: "No-show",
+	expired: "Expired",
 };
 const PAY_LABEL: Record<string, string> = {
 	pending: "Belum Bayar",
@@ -160,8 +164,12 @@ const PAY_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
 	pending: "bg-yellow-100 text-yellow-700",
 	confirmed: "bg-blue-100 text-blue-700",
+	arrived: "bg-cyan-100 text-cyan-700",
+	seated: "bg-indigo-100 text-indigo-700",
 	cancelled: "bg-red-100 text-red-700",
 	completed: "bg-green-100 text-green-700",
+	no_show: "bg-slate-100 text-slate-700",
+	expired: "bg-slate-100 text-slate-500",
 };
 const PAY_COLOR: Record<string, string> = {
 	pending: "bg-orange-100 text-orange-700",
@@ -483,7 +491,7 @@ function OrderRow({
 
 					<div className="flex flex-wrap gap-2 pt-2 border-t border-border">
 						<span className="text-[10px] font-bold text-muted-foreground self-center">Ubah Status:</span>
-						{order.bookingStatus !== "confirmed" && (
+						{order.bookingStatus === "pending" && (
 							<button
 								className="rounded-lg bg-blue-500 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:brightness-110 active:scale-95"
 								onClick={() => onUpdateStatus(order._id, "confirmed")}
@@ -492,13 +500,31 @@ function OrderRow({
 								<Check className="inline h-3 w-3 mr-1" />Konfirmasi
 							</button>
 						)}
-						{order.bookingStatus !== "completed" && order.bookingStatus !== "cancelled" && (
+						{order.bookingStatus === "confirmed" && (
+							<button
+								className="rounded-lg bg-cyan-600 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:brightness-110 active:scale-95"
+								onClick={() => onUpdateStatus(order._id, "arrived")}
+								type="button"
+							>
+								Tandai Tiba
+							</button>
+						)}
+						{order.bookingStatus === "arrived" && (
+							<button
+								className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:brightness-110 active:scale-95"
+								onClick={() => onUpdateStatus(order._id, "seated")}
+								type="button"
+							>
+								Tandai Duduk
+							</button>
+						)}
+						{order.bookingStatus === "seated" && (
 							<button
 								className="rounded-lg bg-green-500 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:brightness-110 active:scale-95"
 								onClick={() => onUpdateStatus(order._id, "completed")}
 								type="button"
 							>
-								Selesai
+								Selesaikan
 							</button>
 						)}
 						{order.bookingStatus !== "cancelled" && (
@@ -550,7 +576,7 @@ function BookingSettingsPage() {
 	const [calYear, setCalYear] = useState(today.getFullYear());
 	const [calMonth, setCalMonth] = useState(today.getMonth());
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
-	const [listFilter, setListFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
+	const [listFilter, setListFilter] = useState<"all" | "pending" | "confirmed" | "arrived" | "seated" | "completed" | "cancelled">("all");
 	const [paymentFilter, setPaymentFilter] = useState<"all" | "pending" | "paid">("all");
 
 	// Edit dialog state
@@ -1238,7 +1264,7 @@ function BookingSettingsPage() {
 					</div>
 
 					<div className="flex flex-wrap items-center gap-2">
-						{(["all", "pending", "confirmed", "cancelled"] as const).map((f) => (
+						{(["all", "pending", "confirmed", "arrived", "seated", "completed", "cancelled"] as const).map((f) => (
 							<button
 								className={`rounded-full px-4 py-1.5 font-bold text-xs transition-all ${
 									listFilter === f
