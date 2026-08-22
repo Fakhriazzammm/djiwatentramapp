@@ -283,6 +283,12 @@ function AdminOrders() {
 		
 		const bookings = (allBookingOrders || []).map((b: any) => ({
 			...b,
+			items: Array.isArray(b.items)
+				? b.items.map((item: any) => ({
+						...item,
+						productName: item.productName ?? item.name ?? "Item booking",
+					}))
+				: [],
 			type: "booking",
 			businessCategory: "booking",
 			id: b._id,
