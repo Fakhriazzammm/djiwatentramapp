@@ -1010,7 +1010,7 @@ async def _send_with_retry(bot, chat_id: int, text: str, reply_markup=None, max_
 async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line=None,
                                       guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
                                       source_label: str | None = None,
-                                      payment_note: str | None = None):
+                                      payment_note: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1111,13 +1111,15 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 300))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Barista notification sent for %s (%d beverages)", order_no, len(bev_items))
+        return True
     except Exception as e:
         logger.error("send_barista_notification failed for %s: %s", order_no, e)
+        return False
 
 async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line=None,
                                       guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
                                       source_label: str | None = None,
-                                      payment_note: str | None = None):
+                                      payment_note: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1220,8 +1222,10 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 300))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Kitchen notification sent for %s (%d food items)", order_no, len(food_items))
+        return True
     except Exception as e:
         logger.error("send_kitchen_notification failed for %s: %s", order_no, e)
+        return False
 
 # ── Telegram user → staff name mapping ──────────────────────────
 
@@ -1496,7 +1500,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
                                           discount_amount=0.0, voucher_id=None, free_refill=None,
                                           delivery_context: dict | None = None,
                                           source_label: str | None = None,
-                                      payment_note: str | None = None):
+                                      payment_note: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
@@ -1562,9 +1566,10 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         try:
             await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(special_lines))
             logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
+            return True
         except Exception as e:
             logger.error("send_transaction_notification failed for %s: %s", order_no, e)
-        return
+            return False
 
     # ── Parse team members into per-role lines ──
     team_lines = []
@@ -1676,8 +1681,10 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     try:
         await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, text)
         logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
+        return True
     except Exception as e:
         logger.error("send_transaction_notification failed for %s: %s", order_no, e)
+        return False
 
 # ── Member / poin engine ────────────────────────────────────────────
 
@@ -1803,6 +1810,7 @@ async def _check_new_orders(app):
         return
 
     max_creation_time = _last_order_check_ms
+    retry_from_time: int | None = None
     for row in rows:
         if str(row.get("status") or "").lower() == "cancelled":
             continue
@@ -1943,13 +1951,18 @@ async def _check_new_orders(app):
         if bev_items:
             tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, payment_note))
 
+        channel_results = []
         if tasks:
-            await asyncio.gather(*tasks)
+            channel_results = await asyncio.gather(*tasks)
             await asyncio.sleep(0.3)  # small gap between orders
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, payment_note)
+        transaction_sent = await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, payment_note)
+        if not all([*channel_results, transaction_sent]):
+            retry_from_time = ts if retry_from_time is None else min(retry_from_time, ts)
+            logger.warning("Order %s not marked reported; notification delivery incomplete (channels=%s transaction=%s)", order_no, channel_results, transaction_sent)
+            continue
 
         # ⭐ Award points for member orders
         if customer_source_id:
@@ -1957,7 +1970,7 @@ async def _check_new_orders(app):
 
         _reported_order_nos.add(order_no)
 
-    _last_order_check_ms = max_creation_time
+    _last_order_check_ms = max_creation_time if retry_from_time is None else max(_last_order_check_ms, retry_from_time - 1)
     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
 
 # ── Customer service request polling ──
