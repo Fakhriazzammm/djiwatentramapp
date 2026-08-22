@@ -78,7 +78,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -239,6 +238,7 @@ export function MenuSidebar({
 	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(null);
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [isParkDialogOpen, setIsParkDialogOpen] = useState(false);
+	const [transactionPage, setTransactionPage] = useState<"history" | "open_bill">("history");
 
 	const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
 		isOpen: false,
@@ -589,23 +589,34 @@ export function MenuSidebar({
 							{activeTab === "transaksi" && (
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
-										<Tabs defaultValue="history" className="w-full">
-											<TabsList className="grid h-9 w-full grid-cols-2">
-												<TabsTrigger value="history" className="text-xs">Riwayat Pesanan</TabsTrigger>
-												<TabsTrigger value="open_bill" className="text-xs">Open Bill</TabsTrigger>
-											</TabsList>
-											<TabsContent value="history" className="mt-3">
+										<div className="grid min-w-0 grid-cols-1 gap-2">
+											<button
+												type="button"
+												onClick={() => setTransactionPage("history")}
+												className={cn("min-w-0 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-colors", transactionPage === "history" ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted")}
+											>
+												Riwayat Pesanan
+											</button>
+											<button
+												type="button"
+												onClick={() => setTransactionPage("open_bill")}
+												className={cn("min-w-0 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-colors", transactionPage === "open_bill" ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted")}
+											>
+												Open Bill
+											</button>
+										</div>
+										<div className="mt-4 min-w-0">
+											{transactionPage === "history" ? (
 												<HistoryTab onSelectOrder={setSelectedOrder} onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined} />
-											</TabsContent>
-											<TabsContent value="open_bill" className="mt-3">
+											) : (
 												<ParkirTab
 													onClose={() => setIsOpen(false)}
 													onRestore={handleRestoreOrder}
-													onSelectOrder={setSelectedOrder}
-													onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined}
+												onSelectOrder={setSelectedOrder}
+												onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined}
 												/>
-											</TabsContent>
-										</Tabs>
+											)}
+										</div>
 									</div>
 								</div>
 							)}
