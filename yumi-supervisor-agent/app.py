@@ -85,12 +85,13 @@ def _headers():
         "Authorization": f"Bearer {SUPABASE_KEY}",
     }
 
-async def _fetch(table: str, query: str = "") -> list[dict]:
+async def _fetch(table: str, query: str = "", use_service_role: bool = False) -> list[dict]:
     url = f"{SUPABASE_URL}/rest/v1/{table}"
     if query:
         url = f"{url}?{query}"
+    headers = _service_role_headers() if use_service_role else _headers()
     async with httpx.AsyncClient() as client:
-        r = await client.get(url, headers=_headers(), timeout=15)
+        r = await client.get(url, headers=headers, timeout=15)
         r.raise_for_status()
         data = r.json()
         return data if isinstance(data, list) else []
@@ -1394,6 +1395,23 @@ def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0, paid_update
         for no in sorted(paid_update_nos or set()):
             f.write(f"{no}\n")
 
+_BOOKING_CURSOR_FILE = os.path.join(_STATE_DIR, "yumi_supervisor_booking_transactions.txt")
+
+def _load_booking_notification_ids() -> set[str]:
+    try:
+        with open(_BOOKING_CURSOR_FILE) as f:
+            return {line.strip() for line in f if line.strip()}
+    except FileNotFoundError:
+        return set()
+
+
+def _save_booking_notification_ids(ids: set[str]):
+    with open(_BOOKING_CURSOR_FILE, "w") as f:
+        for tx_id in sorted(ids)[-500:]:
+            f.write(f"{tx_id}\n")
+
+_booking_notification_ids = _load_booking_notification_ids()
+
 _last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos = _load_supervisor_cursor()
 
 # ── Shift recap cursor ──
@@ -1746,6 +1764,92 @@ async def _earn_customer_points(order_id: str, customer_source_id: str, total_am
         )
     except Exception as e:
         logger.error("_earn_customer_points failed for %s: %s", customer_source_id, e)
+
+
+async def _check_new_booking_transactions(app):
+    """Notify transaction group for paid booking finance transactions."""
+    global _booking_notification_ids
+    now_ms = int(_now_wib().timestamp() * 1000)
+    lookback_ms = now_ms - 30 * 86_400_000
+    try:
+        finance_rows = await _fetch(
+            "pos_financial_transactions",
+            "select=_id,amount,date,bookingOrderId,paymentMethod,description,status,metadata"
+            "&type=eq.income&status=eq.completed&bookingOrderId=not.is.null"
+            f"&date=gte.{lookback_ms}&date=lte.{now_ms}"
+            "&order=date.asc&limit=100",
+            use_service_role=True,
+        )
+    except Exception as e:
+        logger.error("check_new_booking_transactions fetch failed: %s", e)
+        return
+
+    for finance in finance_rows:
+        transaction_id = str(finance.get("_id") or "").strip()
+        booking_id = str(finance.get("bookingOrderId") or "").strip()
+        if not transaction_id or not booking_id or transaction_id in _booking_notification_ids:
+            continue
+
+        booking_rows = await _fetch(
+            "pos_booking_orders",
+            "select=_id,bookingCode,customerName,customerPhone,bookingDate,arrivalTime,totalAmount,"
+            "paymentMethod,paymentStatus,bookingStatus,guestCount,tableCount,items,notes,customAnswers"
+            f"&_id=eq.{booking_id}&limit=1",
+            use_service_role=True,
+        )
+        if not booking_rows:
+            logger.warning("Booking finance %s references missing booking %s; will retry", transaction_id, booking_id)
+            continue
+
+        booking = booking_rows[0]
+        code = str(booking.get("bookingCode") or finance.get("description") or booking_id)
+        customer = str(booking.get("customerName") or "Pelanggan")
+        amount = float(finance.get("amount") or booking.get("totalAmount") or 0)
+        payment_method = _payment_label(str(finance.get("paymentMethod") or booking.get("paymentMethod") or "-"))
+        booking_date = str(booking.get("bookingDate") or "—")
+        arrival_time = str(booking.get("arrivalTime") or "—")
+        raw_items = booking.get("items")
+        items: list[dict] = [item for item in raw_items if isinstance(item, dict)] if isinstance(raw_items, list) else []
+        custom_answers = booking.get("customAnswers") if isinstance(booking.get("customAnswers"), dict) else {}
+        lines = [
+            "📅 BOOKING BARU — PEMBAYARAN DITERIMA",
+            "────────────",
+            f"🆔 {code}",
+            f"👤 {customer}",
+            f"💰 Total: Rp{amount:,.0f} — {payment_method}",
+            f"📆 Tanggal booking: {booking_date}",
+            f"🕒 Jam kedatangan: {arrival_time}",
+            f"👥 Tamu: {int(float(booking.get('guestCount') or 0))} orang",
+            f"🪑 Meja: {int(float(booking.get('tableCount') or 0))}",
+            "",
+            "🍽️ Pesanan",
+        ]
+        for index, item in enumerate(items, start=1):
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("productName") or "Item")
+            quantity = float(item.get("quantity") or 1)
+            quantity_label = str(int(quantity)) if quantity.is_integer() else str(quantity)
+            price = float(item.get("price") or 0)
+            lines.append(f"{index}. {name} x{quantity_label} — Rp{price:,.0f}")
+        if custom_answers:
+            lines.extend(["", "📝 Detail booking"])
+            for key, value in custom_answers.items():
+                if value not in (None, ""):
+                    lines.append(f"• {key}: {value}")
+        notes = str(booking.get("notes") or "").strip()
+        if notes:
+            lines.extend(["", f"💬 Catatan: {notes}"])
+        lines.extend(["", "✅ Status: Paid / Confirmed"])
+
+        try:
+            await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(lines))
+            _booking_notification_ids.add(transaction_id)
+            _save_booking_notification_ids(_booking_notification_ids)
+            logger.info("Booking transaction notification sent for %s", code)
+        except Exception as e:
+            logger.error("Booking transaction notification failed for %s: %s", code, e)
+            # Do not mark as sent; the next poll retries the same finance transaction.
 
 
 async def _check_new_orders(app):
@@ -2358,6 +2462,7 @@ async def _post_init(app):
 
     # First poll check (catch up with any orders since start)
     await _reconcile_mayar_payments(force=True)
+    await _check_new_booking_transactions(app)
     await _check_new_orders(app)
 
     # Initial shift recap check
@@ -2369,6 +2474,7 @@ async def _post_init(app):
         while True:
             await asyncio.sleep(5)
             await _reconcile_mayar_payments()
+            await _check_new_booking_transactions(app)
             await _check_new_orders(app)
             await _check_new_csr(app)
             await _check_closed_shifts(app.bot)
