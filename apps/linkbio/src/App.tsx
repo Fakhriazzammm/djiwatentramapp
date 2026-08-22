@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight, BadgeCheck, ChevronRight, Globe2, HeartHandshake, Instagram, MapPin, Sparkles } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, ChevronRight, Globe2, HeartHandshake, Instagram, MapPin, ShoppingBag, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const links = [
@@ -23,6 +23,13 @@ const links = [
     description: "Temukan kesempatan untuk bertumbuh",
     icon: HeartHandshake,
     tone: "bg-[#fff4e8] text-[#b56715]",
+  },
+  {
+    href: "https://ordermieyamin.yumme.id",
+    label: "Ordermie Yamin",
+    description: "Pesan favoritmu dengan praktis",
+    icon: ShoppingBag,
+    tone: "bg-[#f0edff] text-[#6b4fc4]",
   },
 ];
 
