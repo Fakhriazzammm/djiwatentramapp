@@ -18,7 +18,10 @@ function fail(code: string, message: string, status = 400) {
   return jsonResponse({ success: false, error: { code, message } }, status);
 }
 
-const HMAC_MAX_AGE_MS = 5 * 60 * 1000;
+// Closing links may be opened before the shift ends while the employee
+// completes the checklist. The server still enforces active check-in,
+// signature, duplicate-checkout, and authoritative close-time validation.
+const HMAC_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const HMAC_MAX_FUTURE_SKEW_MS = 60 * 1000;
 
 async function hexHmacSha256(secret: string, data: string): Promise<string> {
