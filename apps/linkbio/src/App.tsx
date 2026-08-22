@@ -65,7 +65,7 @@ export function App() {
             <img src="/logo-djiwa.png" alt="Logo Djiwa Tentram" className="h-10 w-10 rounded-[14px] object-contain shadow-[0_8px_24px_rgba(26,93,198,0.14)]" />
             <div>
               <p className="font-display text-sm font-extrabold tracking-[-0.03em] text-[#17366f]">Djiwa Tentram</p>
-              <p className="text-[11px] font-medium text-[#6b7d9e]">Centrik untuk hidup yang berarti</p>
+              <p className="text-[11px] font-medium text-[#6b7d9e]">Ruang nyaman untuk momen berarti</p>
             </div>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/70 text-[#1a5dc6] shadow-[0_8px_22px_rgba(45,93,153,0.08)] backdrop-blur">
