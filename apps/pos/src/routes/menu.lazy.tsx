@@ -471,6 +471,8 @@ function MenuPage() {
 	const [isCartOpen, setIsCartOpen] = useState(false);
 	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const submitInFlightRef = useRef(false);
+	const paymentRequestIdRef = useRef<string | null>(null);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 	const [transactionAlertIds, setTransactionAlertIds] = useState<string[]>([]);
@@ -1355,13 +1357,22 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					assignments?: { groupType: "barista" | "kitchen"; assignedTo: string; items: { productName: string; quantity: number; assignedTo: string }[] }[];
 				}
 			) => {
+			if (submitInFlightRef.current) {
+				toast.loading("Pesanan sedang diproses. Jangan tekan tombol lagi.", { id: "order-submit" });
+				return;
+			}
 			if (!isShiftOpen) {
 				toast.error("Buka shift terlebih dahulu di Dashboard");
 				return;
 			}
 			if (cartItems.length === 0) return;
+			submitInFlightRef.current = true;
 			setIsSubmitting(true);
 			try {
+				const idempotencyKey =
+					paymentRequestIdRef.current ??
+					(globalThis.crypto?.randomUUID?.() || `pos-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+				paymentRequestIdRef.current = idempotencyKey;
 					const useMayarGateway = paymentMethod === "qris_mayar";
 					const normalizedPaymentMethod = useMayarGateway
 						? "mayar"
@@ -1441,6 +1452,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						  }
 						: undefined,
 					paymentReceiptKind: mayarInvoice ? "cashier_pending" as const : undefined,
+					idempotencyKey,
 					isOpenBill: shouldOpenBill,
 					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
 					assignments: orderData?.assignments,
@@ -1479,6 +1491,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					}
 				}
 
+				paymentRequestIdRef.current = null;
 				clearCart();
 				setIsPaymentOpen(false);
 				setIsCartOpen(false);
@@ -1486,6 +1499,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				console.error(error);
 				toast.error((error as Error).message || "Gagal membuat pesanan");
 			} finally {
+				submitInFlightRef.current = false;
 				setIsSubmitting(false);
 			}
 		},
@@ -2329,7 +2343,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			{/* === PAYMENT MODAL === */}
 			<PaymentConfirmationModal
 				isOpen={isPaymentOpen}
-				onClose={() => setIsPaymentOpen(false)}
+				onClose={() => {
+					if (!submitInFlightRef.current) paymentRequestIdRef.current = null;
+					setIsPaymentOpen(false);
+				}}
 				isSubmitting={isSubmitting}
 				onConfirm={handlePaymentConfirm}
 			/>
