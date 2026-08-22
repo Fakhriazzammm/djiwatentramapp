@@ -1003,9 +1003,9 @@ const KebersihanSection = forwardRef<{ getAreas: () => KebersihanArea[] }, { onS
         );
       })}
 
-      <button onClick={() => setSaved(true)}
+      <button onClick={() => { setSaved(true); onSave?.(); }}
         className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 active:scale-[0.98]">
-        <Save className="h-3.5 w-3.5" /> Simpan Pemeriksaan
+        <Save className="h-3.5 w-3.5" /> Simpan & Kirim Laporan Closing
       </button>
 
       {saved && (
