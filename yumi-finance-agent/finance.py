@@ -9,6 +9,7 @@ import logging
 import httpx
 from datetime import datetime, timezone, timedelta
 from collections import Counter
+from statistics import median
 from categories import FINANCE_CATEGORIES, auto_categorize, get_category_label, format_amount
 
 logger = logging.getLogger(__name__)
@@ -310,6 +311,69 @@ class FinanceManager:
             "count_income": count_income,
             "count_expense": count_expense,
         }
+
+    async def get_comparison(self, period: str = "bulan_ini", tx_type: str | None = "expense") -> dict:
+        """Bandingkan periode berjalan dengan periode sebelumnya memakai data DB."""
+        now = self._now_wib()
+        if period == "bulan_ini":
+            current_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            previous_end = current_start - timedelta(milliseconds=1)
+            previous_start = previous_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif period == "minggu_ini":
+            current_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+            previous_start = current_start - timedelta(days=7)
+            previous_end = current_start - timedelta(milliseconds=1)
+        else:
+            current_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            previous_start = current_start - timedelta(days=1)
+            previous_end = current_start - timedelta(milliseconds=1)
+
+        async def fetch_total(start: datetime, end: datetime) -> tuple[float, int, int]:
+            q = f"select=tx_type,amount,category&tx_date=gte.{int(start.timestamp()*1000)}&tx_date=lte.{int(end.timestamp()*1000)}&category=neq.HPP&limit=2000"
+            rows = await self._fetch("financial_transactions", q)
+            candidates = [row for row in rows if not tx_type or row.get("tx_type") == tx_type]
+            amounts = [float(row.get("amount") or 0) for row in candidates if float(row.get("amount") or 0) > 0]
+            baseline = median(amounts) if amounts else 0
+            anomaly_threshold = max(100_000_000, baseline * 20)
+            anomalies = [amount for amount in amounts if amount > anomaly_threshold]
+            total = sum(amount for amount in amounts if amount <= anomaly_threshold)
+            return total, len(candidates) - len(anomalies), len(anomalies)
+
+        current_total, current_count, current_anomalies = await fetch_total(current_start, now)
+        previous_total, previous_count, previous_anomalies = await fetch_total(previous_start, previous_end)
+        delta = current_total - previous_total
+        percent = (delta / previous_total * 100) if previous_total else None
+        return {
+            "period": period,
+            "tx_type": tx_type or "all",
+            "current": current_total,
+            "previous": previous_total,
+            "delta": delta,
+            "percent": percent,
+            "current_count": current_count,
+            "previous_count": previous_count,
+            "anomaly_count": current_anomalies + previous_anomalies,
+        }
+
+    @staticmethod
+    def format_comparison(data: dict) -> str:
+        labels = {"hari_ini": "Hari ini vs kemarin", "minggu_ini": "Minggu ini vs minggu lalu", "bulan_ini": "Bulan ini vs bulan lalu"}
+        label = labels.get(data.get("period"), data.get("period", "Perbandingan"))
+        kind = "Pengeluaran" if data.get("tx_type") == "expense" else "Pemasukan" if data.get("tx_type") == "income" else "Transaksi"
+        delta = float(data.get("delta") or 0)
+        percent = data.get("percent")
+        trend = "naik" if delta > 0 else "turun" if delta < 0 else "tetap"
+        percent_text = f" ({abs(float(percent)):.1f}%)" if percent is not None else ""
+        anomaly_note = f"⚠️ {data.get('anomaly_count', 0)} transaksi ekstrem tidak dimasukkan ke perbandingan dan perlu audit." if data.get("anomaly_count") else ""
+        return "\\n".join([
+            f"📊 {kind}: {label}",
+            "",
+            f"Periode sekarang: {format_amount(int(data.get('current') or 0))} ({data.get('current_count', 0)} tx)",
+            f"Periode sebelumnya: {format_amount(int(data.get('previous') or 0))} ({data.get('previous_count', 0)} tx)",
+            f"Perubahan: {format_amount(int(abs(delta)))} — {trend}{percent_text}",
+            anomaly_note,
+            "Sumber: transaksi finance terverifikasi di database.",
+        ])
 
     async def get_summary(self, period: str = "hari_ini", tx_type: str = None) -> str:
         """Dapatkan ringkasan keuangan dalam format teks untuk Telegram.

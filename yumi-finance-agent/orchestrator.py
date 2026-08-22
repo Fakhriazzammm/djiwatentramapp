@@ -105,6 +105,25 @@ class FinanceOrchestrator:
         re.IGNORECASE,
     )
 
+    # Natural language sederhana: "tadi beli rokok mang andri 20 ribu"
+    _NATURAL_EXPENSE_RE = re.compile(
+        r'^(?:tadi|kemarin|hari ini)?\s*'
+        r'(?:beli|membeli|belanja|bayar|bayarkan)\s+(.+?)\s+'
+        r'(?:rp\.?\s*)?(\d[\d.]*(?:,\d+)?)\s*(rb|ribu|k|juta|jt)?$',
+        re.IGNORECASE,
+    )
+    _NATURAL_INCOME_RE = re.compile(
+        r'^(?:tadi|kemarin|hari ini)?\s*'
+        r'(?:terima|menerima|dapat|pemasukan dari)\s+(.+?)\s+'
+        r'(?:rp\.?\s*)?(\d[\d.]*(?:,\d+)?)\s*(rb|ribu|k|juta|jt)?$',
+        re.IGNORECASE,
+    )
+
+    # Perbandingan: "bandingkan pengeluaran bulan ini dengan bulan lalu"
+    _COMPARE_RE = re.compile(
+        r'^(?:bandingkan|perbandingan|compare)\s+(.*)$', re.IGNORECASE,
+    )
+
     # Low stock: "stok menipis", "low stock"
     _LOW_STOCK_RE = re.compile(
         r'^(?:stok\s+menipis|low\s+stock)$',
@@ -125,17 +144,18 @@ class FinanceOrchestrator:
     # ── Parse nominal ──────────────────────────────────────────────
 
     def _parse_nominal(self, text: str) -> float:
-        """Parse nominal dari text. Support rb/k suffix."""
-        m = self._NUM_RB_RE.search(text)
-        if m:
-            val = float(m.group(1))
-            suffix = m.group(2).lower()
-            if suffix in ("rb", "k", "ribu"):
-                return val * 1000
-            return val
-        cleaned = re.sub(r'\.', '', text)
+        """Parse nominal Indonesia: rb/k/ribu/juta/jt, titik ribuan, koma desimal."""
+        m = re.search(r'(\d[\d.,]*)\s*(rb|k|ribu|juta|jt)?', text, re.IGNORECASE)
+        if not m:
+            return 0
+        raw = m.group(1)
+        suffix = (m.group(2) or "").lower()
+        if suffix in ("rb", "k", "ribu", "juta", "jt"):
+            value = float(raw.replace('.', '').replace(',', '.'))
+            return value * (1_000_000 if suffix in ("juta", "jt") else 1_000)
+        cleaned = re.sub(r'\.', '', raw)
         try:
-            return float(cleaned)
+            return float(cleaned.replace(',', '.'))
         except ValueError:
             return 0
 
@@ -437,6 +457,30 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
         multiline_result = self._parse_multiline_expense(text)
         if multiline_result:
             return multiline_result
+
+        # Natural language nominal di akhir kalimat — tetap preview sebelum write.
+        for pattern, action in ((self._NATURAL_EXPENSE_RE, "record_expense"), (self._NATURAL_INCOME_RE, "record_income")):
+            m = pattern.match(text_stripped)
+            if m:
+                description = m.group(1).strip()
+                amount = self._parse_nominal(f"{m.group(2)} {m.group(3) or ''}")
+                if amount > 0:
+                    return OrchestratorResult(
+                        action,
+                        amount=amount,
+                        description=description,
+                        merchant=self._extract_merchant(description),
+                        payment_method=self._extract_payment_method(description),
+                        confidence="high",
+                    )
+
+        # Perbandingan finance berbasis angka database
+        m = self._COMPARE_RE.match(text_stripped)
+        if m:
+            compare_text = m.group(1).lower()
+            period = "bulan_ini" if "bulan" in compare_text else "minggu_ini" if any(k in compare_text for k in ("minggu", "pekan")) else "hari_ini"
+            tx_type = "expense" if any(k in compare_text for k in ("pengeluaran", "expense", "belanja")) else "income" if any(k in compare_text for k in ("pemasukan", "income", "pendapatan")) else None
+            return OrchestratorResult("comparison", text=period, description=tx_type or "all", confidence="high")
 
         # Saldo
         m = self._BALANCE_RE.match(text_stripped)

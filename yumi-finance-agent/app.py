@@ -11,6 +11,7 @@ import base64
 import io
 import asyncio
 import logging
+from collections import Counter
 from datetime import datetime, timezone, timedelta
 
 import httpx
@@ -1612,6 +1613,22 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
         },
     )
 
+    # ── Business memory update ───────────────────────────────────
+    if tx_result.get("success"):
+        item_names = [it.get("name", "") for it in items if it.get("name")]
+        if merchant:
+            asyncio.ensure_future(memory.update_merchant_profile(
+                merchant=merchant,
+                categories={category: 1},
+                items=item_names,
+                total=float(total or 0),
+            ))
+        for item in items:
+            if item.get("name"):
+                asyncio.ensure_future(memory.record_item_category(
+                    item.get("name", ""), category, source="confirmed_transaction",
+                ))
+
     # ── Accounting dual-write ────────────────────────────────────
     if tx_result.get("success") and items and tx_type in ("income", "expense"):
         source_id = tx_result.get("sourceId", "")
@@ -2430,6 +2447,19 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # ── Tampilkan preview + konfirmasi sebelum simpan ─────
             tx_type_label = "Pemasukan" if result.action == "record_income" else "Pengeluaran"
             category, _ = auto_categorize(result.description, result.amount)
+            if result.items and not result.category:
+                item_categories = [
+                    categorize_item_with_memory(
+                        it.get("name", ""),
+                        float(it.get("price", 0) or 0),
+                        result.merchant,
+                        memory_manager=memory,
+                    )[0]
+                    for it in result.items
+                    if it.get("name")
+                ]
+                if item_categories:
+                    category = Counter(item_categories).most_common(1)[0][0]
             if result.category:
                 category = result.category
 
@@ -2531,6 +2561,16 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tx_type_filter = result.description if result.description in ("income", "expense") else None
             text_summary = await finance.get_summary(period, tx_type=tx_type_filter)
             await update.message.reply_text(text_summary, reply_markup=_finance_keyboard())
+
+        elif result.action == "comparison":
+            comparison = await finance.get_comparison(
+                result.text or "bulan_ini",
+                tx_type=None if result.description == "all" else result.description,
+            )
+            await update.message.reply_text(
+                finance.format_comparison(comparison),
+                reply_markup=_finance_keyboard(),
+            )
 
         elif result.action == "category_breakdown":
             breakdown = await finance.get_category_breakdown()

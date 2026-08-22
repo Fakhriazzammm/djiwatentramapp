@@ -28,3 +28,29 @@ def test_two_line_expense_accepts_bot_mention():
     assert result is not None
     assert result.action == "record_expense"
     assert result.amount == 20000
+
+
+def test_natural_language_expense_is_deterministic():
+    import asyncio
+
+    async def run():
+        orchestrator = FinanceOrchestrator("", "", "")
+        result = await orchestrator.orchestrate("tadi beli rokok mang andri 20 ribu")
+        assert result.action == "record_expense"
+        assert result.amount == 20000
+        assert result.description == "rokok mang andri"
+
+    asyncio.run(run())
+
+
+def test_comparison_intent_is_database_backed_action():
+    import asyncio
+
+    async def run():
+        orchestrator = FinanceOrchestrator("", "", "")
+        result = await orchestrator.orchestrate("bandingkan pengeluaran bulan ini dengan bulan lalu")
+        assert result.action == "comparison"
+        assert result.text == "bulan_ini"
+        assert result.description == "expense"
+
+    asyncio.run(run())
