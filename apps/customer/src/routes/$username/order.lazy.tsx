@@ -107,6 +107,8 @@ function OrderPage() {
 		setPaymentChoice,
 		customerName,
 		setCustomerName,
+		customerDescription,
+		setCustomerDescription,
 		tableNumber,
 		setTableNumber,
 		notes,
@@ -522,6 +524,7 @@ function OrderPage() {
 		try {
 			const normalizedCustomerName =
 				customerName.trim() || `Customer ${tableNumber.trim() || "Walk In"}`;
+			const normalizedCustomerDescription = customerDescription.trim().slice(0, 160) || undefined;
 			const normalizedTableNumber = tableNumber.trim() || undefined;
 			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
@@ -538,6 +541,7 @@ function OrderPage() {
 				serviceChargeAmount,
 				paymentMethod: paymentChoice === "mayar" ? "djiwaapp" : "cash",
 				customerName: normalizedCustomerName,
+				customerDescription: normalizedCustomerDescription,
 				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
 				source: "customer_self_service" as const,
@@ -827,7 +831,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}

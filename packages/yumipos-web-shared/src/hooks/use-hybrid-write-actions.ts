@@ -2534,6 +2534,7 @@ export function useHybridCreateOrder() {
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,
+					customer_description: args?.customerDescription ?? null,
 					table_number: args?.tableNumber ?? null,
 					order_type: args?.orderType ?? null,
 					source: args?.source ?? null,

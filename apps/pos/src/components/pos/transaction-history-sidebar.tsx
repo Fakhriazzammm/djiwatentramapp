@@ -554,6 +554,7 @@ function OrderCard({
 			</div>
 
 			<div className="mb-2 space-y-1">
+				{order.customerDescription ? <p className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">👤 Ciri: {order.customerDescription}</p> : null}
 				{order.items.slice(0, 3).map((item: (typeof order.items)[0], idx: number) => (
 					<div
 						className="flex items-center justify-between text-xs"

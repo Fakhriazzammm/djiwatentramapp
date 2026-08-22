@@ -763,6 +763,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		status: row.status ?? null,
 		paymentMethod: row.paymentMethod ?? null,
 		customerName: row.customerName ?? null,
+		customerDescription: row.customerDescription ?? null,
 		tableNumber: row.tableNumber ?? null,
 		orderType: row.orderType ?? null,
 		source: row.source ?? null,

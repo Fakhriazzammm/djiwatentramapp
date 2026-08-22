@@ -10,6 +10,7 @@ export interface CheckoutSectionProps {
 	config: typeof CUSTOMER_ORDERING_DEFAULTS;
 	currency: (v: number) => string;
 	customerName: string;
+	customerDescription: string;
 	dessertLater: boolean;
 	freeRefillCharge: number;
 	hasDessertInCart: boolean;
@@ -22,6 +23,7 @@ export interface CheckoutSectionProps {
 	serviceChargeAmount: number;
 	serviceChargeRate: number;
 	setCustomerName: (v: string) => void;
+	setCustomerDescription: (v: string) => void;
 	setDessertLater: React.Dispatch<React.SetStateAction<boolean>>;
 	setNotes: (v: string) => void;
 	setPaymentChoice: (v: PaymentChoice) => void;
@@ -83,6 +85,10 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 					<div className="space-y-0.5">
 						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nama customer</label>
 						<input aria-label="Nama customer" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Opsional" type="text" />
+					</div>
+					<div className="space-y-0.5">
+						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Ciri khusus customer <span className="normal-case font-medium tracking-normal">(opsional)</span></label>
+						<input aria-label="Ciri khusus customer" maxLength={160} className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerDescription} onChange={(event) => props.setCustomerDescription(event.target.value.slice(0, 160))} placeholder="Contoh: baju merah, topi hitam" type="text" />
 					</div>
 					<div className="space-y-0.5">
 						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nomor meja</label>

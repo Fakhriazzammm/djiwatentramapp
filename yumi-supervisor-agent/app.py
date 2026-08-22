@@ -1741,7 +1741,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -1759,7 +1759,7 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
@@ -1771,7 +1771,7 @@ async def _check_new_orders(app):
         # menyelesaikan pembayaran. Ini bukan bukti order sudah lunas.
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=eq.customer_self_service"
             "&status=eq.pending"
             "&paymentMethod=eq.cash"
@@ -1892,6 +1892,9 @@ async def _check_new_orders(app):
         # Extract additional data for notifications
         guest_count = row.get("guestCount")
         notes = (row.get("notes") or "").strip()
+        customer_description = str(row.get("customerDescription") or "").strip()[:160]
+        if customer_description:
+            notes = "\n".join([f"👤 Ciri customer: {customer_description}", notes] if notes else [f"👤 Ciri customer: {customer_description}"])
         if row.get("source") == "booking":
             booking_context = [
                 f"Kode booking: {row.get('bookingCode') or order_no}",

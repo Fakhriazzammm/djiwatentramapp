@@ -64,6 +64,8 @@ export interface OrderContextType {
 	setPaymentChoice: (value: PaymentChoice) => void;
 	customerName: string;
 	setCustomerName: (value: string) => void;
+	customerDescription: string;
+	setCustomerDescription: (value: string) => void;
 	tableNumber: string;
 	setTableNumber: (value: string) => void;
 	notes: string;
@@ -183,6 +185,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	// Checkout / payment
 	const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("cashier");
 	const [customerName, setCustomerName] = useState("");
+	const [customerDescription, setCustomerDescription] = useState("");
 	const [tableNumber, setTableNumber] = useState("");
 	const [notes, setNotes] = useState("");
 	const [dessertLater, setDessertLater] = useState(false);
@@ -312,6 +315,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				setPaymentChoice,
 				customerName,
 				setCustomerName,
+				customerDescription,
+				setCustomerDescription,
 				tableNumber,
 				setTableNumber,
 				notes,
