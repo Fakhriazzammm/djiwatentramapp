@@ -589,18 +589,18 @@ export function MenuSidebar({
 							{activeTab === "transaksi" && (
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
-										<div className="grid min-w-0 grid-cols-1 gap-2">
+										<div className="grid min-w-0 grid-cols-2 gap-1 border-b border-border/60 pb-1">
 											<button
 												type="button"
 												onClick={() => setTransactionPage("history")}
-												className={cn("min-w-0 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-colors", transactionPage === "history" ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted")}
+												className={cn("min-w-0 truncate rounded-xl px-2 py-3 text-center text-[12px] font-bold transition-colors sm:text-sm", transactionPage === "history" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}
 											>
 												Riwayat Pesanan
 											</button>
 											<button
 												type="button"
 												onClick={() => setTransactionPage("open_bill")}
-												className={cn("min-w-0 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-colors", transactionPage === "open_bill" ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted")}
+												className={cn("min-w-0 truncate rounded-xl px-2 py-3 text-center text-[12px] font-bold transition-colors sm:text-sm", transactionPage === "open_bill" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}
 											>
 												Open Bill
 											</button>
