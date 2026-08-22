@@ -715,6 +715,7 @@ function BookingSettingsPage() {
 			customerPhone: order.customerPhone,
 			customerEmail: order.customerEmail,
 			bookingDate: order.bookingDate,
+			arrivalTime: order.arrivalTime || "12:00",
 			guestCount: order.guestCount,
 			totalAmount: order.totalAmount,
 			notes: order.notes || "",
@@ -747,6 +748,17 @@ function BookingSettingsPage() {
 		if (!capDate || (isBulk && !capEndDate)) {
 			toast.error("Isi tanggal");
 			return;
+		}
+		if (!isBulk) {
+			const usage = summary?.[capDate];
+			if (usage && Number(capPeople) > 0 && Number(usage.bookedPeople ?? 0) > Number(capPeople)) {
+				toast.error(`Kapasitas tamu tidak boleh lebih kecil dari ${usage.bookedPeople} tamu yang sudah booking`);
+				return;
+			}
+			if (usage && Number(capTables) > 0 && Number(usage.bookedTables ?? 0) > Number(capTables)) {
+				toast.error(`Kapasitas meja tidak boleh lebih kecil dari ${usage.bookedTables} meja yang sudah booking`);
+				return;
+			}
 		}
 		setIsSavingCap(true);
 		try {
@@ -793,7 +805,10 @@ function BookingSettingsPage() {
 		customerPhone: "",
 		customerEmail: "",
 		bookingDate: todayStr(),
+		arrivalTime: "12:00",
 		guestCount: "2",
+		itemProductId: "",
+		itemQuantity: "1",
 		totalAmount: "0",
 		paymentMethod: "CASH",
 		notes: "",
@@ -806,6 +821,13 @@ function BookingSettingsPage() {
 		}
 
 		setIsCreating(true);
+		const selectedProduct = (allProducts ?? []).find((product: any) => String(product._id) === createFormData.itemProductId);
+		const itemQuantity = Math.max(1, Number(createFormData.itemQuantity || 1));
+		const selectedProductPrice = Number(selectedProduct?.price ?? 0);
+		const totalAmount = selectedProduct ? selectedProductPrice * itemQuantity : Math.max(0, Number(createFormData.totalAmount || 0));
+		const items = selectedProduct
+			? [{ productId: String(selectedProduct._id), name: selectedProduct.name, price: selectedProductPrice, quantity: itemQuantity }]
+			: [];
 		const tid = toast.loading("Menambahkan booking...");
 		try {
 			await createBookingOrder({
@@ -814,18 +836,16 @@ function BookingSettingsPage() {
 				customerPhone: createFormData.customerPhone,
 				customerEmail: createFormData.customerEmail,
 				bookingDate: createFormData.bookingDate,
+				arrivalTime: createFormData.arrivalTime,
 				guestCount: Number(createFormData.guestCount),
-				totalAmount: Number(createFormData.totalAmount),
+				totalAmount,
 				paymentMethod: createFormData.paymentMethod,
 				notes: createFormData.notes || undefined,
-				items: [
-					{
-						productId: "manual",
-						name: "Booking Manual",
-						price: Number(createFormData.totalAmount),
-						quantity: 1,
-					},
-				],
+				items,
+				customAnswers: {
+					"Jam kedatangan": createFormData.arrivalTime,
+					"Tipe booking": "group_meal",
+				},
 			});
 			toast.success("Booking berhasil ditambahkan", { id: tid }); triggerHybridRefresh();
 			setIsCreateDialogOpen(false);
@@ -834,7 +854,10 @@ function BookingSettingsPage() {
 				customerPhone: "",
 				customerEmail: "",
 				bookingDate: todayStr(),
+				arrivalTime: "12:00",
 				guestCount: "2",
+				itemProductId: "",
+				itemQuantity: "1",
 				totalAmount: "0",
 				paymentMethod: "CASH",
 				notes: "",
@@ -847,12 +870,12 @@ function BookingSettingsPage() {
 	};
 
 	const tabs = [
-		{ id: "calendar", label: "Kalender", icon: Calendar },
-		{ id: "orders", label: "Daftar Booking", icon: List },
-		{ id: "capacity", label: "Kapasitas", icon: Users },
-		{ id: "general", label: "Tampilan", icon: Smartphone },
-		{ id: "products", label: "Produk", icon: ShoppingBag },
-		{ id: "form", label: "Formulir", icon: FileText },
+		{ id: "calendar", label: "Kalender", icon: Calendar, group: "Operasional" },
+		{ id: "orders", label: "Booking", icon: List, group: "Operasional" },
+		{ id: "capacity", label: "Kapasitas", icon: Users, group: "Operasional" },
+		{ id: "general", label: "Halaman Publik", icon: Smartphone, group: "Pengaturan" },
+		{ id: "products", label: "Menu Booking", icon: ShoppingBag, group: "Pengaturan" },
+		{ id: "form", label: "Formulir", icon: FileText, group: "Pengaturan" },
 	] as const;
 
 	const filteredOrders = useMemo(() => {
@@ -1000,6 +1023,20 @@ function BookingSettingsPage() {
 		return matchesSearch && matchesCategory;
 	});
 
+	const updateCustomFields = (nextFields: any[]) => setFormData({ ...formData, customFields: nextFields });
+	const moveCustomField = (index: number, direction: -1 | 1) => {
+		const fields = [...(formData.customFields ?? [])];
+		const target = index + direction;
+		if (target < 0 || target >= fields.length) return;
+		[fields[index], fields[target]] = [fields[target], fields[index]];
+		updateCustomFields(fields);
+	};
+	const duplicateCustomField = (index: number) => {
+		const field = formData.customFields?.[index];
+		if (!field) return;
+		updateCustomFields([...formData.customFields.slice(0, index + 1), { ...field, id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`, label: `${field.label} (salinan)` }, ...formData.customFields.slice(index + 1)]);
+	};
+
 	const selectedProductIds = new Set(formData.featuredProductIds.map(String));
 	const filteredProductIds = (filteredProducts ?? []).map((product: any) => String(product._id));
 	const allFilteredSelected = filteredProductIds.length > 0 && filteredProductIds.every((id) => selectedProductIds.has(id));
@@ -1023,7 +1060,7 @@ function BookingSettingsPage() {
 						rel="noreferrer"
 						target="_blank"
 					>
-						<LinkIcon className="h-4 w-4" /> Buka Halaman
+						<LinkIcon className="h-4 w-4" /> Lihat Halaman Publik
 					</a>
 					{(activeTab === "general" || activeTab === "products" || activeTab === "form" || activeTab === "capacity") && (
 						<button
@@ -1039,28 +1076,33 @@ function BookingSettingsPage() {
 				</div>
 			</div>
 
-			{/* Tabs */}
-			<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1">
-				{tabs.map((tab) => (
-					<button
-						className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2.5 font-bold text-xs transition-all md:px-4 md:text-sm ${
-							activeTab === tab.id
-								? "bg-card text-primary shadow-sm"
-								: "text-muted-foreground hover:bg-card/50 hover:text-foreground"
-						}`}
-						key={tab.id}
-						onClick={() => setActiveTab(tab.id)}
-						type="button"
-					>
-						<tab.icon className="h-4 w-4" />
-						{tab.label}
-					</button>
+			{/* Tabs: operational workspace and public configuration */}
+			<div className="space-y-2">
+				{(["Operasional", "Pengaturan"] as const).map((group) => (
+					<div className="flex items-center gap-2" key={group}>
+						<span className="hidden w-20 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:block">{group}</span>
+						<div className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-2xl bg-muted/50 p-1">
+							{tabs.filter((tab) => tab.group === group).map((tab) => (
+								<button
+									className={`flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 font-bold text-xs transition-all md:px-4 md:text-sm ${
+										activeTab === tab.id ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"
+									}`}
+									key={tab.id}
+									onClick={() => setActiveTab(tab.id)}
+									type="button"
+								>
+									<tab.icon className="h-4 w-4" />
+									{tab.label}
+								</button>
+							))}
+						</div>
+					</div>
 				))}
 			</div>
 
 			{/* ── CALENDAR TAB ── */}
 			{activeTab === "calendar" && (
-				<div className="space-y-4">
+				<div className="space-y-4 md:grid md:grid-cols-[1.1fr_0.9fr] md:items-start md:gap-4 md:space-y-0">
 					<AdminCalendar
 						month={calMonth}
 						onDayClick={(date) => {
@@ -1076,7 +1118,7 @@ function BookingSettingsPage() {
 					/>
 
 					{selectedDate && (
-						<div className="space-y-3">
+						<div className="space-y-3 md:sticky md:top-4">
 							<div className="flex items-center justify-between">
 								<h3 className="font-bold text-foreground">
 									Booking — {formatDate(selectedDate)}
@@ -1130,6 +1172,9 @@ function BookingSettingsPage() {
 			{/* ── ORDERS TAB ── */}
 			{activeTab === "orders" && (
 				<div className="space-y-4">
+					<div className="flex items-end justify-between gap-3">
+						<div><p className="text-sm font-bold text-foreground">Daftar Booking</p><p className="text-xs text-muted-foreground">{formatDate(startDate)}{startDate !== endDate ? ` – ${formatDate(endDate)}` : ""}</p></div>
+					</div>
 					<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
 						{[
 							["Total booking", bookingStats.total, "bg-blue-50 text-blue-700"],
@@ -1319,8 +1364,13 @@ function BookingSettingsPage() {
 							<button className="mt-3 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white" onClick={() => void ordersState.reload()} type="button">Coba lagi</button>
 						</div>
 					) : filteredOrders?.length === 0 ? (
-						<div className="rounded-xl border border-border bg-card py-14 text-center text-muted-foreground text-sm">
-							Belum ada booking.
+						<div className="rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center">
+							<p className="font-bold text-foreground">{searchTerm || listFilter !== "all" || paymentFilter !== "all" ? "Tidak ada booking yang cocok dengan filter" : "Belum ada booking pada periode ini"}</p>
+							<p className="mt-1 text-xs text-muted-foreground">{searchTerm || listFilter !== "all" || paymentFilter !== "all" ? "Coba reset filter atau ubah kata pencarian." : "Buat booking manual atau buka halaman publik untuk melihat reservasi baru."}</p>
+							<div className="mt-4 flex flex-wrap justify-center gap-2">
+								{(searchTerm || listFilter !== "all" || paymentFilter !== "all") && <button className="min-h-11 rounded-xl border border-border px-4 text-xs font-bold hover:bg-muted" onClick={() => { setSearchTerm(""); setListFilter("all"); setPaymentFilter("all"); }} type="button">Reset Filter</button>}
+								<button className="min-h-11 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground hover:opacity-90" onClick={() => setIsCreateDialogOpen(true)} type="button">Tambah Booking Manual</button>
+							</div>
 						</div>
 					) : (
 						<div className="space-y-2">
@@ -1341,6 +1391,14 @@ function BookingSettingsPage() {
 			{/* ── CAPACITY TAB ── */}
 			{activeTab === "capacity" && (
 				<div className="space-y-6" ref={capacitySectionRef}>
+					<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+						{[
+							["Tamu terpakai", Number(summary?.[capDate]?.bookedPeople ?? 0), "text-emerald-700"],
+							["Meja terpakai", Number(summary?.[capDate]?.bookedTables ?? 0), "text-violet-700"],
+							["Booking aktif", Number(summary?.[capDate]?.count ?? 0), "text-blue-700"],
+							["Status", summary?.[capDate]?.isClosed ? "Ditutup" : "Terbuka", "text-amber-700"],
+						].map(([label, value, color]) => <div className="rounded-xl border border-border bg-card p-3" key={label}><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className={`mt-1 text-lg font-black ${color}`}>{value}</p></div>)}
+					</div>
 					<section className="rounded-2xl border border-primary/20 bg-primary/5 p-5 space-y-4">
 						<div>
 							<h3 className="font-bold">Kapasitas Default & Periode Booking</h3>
@@ -1645,6 +1703,18 @@ function BookingSettingsPage() {
 							</div>
 						</div>
 					</div>
+					<div className="overflow-hidden rounded-2xl border border-border bg-slate-50">
+						<div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
+							<div><p className="text-xs font-bold">Preview Halaman Publik</p><p className="text-[10px] text-muted-foreground">Perubahan preview belum disimpan.</p></div>
+							<a className="text-xs font-bold text-primary hover:underline" href={(import.meta.env.VITE_PUBLIC_BOOKING_URL as string | undefined)?.trim() || "https://booking.yumme.id/"} rel="noreferrer" target="_blank">Buka ↗</a>
+						</div>
+						<div className="mx-auto max-w-sm space-y-3 p-6 text-center">
+							<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-xl font-black text-primary shadow-sm">D</div>
+							<p className="text-lg font-black" style={{ color: formData.themeColor }}>{formData.title || "Djiwa Tentram"}</p>
+							<p className="text-xs leading-relaxed text-muted-foreground">{formData.description || "Deskripsi halaman booking akan tampil di sini."}</p>
+							<div className="rounded-xl bg-white px-4 py-3 text-left shadow-sm"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preview CTA</p><button className="mt-2 w-full rounded-xl px-4 py-3 text-sm font-bold text-white" style={{ backgroundColor: formData.themeColor }} type="button">Pilih tanggal booking</button></div>
+						</div>
+					</div>
 				</section>
 			)}
 
@@ -1656,8 +1726,9 @@ function BookingSettingsPage() {
 						<Badge variant="secondary">{formData.featuredProductIds.length} dipilih</Badge>
 					</div>
 					<p className="text-muted-foreground text-sm">
-						Pilih produk yang tampil di halaman booking. Kosongkan untuk tampilkan semua.
+						Pilih menu yang tampil di halaman booking. Jika tidak ada pilihan, semua produk aktif akan tampil.
 					</p>
+					<div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Produk nonaktif, tanpa harga, atau tanpa gambar perlu diperiksa sebelum dipublikasikan.</div>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 						<div className="relative flex-1">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1815,17 +1886,13 @@ function BookingSettingsPage() {
 							</div>
 						) : (
 							formData.customFields?.map((field, idx) => (
-								<div className="group relative rounded-2xl border border-border bg-muted/20 p-5 space-y-4" key={field.id}>
-									<button
-										className="absolute -right-2 -top-2 h-8 w-8 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-										onClick={() => {
-											const updated = (formData.customFields || []).filter((_, i) => i !== idx);
-											setFormData({ ...formData, customFields: updated });
-										}}
-										type="button"
-									>
-										<X className="h-4 w-4" />
-									</button>
+								<div className="group relative rounded-2xl border border-border bg-muted/20 p-5 pt-14 space-y-4" key={field.id}>
+									<div className="absolute right-3 top-3 flex items-center gap-1">
+										<button aria-label="Naikkan field" className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={idx === 0} onClick={() => moveCustomField(idx, -1)} type="button">↑</button>
+										<button aria-label="Turunkan field" className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={idx === (formData.customFields?.length ?? 1) - 1} onClick={() => moveCustomField(idx, 1)} type="button">↓</button>
+										<button className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => duplicateCustomField(idx)} type="button">Duplikat</button>
+										<button aria-label="Hapus field" className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100" onClick={() => { if (confirm("Hapus field ini dari formulir? Data booking lama tetap tersimpan.")) setFormData({ ...formData, customFields: (formData.customFields || []).filter((_, i) => i !== idx) }); }} type="button">Hapus</button>
+									</div>
 
 									<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 										<div className="space-y-1.5">
@@ -1909,6 +1976,14 @@ function BookingSettingsPage() {
 							))
 						)}
 					</div>
+					<div className="rounded-2xl border border-border bg-slate-50 p-4">
+						<p className="text-xs font-bold">Preview Formulir Customer</p>
+						<div className="mt-3 space-y-3 rounded-xl bg-white p-4 shadow-sm">
+							<div><p className="text-sm font-bold">Data booking</p><p className="text-[11px] text-muted-foreground">Field wajib diberi tanda pada halaman publik.</p></div>
+							{(formData.customFields ?? []).slice(0, 4).map((field: any) => <div className="space-y-1" key={`preview-${field.id}`}><label className="text-[11px] font-bold">{field.label || "Label field"}{field.required ? " *" : ""}</label><div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">{field.placeholder || (field.type === "dropdown" ? "Pilih opsi" : "Isi jawaban")}</div></div>)}
+							{(formData.customFields ?? []).length === 0 && <p className="text-xs text-muted-foreground">Belum ada field tambahan.</p>}
+						</div>
+					</div>
 				</section>
 			)}
 
@@ -1960,17 +2035,15 @@ function BookingSettingsPage() {
 						</div>
 						<div className="grid grid-cols-2 gap-3">
 							<div className="grid gap-2">
-								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-guests">
-									Jumlah Orang
-								</Label>
-								<Input
-									className="rounded-xl border-border bg-muted/30 font-medium h-11"
-									id="edit-guests"
-									min="1"
-									onChange={(e) => setEditFormData({ ...editFormData, guestCount: e.target.value })}
-									type="number"
-									value={editFormData.guestCount || ""}
-								/>
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-time">Jam Kedatangan</Label>
+								<Input className="h-11 rounded-xl border-border bg-muted/30 font-medium" id="edit-time" onChange={(e) => setEditFormData({ ...editFormData, arrivalTime: e.target.value })} type="time" value={editFormData.arrivalTime || ""} />
+							</div>
+							<div className="flex items-end"><p className="text-[11px] text-muted-foreground">Waktu disimpan sebagai jam lokal WIB.</p></div>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-guests">Jumlah Orang</Label>
+								<Input className="h-11 rounded-xl border-border bg-muted/30 font-medium" id="edit-guests" min="1" onChange={(e) => setEditFormData({ ...editFormData, guestCount: e.target.value })} type="number" value={editFormData.guestCount || ""} />
 							</div>
 							<div className="grid gap-2">
 								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-amount">
@@ -2068,46 +2141,38 @@ function BookingSettingsPage() {
 						</div>
 						<div className="grid grid-cols-2 gap-3">
 							<div className="grid gap-2">
-								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-guests">
-									Jumlah Orang
-								</Label>
-								<Input
-									className="rounded-xl border-border bg-muted/30 font-medium h-11"
-									id="create-guests"
-									min="1"
-									onChange={(e) => setCreateFormData({ ...createFormData, guestCount: e.target.value })}
-									type="number"
-									value={createFormData.guestCount}
-								/>
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-guests">Jumlah Orang</Label>
+								<Input className="h-11 rounded-xl border-border bg-muted/30 font-medium" id="create-guests" min="1" onChange={(e) => setCreateFormData({ ...createFormData, guestCount: e.target.value })} type="number" value={createFormData.guestCount} />
 							</div>
 							<div className="grid gap-2">
-								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-method">
-									Metode Bayar
-								</Label>
-								<select
-									className="w-full rounded-xl border border-border bg-muted/30 h-11 px-3 text-sm font-medium outline-none"
-									id="create-method"
-									onChange={(e) => setCreateFormData({ ...createFormData, paymentMethod: e.target.value })}
-									value={createFormData.paymentMethod}
-								>
-									<option value="CASH">Cash</option>
-									<option value="BANK_TRANSFER">Bank Transfer</option>
-									<option value="QRIS">QRIS</option>
-								</select>
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-time">Jam Kedatangan</Label>
+								<Input className="h-11 rounded-xl border-border bg-muted/30 font-medium" id="create-time" onChange={(e) => setCreateFormData({ ...createFormData, arrivalTime: e.target.value })} type="time" value={createFormData.arrivalTime} />
 							</div>
 						</div>
-						<div className="grid gap-2">
-							<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-amount">
-								Total Biaya (Rp)
-							</Label>
-							<Input
-								className="rounded-xl border-border bg-muted/30 font-bold h-11 text-primary"
-								id="create-amount"
-								min="0"
-								onChange={(e) => setCreateFormData({ ...createFormData, totalAmount: e.target.value })}
-								type="number"
-								value={createFormData.totalAmount}
-							/>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-product">Menu (opsional)</Label>
+								<select className="h-11 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm font-medium outline-none" id="create-product" onChange={(e) => setCreateFormData({ ...createFormData, itemProductId: e.target.value })} value={createFormData.itemProductId}>
+									<option value="">Tanpa pesanan menu</option>
+									{(allProducts ?? []).filter((product: any) => product.isActive !== false).map((product: any) => <option key={product._id} value={String(product._id)}>{product.name} — Rp {Number(product.price ?? 0).toLocaleString("id-ID")}</option>)}
+								</select>
+							</div>
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-quantity">Jumlah Menu</Label>
+								<Input className="h-11 rounded-xl border-border bg-muted/30 font-medium" disabled={!createFormData.itemProductId} id="create-quantity" min="1" onChange={(e) => setCreateFormData({ ...createFormData, itemQuantity: e.target.value })} type="number" value={createFormData.itemQuantity} />
+							</div>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-method">Metode Bayar</Label>
+								<select className="h-11 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm font-medium outline-none" id="create-method" onChange={(e) => setCreateFormData({ ...createFormData, paymentMethod: e.target.value })} value={createFormData.paymentMethod}>
+									<option value="CASH">Cash</option><option value="BANK_TRANSFER">Bank Transfer</option><option value="QRIS">QRIS</option>
+								</select>
+							</div>
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-amount">Total Biaya (Rp)</Label>
+								<Input className="h-11 rounded-xl border-border bg-muted/30 font-bold text-primary" disabled={Boolean(createFormData.itemProductId)} id="create-amount" min="0" onChange={(e) => setCreateFormData({ ...createFormData, totalAmount: e.target.value })} type="number" value={createFormData.totalAmount} />
+							</div>
 						</div>
 						<div className="grid gap-2">
 							<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-notes">
