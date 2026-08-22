@@ -1343,6 +1343,10 @@ function ParkirTab({
 	onPrint?: (order: Doc<"orders">, mode: ReceiptPrintMode) => void;
 }) {
 	const orders = useHybridOrders({ status: "pending" });
+	const deleteOrder = useHybridDeleteOrder();
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat("id-ID", {
@@ -1357,98 +1361,117 @@ function ParkirTab({
 			minute: "2-digit",
 		});
 
+	const toggleSelected = (id: string) => {
+		setSelectedIds((current) => {
+			const next = new Set(current);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	};
+
+	const allSelected = Boolean(orders?.length) && selectedIds.size === orders.length;
+
+	const handleSelectAll = () => {
+		if (!orders) return;
+		setSelectedIds(allSelected ? new Set() : new Set(orders.map((order: Doc<"orders">) => String(order._id))));
+	};
+
+	const handleBulkDelete = async () => {
+		const ids = [...selectedIds];
+		if (ids.length === 0) return;
+		setIsDeleteConfirmOpen(false);
+		setIsDeleting(true);
+		try {
+			for (const id of ids) {
+				await deleteOrder({ id });
+			}
+			setSelectedIds(new Set());
+			toast.success(`${ids.length} Open Bill berhasil dihapus`);
+		} catch (error) {
+			console.error("[open-bill-bulk-delete] failed", error);
+			toast.error("Sebagian Open Bill gagal dihapus. Coba lagi.");
+		} finally {
+			setIsDeleting(false);
+		}
+	};
+
 	return (
-		<div className="space-y-4 pt-2">
-			<div className="space-y-2 text-center">
-				<h3 className="font-medium text-lg">Simpan Orderan (Antrean)</h3>
-				<p className="text-muted-foreground text-sm">
-					Daftar pesanan yang ditunda atau belum dibayar.
-				</p>
+		<div className="space-y-3 pt-1">
+			<div className="flex items-end justify-between gap-3">
+				<div className="min-w-0">
+					<h3 className="text-lg font-black tracking-tight text-foreground">Open Bill</h3>
+					<p className="mt-0.5 text-xs text-muted-foreground">Pesanan tersimpan dan belum dibayar.</p>
+				</div>
+				{orders && orders.length > 0 ? <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700">{orders.length} aktif</span> : null}
 			</div>
 
+			{orders && orders.length > 0 ? (
+				<div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+					<label className="flex min-h-10 min-w-0 cursor-pointer items-center gap-2 text-xs font-bold text-muted-foreground">
+						<Checkbox checked={allSelected} onCheckedChange={handleSelectAll} aria-label="Pilih semua Open Bill" />
+						<span>{selectedIds.size > 0 ? `${selectedIds.size} dipilih` : "Pilih semua"}</span>
+					</label>
+					{selectedIds.size > 0 ? (
+						<Button type="button" variant="destructive" size="sm" disabled={isDeleting} onClick={() => setIsDeleteConfirmOpen(true)} className="min-h-10 gap-1.5 rounded-xl px-3 text-xs font-bold">
+							<Trash2 className="h-3.5 w-3.5" />
+							{isDeleting ? "Menghapus..." : `Hapus ${selectedIds.size}`}
+						</Button>
+					) : null}
+				</div>
+			) : null}
+
 			{orders === undefined ? (
-				<div className="flex flex-col items-center justify-center py-10 gap-3">
-					<Loader2 className="h-6 w-6 animate-spin text-primary" />
-					<p className="text-xs text-muted-foreground">Memuat antrean...</p>
+				<div className="space-y-2">
+					{[1, 2, 3].map((item) => <div key={item} className="h-24 animate-pulse rounded-2xl bg-muted" />)}
 				</div>
 			) : orders.length === 0 ? (
-				<div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-2xl bg-muted/30">
-					<ShoppingCart className="h-10 w-10 text-muted-foreground/30 mb-3" />
-					<p className="font-medium text-sm text-muted-foreground">Antrean Kosong</p>
-					<p className="text-[10px] text-muted-foreground/60">Semua pesanan sudah selesai</p>
+				<div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-5 py-12 text-center">
+					<ShoppingCart className="h-9 w-9 text-muted-foreground/30" />
+					<p className="mt-3 text-sm font-black text-foreground">Tidak ada Open Bill</p>
+					<p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">Pesanan yang disimpan atau menunggu pembayaran akan muncul di sini.</p>
 				</div>
 			) : (
-				<div className="grid gap-1.5">
-					{orders.map((order: Doc<"orders">) => (
-						<div
-							key={order._id}
-							onClick={() => onSelectOrder?.(order)}
-							className="group flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-2 transition-all hover:border-orange-500/50 hover:bg-orange-50/30"
-						>
-							{/* Baris kiri: nomor + nama/meja + meta */}
-							<div className="min-w-0 flex-1">
-								<div className="flex items-center gap-1.5">
-									<span className="font-mono text-[13px] font-bold text-primary leading-none">
-										#{order.orderNumber}
-									</span>
-									{order.tableNumber && (
-										<span className="text-[10px] text-muted-foreground leading-none">
-											Meja {order.tableNumber}
-										</span>
-									)}
+				<div className="space-y-2">
+					{orders.map((order: Doc<"orders">) => {
+						const totalQty = order.items?.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0) ?? 0;
+						const selected = selectedIds.has(String(order._id));
+						return (
+							<article key={order._id} className={`rounded-2xl border bg-card p-3 shadow-sm transition ${selected ? "border-primary bg-primary/[0.03] ring-1 ring-primary/20" : "border-border/70 hover:border-primary/30"}`}>
+								<div className="flex items-start gap-3">
+									<Checkbox checked={selected} onCheckedChange={() => toggleSelected(String(order._id))} onClick={(event) => event.stopPropagation()} aria-label={`Pilih ${order.orderNumber}`} className="mt-1 h-5 w-5 shrink-0" />
+									<button type="button" onClick={() => onSelectOrder?.(order)} className="min-w-0 flex-1 text-left">
+										<div className="flex items-start justify-between gap-3">
+											<div className="min-w-0">
+												<p className="truncate text-sm font-black text-primary">#{order.orderNumber}</p>
+												<p className="mt-1 truncate text-xs font-semibold text-foreground">{order.customerName || "Tanpa nama"}{order.tableNumber ? ` · Meja ${order.tableNumber}` : ""}</p>
+												<p className="mt-1 text-[11px] text-muted-foreground">{formatTime(order.createdAt)} · {order.items?.length ?? 0} item · {totalQty} qty</p>
+											</div>
+											<div className="shrink-0 text-right">
+												<p className="text-sm font-black text-foreground">{formatCurrency(order.totalAmount)}</p>
+												<span className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">Belum dibayar</span>
+											</div>
+										</div>
+									</button>
 								</div>
-								<div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground leading-none">
-									<span className="truncate">{order.customerName || "Tanpa Nama"}</span>
-									<span>•</span>
-									<span className="shrink-0">{formatTime(order.createdAt)}</span>
-									<span>•</span>
-									<span className="shrink-0">{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty</span>
+								<div className="mt-3 flex items-center justify-end gap-2 border-t border-border/60 pt-2">
+									{onPrint ? <Button type="button" variant="ghost" size="sm" className="min-h-10 rounded-xl px-3 text-xs font-bold text-muted-foreground" onClick={(event) => { event.stopPropagation(); onPrint(order, "open_bill"); }}><Printer className="mr-1.5 h-3.5 w-3.5" /> Cetak</Button> : null}
+									<Button type="button" size="sm" className="min-h-10 rounded-xl bg-primary px-4 text-xs font-bold" onClick={() => onRestore(order)}>Lanjutkan</Button>
 								</div>
-							</div>
-
-							{/* Baris kanan: total + aksi */}
-							<div className="flex shrink-0 items-center gap-1.5">
-								<span className="font-bold text-[13px] text-primary leading-none">
-									{formatCurrency(order.totalAmount)}
-								</span>
-								{onPrint && (
-									<DropdownMenu>
-										<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Cetak Struk" onClick={(e) => e.stopPropagation()} />}>
-											<Printer className="h-3.5 w-3.5" />
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end" className="w-52">
-											<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer">
-												<Receipt className="h-4 w-4 text-blue-500" />
-												<span>Cetak Struk Lunas</span>
-											</DropdownMenuItem>
-											<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer">
-												<FileText className="h-4 w-4 text-amber-500" />
-												<span>Cetak Open Bill</span>
-											</DropdownMenuItem>
-											<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer">
-												<ChefHat className="h-4 w-4 text-green-500" />
-												<span>Cetak Tiket Kitchen</span>
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								)}
-								<Button
-									className="h-7 rounded-md bg-orange-500 px-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
-									onClick={(e) => {
-										e.stopPropagation();
-										onRestore(order);
-									}}
-									size="sm"
-								>
-									Pulihkan
-									</Button>
-							</div>
-						</div>
-					))}
+							</article>
+						);
+					})}
 				</div>
 			)}
 
-			<div className="h-6" />
+			<ConfirmationModal
+				isOpen={isDeleteConfirmOpen}
+				title={`Hapus ${selectedIds.size} Open Bill?`}
+				message="Open Bill yang dipilih, item pesanan, dan catatan transaksinya akan dihapus. Tindakan ini tidak dapat dibatalkan."
+				variant="danger"
+				onClose={() => setIsDeleteConfirmOpen(false)}
+				onConfirm={handleBulkDelete}
+			/>
 		</div>
 	);
 }
