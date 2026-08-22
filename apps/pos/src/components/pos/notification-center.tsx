@@ -60,6 +60,8 @@ export function NotificationCenter({
   isLoading,
   error,
   onMarkRead,
+  onDismiss,
+  onMarkCashierPaid,
   onOpenOrder,
 }: {
   open: boolean;
@@ -68,6 +70,8 @@ export function NotificationCenter({
   isLoading: boolean;
   error: string | null;
   onMarkRead: (id: string, acknowledge?: boolean) => void;
+  onDismiss: (id: string) => void | Promise<void>;
+  onMarkCashierPaid?: (notification: PosNotification) => void | Promise<void>;
   onOpenOrder?: (notification: PosNotification) => void;
 }) {
   const [tab, setTab] = useState<"all" | "orders" | "admin">("all");
@@ -110,7 +114,8 @@ export function NotificationCenter({
               const Icon = meta.Icon;
               const isOrder = item.notification_type.startsWith("order_");
               return (
-                <article key={item.id} className={`rounded-2xl border p-3 shadow-sm transition ${meta.className} ${item.isRead ? "opacity-70" : "ring-1 ring-current/10"}`}>
+                <article key={item.id} className={`relative rounded-2xl border p-3 pr-11 shadow-sm transition ${meta.className} ${item.isRead ? "opacity-70" : "ring-1 ring-current/10"}`}>
+                  <button type="button" onClick={() => void onDismiss(item.id)} aria-label="Hapus notifikasi" className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg opacity-60 hover:bg-white/70 hover:opacity-100"><X className="h-4 w-4" /></button>
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/70"><Icon className="h-4 w-4" /></div>
                     <div className="min-w-0 flex-1">
@@ -120,6 +125,7 @@ export function NotificationCenter({
                       <p className="mt-2 text-[10px] font-semibold opacity-60">{formatAge(item.created_at)}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {isOrder && onOpenOrder ? <button type="button" onClick={() => { onMarkRead(item.id); onOpenOrder(item); }} className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-white/80 px-2.5 text-[11px] font-black hover:bg-white">Buka detail <ChevronRight className="h-3 w-3" /></button> : null}
+                        {item.notification_type === "order_cashier_pending" && onMarkCashierPaid ? <button type="button" onClick={() => void onMarkCashierPaid(item)} className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-[11px] font-black text-white hover:bg-emerald-700"><Check className="h-3 w-3" /> Sudah Dibayar</button> : null}
                         {!item.isRead ? <button type="button" onClick={() => onMarkRead(item.id)} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-current/20 px-2.5 text-[11px] font-bold hover:bg-white/50"><Check className="h-3 w-3" /> Tandai dibaca</button> : null}
                         {item.notification_type === "admin_briefing" && !item.acknowledgedAt ? <button type="button" onClick={() => onMarkRead(item.id, true)} className="inline-flex min-h-9 items-center rounded-lg border border-current/20 px-2.5 text-[11px] font-bold hover:bg-white/50">Saya sudah membaca</button> : null}
                       </div>

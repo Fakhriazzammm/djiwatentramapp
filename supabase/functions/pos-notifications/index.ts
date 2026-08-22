@@ -10,6 +10,7 @@ type UserContext = {
 
 const dbUrl = (Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "").replace(/\/+$/, "");
 const serviceKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const ORDER_NOTIFICATION_TTL_MS = 30 * 60 * 1000;
 
 function response(body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -170,6 +171,9 @@ async function syncRecentOrders() {
       created_at: Number.isFinite(Number(order.createdAt))
         ? new Date(Number(order.createdAt)).toISOString()
         : new Date().toISOString(),
+      expires_at: Number.isFinite(Number(order.createdAt))
+        ? new Date(Number(order.createdAt) + ORDER_NOTIFICATION_TTL_MS).toISOString()
+        : new Date(Date.now() + ORDER_NOTIFICATION_TTL_MS).toISOString(),
       is_active: true,
     }, "?on_conflict=dedupe_key");
     if (Array.isArray(result) && result.length > 0) created++;
@@ -197,7 +201,26 @@ async function listNotifications(user: UserContext) {
       orderStatuses.set(String(order._id), String(order.status ?? "").toLowerCase());
     }
   }
+  const expiredOrderIds = (rows ?? [])
+    .filter((item: any) => {
+      if (!String(item.notification_type ?? "").startsWith("order_")) return false;
+      const createdAt = Date.parse(String(item.created_at ?? ""));
+      const expiresAt = item.expires_at ? Date.parse(String(item.expires_at)) : 0;
+      return (Number.isFinite(expiresAt) && expiresAt < now)
+        || (Number.isFinite(createdAt) && createdAt + ORDER_NOTIFICATION_TTL_MS < now);
+    })
+    .map((item: any) => String(item.id ?? ""))
+    .filter(Boolean);
+  if (expiredOrderIds.length > 0) {
+    await Promise.all(expiredOrderIds.map((id) => dbWrite(
+      "pos_notifications",
+      "PATCH",
+      { is_active: false },
+      `?id=eq.${encodeURIComponent(id)}`,
+    )));
+  }
   const visible = (rows ?? []).filter((item: any) => {
+    if (expiredOrderIds.includes(String(item.id ?? ""))) return false;
     if (item.expires_at && Date.parse(item.expires_at) < now) return false;
     if (item.target_user_id && item.target_user_id !== user.id) return false;
     if (item.target_role && item.target_role.toLowerCase() !== user.role) return false;
@@ -230,13 +253,16 @@ Deno.serve(async (req) => {
 
     if (action === "list") return response({ success: true, notifications: await listNotifications(user) });
 
-    if (action === "mark_read" || action === "acknowledge") {
+    if (action === "mark_read" || action === "acknowledge" || action === "dismiss") {
       const notificationId = String((payload as Json).notificationId ?? "");
       if (!notificationId) return response({ error: "notificationId is required" }, 400);
-      await dbWrite("pos_notifications", "PATCH", {
-        global_read_at: new Date().toISOString(),
-        global_acknowledged_at: action === "acknowledge" ? new Date().toISOString() : null,
-      }, `?id=eq.${encodeURIComponent(notificationId)}`);
+      await dbWrite("pos_notifications", "PATCH", action === "dismiss"
+        ? { is_active: false, global_read_at: new Date().toISOString() }
+        : {
+            global_read_at: new Date().toISOString(),
+            global_acknowledged_at: action === "acknowledge" ? new Date().toISOString() : null,
+          },
+      `?id=eq.${encodeURIComponent(notificationId)}`);
       return response({ success: true });
     }
 

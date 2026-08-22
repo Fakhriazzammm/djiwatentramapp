@@ -60,6 +60,7 @@ import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
 import {
 	useHybridCreateOrder,
 	useHybridMayarCreateInvoice,
+	useHybridUpdateOrder,
 } from "@/hooks/use-hybrid-write-actions";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
@@ -446,13 +447,33 @@ function MenuPage() {
 	const categories = useHybridCategories();
 	const orders = useHybridOrders();
 	const orderRefreshKey = useMemo(() => (orders ?? []).slice(0, 50).map((order: any) => `${order._id}:${order.status}:${order.createdAt}`).join("|"), [orders]);
-	const { notifications, unreadCount, isLoading: notificationsLoading, error: notificationsError, refresh: refreshNotifications, markRead: markNotificationRead } = usePosNotifications(orderRefreshKey);
+	const { notifications, unreadCount, isLoading: notificationsLoading, error: notificationsError, refresh: refreshNotifications, markRead: markNotificationRead, removeNotification } = usePosNotifications(orderRefreshKey);
 	const activeDiscounts = useHybridActiveDiscounts();
 	const allDiscounts = useHybridAllDiscounts();
 	const roles = useHybridStaffRoles();
 	const users = useHybridStaffUsers();
 	const createOrder = useHybridCreateOrder();
 	const createMayarInvoice = useHybridMayarCreateInvoice();
+	const updateOrder = useHybridUpdateOrder();
+
+	const handleMarkCashierPaid = useCallback(async (notification: any) => {
+		const orderId = String(notification.action_payload?.orderId ?? notification.order_source_id ?? "");
+		if (!orderId) {
+			toast.error("Order tidak ditemukan");
+			return;
+		}
+		try {
+			await updateOrder({ id: orderId, status: "paid", paymentMethod: "cash" });
+			await removeNotification(notification.id);
+			setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
+			triggerHybridRefresh();
+			await refreshNotifications(true);
+			toast.success("Pembayaran kasir berhasil dicatat");
+		} catch (error) {
+			console.error("[cashier-paid] failed", error);
+			toast.error("Gagal mencatat pembayaran kasir");
+		}
+	}, [refreshNotifications, removeNotification, updateOrder]);
 
 	// Cart context
 	const {
@@ -1969,7 +1990,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				<TransactionAlertStack
 				notifications={notifications.filter((item) => transactionAlertIds.includes(item.id))}
-				onDismiss={(notificationId) => setTransactionAlertIds((current) => current.filter((id) => id !== notificationId))}
+				onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
+				onMarkCashierPaid={handleMarkCashierPaid}
 				onOpenOrder={(notification) => {
 					markNotificationRead(notification.id);
 					setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
@@ -1985,6 +2007,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				isLoading={notificationsLoading}
 				error={notificationsError}
 				onMarkRead={markNotificationRead}
+				onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
+				onMarkCashierPaid={handleMarkCashierPaid}
 				onOpenOrder={(notification) => {
 					markNotificationRead(notification.id);
 					setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));

@@ -80,6 +80,17 @@ export function usePosNotifications(orderRefreshKey?: string) {
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.isRead).length, [notifications]);
 
+  const removeNotification = useCallback(async (notificationId: string) => {
+    const effectiveToken = getEffectiveToken();
+    if (!effectiveToken) return;
+    setNotifications((current) => current.filter((item) => item.id !== notificationId));
+    try {
+      await callNotifications(effectiveToken, { action: "dismiss", notificationId });
+    } catch {
+      void refresh(false);
+    }
+  }, [getEffectiveToken, refresh]);
+
   const markRead = useCallback(async (notificationId: string, acknowledge = false) => {
     const effectiveToken = getEffectiveToken();
     if (!effectiveToken) return;
@@ -93,7 +104,7 @@ export function usePosNotifications(orderRefreshKey?: string) {
     }
   }, [getEffectiveToken, refresh]);
 
-  return { notifications, unreadCount, isLoading, error, refresh, markRead };
+  return { notifications, unreadCount, isLoading, error, refresh, markRead, removeNotification };
 }
 
 export function useCreatePosAdminNotification() {

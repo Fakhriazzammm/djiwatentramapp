@@ -6,6 +6,7 @@ type TransactionAlertStackProps = {
   notifications: PosNotification[];
   onOpenOrder: (notification: PosNotification) => void;
   onDismiss: (notificationId: string) => void;
+  onMarkCashierPaid?: (notification: PosNotification) => void | Promise<void>;
 };
 
 function isDjiwaAppTransaction(item: PosNotification) {
@@ -44,7 +45,7 @@ function getAlertCopy(item: PosNotification) {
   };
 }
 
-function TransactionAlert({ item, onOpenOrder, onDismiss }: { item: PosNotification; onOpenOrder: () => void; onDismiss: () => void }) {
+function TransactionAlert({ item, onOpenOrder, onDismiss, onMarkCashierPaid }: { item: PosNotification; onOpenOrder: () => void; onDismiss: () => void; onMarkCashierPaid?: () => void | Promise<void> }) {
   useEffect(() => {
     const timer = window.setTimeout(onDismiss, 30_000);
     return () => window.clearTimeout(timer);
@@ -63,7 +64,8 @@ function TransactionAlert({ item, onOpenOrder, onDismiss }: { item: PosNotificat
       <button type="button" onClick={onDismiss} aria-label="Tutup alert transaksi" className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg hover:bg-black/5">
         <X className="h-4 w-4" />
       </button>
-      <button type="button" onClick={onOpenOrder} className="block w-full pr-8 text-left">
+      {item.notification_type === "order_cashier_pending" && onMarkCashierPaid ? <button type="button" onClick={() => void onMarkCashierPaid()} className="absolute bottom-3 right-3 rounded-lg bg-emerald-600 px-2.5 py-2 text-[10px] font-black text-white hover:bg-emerald-700"><CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />Sudah Dibayar</button> : null}
+      <button type="button" onClick={onOpenOrder} className={`block w-full text-left ${item.notification_type === "order_cashier_pending" && onMarkCashierPaid ? "pr-28" : "pr-8"}`}>
         <div className="flex items-start gap-3">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/75"><Icon className="h-5 w-5" /></span>
           <span className="min-w-0 flex-1">
@@ -79,14 +81,14 @@ function TransactionAlert({ item, onOpenOrder, onDismiss }: { item: PosNotificat
   );
 }
 
-export function TransactionAlertStack({ notifications, onOpenOrder, onDismiss }: TransactionAlertStackProps) {
+export function TransactionAlertStack({ notifications, onOpenOrder, onDismiss, onMarkCashierPaid }: TransactionAlertStackProps) {
   const alerts = getTransactionAlerts(notifications);
   if (alerts.length === 0) return null;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-3 z-[70] flex flex-col items-center gap-2 px-3 sm:inset-x-auto sm:right-4 sm:items-end sm:px-0" aria-live="polite" aria-label="Alert transaksi baru">
       {alerts.map((item) => (
-        <TransactionAlert key={item.id} item={item} onOpenOrder={() => onOpenOrder(item)} onDismiss={() => onDismiss(item.id)} />
+        <TransactionAlert key={item.id} item={item} onOpenOrder={() => onOpenOrder(item)} onDismiss={() => onDismiss(item.id)} onMarkCashierPaid={onMarkCashierPaid ? () => onMarkCashierPaid(item) : undefined} />
       ))}
     </div>
   );
