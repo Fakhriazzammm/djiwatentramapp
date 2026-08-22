@@ -26,7 +26,7 @@ const links = [
   },
   {
     href: "https://ordermieyamin.yumme.id",
-    label: "Ordermie Yamin",
+    label: "Order Mie Yamin",
     description: "Pesan favoritmu dengan praktis",
     icon: ShoppingBag,
     tone: "bg-[#f0edff] text-[#6b4fc4]",
