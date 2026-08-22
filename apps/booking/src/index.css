@@ -113,10 +113,15 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .arrival-summary small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
 .arrival-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, .8fr); gap: 24px; padding-top: 17px; }
 .guest-field, .arrival-time-field { min-width: 0; }
-.arrival-time-field input { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 0 13px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: var(--surface); outline: 0; }
-.arrival-time-field input:disabled { background: #f3f5f8; color: #98a2b3; }
-.arrival-time-field small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
-.arrival-time-field sup { color: var(--booking-accent); }
+.arrival-time-field .field-label { display: flex; align-items: center; gap: 7px; }
+.arrival-time-field .field-label svg { color: var(--booking-accent); }
+.time-input-shell { min-height: 56px; margin-top: 8px; padding: 0 13px; display: flex; align-items: center; gap: 10px; border: 1px solid #cfd9e8; border-radius: 16px; color: var(--booking-accent); background: var(--surface); box-shadow: 0 4px 12px rgba(15,23,42,.04); transition: border-color 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios), background 180ms var(--ease-ios); }
+.time-input-shell:focus-within { border-color: var(--booking-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
+.time-input-icon { flex: 0 0 auto; }
+.arrival-time-field .time-input { min-width: 0; flex: 1; width: 100%; min-height: 52px; padding: 0; border: 0; color: var(--ink); background: transparent; outline: 0; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -.025em; text-align: left; }
+.arrival-time-field .time-input:disabled { color: #98a2b3; background: transparent; }
+.time-zone { flex: 0 0 auto; padding: 6px 8px; border-radius: 8px; color: var(--booking-accent); background: var(--booking-accent-soft); font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.arrival-time-field small { display: block; margin-top: 7px; color: var(--muted); font-size: 11px; }
 .selection-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 24px; padding: 16px 18px; }
 .selection-date { margin: -2px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.35; }
 .selection-panel .stepper { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-content: center; gap: 10px; max-width: none; }
