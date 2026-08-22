@@ -146,6 +146,7 @@ type BookingOrderRecord = {
 	customerEmail: string;
 	notes?: string | null;
 	bookingDate: string;
+	arrivalTime?: string | null;
 	totalAmount: number;
 	paymentMethod?: string | null;
 	paymentStatus?: string | null;

@@ -357,7 +357,7 @@ function OrderRow({
 				</div>
 
 				<div className="flex flex-wrap items-center gap-1.5 sm:ml-auto shrink-0">
-					<span className="text-muted-foreground text-xs">{formatDate(order.bookingDate)}</span>
+					<span className="text-muted-foreground text-xs">{formatDate(order.bookingDate)}</span>{order.arrivalTime && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">Tiba {order.arrivalTime}</span>}
 					<span
 						className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLOR[order.bookingStatus]}`}
 					>

@@ -52,7 +52,7 @@ async function createBooking(body: JsonRecord) {
   const idempotencyKey = token(body.idempotencyKey);
   if (!accessToken || !idempotencyKey) throw Object.assign(new Error("accessToken and idempotencyKey must be at least 32 characters"), { status: 400 });
   const payload = {
-    slug: text(body.slug, 80), bookingDate: text(body.bookingDate, 10), customerName: text(body.customerName, 120),
+    slug: text(body.slug, 80), bookingDate: text(body.bookingDate, 10), arrivalTime: text(body.arrivalTime, 5), customerName: text(body.customerName, 120),
     customerPhone: text(body.customerPhone, 40), customerEmail: text(body.customerEmail, 254), notes: text(body.notes, 1000),
     guestCount: body.guestCount, paymentMethod: text(body.paymentMethod, 40), customAnswers: normalizeBookingAnswers(body.customAnswers),
     items: Array.isArray(body.items) ? body.items.slice(0, 50).map((item) => { const row = item && typeof item === "object" ? item as JsonRecord : {}; return { productId: text(row.productId, 120), quantity: row.quantity }; }) : [],

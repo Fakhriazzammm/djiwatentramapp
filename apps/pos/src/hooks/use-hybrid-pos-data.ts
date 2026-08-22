@@ -145,6 +145,7 @@ type BookingOrderRecord = {
 	customerEmail: string;
 	notes?: string | null;
 	bookingDate: string;
+	arrivalTime?: string | null;
 	totalAmount: number;
 	paymentMethod?: string | null;
 	paymentStatus?: string | null;
@@ -770,6 +771,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		bookingSourceId: row.bookingSourceId ?? null,
 		bookingCode: row.bookingCode ?? null,
 		bookingDate: row.bookingDate ?? null,
+		arrivalTime: row.arrivalTime ?? null,
 		bookingTypeKey: row.bookingTypeKey ?? null,
 		bookingTypeLabel: row.bookingTypeLabel ?? null,
 		eventTypeKey: row.eventTypeKey ?? null,

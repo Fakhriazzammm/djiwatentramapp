@@ -102,6 +102,7 @@ async function fetchBookingOrders(args: {
 		customerEmail: row.customerEmail ?? "",
 		notes: row.notes ?? null,
 		bookingDate: row.bookingDate ?? "",
+		arrivalTime: row.arrivalTime ?? null,
 		totalAmount: Number(row.totalAmount ?? 0),
 		paymentMethod: row.paymentMethod ?? null,
 		paymentStatus: row.paymentStatus ?? null,

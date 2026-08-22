@@ -12,7 +12,7 @@ export function triggerHybridRefresh() {
 	_refreshListeners.forEach((fn) => fn());
 }
 
-function useGlobalRefreshTrigger() {
+export function useGlobalRefreshTrigger() {
 	const [, setTick] = useState(0);
 	useEffect(() => {
 		const listener = () => setTick((n) => n + 1);
@@ -145,6 +145,7 @@ type BookingOrderRecord = {
 	customerEmail: string;
 	notes?: string | null;
 	bookingDate: string;
+	arrivalTime?: string | null;
 	totalAmount: number;
 	paymentMethod?: string | null;
 	paymentStatus?: string | null;

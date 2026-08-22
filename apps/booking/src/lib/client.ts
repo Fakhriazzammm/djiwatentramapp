@@ -29,13 +29,14 @@ export type BookingDraft = {
   eventTypeLabel?: string;
   eventTypeOther?: string;
   date: string;
+  arrivalTime: string;
   guests: number;
   tableCount: number;
   items: Array<{ productId: string; name: string; price: number; quantity: number }>;
   customer: { name: string; phone: string; email: string; notes: string };
   customAnswers: Record<string, unknown>;
 };
-export type BookingResult = { bookingId?: string; bookingCode: string; status: string; paymentStatus: string; date: string; guests: number; tableCount: number; totalAmount?: number; items: BookingDraft["items"]; invoiceId?: string; invoiceUrl?: string };
+export type BookingResult = { bookingId?: string; bookingCode: string; status: string; paymentStatus: string; date: string; arrivalTime?: string | null; guests: number; tableCount: number; totalAmount?: number; items: BookingDraft["items"]; invoiceId?: string; invoiceUrl?: string };
 
 export function isDataConfigured() {
   return Boolean((import.meta.env.VITE_SUPABASE_URL?.trim() || SUPABASE_URL) && (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY));
@@ -183,13 +184,13 @@ async function callMayar(body: Record<string, unknown>) {
 }
 
 function normalizeResult(raw: BookingResult & { bookingId?: string; bookingDate?: string; bookingStatus?: string; paymentStatus?: string; guestCount?: number; tableCount?: number; totalAmount?: number }): BookingResult {
-  return { ...raw, bookingId: raw.bookingId, date: raw.date ?? raw.bookingDate ?? "", status: raw.status ?? raw.bookingStatus ?? "pending", paymentStatus: raw.paymentStatus ?? "pending", guests: raw.guests ?? raw.guestCount ?? 0, tableCount: raw.tableCount ?? 0, totalAmount: Number(raw.totalAmount ?? 0), items: Array.isArray(raw.items) ? raw.items : [] };
+  return { ...raw, bookingId: raw.bookingId, date: raw.date ?? raw.bookingDate ?? "", arrivalTime: raw.arrivalTime ?? null, status: raw.status ?? raw.bookingStatus ?? "pending", paymentStatus: raw.paymentStatus ?? "pending", guests: raw.guests ?? raw.guestCount ?? 0, tableCount: raw.tableCount ?? 0, totalAmount: Number(raw.totalAmount ?? 0), items: Array.isArray(raw.items) ? raw.items : [] };
 }
 
 export async function createBooking(draft: BookingDraft): Promise<BookingResult> {
   if (BOOKING_API_URL) {
     const credentials = getGuestCredentials();
-    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
+    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, arrivalTime: draft.arrivalTime, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
     if (result.bookingId && result.bookingCode && result.items.length === 0) {
       try {
         const recovered = await lookupBooking(result.bookingCode);
@@ -200,7 +201,7 @@ export async function createBooking(draft: BookingDraft): Promise<BookingResult>
     return result;
   }
   if (DEV_FALLBACK) {
-    const result: BookingResult = { bookingCode: `DEV-${Date.now().toString(36).toUpperCase()}`, status: "pending", paymentStatus: "not_required", date: draft.date, guests: draft.guests, tableCount: draft.tableCount, totalAmount: draft.items.reduce((sum, item) => sum + item.price * item.quantity, 0), items: draft.items };
+    const result: BookingResult = { bookingCode: `DEV-${Date.now().toString(36).toUpperCase()}`, status: "pending", paymentStatus: "not_required", date: draft.date, arrivalTime: draft.arrivalTime, guests: draft.guests, tableCount: draft.tableCount, totalAmount: draft.items.reduce((sum, item) => sum + item.price * item.quantity, 0), items: draft.items };
     localStorage.setItem("booking-dev-draft", JSON.stringify(result));
     return result;
   }
