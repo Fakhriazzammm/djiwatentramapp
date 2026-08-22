@@ -1622,6 +1622,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                 categories={category: 1},
                 items=item_names,
                 total=float(total or 0),
+                payment_method=receipt.get("payment_method", "cash"),
             ))
         for item in items:
             if item.get("name"):

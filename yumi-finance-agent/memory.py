@@ -183,6 +183,7 @@ class MemoryManager:
 
     async def update_merchant_profile(
         self, merchant: str, categories: dict, items: list[str], total: float,
+        payment_method: str = "",
     ):
         """Update merchant profile with new receipt data."""
         if not merchant or merchant == "Tanpa Nama":
@@ -190,7 +191,7 @@ class MemoryManager:
         normalized = merchant.lower().strip()
         existing_rows = await self._fetch(
             "merchant_profiles",
-            f"select=id,typical_categories,typical_items,total_receipts,avg_receipt_amount&merchant_name_normalized=eq.{normalized}&limit=1",
+            f"select=id,typical_categories,typical_items,total_receipts,avg_receipt_amount,metadata&merchant_name_normalized=eq.{normalized}&limit=1"
         )
         now_iso = datetime.now(WIB).isoformat()
         if existing_rows:
@@ -199,6 +200,11 @@ class MemoryManager:
             old_items = set(row.get("typical_items", []) or [])
             old_count = int(row.get("total_receipts", 0))
             old_avg = float(row.get("avg_receipt_amount", 0))
+            metadata = row.get("metadata", {}) or {}
+            payment_counts = metadata.get("paymentMethods", {}) or {}
+            if payment_method:
+                payment_key = payment_method.lower().strip()
+                payment_counts[payment_key] = int(payment_counts.get(payment_key, 0)) + 1
             for cat, count in (categories or {}).items():
                 old_cats[cat] = old_cats.get(cat, 0) + count
             new_items = list(old_items | set(items))[:100]
@@ -209,6 +215,7 @@ class MemoryManager:
                 "typical_items": new_items,
                 "total_receipts": new_count,
                 "avg_receipt_amount": round(new_avg, 2),
+                "metadata": {**metadata, "paymentMethods": payment_counts},
                 "last_seen_at": now_iso,
                 "updated_at": now_iso,
             })
@@ -221,13 +228,14 @@ class MemoryManager:
                 "total_receipts": 1,
                 "avg_receipt_amount": total,
                 "last_seen_at": now_iso,
+                "metadata": {"paymentMethods": {payment_method.lower().strip(): 1}} if payment_method else {},
             })
 
     async def load_merchant_profiles(self):
         """Load merchant profiles into cache."""
         rows = await self._fetch(
             "merchant_profiles",
-            "select=merchant_name_normalized,typical_categories,typical_items&limit=200",
+            "select=merchant_name_normalized,typical_categories,typical_items,metadata&limit=200",
         )
         self.merchant_cache.clear()
         for m in rows:
@@ -239,6 +247,14 @@ class MemoryManager:
         if not merchant:
             return None
         return self.merchant_cache.get(merchant.lower().strip())
+
+    def get_merchant_payment_hint(self, merchant: str) -> str | None:
+        """Return most frequent payment method remembered for a merchant."""
+        profile = self.get_merchant_hint(merchant)
+        if not profile:
+            return None
+        methods = (profile.get("metadata", {}) or {}).get("paymentMethods", {}) or {}
+        return max(methods, key=methods.get) if methods else None
 
     # ── Price History ────────────────────────────────────────────
 
