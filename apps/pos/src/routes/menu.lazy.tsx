@@ -660,21 +660,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const progress = useHybridCurrentMonthProgress();
 
 	const shiftPct = useMemo(
-		() =>
-			progress?.shiftTarget
-				? (progress.shiftCollected / progress.shiftTarget) * 100
-				: 0,
+		() => Math.min(100, Math.max(0, progress?.shiftTarget ? (progress.shiftCollected / progress.shiftTarget) * 100 : 0)),
 		[progress?.shiftCollected, progress?.shiftTarget]
 	);
 	const dailyPct = useMemo(
-		() =>
-			progress?.dailyTarget
-				? (progress.dailyCollected / progress.dailyTarget) * 100
-				: 0,
+		() => Math.min(100, Math.max(0, progress?.dailyTarget ? (progress.dailyCollected / progress.dailyTarget) * 100 : 0)),
 		[progress?.dailyCollected, progress?.dailyTarget]
 	);
 	const monthlyPct = useMemo(
-		() => progress?.progressPct ?? 0,
+		() => Math.min(100, Math.max(0, progress?.progressPct ?? 0)),
 		[progress?.progressPct]
 	);
 
@@ -1725,7 +1719,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										<span>Shift</span>
 										<span>{Math.round(shiftPct)}%</span>
 									</div>
-									<div className="h-1 w-full bg-muted/40 rounded-full overflow-hidden">
+									<div className="h-1 w-full bg-muted/40 rounded-full overflow-hidden" role="progressbar" aria-label="Progress shift" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(shiftPct)}>
 										<motion.div 
 											className="h-full bg-primary"
 											initial={{ width: 0 }}
@@ -1787,7 +1781,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										<span>Harian</span>
 										<span>{Math.round(dailyPct)}%</span>
 									</div>
-									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden" role="progressbar" aria-label="Progress harian" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(dailyPct)}>
 										<motion.div 
 											className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]"
 											initial={{ width: 0 }}

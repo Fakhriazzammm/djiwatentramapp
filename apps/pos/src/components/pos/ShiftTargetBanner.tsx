@@ -9,6 +9,8 @@ export function ShiftTargetBanner() {
 	if (!progress) return null;
 
 	const { shiftProgress, dailyProgress, isShiftMet, isDailyMet, shiftTarget, shiftCollected, dailyTarget, dailyCollected } = progress;
+	const shiftPct = Math.min(100, Math.max(0, shiftProgress));
+	const dailyPct = Math.min(100, Math.max(0, dailyProgress));
 
 	return (
 		<div className="px-3 py-1">
@@ -28,13 +30,13 @@ export function ShiftTargetBanner() {
 								<span className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/80">Sesi</span>
 							</div>
 							<span className={`text-[11px] font-black ${isShiftMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}`}>
-								{shiftProgress.toFixed(0)}%
+								{shiftPct.toFixed(0)}%
 							</span>
 						</div>
-						<div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+						<div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10" role="progressbar" aria-label="Progress sesi" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(shiftPct)}>
 							<motion.div
 								initial={{ width: 0 }}
-								animate={{ width: `${shiftProgress}%` }}
+								animate={{ width: `${shiftPct}%` }}
 								className={`h-full rounded-full transition-all duration-1000 ${isShiftMet ? 'bg-emerald-500' : 'bg-primary'}`}
 							/>
 						</div>
@@ -57,13 +59,13 @@ export function ShiftTargetBanner() {
 								<span className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/80">Harian</span>
 							</div>
 							<span className={`text-[11px] font-black ${isDailyMet ? 'text-blue-600 dark:text-blue-400' : 'text-blue-500/80'}`}>
-								{dailyProgress.toFixed(0)}%
+								{dailyPct.toFixed(0)}%
 							</span>
 						</div>
-						<div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+						<div className="h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10" role="progressbar" aria-label="Progress harian" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(dailyPct)}>
 							<motion.div
 								initial={{ width: 0 }}
-								animate={{ width: `${dailyProgress}%` }}
+								animate={{ width: `${dailyPct}%` }}
 								className={`h-full rounded-full transition-all duration-1000 ${isDailyMet ? 'bg-blue-500' : 'bg-blue-400'}`}
 							/>
 						</div>
