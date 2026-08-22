@@ -111,16 +111,20 @@ function paymentType(order: any) {
 }
 
 async function syncRecentOrders() {
-  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  // Reconcile a bounded recent window so a short function outage does not
+  // permanently lose an operational alert. Initial POS load seeds silently;
+  // only newly observed IDs create a popup in the client.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const orders = await dbGet("pos_orders", {
     select: "_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items",
-    source: "eq.customer_self_service",
-    createdAt: `gte.${Date.parse(since)}`,
     order: "createdAt.desc",
     limit: "100",
   });
   let created = 0;
   for (const order of orders ?? []) {
+    const source = sourceOf(order);
+    const createdAt = Number(order.createdAt ?? 0);
+    if (source !== "customer_self_service" || !Number.isFinite(createdAt) || createdAt < Date.parse(since)) continue;
     const status = String(order.status ?? "").toLowerCase();
     const payment = paymentType(order);
     let type: string | null = null;
@@ -134,10 +138,10 @@ async function syncRecentOrders() {
       type = "order_mayar_pending";
       title = "Menunggu Pembayaran QRIS DjiwaApp";
       message = "Pembayaran belum dikonfirmasi";
-    } else if ((status === "paid" || status === "completed") && payment === "mayar") {
+    } else if ((status === "paid" || status === "completed") && (payment === "mayar" || payment === "cashier")) {
       type = "order_paid";
-      title = "Pembayaran QRIS Berhasil";
-      message = "Pesanan DjiwaApp Sudah Lunas";
+      title = payment === "cashier" ? "Pembayaran Kasir Berhasil" : "Pembayaran QRIS Berhasil";
+      message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar di Kasir" : "Pesanan DjiwaApp Sudah Lunas";
     }
     if (!type || !order._id) continue;
     const result = await dbWrite("pos_notifications", "POST", {
