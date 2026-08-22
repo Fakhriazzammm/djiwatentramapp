@@ -954,7 +954,7 @@ function AdminOrders() {
 									<th className="px-3 py-2.5">Shift</th>
 									<th className="px-3 py-2.5 text-right">Total</th>
 									<th className="px-3 py-2.5 text-right">Laba / HPP</th>
-									<th className="min-w-[190px] px-3 py-2.5">Pembayaran / Tracking</th>
+									<th className="min-w-[120px] px-3 py-2.5">Status</th>
 									<th className="px-3 py-2.5">Channel</th>
 									<th className="px-3 py-2.5 text-right">Waktu</th>
 									<th className="px-3 py-2.5 text-center">Aksi</th>
@@ -1076,9 +1076,8 @@ function AdminOrders() {
 													})()}
 												</td>
 														<td className="px-3 py-2.5 align-top" onClick={(event) => event.stopPropagation()}>
-															<div className="min-w-[190px] space-y-1.5">
-																<div className="flex items-center justify-between gap-2">
-																	<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Pembayaran</span>
+															<div className="min-w-[120px] space-y-1.5">
+																<div className="flex items-center gap-2">
 																	<Badge className="rounded-md px-1.5 py-0 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getPaymentLabel(order)}</Badge>
 																</div>
 																{resolveOrderChannel(order).label === "Mie Yamin" && (
