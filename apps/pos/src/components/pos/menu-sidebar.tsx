@@ -1581,7 +1581,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 	return (
 		<div className="space-y-4 pt-2">
 			<div className="space-y-2 text-center">
-				<h3 className="font-medium text-lg">Riwayat Order</h3>
+				<h3 className="font-medium text-lg">Riwayat Pesanan</h3>
 				<p className="text-muted-foreground text-sm">
 					Riwayat pesanan dibedakan per shift agar tidak tercampur.
 				</p>
