@@ -1494,8 +1494,30 @@ function normalizePromotionLabel(label: string, timestamp?: number) {
 	return normalized;
 }
 
+function getOrderPromotionLabel(order: Doc<"orders">, discounts: Doc<"discounts">[] | null | undefined) {
+	const storedLabels = (order.receiptMeta?.promotionLabels ?? [])
+		.map((label: string) => normalizePromotionLabel(label, order.createdAt))
+		.filter(Boolean);
+	if (storedLabels.length > 0) return storedLabels;
+	if (!(order.discountAmount > 0)) return [];
+
+	const orderDate = new Date(order.createdAt);
+	const orderMinutes = orderDate.getHours() * 60 + orderDate.getMinutes();
+	const matchedHappyHour = (discounts ?? []).find((discount: any) => {
+		if (!discount?.isHappyHour || !discount?.startTime || !discount?.endTime) return false;
+		const [startHour, startMinute] = String(discount.startTime).split(":").map(Number);
+		const [endHour, endMinute] = String(discount.endTime).split(":").map(Number);
+		const start = startHour * 60 + startMinute;
+		const end = endHour * 60 + endMinute;
+		return start <= end ? orderMinutes >= start && orderMinutes <= end : orderMinutes >= start || orderMinutes <= end;
+	});
+	if (matchedHappyHour) return [normalizePromotionLabel(String(matchedHappyHour.name ?? "Happy Hour"), order.createdAt)];
+	return ["Promo"];
+}
+
 function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"orders">) => void; onPrint?: (order: Doc<"orders">, mode: ReceiptPrintMode) => void }) {
 	const orders = useHybridOrders();
+	const allDiscounts = useHybridAllDiscounts();
 	const shiftStatus = useHybridShiftStatus();
 
 	const [timeFilter, setTimeFilter] = useState("today");
@@ -1734,7 +1756,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 						const cashierName = matchedShift?.cashierName || "—";
 						const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
 						const subtotal = order.items?.reduce((sum: number, i: any) => sum + (i.originalPrice ?? i.price) * (i.quantity || 0), 0) ?? 0;
-						const promoLabels: string[] = order.receiptMeta?.promotionLabels ?? [];
+						const promoLabels = getOrderPromotionLabel(order, allDiscounts);
 						const delivered = getIsDelivered(order._id, !!order.is_delivered);
 						const isCashierPending = order.status === "pending" && ["cash", "cashier", "tunai"].includes(String(order.paymentMethod ?? "").toLowerCase());
 						const displayStatus = cashierPaidIds.has(String(order._id)) ? "paid" : order.status;
@@ -1794,7 +1816,10 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												● {statusLabel}
 											</span>
 											{order.source === "booking" ? (
-												<span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-violet-700">Booking</span>
+												<>
+													<span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-violet-700">Booking</span>
+													{order.arrivalTime && <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-blue-700">Tiba {order.arrivalTime}</span>}
+												</>
 											) : order.source === "customer_self_service" ? (
 												<span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
 													DjiwaApp
