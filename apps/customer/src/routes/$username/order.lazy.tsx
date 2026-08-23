@@ -331,10 +331,10 @@ function OrderPage() {
 	}, [activeFreeRefillPromo, config.enableFreeRefillPrompt, freeRefillOptIn]);
 
 	useEffect(() => {
-		if (!paymentOptions.find((option) => option.key === paymentChoice)) {
+		if (!paymentOptions.find((option) => option.key === paymentChoice) || (paymentChoice === "wallet" && (!customer || (customer.walletBalance ?? 0) < total))) {
 			setPaymentChoice("cashier");
 		}
-	}, [paymentChoice, paymentOptions]);
+	}, [customer, paymentChoice, total]);
 
 	useEffect(() => {
 		if (!search.orderId || receipt) return;
@@ -893,7 +893,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }) }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
