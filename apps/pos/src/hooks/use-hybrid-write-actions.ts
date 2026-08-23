@@ -1054,7 +1054,7 @@ export function useHybridEnsureInventoryItemForBaseRecipe() {
 				.maybeSingle();
 			if (existingError) throw existingError;
 			if (existing?.source_id) {
-				return { inventoryId: existing.source_id, created: false };
+				return { inventoryId: existing!.source_id, created: false };
 			}
 
 			const { data: baseRecipe, error: baseError } = await pos
@@ -2015,7 +2015,7 @@ export function useHybridProcessReceipt() {
 			if (!image) throw new Error("image wajib diisi");
 			const batch = (await invokeYumiAiAction("bulkScanImageData", {
 				images: [image],
-			})) as any[];
+			})) as unknown as any[];
 			const first = Array.isArray(batch) ? batch[0] : null;
 			if (!first?.success || !first?.data) {
 				throw new Error(first?.error || "Gagal memproses gambar");
@@ -3158,14 +3158,14 @@ export function useHybridCreateBookingOrder() {
 					);
 
 					if (
-						Number(capacity.max_people ?? 0) > 0 &&
-						totalBookedPeople + guestCount > Number(capacity.max_people)
+						Number(capacity!.max_people ?? 0) > 0 &&
+						totalBookedPeople + guestCount > Number(capacity!.max_people)
 					) {
 						throw new Error("Kapasitas orang untuk tanggal ini sudah habis");
 					}
 					if (
-						Number(capacity.max_tables ?? 0) > 0 &&
-						totalBookedTables + tableCount > Number(capacity.max_tables)
+						Number(capacity!.max_tables ?? 0) > 0 &&
+						totalBookedTables + tableCount > Number(capacity!.max_tables)
 					) {
 						throw new Error("Kapasitas meja untuk tanggal ini sudah habis");
 					}
@@ -3258,17 +3258,17 @@ export function useHybridUpdateBookingStatus() {
 				if (getError) throw getError;
 				if (!booking) throw new Error("Booking not found");
 
-				if (args?.paymentStatus === "paid" && booking.payment_status !== "paid") {
+				if (args?.paymentStatus === "paid" && booking!.payment_status !== "paid") {
 					const { error: txError } = await pos
 						.from("financial_transactions")
 						.insert({
 							source_id: makeSourceId("fin"),
 							tx_type: "income",
-							amount: Number(booking.total_amount ?? 0),
+							amount: Number(booking!.total_amount ?? 0),
 							category: "Booking",
-							description: `Booking #${booking.booking_code} - ${booking.customer_name} (${booking.booking_date})`,
+							description: `Booking #${booking!.booking_code} - ${booking!.customer_name} (${booking!.booking_date})`,
 							tx_date: Number(args?.paymentDate ?? Date.now()),
-							payment_method: booking.payment_method ?? null,
+							payment_method: booking!.payment_method ?? null,
 							status: "completed",
 							booking_order_source_id: id,
 							creation_time: Date.now(),
@@ -3362,12 +3362,12 @@ export function useHybridPatchBookingOrder() {
 
 				if (args?.guestCount !== undefined) {
 					const nextDate = String(
-						args?.bookingDate ?? currentBooking.booking_date ?? ""
+						args?.bookingDate ?? currentBooking!.booking_date ?? ""
 					);
 					const { data: capacity, error: capError } = await pos
 						.from("booking_date_capacity")
 						.select("people_per_table")
-						.eq("slug", currentBooking.slug)
+						.eq("slug", currentBooking!.slug)
 						.eq("booking_date", nextDate)
 						.maybeSingle();
 					if (capError) throw capError;
@@ -3415,9 +3415,9 @@ export function useHybridPatchBookingOrder() {
 					args?.bookingDate !== undefined
 				) {
 					const nextCustomerName =
-						args?.customerName ?? currentBooking.customer_name ?? "";
+						args?.customerName ?? currentBooking!.customer_name ?? "";
 					const nextBookingDate =
-						args?.bookingDate ?? currentBooking.booking_date ?? "";
+						args?.bookingDate ?? currentBooking!.booking_date ?? "";
 					const txUpdates: Record<string, unknown> = {};
 					if (args?.totalAmount !== undefined) {
 						txUpdates.amount = Number(args.totalAmount ?? 0);
@@ -3426,7 +3426,7 @@ export function useHybridPatchBookingOrder() {
 						args?.customerName !== undefined ||
 						args?.bookingDate !== undefined
 					) {
-						txUpdates.description = `Booking #${currentBooking.booking_code} - ${nextCustomerName} (${nextBookingDate})`;
+						txUpdates.description = `Booking #${currentBooking!.booking_code} - ${nextCustomerName} (${nextBookingDate})`;
 					}
 					if (Object.keys(txUpdates).length > 0) {
 						const { error: txPatchError } = await pos
@@ -3531,7 +3531,7 @@ export function useHybridUploadBookingPaymentProof() {
 				if (bookingError) throw bookingError;
 				if (!booking) throw new Error("Booking not found");
 
-				if (booking.payment_status !== "paid") {
+				if (booking!.payment_status !== "paid") {
 					const { error: txError } = await pos
 						.from("financial_transactions")
 						.insert({
@@ -3539,12 +3539,12 @@ export function useHybridUploadBookingPaymentProof() {
 							tx_type: "income",
 							amount:
 								transferredAmount === undefined
-									? Number(booking.total_amount ?? 0)
+									? Number(booking!.total_amount ?? 0)
 									: transferredAmount,
 							category: "Booking",
-							description: `Booking #${booking.booking_code} - ${booking.customer_name} (QRIS/Transfer)`,
+							description: `Booking #${booking!.booking_code} - ${booking!.customer_name} (QRIS/Transfer)`,
 							tx_date: Date.now(),
-							payment_method: booking.payment_method ?? null,
+							payment_method: booking!.payment_method ?? null,
 							status: "completed",
 							booking_order_source_id: id,
 							creation_time: Date.now(),
@@ -3628,9 +3628,9 @@ export function useHybridUpdateBookingSettings() {
 					const { error: updateError } = await pos
 						.from("booking_settings")
 						.update(row)
-						.eq("source_id", existing.source_id);
+						.eq("source_id", existing!.source_id);
 					if (updateError) throw updateError;
-					return existing.source_id;
+					return existing!.source_id;
 				}
 
 				const sourceId = makeSourceId("booking_settings");
@@ -3693,7 +3693,7 @@ export function useHybridSetBookingDateCapacity() {
 					const { error: updateError } = await pos
 						.from("booking_date_capacity")
 						.update(row)
-						.eq("source_id", existing.source_id);
+						.eq("source_id", existing!.source_id);
 					if (updateError) throw updateError;
 					return;
 				}
@@ -3778,7 +3778,7 @@ export function useHybridSetBookingBulkDateCapacity() {
 						const { error: updateError } = await pos
 							.from("booking_date_capacity")
 							.update(row)
-							.eq("source_id", existing.source_id);
+							.eq("source_id", existing!.source_id);
 						if (updateError) throw updateError;
 					} else {
 						const { error: insertError } = await pos
@@ -3911,7 +3911,7 @@ export function useHybridCreateTransaction() {
 						.eq("source_fingerprint", fingerprint)
 						.maybeSingle();
 					if (existing) {
-						return existing.source_id;
+						return existing!.source_id;
 					}
 				}
 
@@ -4870,9 +4870,9 @@ export function useHybridSetFinancialTarget() {
 					const { error } = await pos
 						.from("financial_targets")
 						.update(payload)
-						.eq("source_id", existing.source_id);
+						.eq("source_id", existing!.source_id);
 					if (error) throw error;
-					return existing.source_id;
+					return existing!.source_id;
 				}
 				const id = makeSourceId("financial_target");
 				const { error } = await pos.from("financial_targets").insert({
@@ -5426,9 +5426,9 @@ export function useHybridUpdateSiteSettings() {
 					const { error } = await pos
 						.from("site_settings")
 						.update(payload)
-						.eq("source_id", existing.source_id);
+						.eq("source_id", existing!.source_id);
 					if (error) throw error;
-					return existing.source_id;
+					return existing!.source_id;
 				}
 
 				const sourceId = makeSourceId("site_settings");
