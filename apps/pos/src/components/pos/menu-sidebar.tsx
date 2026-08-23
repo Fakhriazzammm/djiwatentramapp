@@ -3233,7 +3233,6 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			{/* Checklist aktivasi online food */}
 			{showStartChecklist && (
 				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
-				
 					<div className="space-y-1">
 						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
 							<CreditCard className="h-4 w-4 text-primary" />
@@ -3281,7 +3280,6 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			{/* Preview & konfirmasi buka shift */}
 			{showStartConfirm && (
 				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
-				
 					<div className="space-y-1">
 						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
 							<Wallet className="h-4 w-4 text-primary" />
