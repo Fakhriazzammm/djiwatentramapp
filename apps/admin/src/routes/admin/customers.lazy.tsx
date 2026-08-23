@@ -77,6 +77,9 @@ function AdminCustomers() {
 	const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
 	const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
 	const [walletLedgerLoading, setWalletLedgerLoading] = useState(false);
+	const [walletAdjustmentAmount, setWalletAdjustmentAmount] = useState("");
+	const [walletAdjustmentNote, setWalletAdjustmentNote] = useState("");
+	const [walletAdjustmentBusy, setWalletAdjustmentBusy] = useState(false);
 	const [confirmDeleteCustomers, setConfirmDeleteCustomers] = useState<Customer[] | null>(null);
 	const [deleting, setDeleting] = useState(false);
 
@@ -168,6 +171,25 @@ function AdminCustomers() {
 			.finally(() => { if (active) setWalletLedgerLoading(false); });
 		return () => { active = false; };
 	}, [detailCustomer]);
+
+	const handleWalletAdjustment = async (direction: "credit" | "debit") => {
+		if (!detailCustomer) return;
+		const amount = Number(walletAdjustmentAmount);
+		const note = walletAdjustmentNote.trim();
+		const staffToken = typeof window !== "undefined" ? window.localStorage.getItem("yumi_session_token") : "";
+		if (!Number.isSafeInteger(amount) || amount <= 0) { toast.error("Nominal saldo harus lebih dari 0"); return; }
+		if (!note) { toast.error("Alasan adjustment wajib diisi"); return; }
+		if (!staffToken) { toast.error("Sesi staff tidak ditemukan"); return; }
+		setWalletAdjustmentBusy(true);
+		try {
+			await invokeEdgeFunction("customer-wallet", { action: "admin-adjustment", staffToken, customerId: detailCustomer.source_id, amount, direction, note, idempotencyKey: `admin-wallet-${detailCustomer.source_id}-${Date.now()}` });
+			toast.success(direction === "credit" ? "Saldo berhasil ditambahkan" : "Saldo berhasil dikurangi");
+			setWalletAdjustmentAmount(""); setWalletAdjustmentNote("");
+			const refreshed = await createClient().from("pos_customers_view").select("*").eq("source_id", detailCustomer.source_id).maybeSingle();
+			if (!refreshed.error && refreshed.data) setDetailCustomer(refreshed.data as Customer);
+		} catch (error) { toast.error(error instanceof Error ? error.message : "Adjustment saldo gagal"); }
+		finally { setWalletAdjustmentBusy(false); }
+	};
 
 	const selectedCustomers = (customers ?? []).filter((customer) => selectedIds.has(customer.source_id));
 	const allVisibleSelected = Boolean(filteredCustomers?.length) && (filteredCustomers ?? []).every((customer) => selectedIds.has(customer.source_id));
@@ -434,6 +456,7 @@ function AdminCustomers() {
 							<div className="rounded-xl bg-green-50 p-3"><p className="text-xs text-green-700">Total spending</p><p className="mt-1 font-black text-green-900">{formatRupiah(detailCustomer.total_spent)}</p></div>
 						</div>
 						<div className="mt-4 grid gap-2 text-sm"><div className="flex justify-between gap-4 border-b border-border pb-2"><span className="text-muted-foreground">Bergabung</span><span className="font-semibold">{formatDate(detailCustomer.created_at, true)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Order terakhir</span><span className="font-semibold">{formatDate(detailCustomer.last_order_at, true)}</span></div></div>
+						<div className="mt-4 rounded-xl border border-border bg-muted/20 p-3"><p className="text-xs font-black">Adjustment saldo admin</p><div className="mt-2 grid grid-cols-2 gap-2"><input type="number" min="1" value={walletAdjustmentAmount} onChange={(event) => setWalletAdjustmentAmount(event.target.value)} placeholder="Nominal" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /><input value={walletAdjustmentNote} onChange={(event) => setWalletAdjustmentNote(event.target.value)} placeholder="Alasan wajib" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("credit")} className="h-10 rounded-lg bg-emerald-600 text-xs font-black text-white disabled:opacity-50">Tambah Saldo</button><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("debit")} className="h-10 rounded-lg bg-rose-600 text-xs font-black text-white disabled:opacity-50">Kurangi Saldo</button></div></div>
 						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat saldo</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi saldo.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
 					</div>
 				</div>
