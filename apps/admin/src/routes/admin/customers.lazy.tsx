@@ -320,14 +320,6 @@ function AdminCustomers() {
 										<span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
 												<Wallet className="h-3 w-3" /> {formatRupiah(c.wallet_balance || 0)}
 											</span>
-											<span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700">
-											<Star className="h-3 w-3 fill-current" />
-											{c.total_points}
-										</span>
-										<span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-1.5 py-0.5 text-violet-700">
-											<Star className="h-3 w-3" />
-											{c.lifetime_points.toLocaleString("id-ID")} lifetime
-										</span>
 										<span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-blue-700">
 											<ShoppingBag className="h-3 w-3" />
 											{c.total_orders} pesanan
@@ -367,8 +359,6 @@ function AdminCustomers() {
 								<th className="px-2.5 py-2">Email</th>
 								<th className="px-2.5 py-2">Telepon</th>
 									<th className="px-2.5 py-2 text-right">Saldo</th>
-								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" aria-hidden="true" /> Poin</span></th>
-								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><Star className="h-3.5 w-3.5" aria-hidden="true" /> Lifetime</span></th>
 								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" /> Orders</span></th>
 								<th className="px-2.5 py-2 text-right"><span className="inline-flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" aria-hidden="true" /> Total Spending</span></th>
 								<th className="px-2.5 py-2">Terakhir Order</th>
@@ -380,7 +370,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={10}
+										colSpan={8}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -408,15 +398,6 @@ function AdminCustomers() {
 											{c.phone || "-"}
 										</td>
 										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
-											<span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
-												<Star className="h-3 w-3 fill-current" />
-												{c.total_points.toLocaleString("id-ID")}
-											</span>
-										</td>
-										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
-											<span className="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700">
-												{c.lifetime_points.toLocaleString("id-ID")}
-											</span>
 										</td>
 										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
 											{c.total_orders}
@@ -449,8 +430,6 @@ function AdminCustomers() {
 							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Email</p><p className="mt-1 break-all font-semibold">{detailCustomer.email || "-"}</p></div>
 							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Telepon</p><p className="mt-1 font-semibold">{detailCustomer.phone || "-"}</p></div>
 							<div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Saldo Djiwa Pay</p><p className="mt-1 font-black text-emerald-900">{formatRupiah(detailCustomer.wallet_balance || 0)}</p></div>
-							<div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">Poin aktif</p><p className="mt-1 font-black text-amber-900">{detailCustomer.total_points.toLocaleString("id-ID")}</p></div>
-							<div className="rounded-xl bg-violet-50 p-3"><p className="text-xs text-violet-700">Lifetime points</p><p className="mt-1 font-black text-violet-900">{detailCustomer.lifetime_points.toLocaleString("id-ID")}</p></div>
 							<div className="rounded-xl bg-blue-50 p-3"><p className="text-xs text-blue-700">Total orders</p><p className="mt-1 font-black text-blue-900">{detailCustomer.total_orders.toLocaleString("id-ID")}</p></div>
 							<div className="rounded-xl bg-cyan-50 p-3"><p className="text-xs text-cyan-700">Total masuk Djiwa Pay</p><p className="mt-1 font-black text-cyan-900">{formatRupiah(detailCustomer.wallet_total_credited || 0)}</p></div>
 							<div className="rounded-xl bg-green-50 p-3"><p className="text-xs text-green-700">Total spending</p><p className="mt-1 font-black text-green-900">{formatRupiah(detailCustomer.total_spent)}</p></div>
