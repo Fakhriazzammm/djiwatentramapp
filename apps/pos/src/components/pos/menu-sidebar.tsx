@@ -594,14 +594,14 @@ export function MenuSidebar({
 											<button
 												type="button"
 												onClick={() => setTransactionPage("history")}
-												className={cn("min-w-0 truncate rounded-xl px-2 py-3 text-center text-[12px] font-bold transition-colors sm:text-sm", transactionPage === "history" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}
+												className={cn("min-w-0 whitespace-normal break-words rounded-xl px-2 py-3 text-center text-[12px] font-bold leading-tight transition-colors sm:text-sm", transactionPage === "history" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}
 											>
 												Riwayat Pesanan
 											</button>
 											<button
 												type="button"
 												onClick={() => setTransactionPage("open_bill")}
-												className={cn("min-w-0 truncate rounded-xl px-2 py-3 text-center text-[12px] font-bold transition-colors sm:text-sm", transactionPage === "open_bill" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}
+												className={cn("min-w-0 whitespace-normal break-words rounded-xl px-2 py-3 text-center text-[11px] font-bold leading-tight transition-colors sm:text-sm", transactionPage === "open_bill" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}
 											>
 												Open Bill / Bayar di Kasir (Djiwa App)
 											</button>
