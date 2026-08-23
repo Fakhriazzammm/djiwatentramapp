@@ -103,6 +103,7 @@ import {
 	useHybridStaffUsers,
 	useHybridSiteSettings,
 	fetchShiftStatus,
+	triggerHybridRefresh,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridAllTransactions,
@@ -1534,6 +1535,9 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 	const markCashierPaid = useCallback(async (order: Doc<"orders">) => {
 		try {
 			await updateOrder({ id: order._id, status: "paid", paymentMethod: "cash", paymentReceiptKind: "cashier" });
+			triggerHybridRefresh();
+			window.setTimeout(() => triggerHybridRefresh(), 350);
+			window.setTimeout(() => triggerHybridRefresh(), 1_200);
 			setCashierPaidIds((current) => new Set(current).add(String(order._id)));
 			toast.success(`Pesanan #${order.orderNumber} ditandai sudah dibayar`);
 		} catch (error) {
