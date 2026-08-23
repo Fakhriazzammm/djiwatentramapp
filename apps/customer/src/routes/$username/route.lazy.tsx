@@ -6,6 +6,7 @@ import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
 import { MemberOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
+import { currency } from "@/components/customer/types";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 type GuestData = {
@@ -209,7 +210,7 @@ function MemberHomePage() {
 									onClick={() => setAuthModalOpen(true)}
 								>
 									<LogIn className="h-3.5 w-3.5" />
-									Masuk / Daftar untuk Poin
+									Masuk / Daftar untuk Saldo
 								</button>
 							</div>
 
@@ -283,14 +284,12 @@ function MemberHomePage() {
 						<div className="mt-4 rounded-[20px] bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-4">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
-									<Star className="h-4 w-4 text-amber-500" />
-									<span className="text-xs font-bold text-muted-foreground">Poin</span>
+									<Wallet className="h-4 w-4 text-emerald-500" />
+									<span className="text-xs font-bold text-muted-foreground">Saldo</span>
 								</div>
-								<span className="text-lg font-black">{customer.totalPoints.toLocaleString("id-ID")}</span>
+								<span className="text-lg font-black">{currency(customer.walletBalance)}</span>
 							</div>
-							{customer.lifetimePoints > 0 ? (
-								<p className="mt-0.5 text-[10px] text-muted-foreground">Total: {customer.lifetimePoints.toLocaleString("id-ID")} Poin seumur hidup</p>
-							) : null}
+							<p className="mt-0.5 text-[10px] text-muted-foreground">Total masuk/top up: {currency(customer.walletTotalCredited)}</p>
 						</div>
 
 						<button type="button" className="mt-4 flex min-h-12 w-full items-center justify-between rounded-[14px] bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}>
