@@ -3251,9 +3251,9 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					</div>
 					<div className="flex gap-2">
 						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => { setShowStartChecklist(false); setShowStartConfirm(true); }}>Kembali</Button>
-						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => { setShowStartConfirm(false); setShowStartChecklist(true); }}>
-							<ArrowDownCircle className="h-3.5 w-3.5" />
-							Lanjut Checklist Online Food
+						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={confirmStartShift}>
+							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
 						</Button>
 					</div>
 				</DialogContent>
@@ -3283,9 +3283,9 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					</div>
 					<div className="flex gap-2">
 						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => setShowStartConfirm(false)}>Kembali</Button>
-						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting || !ONLINE_FOOD_PLATFORMS.every(({ key }) => onlineFoodChecklist[key].status !== "pending")} onClick={confirmStartShift}>
-							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SquarePlay className="h-3.5 w-3.5" />}
-							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
+						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => { setShowStartConfirm(false); setShowStartChecklist(true); }}>
+							<ArrowDownCircle className="h-3.5 w-3.5" />
+							Lanjut Checklist Online Food
 						</Button>
 					</div>
 				</DialogContent>
