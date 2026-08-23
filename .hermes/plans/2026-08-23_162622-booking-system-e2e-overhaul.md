@@ -1116,7 +1116,7 @@ These should be confirmed before risky implementation starts:
 - Audit public flow: completed.
 - Audit tab inventory: completed.
 - Implementation: Wave 2 backend safety, shared booking contract, and P0 Admin/POS/Public UI slice implemented and deployed. Booking hook nullability/type guards are aligned across shared and app-local copies.
-- Release note: verified P0 UI/public slice plus additive backend integrity migration, payment recovery/amount guards, shared booking contract, and type-safe booking hook patch are implemented. Full shared-component extraction, configuration polish, and automation remain pending.
+- Release note: verified P0 UI/public slice plus additive backend integrity migration, payment recovery/amount guards, shared booking contract, type-safe booking hook patch, and Phase 6 durable timeline/notification queue foundation are implemented. External WhatsApp/Telegram delivery worker, timeline UI, full shared-component extraction, and configuration polish remain pending.
 - Completed slice:
   - Admin/POS calendar has a direct `Tambah` CTA.
   - Calendar occupancy labels use explicit `tamu` and `meja` wording.
