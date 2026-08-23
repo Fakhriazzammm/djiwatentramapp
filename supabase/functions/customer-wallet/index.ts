@@ -19,7 +19,7 @@ function idempotency(value: unknown) { return text(value) || crypto.randomUUID()
 
 async function ownedCustomer(sourceId: string, email: string) {
   if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
-  const { data, error } = await admin.schema("pos").from("customers").select("source_id,email,name").eq("source_id", sourceId).maybeSingle();
+  const { data, error } = await admin.schema("pos").from("customers").select("source_id,email,name,phone").eq("source_id", sourceId).maybeSingle();
   if (error) throw error;
   if (!data || text(data.email).toLowerCase() !== email.toLowerCase()) throw new Error("Customer tidak memiliki akses ke wallet ini");
   return data;
@@ -42,13 +42,13 @@ async function getWallet(payload: Json) {
 }
 
 async function createTopup(payload: Json) {
-  const sourceId=text(payload.sourceId); const email=text(payload.email); await ownedCustomer(sourceId,email);
+  const sourceId=text(payload.sourceId); const email=text(payload.email); const customer=await ownedCustomer(sourceId,email);
   const amount=Number(payload.amount); if (!Number.isSafeInteger(amount) || amount<1000) throw new Error("Nominal top up minimal Rp1.000");
   const key=idempotency(payload.idempotencyKey); const topupId=`wt_${crypto.randomUUID()}`;
   const { error: insertError }=await admin.schema("pos").from("customer_wallet_topups").insert({topup_id:topupId,customer_id:sourceId,amount,idempotency_key:key});
   if(insertError) throw insertError;
   const origin=String(payload.origin||""); const redirectUrl=origin?`${origin.replace(/\/$/,"")}/saldo`:undefined;
-  const invoiceResponse=await fetch(`${supabaseUrl}/functions/v1/mayar-proxy`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${serviceRoleKey}`,apikey:serviceRoleKey},body:JSON.stringify({action:"create-invoice",name:String((await ownedCustomer(sourceId,email)).name||"Customer"),email,mobile:"",redirectUrl,description:`Top up saldo customer`,expiredAt:new Date(Date.now()+24*60*60*1000).toISOString(),extraData:{walletTopupId:topupId,customerId:sourceId},items:[{quantity:1,rate:amount,description:`Top up saldo Rp${amount.toLocaleString("id-ID")}`} ]})});
+  const invoiceResponse=await fetch(`${supabaseUrl}/functions/v1/mayar-proxy`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${serviceRoleKey}`,apikey:serviceRoleKey},body:JSON.stringify({action:"create-invoice",name:String((await ownedCustomer(sourceId,email)).name||"Customer"),email,mobile:customer.phone||"",redirectUrl,description:`Top up saldo customer`,expiredAt:new Date(Date.now()+24*60*60*1000).toISOString(),extraData:{walletTopupId:topupId,customerId:sourceId},items:[{quantity:1,rate:amount,description:`Top up saldo Rp${amount.toLocaleString("id-ID")}`} ]})});
   const invoice=await invoiceResponse.json().catch(()=>({})); if(!invoiceResponse.ok||!invoice?.data?.id) throw new Error(invoice?.messages||"Gagal membuat invoice top up");
   await admin.schema("pos").from("customer_wallet_topups").update({invoice_id:invoice.data.id,transaction_id:invoice.data.transactionId||null}).eq("topup_id",topupId);
   return {topup_id:topupId,invoice_id:invoice.data.id,invoice_url:invoice.data.link,status:"pending"};

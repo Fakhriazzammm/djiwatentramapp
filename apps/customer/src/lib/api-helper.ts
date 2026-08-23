@@ -140,12 +140,13 @@ export async function invokeEdgeFunction<T = Record<string, unknown>>(
 		// FunctionsHttpError — try to extract body for structured error
 		let detail = error.message || "Gagal memanggil edge function";
 		try {
-			const errBody = await (error as any).context?.json?.();
+			const context = (error as any).context;
+			const errBody = context?.clone ? await context.clone().json() : await context?.json?.();
 			if (errBody) {
 				return parseEdgeFunctionResponse<T>(errBody, error.status || 500);
 			}
 		} catch {
-			// ignore parse errors
+			// ignore parse errors and keep the transport message below
 		}
 		throw new ApiError("FUNCTION_ERROR", detail, error.status || 500);
 	}
