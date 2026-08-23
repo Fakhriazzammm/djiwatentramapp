@@ -1423,6 +1423,24 @@ _booking_notification_ids = _load_booking_notification_ids()
 
 _last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos = _load_supervisor_cursor()
 
+# Delivery dedupe is tracked independently for each destination. This is
+# important when Kitchen/Barista times out after the transaction message was
+# already accepted by Telegram: only the failed destination may retry.
+_CHANNEL_SENT_FILE = os.path.join(_STATE_DIR, "order_channel_notifications.txt")
+try:
+    with open(_CHANNEL_SENT_FILE) as f:
+        _channel_sent = {line.strip() for line in f if line.strip()}
+except FileNotFoundError:
+    _channel_sent = {f"{order_no}|transaction" for order_no in _reported_order_nos}
+_channel_sent.update(f"{order_no}|transaction" for order_no in _reported_order_nos)
+
+def _save_channel_sent() -> None:
+    with open(_CHANNEL_SENT_FILE, "w") as f:
+        for key in sorted(_channel_sent)[-3000:]:
+            f.write(f"{key}\n")
+
+_save_channel_sent()
+
 # ── Shift recap cursor ──
 _LEGACY_SHIFT_RECAP_CURSOR_FILE = os.path.join(_AGENT_DIR, ".shift_recap_cursor.txt")
 _SHIFT_RECAP_CURSOR_FILE = os.path.join(_STATE_DIR, "shift_recap_cursor.txt")
@@ -2082,21 +2100,31 @@ async def _check_new_orders(app):
         logger.info("DEBUG classification for %s: food=%d bev=%d (of %d total items)",
                      order_no, len(food_items), len(bev_items), len(items) if items else 0)
 
-        # Kirim kitchen + barista paralel per order
-        tasks = []
-        if food_items:
-            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note))
-        if bev_items:
-            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note))
-
+        # Dedupe per channel: a timeout in one destination must not replay
+        # messages already accepted by the other destinations.
         channel_results = []
-        if tasks:
-            channel_results = await asyncio.gather(*tasks)
-            await asyncio.sleep(0.3)  # small gap between orders
+        if food_items:
+            channel_key = f"{order_no}|kitchen"
+            sent = True if channel_key in _channel_sent else await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note)
+            channel_results.append(sent)
+            if sent:
+                _channel_sent.add(channel_key)
+                _save_channel_sent()
+        if bev_items:
+            channel_key = f"{order_no}|barista"
+            sent = True if channel_key in _channel_sent else await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note)
+            channel_results.append(sent)
+            if sent:
+                _channel_sent.add(channel_key)
+                _save_channel_sent()
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        transaction_sent = await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note)
+        transaction_key = f"{order_no}|transaction"
+        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note)
+        if transaction_sent:
+            _channel_sent.add(transaction_key)
+            _save_channel_sent()
         if not all([*channel_results, transaction_sent]):
             retry_from_time = ts if retry_from_time is None else min(retry_from_time, ts)
             logger.warning("Order %s not marked reported; notification delivery incomplete (channels=%s transaction=%s)", order_no, channel_results, transaction_sent)
