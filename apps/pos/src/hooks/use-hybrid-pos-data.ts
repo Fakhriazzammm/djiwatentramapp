@@ -2201,9 +2201,9 @@ export function useHybridCurrentMonthProgress(refreshTrigger?: number) {
 		"current-month-progress",
 		fetchCurrentMonthProgress,
 		[],
-		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_current_month_progress'] } 
-			: { tables: ['pos_current_month_progress'] }
+		refreshTrigger !== undefined
+			? { refreshTrigger, tables: ['pos_current_month_progress', 'financial_transactions'] }
+			: { tables: ['pos_current_month_progress', 'financial_transactions'] }
 	);
 	return supabaseData as CurrentMonthProgressRecord | undefined;
 }
@@ -2318,7 +2318,6 @@ export type {
 	InventoryRecord,
 	InventoryCostMapRecord,
 	OrderRecord,
-	OrderStatusRecord,
 	ProductRecord,
 	ShiftOperationalRecord,
 	ShiftStatusRecord,

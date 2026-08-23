@@ -468,7 +468,10 @@ function MenuPage() {
 			await updateOrder({ id: orderId, status: "paid", paymentMethod: "cash", paymentReceiptKind: "cashier" });
 			await removeNotification(notification.id);
 			setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
+			// Refresh orders + financial transactions so history, dashboard, and target progress update immediately.
 			triggerHybridRefresh();
+			window.setTimeout(() => triggerHybridRefresh(), 350);
+			window.setTimeout(() => triggerHybridRefresh(), 1_200);
 			await refreshNotifications(true);
 			toast.success("Pembayaran kasir berhasil dicatat");
 		} catch (error) {
@@ -1497,7 +1500,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						if (!mayarCustomerName) throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
 						const invoiceResult = await createMayarInvoice({
 							name: mayarCustomerName,
-							email: customerInfo.email?.trim() || undefined,
+							email: (customerInfo as typeof customerInfo & { email?: string }).email?.trim() || undefined,
 							mobile: siteSettings.storePhone || "085000000000",
 							redirectUrl:
 								typeof window !== "undefined" ? window.location.href : undefined,

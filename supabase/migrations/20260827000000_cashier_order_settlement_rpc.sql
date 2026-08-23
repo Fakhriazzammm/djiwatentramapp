@@ -30,7 +30,7 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION USING errcode = 'P0002', message = 'Order not found';
   END IF;
-  IF v_order.status IN ('cancelled', 'completed', 'paid') THEN
+  IF v_order.status IN ('completed', 'paid') THEN
     RETURN jsonb_build_object('orderId', v_order.source_id, 'status', v_order.status, 'idempotent', true);
   END IF;
   IF v_order.status <> 'pending' THEN
