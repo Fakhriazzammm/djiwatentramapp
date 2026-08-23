@@ -8,6 +8,7 @@ import { MemberOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { currency } from "@/components/customer/types";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
+import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 
 type GuestData = {
 	name: string;
@@ -234,6 +235,7 @@ function MemberHomePage() {
 	if (!customer) return null;
 
 	const displayName = customer.name || customer.username || "Member";
+	const missingContactFields = getMissingCustomerFields(customer);
 
 	return (
 		<>
@@ -268,6 +270,11 @@ function MemberHomePage() {
 					</div>
 				</header>
 				<CustomerLiveShiftIndicator />
+				{missingContactFields.length > 0 ? (
+					<div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert">
+						<div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white shadow-sm active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div>
+					</div>
+				) : null}
 
 				<main className="flex-1 px-3 py-4 pb-safe-with-nav">
 					<div className="rounded-3xl border border-border bg-card p-5 shadow-sm">

@@ -69,7 +69,7 @@ function NotifikasiPage() {
 		return {
 			id: `member-greeting-${customer.sourceId}`,
 			title: `Selamat datang, ${customer.name || "Member"}!`,
-			message: "Akun member kamu sudah aktif. Mulai pesan, kumpulkan Yumi Poin, dan cek promo spesial untukmu.",
+			message: "Akun member kamu sudah aktif. Mulai pesan, gunakan Djiwa Pay, dan cek promo spesial untukmu.",
 			createdAt,
 			unread: true,
 			isGreeting: true,

@@ -43,7 +43,7 @@ export function MemberOnboarding({ name, onStartOrdering, onDismiss }: MemberOnb
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-muted/55 px-3 py-2.5">
               <Star className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
-              <p className="text-xs font-semibold">Kumpulkan Yumi Poin dari setiap transaksi.</p>
+              <p className="text-xs font-semibold">Gunakan Djiwa Pay untuk transaksi yang lebih praktis.</p>
             </div>
             <div className="flex items-center gap-3 rounded-2xl bg-muted/55 px-3 py-2.5">
               <Gift className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />

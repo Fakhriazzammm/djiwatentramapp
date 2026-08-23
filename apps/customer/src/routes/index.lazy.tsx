@@ -148,7 +148,7 @@ function BrandCustomerIndex() {
 								{/* ── Benefit list ────────────────────── */}
 								<div className="mt-4 grid grid-cols-3 gap-1.5">
 									{[
-										{ illustration: "loyalty-points" as Djiwa3DIconName, label: "Poin Member" },
+										{ illustration: "loyalty-points" as Djiwa3DIconName, label: "Djiwa Pay" },
 										{ illustration: "restaurant-cafe" as Djiwa3DIconName, label: "Happy Hour 15rb" },
 										{ illustration: "promo-voucher" as Djiwa3DIconName, label: "Promo Eksklusif" },
 									].map((b) => (

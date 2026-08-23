@@ -37,7 +37,7 @@ function ProfilePage() {
 						<User className="h-5 w-5" />
 					</div>
 					<h1 className="mt-3 font-display text-lg font-black">Profil member</h1>
-					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Masuk atau daftar untuk melihat poin, riwayat, dan mengelola profilmu.</p>
+					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Masuk atau daftar untuk melihat Djiwa Pay, riwayat, dan mengelola profilmu.</p>
 					<div className="mt-4 space-y-2">
 						<button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-white" onClick={() => navigate({ to: "/" })}>
 							<LogIn className="h-3.5 w-3.5" /> Masuk / Daftar
@@ -202,8 +202,8 @@ function ProfilePage() {
 					/>
 					<ProfileStat
 						icon={<Star className="h-4 w-4 text-amber-500" />}
-						label="Yumi Poin"
-						value={String(customer.totalPoints ?? 0)}
+						label="Djiwa Pay"
+						value={currency(customer.walletBalance ?? 0)}
 					/>
 					<ProfileStat
 						icon={<User className="h-4 w-4 text-blue-500" />}

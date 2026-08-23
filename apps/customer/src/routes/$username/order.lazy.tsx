@@ -52,6 +52,7 @@ import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
+import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
@@ -131,6 +132,7 @@ function OrderPage() {
 	} = useOrderContext();
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const missingContactFields = getMissingCustomerFields(customer);
 	const memberDiscounts = useMemo(
 		() => isAuthenticated ? discounts : discounts?.filter((discount) => !discount.isHappyHour),
 		[discounts, isAuthenticated],
@@ -533,6 +535,11 @@ function OrderPage() {
 			toast.error("Nomor meja wajib diisi");
 			return;
 		}
+		if ((paymentChoice === "mayar" || paymentChoice === "wallet") && (!isAuthenticated || missingContactFields.length > 0)) {
+			toast.error(isAuthenticated ? getCustomerContactMessage(missingContactFields) : "Masuk dan lengkapi email serta nomor WhatsApp untuk pembayaran online");
+			navigate({ to: "/$username/profile", params: { username } });
+			return;
+		}
 		setIsSubmitting(true);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
@@ -641,7 +648,7 @@ function OrderPage() {
 					invoice = await createMayarInvoice({
 						name: normalizedCustomerName,
 						email: customer?.email?.trim() || undefined,
-						mobile: siteSettings?.storePhone || "",
+						mobile: customer?.phone?.trim() || "",
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
 						expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),

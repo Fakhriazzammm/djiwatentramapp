@@ -69,7 +69,7 @@ export function AuthHeader({
             Pesan sebagai tamu
           </p>
           <p className="text-[10px] text-muted-foreground">
-            Login untuk dapatkan poin
+            Login untuk menggunakan Djiwa Pay
           </p>
         </div>
       </div>

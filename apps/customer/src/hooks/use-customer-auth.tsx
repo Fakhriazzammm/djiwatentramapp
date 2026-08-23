@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { createClient } from "@/lib/client";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 
@@ -175,8 +176,17 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
     const user = betterSession.user;
     fetchCustomer(user.id, user.email)
-      .then((cust) => {
-        setCustomer(cust ?? buildFallbackCustomer(user.id, user.email, user.name));
+      .then(async (cust) => {
+        let resolvedCustomer = cust;
+        if (cust && !cust.email && user.email) {
+          try {
+            await invokeEdgeFunction("customer-sync", { action: "sync", userId: user.id, email: user.email, name: user.name ?? cust.name ?? "" });
+            resolvedCustomer = await fetchCustomer(user.id, user.email);
+          } catch (syncError) {
+            console.warn("[customer-auth] email sync skipped:", syncError);
+          }
+        }
+        setCustomer(resolvedCustomer ?? buildFallbackCustomer(user.id, user.email, user.name));
       })
       .catch((err) => {
         // jangan biarkan fetch gagal → customer undefined → gak redirect

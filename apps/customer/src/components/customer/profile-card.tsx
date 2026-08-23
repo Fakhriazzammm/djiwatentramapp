@@ -105,8 +105,8 @@ export function ProfileCard({
         />
         <Stat
           icon={<Star className="h-3 w-3 text-amber-500" />}
-          label="Poin"
-          value={String(customer.totalPoints ?? customer.total_points ?? 0)}
+          label="Djiwa Pay"
+          value={currency(customer.walletBalance ?? 0)}
         />
       </div>
     </div>

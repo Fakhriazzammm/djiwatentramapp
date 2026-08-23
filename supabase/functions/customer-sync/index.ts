@@ -64,22 +64,6 @@ async function findOwnedCustomer(sourceId: string, email: string) {
 	return { customer: data, error: null };
 }
 
-async function loadLoyaltyRewards(): Promise<Array<Record<string, unknown>>> {
-	const { data, error } = await supabaseAdmin
-		.schema("pos")
-		.from("site_settings")
-		.select("raw")
-		.not("raw->shiftSettings", "is", null)
-		.order("_id", { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	if (error) throw error;
-	const raw = (data?.raw ?? {}) as Record<string, unknown>;
-	const rewards = raw.loyaltyRewards;
-	return Array.isArray(rewards) ? (rewards as Array<Record<string, unknown>>) : [];
-}
-
 // ── Actions ────────────────────────────────────────────────────
 
 /**
@@ -194,90 +178,6 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	};
 }
 
-/** Atomically redeem points for a loyalty reward. */
-async function handleRedeem(payload: JsonRecord) {
-	const sourceId = toTrimmedString(payload.sourceId);
-	const email = toTrimmedString(payload.email);
-	const rewardId = toTrimmedString(payload.rewardId);
-
-	if (!sourceId || !email || !rewardId) {
-		throw new Error("sourceId, email, dan rewardId wajib diisi");
-	}
-
-	const { customer, error: ownershipError } = await findOwnedCustomer(sourceId, email);
-	if (ownershipError || !customer) {
-		throw new Error("Tidak dapat memverifikasi kepemilikan akun");
-	}
-
-	const rewards = await loadLoyaltyRewards();
-	const reward = rewards.find(
-		(r) => String(r.id ?? "") === rewardId && r.enabled !== false,
-	);
-	if (!reward) throw new Error("Reward tidak ditemukan atau tidak aktif");
-
-	const cost = Math.max(1, Number(reward.cost ?? 0));
-
-	const voucherCode = `DJW-${String(rewardId).replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 4) || "RWRD"}-${Math.random().toString(36).toUpperCase().slice(2, 8)}`;
-	const redemptionId = `rdm_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-	const nowIso = new Date().toISOString();
-
-	// Atomic redeem via pos.redeem_points RPC — locks the row, verifies
-	// ownership (email), checks balance, deducts, and writes the ledger
-	// inside a single transaction.
-	const { data: rpcResult, error: rpcError } = await supabaseAdmin
-		.schema("pos")
-		.rpc("redeem_points", {
-			p_source_id: sourceId,
-			p_email: email,
-			p_reward_id: rewardId,
-			p_reward_name: String(reward.name ?? "Reward"),
-			p_cost: cost,
-			p_voucher_code: voucherCode,
-			p_reference_id: redemptionId,
-		});
-
-	if (rpcError) throw rpcError;
-
-	const result = (rpcResult ?? {}) as { ok?: boolean; error?: string; remaining?: number };
-	if (!result.ok) {
-		if (result.error === "INSUFFICIENT_POINTS") {
-			throw new Error("Poin tidak mencukupi untuk reward ini");
-		}
-		throw new Error("Tidak dapat memverifikasi kepemilikan akun");
-	}
-
-	const remaining = Number(result.remaining ?? 0);
-
-	// Redemption request record (mirror pattern — admin confirms fulfillment)
-	const { error: mirrorError } = await supabaseAdmin
-		.schema("legacy_mirror")
-		.from("documents")
-		.insert({
-			table_name: "pointRedemptions",
-			document_id: redemptionId,
-			creation_time: Date.now(),
-			document: {
-				_id: redemptionId,
-				sourceId,
-				email,
-				rewardId,
-				rewardName: reward.name ?? "Reward",
-				cost,
-				voucherCode,
-				status: "pending",
-				createdAt: nowIso,
-			},
-		});
-	if (mirrorError) throw mirrorError;
-
-	return {
-		message: "Poin berhasil ditukar",
-		voucherCode,
-		remainingPoints: remaining,
-		redemptionId,
-	};
-}
-
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") {
 		return new Response("ok", { headers: corsHeaders });
@@ -293,7 +193,7 @@ Deno.serve(async (req) => {
 			case "updateProfile":
 				return json(await handleUpdateProfile(body));
 			case "redeem":
-				return json(await handleRedeem(body));
+				return fail("POINTS_RETIRED", "Yumi Poin sudah dihentikan. Gunakan Djiwa Pay untuk saldo dan pembayaran.", 410);
 			default:
 				return fail("UNKNOWN_ACTION", "Action tidak dikenali. Gunakan: sync, updateProfile, redeem", 404);
 		}

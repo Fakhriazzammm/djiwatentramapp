@@ -150,8 +150,8 @@ export function AuthModal({
                 </DialogTitle>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   {tab === "login"
-                    ? "Masuk untuk mengumpulkan poin dan melihat riwayat."
-                    : "Daftar untuk mendapatkan poin dan kemudahan pemesanan."}
+                    ? "Masuk untuk menggunakan Djiwa Pay dan melihat riwayat."
+                    : "Daftar untuk mendapatkan akses Djiwa Pay dan kemudahan pemesanan."}
                 </p>
               </DialogHeader>
 
