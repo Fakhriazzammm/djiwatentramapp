@@ -162,6 +162,13 @@ function parseExtraData(value: unknown) {
   }
 }
 
+async function settleWalletTopup(topupId: string, transaction: Record<string, unknown>) {
+  const transactionId=String(transaction.id||""); if(!topupId||!transactionId) return null;
+  const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/wallet_settle_topup`,{method:"POST",headers:{apikey:SERVICE_ROLE_KEY,Authorization:`Bearer ${SERVICE_ROLE_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({p_topup_id:topupId,p_transaction_id:transactionId,p_paid_at:new Date(Number(transaction.updatedAt||transaction.createdAt||Date.now())).toISOString()})});
+  if(!response.ok) throw new Error(`Wallet topup settlement failed (${response.status})`);
+  return await response.json();
+}
+
 async function settleOrder(order: Record<string, unknown>, transaction: Record<string, unknown>, invoiceId: string) {
   const orderId = String(order.source_id || "");
   const transactionId = String(transaction.id || "");
@@ -241,6 +248,11 @@ Deno.serve(async (req) => {
 
     const customFields = Array.isArray(data.custom_field) ? data.custom_field : [];
     const transactionExtraData = parseExtraData(transaction.extraData);
+    const walletTopupId = String(data?.extraData?.walletTopupId || transactionExtraData.walletTopupId || "");
+    if (walletTopupId) {
+      const settledWallet = await settleWalletTopup(walletTopupId, transaction);
+      return json({ ok: true, walletTopup: settledWallet });
+    }
     const bookingId = String(data?.extraData?.bookingId || transactionExtraData.bookingId || "");
     const invoiceId = String(data.id || "");
     if (bookingId) {

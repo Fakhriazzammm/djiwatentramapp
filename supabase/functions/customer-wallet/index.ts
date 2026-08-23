@@ -41,6 +41,19 @@ async function getWallet(payload: Json) {
   return { wallet: data, ledger: ledger ?? [] };
 }
 
+async function createTopup(payload: Json) {
+  const sourceId=text(payload.sourceId); const email=text(payload.email); await ownedCustomer(sourceId,email);
+  const amount=Number(payload.amount); if (!Number.isSafeInteger(amount) || amount<1000) throw new Error("Nominal top up minimal Rp1.000");
+  const key=idempotency(payload.idempotencyKey); const topupId=`wt_${crypto.randomUUID()}`;
+  const { error: insertError }=await admin.schema("pos").from("customer_wallet_topups").insert({topup_id:topupId,customer_id:sourceId,amount,idempotency_key:key});
+  if(insertError) throw insertError;
+  const origin=String(payload.origin||""); const redirectUrl=origin?`${origin.replace(/\/$/,"")}/saldo`:undefined;
+  const invoiceResponse=await fetch(`${supabaseUrl}/functions/v1/mayar-proxy`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${serviceRoleKey}`,apikey:serviceRoleKey},body:JSON.stringify({action:"create-invoice",name:String((await ownedCustomer(sourceId,email)).name||"Customer"),email,mobile:"",redirectUrl,description:`Top up saldo customer`,expiredAt:new Date(Date.now()+24*60*60*1000).toISOString(),extraData:{walletTopupId:topupId,customerId:sourceId},items:[{quantity:1,rate:amount,description:`Top up saldo Rp${amount.toLocaleString("id-ID")}`} ]})});
+  const invoice=await invoiceResponse.json().catch(()=>({})); if(!invoiceResponse.ok||!invoice?.data?.id) throw new Error(invoice?.messages||"Gagal membuat invoice top up");
+  await admin.schema("pos").from("customer_wallet_topups").update({invoice_id:invoice.data.id,transaction_id:invoice.data.transactionId||null}).eq("topup_id",topupId);
+  return {topup_id:topupId,invoice_id:invoice.data.id,invoice_url:invoice.data.link,status:"pending"};
+}
+
 async function createHold(payload: Json) {
   const sourceId = text(payload.sourceId); const email = text(payload.email);
   await ownedCustomer(sourceId, email);
@@ -114,11 +127,12 @@ Deno.serve(async (req) => {
     const body = await req.json() as Json;
     const action = text(body.action);
     if (action === "get") return response({ success: true, ...(await getWallet(body)) });
+    if (action === "topup") return response({ success: true, result: await createTopup(body) });
     if (action === "hold") return response({ success: true, result: await createHold(body) });
     if (action === "capture") return response({ success: true, result: await mutateHold(body, "capture") });
     if (action === "release") return response({ success: true, result: await mutateHold(body, "release") });
     if (action === "admin-adjustment") return response({ success: true, result: await adminAdjust(body) });
-    return fail("UNKNOWN_ACTION", "Gunakan action get, hold, capture, release, atau admin-adjustment", 404);
+    return fail("UNKNOWN_ACTION", "Gunakan action get, topup, hold, capture, release, atau admin-adjustment", 404);
   } catch (error) {
     console.error("customer-wallet failed", error);
     const message = error instanceof Error ? error.message : "Gagal memproses wallet";

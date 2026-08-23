@@ -1,6 +1,6 @@
 # Plan: Migrasi Loyalty Points ke Wallet / Saldo
 
-**Status:** Implemented — foundation, customer wallet checkout, customer profile/saldo, admin summary/ledger, and audited admin adjustment live
+**Status:** Implemented — wallet foundation, checkout, profile/saldo, top-up Mayar settlement, admin summary/ledger, and audited adjustment live
 **Tanggal:** 2026-08-22
 **Scope utama:** `apps/customer`, `apps/admin`, Supabase schema, Edge Functions, integrasi order/payment
 **Keputusan penting:** Jangan menghapus histori poin atau mengganti `total_points` secara langsung menjadi nominal Rupiah.
@@ -904,6 +904,8 @@ Sudah diimplementasikan dan diverifikasi:
 - Admin customer summary menampilkan saldo;
 - Admin detail menampilkan ledger wallet;
 - audited admin credit/debit adjustment melalui token staff dan role check;
+- top-up Mayar membuat record `pending` dan hanya menambah saldo setelah webhook memverifikasi status `paid`;
+- webhook top-up idempotent berdasarkan transaction ID Mayar;
 - tidak ada fitur withdraw, cash-out, atau transfer antar customer;
 - poin lama tidak dihapus.
 

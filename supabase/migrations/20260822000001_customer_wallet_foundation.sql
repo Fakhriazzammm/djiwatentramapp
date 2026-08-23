@@ -233,3 +233,37 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION pos.wallet_admin_adjust(text, bigint, text, text, text, text) TO service_role;
+
+
+CREATE TABLE IF NOT EXISTS pos.customer_wallet_topups (
+  topup_id text PRIMARY KEY,
+  customer_id text NOT NULL REFERENCES pos.customers(source_id),
+  amount bigint NOT NULL CHECK (amount > 0),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'cancelled')),
+  invoice_id text,
+  transaction_id text UNIQUE,
+  idempotency_key text NOT NULL UNIQUE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  paid_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS idx_customer_wallet_topups_customer_created ON pos.customer_wallet_topups(customer_id, created_at DESC);
+
+CREATE OR REPLACE FUNCTION pos.wallet_settle_topup(p_topup_id text, p_transaction_id text, p_paid_at timestamptz DEFAULT now())
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pos, public AS $$
+DECLARE v_topup pos.customer_wallet_topups; v_wallet pos.customer_wallets; v_balance bigint;
+BEGIN
+  SELECT * INTO v_topup FROM pos.customer_wallet_topups WHERE topup_id=p_topup_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Top up tidak ditemukan'; END IF;
+  IF v_topup.status='paid' THEN RETURN jsonb_build_object('ok',true,'dedup',true,'status','paid'); END IF;
+  IF v_topup.status <> 'pending' THEN RAISE EXCEPTION 'Top up tidak dapat disettle'; END IF;
+  IF EXISTS (SELECT 1 FROM pos.customer_wallet_topups WHERE transaction_id=p_transaction_id AND topup_id<>p_topup_id) THEN RAISE EXCEPTION 'Transaction Mayar sudah dipakai'; END IF;
+  SELECT * INTO v_wallet FROM pos.customer_wallets WHERE customer_id=v_topup.customer_id FOR UPDATE;
+  IF NOT FOUND THEN PERFORM pos.wallet_ensure(v_topup.customer_id); SELECT * INTO v_wallet FROM pos.customer_wallets WHERE customer_id=v_topup.customer_id FOR UPDATE; END IF;
+  v_balance := v_wallet.available_balance + v_topup.amount;
+  UPDATE pos.customer_wallets SET available_balance=v_balance,total_credited=total_credited+v_topup.amount,updated_at=now() WHERE customer_id=v_topup.customer_id;
+  UPDATE pos.customer_wallet_topups SET status='paid',transaction_id=p_transaction_id,paid_at=p_paid_at WHERE topup_id=p_topup_id;
+  INSERT INTO pos.customer_wallet_ledger(customer_id,amount,direction,balance_after,status,transaction_type,reference_type,reference_id,idempotency_key,note)
+  VALUES(v_topup.customer_id,v_topup.amount,'credit',v_balance,'completed','topup_completed','wallet_topup',p_topup_id,'topup_settle_'||p_transaction_id,'Top up saldo melalui Mayar');
+  RETURN jsonb_build_object('ok',true,'dedup',false,'status','paid','balance',v_balance);
+END; $$;
+GRANT EXECUTE ON FUNCTION pos.wallet_settle_topup(text,text,timestamptz) TO service_role;
