@@ -2858,24 +2858,28 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 
 	return (
 		<div className="space-y-2 pt-1">
-			<div className="space-y-0.5 text-center">
-				<h3 className="font-black text-base tracking-tight">Buka Shift</h3>
-				<p className="text-muted-foreground text-[10px] font-medium">
-					Siapkan data shift sebelum kasir mulai beroperasi
-				</p>
-			</div>
-
-			<div className="grid grid-cols-4 gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 text-center">
-				{["Data Shift", "Review", "Checklist", "Selesai"].map((step, index) => (
-					<div key={step} className={`rounded-lg px-1 py-2 text-[9px] font-black leading-tight ${index === 0 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
-						<span className="block text-[10px]">{index + 1}</span>{step}
+			{shiftType === "mulai" ? (
+				<>
+					<div className="space-y-0.5 text-center">
+						<h3 className="font-black text-base tracking-tight">Buka Shift</h3>
+						<p className="text-muted-foreground text-[10px] font-medium">Siapkan data shift sebelum kasir mulai beroperasi</p>
 					</div>
-				))}
-			</div>
-
-			<div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
-				Lengkapi kasir, shift, tim, dan modal awal. Setelah itu Anda akan meninjau data sebelum checklist online food.
-			</div>
+					<div className="grid grid-cols-4 gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 text-center">
+						{["Data Shift", "Review", "Checklist", "Selesai"].map((step, index) => (
+							<div key={step} className={`rounded-lg px-1 py-2 text-[9px] font-black leading-tight ${index === 0 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
+								<span className="block text-[10px]">{index + 1}</span>{step}
+							</div>
+						))}
+					</div>
+					<div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-muted-foreground">Lengkapi kasir, shift, tim, dan modal awal. Setelah itu Anda akan meninjau data sebelum checklist online food.</div>
+				</>
+			) : (
+				<div className="space-y-1 text-center">
+					<h3 className="font-black text-base tracking-tight">Akhiri Shift</h3>
+					<p className="text-muted-foreground text-[10px] font-medium">Rekonsiliasi kas dan kirim laporan penutupan shift</p>
+					<p className="text-[11px] font-bold text-rose-600">Shift aktif: {shiftStatus?.shiftInfo?.shiftName || "Shift berjalan"}</p>
+				</div>
+			)}
 
 			<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
 				<button
