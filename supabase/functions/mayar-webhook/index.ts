@@ -213,13 +213,21 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
 
 async function reconcilePendingOrders() {
   const response = await fetchWithTimeout(
-    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway&source=in.(customer_self_service,ordermieyamin_b2b)&status=eq.pending&payment_gateway->>provider=eq.mayar&order=created_at.asc&limit=50`,
+    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway,source&gateway_invoice_id=not.is.null&order=created_at.desc&limit=100`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
   );
   if (!response.ok) throw new Error(`Pending order lookup failed (${response.status})`);
   const orders = await response.json() as Array<Record<string, unknown>>;
+  const mayarOrders = orders.filter((order) => {
+    const status = String(order.status || "");
+    const source = String(order.source || "");
+    const gateway = parseExtraData(order.payment_gateway);
+    return ["pending", "cancelled"].includes(status)
+      && ["customer_self_service", "ordermieyamin_b2b"].includes(source)
+      && gateway.provider === "mayar";
+  });
   const results = [];
-  for (const order of orders) {
+  for (const order of mayarOrders) {
     const gateway = parseExtraData(order.payment_gateway);
     const transactionId = String(gateway.transactionId || "");
     if (!transactionId) continue;

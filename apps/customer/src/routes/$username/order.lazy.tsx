@@ -700,7 +700,9 @@ function OrderPage() {
 						},
 					});
 				} catch (error) {
-					await updateOrderStatus({ id: orderId, status: "cancelled" });
+					// Jangan membatalkan order: invoice Mayar bisa sudah tercipta/terbayar
+					// walau response browser gagal diterima. Rekonsiliasi server akan memverifikasi provider.
+					await updateOrderStatus({ id: orderId, status: "pending" }).catch(() => undefined);
 					throw error;
 				}
 				setReceipt({

@@ -2994,7 +2994,9 @@ export function useHybridUpdateOrderPaymentGateway() {
 						? "cancelled"
 						: paymentGateway.status === "paid"
 							? "paid"
-							: order.status;
+							: order.status === "cancelled" && paymentGateway.invoiceId
+								? "pending"
+								: order.status;
 				const wasPaid =
 					order.status === "paid" || order.status === "completed";
 				if (paymentGateway.status === "paid" && !wasPaid) {
