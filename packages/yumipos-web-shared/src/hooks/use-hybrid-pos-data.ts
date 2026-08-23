@@ -1129,30 +1129,44 @@ export async function fetchShiftReports() {
 		const sid = s.source_id;
 		const st = Number(s.start_time ?? 0);
 		try {
-			const { data: orders } = await supabase
+			// Atribusi shift mengikuti waktu settlement di ledger, bukan waktu
+			// order dibuat. Ini penting untuk order customer yang dibuat pagi
+			// tetapi baru dibayar kasir pada shift sore.
+			const { data: ledgerRows } = await supabase
 				.schema("pos")
-				.from("orders")
-				.select("total_amount, discount_amount, payment_method, status, source")
-				.gte("created_at", st)
-				.in("status", ["completed", "paid"]);
-			if (orders) {
-				let total = 0, cash = 0, qris = 0, discount = 0;
-				let settledOrderCount = 0;
-				for (const o of orders as any[]) {
-					// Revenue operasional POS adalah gabungan order kasir dan
-					// customer self-service yang sudah settled. Sumber lain
-					// (misalnya booking/legacy) tidak boleh masuk ke target POS.
-					if (o.source !== "pos" && o.source !== "customer_self_service") continue;
-					settledOrderCount += 1;
-					const p = Number(o.total_amount ?? 0);
-					total += p;
-					discount += Number(o.discount_amount ?? 0);
-					const m = String(o.payment_method ?? "").toLowerCase();
-					if (m.includes("cash") || m.includes("tunai")) cash += p;
-					else if (m.includes("qris") || m.includes("qr")) qris += p;
-				}
-				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: settledOrderCount };
+				.from("financial_transactions")
+				.select("amount, payment_method, order_source_id, booking_order_source_id")
+				.gte("tx_date", st)
+				.lte("tx_date", Date.now())
+				.eq("tx_type", "income")
+				.eq("status", "completed")
+				.not("category", "in", `("Modal Awal","Setoran Akhir")`)
+				.is("booking_order_source_id", null)
+				.not("order_source_id", "is", null);
+			const orderIds = (ledgerRows ?? [])
+				.map((row: any) => String(row.order_source_id ?? ""))
+				.filter(Boolean);
+			const { data: orderRows } = orderIds.length > 0
+				? await supabase
+						.schema("pos")
+						.from("orders")
+						.select("source_id, discount_amount, source, status, raw")
+						.in("source_id", orderIds)
+				: { data: [] };
+			const orderById = new Map((orderRows ?? []).map((row: any) => [String(row.source_id), row]));
+			let total = 0, cash = 0, qris = 0, discount = 0, settledOrderCount = 0;
+			for (const row of ledgerRows ?? []) {
+				const order = orderById.get(String(row.order_source_id));
+				if (!order || (order.source !== "pos" && order.source !== "customer_self_service")) continue;
+				const amount = Number(row.amount ?? 0);
+				total += amount;
+				discount += Number(order.discount_amount ?? 0);
+				settledOrderCount += 1;
+				const method = String(row.payment_method ?? order.raw?.paymentMethod ?? "").toLowerCase();
+				if (method.includes("cash") || method.includes("tunai")) cash += amount;
+				else if (method.includes("qris") || method.includes("qr")) qris += amount;
 			}
+			activeRevenue[sid] = { total, cash, qris, discount, itemsSold: settledOrderCount };
 		} catch {}
 		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0, discount: 0, itemsSold: 0 };
 	}
