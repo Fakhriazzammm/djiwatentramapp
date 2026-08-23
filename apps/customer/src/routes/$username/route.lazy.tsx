@@ -285,11 +285,11 @@ function MemberHomePage() {
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Wallet className="h-4 w-4 text-emerald-500" />
-									<span className="text-xs font-bold text-muted-foreground">Saldo</span>
+									<span className="text-xs font-bold text-muted-foreground">Djiwa Pay</span>
 								</div>
 								<span className="text-lg font-black">{currency(customer.walletBalance)}</span>
 							</div>
-							<p className="mt-0.5 text-[10px] text-muted-foreground">Total masuk/top up: {currency(customer.walletTotalCredited)}</p>
+							<p className="mt-0.5 text-[10px] text-muted-foreground">Total masuk Djiwa Pay: {currency(customer.walletTotalCredited)}</p>
 						</div>
 
 						<button type="button" className="mt-4 flex min-h-12 w-full items-center justify-between rounded-[14px] bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}>

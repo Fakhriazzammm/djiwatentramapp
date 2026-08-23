@@ -95,7 +95,7 @@ export function ProfileCard({
       <div className="mt-2.5 grid grid-cols-3 gap-1.5">
         <Stat
           icon={<Wallet className="h-3 w-3 text-emerald-500" />}
-          label="Saldo"
+          label="Djiwa Pay"
           value={currency(customer.walletBalance ?? 0)}
         />
         <Stat

@@ -275,8 +275,8 @@ function OrderPage() {
 			? [
 					{
 						key: "wallet" as PaymentChoice,
-						label: "Saldo Wallet",
-						description: `Gunakan saldo ${currency(customer?.walletBalance ?? 0)} untuk membayar pesanan.`,
+						label: "Djiwa Pay",
+						description: `Gunakan saldo Djiwa Pay ${currency(customer?.walletBalance ?? 0)} untuk membayar pesanan.`,
 					},
 			  ]
 			: []),
@@ -603,7 +603,7 @@ function OrderPage() {
 					const hold = holdResponse.result;
 					if (!hold?.ok || !hold.hold_id) {
 						const available = Number(hold?.available_balance ?? 0);
-						throw new Error(`Saldo tidak cukup. Saldo tersedia ${currency(available)}, total order ${currency(total)}.`);
+						throw new Error(`Saldo Djiwa Pay tidak cukup. Saldo tersedia ${currency(available)}, total order ${currency(total)}.`);
 					}
 					await updateOrderStatus({ id: orderId, status: "paid" });
 					await invokeEdgeFunction("customer-wallet", {

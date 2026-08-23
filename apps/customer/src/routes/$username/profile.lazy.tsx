@@ -197,7 +197,7 @@ function ProfilePage() {
 				<div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
 					<ProfileStat
 						icon={<Wallet className="h-4 w-4 text-emerald-500" />}
-						label="Saldo"
+						label="Djiwa Pay"
 						value={currency(customer.walletBalance ?? 0)}
 					/>
 					<ProfileStat
