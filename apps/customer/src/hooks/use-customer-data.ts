@@ -229,9 +229,9 @@ export function useCustomerWallet() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadWallet = useCallback(async () => {
+  const loadWallet = useCallback(async (): Promise<{ wallet: CustomerWallet | null; ledger: CustomerWalletLedgerEntry[] } | null> => {
     if (!customer?.sourceId || !customer.email) {
-      setWallet(null); setLedger([]); setIsLoading(false); return;
+      setWallet(null); setLedger([]); setIsLoading(false); return null;
     }
     setIsLoading(true); setError(null);
     try {
@@ -240,11 +240,13 @@ export function useCustomerWallet() {
       });
       setWallet(result.wallet ?? null);
       setLedger(result.ledger ?? []);
+      return { wallet: result.wallet ?? null, ledger: result.ledger ?? [] };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gagal memuat saldo wallet";
       console.error("[useCustomerWallet]", message);
       setError(message);
       setWallet(null); setLedger([]);
+      return null;
     } finally { setIsLoading(false); }
   }, [customer?.email, customer?.sourceId]);
 
