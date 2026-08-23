@@ -2752,11 +2752,13 @@ export function useHybridUpdateOrder() {
 				// membuat order berubah setengah jalan atau gagal setelah status dibayar.
 				const newStatus = updates.status as string | null;
 				if (newStatus === "paid" && args.paymentReceiptKind === "cashier") {
-					const { error: settlementError } = await supabase.rpc("settle_cashier_order", {
+					const { error: settlementError } = await supabase.schema("pos").rpc("settle_cashier_order", {
 						p_order_id: id,
 						p_payment_method: args.paymentMethod ?? "cash",
 					});
-					if (settlementError) throw settlementError;
+					if (settlementError) {
+						throw new Error(`Gagal menyelesaikan pembayaran kasir: ${settlementError.message}`);
+					}
 					return;
 				}
 				if (newStatus === "paid" || newStatus === "completed") {
