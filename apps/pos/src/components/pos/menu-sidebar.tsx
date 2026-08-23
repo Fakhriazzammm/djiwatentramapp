@@ -3231,14 +3231,15 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			</form>
 
 			{/* Checklist aktivasi online food */}
-			<Dialog open={showStartChecklist} onOpenChange={(open) => { if (!isSubmitting) setShowStartChecklist(open); }}>
-				<DialogContent className="max-w-md rounded-2xl">
-					<DialogHeader>
-						<DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
+			{showStartChecklist && (
+				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
+				
+					<div className="space-y-1">
+						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
 							<CreditCard className="h-4 w-4 text-primary" />
 							Langkah 3 · Checklist Online Food
-						</DialogTitle>
-					</DialogHeader>
+						</h4>
+					</div>
 					<div className="space-y-2 text-xs">
 						<div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
 							Buka aplikasi merchant masing-masing, pastikan siap menerima pesanan, lalu pilih statusnya. Jangan masukkan password atau data login ke sini.
@@ -3274,18 +3275,19 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
 						</Button>
 					</div>
-				</DialogContent>
-			</Dialog>
+				</section>
+			)}
 
 			{/* Preview & konfirmasi buka shift */}
-			<Dialog open={showStartConfirm} onOpenChange={(open) => { if (!isSubmitting) setShowStartConfirm(open); }}>
-				<DialogContent className="max-w-sm rounded-2xl">
-					<DialogHeader>
-						<DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
+			{showStartConfirm && (
+				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
+				
+					<div className="space-y-1">
+						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
 							<Wallet className="h-4 w-4 text-primary" />
 							Langkah 2 · Review Buka Shift
-						</DialogTitle>
-					</DialogHeader>
+						</h4>
+					</div>
 					<div className="space-y-3 text-xs">
 						<div className="rounded-xl border bg-muted/30 p-3 space-y-2">
 							<div className="flex justify-between gap-3"><span className="text-muted-foreground">Kasir</span><span className="font-bold text-right">{cashierName || "-"}</span></div>
@@ -3306,8 +3308,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							Lanjut Checklist Online Food
 						</Button>
 					</div>
-				</DialogContent>
-			</Dialog>
+				</section>
+			)}
 
 			{/* Konfirmasi Akhiri Shift */}
 			<Dialog open={showEndConfirm} onOpenChange={setShowEndConfirm}>
