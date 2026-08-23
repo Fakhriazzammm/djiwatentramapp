@@ -3194,6 +3194,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					</div>
 				)}
 
+					</div>
+				)}
 				<div className="sticky bottom-0 z-20 -mx-1 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 					<Button
 						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
@@ -3208,8 +3210,6 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						)}
 					</Button>
 				</div>
-					</div>
-				)}
 			</form>
 
 			{/* Checklist aktivasi online food */}
