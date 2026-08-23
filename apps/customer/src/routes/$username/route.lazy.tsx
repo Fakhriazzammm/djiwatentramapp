@@ -4,9 +4,10 @@ import { ClipboardList, Coins, Home, UserRound, ChevronRight, LogIn, LogOut, Sho
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
-import { MemberOnboarding } from "@/components/customer/member-onboarding";
+import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { currency } from "@/components/customer/types";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 
@@ -37,10 +38,11 @@ function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
+	const [showProfileCompletion, setShowProfileCompletion] = useState(false);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
@@ -102,6 +104,14 @@ function MemberHomePage() {
 		}
 	}, [customer?.createdAt, customer?.sourceId]);
 
+	useEffect(() => {
+		if (!customer || !isAuthenticated) {
+			setShowProfileCompletion(false);
+			return;
+		}
+		setShowProfileCompletion(getMissingCustomerFields(customer).length > 0);
+	}, [customer, isAuthenticated]);
+
 	const dismissMemberOnboarding = () => {
 		if (customer) {
 			try {
@@ -111,6 +121,19 @@ function MemberHomePage() {
 			}
 		}
 		setShowMemberOnboarding(false);
+	};
+
+	const saveProfileCompletion = async (phone: string) => {
+		if (!customer?.email) throw new Error("Email akun belum tersedia. Silakan keluar dan masuk kembali.");
+		await invokeEdgeFunction("customer-sync", {
+			action: "updateProfile",
+			sourceId: customer.sourceId,
+			email: customer.email,
+			name: customer.name ?? "",
+			phone: phone.trim(),
+		});
+		await refreshCustomer();
+		setShowProfileCompletion(false);
 	};
 
 	const authModal = (
@@ -148,6 +171,7 @@ function MemberHomePage() {
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
 				{authModal}
+				{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={customer.name || customer.username || "Member"} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
 			</>
 		);
 	}
@@ -325,7 +349,10 @@ function MemberHomePage() {
 
 			<CustomerBottomNav items={customerNav} />
 			{authModal}
-			{showMemberOnboarding && customer ? (
+			{showProfileCompletion && customer ? (
+				<ProfileCompletionOnboarding name={displayName} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} />
+			) : null}
+			{!showProfileCompletion && showMemberOnboarding && customer ? (
 				<MemberOnboarding
 					name={displayName}
 					onDismiss={dismissMemberOnboarding}
