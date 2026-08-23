@@ -1132,12 +1132,18 @@ export async function fetchShiftReports() {
 			const { data: orders } = await supabase
 				.schema("pos")
 				.from("orders")
-				.select("total_amount, discount_amount, payment_method, status")
+				.select("total_amount, discount_amount, payment_method, status, source")
 				.gte("created_at", st)
 				.in("status", ["completed", "paid"]);
 			if (orders) {
 				let total = 0, cash = 0, qris = 0, discount = 0;
+				let settledOrderCount = 0;
 				for (const o of orders as any[]) {
+					// Revenue operasional POS adalah gabungan order kasir dan
+					// customer self-service yang sudah settled. Sumber lain
+					// (misalnya booking/legacy) tidak boleh masuk ke target POS.
+					if (o.source !== "pos" && o.source !== "customer_self_service") continue;
+					settledOrderCount += 1;
 					const p = Number(o.total_amount ?? 0);
 					total += p;
 					discount += Number(o.discount_amount ?? 0);
@@ -1145,7 +1151,7 @@ export async function fetchShiftReports() {
 					if (m.includes("cash") || m.includes("tunai")) cash += p;
 					else if (m.includes("qris") || m.includes("qr")) qris += p;
 				}
-				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: orders.length };
+				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: settledOrderCount };
 			}
 		} catch {}
 		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0, discount: 0, itemsSold: 0 };
