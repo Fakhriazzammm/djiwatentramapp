@@ -1579,7 +1579,9 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 	const filteredOrders = useMemo(() => {
 		if (!orders) return [];
 
-		let filtered = [...orders];
+		// Kasir POS adalah sumber utama transaksi; jangan hilangkan order kasir
+		// hanya karena shift aktif belum ter-resolve di client.
+		let filtered = [...orders].filter((order: any) => order.source === "pos" || order.source == null);
 		const now = new Date();
 		const todayStart = new Date(
 			now.getFullYear(),
@@ -1630,15 +1632,10 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 
 		if (shiftFilter === "active") {
 			const activeShift = shifts.find((shift: any) => !shift.endTime);
-			if (!activeShift) {
-				return [];
+			if (activeShift) {
+				const activeShiftEnd = activeShift.endTime ?? Date.now();
+				filtered = filtered.filter((o) => o.createdAt >= activeShift.startTime && o.createdAt <= activeShiftEnd);
 			}
-			const activeShiftEnd = activeShift.endTime ?? Date.now();
-			filtered = filtered.filter(
-				(o) =>
-					o.source === "customer_self_service" ||
-					(o.createdAt >= activeShift.startTime && o.createdAt <= activeShiftEnd)
-			);
 		} else if (shiftFilter !== "all") {
 			const selectedShift = shifts.find((shift: any) => shift._id === shiftFilter);
 			if (!selectedShift) {
