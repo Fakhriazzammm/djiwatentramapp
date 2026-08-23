@@ -2771,10 +2771,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			const selectedTeamIds = teamMembers
 				.map((name) => staffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.trim().toLowerCase())?._id)
 				.filter(Boolean);
-			const incompletePlatforms = ONLINE_FOOD_PLATFORMS.filter(({ key }) => onlineFoodChecklist[key].status === "pending");
-			if (incompletePlatforms.length > 0) {
-				throw new Error(`Checklist belum selesai: ${incompletePlatforms.map(({ label }) => label).join(", ")}`);
-			}
+			// Checklist platform online hanya menjadi catatan operasional; tidak
+			// memblokir pembukaan shift kasir.
 			const checklistLines = ONLINE_FOOD_PLATFORMS.map(({ key, label }) => {
 				const item = onlineFoodChecklist[key];
 				const statusLabel = ONLINE_FOOD_STATUS_OPTIONS.find((option) => option.value === item.status)?.label ?? item.status;
@@ -3245,15 +3243,15 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								</div>
 							);
 						})}
-						{onlineFoodChecklist && !ONLINE_FOOD_PLATFORMS.every(({ key }) => onlineFoodChecklist[key].status !== "pending") && <p className="text-[11px] font-semibold text-amber-700">Semua platform harus diberi status sebelum kasir dibuka.</p>}
+						{onlineFoodChecklist && !ONLINE_FOOD_PLATFORMS.every(({ key }) => onlineFoodChecklist[key].status !== "pending") && <p className="text-[11px] font-semibold text-muted-foreground">Checklist ini opsional dan dapat dilengkapi setelah shift dibuka.</p>}
 						{submitError && <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">{submitError}</div>}
 						{isSubmitting && <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-semibold"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan shift, modal, dan checklist...</div>}
 					</div>
 					<div className="flex gap-2">
 						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => { setShowStartChecklist(false); setShowStartConfirm(true); }}>Kembali</Button>
-						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting || !ONLINE_FOOD_PLATFORMS.every(({ key }) => onlineFoodChecklist[key].status !== "pending")} onClick={confirmStartShift}>
+						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={confirmStartShift}>
 							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-							{isSubmitting ? "Menyimpan..." : "Buka Kasir & Kirim Notifikasi"}
+							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
 						</Button>
 					</div>
 				</DialogContent>
@@ -3276,16 +3274,16 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							<div className="flex justify-between gap-3 border-t pt-2"><span className="flex items-center gap-1 text-muted-foreground"><Banknote className="h-3.5 w-3.5" /> Modal awal</span><span className="font-black text-primary">Rp {Number(amount || 0).toLocaleString("id-ID")}</span></div>
 						</div>
 						<div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
-							Shift dan transaksi <span className="font-bold text-foreground">Modal Awal</span> akan disimpan atomically. Jika koneksi timeout, jangan klik ulang dengan membuka form baru—request ini aman untuk dicoba ulang.
+							Shift dan transaksi <span className="font-bold text-foreground">Modal Awal</span> akan disimpan atomic. Checklist online food bersifat opsional dan dapat dilengkapi tanpa menghambat pembukaan shift.
 						</div>
 						{isSubmitting && <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-semibold"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan shift dan mencatat modal...</div>}
 						{submitError && <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">{submitError}</div>}
 					</div>
 					<div className="flex gap-2">
 						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => setShowStartConfirm(false)}>Kembali</Button>
-						<Button type="button" className="flex-1 h-9 text-xs font-bold" onClick={() => { setShowStartConfirm(false); setShowStartChecklist(true); }}>
-							<ArrowDownCircle className="h-3.5 w-3.5" />
-							Lanjut Checklist Online Food
+						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={confirmStartShift}>
+							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SquarePlay className="h-3.5 w-3.5" />}
+							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
 						</Button>
 					</div>
 				</DialogContent>
