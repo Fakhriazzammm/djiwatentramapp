@@ -2,9 +2,10 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarDays, CalendarHeart, Check, ChevronRight, CircleAlert, Clock3, Copy, CreditCard, ExternalLink, GraduationCap, Handshake, HeartHandshake, Minus, Plus, Search, Sparkles, Users, UsersRound, UtensilsCrossed } from "lucide-react";
 import { BOOKING_STEPS, type BookingOption, type BookingStep } from "./lib/booking-constants";
-import { currency, estimatedTables, formatDate, todayIso } from "./lib/booking-formatters";
+import { currency, formatDate, todayIso } from "./lib/booking-formatters";
 import { type BookingCustomField, type BookingDraft, type BookingResult, type Capacity, type Category, type Product, type BookingSettings, createBooking, createBookingPayment, loadBookingData, lookupBooking } from "./lib/client";
 import { validateCustomer, type CustomerForm } from "./lib/booking-validation";
+import { tableCount as sharedTableCount } from "@yumipos/web-shared/booking/capacity";
 import "./index.css";
 
 type Screen = "landing" | BookingStep | "success" | "status";
@@ -42,7 +43,12 @@ export default function App() {
   const [draft, setDraft] = useState<DraftState>(loadDraft);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [pendingBooking, setPendingBooking] = useState<BookingResult | null>(null);
+  const [pendingBooking, setPendingBooking] = useState<BookingResult | null>(() => {
+    try {
+      const raw = sessionStorage.getItem("booking-pending-result");
+      return raw ? JSON.parse(raw) as BookingResult : null;
+    } catch { return null; }
+  });
   const [statusCode, setStatusCode] = useState(() => new URLSearchParams(window.location.search).get("code") || localStorage.getItem("booking-last-code") || "");
   const [statusResult, setStatusResult] = useState<BookingResult | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -60,7 +66,7 @@ export default function App() {
   const capacities = data?.capacities ?? [];
   const products = data?.products ?? [];
   const selectedCapacity = capacities.find((entry) => entry.date === draft.selectedDate);
-  const tableCount = estimatedTables(draft.guests, selectedCapacity?.peoplePerTable ?? 4);
+  const tableCount = sharedTableCount(draft.guests, selectedCapacity?.peoplePerTable ?? 4);
   const cartItems = useMemo(() => products.filter((product) => draft.cart[product.id]).map((product) => ({ ...product, quantity: draft.cart[product.id]! })), [draft.cart, products]);
   const total = cartItems.reduce((sum, item) => sum + (item.promoPrice ?? item.price) * item.quantity, 0);
   const selectedType = settings?.bookingTypes.find((item) => item.key === draft.bookingType);
@@ -81,8 +87,10 @@ export default function App() {
       const bookingDraft: BookingDraft = { bookingType: draft.bookingType, bookingTypeLabel: selectedType?.label || draft.bookingType, eventType: draft.eventType || undefined, eventTypeLabel: selectedEvent?.label, eventTypeOther: draft.eventTypeOther || undefined, date: draft.selectedDate, arrivalTime: draft.arrivalTime, guests: draft.guests, tableCount, items: cartItems.map((item) => ({ productId: item.id, name: item.name, price: item.promoPrice ?? item.price, quantity: item.quantity })), customer: draft.customer, customAnswers: { ...draft.customAnswers, "Tipe booking": draft.bookingType, "Tipe booking label": selectedType?.label || draft.bookingType, "Jenis acara": draft.eventType || null, "Jenis acara label": selectedEvent?.label || null, "Jenis acara lainnya": draft.eventTypeOther || null, "Jam kedatangan": draft.arrivalTime } };
       const created = pendingBooking ?? await createBooking(bookingDraft);
       setPendingBooking(created);
+      sessionStorage.setItem("booking-pending-result", JSON.stringify(created));
       const payment = await createBookingPayment(created, bookingDraft);
       sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      sessionStorage.removeItem("booking-pending-result");
       if (!payment.invoiceUrl) throw new Error("Link pembayaran Mayar tidak tersedia.");
       window.location.assign(payment.invoiceUrl);
     } catch (error: unknown) { setSubmitError(error instanceof Error ? error.message : "Pembayaran belum berhasil disiapkan. Data booking tetap tersimpan untuk dicoba lagi."); } finally { setSubmitting(false); }
@@ -160,7 +168,7 @@ function DateStep({ settings, capacities, bookingType, eventType, selectedDate, 
       <div className={`arrival-details ${selectedDate ? "has-date" : ""}`}>
         <div className="arrival-summary"><span className="field-label">Tanggal kedatangan</span><strong>{selectedDateLabel}</strong>{!selectedDate && <small>Pilih tanggal pada kalender terlebih dahulu.</small>}</div>
         <div className="arrival-fields">
-          <div className="guest-field"><label className="field-label">Jumlah tamu</label><div className="stepper"><button aria-label="Kurangi tamu" disabled={!selectedDate} onClick={() => setGuests(Math.max(1, guests - 1))}><Minus /></button><strong>{guests}<small> tamu</small></strong><button aria-label="Tambah tamu" disabled={!selectedDate} onClick={() => setGuests(Math.min(100, guests + 1))}><Plus /></button></div><p className="helper">Perkiraan meja: <strong>{estimatedTables(guests, selectedCapacity?.peoplePerTable ?? settings?.defaultPeoplePerTable ?? 4)} meja</strong></p></div>
+          <div className="guest-field"><label className="field-label">Jumlah tamu</label><div className="stepper"><button aria-label="Kurangi tamu" disabled={!selectedDate} onClick={() => setGuests(Math.max(1, guests - 1))}><Minus /></button><strong>{guests}<small> tamu</small></strong><button aria-label="Tambah tamu" disabled={!selectedDate} onClick={() => setGuests(Math.min(100, guests + 1))}><Plus /></button></div><p className="helper">Perkiraan meja: <strong>{sharedTableCount(guests, selectedCapacity?.peoplePerTable ?? settings?.defaultPeoplePerTable ?? 4)} meja</strong></p></div>
           <label className="arrival-time-field"><span className="field-label"><Clock3 size={15} /> Jam kedatangan <sup>*</sup></span><div className="time-input-shell"><Clock3 className="time-input-icon" size={20} aria-hidden="true" /><input id="booking-arrival-time" className="time-input" type="time" value={arrivalTime} disabled={!selectedDate} onChange={(event) => setArrivalTime(event.target.value)} /><span className="time-zone">WIB</span></div><small>Pilih perkiraan waktu tiba di lokasi.</small></label>
         </div>
         {tooMany && <p className="form-error">Jumlah tamu atau meja melebihi kapasitas tanggal ini.</p>}
@@ -169,7 +177,7 @@ function DateStep({ settings, capacities, bookingType, eventType, selectedDate, 
     </>}
   </section>;
 }
-function overCapacity(guests: number, capacity: Capacity) { return Boolean((capacity.maxPeople > 0 && guests > capacity.maxPeople) || (capacity.maxTables > 0 && estimatedTables(guests, capacity.peoplePerTable) > capacity.maxTables)); }
+function overCapacity(guests: number, capacity: Capacity) { return Boolean((capacity.maxPeople > 0 && guests > capacity.maxPeople) || (capacity.maxTables > 0 && sharedTableCount(guests, capacity.peoplePerTable) > capacity.maxTables)); }
 function MenuStep({ products, categories, bookingType, eventType, date, guests, cart, setQuantity, onNext }: { products: Product[]; categories: Category[]; bookingType?: BookingOption; eventType?: BookingOption; date: string; guests: number; cart: Cart; setQuantity: (id: string, quantity: number) => void; onNext: () => void }) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");

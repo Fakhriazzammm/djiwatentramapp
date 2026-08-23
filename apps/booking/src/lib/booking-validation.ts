@@ -1,3 +1,5 @@
+export function isValidArrivalTime(value: string) { return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value); }
+
 export type CustomerForm = { name: string; phone: string; email: string; notes: string };
 
 export function normalizePhone(value: string) {

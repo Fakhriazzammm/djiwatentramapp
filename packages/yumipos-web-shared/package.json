@@ -9,6 +9,7 @@
     "./theme.css": "./src/theme.css",
     ".": "./src/index.ts",
     "./lib/*": "./src/lib/*.ts",
+    "./booking/*": "./src/booking/*.ts",
     "./hooks/useYumiAuth": "./src/hooks/useYumiAuth.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./types/*": "./src/types/*.ts",

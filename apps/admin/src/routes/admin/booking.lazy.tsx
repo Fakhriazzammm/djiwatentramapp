@@ -667,6 +667,19 @@ function BookingSettingsPage() {
 	}, [settings]);
 
 	const handleSave = async () => {
+		const fields = formData.customFields ?? [];
+		const labels = fields.map((field: any) => String(field.label ?? "").trim().toLowerCase()).filter(Boolean);
+		const hasInvalidField = labels.length !== fields.length
+			|| new Set(labels).size !== labels.length
+			|| fields.some((field: any) => {
+				if (field.type !== "dropdown") return false;
+				const options = (field.options ?? []).map((option: string) => option.trim()).filter(Boolean);
+				return options.length < 2 || new Set(options.map((option) => option.toLowerCase())).size !== options.length;
+			});
+		if (hasInvalidField) {
+			toast.error("Periksa field formulir: label wajib unik dan dropdown minimal memiliki 2 opsi unik.");
+			return;
+		}
 		try {
 			setIsSaving(true);
 			await updateSettings(formData);
@@ -1961,15 +1974,15 @@ function BookingSettingsPage() {
 									{field.type === "dropdown" && (
 										<div className="space-y-2 border-t border-border pt-4">
 											<label className="text-[10px] font-bold text-muted-foreground uppercase">Opsi Pilihan (Pisahkan dengan koma)</label>
-											<Input
-												className="rounded-xl"
+											<Textarea
+												className="min-h-[80px] rounded-xl"
 												onChange={(e) => {
 													const updated = [...(formData.customFields || [])];
-													updated[idx].options = e.target.value.split(",").map((s) => s.trim());
+													updated[idx].options = e.target.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
 													setFormData({ ...formData, customFields: updated });
 												}}
-												placeholder="Contoh: Pagi, Siang, Malam"
-												value={field.options?.join(", ") || ""}
+												placeholder="Satu opsi per baris atau pisahkan dengan koma"
+												value={field.options?.join("\n") || ""}
 											/>
 										</div>
 									)}

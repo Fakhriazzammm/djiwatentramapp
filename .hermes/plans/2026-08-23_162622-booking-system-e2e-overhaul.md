@@ -1115,8 +1115,8 @@ These should be confirmed before risky implementation starts:
 - Audit domain boundary: completed.
 - Audit public flow: completed.
 - Audit tab inventory: completed.
-- Implementation: incremental P0 UI/data-safety slice completed; full multi-wave overhaul remains in progress.
-- Release note: this execution deployed only the verified P0 UI/public slice. Backend schema/function waves and full shared-component extraction remain intentionally pending for the next controlled wave.
+- Implementation: Wave 2 backend safety and shared booking contract implemented; Admin/POS/Public UI P0 slice remains deployed; full configuration extraction and automation remain in progress.
+- Release note: verified P0 UI/public slice plus additive backend integrity migration and shared booking contract are now implemented. Full shared-component extraction, configuration polish, and automation remain pending.
 - Completed slice:
   - Admin/POS calendar has a direct `Tambah` CTA.
   - Calendar occupancy labels use explicit `tamu` and `meja` wording.
@@ -1124,6 +1124,9 @@ These should be confirmed before risky implementation starts:
   - Admin/POS category filtering no longer mutates featured product selection.
   - Public calendar availability checks both people and table limits consistently.
   - Public status screen displays booking and payment statuses separately.
+  - Additive migration `20260828000000_booking_integrity_hardening.sql` adds booking audit events and guarded admin status/update/delete RPCs.
+  - Shared booking helpers added under `packages/yumipos-web-shared/src/booking/`.
+  - Public pending booking result survives reload during payment retry.
 - Verification completed for this slice:
   - `apps/admin` production build passed.
   - `apps/pos` production build passed.

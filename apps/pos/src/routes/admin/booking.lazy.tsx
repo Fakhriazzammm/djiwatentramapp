@@ -622,6 +622,19 @@ function BookingSettingsPage() {
 	}, [settings]);
 
 	const handleSave = async () => {
+		const fields = formData.customFields ?? [];
+		const labels = fields.map((field: any) => String(field.label ?? "").trim().toLowerCase());
+		const hasInvalidField = labels.some((label) => !label)
+			|| new Set(labels).size !== labels.length
+			|| fields.some((field: any) => {
+				if (field.type !== "dropdown") return false;
+				const options = (field.options ?? []).map((option: string) => option.trim()).filter(Boolean);
+				return options.length < 2 || new Set(options.map((option) => option.toLowerCase())).size !== options.length;
+			});
+		if (hasInvalidField) {
+			toast.error("Periksa field formulir: label wajib unik dan dropdown minimal memiliki 2 opsi unik.");
+			return;
+		}
 		try {
 			setIsSaving(true);
 			await updateSettings(formData);
@@ -1477,6 +1490,7 @@ function BookingSettingsPage() {
 					<p className="text-muted-foreground text-sm">
 						Pilih produk yang tampil di halaman booking. Kosongkan untuk tampilkan semua.
 					</p>
+					<div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Produk nonaktif, tanpa harga, atau tanpa gambar perlu diperiksa sebelum dipublikasikan.</div>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 						<div className="relative flex-1">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1544,8 +1558,13 @@ function BookingSettingsPage() {
 								<div className="min-w-0 flex-1">
 									<p className="truncate font-bold text-sm">{product.name}</p>
 									<p className="text-muted-foreground text-xs">
-										Rp {product.price.toLocaleString("id-ID")}
+										Rp {Number(product.price ?? 0).toLocaleString("id-ID")}
 									</p>
+									<div className="mt-1 flex flex-wrap gap-1">
+										{product.isActive === false && <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">Nonaktif</span>}
+										{Number(product.price ?? 0) <= 0 && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">Harga 0</span>}
+										{!(product.image || product.imageUrl) && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">Tanpa gambar</span>}
+									</div>
 								</div>
 								{formData.featuredProductIds.includes(product._id) && (
 									<Check className="h-4 w-4 text-primary shrink-0" />
@@ -1567,7 +1586,7 @@ function BookingSettingsPage() {
 							</p>
 						</div>
 						<Button
-							className="rounded-xl font-bold bg-primary"
+							className="min-h-11 rounded-xl font-bold bg-primary"
 							onClick={() => {
 								const newField = {
 									id: Math.random().toString(36).substr(2, 9),
@@ -1673,15 +1692,15 @@ function BookingSettingsPage() {
 									{field.type === "dropdown" && (
 										<div className="space-y-2 border-t border-border pt-4">
 											<label className="text-[10px] font-bold text-muted-foreground uppercase">Opsi Pilihan (Pisahkan dengan koma)</label>
-											<Input
-												className="rounded-xl"
+											<Textarea
+												className="min-h-[80px] rounded-xl"
 												onChange={(e) => {
 													const updated = [...(formData.customFields || [])];
-													updated[idx].options = e.target.value.split(",").map((s) => s.trim());
+													updated[idx].options = e.target.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
 													setFormData({ ...formData, customFields: updated });
 												}}
-												placeholder="Contoh: Pagi, Siang, Malam"
-												value={field.options?.join(", ") || ""}
+												placeholder="Satu opsi per baris atau pisahkan dengan koma"
+												value={field.options?.join("\n") || ""}
 											/>
 										</div>
 									)}

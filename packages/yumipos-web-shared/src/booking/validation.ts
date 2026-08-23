@@ -1,0 +1,2 @@
+export function normalizePhone(value: string) { return value.replace(/[^\d]/g, ""); }
+export function validateBookingCustomer(input: { name?: string; phone?: string; email?: string }) { const errors: Record<string,string> = {}; if (!input.name?.trim()) errors.name = "Nama lengkap wajib diisi."; if (normalizePhone(input.phone ?? "").length < 10) errors.phone = "Nomor WhatsApp harus minimal 10 digit."; if (input.email && !/^\S+@\S+\.\S+$/.test(input.email.trim())) errors.email = "Format email belum valid."; return errors; }

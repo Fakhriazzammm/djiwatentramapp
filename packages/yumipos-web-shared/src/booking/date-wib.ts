@@ -1,0 +1,2 @@
+export function formatWibDate(date: string) { const parts = date.split("-").map(Number); const year = parts[0] ?? 0; const month = parts[1] ?? 1; const day = parts[2] ?? 1; return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date(Date.UTC(year, month - 1, day, 5))); }
+export function isValidArrivalTime(value: string) { return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value); }

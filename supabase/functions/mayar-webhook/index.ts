@@ -132,6 +132,21 @@ async function verifyTransaction(transactionId: string) {
 async function settleBooking(bookingId: string, invoiceId: string, transaction: Record<string, unknown>) {
   const transactionId = String(transaction.id || "");
   if (!bookingId || !transactionId) return null;
+  const bookingResponse = await fetchWithTimeout(
+    `${SUPABASE_URL}/rest/v1/booking_orders?source_id=eq.${encodeURIComponent(bookingId)}&select=source_id,total_amount,payment_gateway&limit=1`,
+    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
+  );
+  if (!bookingResponse.ok) throw new Error(`Booking lookup failed (${bookingResponse.status})`);
+  const bookings = await bookingResponse.json() as Array<Record<string, unknown>>;
+  const booking = bookings[0];
+  if (!booking) throw new Error("Booking not found");
+  const expectedInvoice = String(parseExtraData(booking.payment_gateway)?.invoiceId || "");
+  if (expectedInvoice && invoiceId && expectedInvoice !== invoiceId) throw new Error("Booking invoice mismatch");
+  const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
+  const bookingAmount = Number(booking.total_amount ?? NaN);
+  if (Number.isFinite(providerAmount) && Number.isFinite(bookingAmount) && providerAmount > 0 && Math.abs(providerAmount - bookingAmount) > 0.01) {
+    throw new Error("Booking payment amount mismatch");
+  }
   const paidAt = Number(transaction.updatedAt || transaction.createdAt || Date.now());
   const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/settle_public_booking_payment`, {
     method: "POST",

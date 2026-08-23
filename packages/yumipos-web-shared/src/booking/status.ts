@@ -1,0 +1,5 @@
+import type { BookingStatus, PaymentStatus } from "./constants";
+const bookingTransitions: Record<BookingStatus, readonly BookingStatus[]> = { pending: ["confirmed", "cancelled", "expired"], confirmed: ["arrived", "cancelled", "no_show"], arrived: ["seated", "no_show", "cancelled"], seated: ["completed", "cancelled"], completed: [], cancelled: [], no_show: [], expired: [] };
+export function canTransitionBooking(from: BookingStatus, to: BookingStatus) { return from === to || bookingTransitions[from]?.includes(to) === true; }
+export function canTransitionPayment(from: PaymentStatus, to: PaymentStatus) { return from === to || (from === "pending" && ["paid", "verified", "failed"].includes(to)) || (from === "paid" && to === "refunded") || (from === "verified" && to === "refunded"); }
+export function statusLabel(status: string) { return ({ pending: "Menunggu", confirmed: "Dikonfirmasi", arrived: "Tiba", seated: "Duduk", completed: "Selesai", cancelled: "Dibatalkan", no_show: "Tidak hadir", expired: "Kedaluwarsa", paid: "Lunas", verified: "Terverifikasi", refunded: "Refund", failed: "Gagal" } as Record<string,string>)[status] ?? status; }

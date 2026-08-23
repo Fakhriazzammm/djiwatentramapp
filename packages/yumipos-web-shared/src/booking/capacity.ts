@@ -1,0 +1,4 @@
+export type BookingCapacity = { maxPeople: number; maxTables: number; peoplePerTable: number; bookedPeople: number; bookedTables: number; isClosed?: boolean };
+export function tableCount(guests: number, peoplePerTable: number) { return Math.ceil(Math.max(0, guests) / Math.max(1, peoplePerTable)); }
+export function capacityRemaining(capacity: BookingCapacity, guests = 0) { const requestedTables = tableCount(guests, capacity.peoplePerTable); return { people: capacity.maxPeople > 0 ? Math.max(0, capacity.maxPeople - capacity.bookedPeople) : null, tables: capacity.maxTables > 0 ? Math.max(0, capacity.maxTables - capacity.bookedTables) : null, requestedTables }; }
+export function isCapacityExceeded(capacity: BookingCapacity, guests: number) { const remaining = capacityRemaining(capacity, guests); return Boolean(capacity.isClosed || (remaining.people !== null && guests > remaining.people) || (remaining.tables !== null && remaining.requestedTables > remaining.tables)); }

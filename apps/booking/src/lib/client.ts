@@ -163,6 +163,13 @@ function getGuestCredentials() {
   return credentials;
 }
 
+function getPendingPayment(code: string) {
+  try {
+    const raw = sessionStorage.getItem(`booking-pending-payment-${code}`);
+    return raw ? JSON.parse(raw) as { invoiceId?: string; invoiceUrl?: string } : null;
+  } catch { return null; }
+}
+
 function getPublishableKey() {
   return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 }
@@ -222,6 +229,11 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
       }
     } catch { sessionStorage.removeItem(storageKey); }
   }
+  const pending = getPendingPayment(booking.bookingCode);
+  if (pending?.invoiceId && pending.invoiceUrl) {
+    await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: pending.invoiceId, invoiceUrl: pending.invoiceUrl, status: "pending" } });
+    return pending;
+  }
   const redirectUrl = `${window.location.origin}/booking/status?code=${encodeURIComponent(booking.bookingCode)}`;
   const invoiceResponse = await callMayar({ action: "create-invoice", name: draft.customer.name, email: draft.customer.email || undefined, mobile: draft.customer.phone, redirectUrl, description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`, expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG }, items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })) });
   const payment = invoiceResponse?.data || invoiceResponse;
@@ -229,6 +241,7 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
   const invoiceUrl = String(payment?.link || payment?.paymentUrl || payment?.url || "");
   if (!invoiceId || !invoiceUrl) throw new Error("Mayar belum mengembalikan link pembayaran.");
   sessionStorage.setItem(storageKey, JSON.stringify({ invoiceId, invoiceUrl }));
+  sessionStorage.setItem(`booking-pending-payment-${booking.bookingCode}`, JSON.stringify({ invoiceId, invoiceUrl }));
   await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId, invoiceUrl, transactionId: payment?.transactionId || null, status: "pending" } });
   return { invoiceId, invoiceUrl };
 }
