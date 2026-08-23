@@ -2244,6 +2244,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [shiftRefreshTrigger, setShiftRefreshTrigger] = useState(0);
 	const shiftStatus = useHybridShiftStatus(shiftRefreshTrigger);
 	const siteSettings = useHybridSiteSettings();
+	// Status dari database menjadi sumber kebenaran agar UI tidak sempat
+	// menampilkan flow buka shift saat shift sebenarnya sudah aktif.
+	const isClosingShift = shiftStatus?.isOpen === true || shiftType === "akhiri";
 	const [closingAttendance, setClosingAttendance] = useState<Array<{ name: string; userId: string; status: "active" | "checked_out" | "no_show" }>>([]);
 	const [closingAttendanceLoading, setClosingAttendanceLoading] = useState(false);
 	const [closingAttendanceError, setClosingAttendanceError] = useState<string | null>(null);
@@ -2858,7 +2861,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 
 	return (
 		<div className="space-y-2 pt-1">
-			{shiftType === "mulai" ? (
+			{!isClosingShift ? (
 				<>
 					<div className="space-y-0.5 text-center">
 						<h3 className="font-black text-base tracking-tight">Buka Shift</h3>
@@ -3222,8 +3225,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					<Button
 						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
 						disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
-						type={shiftType === 'mulai' ? 'submit' : 'button'}
-						onClick={shiftType === 'akhiri' ? () => setShowEndConfirm(true) : undefined}
+						type="button"
+						onClick={() => setShowEndConfirm(true)}
 					>
 						{isSubmitting ? (
 							<Loader2 className="mr-2 h-3 w-3 animate-spin text-white" />
@@ -3235,7 +3238,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			</form>
 
 			{/* Checklist aktivasi online food */}
-			{showStartChecklist && (
+			{!isClosingShift && showStartChecklist && (
 				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
 					<div className="space-y-1">
 						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
@@ -3282,7 +3285,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			)}
 
 			{/* Preview & konfirmasi buka shift */}
-			{showStartConfirm && (
+			{!isClosingShift && showStartConfirm && (
 				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
 					<div className="space-y-1">
 						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
