@@ -1444,7 +1444,11 @@ function ParkirTab({
 									<button type="button" onClick={() => onSelectOrder?.(order)} className="min-w-0 flex-1 text-left">
 										<div className="flex items-start justify-between gap-3">
 											<div className="min-w-0">
-												<p className="truncate text-sm font-black text-primary">#{order.orderNumber}</p>
+												<div className="flex items-center gap-1.5">
+													<p className="truncate text-sm font-black text-primary">#{order.orderNumber}</p>
+													{order.source === "customer_self_service" ? <span className="shrink-0 rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-blue-700">DjiwaApp</span> : null}
+												</div>
+												{order.source === "customer_self_service" && ["cash", "cashier", "tunai"].includes(String(order.paymentMethod ?? "").toLowerCase()) ? <span className="mt-1 inline-flex rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700">Bayar di kasir</span> : null}
 												<p className="mt-1 truncate text-xs font-semibold text-foreground">{order.customerName || "Tanpa nama"}{order.tableNumber ? ` · Meja ${order.tableNumber}` : ""}</p>
 												<p className="mt-1 text-[11px] text-muted-foreground">{formatTime(order.createdAt)} · {order.items?.length ?? 0} item · {totalQty} qty</p>
 											</div>
