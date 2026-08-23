@@ -9,15 +9,23 @@ export function CustomerLiveShiftIndicator() {
 	const ongoingShift = shiftStatus?.ongoingShift;
 	const isLive = Boolean(shiftStatus?.isOpen && ongoingShift);
 	const shiftName = ongoingShift?.shiftName ?? "Shift berjalan";
-	const label = shiftStatus === undefined ? "Memeriksa layanan" : isLive ? "Layanan aktif" : "Layanan sedang offline";
+	const label = shiftStatus === undefined
+		? "Memeriksa layanan"
+		: shiftStatus === null
+			? "Status layanan belum tersedia"
+			: isLive
+				? "Layanan aktif"
+				: "Layanan sedang offline";
 	const tone = isLive
 		? "border-emerald-200/70 bg-emerald-50/80 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-100"
-		: "border-border/70 bg-muted/40 text-muted-foreground";
+		: shiftStatus === null
+			? "border-amber-200/70 bg-amber-50/80 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100"
+			: "border-border/70 bg-muted/40 text-muted-foreground";
 
 	return (
 		<div className={cn("mx-auto flex w-full max-w-md items-center gap-1.5 border-b px-3 py-1.5 text-[11px]", tone)} role="status" aria-live="polite">
-			<span className={cn("relative flex h-2 w-2 shrink-0 rounded-full", isLive ? "bg-emerald-500" : "bg-muted-foreground/50")} aria-hidden="true" />
-			<Radio className={cn("h-3.5 w-3.5 shrink-0", isLive ? "text-emerald-600" : "text-muted-foreground")} aria-hidden="true" />
+			<span className={cn("relative flex h-2 w-2 shrink-0 rounded-full", isLive ? "bg-emerald-500" : shiftStatus === null ? "bg-amber-500" : "bg-muted-foreground/50")} aria-hidden="true" />
+			<Radio className={cn("h-3.5 w-3.5 shrink-0", isLive ? "text-emerald-600" : shiftStatus === null ? "text-amber-600" : "text-muted-foreground")} aria-hidden="true" />
 			<span className="min-w-0 truncate">
 				<span className="font-bold">{label}</span>
 				{isLive ? <><span className="mx-1 opacity-60">•</span>{shiftName}</> : null}
