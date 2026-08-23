@@ -277,7 +277,12 @@ Deno.serve(async (req) => {
 
   try {
     const payload = await req.json();
-    const event = String(payload?.event?.received || payload?.action || "");
+    // Mayar mengirim event sebagai string ("payment.received") atau object
+    // ({ received: ... }); dukung keduanya agar webhook produksi tidak terabaikan.
+    const rawEvent = typeof payload?.event === "string"
+      ? payload.event
+      : String(payload?.event?.received || payload?.action || "");
+    const event = rawEvent.trim();
     if (event === "reconcile") {
       return json({ ok: true, wallet: await reconcilePendingWalletTopups(), orders: await reconcilePendingOrders() });
     }
