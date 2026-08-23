@@ -817,6 +817,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 				? row.receiptMeta
 				: null,
 		paymentReceiptKind: row.paymentReceiptKind ?? null,
+		raw: row.raw && typeof row.raw === "object" ? row.raw : null,
 		is_delivered:
 			row.is_delivered === null || row.is_delivered === undefined
 				? false
@@ -1019,6 +1020,10 @@ async function fetchDetailedShifts() {
 		nonCashConfirmed: Number(row.nonCashConfirmed ?? 0),
 		endingCashExpected: Number(row.endingCashExpected ?? 0),
 		endingCashPhysical: Number(row.endingCashPhysical ?? 0),
+		paymentBreakdownExpected: row.paymentBreakdownExpected ?? null,
+		paymentBreakdownActual: row.paymentBreakdownActual ?? null,
+		paymentBreakdownVariance: row.paymentBreakdownVariance ?? null,
+		closingReconciliationStatus: row.closingReconciliationStatus ?? null,
 	})) as ShiftOperationalRecord[];
 }
 

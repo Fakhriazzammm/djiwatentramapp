@@ -124,6 +124,14 @@ import {
 	useHybridSyncMenuStockFromInventory,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
+import {
+  calculateBreakdownTotal as calculateCashBreakdownTotal,
+  calculateShiftPaymentBreakdown,
+  EMPTY_SHIFT_PAYMENT_ACTUAL,
+  EMPTY_SHIFT_PAYMENT_BREAKDOWN,
+  type ShiftPaymentBreakdown,
+} from "@/lib/shift-payment-breakdown";
+import { ShiftPaymentReconciliation } from "@/components/pos/shift-payment-reconciliation";
 import { createClient } from "@/lib/client";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import {
@@ -2215,6 +2223,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	// Akhiri Shift State
 	const [cashInRegister, setCashInRegister] = useState("");
 	const [nonCashConfirmed, setNonCashConfirmed] = useState("");
+	const [paymentActual, setPaymentActual] = useState<Partial<Record<keyof ShiftPaymentBreakdown, number | null>>>({ ...EMPTY_SHIFT_PAYMENT_ACTUAL });
 	const [notes, setNotes] = useState("");
 	// Pengeluaran saat tutup shift
 	const [endShiftExpenses, setEndShiftExpenses] = useState<{id: number; category: string; amount: string; description: string}[]>([]);
@@ -2378,14 +2387,22 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
 	}
 
-	const calculateBreakdownTotal = () => {
-		return Object.entries(breakdown).reduce((sum, [val, count]) => sum + (Number(val.replace('bill', '')) * (count || 0)), 0);
+	const calculateBreakdownTotal = () => calculateCashBreakdownTotal(breakdown);
+	const expectedPaymentBreakdown = useMemo(() => calculateShiftPaymentBreakdown(
+		(todayOrders ?? []).filter((order: any) => Number(order.createdAt ?? 0) >= Number(shiftStatus?.latestMulai ?? 0))
+	), [todayOrders, shiftStatus?.latestMulai]);
+	const handlePaymentActualChange = (key: keyof ShiftPaymentBreakdown, value: string) => {
+		setPaymentActual((previous) => ({ ...previous, [key]: value === "" ? null : Math.max(0, Number(value) || 0) }));
+	};
+	const handleCashBreakdownChange = (key: string, value: number) => {
+		setBreakdown((previous) => ({ ...previous, [key]: Math.max(0, Number(value) || 0) }));
 	};
 
 	// When breakdown changes, update cashInRegister
 	useEffect(() => {
 		const total = calculateBreakdownTotal();
-		if (total > 0) setCashInRegister(total.toString());
+		setCashInRegister(total.toString());
+		setPaymentActual((previous) => ({ ...previous, tunai_kasir: total }));
 	}, [breakdown]);
 
 	// Auto-fill nonCashConfirmed from shiftQris
@@ -2509,6 +2526,14 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setShowEndConfirm(false);
 			return;
 		}
+		const paymentChannelsComplete = Object.keys(expectedPaymentBreakdown).every((key) => paymentActual[key as keyof ShiftPaymentBreakdown] !== null && paymentActual[key as keyof ShiftPaymentBreakdown] !== undefined);
+		if (!paymentChannelsComplete) {
+			const missingChannels = Object.keys(expectedPaymentBreakdown).filter((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined);
+			const message = `Lengkapi nominal aktual: ${missingChannels.join(", ")}.`;
+			setSubmitNotice(message);
+			toast.info(message);
+			return;
+		}
 		if (closingAttendanceLoading) {
 			toast.error("Status absensi tim masih dimuat. Tunggu sebentar lalu coba lagi.");
 			return;
@@ -2556,6 +2581,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				shiftId: shiftStatus.shiftInfo.shiftId as Id<"shifts">,
 				endingCashPhysical: Number(cashInRegister),
 				nonCashConfirmed: Number(nonCashConfirmed),
+				paymentBreakdownActual: paymentActual,
 				cashBreakdown: breakdown as any,
 				notes,
 			});
@@ -2710,6 +2736,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			setAmount("");
 			setCashInRegister("");
 			setNonCashConfirmed("");
+			setPaymentActual({ ...EMPTY_SHIFT_PAYMENT_ACTUAL });
 			setNotes("");
 			setEndShiftExpenses([]);
 			setCashierName("");
@@ -3029,30 +3056,14 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								{!closingAttendanceLoading && !closingAttendanceError && closingAttendance.length > 0 && activeClosingStaff.length === 0 && <p className="mt-2 text-[11px] font-bold text-emerald-700">Semua karyawan yang sudah masuk telah absen keluar. Data tutup kasir dapat dilanjutkan.</p>}
 							</CardContent>
 						</Card>
-						{/* Ringkasan Real-time */}
-						<Card className="border-border bg-emerald-50/30 overflow-hidden">
-							<CardContent className="p-2.5">
-								<div className="flex justify-between items-center mb-1">
-									<h4 className="text-[11px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1">
-										<TrendingUp className="h-2.5 w-2.5" /> Ringkasan Shift Ini
-									</h4>
-								</div>
-								<div className="grid grid-cols-2 gap-2">
-									<div className="space-y-0.5">
-										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase">Cash (Laci)</p>
-										<p className="text-[11px] font-black text-emerald-700">Rp {shiftCash.toLocaleString('id-ID')}</p>
-									</div>
-									<div className="space-y-0.5 text-right">
-										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase">Non-Tunai</p>
-										<p className="text-[11px] font-black text-primary">Rp {shiftQris.toLocaleString('id-ID')}</p>
-									</div>
-								</div>
-								<div className="mt-1.5 pt-1.5 border-t border-emerald-100 flex justify-between items-center">
-									<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Saran Setoran:</p>
-									<p className="text-[10px] font-black text-foreground">Rp {(((shiftStatus?.ongoingShift?.startingCash ?? 0) + shiftCash - shiftExpense)).toLocaleString('id-ID')}</p>
-								</div>
-							</CardContent>
-						</Card>
+						<ShiftPaymentReconciliation
+							expected={expectedPaymentBreakdown}
+							actual={paymentActual}
+							onActualChange={handlePaymentActualChange}
+							cashBreakdown={breakdown}
+							onCashChange={handleCashBreakdownChange}
+							onAutoFillCash={handleAutofill}
+						/>
 
 						{/* Detail Pengeluaran */}
 						{shiftExpense > 0 && (
@@ -3162,131 +3173,6 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							</CollapsibleContent>
 						</Collapsible>
 
-						{/* Pecahan Uang Section */}
-						<div className="space-y-1.5">
-							<div className="flex items-center justify-between">
-								<Label className="text-[11px] font-bold uppercase text-muted-foreground">Pecahan Uang Kertas & Logam</Label>
-								<button 
-									type="button"
-									onClick={handleAutofill}
-									className="text-[11px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full hover:bg-primary/20 transition-colors"
-								>
-									Auto-fill
-								</button>
-							</div>
-							{(() => {
-								const billKeys = Object.keys(breakdown).filter(k => Number(k.replace('bill', '')) >= 1000);
-								const coinKeys = Object.keys(breakdown).filter(k => Number(k.replace('bill', '')) < 1000);
-								return (
-									<>
-										<div className="space-y-1">
-											<p className="text-[10px] font-bold uppercase text-muted-foreground/70">Kertas</p>
-											<div className="grid grid-cols-2 gap-1">
-												{billKeys.map((val) => (
-													<div key={val} className="flex items-center gap-1 group">
-														<div className="w-10 text-[11px] font-black text-muted-foreground shrink-0">
-															{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
-														</div>
-														<Input
-															type="number"
-															min={0}
-															placeholder="0"
-															className="h-7 text-[10px] font-bold text-center group-hover:border-primary/50"
-															value={breakdown[val] || ""}
-															onChange={(e) => setBreakdown({...breakdown, [val]: Number(e.target.value)})}
-														/>
-													</div>
-												))}
-											</div>
-										</div>
-										<Collapsible className="space-y-1">
-											<CollapsibleTrigger className="flex items-center gap-1 text-[10px] font-bold uppercase text-muted-foreground/70 hover:text-muted-foreground transition-colors">
-												<ChevronDown className="h-3 w-3" />
-												Logam / Koin
-											</CollapsibleTrigger>
-											<CollapsibleContent>
-												<div className="grid grid-cols-2 gap-1 pt-1">
-													{coinKeys.map((val) => (
-														<div key={val} className="flex items-center gap-1 group">
-															<div className="w-10 text-[11px] font-black text-muted-foreground shrink-0">
-																{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
-															</div>
-															<Input
-																type="number"
-																min={0}
-																placeholder="0"
-																className="h-7 text-[10px] font-bold text-center group-hover:border-primary/50"
-																value={breakdown[val] || ""}
-																onChange={(e) => setBreakdown({...breakdown, [val]: Number(e.target.value)})}
-															/>
-														</div>
-													))}
-												</div>
-											</CollapsibleContent>
-										</Collapsible>
-									</>
-								);
-							})()}
-						</div>
-
-						{/* Actual Inputs */}
-						<div className="space-y-2 pt-1">
-							<div className="space-y-1">
-								<Label className="text-[11px] font-bold uppercase text-muted-foreground">Total Uang Fisik (Laci)</Label>
-								<div className="relative">
-									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">Rp</span>
-									<Input
-										className="pl-8 h-9 text-sm font-black tracking-tighter bg-muted/30"
-										min={0}
-										placeholder="0"
-										type="number"
-										inputMode="numeric"
-										value={cashInRegister}
-										onChange={(e) => setCashInRegister(e.target.value)}
-									/>
-								</div>
-								<p className="text-[10px] text-muted-foreground italic font-medium">* Otomatis dari input pecahan</p>
-							{/* Selisih Real-time */}
-							{cashInRegister && Number(cashInRegister) > 0 && (() => {
-								const expected = shiftCash;
-								const actual = Number(cashInRegister);
-								const diff = actual - expected;
-								const isExact = diff === 0;
-								const absDiff = Math.abs(diff);
-								const statusColor = isExact ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : absDiff > 50000 ? 'text-rose-600 bg-rose-50 border-rose-200' : 'text-amber-600 bg-amber-50 border-amber-200';
-								const icon = isExact ? <CheckCircle2 className="h-3 w-3 inline-block" /> : diff > 0 ? <ArrowUpCircle className="h-3 w-3 inline-block" /> : <ArrowDownCircle className="h-3 w-3 inline-block" />;
-								const label = isExact ? 'Pas' : diff > 0 ? `Lebih Rp ${absDiff.toLocaleString('id-ID')}` : `Kurang Rp ${absDiff.toLocaleString('id-ID')}`;
-								return (
-									<div className={`mt-2 flex items-center justify-between rounded-lg border px-3 py-1.5 text-[10px] font-bold ${statusColor}`}>
-										<span>Selisih:</span>
-										<span>{icon} {label}</span>
-									</div>
-								);
-							})()}
-						</div>
-
-							<div className="space-y-1">
-								<Label className="text-[11px] font-bold uppercase text-muted-foreground">Konfirmasi QRIS/EDC (Rp)</Label>
-								<div className="relative">
-									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">Rp</span>
-									<Input
-										className="pl-8 h-9 text-sm font-black tracking-tighter border-primary/20"
-										min={0}
-										onChange={(e) => setNonCashConfirmed(e.target.value)}
-										placeholder="Input sesuai EDC/Dashboard"
-										type="number"
-										inputMode="numeric"
-										value={nonCashConfirmed}
-									/>
-								</div>
-								<p className="text-[10px] text-muted-foreground font-medium flex items-center gap-0.5 mt-0.5">
-									<AlertCircle className="h-2.5 w-2.5 text-amber-500" /> Total dari dashboard pembayaran (QRIS/EDC)
-								</p>
-							</div>
-						</div>
-					</div>
-				)}
-
 				<div className="space-y-1 pt-1">
 					<Label className="text-[11px] font-bold uppercase text-muted-foreground">Catatan / Kendala Shift</Label>
 					<Textarea
@@ -3310,7 +3196,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 
 				<Button
 					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
-					disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 || shiftTimeGate.blocked : isSubmitting}
+					disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
 					type={shiftType === 'mulai' ? 'submit' : 'button'}
 					onClick={shiftType === 'akhiri' ? () => setShowEndConfirm(true) : undefined}
 				>
@@ -3320,6 +3206,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						shiftType === "mulai" ? <div className="flex items-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : shiftTimeGate.blocked ? <div className="flex items-center justify-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Tunggu sampai {selectedShiftSchedule?.closeTime} WIB</div> : <div className="flex items-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
 					)}
 				</Button>
+					</div>
+				)}
 			</form>
 
 			{/* Checklist aktivasi online food */}

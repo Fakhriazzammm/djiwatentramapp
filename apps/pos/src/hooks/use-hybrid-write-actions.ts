@@ -3,6 +3,7 @@ import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
 import { invokeBookingAdmin, invokeEdgeFunction } from "@/lib/api-helper";
+import { calculateShiftPaymentBreakdown, EMPTY_SHIFT_PAYMENT_BREAKDOWN } from "@/lib/shift-payment-breakdown";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -4683,16 +4684,18 @@ export function useHybridEndShift() {
 				let totalDiscountFromOrders = 0;
 				let totalGrossSales = totalRevenue;
 				let totalItemsSold = 0;
+				let paymentBreakdownExpected = { ...EMPTY_SHIFT_PAYMENT_BREAKDOWN };
 				try {
 					const { data: shiftOrders } = await supabase
 						.schema("pos")
 						.from("orders")
-						.select("total_amount, discount_amount, order_type, raw")
+						.select("total_amount, discount_amount, order_type, payment_method, payment_receipt_kind, source, raw")
 						.gte("creation_time", Number(shift.startTime))
 						.lt("creation_time", endTime)
 						.in("status", ["completed", "paid"])
 						.limit(10000);
 					if (shiftOrders && shiftOrders.length > 0) {
+						paymentBreakdownExpected = calculateShiftPaymentBreakdown(shiftOrders as any[]);
 						totalDiscountFromOrders = shiftOrders.reduce(
 							(sum: number, o: any) => sum + Number(o.discount_amount ?? 0), 0
 						);
@@ -4725,6 +4728,15 @@ export function useHybridEndShift() {
 				const endingCashExpected =
 					Number(shift.startingCash ?? 0) + cashRevenue - totalExpenses;
 				const nonCashExpected = qrisRevenue;
+				const paymentBreakdownActual = args?.paymentBreakdownActual ?? {};
+				const paymentBreakdownVariance = Object.fromEntries(
+					Object.keys(paymentBreakdownExpected).map((key) => [
+						key,
+						(paymentBreakdownActual as Record<string, number | null | undefined>)[key] == null
+							? null
+							: Number((paymentBreakdownActual as Record<string, number>)[key]) - Number((paymentBreakdownExpected as Record<string, number>)[key] ?? 0),
+					])
+				);
 				const summary = {
 					cashRevenue, qrisRevenue, totalRevenue, totalGrossSales,
 					totalDiscount: totalDiscountFromOrders,
@@ -4733,6 +4745,9 @@ export function useHybridEndShift() {
 					endingCashExpected, endingCashPhysical: Number(args?.endingCashPhysical ?? 0),
 					nonCashExpected, nonCashConfirmed: Number(args?.nonCashConfirmed ?? 0),
 					paymentBreakdown,
+					paymentBreakdownExpected,
+					paymentBreakdownActual,
+					paymentBreakdownVariance,
 				};
 
 				const { error: updateError } = await supabase
@@ -4745,6 +4760,10 @@ export function useHybridEndShift() {
 						non_cash_confirmed: Number(args?.nonCashConfirmed ?? 0),
 						non_cash_expected: nonCashExpected,
 						cash_breakdown: args?.cashBreakdown ?? null,
+						payment_breakdown_expected: paymentBreakdownExpected,
+						payment_breakdown_actual: paymentBreakdownActual,
+						payment_breakdown_variance: paymentBreakdownVariance,
+						closing_reconciliation_status: Object.values(paymentBreakdownVariance).every((value) => value === 0) ? "matched" : "variance",
 						notes: args?.notes
 			? (shift.notes
 				? shift.notes + "\n\n[TUTUP SHIFT] " + args.notes
@@ -4752,9 +4771,15 @@ export function useHybridEndShift() {
 			: (shift.notes ?? null),
 						summary,
 						raw: {
-							...(shift.raw ?? {}),
-							closingTasks: args?.closingTasks ?? null,
+						...(shift.raw ?? {}),
+						closingTasks: args?.closingTasks ?? null,
+						closingReconciliation: {
+							expected: paymentBreakdownExpected,
+							actual: paymentBreakdownActual,
+							variance: paymentBreakdownVariance,
+							status: Object.values(paymentBreakdownVariance).every((value) => value === 0) ? "matched" : "variance",
 						},
+					},
 					})
 					.eq("source_id", shiftId);
 				if (updateError) throw updateError;
@@ -4824,6 +4849,9 @@ export function useHybridEndShift() {
 						endingCashExpected, endingCashPhysical: Number(args?.endingCashPhysical ?? 0),
 						nonCashExpected, nonCashConfirmed: Number(args?.nonCashConfirmed ?? 0),
 						paymentBreakdown,
+						paymentBreakdownExpected,
+						paymentBreakdownActual,
+						paymentBreakdownVariance,
 					},
 					shift: {
 						shiftName: shift.shiftName,
