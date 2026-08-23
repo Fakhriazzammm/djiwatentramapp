@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { readGuestOrderReferences } from "@/components/customer/types";
@@ -228,24 +228,30 @@ export function useCustomerWallet() {
   const [ledger, setLedger] = useState<CustomerWalletLedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedWallet = useRef(false);
 
   const loadWallet = useCallback(async (): Promise<{ wallet: CustomerWallet | null; ledger: CustomerWalletLedgerEntry[] } | null> => {
     if (!customer?.sourceId || !customer.email) {
       setWallet(null); setLedger([]); setIsLoading(false); return null;
     }
-    setIsLoading(true); setError(null);
+    if (!hasLoadedWallet.current) setIsLoading(true);
+    setError(null);
     try {
       const result = await invokeEdgeFunction<{ wallet: CustomerWallet; ledger: CustomerWalletLedgerEntry[] }>("customer-wallet", {
         action: "get", sourceId: customer.sourceId, email: customer.email,
       });
       setWallet(result.wallet ?? null);
       setLedger(result.ledger ?? []);
+      hasLoadedWallet.current = true;
       return { wallet: result.wallet ?? null, ledger: result.ledger ?? [] };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gagal memuat saldo wallet";
       console.error("[useCustomerWallet]", message);
       setError(message);
-      setWallet(null); setLedger([]);
+      if (!hasLoadedWallet.current) {
+        setWallet(null);
+        setLedger([]);
+      }
       return null;
     } finally { setIsLoading(false); }
   }, [customer?.email, customer?.sourceId]);
