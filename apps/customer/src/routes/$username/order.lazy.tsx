@@ -404,10 +404,6 @@ function OrderPage() {
 			receipt?.invoiceId ||
 			((currentOrder?.paymentGateway as { invoiceId?: string } | undefined)
 				?.invoiceId ?? undefined);
-		const invoiceUrl =
-			receipt?.invoiceUrl ||
-			((currentOrder?.paymentGateway as { invoiceUrl?: string } | undefined)
-				?.invoiceUrl ?? undefined);
 		if (!receipt || receipt.mode !== "mayar_pending" || !invoiceId) return;
 		const timer = window.setInterval(async () => {
 			try {
@@ -432,25 +428,15 @@ function OrderPage() {
 							.match(/paid|success/)
 					);
 				if (!isPaid) return;
-				await updateOrderPaymentGateway({
-					id: receipt.orderId,
-					paymentGateway: {
-						provider: "mayar",
-						invoiceId,
-						invoiceUrl,
-						status: "paid",
-						paidAt: Date.now(),
-					},
-					paymentReceiptKind: "gateway_paid",
-				});
-				setReceipt((value) => (value ? { ...value, mode: "paid" } : value));
-				toast.success("Pembayaran QRIS terkonfirmasi");
+				// Browser hanya membaca status provider. Settlement order dilakukan
+				// oleh webhook terverifikasi agar tidak ada client-side fulfillment.
+				return;
 			} catch {
 				// Retry quietly.
 			}
 		}, 5000);
 		return () => window.clearInterval(timer);
-	}, [receipt, currentOrder, getMayarInvoiceDetail, updateOrderPaymentGateway]);
+	}, [receipt, currentOrder, getMayarInvoiceDetail]);
 
 	// ── Handlers ────────────────────────────────────────────────
 
