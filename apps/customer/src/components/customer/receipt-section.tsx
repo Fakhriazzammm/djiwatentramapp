@@ -29,6 +29,7 @@ export interface ReceiptSectionProps {
 	logoUrl: string;
 	onOpenService: () => void;
 	onOrderAgain: () => void;
+	onHome: () => void;
 	receipt: ReceiptState;
 	storeName: string;
 	total: number;
@@ -128,7 +129,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				) : null}
 				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2 text-[10px] font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3 w-3" />Bayar via DjiwaApp</a> : null}
 			</div>
-			<div className="grid grid-cols-2 gap-2 pb-4"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div>
+			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div><button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/20 bg-primary/5 px-2.5 py-2.5 text-[10px] font-black text-primary shadow-sm" onClick={props.onHome}>Kembali ke Home</button>
 		</div>
 	);
 }

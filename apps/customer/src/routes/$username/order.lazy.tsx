@@ -132,6 +132,21 @@ function OrderPage() {
 	} = useOrderContext();
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+	const startNewOrder = () => {
+		checkoutRequestKeyRef.current = null;
+		setReceipt(null);
+		setCart([]);
+		setCartOpen(false);
+		setServiceOpen(false);
+		setScannerOpen(false);
+		setProductSheet(null);
+		setCheckoutError(null);
+		setDessertLater(false);
+		setNotes("");
+		setStep("menu");
+	};
+	const goHome = () => navigate({ to: "/$username", params: { username } });
+
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
 	const memberDiscounts = useMemo(
@@ -905,7 +920,7 @@ function OrderPage() {
 					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
-					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
+					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
