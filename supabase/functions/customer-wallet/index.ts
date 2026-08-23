@@ -107,6 +107,14 @@ async function verifyStaff(payload: Json) {
   return staffId;
 }
 
+async function settleOrder(payload: Json) {
+  const sourceId = text(payload.sourceId); const email = text(payload.email); const orderId = text(payload.orderId); const holdId = text(payload.holdId); const key = idempotency(payload.idempotencyKey);
+  await ownedCustomer(sourceId, email);
+  if (!orderId || !holdId) throw new Error("orderId dan holdId wajib diisi");
+  const { data, error } = await admin.schema("pos").rpc("wallet_settle_order", { p_customer_id: sourceId, p_order_id: orderId, p_hold_id: holdId, p_idempotency_key: key });
+  if (error) throw error;
+  return data;
+}
 async function adminAdjust(payload: Json) {
   const staffId = await verifyStaff(payload);
   const customerId = text(payload.customerId);
@@ -131,8 +139,9 @@ Deno.serve(async (req) => {
     if (action === "hold") return response({ success: true, result: await createHold(body) });
     if (action === "capture") return response({ success: true, result: await mutateHold(body, "capture") });
     if (action === "release") return response({ success: true, result: await mutateHold(body, "release") });
+    if (action === "settle-order") return response({ success: true, result: await settleOrder(body) });
     if (action === "admin-adjustment") return response({ success: true, result: await adminAdjust(body) });
-    return fail("UNKNOWN_ACTION", "Gunakan action get, topup, hold, capture, release, atau admin-adjustment", 404);
+    return fail("UNKNOWN_ACTION", "Gunakan action get, topup, hold, capture, release, settle-order, atau admin-adjustment", 404);
   } catch (error) {
     console.error("customer-wallet failed", error);
     const message = error instanceof Error ? error.message : "Gagal memproses wallet";

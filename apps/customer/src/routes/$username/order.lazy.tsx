@@ -617,13 +617,13 @@ function OrderPage() {
 						throw new Error(`Saldo Djiwa Pay tidak cukup. Saldo tersedia ${currency(available)}, total order ${currency(total)}.`);
 					}
 					walletHoldId = hold.hold_id;
-					await updateOrderStatus({ id: orderId, status: "paid" });
 					await invokeEdgeFunction("customer-wallet", {
-						action: "capture",
+						action: "settle-order",
 						sourceId: customer.sourceId,
 						email: customer.email,
-						holdId: hold.hold_id,
-						idempotencyKey: `${checkoutRequestKeyRef.current}:capture`,
+						orderId: String(orderId),
+						holdId: walletHoldId,
+						idempotencyKey: checkoutRequestKeyRef.current,
 					});
 					walletCaptured = true;
 					if (!isAuthenticated) rememberGuestOrder(String(orderId));

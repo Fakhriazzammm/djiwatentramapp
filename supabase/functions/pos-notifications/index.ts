@@ -107,6 +107,7 @@ function paymentType(order: any) {
   const method = String(order.paymentMethod ?? order.payment_method ?? "").trim().toLowerCase();
   const gateway = order.paymentGateway ?? order.payment_gateway;
   if (receipt.includes("cashier") || method === "cash" || method === "tunai" || method === "cashier") return "cashier";
+  if (receipt.includes("wallet") || method === "wallet" || method === "djiwaapp") return "wallet";
   if (receipt.includes("mayar") || gateway) return "mayar";
   return "unknown";
 }
@@ -139,10 +140,10 @@ async function syncRecentOrders() {
       type = "order_mayar_pending";
       title = "Menunggu Pembayaran QRIS DjiwaApp";
       message = "Pembayaran belum dikonfirmasi";
-    } else if ((status === "paid" || status === "completed") && (payment === "mayar" || payment === "cashier")) {
+    } else if ((status === "paid" || status === "completed") && (payment === "mayar" || payment === "cashier" || payment === "wallet")) {
       type = "order_paid";
-      title = payment === "cashier" ? "Pembayaran Kasir Berhasil" : "Pembayaran QRIS Berhasil";
-      message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar di Kasir" : "Pesanan DjiwaApp Sudah Lunas";
+      title = payment === "cashier" ? "Pembayaran Kasir Berhasil" : payment === "wallet" ? "Pembayaran Djiwa Pay Berhasil" : "Pembayaran QRIS Berhasil";
+      message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar di Kasir" : payment === "wallet" ? "Pesanan DjiwaApp Sudah Dibayar dengan Djiwa Pay" : "Pesanan DjiwaApp Sudah Lunas";
     }
     if (!type || !order._id) continue;
     const result = await dbWrite("pos_notifications", "POST", {
@@ -159,7 +160,7 @@ async function syncRecentOrders() {
         orderId: order._id,
         orderNumber: order.orderNumber ?? null,
         source: "djiwaapp",
-        paymentMethod: payment === "mayar" ? "qris" : "cashier",
+        paymentMethod: payment === "mayar" ? "qris" : payment === "wallet" ? "wallet" : "cashier",
         paymentStatus: status,
         customerName: order.customerName ?? null,
         tableNumber: order.tableNumber ?? null,
