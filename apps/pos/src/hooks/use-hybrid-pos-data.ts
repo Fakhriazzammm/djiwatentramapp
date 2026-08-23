@@ -1153,21 +1153,35 @@ export async function fetchShiftReports() {
 	const shiftsPerDay = await getShiftsPerDay();
 
 	// Step 3: Untuk shift aktif, query orders untuk revenue & diskon realtime
-	const activeShifts = shifts.filter((s: any) => s.end_time == null);
+	const revenueShifts = shifts.filter((s: any) => Number(s.start_time ?? 0) > 0);
+	const revenueStart = revenueShifts.length > 0
+		? Math.min(...revenueShifts.map((s: any) => Number(s.start_time)))
+		: Date.now();
+	const { data: revenueOrders } = await supabase
+		.schema("pos")
+		.from("orders")
+		.select("total_amount, discount_amount, payment_method, status, source, created_at")
+		.gte("created_at", revenueStart)
+		.lte("created_at", Date.now())
+		.in("status", ["completed", "paid"]);
 	let activeRevenue: Record<string, { total: number; cash: number; qris: number; discount: number; itemsSold: number; orderCount: number }> = {};
-	for (const s of activeShifts) {
+	for (const s of revenueShifts) {
 		const sid = s.source_id;
 		const st = Number(s.start_time ?? 0);
 		try {
-			const { data: orders } = await supabase
-				.schema("pos")
-				.from("orders")
-				.select("total_amount, discount_amount, payment_method, status")
-				.gte("created_at", st)
-				.in("status", ["completed", "paid"]);
-			if (orders) {
-				let total = 0, cash = 0, qris = 0, discount = 0;
+			const end = s.end_time == null ? Date.now() : Number(s.end_time);
+			const orders = (revenueOrders ?? []).filter((o: any) => {
+				const createdAt = Number(o.created_at ?? 0);
+				return createdAt >= st && createdAt < end
+					&& (o.source === "pos" || o.source === "customer_self_service");
+			});
+			{
+				let total = 0, cash = 0, qris = 0, discount = 0, orderCount = 0;
 				for (const o of orders as any[]) {
+					// Per-shift revenue follows order time and stays within this
+					// shift interval. Revenue sources are POS + self-service.
+					if (o.source !== "pos" && o.source !== "customer_self_service") continue;
+					orderCount += 1;
 					const p = Number(o.total_amount ?? 0);
 					total += p;
 					discount += Number(o.discount_amount ?? 0);
@@ -1175,7 +1189,7 @@ export async function fetchShiftReports() {
 					if (m.includes("cash") || m.includes("tunai")) cash += p;
 					else if (m.includes("qris") || m.includes("qr")) qris += p;
 				}
-				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: orders.length, orderCount: orders.length };
+				activeRevenue[sid] = { total, cash, qris, discount, itemsSold: orderCount, orderCount };
 			}
 		} catch {}
 		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0, discount: 0, itemsSold: 0, orderCount: 0 };

@@ -1123,46 +1123,38 @@ export async function fetchShiftReports() {
 	const shiftsPerDay = await getShiftsPerDay();
 
 	// Step 3: Untuk shift aktif, query orders untuk revenue & diskon realtime
-	const activeShifts = shifts.filter((s: any) => s.end_time == null);
+	const revenueShifts = shifts.filter((s: any) => Number(s.start_time ?? 0) > 0);
+	const revenueStart = revenueShifts.length > 0
+		? Math.min(...revenueShifts.map((s: any) => Number(s.start_time)))
+		: Date.now();
+	const { data: revenueOrders } = await supabase
+		.schema("pos")
+		.from("orders")
+		.select("total_amount, discount_amount, payment_method, status, source, created_at")
+		.gte("created_at", revenueStart)
+		.lte("created_at", Date.now())
+		.in("status", ["completed", "paid"]);
 	let activeRevenue: Record<string, { total: number; cash: number; qris: number; discount: number; itemsSold: number }> = {};
-	for (const s of activeShifts) {
+	for (const s of revenueShifts) {
 		const sid = s.source_id;
 		const st = Number(s.start_time ?? 0);
 		try {
-			// Atribusi shift mengikuti waktu settlement di ledger, bukan waktu
-			// order dibuat. Ini penting untuk order customer yang dibuat pagi
-			// tetapi baru dibayar kasir pada shift sore.
-			const { data: ledgerRows } = await supabase
-				.schema("pos")
-				.from("financial_transactions")
-				.select("amount, payment_method, order_source_id, booking_order_source_id")
-				.gte("tx_date", st)
-				.lte("tx_date", Date.now())
-				.eq("tx_type", "income")
-				.eq("status", "completed")
-				.not("category", "in", `("Modal Awal","Setoran Akhir")`)
-				.is("booking_order_source_id", null)
-				.not("order_source_id", "is", null);
-			const orderIds = (ledgerRows ?? [])
-				.map((row: any) => String(row.order_source_id ?? ""))
-				.filter(Boolean);
-			const { data: orderRows } = orderIds.length > 0
-				? await supabase
-						.schema("pos")
-						.from("orders")
-						.select("source_id, discount_amount, source, status, raw")
-						.in("source_id", orderIds)
-				: { data: [] };
-			const orderById = new Map((orderRows ?? []).map((row: any) => [String(row.source_id), row]));
+			// Per-shift revenue mengikuti waktu order dibuat dan interval shift.
+			// Settlement terlambat tidak memindahkan order ke shift lain.
+			const end = s.end_time == null ? Date.now() : Number(s.end_time);
+			const orders = (revenueOrders ?? []).filter((o: any) => {
+				const createdAt = Number(o.created_at ?? 0);
+				return createdAt >= st && createdAt < end
+					&& (o.source === "pos" || o.source === "customer_self_service");
+			});
 			let total = 0, cash = 0, qris = 0, discount = 0, settledOrderCount = 0;
-			for (const row of ledgerRows ?? []) {
-				const order = orderById.get(String(row.order_source_id));
-				if (!order || (order.source !== "pos" && order.source !== "customer_self_service")) continue;
-				const amount = Number(row.amount ?? 0);
-				total += amount;
-				discount += Number(order.discount_amount ?? 0);
+			for (const o of orders) {
+				if (o.source !== "pos" && o.source !== "customer_self_service") continue;
 				settledOrderCount += 1;
-				const method = String(row.payment_method ?? order.raw?.paymentMethod ?? "").toLowerCase();
+				const amount = Number(o.total_amount ?? 0);
+				total += amount;
+				discount += Number(o.discount_amount ?? 0);
+				const method = String(o.payment_method ?? "").toLowerCase();
 				if (method.includes("cash") || method.includes("tunai")) cash += amount;
 				else if (method.includes("qris") || method.includes("qr")) qris += amount;
 			}

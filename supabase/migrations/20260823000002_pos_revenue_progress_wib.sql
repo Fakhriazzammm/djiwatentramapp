@@ -66,6 +66,15 @@ latest_modal_awal as (
   from today_transactions ft
   where ft.tx_type = 'income'
     and coalesce(ft.category, '') = 'Modal Awal'
+),
+active_shift_orders as (
+  select coalesce(sum(o.total_amount), 0) as revenue
+  from pos.orders o
+  join pos.shifts s on s.end_time is null
+  where o.created_at >= s.start_time
+    and o.created_at < extract(epoch from now()) * 1000
+    and o.status in ('paid', 'completed')
+    and o.source in ('pos', 'customer_self_service')
 )
 select
   c.month_key as month,
@@ -120,13 +129,7 @@ select
     where ft.tx_type = 'income'
       and coalesce(ft.category, '') not in ('Modal Awal', 'Setoran Akhir')
   ), 0) as daily_collected,
-  coalesce((
-    select sum(ft.amount)
-    from today_transactions ft
-    where ft.tx_type = 'income'
-      and coalesce(ft.category, '') not in ('Modal Awal', 'Setoran Akhir')
-      and ft.tx_date >= coalesce((select tx_date from latest_modal_awal), extract(epoch from (c.current_date_local::timestamp at time zone 'Asia/Jakarta')) * 1000)
-  ), 0) as shift_collected,
+  coalesce((select revenue from active_shift_orders), 0) as shift_collected,
   c.days_in_month,
   c.days_passed,
   (c.days_in_month - c.days_passed) as days_remaining,
