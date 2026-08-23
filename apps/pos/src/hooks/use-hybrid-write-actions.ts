@@ -2751,7 +2751,7 @@ export function useHybridUpdateOrder() {
 				// Settlement kasir harus atomik di database agar RLS finance tidak
 				// membuat order berubah setengah jalan atau gagal setelah status dibayar.
 				const newStatus = updates.status as string | null;
-				if (newStatus === "paid" && args.paymentReceiptKind === "cashier") {
+				if ((newStatus === "paid" || newStatus === "completed") && args.paymentReceiptKind === "cashier") {
 					const { error: settlementError } = await supabase.schema("pos").rpc("settle_cashier_order", {
 						p_order_id: id,
 						p_payment_method: args.paymentMethod ?? "cash",
