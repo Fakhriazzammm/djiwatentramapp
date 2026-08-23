@@ -3040,6 +3040,12 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								/>
 							</div>
 						</div>
+						<div className="sticky bottom-0 z-30 -mx-1 mt-3 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+							<Button type="submit" disabled={isSubmitting} className="h-11 w-full bg-primary font-black uppercase tracking-widest text-[11px] shadow-lg hover:bg-primary/90">
+								{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SquarePlay className="mr-2 h-4 w-4" />}
+								{isSubmitting ? "Menyiapkan..." : "Mulai Shift"}
+							</Button>
+						</div>
 					</>
 				) : (
 					/* AKHIRI SHIFT UI */
@@ -3196,7 +3202,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 
 					</div>
 				)}
-				<div className="sticky bottom-0 z-20 -mx-1 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+				{shiftType === "akhiri" && <div className="sticky bottom-0 z-20 -mx-1 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 					<Button
 						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
 						disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
@@ -3209,7 +3215,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							shiftType === "mulai" ? <div className="flex items-center justify-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : shiftTimeGate.blocked ? <div className="flex items-center justify-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Tunggu sampai {selectedShiftSchedule?.closeTime} WIB</div> : <div className="flex items-center justify-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
 						)}
 					</Button>
-				</div>
+				</div>}
 			</form>
 
 			{/* Checklist aktivasi online food */}
