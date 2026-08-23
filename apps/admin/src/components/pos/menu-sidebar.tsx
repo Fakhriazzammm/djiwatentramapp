@@ -816,7 +816,8 @@ function OrderSimpleDetail({
 		: order.orderType === "online" ? "Online"
 		: order.orderType ?? "—";
 	const payMethodLabel =
-		order.paymentMethod === "tunai" ? "Tunai"
+		["wallet", "djiwa_pay", "djiwaapp"].includes(String(order.paymentMethod ?? "").toLowerCase()) ? "DJIWA PAY"
+		: order.paymentMethod === "tunai" ? "Tunai"
 		: order.paymentMethod === "qris" ? "QRIS"
 		: order.paymentMethod === "transfer" ? "Transfer"
 		: order.paymentMethod ?? "—";
@@ -1653,7 +1654,8 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 							: order.orderType === "online" ? "Online"
 							: order.orderType ?? "—";
 						const payMethodLabel =
-							order.paymentMethod === "tunai" ? "Tunai"
+							["wallet", "djiwa_pay", "djiwaapp"].includes(String(order.paymentMethod ?? "").toLowerCase()) ? "DJIWA PAY"
+							: order.paymentMethod === "tunai" ? "Tunai"
 							: order.paymentMethod === "qris" ? "QRIS"
 							: order.paymentMethod === "transfer" ? "Transfer"
 							: order.paymentMethod ?? "—";

@@ -27,6 +27,17 @@ function formatCurrency(value: unknown) {
 }
 
 function getAlertCopy(item: PosNotification) {
+  const paymentMethod = String(item.action_payload?.paymentMethod ?? "").toLowerCase();
+  const isWallet = paymentMethod === "wallet" || paymentMethod === "djiwa_pay";
+  if (item.notification_type === "order_paid" && isWallet) {
+    return {
+      title: "Pembayaran DJIWA PAY Berhasil",
+      subtitle: "Pesanan DjiwaApp Sudah Dibayar dengan DJIWA PAY",
+      label: "DJIWAAPP · DJIWA PAY BERHASIL",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-950",
+      Icon: CheckCircle2,
+    };
+  }
   if (item.notification_type === "order_paid") {
     return {
       title: "Pembayaran QRIS Berhasil",

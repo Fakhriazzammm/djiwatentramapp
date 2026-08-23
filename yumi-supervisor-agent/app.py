@@ -37,10 +37,15 @@ logger = logging.getLogger(__name__)
 def _payment_label(raw: str) -> str:
     """Convert stored payment method to display label."""
     labels = {
-        "djiwaapp": "DjiwaApp",
+        "djiwaapp": "DJIWA PAY",
+        "wallet": "DJIWA PAY",
+        "djiwa_pay": "DJIWA PAY",
         "cash": "Tunai",
         "qris_mayar": "QRIS",
-        "mayar": "DjiwaApp",
+        "mayar": "QRIS",
+        "wallet": "DJIWA PAY",
+        "djiwa_pay": "DJIWA PAY",
+        "djiwaapp": "DJIWA PAY",
     }
     return labels.get(raw.lower().strip(), raw.upper() if raw else "-")
 
@@ -55,8 +60,12 @@ def _sales_channel_label(payment_method: str, source: str = "", order_type: str 
         return "GrabFood"
     if "shopeefood" in joined or "shopee_food" in joined or "shopee" in joined:
         return "ShopeeFood"
-    if "djiwaapp" in joined or "customer_self_service" in joined or "mayar" in joined:
+    if "wallet" in joined or "djiwa_pay" in joined or "djiwaapp" in joined:
+        return "DJIWA PAY"
+    if "customer_self_service" in joined and "mayar" not in joined:
         return "DjiwaApp"
+    if "mayar" in joined:
+        return "QRIS"
     if any(value in ("cash", "tunai") for value in values):
         return "Tunai"
     if any(value in ("qris", "qris_mayar") for value in values):
@@ -2040,6 +2049,9 @@ async def _check_new_orders(app):
             "deliveryArea": "Tasikmalaya" if row.get("businessUnit") == "ordermieyamin" else "",
         }
 
+        # Payment provenance is explicit in every operational channel.
+        payment_method = str(row.get("paymentMethod") or "").strip()
+        payment_label = _payment_label(payment_method)
         source_label = None
         if row.get("businessUnit") == "ordermieyamin":
             source_label = "Order Mie Yamin"
@@ -2050,7 +2062,19 @@ async def _check_new_orders(app):
         elif row.get("source") == "pos":
             source_label = "POS Kasir"
 
-        payment_note = "BELUM LUNAS — BAYAR KE KASIR" if row.get("paymentReceiptKind") == "cashier_pending" else None
+        payment_method = str(row.get("paymentMethod") or "").strip()
+        payment_note = (
+            "BELUM LUNAS — BAYAR KE KASIR"
+            if row.get("paymentReceiptKind") == "cashier_pending"
+            else f"PEMBAYARAN: {_payment_label(payment_method)}"
+            if payment_method
+            else None
+        )
+
+        # Keep payment provenance available to Bar/Kitchen status rows.
+        for item in items:
+            if isinstance(item, dict):
+                item.setdefault("paymentMethod", payment_label)
 
         # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
@@ -2078,10 +2102,7 @@ async def _check_new_orders(app):
             logger.warning("Order %s not marked reported; notification delivery incomplete (channels=%s transaction=%s)", order_no, channel_results, transaction_sent)
             continue
 
-        # ⭐ Award points for member orders
-        if customer_source_id:
-            await _earn_customer_points(order_id, customer_source_id, float(total))
-
+        # Legacy points are retired; Djiwa Pay is the only customer balance.
         _reported_order_nos.add(order_no)
 
     _last_order_check_ms = max_creation_time if retry_from_time is None else max(_last_order_check_ms, retry_from_time - 1)

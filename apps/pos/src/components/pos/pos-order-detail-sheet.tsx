@@ -44,6 +44,7 @@ function getItemExtras(item: Record<string, any>) {
 
 function getPaymentLabel(order: Record<string, any> | null, payload: Record<string, any>) {
   const method = String(order?.paymentMethod ?? order?.payment_method ?? payload.paymentMethod ?? "").toLowerCase();
+  if (method.includes("wallet") || method.includes("djiwa_pay") || method === "djiwaapp") return "DJIWA PAY";
   return method.includes("qris") || method.includes("mayar") ? "QRIS" : "Bayar di Kasir";
 }
 

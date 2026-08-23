@@ -71,25 +71,22 @@ function LaporanPage() {
 		const totalCash = completedOrders
 			.filter(
 				(o: Doc<"orders">) =>
-					o.paymentMethod === "cash" || o.paymentMethod === "tunai"
+					["cash", "tunai"].includes(String(o.paymentMethod ?? "").toLowerCase())
 			)
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 
 		const totalQris = completedOrders
 			.filter(
 				(o: Doc<"orders">) =>
-					o.paymentMethod === "qris" || o.paymentMethod === "transfer"
+					["qris", "transfer"].includes(String(o.paymentMethod ?? "").toLowerCase())
 			)
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 
+		const totalDjiwaPay = completedOrders
+			.filter((o: Doc<"orders">) => ["wallet", "djiwa_pay", "djiwaapp"].includes(String(o.paymentMethod ?? "").toLowerCase()))
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 		const totalOther = completedOrders
-			.filter(
-				(o: Doc<"orders">) =>
-					o.paymentMethod !== "cash" &&
-					o.paymentMethod !== "tunai" &&
-					o.paymentMethod !== "qris" &&
-					o.paymentMethod !== "transfer"
-			)
+			.filter((o: Doc<"orders">) => !["cash", "tunai", "qris", "transfer", "wallet", "djiwa_pay", "djiwaapp"].includes(String(o.paymentMethod ?? "").toLowerCase()))
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 
 		const totalItems = completedOrders.reduce(
@@ -104,7 +101,7 @@ function LaporanPage() {
 			0
 		);
 
-		const totalRevenue = totalCash + totalQris + totalOther;
+		const totalRevenue = totalCash + totalQris + totalDjiwaPay + totalOther;
 		const totalGrossRevenue = totalRevenue + totalDiscountAmount;
 
 		const itemsByCatAndProd: Record<string, Record<string, number>> = {};
@@ -184,27 +181,14 @@ function LaporanPage() {
 							0
 						);
 					const sQris = sOrders
-						.filter(
-							(o: Doc<"orders">) =>
-								o.paymentMethod === "qris" ||
-								o.paymentMethod === "transfer"
-						)
-						.reduce(
-							(acc: number, o: Doc<"orders">) => acc + o.totalAmount,
-							0
-						);
+						.filter((o: Doc<"orders">) => ["qris", "transfer"].includes(String(o.paymentMethod ?? "").toLowerCase()))
+						.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+					const sDjiwaPay = sOrders
+						.filter((o: Doc<"orders">) => ["wallet", "djiwa_pay", "djiwaapp"].includes(String(o.paymentMethod ?? "").toLowerCase()))
+						.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 					const sOther = sOrders
-						.filter(
-							(o: Doc<"orders">) =>
-								o.paymentMethod !== "cash" &&
-								o.paymentMethod !== "tunai" &&
-								o.paymentMethod !== "qris" &&
-								o.paymentMethod !== "transfer"
-						)
-						.reduce(
-							(acc: number, o: Doc<"orders">) => acc + o.totalAmount,
-							0
-						);
+						.filter((o: Doc<"orders">) => !["cash", "tunai", "qris", "transfer", "wallet", "djiwa_pay", "djiwaapp"].includes(String(o.paymentMethod ?? "").toLowerCase()))
+						.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 					const sItems = sOrders.reduce(
 						(acc: number, o: Doc<"orders">) =>
 							acc +
@@ -219,7 +203,7 @@ function LaporanPage() {
 							acc + (o.discountAmount || 0),
 						0
 					);
-					const sRevenue = sCash + sQris + sOther;
+					const sRevenue = sCash + sQris + sDjiwaPay + sOther;
 					const sGrossRevenue = sRevenue + sDiscountAmount;
 
 					const sItemsByCatAndProd: Record<
@@ -347,7 +331,9 @@ function LaporanPage() {
 						"id-ID"
 					)}\nDebit/QRIS: Rp. ${sQris.toLocaleString(
 						"id-ID"
-					)}\nLainnya (Poin/Lain): Rp. ${sOther.toLocaleString(
+					)}\nDJIWA PAY: Rp. ${sDjiwaPay.toLocaleString(
+						"id-ID"
+					)}\nLainnya: Rp. ${sOther.toLocaleString(
 						"id-ID"
 					)}\n\nTotal Penjualan Bruto: Rp. ${sGrossRevenue.toLocaleString(
 						"id-ID"

@@ -142,8 +142,8 @@ async function syncRecentOrders() {
       message = "Pembayaran belum dikonfirmasi";
     } else if ((status === "paid" || status === "completed") && (payment === "mayar" || payment === "cashier" || payment === "wallet")) {
       type = "order_paid";
-      title = payment === "cashier" ? "Pembayaran Kasir Berhasil" : payment === "wallet" ? "Pembayaran Djiwa Pay Berhasil" : "Pembayaran QRIS Berhasil";
-      message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar di Kasir" : payment === "wallet" ? "Pesanan DjiwaApp Sudah Dibayar dengan Djiwa Pay" : "Pesanan DjiwaApp Sudah Lunas";
+      title = payment === "cashier" ? "Pembayaran TUNAI Berhasil" : payment === "wallet" ? "Pembayaran DJIWA PAY Berhasil" : "Pembayaran QRIS Berhasil";
+      message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar secara TUNAI" : payment === "wallet" ? "Pesanan DjiwaApp Sudah Dibayar dengan DJIWA PAY" : "Pesanan DjiwaApp Sudah Lunas";
     }
     if (!type || !order._id) continue;
     const result = await dbWrite("pos_notifications", "POST", {
