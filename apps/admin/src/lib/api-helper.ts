@@ -230,3 +230,8 @@ export async function invokeBookingAdmin<T = Record<string, unknown>>(
 		body: JSON.stringify({ action, ...payload }),
 	});
 }
+
+
+export async function fetchBookingTimeline<T = { timeline: unknown[]; deliveries: unknown[] }>(bookingId: string): Promise<T> {
+	return invokeBookingAdmin<T>("readTimeline", { bookingId });
+}

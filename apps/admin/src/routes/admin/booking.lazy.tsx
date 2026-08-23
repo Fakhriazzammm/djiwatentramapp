@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { fetchBookingTimeline } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -352,6 +353,17 @@ function OrderRow({
 	onDelete: (id: Id<"bookingOrders">) => void;
 }) {
 	const [expanded, setExpanded] = useState(false);
+	const [timelineState, setTimelineState] = useState<{ loading: boolean; timeline: any[]; deliveries: any[] }>({ loading: false, timeline: [], deliveries: [] });
+
+	useEffect(() => {
+		if (!expanded || timelineState.timeline.length > 0 || timelineState.deliveries.length > 0) return;
+		let active = true;
+		setTimelineState((prev) => ({ ...prev, loading: true }));
+		void fetchBookingTimeline<{ timeline?: any[]; deliveries?: any[] }>(String(order._id))
+			.then((result) => { if (active) setTimelineState({ loading: false, timeline: result.timeline ?? [], deliveries: result.deliveries ?? [] }); })
+			.catch(() => { if (active) setTimelineState((prev) => ({ ...prev, loading: false })); });
+		return () => { active = false; };
+	}, [expanded, order._id, timelineState.timeline.length, timelineState.deliveries.length]);
 
 	return (
 		<div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -488,6 +500,12 @@ function OrderRow({
 								</div>
 							))}
 						</div>
+					</div>
+
+					<div className="rounded-xl border border-border bg-card p-3 space-y-2">
+						<div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Timeline & delivery</p><span className="text-[10px] text-muted-foreground">{timelineState.loading ? "Memuat..." : `${timelineState.timeline.length} event · ${timelineState.deliveries.length} delivery`}</span></div>
+						{!timelineState.loading && timelineState.timeline.length === 0 ? <p className="text-xs text-muted-foreground">Belum ada event timeline.</p> : <div className="space-y-1">{timelineState.timeline.slice(0, 4).map((event: any) => <div className="flex items-center justify-between gap-2 text-xs" key={String(event.id)}><span className="font-medium">{event.event_type}</span><span className="text-muted-foreground">{event.to_value ?? "—"}</span></div>)}</div>}
+						{timelineState.deliveries.length > 0 && <div className="flex flex-wrap gap-1">{timelineState.deliveries.slice(0, 6).map((delivery: any) => <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold" key={String(delivery.id)}>{delivery.channel}: {delivery.status}</span>)}</div>}
 					</div>
 
 					<div className="flex flex-wrap gap-2 pt-2 border-t border-border">

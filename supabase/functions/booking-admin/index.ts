@@ -17,6 +17,8 @@ const actionMap: Record<string, string> = {
   upsertSettings: "admin_upsert_booking_settings",
   upsertCapacity: "admin_upsert_booking_capacity",
   upsertBulkCapacity: "admin_upsert_booking_bulk_capacity",
+  readTimeline: "booking_read_timeline",
+  readDelivery: "booking_read_delivery",
 };
 
 Deno.serve(async (req) => {
@@ -69,6 +71,14 @@ Deno.serve(async (req) => {
     } else if (action === "upsertSettings") {
       const result = await db.rpc(fn, { p_payload: body.payload ?? {} });
       data = { sourceId: result.data };
+      if (result.error) throw result.error;
+    } else if (action === "readTimeline") {
+      const result = await db.rpc(fn, { p_booking_id: String(body.bookingId ?? "") });
+      data = result.data;
+      if (result.error) throw result.error;
+    } else if (action === "readDelivery") {
+      const result = await db.rpc(fn, { p_booking_id: String(body.bookingId ?? "") });
+      data = { deliveries: result.data ?? [] };
       if (result.error) throw result.error;
     } else {
       const result = await db.rpc(fn, { p_payload: body.payload ?? {} });
