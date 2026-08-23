@@ -6,6 +6,8 @@ const corsHeaders = {
 		"authorization, x-client-info, apikey, content-type",
 };
 
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY");
 const MAYAR_DEFAULT_EMAIL = Deno.env.get("MAYAR_DEFAULT_EMAIL") || "no-reply@restaurant.local";
@@ -95,6 +97,153 @@ async function readJsonResponse(response: Response) {
 	}
 }
 
+async function supabaseGet(path: string) {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new Error("Supabase storage is not configured");
+  const response = await fetchMayar(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      "Accept-Profile": "pos",
+    },
+  });
+  const body = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(`Order lookup failed (${response.status})`);
+  return body;
+}
+
+async function supabasePatch(path: string, body: Record<string, unknown>) {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new Error("Supabase storage is not configured");
+  const response = await fetchMayar(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      "Content-Profile": "pos",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(`Order payment metadata update failed (${response.status})`);
+  return result;
+}
+
+async function createInvoiceFromOrder(payload: Record<string, unknown>) {
+  const orderId = typeof payload.orderId === "string" ? payload.orderId.trim() : "";
+  if (!orderId) throw new Error("orderId wajib diisi");
+
+  const orders = await supabaseGet(
+    `orders?select=source_id,order_number,total_amount,status,source,customer_name,customer_email,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+  ) as Array<Record<string, unknown>>;
+  const order = orders[0];
+  if (!order) throw new Error("Order tidak ditemukan");
+  const checkoutKey = typeof payload.idempotencyKey === "string" ? payload.idempotencyKey.trim() : "";
+  if (!checkoutKey || checkoutKey !== String(order.idempotency_key || "")) {
+    throw new Error("Checkout authorization tidak valid");
+  }
+  if (!["customer_self_service", "ordermieyamin_b2b"].includes(String(order.source || ""))) {
+    throw new Error("Order bukan order online yang dapat dibayar Mayar");
+  }
+  if (!["pending", "created"].includes(String(order.status || ""))) {
+    throw new Error("Order tidak berada pada status pending");
+  }
+
+  const existingGateway = order.payment_gateway && typeof order.payment_gateway === "object"
+    ? order.payment_gateway as Record<string, unknown>
+    : {};
+  const existingLink = typeof existingGateway.invoiceUrl === "string" && existingGateway.invoiceUrl.trim()
+    ? existingGateway.invoiceUrl.trim()
+    : typeof existingGateway.link === "string" && existingGateway.link.trim()
+      ? existingGateway.link.trim()
+      : "";
+  if (existingLink && existingGateway.invoiceId) {
+    return { statusCode: 200, messages: "success", data: { id: existingGateway.invoiceId, transactionId: existingGateway.transactionId, link: existingLink, reused: true } };
+  }
+
+  const itemRows = await supabaseGet(
+    `order_items?select=product_name,variant,quantity,price,status&order_source_id=eq.${encodeURIComponent(orderId)}&order=line_no.asc`,
+  ) as Array<Record<string, unknown>>;
+  const items = itemRows
+    .filter((item) => item.status !== "cancelled" && Number(item.quantity || 0) > 0)
+    .map((item) => ({
+      description: String(item.variant ? `${item.product_name || "Produk"} (${item.variant})` : item.product_name || "Produk"),
+      quantity: Number(item.quantity),
+      rate: Number(item.price || 0),
+    }));
+  if (!items.length) throw new Error("Order tidak memiliki item pembayaran");
+  const itemTotal = items.reduce((sum, item) => sum + item.quantity * item.rate, 0);
+  const orderTotal = Number(order.total_amount || 0);
+  if (!Number.isFinite(orderTotal) || orderTotal <= 0 || itemTotal > orderTotal + 0.01) {
+    throw new Error("Total order tidak cocok dengan item database");
+  }
+  const adjustment = Math.round((orderTotal - itemTotal) * 100) / 100;
+  if (adjustment > 0) {
+    items.push({ description: "Pajak, biaya layanan, diskon, atau ongkir", quantity: 1, rate: adjustment });
+  }
+
+  const requestedPaymentMethod = typeof payload.paymentMethod === "string"
+    ? payload.paymentMethod.trim().toLowerCase()
+    : "";
+  if (requestedPaymentMethod) {
+    const channels = await getPaymentChannels();
+    const activeMethods = new Set<string>();
+    for (const channel of Array.isArray(channels?.config) ? channels.config : []) {
+      if (channel?.status !== true) continue;
+      const code = String(channel.code || "").trim().toLowerCase();
+      const type = String(channel.type || "").trim().toLowerCase();
+      if (type === "qris" && code === "qris") activeMethods.add("qris");
+      if (type === "va" && ["bni", "bri", "mandiri", "cimb", "permata", "bjb", "bsi"].includes(code)) {
+        activeMethods.add(`va/${code}`);
+      }
+      if (type === "ewallet" && ["dana", "gopay", "linkaja", "shopeepay", "jenius"].includes(code)) {
+        activeMethods.add(`ewallet/${code}`);
+      }
+      if (type === "retail" && code === "alfamart") activeMethods.add("outlet/alfamart");
+    }
+    if (!activeMethods.has(requestedPaymentMethod)) {
+      throw new Error("Channel pembayaran Mayar sedang tidak aktif atau belum didukung");
+    }
+  }
+
+  const result = await createInvoice({
+    name: order.customer_name,
+    email: order.customer_email,
+    mobile: order.delivery_contact_phone || payload.mobile,
+    redirectUrl: payload.redirectUrl,
+    description: `Pembayaran order ${order.order_number || orderId}`,
+    expiredAt: payload.expiredAt,
+    items,
+    paymentMethod: payload.paymentMethod,
+    extraData: { orderId },
+  });
+  const invoiceData = result?.data && typeof result.data === "object" ? result.data as Record<string, unknown> : {};
+  const paymentGateway = {
+    provider: "mayar",
+    invoiceId: invoiceData.id || null,
+    transactionId: invoiceData.transactionId || null,
+    invoiceUrl: invoiceData.link || null,
+    status: "created",
+  };
+  await supabasePatch(`orders?source_id=eq.${encodeURIComponent(orderId)}`, {
+    payment_gateway: paymentGateway,
+    gateway_invoice_id: paymentGateway.invoiceId,
+    payment_receipt_kind: "gateway_pending",
+  });
+  return result;
+}
+
+async function getPaymentChannels() {
+  if (!MAYAR_API_KEY) throw new Error("MAYAR_API_KEY tidak dikonfigurasi");
+  const response = await fetchMayar(`${MAYAR_API_BASE}/payment-channels`, {
+    headers: { "Authorization": `Bearer ${MAYAR_API_KEY}` },
+  });
+  const result = await readJsonResponse(response);
+  const statusCode = Number((result as any)?.statusCode ?? response.status);
+  if (!response.ok || statusCode >= 400) throw new Error("Konfigurasi channel pembayaran Mayar tidak tersedia");
+  return (result as any)?.data || {};
+}
+
 async function createInvoice(payload: Record<string, unknown>) {
 	if (!MAYAR_API_KEY) {
 		throw new Error("MAYAR_API_KEY tidak dikonfigurasi");
@@ -117,6 +266,8 @@ async function createInvoice(payload: Record<string, unknown>) {
 		}),
 		extraData: normalizeExtraData(payload.extraData),
 	};
+	const paymentMethod = typeof payload.paymentMethod === "string" ? payload.paymentMethod.trim().toLowerCase() : "";
+	if (paymentMethod) body.paymentMethod = paymentMethod;
 
 	const resp = await fetchMayar(`${MAYAR_API_BASE}/invoices/create`, {
 		method: "POST",
@@ -190,6 +341,19 @@ Deno.serve(async (req) => {
 		const action = body.action as string | undefined;
 
 		switch (action) {
+			case "get-payment-channels": {
+				const channels = await getPaymentChannels();
+				return json({ success: true, statusCode: 200, messages: "success", data: { config: channels?.config || [] } });
+			}
+		case "create-invoice-from-order": {
+				const result = await createInvoiceFromOrder(body);
+				return json({
+					success: true,
+					statusCode: 200,
+					messages: "success",
+					data: result?.data || result,
+				});
+			}
 			case "create-invoice": {
 				const result = await createInvoice(body);
 				return json({
@@ -213,7 +377,7 @@ Deno.serve(async (req) => {
 				});
 			}
 			default:
-				return fail("UNKNOWN_ACTION", "Action tidak dikenali. Gunakan: create-invoice, get-invoice-detail", 404);
+				return fail("UNKNOWN_ACTION", "Action tidak dikenali. Gunakan: create-invoice-from-order, create-invoice, get-invoice-detail", 404);
 		}
 	} catch (error) {
 		console.error("mayar-proxy failed", error);

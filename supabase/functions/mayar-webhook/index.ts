@@ -205,9 +205,18 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
   const orderId = String(order.source_id || "");
   const transactionId = String(transaction.id || "");
   if (!orderId || !transactionId) return { updated: 0, transactionCreated: false };
+  const expectedInvoice = String(order.gateway_invoice_id || parseExtraData(order.payment_gateway)?.invoiceId || "");
+  if (expectedInvoice && invoiceId && expectedInvoice !== invoiceId) {
+    throw new Error("Order invoice mismatch");
+  }
+  const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
+  const orderAmount = Number(order.total_amount ?? NaN);
+  if (!Number.isFinite(providerAmount) || !Number.isFinite(orderAmount) || providerAmount <= 0 || Math.abs(providerAmount - orderAmount) > 0.01) {
+    throw new Error("Order payment amount mismatch");
+  }
   const paymentGateway = {
     provider: "mayar",
-    invoiceId: invoiceId || String(order.gateway_invoice_id || ""),
+    invoiceId: invoiceId || expectedInvoice,
     transactionId,
     status: "paid",
     paidAt: Number(transaction.updatedAt || transaction.createdAt || Date.now()),
@@ -241,7 +250,7 @@ async function reconcilePendingOrders() {
       && ["customer_self_service", "ordermieyamin_b2b"].includes(source)
       && gateway.provider === "mayar";
   });
-  const results = [];
+  const results: Array<Record<string, unknown>> = [];
   for (const order of mayarOrders) {
     const gateway = parseExtraData(order.payment_gateway);
     const transactionId = String(gateway.transactionId || "");

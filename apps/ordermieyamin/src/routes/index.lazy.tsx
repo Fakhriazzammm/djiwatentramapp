@@ -29,7 +29,7 @@ const SAVED_ORDERS_KEY = "ordermieyamin:saved-orders";
 const DRAFT_ORDER_KEY = "ordermieyamin:checkout-draft";
 const PENDING_PAYMENT_KEY = "ordermieyamin:pending-payment";
 
-type PendingPaymentReference = { orderId: string; invoiceId: string; link: string; expiresAt: number };
+type PendingPaymentReference = { orderId: string; invoiceId: string; link: string; expiresAt: number; idempotencyKey?: string };
 type SavedOrderReference = { orderId: string; createdAt: number };
 
 function readSavedOrders(): SavedOrderReference[] {
@@ -484,7 +484,7 @@ function OrderForm() {
     window.location.assign(payment.link);
   }
 
-  async function createPaymentInvoice(orderId: string) {
+  async function createPaymentInvoice(orderId: string, idempotencyKey: string) {
     const redirectUrl = `${window.location.origin}/?stage=tracking&orderId=${encodeURIComponent(String(orderId))}`;
     const existing = readPendingPayment();
     if (existing?.orderId === String(orderId) && existing.expiresAt > Date.now()) {
@@ -511,6 +511,9 @@ function OrderForm() {
     }
 
     const invoice = await createInvoice({
+		orderId: String(orderId),
+      idempotencyKey,
+      paymentMethod: "qris",
       name: name.trim(), mobile: normalizeMobile(phone), redirectUrl,
       email: email.trim() || undefined,
       description: productType === "noodle" ? `Order Mie Yamin Mentah ${kg} kg${repack ? " + repack 100 gram" : ""}` : `Order Mie Yamin Kemasan Siap Masak ${readyPackCount} pcs`,
@@ -523,7 +526,7 @@ function OrderForm() {
       ],
     });
     if (!invoice?.data?.link || !invoice?.data?.id) throw new Error("Invoice pembayaran belum tersedia.");
-    savePendingPayment({ orderId: String(orderId), invoiceId: String(invoice.data.id), link: invoice.data.link, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
+    savePendingPayment({ orderId: String(orderId), invoiceId: String(invoice.data.id), link: invoice.data.link, expiresAt: Date.now() + 24 * 60 * 60 * 1000, idempotencyKey });
     await attachInvoiceAndRedirect(String(orderId), invoice.data);
   }
 
@@ -590,6 +593,7 @@ function OrderForm() {
     setCheckoutError(null);
     setSubmitting(true);
     try {
+      const checkoutKey = checkoutIdempotencyKeyRef.current;
       const orderId = await createOrder({
         items: [
           ...(productType === "noodle" ? [{ productName: "Mie Yamin Mentah", variant: `${kg} kg`, quantity: kg, price: Number(mieYaminSettings.noodlePricePerKg), originalPrice: NORMAL_NOODLE_PRICE_PER_KG }] : [{ productName: "Mie Yamin Kemasan Siap Masak", variant: `${readyPackCount} pcs`, quantity: readyPackCount, price: Number(mieYaminSettings.readyPackPrice), originalPrice: Number(mieYaminSettings.readyPackPrice) }]),
@@ -619,7 +623,7 @@ function OrderForm() {
       });
       setPendingPaymentOrderId(String(orderId));
       checkoutIdempotencyKeyRef.current = null;
-      await createPaymentInvoice(String(orderId));
+      await createPaymentInvoice(String(orderId), checkoutKey);
     } catch (e) {
       const message = getCheckoutErrorMessage(e, "Checkout gagal. Coba lagi.");
       setCheckoutError(message);
@@ -637,7 +641,10 @@ function OrderForm() {
     setCheckoutError(null);
     setSubmitting(true);
     try {
-      await createPaymentInvoice(pendingPaymentOrderId);
+      const saved = readPendingPayment();
+      const idempotencyKey = String(saved?.idempotencyKey || "");
+      if (!idempotencyKey) throw new Error("Checkout authorization tidak ditemukan. Buat order baru.");
+      await createPaymentInvoice(pendingPaymentOrderId, idempotencyKey);
     } catch (e) {
       const message = getCheckoutErrorMessage(e, "Invoice belum berhasil dibuat. Coba lagi.");
       setCheckoutError(message);

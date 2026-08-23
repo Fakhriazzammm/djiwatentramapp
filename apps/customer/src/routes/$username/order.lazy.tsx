@@ -662,6 +662,9 @@ function OrderPage() {
 					| undefined;
 				try {
 					invoice = await createMayarInvoice({
+						orderId: String(orderId),
+						idempotencyKey: checkoutRequestKeyRef.current,
+						paymentMethod: "qris",
 						name: normalizedCustomerName,
 						email: customer?.email?.trim() || undefined,
 						mobile: customer?.phone?.trim() || "",

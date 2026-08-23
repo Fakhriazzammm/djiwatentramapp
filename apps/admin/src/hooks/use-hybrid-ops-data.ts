@@ -11,19 +11,11 @@ function useSupabaseValue<T>(
 }
 
 function resolveMayarConfig() {
-	const baseUrl =
-		(import.meta.env.VITE_MAYAR_BASE_URL as string | undefined) ||
-		(import.meta.env.VITE_MAYAR_API_BASE as string | undefined) ||
-		"https://api.mayar.id/hl/v1";
-	const apiKey = (import.meta.env.VITE_MAYAR_API_KEY as string | undefined) || "";
-	const missing: string[] = [];
-	if (!baseUrl) missing.push("MAYAR_BASE_URL");
-	if (!apiKey) missing.push("MAYAR_API_KEY");
-
+	// Mayar is intentionally server-side only; Admin/POS never receive the API key.
 	return {
-		configured: missing.length === 0,
-		missing,
-		baseUrl,
+		configured: false,
+		missing: ["SERVER_SIDE_MAYAR_PROXY"],
+		baseUrl: "",
 	};
 }
 

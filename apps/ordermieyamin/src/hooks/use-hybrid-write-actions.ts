@@ -5945,20 +5945,24 @@ export function useHybridProduceBaseRecipeBatch() {
 	);
 }
 
+export function useHybridMayarPaymentChannels() {
+	return useCallback(async () => {
+		const data = await invokeEdgeFunction<any>("mayar-proxy", { action: "get-payment-channels" });
+		return Array.isArray(data?.data?.config) ? data.data.config : [];
+	}, []);
+}
+
 export function useHybridMayarCreateInvoice() {
 	return useCallback(
 		async (args: any) => {
 			try {
 				const data = await invokeEdgeFunction<any>("mayar-proxy", {
-					action: "create-invoice",
-					name: args.name,
-					email: args.email,
-					mobile: args.mobile,
+					action: "create-invoice-from-order",
+					orderId: args.orderId,
+					idempotencyKey: args.idempotencyKey,
 					redirectUrl: args.redirectUrl,
-					description: args.description,
-					expiredAt: args.expiredAt,
-					extraData: args.extraData,
-					items: args.items,
+					paymentMethod: args.paymentMethod,
+					mobile: args.mobile,
 				}, { timeoutMs: 15_000 });
 				return {
 					statusCode: 200,
