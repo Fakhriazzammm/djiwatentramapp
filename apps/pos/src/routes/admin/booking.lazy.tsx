@@ -178,6 +178,7 @@ function AdminCalendar({
 	onNavigate,
 	onDayClick,
 	selectedDate,
+	onAddBooking,
 }: {
 	year: number;
 	month: number;
@@ -193,6 +194,7 @@ function AdminCalendar({
 	onNavigate: (y: number, m: number) => void;
 	onDayClick: (date: string) => void;
 	selectedDate: string | null;
+	onAddBooking: () => void;
 }) {
 	const daysInMonth = new Date(year, month + 1, 0).getDate();
 	const firstDay = new Date(year, month, 1).getDay();
@@ -218,9 +220,10 @@ function AdminCalendar({
 				>
 					<ChevronLeft className="h-4 w-4" />
 				</button>
-				<span className="font-bold text-foreground">
-					{MONTH_NAMES[month]} {year}
-				</span>
+				<div className="flex items-center gap-2">
+					<span className="font-bold text-foreground">{MONTH_NAMES[month]} {year}</span>
+					<button className="flex min-h-9 items-center gap-1 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-primary-foreground" onClick={onAddBooking} type="button"><Plus className="h-3 w-3" />Tambah</button>
+				</div>
 				<button
 					className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors"
 					onClick={nextMonth}
@@ -284,8 +287,7 @@ function AdminCalendar({
 												: "bg-primary/10 text-primary"
 										}`}
 									>
-										{info.bookedPeople}
-										{info.maxPeople > 0 ? `/${info.maxPeople}` : ""}p
+										{info.bookedPeople}{info.maxPeople > 0 ? `/${info.maxPeople}` : ""} tamu
 									</div>
 									<div
 										className={`rounded px-1 text-[11px] font-bold leading-tight ${
@@ -294,8 +296,7 @@ function AdminCalendar({
 												: "bg-purple-50 text-purple-600"
 										}`}
 									>
-										{info.bookedTables}
-										{info.maxTables > 0 ? `/${info.maxTables}` : ""}m
+										{info.bookedTables}{info.maxTables > 0 ? `/${info.maxTables}` : ""} meja
 									</div>
 								</div>
 							)}
@@ -938,6 +939,7 @@ function BookingSettingsPage() {
 							setCalMonth(m);
 						}}
 						selectedDate={selectedDate}
+						onAddBooking={() => setIsCreateDialogOpen(true)}
 						summary={summary ?? {}}
 						year={calYear}
 					/>
@@ -981,8 +983,9 @@ function BookingSettingsPage() {
 					)}
 
 					{!selectedDate && (
-						<div className="rounded-xl border border-border bg-muted/30 py-8 text-center text-muted-foreground text-sm">
-							Klik tanggal pada kalender untuk melihat detail booking
+						<div className="rounded-2xl border border-border bg-card p-5">
+							<div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-foreground">Ringkasan booking</p><p className="mt-1 text-xs text-muted-foreground">Pilih tanggal untuk melihat detail operasional.</p></div><Button className="min-h-11 shrink-0 rounded-xl" onClick={() => setIsCreateDialogOpen(true)} size="sm" type="button"><Plus className="mr-1.5 h-4 w-4" />Tambah</Button></div>
+							<div className="mt-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Booking</p><p className="mt-1 text-lg font-black">{allOrders?.length ?? 0}</p></div><div className="rounded-xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Tamu</p><p className="mt-1 text-lg font-black">{(allOrders ?? []).reduce((sum: number, order: any) => sum + Number(order.guestCount ?? 0), 0)}</p></div><div className="rounded-xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Lunas</p><p className="mt-1 text-lg font-black">{(allOrders ?? []).filter((order: any) => order.paymentStatus === "paid").length}</p></div></div>
 						</div>
 					)}
 				</div>
