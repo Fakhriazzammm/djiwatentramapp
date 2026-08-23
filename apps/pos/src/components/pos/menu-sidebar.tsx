@@ -603,7 +603,7 @@ export function MenuSidebar({
 												onClick={() => setTransactionPage("open_bill")}
 												className={cn("min-w-0 truncate rounded-xl px-2 py-3 text-center text-[12px] font-bold transition-colors sm:text-sm", transactionPage === "open_bill" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}
 											>
-												Open Bill
+												Open Bill / Bayar di Kasir (Djiwa App)
 											</button>
 										</div>
 										<div className="mt-4 min-w-0">
@@ -1402,7 +1402,7 @@ function ParkirTab({
 		<div className="space-y-3 pt-1">
 			<div className="flex items-end justify-between gap-3">
 				<div className="min-w-0">
-					<h3 className="text-lg font-black tracking-tight text-foreground">Open Bill</h3>
+					<h3 className="text-lg font-black tracking-tight text-foreground">Open Bill / Bayar di Kasir (Djiwa App)</h3>
 					<p className="mt-0.5 text-xs text-muted-foreground">Pesanan tersimpan dan belum dibayar.</p>
 				</div>
 				{orders && orders.length > 0 ? <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-700">{orders.length} aktif</span> : null}
