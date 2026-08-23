@@ -43,6 +43,7 @@ function MemberHomePage() {
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 	const [showProfileCompletion, setShowProfileCompletion] = useState(false);
+	const [confirmedProfileSourceId, setConfirmedProfileSourceId] = useState<string | null>(null);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
@@ -106,11 +107,13 @@ function MemberHomePage() {
 
 	useEffect(() => {
 		if (!customer || !isAuthenticated) {
+			setConfirmedProfileSourceId(null);
 			setShowProfileCompletion(false);
 			return;
 		}
-		setShowProfileCompletion(getMissingCustomerFields(customer).length > 0);
-	}, [customer, isAuthenticated]);
+		const isComplete = confirmedProfileSourceId === customer.sourceId || getMissingCustomerFields(customer).length === 0;
+		setShowProfileCompletion(!isComplete);
+	}, [customer, isAuthenticated, confirmedProfileSourceId]);
 
 	const dismissMemberOnboarding = () => {
 		if (customer) {
@@ -132,8 +135,9 @@ function MemberHomePage() {
 			name: customer.name ?? "",
 			phone: phone.trim(),
 		});
-		await refreshCustomer();
+		setConfirmedProfileSourceId(customer.sourceId);
 		setShowProfileCompletion(false);
+		await refreshCustomer();
 	};
 
 	const authModal = (
@@ -260,6 +264,7 @@ function MemberHomePage() {
 
 	const displayName = customer.name || customer.username || "Member";
 	const missingContactFields = getMissingCustomerFields(customer);
+	const isContactComplete = confirmedProfileSourceId === customer.sourceId || missingContactFields.length === 0;
 
 	return (
 		<>
@@ -294,7 +299,7 @@ function MemberHomePage() {
 					</div>
 				</header>
 				<CustomerLiveShiftIndicator />
-				{missingContactFields.length > 0 ? (
+				{!isContactComplete && missingContactFields.length > 0 ? (
 					<div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert">
 						<div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white shadow-sm active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div>
 					</div>
