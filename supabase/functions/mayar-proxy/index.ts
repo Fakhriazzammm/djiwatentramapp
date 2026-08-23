@@ -9,6 +9,7 @@ const corsHeaders = {
 const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY");
 const MAYAR_DEFAULT_EMAIL = Deno.env.get("MAYAR_DEFAULT_EMAIL") || "no-reply@restaurant.local";
+const MAYAR_DEFAULT_MOBILE = Deno.env.get("MAYAR_DEFAULT_MOBILE") || "085000000000";
 const MAYAR_REQUEST_TIMEOUT_MS = 12_000;
 
 async function fetchMayar(input: string, init: RequestInit = {}) {
@@ -102,7 +103,7 @@ async function createInvoice(payload: Record<string, unknown>) {
 	const body: Record<string, unknown> = {
 		name: normalizeCustomerName(payload.name),
 		email: normalizeCustomerEmail(payload.email),
-		mobile: normalizeMobile(payload.mobile),
+		mobile: normalizeMobile(payload.mobile || MAYAR_DEFAULT_MOBILE),
 		redirectUrl: (payload.redirectUrl as string)?.trim() || "https://zantara.myr.id",
 		description: payload.description || "",
 		expiredAt: payload.expiredAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),

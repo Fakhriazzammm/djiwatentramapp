@@ -49,7 +49,7 @@ async function createTopup(payload: Json) {
   if(insertError) throw insertError;
   const origin=String(payload.origin||""); const redirectUrl=origin?`${origin.replace(/\/$/,"")}/saldo`:undefined;
   const invoiceResponse=await fetch(`${supabaseUrl}/functions/v1/mayar-proxy`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${serviceRoleKey}`,apikey:serviceRoleKey},body:JSON.stringify({action:"create-invoice",name:String((await ownedCustomer(sourceId,email)).name||"Customer"),email,mobile:customer.phone||"",redirectUrl,description:`Top up saldo customer`,expiredAt:new Date(Date.now()+24*60*60*1000).toISOString(),extraData:{walletTopupId:topupId,customerId:sourceId},items:[{quantity:1,rate:amount,description:`Top up saldo Rp${amount.toLocaleString("id-ID")}`} ]})});
-  const invoice=await invoiceResponse.json().catch(()=>({})); if(!invoiceResponse.ok||!invoice?.data?.id) throw new Error(invoice?.messages||"Gagal membuat invoice top up");
+  const invoice: any=await invoiceResponse.json().catch(()=>({})); if(!invoiceResponse.ok||!invoice?.data?.id) { const detail=(invoice?.error && typeof invoice.error === "object" ? invoice.error.message : invoice?.messages || invoice?.message); throw new Error(typeof detail === "string" && detail.trim() ? detail : "Gagal membuat invoice top up"); }
   await admin.schema("pos").from("customer_wallet_topups").update({invoice_id:invoice.data.id,transaction_id:invoice.data.transactionId||null}).eq("topup_id",topupId);
   return {topup_id:topupId,invoice_id:invoice.data.id,invoice_url:invoice.data.link,status:"pending"};
 }
