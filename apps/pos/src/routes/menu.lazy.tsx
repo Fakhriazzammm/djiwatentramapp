@@ -476,7 +476,8 @@ function MenuPage() {
 			toast.success("Pembayaran kasir berhasil dicatat");
 		} catch (error) {
 			console.error("[cashier-paid] failed", error);
-			toast.error("Gagal mencatat pembayaran kasir");
+			const message = error instanceof Error ? error.message : "Gagal mencatat pembayaran kasir";
+			toast.error(message);
 		} finally {
 			cashierPaidInFlightRef.current.delete(orderId);
 		}

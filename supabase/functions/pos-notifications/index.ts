@@ -146,6 +146,19 @@ async function syncRecentOrders() {
       message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar secara TUNAI" : payment === "wallet" ? "Pesanan DjiwaApp Sudah Dibayar dengan DJIWA PAY" : "Pesanan DjiwaApp Sudah Lunas";
     }
     if (!type || !order._id) continue;
+
+    // Satu order tidak boleh menampilkan state pembayaran lama dan baru
+    // bersamaan. Setelah order settled, nonaktifkan notifikasi pending lama;
+    // dedupe_key tetap menjaga agar event paid hanya dibuat sekali.
+    if (status === "paid" || status === "completed") {
+      await dbWrite(
+        "pos_notifications",
+        "PATCH",
+        { is_active: false },
+        `?order_source_id=eq.${encodeURIComponent(String(order._id))}&notification_type=in.%28order_cashier_pending,order_mayar_pending%29&is_active=eq.true`,
+      );
+    }
+
     const result = await dbWrite("pos_notifications", "POST", {
       notification_type: type,
       priority: type === "order_cashier_pending" ? "high" : "normal",
@@ -226,7 +239,13 @@ async function listNotifications(user: UserContext) {
     if (item.target_user_id && item.target_user_id !== user.id) return false;
     if (item.target_role && item.target_role.toLowerCase() !== user.role) return false;
     if (item.target_branch_id && item.target_branch_id !== user.branchId) return false;
-    if (item.order_source_id && orderStatuses.get(String(item.order_source_id)) === "cancelled") return false;
+    const orderStatus = item.order_source_id
+      ? orderStatuses.get(String(item.order_source_id))
+      : undefined;
+    if (orderStatus === "cancelled") return false;
+    // Pending payment notifications are stale as soon as the order is paid.
+    if ((item.notification_type === "order_cashier_pending" || item.notification_type === "order_mayar_pending")
+      && (orderStatus === "paid" || orderStatus === "completed")) return false;
     return true;
   }).map((item: any) => ({
     ...item,

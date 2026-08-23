@@ -1534,7 +1534,8 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 			toast.success(`Pesanan #${order.orderNumber} ditandai sudah dibayar`);
 		} catch (error) {
 			console.error("[history-cashier-paid] failed", error);
-			toast.error("Gagal menandai pesanan sudah dibayar");
+			const message = error instanceof Error ? error.message : "Gagal menandai pesanan sudah dibayar";
+			toast.error(message);
 		}
 	}, [updateOrder]);
 
