@@ -726,6 +726,7 @@ function OrderDetailView({
 										<SelectItem value="cash">Tunai</SelectItem>
 										<SelectItem value="qris">QRIS</SelectItem>
 										<SelectItem value="transfer">Transfer Bank</SelectItem>
+										<SelectItem value="wallet">DJIWA PAY</SelectItem>
 									</SelectContent>
 								</Select>
 							) : (
