@@ -201,11 +201,6 @@ function ProfilePage() {
 						value={currency(customer.walletBalance ?? 0)}
 					/>
 					<ProfileStat
-						icon={<Star className="h-4 w-4 text-amber-500" />}
-						label="Djiwa Pay"
-						value={currency(customer.walletBalance ?? 0)}
-					/>
-					<ProfileStat
 						icon={<User className="h-4 w-4 text-blue-500" />}
 						label="Pesanan"
 						value={String(customer.totalOrders ?? 0)}

@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, Star, Package, Wallet } from "lucide-react";
+import { LogOut, Package, Wallet } from "lucide-react";
 import { currency } from "./types";
 
 type CustomerData = {
@@ -92,7 +92,7 @@ export function ProfileCard({
       </div>
 
       {/* Stats */}
-      <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+      <div className="mt-2.5 grid grid-cols-2 gap-1.5">
         <Stat
           icon={<Wallet className="h-3 w-3 text-emerald-500" />}
           label="Djiwa Pay"
@@ -102,11 +102,6 @@ export function ProfileCard({
           icon={<Package className="h-3 w-3 text-blue-500" />}
           label="Pesanan"
           value={String(customer.totalOrders ?? customer.total_orders ?? 0)}
-        />
-        <Stat
-          icon={<Star className="h-3 w-3 text-amber-500" />}
-          label="Djiwa Pay"
-          value={currency(customer.walletBalance ?? 0)}
         />
       </div>
     </div>
