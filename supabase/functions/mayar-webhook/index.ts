@@ -169,6 +169,23 @@ async function settleWalletTopup(topupId: string, transaction: Record<string, un
   return await response.json();
 }
 
+async function reconcilePendingWalletTopups() {
+  const response = await fetchWithTimeout(
+    `${SUPABASE_URL}/rest/v1/customer_wallet_topups?select=topup_id,transaction_id,invoice_id,status&status=eq.pending&transaction_id=not.is.null&order=created_at.asc&limit=100`,
+    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
+  );
+  if (!response.ok) throw new Error(`Pending wallet topup lookup failed (${response.status})`);
+  const topups = await response.json() as Array<Record<string, unknown>>;
+  const settled: Array<Record<string, unknown>> = [];
+  for (const topup of topups) {
+    const transactionId = String(topup.transaction_id || "");
+    const transaction = await verifyTransaction(transactionId);
+    if (!transaction) continue;
+    const result = await settleWalletTopup(String(topup.topup_id || ""), transaction);
+    settled.push({ topupId: topup.topup_id, ...((result && typeof result === "object") ? result : {}) });
+  }
+  return { scanned: topups.length, settled };
+}
 async function settleOrder(order: Record<string, unknown>, transaction: Record<string, unknown>, invoiceId: string) {
   const orderId = String(order.source_id || "");
   const transactionId = String(transaction.id || "");
@@ -230,7 +247,7 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const event = String(payload?.event?.received || payload?.action || "");
     if (event === "reconcile") {
-      return json({ ok: true, ...(await reconcilePendingOrders()) });
+      return json({ ok: true, wallet: await reconcilePendingWalletTopups(), orders: await reconcilePendingOrders() });
     }
     const data = payload?.data || {};
     if (event !== "payment.received") {
