@@ -311,7 +311,7 @@ function OrderPage() {
 		if (search.table) {
 			params.table = search.table;
 		}
-		navigate({ to: "/$username/order", params: { username }, search: params, replace: true });
+		navigate({ to: "/$username/order", params: { username }, search: params as any, replace: true });
 	}, [step]);
 
 	// Sync: table from URL on mount
