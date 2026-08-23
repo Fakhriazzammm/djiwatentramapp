@@ -130,6 +130,7 @@ function OrderPage() {
 		addToCart,
 		updateCartQuantity,
 	} = useOrderContext();
+	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
@@ -541,6 +542,7 @@ function OrderPage() {
 			return;
 		}
 		setIsSubmitting(true);
+		setCheckoutError(null);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
 			const normalizedCustomerName = customerName.trim();
@@ -598,6 +600,8 @@ function OrderPage() {
 					paymentReceiptKind: "wallet_pending",
 					isOpenBill: true,
 				});
+				let walletHoldId: string | null = null;
+				let walletCaptured = false;
 				try {
 					const holdResponse = await invokeEdgeFunction<{ result?: { ok?: boolean; hold_id?: string; available_balance?: number; required?: number } }>("customer-wallet", {
 						action: "hold",
@@ -612,6 +616,7 @@ function OrderPage() {
 						const available = Number(hold?.available_balance ?? 0);
 						throw new Error(`Saldo Djiwa Pay tidak cukup. Saldo tersedia ${currency(available)}, total order ${currency(total)}.`);
 					}
+					walletHoldId = hold.hold_id;
 					await updateOrderStatus({ id: orderId, status: "paid" });
 					await invokeEdgeFunction("customer-wallet", {
 						action: "capture",
@@ -620,9 +625,20 @@ function OrderPage() {
 						holdId: hold.hold_id,
 						idempotencyKey: `${checkoutRequestKeyRef.current}:capture`,
 					});
+					walletCaptured = true;
 					if (!isAuthenticated) rememberGuestOrder(String(orderId));
 					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, dessertLater, cartSnapshot: cart });
 				} catch (error) {
+					if (walletHoldId && !walletCaptured) {
+						await invokeEdgeFunction("customer-wallet", {
+							action: "release",
+							sourceId: customer.sourceId,
+							email: customer.email,
+							holdId: walletHoldId,
+							idempotencyKey: `${checkoutRequestKeyRef.current}:release`,
+							reason: "Checkout Djiwa Pay gagal, saldo dikembalikan",
+						}).catch(() => undefined);
+					}
 					await updateOrderStatus({ id: orderId, status: "cancelled" }).catch(() => undefined);
 					throw error;
 				}
@@ -722,7 +738,9 @@ function OrderPage() {
 			checkoutRequestKeyRef.current = null;
 			setStep("receipt");
 		} catch (error) {
-			toast.error((error as Error).message || "Checkout gagal");
+			const message = (error as Error).message || "Checkout gagal";
+			setCheckoutError(message);
+			toast.error(message);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -893,7 +911,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }) }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
