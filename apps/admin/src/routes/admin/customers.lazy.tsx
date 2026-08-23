@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
 import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -72,6 +73,8 @@ function CustomerAvatar({ customer }: { customer: Customer }) {
 
 function AdminCustomers() {
 	const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
+	const [selectedCustomerOrders, setSelectedCustomerOrders] = useState<any[]>([]);
+	const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
@@ -83,55 +86,35 @@ function AdminCustomers() {
 	const [confirmDeleteCustomers, setConfirmDeleteCustomers] = useState<Customer[] | null>(null);
 	const [deleting, setDeleting] = useState(false);
 
+	const liveCustomers = useSupabaseLiveValue<Customer[]>(
+		"admin-customers",
+		async () => {
+			const { data, error } = await createClient().from("pos_customers_view").select("*").order("total_spent", { ascending: false });
+			if (error) throw error;
+			return (data as Customer[]) || [];
+		},
+		[],
+		{ tables: ["customers", "customer_wallets", "orders", "order_items"] }
+	);
+
 	useEffect(() => {
+		if (liveCustomers !== undefined) setCustomers(liveCustomers ?? []);
+	}, [liveCustomers]);
+
+	useEffect(() => {
+		if (!detailCustomer?.source_id) { setSelectedCustomerOrders([]); return; }
 		let active = true;
-		const supabase = createClient();
-		const customersQuery = supabase
-			.from("pos_customers_view")
-			.select("*")
-			.order("total_spent", { ascending: false });
-		const ordersQuery = supabase
-			.from("pos_orders")
-			.select("customerSourceId,status,totalAmount")
-			.in("status", ["paid", "completed"])
-			.not("customerSourceId", "is", null);
-
-		Promise.all([customersQuery, ordersQuery]).then(([customersResult, ordersResult]) => {
-			if (!active) return;
-			if (customersResult.error) {
-				console.warn("[customers] customer fetch error:", customersResult.error);
-				setCustomers(null as any);
-				return;
-			}
-
-			const spendingByCustomer = new Map<string, { totalSpent: number; totalOrders: number }>();
-			for (const order of (ordersResult.data as CustomerOrderSummary[] | null) || []) {
-				if (!order.customerSourceId) continue;
-				const current = spendingByCustomer.get(order.customerSourceId) || { totalSpent: 0, totalOrders: 0 };
-				current.totalSpent += Number(order.totalAmount) || 0;
-				current.totalOrders += 1;
-				spendingByCustomer.set(order.customerSourceId, current);
-			}
-
-			setCustomers(
-				((customersResult.data as Customer[]) || []).map((customer) => {
-					const computed = spendingByCustomer.get(customer.source_id);
-					if (!computed) return customer;
-					return {
-						...customer,
-						total_spent: Math.max(Number(customer.total_spent) || 0, computed.totalSpent),
-						total_orders: Math.max(Number(customer.total_orders) || 0, computed.totalOrders),
-					};
-				}),
-			);
-		}).catch((error) => {
-			if (!active) return;
-			console.warn("[customers] order aggregation error:", error);
-		});
-		return () => {
-			active = false;
-		};
-	}, []);
+		setCustomerOrdersLoading(true);
+		createClient().from("pos_orders").select("*").eq("customerSourceId", detailCustomer.source_id).order("createdAt", { ascending: false }).limit(50)
+			.then(({ data, error }) => {
+				if (!active) return;
+				if (error) { console.warn("[customers] order detail error:", error); setSelectedCustomerOrders([]); return; }
+				setSelectedCustomerOrders(data || []);
+			})
+			.catch((error) => { if (active) { console.warn("[customers] order detail request failed:", error); setSelectedCustomerOrders([]); } })
+			.finally(() => { if (active) setCustomerOrdersLoading(false); });
+		return () => { active = false; };
+	}, [detailCustomer?.source_id]);
 
 	const filteredCustomers = customers?.filter((c) => {
 		const q = searchQuery.toLowerCase();
@@ -397,7 +380,8 @@ function AdminCustomers() {
 										<td className="px-2.5 py-2 align-middle text-muted-foreground whitespace-nowrap">
 											{c.phone || "-"}
 										</td>
-										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
+										<td className="px-2.5 py-2 text-right align-middle tabular-nums font-semibold text-emerald-700">
+											{formatRupiah(c.wallet_balance || 0)}
 										</td>
 										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
 											{c.total_orders}
@@ -436,7 +420,7 @@ function AdminCustomers() {
 						</div>
 						<div className="mt-4 grid gap-2 text-sm"><div className="flex justify-between gap-4 border-b border-border pb-2"><span className="text-muted-foreground">Bergabung</span><span className="font-semibold">{formatDate(detailCustomer.created_at, true)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Order terakhir</span><span className="font-semibold">{formatDate(detailCustomer.last_order_at, true)}</span></div></div>
 						<div className="mt-4 rounded-xl border border-border bg-muted/20 p-3"><p className="text-xs font-black">Adjustment Djiwa Pay admin</p><div className="mt-2 grid grid-cols-2 gap-2"><input type="number" min="1" value={walletAdjustmentAmount} onChange={(event) => setWalletAdjustmentAmount(event.target.value)} placeholder="Nominal" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /><input value={walletAdjustmentNote} onChange={(event) => setWalletAdjustmentNote(event.target.value)} placeholder="Alasan wajib" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("credit")} className="h-10 rounded-lg bg-emerald-600 text-xs font-black text-white disabled:opacity-50">Tambah Saldo</button><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("debit")} className="h-10 rounded-lg bg-rose-600 text-xs font-black text-white disabled:opacity-50">Kurangi Saldo</button></div></div>
-						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat Djiwa Pay</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi Djiwa Pay.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
+						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat pembelian</p>{customerOrdersLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat riwayat order...</p> : selectedCustomerOrders.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada order yang terhubung.</p> : <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">{selectedCustomerOrders.map((order: any) => <div key={order._id} className="rounded-lg bg-muted/30 p-2 text-[11px]"><div className="flex justify-between gap-2"><span className="font-bold">#{order.orderNumber || "-"}</span><span className="font-bold">{formatRupiah(Number(order.totalAmount || 0))}</span></div><div className="mt-1 text-muted-foreground">{order.status || "-"} · {formatDate(order.createdAt ? new Date(Number(order.createdAt)).toISOString() : null, true)}</div>{Array.isArray(order.items) && order.items.length > 0 ? <div className="mt-1 text-muted-foreground">{order.items.map((item: any) => `${item.quantity || 0}× ${item.productName || item.name || "Item"}`).join(", ")}</div> : null}</div>)}</div>}</div><div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat Djiwa Pay</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi Djiwa Pay.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
 					</div>
 				</div>
 			) : null}
