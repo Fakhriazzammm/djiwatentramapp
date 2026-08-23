@@ -1580,9 +1580,11 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 	const filteredOrders = useMemo(() => {
 		if (!orders) return [];
 
-		// Kasir POS adalah sumber utama transaksi; jangan hilangkan order kasir
-		// hanya karena shift aktif belum ter-resolve di client.
-		let filtered = [...orders].filter((order: any) => order.source === "pos" || order.source == null);
+		// Riwayat operasional harus mencakup order kasir dan order customer/DjiwaApp
+		// yang sudah tersimpan di pos.orders. Filter shift di bawah tetap menjadi gate.
+		let filtered = [...orders].filter((order: any) =>
+			order.source === "pos" || order.source === "customer_self_service" || order.source == null
+		);
 		const now = new Date();
 		const todayStart = new Date(
 			now.getFullYear(),
@@ -1757,6 +1759,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 						const promoLabels = getOrderPromotionLabel(order, allDiscounts);
 						const delivered = getIsDelivered(order._id, !!order.is_delivered);
 						const isCashierPending = order.status === "pending" && ["cash", "cashier", "tunai"].includes(String(order.paymentMethod ?? "").toLowerCase());
+						const isCustomerOrder = order.source === "customer_self_service";
 						const displayStatus = cashierPaidIds.has(String(order._id)) ? "paid" : order.status;
 						const orderTypeLabel =
 							order.orderType === "dine_in" ? "Makan di Tempat"
@@ -1883,7 +1886,10 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 									</div>
 									{/* RIGHT COLUMN: 4 tombol vertikal */}
 									<div className="flex-[1] flex flex-col gap-1.5 justify-center items-stretch px-1">
-										{/* 1. Payment confirmation */}
+									{isCustomerOrder && (
+										<div className="mb-0.5 rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-center text-[9px] font-bold text-blue-700">DjiwaApp</div>
+									)}
+									{/* 1. Payment confirmation */}
 										{isCashierPending && !cashierPaidIds.has(String(order._id)) && (
 											<button type="button" onClick={(event) => { event.stopPropagation(); void markCashierPaid(order); }} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100">
 												<CheckCircle className="h-3.5 w-3.5" /> Sudah Dibayar
