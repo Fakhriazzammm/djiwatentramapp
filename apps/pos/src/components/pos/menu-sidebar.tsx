@@ -2859,10 +2859,22 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 	return (
 		<div className="space-y-2 pt-1">
 			<div className="space-y-0.5 text-center">
-				<h3 className="font-bold text-sm tracking-tight">Manajemen Shift</h3>
+				<h3 className="font-black text-base tracking-tight">Buka Shift</h3>
 				<p className="text-muted-foreground text-[10px] font-medium">
-					Pencatatan arus kas operasional harian
+					Siapkan data shift sebelum kasir mulai beroperasi
 				</p>
+			</div>
+
+			<div className="grid grid-cols-4 gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 text-center">
+				{["Data Shift", "Review", "Checklist", "Selesai"].map((step, index) => (
+					<div key={step} className={`rounded-lg px-1 py-2 text-[9px] font-black leading-tight ${index === 0 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
+						<span className="block text-[10px]">{index + 1}</span>{step}
+					</div>
+				))}
+			</div>
+
+			<div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+				Lengkapi kasir, shift, tim, dan modal awal. Setelah itu Anda akan meninjau data sebelum checklist online food.
 			</div>
 
 			<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
@@ -3043,7 +3055,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						<div className="sticky bottom-0 z-30 -mx-1 mt-3 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 							<Button type="submit" disabled={isSubmitting} className="h-11 w-full bg-primary font-black uppercase tracking-widest text-[11px] shadow-lg hover:bg-primary/90">
 								{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SquarePlay className="mr-2 h-4 w-4" />}
-								{isSubmitting ? "Menyiapkan..." : "Mulai Shift"}
+								{isSubmitting ? "Menyiapkan..." : "Lanjut ke Review"}
 							</Button>
 						</div>
 					</>
@@ -3224,7 +3236,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
 							<CreditCard className="h-4 w-4 text-primary" />
-							Checklist Online Food
+							Langkah 3 · Checklist Online Food
 						</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-2 text-xs">
@@ -3271,7 +3283,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
 							<Wallet className="h-4 w-4 text-primary" />
-							Konfirmasi Buka Kasir
+							Langkah 2 · Review Buka Shift
 						</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-3 text-xs">
