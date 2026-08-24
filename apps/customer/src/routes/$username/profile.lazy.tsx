@@ -164,6 +164,20 @@ function ProfilePage() {
 							label="Nama"
 							value={customer.name || "—"}
 						/>
+						<InfoRow
+							icon={<User className="h-3.5 w-3.5 text-muted-foreground" />}
+							label="Nomor WhatsApp"
+							value={customer.phone || "Belum diisi"}
+						/>
+						<div className="my-1 border-t border-border/70" />
+						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Nama panggilan" value={customer.nickname || "Belum diisi"} />
+						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Tanggal lahir" value={customer.birthDate || "Belum diisi"} />
+						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Jenis kelamin" value={customer.gender === "female" ? "Perempuan" : customer.gender === "male" ? "Laki-laki" : customer.gender === "other" ? "Lainnya" : "Belum diisi"} />
+						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Alamat" value={customer.address || "Belum diisi"} />
+						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Kota/Kabupaten" value={customer.city || "Belum diisi"} />
+						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Provinsi" value={customer.province || "Belum diisi"} />
+						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Kode pos" value={customer.postalCode || "Belum diisi"} />
+						<InfoRow icon={<Star className="h-3.5 w-3.5 text-muted-foreground" />} label="Informasi promo" value={customer.marketingConsent ? "Diaktifkan" : "Tidak diaktifkan"} />
 						{isEditing ? (
 							<div className="pt-1.5 space-y-2">
 								<div>
