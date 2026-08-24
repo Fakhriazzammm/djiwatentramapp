@@ -2393,7 +2393,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 	const calculateBreakdownTotal = () => calculateCashBreakdownTotal(breakdown);
 	const expectedPaymentBreakdown = useMemo(() => calculateShiftPaymentBreakdown(
-		(todayOrders ?? []).filter((order: any) => Number(order.createdAt ?? 0) >= Number(shiftStatus?.latestMulai ?? 0))
+		(todayOrders ?? []).filter((order: any) => Number(order.createdAt ?? order._creationTime ?? 0) >= Number(shiftStatus?.latestMulai ?? 0))
 	), [todayOrders, shiftStatus?.latestMulai]);
 	const handlePaymentActualChange = (key: keyof ShiftPaymentBreakdown, value: string) => {
 		setPaymentActual((previous) => ({ ...previous, [key]: value === "" ? null : Math.max(0, Number(value) || 0) }));
