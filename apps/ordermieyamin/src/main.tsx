@@ -8,7 +8,10 @@ import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
+import { installNumberInputBehavior } from "@yumipos/web-shared";
 
+
+installNumberInputBehavior();
 const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {

@@ -5,14 +5,19 @@ import { BOOKING_STEPS, type BookingOption, type BookingStep } from "./lib/booki
 import { currency, formatDate, todayIso } from "./lib/booking-formatters";
 import { type BookingCustomField, type BookingDraft, type BookingResult, type Capacity, type Category, type Product, type BookingSettings, createBooking, createBookingPayment, loadBookingData, lookupBooking } from "./lib/client";
 import { validateCustomer, type CustomerForm } from "./lib/booking-validation";
+import { EMPTY_CUSTOMER, normalizeBookingDraft, type BookingCart, type BookingDraftState, type BookingScreen } from "./lib/booking-state";
 import { tableCount as sharedTableCount } from "@yumipos/web-shared/booking/capacity";
 import "./index.css";
+import { OwnerFooter } from "@yumipos/web-shared";
+import { installNumberInputBehavior } from "@yumipos/web-shared";
 
-type Screen = "landing" | BookingStep | "success" | "status";
-type Cart = Record<string, number>;
-type DraftState = { bookingType: string; eventType: string; eventTypeOther: string; selectedDate: string; arrivalTime: string; guests: number; cart: Cart; customer: CustomerForm; customAnswers: Record<string, unknown> };
 
-const emptyCustomer: CustomerForm = { name: "", phone: "", email: "", notes: "" };
+installNumberInputBehavior();
+type Screen = BookingScreen;
+type Cart = BookingCart;
+type DraftState = BookingDraftState;
+
+const emptyCustomer = EMPTY_CUSTOMER;
 const DRAFT_STORAGE_KEY = "booking-draft-v2";
 
 function go(path: string) { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); }
@@ -30,10 +35,9 @@ function readScreen(): Screen {
 }
 function loadDraft(): DraftState {
   try {
-    const parsed = JSON.parse(sessionStorage.getItem(DRAFT_STORAGE_KEY) || "null");
-    if (parsed && typeof parsed === "object") return { bookingType: String(parsed.bookingType || ""), eventType: String(parsed.eventType || ""), eventTypeOther: String(parsed.eventTypeOther || ""), selectedDate: String(parsed.selectedDate || ""), arrivalTime: String(parsed.arrivalTime || ""), guests: Math.max(1, Number(parsed.guests || 2)), cart: parsed.cart && typeof parsed.cart === "object" ? parsed.cart : {}, customer: { ...emptyCustomer, ...(parsed.customer || {}) }, customAnswers: parsed.customAnswers && typeof parsed.customAnswers === "object" ? parsed.customAnswers : {} };
+    return normalizeBookingDraft(JSON.parse(sessionStorage.getItem(DRAFT_STORAGE_KEY) || "null"));
   } catch { /* reset malformed draft */ }
-  return { bookingType: "", eventType: "", eventTypeOther: "", selectedDate: "", arrivalTime: "", guests: 2, cart: {}, customer: emptyCustomer, customAnswers: {} };
+  return normalizeBookingDraft(null);
 }
 
 export default function App() {
@@ -113,7 +117,7 @@ export default function App() {
 function Shell({ settings, children, onBack }: { settings?: BookingSettings | null; children: React.ReactNode; onBack?: () => void }) {
   const configuredAccent = settings?.themeColor?.trim().toLowerCase();
   const accent = configuredAccent && configuredAccent !== "#000000" && /^#[0-9a-f]{6}$/i.test(configuredAccent) ? configuredAccent : "#1a5dc6";
-  return <div className="app-shell" style={{ "--booking-accent": accent } as React.CSSProperties}><header className="topbar"><div className="brand">{settings?.logoUrl ? <img src={settings.logoUrl} alt="" className="brand-logo" /> : <div className="brand-mark"><CalendarDays size={19} /></div>}<div><strong>{settings?.title || "Booking Djiwa Tentram"}</strong><span>Djiwa Tentram</span></div></div>{onBack && <button className="icon-button" aria-label="Kembali" onClick={onBack}><ArrowLeft size={20} /></button>}</header><main>{children}</main></div>;
+  return <div className="app-shell" style={{ "--booking-accent": accent } as React.CSSProperties}><header className="topbar"><div className="brand">{settings?.logoUrl ? <img src={settings.logoUrl} alt="" className="brand-logo" /> : <div className="brand-mark"><CalendarDays size={19} /></div>}<div><strong>{settings?.title || "Booking Djiwa Tentram"}</strong><span>Djiwa Tentram</span></div></div>{onBack && <button className="icon-button" aria-label="Kembali" onClick={onBack}><ArrowLeft size={20} /></button>}</header><main>{children}</main><OwnerFooter className="booking-owner-footer" /></div>;
 }
 function Landing({ settings, loading, error, retry, onStart, onStatus }: { settings?: BookingSettings | null; loading: boolean; error: string | null; retry: () => void; onStart: () => void; onStatus: () => void }) { const inactive = settings != null && !settings.isActive; return <section className="landing"><div className="hero"><div className="eyebrow"><Clock3 size={15} /> Booking langsung dari sumber resmi</div><h1>Rencanakan acaramu,<br /><em>tanpa ribet.</em></h1><p>{settings?.description || "Pilih kebutuhan booking, tanggal, jumlah tamu, dan menu sebelum datang."}</p><div className="hero-actions"><button className="button primary" disabled={inactive || loading} onClick={onStart}>{inactive ? "Booking sedang ditutup" : "Mulai booking"} {!inactive && !loading && <ChevronRight size={18} />}</button><button className="button secondary" onClick={onStatus}>Cek booking <Search size={17} /></button></div><div className="payment-note"><CreditCard size={16} /><span>Pembayaran dilakukan setelah review melalui QRIS atau virtual account Mayar.</span></div></div><div className="info-grid"><Info icon={<CalendarDays />} title="Tanggal fleksibel" text="Pilih hari yang masih tersedia." /><Info icon={<Users />} title="Kapasitas jelas" text="Kami hitungkan kebutuhan mejamu." /><Info icon={<UtensilsCrossed />} title="Menu siap saat datang" text="Pilih menu lebih awal agar persiapan lebih cepat." /></div>{loading && <StateCard text="Memuat pengaturan booking…" loading />}{error && <StateCard text={error} action="Coba lagi" onAction={retry} error />}{inactive && <StateCard text="Booking sedang tidak aktif. Silakan cek kembali nanti." error />}</section>; }
 function Info({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) { return <div className="info-card"><span className="info-icon">{icon}</span><strong>{title}</strong><span>{text}</span></div>; }

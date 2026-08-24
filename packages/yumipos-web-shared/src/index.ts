@@ -7,6 +7,7 @@ export * from "./lib/yumi-auth-client";
 export * from "./lib/payslip-pdf";
 export * from "./lib/api-helper";
 export * from "./lib/wib-utils";
+export * from "./lib/number-input";
 export * from "./types/backend-compat";
 export * from "./hooks/use-supabase-live-value";
 export * from "./hooks/use-hybrid-pos-data";
