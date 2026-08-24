@@ -29,13 +29,7 @@ function BrandCustomerIndex() {
 
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
-	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">(() => {
-		try {
-			return localStorage.getItem("djiwa_customer_onboarding_seen_v1") === "true" ? "home" : "splash";
-		} catch {
-			return "splash";
-		}
-	});
+	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">("splash");
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
@@ -72,17 +66,12 @@ function BrandCustomerIndex() {
 	const hasHours = Boolean(openTime || closeTime || openingHours);
 
 	useEffect(() => {
-		if (entryPhase !== "splash" || isLoading) return;
-		const timeoutId = window.setTimeout(() => setEntryPhase(isAuthenticated ? "home" : "onboarding"), 1800);
+		if (entryPhase !== "splash") return;
+		const timeoutId = window.setTimeout(() => setEntryPhase("onboarding"), 1800);
 		return () => window.clearTimeout(timeoutId);
-	}, [entryPhase, isAuthenticated, isLoading]);
+	}, [entryPhase]);
 
 	const completeOnboarding = () => {
-		try {
-			localStorage.setItem("djiwa_customer_onboarding_seen_v1", "true");
-		} catch {
-			// Continue without persistence if storage is unavailable.
-		}
 		setEntryPhase("home");
 	};
 	const featuredCarouselRef = useRef<HTMLDivElement>(null);
@@ -107,16 +96,10 @@ function BrandCustomerIndex() {
 
 	// ponytail: sudah login → langsung ke /{username}, bukan /order
 	useEffect(() => {
-		if (isAuthenticated && customer) {
+		if (entryPhase === "home" && isAuthenticated && customer) {
 			navigate({ to: `/${customer.username}` });
 		}
-	}, [isAuthenticated, customer, navigate]);
-
-	// ── Loading state ────────────────────────────────────────────
-	// Cegah flash welcome page untuk user yang sudah login
-	if (isLoading) {
-		return <CustomerPageSkeleton label="Menyiapkan halaman" />;
-	}
+	}, [entryPhase, isAuthenticated, customer, navigate]);
 
 	if (entryPhase === "splash") {
 		return <CustomerSplash logoUrl={logoUrl} storeName={storeName} />;
@@ -127,10 +110,19 @@ function BrandCustomerIndex() {
 			<CustomerOnboarding
 				logoUrl={logoUrl}
 				storeName={storeName}
-				onMember={() => { completeOnboarding(); setAuthModalOpen(true); }}
+				onMember={() => {
+					completeOnboarding();
+					if (isAuthenticated && customer) navigate({ to: `/${customer.username}` });
+					else setAuthModalOpen(true);
+				}}
 				onGuest={completeOnboarding}
 			/>
 		);
+	}
+
+	// Auth bootstrap may still be finishing after onboarding.
+	if (isLoading) {
+		return <CustomerPageSkeleton label="Menyiapkan halaman" />;
 	}
 
 	// ── Guest welcome page ───────────────────────────────────
