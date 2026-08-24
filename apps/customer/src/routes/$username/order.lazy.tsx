@@ -613,6 +613,7 @@ function OrderPage() {
 				taxAmount,
 				serviceChargeAmount,
 				paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
+				paymentChoice,
 				idempotencyKey: checkoutRequestKeyRef.current,
 				customerName: orderCustomerName,
 				customerEmail: checkoutEmail || null,

@@ -51,6 +51,7 @@ export function classifyShiftPaymentChannel(order: Record<string, any>): ShiftPa
   const receiptKind = String(order.paymentReceiptKind ?? order.payment_receipt_kind ?? "").trim().toLowerCase();
   const orderType = String(order.orderType ?? order.order_type ?? "").trim().toLowerCase();
   const raw = order.raw && typeof order.raw === "object" ? order.raw : {};
+  const paymentChoice = String(raw.paymentChoice ?? raw.payment_choice ?? "").trim().toLowerCase();
   const platform = String(raw.platform ?? order.platform ?? "").trim().toLowerCase();
   const amount = Number(order.totalAmount ?? order.total_amount ?? 0);
 
@@ -59,13 +60,13 @@ export function classifyShiftPaymentChannel(order: Record<string, any>): ShiftPa
   if (orderType === "online" && onlineKey) return onlineKey;
 
   if (source === "customer_self_service") {
-    if (["cash", "tunai", "cashier"].includes(method) || receiptKind === "cashier") {
+    if (paymentChoice === "cashier" || ["cash", "tunai", "cashier"].includes(method) || receiptKind === "cashier") {
       return "djiwaapp_bayar_kasir";
     }
-    if (["wallet", "djiwa_pay"].includes(method) || receiptKind.startsWith("wallet")) {
+    if (paymentChoice === "wallet" || ["wallet", "djiwa_pay"].includes(method) || receiptKind.startsWith("wallet")) {
       return "djiwa_pay";
     }
-    if (["djiwaapp", "qris"].includes(method) || receiptKind === "gateway_paid") {
+    if (paymentChoice === "mayar" || ["djiwaapp", "qris"].includes(method) || receiptKind === "gateway_paid") {
       return "djiwaapp_qris";
     }
     return null;
