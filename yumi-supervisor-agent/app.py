@@ -55,6 +55,8 @@ def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", p
         label = "EDC"
     else:
         label = str(raw or "Metode pembayaran tidak diketahui").upper()
+    if is_app and method in ("qris", "qris_mayar", "mayar", "djiwaapp"):
+        return "DJIWA APP - QRIS"
     return f"Djiwa App - {label}" if is_app else label
 
 
