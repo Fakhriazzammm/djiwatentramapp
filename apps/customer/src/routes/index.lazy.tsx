@@ -140,17 +140,7 @@ function BrandCustomerIndex() {
 				{/* ── Sticky header ────────────────────────────── */}
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
-						{logoUrl ? (
-							<img
-								alt={storeName}
-								className="h-10 w-10 rounded-xl object-contain"
-								src={logoUrl}
-							/>
-						) : (
-							<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-								<ShoppingCart className="h-5 w-5" />
-							</div>
-						)}
+						<img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={logoUrl || "/logo-djiwa.png"} />
 						<div>
 							<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
 								Welcome

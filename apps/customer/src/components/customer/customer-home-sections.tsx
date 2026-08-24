@@ -20,7 +20,7 @@ export function CustomerHomeHeader({
     <header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 py-2.5 backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          {logoUrl ? <img alt={storeName} className="h-8 w-8 rounded-xl object-contain" src={logoUrl} /> : <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary" aria-hidden="true"><Wallet className="h-4 w-4" /></div>}
+          <img alt={storeName} className="h-8 w-8 rounded-xl object-contain" src={logoUrl || "/logo-djiwa.png"} />
           <div className="min-w-0"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary">{eyebrow}</p><p className="truncate text-xs font-black tracking-tight">{title}</p></div>
         </div>
         {action}
