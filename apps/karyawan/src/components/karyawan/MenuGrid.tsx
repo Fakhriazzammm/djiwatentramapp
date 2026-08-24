@@ -28,15 +28,15 @@ interface MenuGridProps {
 
 const menuItems: MenuItem[] = [
   // Row 1
-  { label: "Absensi", icon: Clock3, menuId: "absensi", route: "/$username/absensi", action: "navigate", illustration: "employee-attendance-check-in" },
-  { label: "Rekap Absensi", icon: NotebookText, menuId: "rekap", route: "/$username/rekap-absensi", action: "navigate", illustration: "sales-report" },
-  { label: "Jadwal", icon: CalendarDays, menuId: "jadwal", route: "/$username/jadwal", action: "navigate", illustration: "work-schedule" },
-  { label: "Izin/Cuti/Sakit", icon: CalendarOff, menuId: "izin", route: "/$username/izin", action: "navigate", illustration: "notifications-alerts" },
+  { label: "Absensi", icon: Clock3, menuId: "absensi", route: "/$username/absensi", action: "navigate", illustration: "employee-attendance-menu" },
+  { label: "Rekap Absensi", icon: NotebookText, menuId: "rekap", route: "/$username/rekap-absensi", action: "navigate", illustration: "employee-recap" },
+  { label: "Jadwal", icon: CalendarDays, menuId: "jadwal", route: "/$username/jadwal", action: "navigate", illustration: "employee-schedule-menu" },
+  { label: "Izin/Cuti/Sakit", icon: CalendarOff, menuId: "izin", route: "/$username/izin", action: "navigate", illustration: "employee-leave" },
   // Row 2
-  { label: "Slip Gaji", icon: CircleDollarSign, menuId: "slip-gaji", route: "/$username/slip-gaji", action: "navigate", illustration: "payroll-payslip" },
-  { label: "Kontrak", icon: FileText, menuId: "kontrak", route: "/$username/kontrak", action: "navigate", illustration: "employee-profile" },
-  { label: "Grup Telegram", icon: Send, menuId: "telegram", action: "external", illustration: "notifications-alerts" },
-  { label: "Leaderboard Bonus", icon: Trophy, menuId: "leaderboard", route: "/$username/leaderboard", action: "navigate", illustration: "loyalty-points" },
+  { label: "Slip Gaji", icon: CircleDollarSign, menuId: "slip-gaji", route: "/$username/slip-gaji", action: "navigate", illustration: "employee-payslip" },
+  { label: "Kontrak", icon: FileText, menuId: "kontrak", route: "/$username/kontrak", action: "navigate", illustration: "employee-contract" },
+  { label: "Grup Telegram", icon: Send, menuId: "telegram", action: "external", illustration: "employee-telegram" },
+  { label: "Leaderboard Bonus", icon: Trophy, menuId: "leaderboard", route: "/$username/leaderboard", action: "navigate", illustration: "employee-leaderboard" },
 ];
 
 export function MenuGrid({ baseRoute }: MenuGridProps) {

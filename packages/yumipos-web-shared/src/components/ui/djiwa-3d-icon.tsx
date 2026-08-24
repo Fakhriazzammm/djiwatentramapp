@@ -42,6 +42,17 @@ import posTransactions from "../../assets/djiwa-icons-v2/navigation/pos-transact
 import posAi from "../../assets/djiwa-icons-v2/navigation/pos-ai.webp";
 import posOrders from "../../assets/djiwa-icons-v2/navigation/pos-orders.webp";
 import partySize from "../../assets/djiwa-icons-v2/navigation/party-size.webp";
+import employeeSalary from "../../assets/djiwa-icons-v2/navigation/employee-salary.webp";
+import employeeBonus from "../../assets/djiwa-icons-v2/navigation/employee-bonus.webp";
+import employeeAttendanceMenu from "../../assets/djiwa-icons-v2/navigation/employee-attendance-menu.webp";
+import employeeRecap from "../../assets/djiwa-icons-v2/navigation/employee-recap.webp";
+import employeeScheduleMenu from "../../assets/djiwa-icons-v2/navigation/employee-schedule-menu.webp";
+import employeePayslip from "../../assets/djiwa-icons-v2/navigation/employee-payslip.webp";
+import employeeAllowance from "../../assets/djiwa-icons-v2/navigation/employee-allowance.webp";
+import employeeContract from "../../assets/djiwa-icons-v2/navigation/employee-contract.webp";
+import employeeTelegram from "../../assets/djiwa-icons-v2/navigation/employee-telegram.webp";
+import employeeLeaderboard from "../../assets/djiwa-icons-v2/navigation/employee-leaderboard.webp";
+import employeeLeave from "../../assets/djiwa-icons-v2/navigation/employee-leave.webp";
 
 export const djiwa3DIconSources = {
   "customer-food-ordering": customerFoodOrdering,
@@ -87,6 +98,17 @@ export const djiwa3DIconSources = {
   "pos-ai": posAi,
   "pos-orders": posOrders,
   "party-size": partySize,
+  "employee-salary": employeeSalary,
+  "employee-bonus": employeeBonus,
+  "employee-attendance-menu": employeeAttendanceMenu,
+  "employee-recap": employeeRecap,
+  "employee-schedule-menu": employeeScheduleMenu,
+  "employee-payslip": employeePayslip,
+  "employee-allowance": employeeAllowance,
+  "employee-contract": employeeContract,
+  "employee-telegram": employeeTelegram,
+  "employee-leaderboard": employeeLeaderboard,
+  "employee-leave": employeeLeave,
 } as const;
 
 export type Djiwa3DIconName = keyof typeof djiwa3DIconSources;

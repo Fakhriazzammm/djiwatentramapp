@@ -784,6 +784,193 @@
       "source_type": "openai-codex-gpt-image-2-medium",
       "generation_status": "approved-prototype",
       "notes": "Two abstract diners for party-size step."
+    },
+    {
+      "name": "navigation-employee-salary",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-salary.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-bonus",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-bonus.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-attendance-menu",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-attendance-menu.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-recap",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-recap.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-schedule-menu",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-schedule-menu.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-payslip",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-payslip.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-allowance",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-allowance.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-contract",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-contract.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-telegram",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-telegram.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-leaderboard",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-leaderboard.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "navigation-employee-leave",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-leave.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Clean text-free employee menu/salary icon."
     }
   ],
   "generated_provider": "openai-codex",

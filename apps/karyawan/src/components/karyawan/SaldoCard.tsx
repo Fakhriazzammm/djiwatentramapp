@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Wallet } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
 import { Djiwa3DIcon, type Djiwa3DIconName, Skeleton } from "@yumipos/web-shared";
 
@@ -60,7 +60,7 @@ export function SaldoCard({ staffId }: { staffId: string }) {
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1">
           <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-100 text-emerald-600">
-            <Wallet className="h-2.5 w-2.5" />
+            <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-4 w-4 object-contain" />
           </div>
           <p className="text-[11px] font-extrabold">Saldo {ml}</p>
         </div>
@@ -70,9 +70,9 @@ export function SaldoCard({ staffId }: { staffId: string }) {
         </motion.button>
       </div>
       <div className="grid grid-cols-3">
-        <SaldoItem illustration="payment-wallet" label="Gaji" value={d.gaji} visible={visible} accentClass="text-emerald-600" />
-        <SaldoItem illustration="suppliers-purchase-order" label="Tunjangan" value={d.tunjangan} visible={visible} accentClass="text-primary" />
-        <SaldoItem illustration="loyalty-points" label="Bonus" value={d.bonus} visible={visible} accentClass="text-amber-600" />
+        <SaldoItem illustration="employee-salary" label="Gaji" value={d.gaji} visible={visible} accentClass="text-emerald-600" />
+        <SaldoItem illustration="employee-allowance" label="Tunjangan" value={d.tunjangan} visible={visible} accentClass="text-primary" />
+        <SaldoItem illustration="employee-bonus" label="Bonus" value={d.bonus} visible={visible} accentClass="text-amber-600" />
       </div>
     </motion.div>
   );
