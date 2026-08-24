@@ -1,16 +1,14 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ClipboardList, Home, UserRound, LogIn, LogOut, ShoppingCart, User, Wallet } from "lucide-react";
+import { ClipboardList, Home, UserRound, LogIn, LogOut, ShoppingCart, Wallet } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
-import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
-import { currency } from "@/components/customer/types";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
-import { CustomerHomeHeader, CustomerHomePrimaryAction, CustomerWalletHero, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
+import { CustomerHomeActions, CustomerHomeHeader, CustomerGreeting, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
 
 type GuestData = {
@@ -190,17 +188,12 @@ function MemberHomePage() {
 				<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 					<CustomerHomeHeader logoUrl={logoUrl} storeName={storeName} eyebrow="Tamu" title={storeName} />
 					<CustomerLiveShiftIndicator />
-					<main className="flex-1 space-y-4 px-3 py-4 pb-32">
-						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-							<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Selamat datang</p>
-							<h2 className="mt-1 font-display text-2xl font-black tracking-tight">{guestData.name}</h2>
-						</section>
+					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
+						<CustomerGreeting name={guestData.name} />
+						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
+						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => setAuthModalOpen(true)} />
-						<section aria-labelledby="guest-menu-title">
-							<div className="mb-2 px-0.5"><h2 id="guest-menu-title" className="text-sm font-black">Akses cepat</h2><p className="mt-0.5 text-[11px] text-muted-foreground">Mulai pesan atau lihat benefit member.</p></div>
-							<CustomerMenuGrid baseRoute={username} />
-						</section>
-						<CustomerHomePrimaryAction onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
+						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
 						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
 					</main>
 				</div>
@@ -230,12 +223,12 @@ function MemberHomePage() {
 					/>
 					<CustomerLiveShiftIndicator />
 					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
-					<main className="flex-1 space-y-4 px-3 py-4 pb-32">
-						<CustomerWalletHero customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
+					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
+						<CustomerGreeting name={displayName} />
+						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
-						<section aria-labelledby="member-menu-title"><div className="mb-2 px-0.5"><h2 id="member-menu-title" className="text-sm font-black">Akses cepat</h2><p className="mt-0.5 text-[11px] text-muted-foreground">Promo, favorit, notifikasi, saldo, dan profil.</p></div><CustomerMenuGrid baseRoute={username} /></section>
-						<CustomerHomePrimaryAction onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
+						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
 					</main>
 				</div>
 			</div>
