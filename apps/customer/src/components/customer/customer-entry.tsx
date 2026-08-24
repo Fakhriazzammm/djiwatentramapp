@@ -30,7 +30,7 @@ export function CustomerSplash({ logoUrl, storeName }: CustomerSplashProps) {
 
 const benefits: Array<{ illustration: Djiwa3DIconName; label: string; description: string }> = [
   { illustration: "customer-benefit-wallet", label: "Djiwa Pay", description: "Bayar lebih praktis" },
-  { illustration: "customer-benefit-happy-hour", label: "Happy Hour", description: "Nikmati harga spesial" },
+  { illustration: "customer-benefit-happy-hour", label: "Happy Hour", description: "All Menu Rp 15.000" },
   { illustration: "customer-benefit-promo", label: "Promo Eksklusif", description: "Benefit khusus member" },
 ];
 
