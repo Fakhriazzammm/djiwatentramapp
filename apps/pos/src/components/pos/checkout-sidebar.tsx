@@ -564,6 +564,17 @@ export function CheckoutSidebar({
 										</Button>
 									</div>
 								</div>
+								<div className="grid grid-cols-2 gap-2.5">
+									<div className="space-y-1.5">
+										<Label htmlFor="customer-email" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">Email</Label>
+										<Input id="customer-email" type="email" placeholder="email@contoh.com" value={customerInfo.email || ""} onChange={(e) => updateCustomerInfo({ email: e.target.value })} className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm" />
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="customer-phone" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">WhatsApp</Label>
+										<Input id="customer-phone" type="tel" inputMode="tel" placeholder="08xxxxxxxxxx" value={customerInfo.phone || ""} onChange={(e) => updateCustomerInfo({ phone: e.target.value })} className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm" />
+									</div>
+								</div>
+
 								<div className={cn(
 									"grid gap-2.5",
 									selectedOrderType?.requiresTableNumber ? "grid-cols-2" : "grid-cols-1"
@@ -1179,7 +1190,7 @@ export function CheckoutSidebar({
 				open={customerSearchOpen}
 				onOpenChange={setCustomerSearchOpen}
 				onSelect={(customer) => {
-					updateCustomerInfo({ name: customer.name, email: customer.email || "", customer_source_id: customer.source_id });
+					updateCustomerInfo({ name: customer.name, email: customer.email || "", phone: customer.phone || "", customer_source_id: customer.source_id });
 				}}
 			/>
 		</div>

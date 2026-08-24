@@ -1243,27 +1243,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							throw new Error("Konfigurasi pembayaran QRIS belum lengkap");
 						}
 						const mayarCustomerName = customerInfo.name.trim();
+						const mayarCustomerEmail = customerInfo.email?.trim() || "";
+						const mayarCustomerPhone = customerInfo.phone?.trim() || "";
 						if (!mayarCustomerName) throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
-						const invoiceResult = await createMayarInvoice({
-							name: mayarCustomerName,
-							email: customerInfo.email?.trim() || undefined,
-							mobile: siteSettings.storePhone || "085000000000",
-							redirectUrl:
-								typeof window !== "undefined" ? window.location.href : undefined,
-							description: `POS order ${siteSettings.storeName || "Djiwa Tentram"}`,
-							expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-							items: cartItems.map((item) => ({
-								quantity: item.quantity,
-								rate: item.price,
-								description: item.variant
-									? `${item.name} (${item.variant})`
-									: item.name,
-							})),
-						});
-						if (!invoiceResult.data?.id) {
-							throw new Error(invoiceResult.messages || "Gagal membuat invoice pembayaran");
-						}
-						mayarInvoice = invoiceResult.data;
+						if (!mayarCustomerEmail) throw new Error("Email customer wajib diisi sebelum pembayaran Mayar");
+						if (!mayarCustomerPhone) throw new Error("Nomor WhatsApp customer wajib diisi sebelum pembayaran Mayar");
 					}
 
 					const shouldOpenBill = Boolean(orderData?.isOpenBill || useMayarGateway);
@@ -1281,6 +1265,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						paymentMethod: normalizedPaymentMethod,
 						source: "pos" as const,
 						customerName: customerInfo.name || "Pelanggan",
+						customerEmail: customerInfo.email?.trim() || null,
+						customerPhone: customerInfo.phone?.trim() || null,
+						deliveryContactName: customerInfo.name?.trim() || null,
+						deliveryContactPhone: customerInfo.phone?.trim() || null,
 						tableNumber: orderData?.tableNumber,
 						orderType: orderData?.orderType,
 						notes: orderData?.notes || customerInfo.notes,
@@ -1324,6 +1312,19 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}
 
 				const orderId = await createOrder(orderPayload);
+
+				if (useMayarGateway) {
+					const invoiceResult = await createMayarInvoice({
+						orderId: String(orderId),
+						idempotencyKey,
+						paymentMethod: "qris",
+						redirectUrl: typeof window !== "undefined" ? window.location.href : undefined,
+					});
+					if (!invoiceResult.data?.id || !invoiceResult.data?.link) {
+						throw new Error(invoiceResult.messages || "Gagal membuat invoice pembayaran");
+					}
+					mayarInvoice = invoiceResult.data;
+				}
 
 				if (shouldOpenBill) {
 					if (useMayarGateway) {

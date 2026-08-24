@@ -2550,6 +2550,9 @@ export function useHybridCreateOrder() {
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,
+					customer_email: args?.customerEmail ?? null,
+					delivery_contact_name: args?.deliveryContactName ?? args?.customerName ?? null,
+					delivery_contact_phone: args?.deliveryContactPhone ?? args?.customerPhone ?? null,
 					table_number: args?.tableNumber ?? null,
 					order_type: args?.orderType ?? null,
 					source: args?.source ?? null,
@@ -6042,35 +6045,28 @@ export function useHybridProduceBaseRecipeBatch() {
 }
 
 export function useHybridMayarCreateInvoice() {
-	const fallback = useAction(api.mayar.createInvoice);
-	return useCallback(
-		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase payment function not configured");
-			} catch {
-				return fallback(args);
-			}
-		},
-		[fallback]
-	);
+	return useCallback(async (args: any) => {
+		if (!hasSupabaseConfig) throw new Error("Mayar server proxy belum dikonfigurasi");
+		const data = await invokeEdgeFunction<any>("mayar-proxy", {
+			action: "create-invoice-from-order",
+			orderId: args.orderId,
+			idempotencyKey: args.idempotencyKey,
+			redirectUrl: args.redirectUrl,
+			paymentMethod: args.paymentMethod,
+		});
+		return { statusCode: 200, messages: "success", data: data?.data || null };
+	}, []);
 }
 
 export function useHybridMayarGetInvoiceDetail() {
-	const fallback = useAction(api.mayar.getInvoiceDetail);
-	return useCallback(
-		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				// TODO: add Supabase Edge Function replacement for Mayar integration.
-				throw new Error("Supabase payment function not configured");
-			} catch {
-				return fallback(args);
-			}
-		},
-		[fallback]
-	);
+	return useCallback(async (args: any) => {
+		if (!hasSupabaseConfig) throw new Error("Mayar server proxy belum dikonfigurasi");
+		const data = await invokeEdgeFunction<any>("mayar-proxy", {
+			action: "get-invoice-detail",
+			invoiceId: args.invoiceId,
+		});
+		return { data: data?.data || null };
+	}, []);
 }
 
 export function useHybridSendShiftReportEmail() {

@@ -10,8 +10,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY");
-const MAYAR_DEFAULT_EMAIL = Deno.env.get("MAYAR_DEFAULT_EMAIL") || "no-reply@restaurant.local";
-const MAYAR_DEFAULT_MOBILE = Deno.env.get("MAYAR_DEFAULT_MOBILE") || "085000000000";
+const MAYAR_DEFAULT_MOBILE = Deno.env.get("MAYAR_DEFAULT_MOBILE") || "";
 const MAYAR_REQUEST_TIMEOUT_MS = 12_000;
 
 async function fetchMayar(input: string, init: RequestInit = {}) {
@@ -67,7 +66,13 @@ function normalizeCustomerName(value: unknown) {
 
 function normalizeCustomerEmail(value: unknown) {
 	const email = typeof value === "string" ? value.trim().toLowerCase() : "";
-	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : MAYAR_DEFAULT_EMAIL;
+	if (!email || email === "no-reply@restaurant.local") {
+		throw new Error("Email customer wajib diisi untuk invoice Mayar");
+	}
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+		throw new Error("Format email customer tidak valid");
+	}
+	return email;
 }
 
 function normalizeMobile(value: unknown) {
@@ -134,7 +139,7 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
   if (!orderId) throw new Error("orderId wajib diisi");
 
   const orders = await supabaseGet(
-    `orders?select=source_id,order_number,total_amount,status,source,customer_name,customer_email,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+    `orders?select=source_id,order_number,total_amount,status,source,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
   ) as Array<Record<string, unknown>>;
   const order = orders[0];
   if (!order) throw new Error("Order tidak ditemukan");

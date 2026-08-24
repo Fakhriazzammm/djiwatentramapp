@@ -63,6 +63,8 @@ interface CartContextType {
 	netRevenue: number;
 	customerInfo: {
 		name: string;
+		email?: string;
+		phone?: string;
 		orderType: string;
 		tableNumber: string;
 		notes: string;
@@ -114,6 +116,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const [customerInfo, setCustomerInfo] = useState<{
 		name: string;
+		email?: string;
+		phone?: string;
 		orderType: string;
 		tableNumber: string;
 		notes: string;

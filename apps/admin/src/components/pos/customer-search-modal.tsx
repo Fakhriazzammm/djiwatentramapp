@@ -24,7 +24,7 @@ interface CustomerSearchResult {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (customer: { source_id: string; name: string; email?: string | null }) => void;
+  onSelect: (customer: { source_id: string; name: string; email?: string | null; phone?: string | null }) => void;
 }
 
 export function CustomerSearchModal({ open, onOpenChange, onSelect }: Props) {
@@ -83,7 +83,7 @@ export function CustomerSearchModal({ open, onOpenChange, onSelect }: Props) {
   }, [query]);
 
   const handleSelect = (customer: CustomerSearchResult) => {
-    onSelect({ source_id: customer.source_id, name: customer.name });
+    onSelect({ source_id: customer.source_id, name: customer.name, email: customer.email, phone: customer.phone });
     setQuery("");
     setResults([]);
     onOpenChange(false);
