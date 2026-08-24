@@ -2617,6 +2617,16 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				
 				// Format non-tunai breakdown
 				const pb = s.paymentBreakdown || {};
+				const sourcePb = s.paymentBreakdownExpected || {};
+				const sourcePaymentLines = [
+					["djiwaapp_djiwa_pay", "Djiwa App - Djiwa Pay"],
+					["djiwa_pay", "Djiwa Pay"],
+					["djiwaapp_qris", "Djiwa App - QRIS"],
+					["djiwaapp_bayar_kasir", "Djiwa App - Bayar Tunai di Kasir"],
+					["qris_kasir", "POS Kasir - QRIS"],
+					["tunai_kasir", "POS Kasir - Tunai"],
+				].filter(([key]) => Number((sourcePb as any)[key] ?? 0) > 0)
+					.map(([key, label]) => `   ${label}: Rp ${Number((sourcePb as any)[key]).toLocaleString("id-ID")}`);
 				const ntLines = [
 					`   ├ QRIS: Rp ${(pb.qris ?? 0).toLocaleString("id-ID")}`,
 					`   ├ EDC: Rp ${((pb.debit ?? 0) + (pb.credit ?? 0)).toLocaleString("id-ID")}`,
@@ -2658,7 +2668,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				const pfLabels2: Record<string, string> = { grab: "GrabFood", gofood: "GoFood", maxim: "Maxim", shopeefood: "ShopeeFood" };
 				Object.entries(ofp2).filter(([_, v]) => Number(v) > 0).forEach(([p]) => ntLabelParts2.push(pfLabels2[p] || p));
 				const ntLabel2 = ntLabelParts2.length ? ` (${ntLabelParts2.join(" + ")})` : "";
-				const totalNonTunaiStr = `Rp ${totalNonTunai.toLocaleString("id-ID")}${ntLabel2}`;
+				const totalNonTunaiStr = `Rp ${totalNonTunai.toLocaleString("id-ID")}${ntLabel2}${sourcePaymentLines.length ? `\n${sourcePaymentLines.join("\n")}` : ""}`;
 				const diffTunai = cashInRegisterVal - s.cashRevenue;
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
@@ -2668,7 +2678,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					"👥 Tim": `\n${teamIndented}`,
 					"━━━ DI SISTEM ━━━": "━━━",
 					"💰 Modal Kasir": `Rp ${Number(si.startingCash ?? 0).toLocaleString("id-ID")}`,
-					"💵 Penjualan Tunai": `Rp ${s.cashRevenue.toLocaleString("id-ID")}`,
+					"💵 Penjualan Tunai": `Rp ${s.cashRevenue.toLocaleString("id-ID")}${sourcePaymentLines.filter((line) => line.includes("Tunai")).length ? `\n${sourcePaymentLines.filter((line) => line.includes("Tunai")).join("\n")}` : ""}`,
 					"💳 Non-Tunai:": totalNonTunaiStr,
 					"💸 Pengeluaran": `Rp ${s.totalExpenses.toLocaleString("id-ID")}`,
 					"📦 Item Terjual": `${s.totalItemsSold}`,
