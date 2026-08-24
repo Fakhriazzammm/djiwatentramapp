@@ -72,7 +72,7 @@ function SaldoPage() {
       const latest = await refetch();
       if (!active) return;
       const elapsed = Date.now() - startedAt;
-      if (amount > 0 && Number(latest?.walletData?.total_credited ?? 0) >= creditedBefore + amount) {
+      if (amount > 0 && Number(latest?.wallet?.total_credited ?? 0) >= creditedBefore + amount) {
         setTopupVerifiedAmount(amount);
         setTopupVerified(true);
         setTopupPending(null);
