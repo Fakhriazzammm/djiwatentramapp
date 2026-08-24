@@ -61,6 +61,27 @@ function formatDate(value: string | null, withTime = false) {
 	return format(new Date(value), withTime ? "dd MMM yyyy HH:mm" : "dd MMM yyyy", { locale: id });
 }
 
+function normalizeCustomerName(value: unknown) {
+	return String(value ?? "")
+		.trim()
+		.toLowerCase()
+		.replace(/^\d+[_-]+/, "")
+		.replace(/\s+/g, " ");
+}
+
+function isSettledOrder(order: any) {
+	return ["paid", "completed"].includes(String(order.status ?? "").toLowerCase());
+}
+
+function customerMatchesOrder(customer: Customer, order: any) {
+	const customerId = String(customer.source_id ?? "");
+	const orderAuthId = String(order.authUserId ?? order.auth_user_id ?? "");
+	const orderEmail = String(order.customerEmail ?? order.customer_email ?? "");
+	if (customerId && orderAuthId && customerId === orderAuthId) return true;
+	if (customer.email && orderEmail && customer.email.toLowerCase() === orderEmail.toLowerCase()) return true;
+	return normalizeCustomerName(customer.name) !== "" && normalizeCustomerName(customer.name) === normalizeCustomerName(order.customerName ?? order.customer_name);
+}
+
 function CustomerAvatar({ customer }: { customer: Customer }) {
 	return customer.photo_url ? (
 		<img src={customer.photo_url} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
@@ -89,9 +110,26 @@ function AdminCustomers() {
 	const liveCustomers = useSupabaseLiveValue<Customer[]>(
 		"admin-customers",
 		async () => {
-			const { data, error } = await createClient().from("pos_customers_view").select("*").order("total_spent", { ascending: false });
-			if (error) throw error;
-			return (data as Customer[]) || [];
+			const supabase = createClient();
+			const [{ data: customerRows, error: customerError }, { data: orderRows, error: orderError }] = await Promise.all([
+				supabase.from("pos_customers_view").select("*").order("total_spent", { ascending: false }),
+				supabase.from("pos_orders").select("*").limit(2000),
+			]);
+			if (customerError) throw customerError;
+			if (orderError) throw orderError;
+			const settledOrders = (orderRows ?? []).filter(isSettledOrder);
+			return ((customerRows ?? []) as Customer[]).map((customer) => {
+				const orders = settledOrders.filter((order) => customerMatchesOrder(customer, order));
+				if (orders.length === 0) return customer;
+				const totalSpent = orders.reduce((sum, order) => sum + Number(order.totalAmount ?? order.total_amount ?? 0), 0);
+				const lastOrderAt = orders.reduce((latest, order) => Math.max(latest, Number(order.createdAt ?? order.created_at ?? 0)), 0);
+				return {
+					...customer,
+					total_orders: orders.length,
+					total_spent: totalSpent,
+					last_order_at: lastOrderAt > 0 ? new Date(lastOrderAt).toISOString() : customer.last_order_at,
+				};
+			});
 		},
 		[],
 		{ tables: ["customers", "customer_wallets", "orders", "order_items"] }
@@ -105,11 +143,11 @@ function AdminCustomers() {
 		if (!detailCustomer?.source_id) { setSelectedCustomerOrders([]); return; }
 		let active = true;
 		setCustomerOrdersLoading(true);
-		createClient().from("pos_orders").select("*").eq("customerSourceId", detailCustomer.source_id).order("createdAt", { ascending: false }).limit(50)
+		createClient().from("pos_orders").select("*").order("createdAt", { ascending: false }).limit(2000)
 			.then(({ data, error }) => {
 				if (!active) return;
 				if (error) { console.warn("[customers] order detail error:", error); setSelectedCustomerOrders([]); return; }
-				setSelectedCustomerOrders(data || []);
+				setSelectedCustomerOrders((data || []).filter((order: any) => customerMatchesOrder(detailCustomer, order)).slice(0, 50));
 			})
 			.catch((error) => { if (active) { console.warn("[customers] order detail request failed:", error); setSelectedCustomerOrders([]); } })
 			.finally(() => { if (active) setCustomerOrdersLoading(false); });
