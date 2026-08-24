@@ -37,6 +37,17 @@ function toTrimmedString(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeGuestPhone(value: string) {
+	return value.replace(/[^\d+]/g, "");
+}
+
+async function guestSourceId(email: string, phone: string) {
+	const identity = `${email.toLowerCase()}|${normalizeGuestPhone(phone)}`;
+	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity));
+	const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+	return `guest_${hex}`;
+}
+
 /**
  * Verify that the caller "owns" a customer row.
  * Better Auth (not Supabase Auth) owns the session, so we use the
@@ -65,6 +76,42 @@ async function findOwnedCustomer(sourceId: string, email: string) {
 }
 
 // ── Actions ────────────────────────────────────────────────────
+
+/** Capture a guest identity without creating an authenticated member account. */
+async function handleCaptureGuest(payload: JsonRecord) {
+	const name = toTrimmedString(payload.name);
+	const email = toTrimmedString(payload.email).toLowerCase();
+	const phone = normalizeGuestPhone(toTrimmedString(payload.phone));
+	const customerDescription = toTrimmedString(payload.customerDescription).slice(0, 160);
+	const guestSessionId = toTrimmedString(payload.guestSessionId).slice(0, 120);
+	const marketingConsent = payload.marketingConsent === true;
+
+	if (!name) throw new Error("Nama guest wajib diisi");
+	if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Email guest tidak valid");
+	if (phone.replace(/\D/g, "").length < 10) throw new Error("Nomor WhatsApp guest tidak valid");
+	if (!customerDescription) throw new Error("Ciri khusus customer wajib diisi");
+
+	const sourceId = await guestSourceId(email, phone);
+	const now = new Date().toISOString();
+	const { error } = await supabaseAdmin
+		.schema("pos")
+		.from("customer_leads")
+		.upsert({
+			source_id: sourceId,
+			name,
+			email,
+			phone,
+			customer_description: customerDescription,
+			marketing_consent: marketingConsent,
+			guest_session_id: guestSessionId || null,
+			source: "customer_guest_checkout",
+			last_seen_at: now,
+			updated_at: now,
+		}, { onConflict: "source_id" });
+
+	if (error) throw error;
+	return { message: "Data guest tersimpan", customerSourceId: sourceId };
+}
 
 /**
  * Sync a user (from auth.users) into pos.customers.
@@ -209,6 +256,8 @@ Deno.serve(async (req) => {
 		const action = body.action as string | undefined;
 
 		switch (action) {
+			case "captureGuest":
+				return json(await handleCaptureGuest(body));
 			case "sync":
 				return json(await handleSync(body));
 			case "updateProfile":

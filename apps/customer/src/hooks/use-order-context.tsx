@@ -94,6 +94,8 @@ export interface OrderContextType {
 	setGuestPhone: (value: string) => void;
 	guestDescription: string;
 	setGuestDescription: (value: string) => void;
+	guestMarketingConsent: boolean;
+	setGuestMarketingConsent: (value: boolean) => void;
 
 	// ── Session ─────────────────────────────────────────────
 	sessionRef: React.MutableRefObject<string>;
@@ -205,6 +207,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
 	const [guestDescription, setGuestDescription] = useState("");
+	const [guestMarketingConsent, setGuestMarketingConsent] = useState(false);
 
 	// Session
 	const sessionRef = useRef(getSessionId(undefined));
@@ -222,6 +225,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				if (data?.email && !guestEmail) setGuestEmail(data.email);
 				if (data?.phone && !guestPhone) setGuestPhone(data.phone);
 				if (data?.description && !customerDescription) setCustomerDescription(data.description);
+				if (data?.marketingConsent === true) setGuestMarketingConsent(true);
 				if (data?.table && !tableNumber) setTableNumber(data.table);
 			}
 		} catch { /* ignore parse errors */ }
@@ -351,6 +355,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				setGuestPhone,
 				guestDescription,
 				setGuestDescription,
+				guestMarketingConsent,
+				setGuestMarketingConsent,
 
 				// Session
 				sessionRef,

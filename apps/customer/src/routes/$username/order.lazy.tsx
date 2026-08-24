@@ -109,6 +109,7 @@ function OrderPage() {
 		setCustomerName,
 		customerDescription,
 		setCustomerDescription,
+		guestMarketingConsent,
 		tableNumber,
 		setTableNumber,
 		notes,
@@ -583,6 +584,20 @@ function OrderPage() {
 			rejectCheckout("Isi ciri khusus customer agar kasir mudah mengenali pesanan", "Ciri khusus customer");
 			return;
 		}
+		if (!isAuthenticated) {
+			if (!customerName.trim()) {
+				rejectCheckout("Nama customer wajib diisi", "Nama customer");
+				return;
+			}
+			if (!/^\S+@\S+\.\S+$/.test(checkoutEmail)) {
+				rejectCheckout("Isi email yang valid", "Email untuk pembayaran QRIS");
+				return;
+			}
+			if (!hasValidCustomerPhone(checkoutPhone)) {
+				rejectCheckout("Isi nomor WhatsApp yang valid", "Nomor WhatsApp untuk pembayaran QRIS");
+				return;
+			}
+		}
 		if (paymentChoice === "mayar") {
 			if (isAuthenticated && missingContactFields.length > 0) {
 				toast.error(getCustomerContactMessage(missingContactFields));
@@ -609,6 +624,20 @@ function OrderPage() {
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
 			const normalizedCustomerName = customerName.trim();
+			let guestCustomerSourceId: string | null = null;
+			if (!isAuthenticated) {
+				const guestCapture = await invokeEdgeFunction<{ customerSourceId?: string }>("customer-sync", {
+					action: "captureGuest",
+					name: normalizedCustomerName,
+					email: checkoutEmail,
+					phone: checkoutPhone,
+					customerDescription: customerDescription.trim().slice(0, 160),
+					marketingConsent: guestMarketingConsent,
+					guestSessionId: sessionRef.current,
+				});
+				guestCustomerSourceId = guestCapture.customerSourceId || null;
+				if (!guestCustomerSourceId) throw new Error("Data guest belum berhasil disimpan");
+			}
 			if (paymentChoice === "mayar" && !normalizedCustomerName) {
 				throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
 			}
@@ -649,7 +678,7 @@ function OrderPage() {
 					...(freeRefillOptIn && activeFreeRefillPromo ? { adjustmentLines: [{ label: `${activeFreeRefillPromo.name || "Free Refill"} x${partySize}`, amount: freeRefillCharge }] } : {}),
 					...(djiwaPayDiscount > 0 ? { djiwaPayDiscountPercent, djiwaPayDiscount, djiwaPayDiscountPaymentMethod: "wallet" } : {}),
 				},
-				customerSourceId: customer?.sourceId || null,
+				customerSourceId: customer?.sourceId || guestCustomerSourceId,
 			};
 
 			if (paymentChoice === "wallet") {

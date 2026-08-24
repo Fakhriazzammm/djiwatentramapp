@@ -18,6 +18,8 @@ function DaftarPage() {
 		setGuestPhone: setPhone,
 		guestDescription: description,
 		setGuestDescription,
+		guestMarketingConsent,
+		setGuestMarketingConsent,
 		tableNumber,
 		setTableNumber,
 	} = useOrderContext();
@@ -57,6 +59,7 @@ function DaftarPage() {
 				email: email.trim() || "",
 				phone: phone.trim() || "",
 				description: description.trim().slice(0, 160),
+				marketingConsent: guestMarketingConsent,
 				username: guestUsername,
 				table: tableNumber.trim() || "",
 			}),
@@ -154,6 +157,11 @@ function DaftarPage() {
 								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>
+
+						<label className="flex items-start gap-2 rounded-xl bg-muted/40 p-2 text-[10px] leading-relaxed text-muted-foreground">
+							<input type="checkbox" checked={guestMarketingConsent} onChange={(e) => setGuestMarketingConsent(e.target.checked)} className="mt-0.5" />
+							Saya bersedia menerima informasi promo dan layanan Djiwa Tentram.
+						</label>
 
 						{/* No Meja */}
 						<div>
