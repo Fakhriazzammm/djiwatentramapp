@@ -34,6 +34,23 @@ export const Route = createLazyFileRoute("/$username")({
 	component: MemberHomePage,
 });
 
+function DjiwaPayMarketingBanner({ isMember, onAction }: { isMember: boolean; onAction: () => void }) {
+	return (
+		<section className="relative isolate overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-50 shadow-sm" aria-label="Promo Djiwa Pay">
+			<img src="/djiwa-pay-20-banner.png" alt="" aria-hidden="true" className="absolute inset-0 -z-10 h-full w-full object-cover object-center opacity-85" />
+			<div className="absolute inset-0 -z-10 bg-gradient-to-r from-emerald-950/95 via-emerald-900/80 to-emerald-900/15" />
+			<div className="relative min-h-[178px] p-4 text-white sm:min-h-[190px] sm:p-5">
+				<div className="max-w-[72%]">
+					<p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Benefit member Djiwa Pay</p>
+					<h2 className="mt-1 font-display text-2xl font-black leading-[1.05] tracking-tight sm:text-3xl">Bayar pakai Djiwa Pay, hemat 20%</h2>
+					<p className="mt-2 text-[11px] font-medium leading-relaxed text-emerald-50 sm:text-xs">Top up saldo Djiwa Pay terlebih dahulu. Setiap transaksi berhasil juga mendapatkan saldo Djiwa Pay +Rp1.000.</p>
+					<button type="button" onClick={onAction} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-[14px] bg-white px-3.5 py-2.5 text-xs font-black text-emerald-900 shadow-sm transition-transform duration-[180ms] active:scale-[.97]">{isMember ? "Top up Djiwa Pay" : "Masuk / Daftar"}<ChevronRight className="ml-1 h-3.5 w-3.5" /></button>
+				</div>
+			</div>
+		</section>
+	);
+}
+
 function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
@@ -215,6 +232,8 @@ function MemberHomePage() {
 								</div>
 							</div>
 
+							<DjiwaPayMarketingBanner isMember={false} onAction={() => setAuthModalOpen(true)} />
+
 							{/* ── Quick actions ──────────────────────── */}
 							<div className="mt-6 space-y-2">
 								<button
@@ -335,6 +354,8 @@ function MemberHomePage() {
 								Top up Djiwa Pay
 							</button>
 						</div>
+
+						<DjiwaPayMarketingBanner isMember={true} onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
 
 						<button type="button" className="mt-4 flex min-h-12 w-full items-center justify-between rounded-[14px] bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}>
 							<span>Mulai pesan</span>
