@@ -45,7 +45,8 @@ def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", p
     elif method in ("wallet", "djiwa_pay"):
         label = "Djiwa Pay"
     elif method in ("qris", "qris_mayar", "mayar"):
-        label = "QRIS"
+        gateway_provider = payment_gateway.get("provider") if isinstance(payment_gateway, dict) else ""
+        label = "QRIS / Mayar" if str(gateway_provider or "").lower() == "mayar" else "QRIS"
     elif method == "djiwaapp":
         label = "QRIS" if payment_gateway else "Metode pembayaran lama"
     elif method in ("transfer", "bank_transfer"):
@@ -1649,8 +1650,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         lines.append(f"📲 SUMBER: {source_label}")
     if arrival_time:
         lines.append(f"🕒 JAM KEDATANGAN: {arrival_time}")
-    if payment_note:
-        lines.append(f"⚠️ {payment_note}")
+    payment_display = payment_note or f"PEMBAYARAN: {_payment_label(payment_method)}"
+    lines.append(f"⚠️ {payment_display}")
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
