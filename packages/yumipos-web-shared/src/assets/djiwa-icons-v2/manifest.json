@@ -614,6 +614,159 @@
       "source_type": "openai-codex-gpt-image-2-medium",
       "generation_status": "approved-prototype",
       "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-employee-home",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-home.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-employee-schedule",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-schedule.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-employee-attendance",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-attendance.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-employee-notifications",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-notifications.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-employee-profile",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-profile.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-pos-home",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-home.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-pos-transactions",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-transactions.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-pos-ai",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-ai.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-pos-orders",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-orders.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
     }
   ],
   "generated_provider": "openai-codex",

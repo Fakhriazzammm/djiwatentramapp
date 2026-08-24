@@ -636,13 +636,15 @@ Deliverables prototype:
 - Added `micro` icon size (`h-6 w-6`) for future small button/icon slots.
 - Generated and integrated 5 Customer bottom-navbar icons with OpenAI Codex `gpt-image-2-medium`: Home, Pesan, Riwayat, Saldo, Profil.
 - Generated and integrated 3 clean shared 3D replacements with OpenAI Codex: `customer-food-ordering`, `shopping-cart-order`, and `order-receipt`.
+- Generated and integrated 5 Karyawan bottom-navbar icons with OpenAI Codex: Beranda, Jadwal, Absensi, Notifikasi, Profil.
+- Generated and integrated 4 POS/Admin bottom-navbar icons with OpenAI Codex: Home/Dashboard, POS/Transaksi, AI, Orders.
 - Built and deployed Customer, Karyawan, POS, Admin, and OrderMieYamin bundles.
 - Verified production index HTTP 200 and sampled WebP asset parity on all five domains.
 - Visual contact-sheet QA confirmed object bounds are consistent and not clipped.
 
 ### Not completed / blocker
 
-- The first FAL image-generation attempt was blocked because the FAL provider was not configured. Hermes was then correctly routed to the available OpenAI Codex OAuth backend and generated 8 valid assets.
+- The first FAL image-generation attempt was blocked because the FAL provider was not configured. Hermes was then correctly routed to the available OpenAI Codex OAuth backend and generated 17 valid assets.
 
 - Remaining AI regeneration could not finish because the Codex OAuth pool started returning:
 
@@ -650,7 +652,7 @@ Deliverables prototype:
 No Codex/ChatGPT OAuth credentials available
 ```
 
-- 25 of the original 28 shared 3D slots still use normalized legacy fallback and inherit possible content warnings from the source set, including baked-in text, a persona name, and human/avatar elements. These must not be treated as the final V2 generated set.
+- 25 of the original 28 shared 3D slots still use normalized legacy fallback and inherit possible content warnings from the source set, including baked-in text, a persona name, and human/avatar elements. These must not be treated as the final V2 generated set. The 17 generated navigation/3D assets are separate approved prototypes.
 - New marketing banners for Customer landing, Customer menu/promo, Karyawan SmartBanner, and OrderMieYamin lifestyle remain pending image-provider availability and visual approval.
 
 ### Required continuation when image provider is available

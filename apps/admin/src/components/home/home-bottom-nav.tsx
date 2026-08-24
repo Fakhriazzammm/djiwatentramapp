@@ -5,12 +5,14 @@ import {
 	ClipboardList,
 	Sparkles,
 } from "lucide-react";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 
 type BottomTab = {
 	to: string;
 	label: string;
 	icon: React.ElementType;
 	isCenter?: boolean;
+	iconName?: Djiwa3DIconName;
 };
 
 const BOTTOM_TABS: ReadonlyArray<BottomTab> = [
@@ -18,22 +20,26 @@ const BOTTOM_TABS: ReadonlyArray<BottomTab> = [
 		to: "/admin",
 		label: "Home",
 		icon: LayoutDashboard,
+		iconName: "pos-home",
 	},
 	{
 		to: "/menu",
 		label: "POS",
 		icon: Receipt,
+		iconName: "pos-transactions",
 	},
 	{
 		to: "/admin/ai-chat",
 		label: "AI",
 		icon: Sparkles,
+		iconName: "pos-ai",
 		isCenter: true,
 	},
 	{
 		to: "/admin/orders",
 		label: "Orders",
 		icon: ClipboardList,
+		iconName: "pos-orders",
 	},
 ] as const;
 
@@ -67,7 +73,7 @@ export function HomeBottomNav() {
 								>
 									<div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg blur-[2px] absolute inset-0" />
 									<div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg relative z-10">
-										<Icon className="h-6 w-6 text-primary-foreground" />
+										{tab.iconName ? <Djiwa3DIcon name={tab.iconName} size="micro" alt="" className="h-6 w-6 object-contain" /> : <Icon className="h-6 w-6 text-primary-foreground" />}
 									</div>
 									<span className="font-medium text-[10px] text-primary mt-0.5">
 										{tab.label}
@@ -90,7 +96,7 @@ export function HomeBottomNav() {
 										: "text-muted-foreground"
 								}`}
 							>
-								<Icon className="h-4 w-4" />
+								{tab.iconName ? <Djiwa3DIcon name={tab.iconName} size="micro" alt="" className="h-5 w-5 object-contain" /> : <Icon className="h-4 w-4" />}
 							</div>
 							<span
 								className={`font-medium text-[10px] leading-tight ${

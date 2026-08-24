@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import { Home, CalendarDays, Camera, Bell, User } from "lucide-react";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "../ui/djiwa-3d-icon";
 
 type NavItem = {
   label: string;
@@ -7,6 +8,7 @@ type NavItem = {
   getRoute: (baseRoute: string) => string;
   isActive: (currentPath: string, baseRoute: string) => boolean;
   badgeKey?: string;
+  iconName?: Djiwa3DIconName;
 };
 
 function makeItems(baseRoute: string): NavItem[] {
@@ -14,24 +16,28 @@ function makeItems(baseRoute: string): NavItem[] {
     {
       label: "Beranda",
       icon: Home,
+      iconName: "employee-home",
       getRoute: () => "/beranda",
       isActive: (path, br) => path === `${br}/beranda`,
     },
     {
       label: "Jadwal",
       icon: CalendarDays,
+      iconName: "employee-schedule",
       getRoute: () => "/jadwal",
       isActive: (path, br) => path === `${br}/jadwal`,
     },
     {
       label: "Absensi",
       icon: Camera,
+      iconName: "employee-attendance",
       getRoute: () => "/absensi",
       isActive: (path, br) => path === `${br}/absensi`,
     },
     {
       label: "Notifikasi",
       icon: Bell,
+      iconName: "employee-notifications",
       getRoute: () => "/notifikasi",
       isActive: (path, br) => path === `${br}/notifikasi`,
       badgeKey: "notifikasi",
@@ -39,6 +45,7 @@ function makeItems(baseRoute: string): NavItem[] {
     {
       label: "Profil",
       icon: User,
+      iconName: "employee-nav-profile",
       getRoute: () => "/profil",
       isActive: (path, br) => path === `${br}/profil`,
     },
@@ -81,11 +88,11 @@ export function BottomNavbar({
               }`}
             >
               <div className="relative">
-                <Icon
-                  className={`h-6 w-6 transition-all ${
-                    active ? "drop-shadow-[0_0_5px_rgba(37,99,235,0.3)]" : ""
-                  }`}
-                />
+                {item.iconName ? (
+                  <Djiwa3DIcon name={item.iconName} size="micro" alt="" className="h-6 w-6 object-contain" />
+                ) : (
+                  <Icon className={`h-6 w-6 transition-all ${active ? "drop-shadow-[0_0_5px_rgba(37,99,235,0.3)]" : ""}`} />
+                )}
                 {badgeCount > 0 && (
                   <span className="absolute -right-1.5 -top-1 flex min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 py-0.5 text-[11px] font-black leading-none text-white shadow-sm">
                     {badgeCount > 9 ? "9+" : badgeCount}

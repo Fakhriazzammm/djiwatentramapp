@@ -32,6 +32,15 @@ import navigationOrder from "../../assets/djiwa-icons-v2/navigation/order.webp";
 import navigationHistory from "../../assets/djiwa-icons-v2/navigation/history.webp";
 import navigationWallet from "../../assets/djiwa-icons-v2/navigation/wallet.webp";
 import navigationProfile from "../../assets/djiwa-icons-v2/navigation/profile.webp";
+import employeeHome from "../../assets/djiwa-icons-v2/navigation/employee-home.webp";
+import employeeSchedule from "../../assets/djiwa-icons-v2/navigation/employee-schedule.webp";
+import employeeAttendance from "../../assets/djiwa-icons-v2/navigation/employee-attendance.webp";
+import employeeNotifications from "../../assets/djiwa-icons-v2/navigation/employee-notifications.webp";
+import employeeProfileNav from "../../assets/djiwa-icons-v2/navigation/employee-profile.webp";
+import posHome from "../../assets/djiwa-icons-v2/navigation/pos-home.webp";
+import posTransactions from "../../assets/djiwa-icons-v2/navigation/pos-transactions.webp";
+import posAi from "../../assets/djiwa-icons-v2/navigation/pos-ai.webp";
+import posOrders from "../../assets/djiwa-icons-v2/navigation/pos-orders.webp";
 
 export const djiwa3DIconSources = {
   "customer-food-ordering": customerFoodOrdering,
@@ -67,6 +76,15 @@ export const djiwa3DIconSources = {
   "navigation-history": navigationHistory,
   "navigation-wallet": navigationWallet,
   "navigation-profile": navigationProfile,
+  "employee-home": employeeHome,
+  "employee-schedule": employeeSchedule,
+  "employee-attendance": employeeAttendance,
+  "employee-notifications": employeeNotifications,
+  "employee-nav-profile": employeeProfileNav,
+  "pos-home": posHome,
+  "pos-transactions": posTransactions,
+  "pos-ai": posAi,
+  "pos-orders": posOrders,
 } as const;
 
 export type Djiwa3DIconName = keyof typeof djiwa3DIconSources;
