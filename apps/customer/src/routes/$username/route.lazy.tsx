@@ -11,6 +11,7 @@ import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerHomeActions, CustomerHomeHeader, CustomerGreeting, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
+import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
 
 type GuestData = {
 	name: string;
@@ -237,6 +238,7 @@ function MemberHomePage() {
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
+						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
 					</main>
 				</div>
 			</div>

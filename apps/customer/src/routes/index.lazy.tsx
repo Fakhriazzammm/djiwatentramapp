@@ -1,11 +1,11 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
-import { CalendarDays, Clock, LogIn, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
+import { CustomerOnboarding, CustomerSplash } from "@/components/customer/customer-entry";
 import { currency } from "@/components/customer/types";
 
 export const Route = createLazyFileRoute("/")({
@@ -29,6 +29,13 @@ function BrandCustomerIndex() {
 
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
+	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">(() => {
+		try {
+			return localStorage.getItem("djiwa_customer_onboarding_seen_v1") === "true" ? "home" : "splash";
+		} catch {
+			return "splash";
+		}
+	});
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
@@ -63,6 +70,21 @@ function BrandCustomerIndex() {
 	const storePhone = typeof siteSettings?.storePhone === "string" && siteSettings.storePhone.trim() ? siteSettings.storePhone : null;
 	const storeAddress = typeof siteSettings?.storeAddress === "string" && siteSettings.storeAddress.trim() ? siteSettings.storeAddress : null;
 	const hasHours = Boolean(openTime || closeTime || openingHours);
+
+	useEffect(() => {
+		if (entryPhase !== "splash" || isLoading) return;
+		const timeoutId = window.setTimeout(() => setEntryPhase(isAuthenticated ? "home" : "onboarding"), 650);
+		return () => window.clearTimeout(timeoutId);
+	}, [entryPhase, isAuthenticated, isLoading]);
+
+	const completeOnboarding = () => {
+		try {
+			localStorage.setItem("djiwa_customer_onboarding_seen_v1", "true");
+		} catch {
+			// Continue without persistence if storage is unavailable.
+		}
+		setEntryPhase("home");
+	};
 	const featuredCarouselRef = useRef<HTMLDivElement>(null);
 	const [carouselPaused, setCarouselPaused] = useState(false);
 
@@ -94,6 +116,21 @@ function BrandCustomerIndex() {
 	// Cegah flash welcome page untuk user yang sudah login
 	if (isLoading) {
 		return <CustomerPageSkeleton label="Menyiapkan halaman" />;
+	}
+
+	if (entryPhase === "splash") {
+		return <CustomerSplash logoUrl={logoUrl} storeName={storeName} />;
+	}
+
+	if (entryPhase === "onboarding") {
+		return (
+			<CustomerOnboarding
+				logoUrl={logoUrl}
+				storeName={storeName}
+				onMember={() => { completeOnboarding(); setAuthModalOpen(true); }}
+				onGuest={completeOnboarding}
+			/>
+		);
 	}
 
 	// ── Guest welcome page ───────────────────────────────────
@@ -152,41 +189,13 @@ function BrandCustomerIndex() {
 
 								<a
 									href="https://booking.yumme.id/"
-									aria-label="Booking meja dan menu"
+									aria-label="Booking Acara & Kolaborasi"
 									className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary transition-all duration-[180ms] hover:bg-primary/10 active:scale-[.97]"
 								>
 									<CalendarDays className="h-3.5 w-3.5" />
-									Booking meja & menu
+									Booking Acara & Kolaborasi
 								</a>
 
-								{/* ── Ajakan daftar member ─────────────── */}
-								<p className="mt-3 text-[11px] font-semibold leading-relaxed text-muted-foreground">
-									Daftar menjadi member untuk mendapatkan benefit dibawah ini
-								</p>
-
-								{/* ── Benefit list ────────────────────── */}
-								<div className="mt-4 grid grid-cols-3 gap-1.5">
-									{[
-										{ illustration: "customer-benefit-wallet" as Djiwa3DIconName, label: "Djiwa Pay" },
-										{ illustration: "customer-benefit-happy-hour" as Djiwa3DIconName, label: "Happy Hour 15rb" },
-										{ illustration: "customer-benefit-promo" as Djiwa3DIconName, label: "Promo Eksklusif" },
-									].map((b) => (
-										<div key={b.label} className="flex min-h-24 flex-col items-center justify-center rounded-[14px] border border-border/60 bg-muted/30 px-2 py-3 text-center">
-											<Djiwa3DIcon name={b.illustration} size="sm" alt="" className="h-12 w-12" />
-											<p className="mt-1 text-[11px] font-bold leading-tight text-muted-foreground">{b.label}</p>
-										</div>
-									))}
-								</div>
-
-								{/* ── Tombol Masuk / Daftar ───────────── */}
-								<button
-									type="button"
-									className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black text-muted-foreground transition-all duration-[180ms] hover:bg-muted hover:text-foreground active:scale-[.97]"
-									onClick={() => setAuthModalOpen(true)}
-								>
-									<LogIn className="h-3.5 w-3.5" />
-									Masuk / Daftar Member
-								</button>
 							</div>
 
 							{/* ── Kolom kanan: preview menu + info ─── */}
