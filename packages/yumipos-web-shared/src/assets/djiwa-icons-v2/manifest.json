@@ -767,6 +767,23 @@
       "source_type": "openai-codex-gpt-image-2-medium",
       "generation_status": "approved-prototype",
       "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-party-size",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/party-size.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Two abstract diners for party-size step."
     }
   ],
   "generated_provider": "openai-codex",

@@ -2,7 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, Package, Wallet } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { currency } from "./types";
 
 type CustomerData = {
@@ -94,12 +95,12 @@ export function ProfileCard({
       {/* Stats */}
       <div className="mt-2.5 grid grid-cols-2 gap-1.5">
         <Stat
-          icon={<Wallet className="h-3 w-3 text-emerald-500" />}
+          icon={<Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-4 w-4 object-contain" />}
           label="Djiwa Pay"
           value={currency(customer.walletBalance ?? 0)}
         />
         <Stat
-          icon={<Package className="h-3 w-3 text-blue-500" />}
+          icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-4 w-4 object-contain" />}
           label="Pesanan"
           value={String(customer.totalOrders ?? customer.total_orders ?? 0)}
         />

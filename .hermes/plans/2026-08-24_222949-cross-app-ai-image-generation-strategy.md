@@ -638,13 +638,14 @@ Deliverables prototype:
 - Generated and integrated 3 clean shared 3D replacements with OpenAI Codex: `customer-food-ordering`, `shopping-cart-order`, and `order-receipt`.
 - Generated and integrated 5 Karyawan bottom-navbar icons with OpenAI Codex: Beranda, Jadwal, Absensi, Notifikasi, Profil.
 - Generated and integrated 4 POS/Admin bottom-navbar icons with OpenAI Codex: Home/Dashboard, POS/Transaksi, AI, Orders.
+- Replaced remaining visible Customer ordering/profile icons from the screenshot: Djiwa Pay, Pesanan, party-size Step 1, order header, cart action, and empty-cart state.
 - Built and deployed Customer, Karyawan, POS, Admin, and OrderMieYamin bundles.
 - Verified production index HTTP 200 and sampled WebP asset parity on all five domains.
 - Visual contact-sheet QA confirmed object bounds are consistent and not clipped.
 
 ### Not completed / blocker
 
-- The first FAL image-generation attempt was blocked because the FAL provider was not configured. Hermes was then correctly routed to the available OpenAI Codex OAuth backend and generated 17 valid assets.
+- The first FAL image-generation attempt was blocked because the FAL provider was not configured. Hermes was then correctly routed to the available OpenAI Codex OAuth backend and generated 18 valid assets.
 
 - Remaining AI regeneration could not finish because the Codex OAuth pool started returning:
 

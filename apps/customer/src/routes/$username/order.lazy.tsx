@@ -6,8 +6,6 @@ import {
 	Grid2X2,
 	LogIn,
 	PhoneCall,
-	ShoppingCart,
-	Users,
 	X,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +13,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	useHybridActiveDiscounts,
@@ -808,7 +807,7 @@ function OrderPage() {
 		return (
 			<div className="flex min-h-app items-center justify-center bg-background px-4">
 				<div className="max-w-md rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
-					<ShoppingCart aria-hidden="true" className="mx-auto h-8 w-8 text-primary" strokeWidth={2} />
+					<Djiwa3DIcon name="navigation-order" size="md" alt="" className="mx-auto h-8 w-8 object-contain" />
 					<h1 className="mt-3 font-display text-lg font-black">Halaman ordering belum aktif</h1>
 					<p className="mt-2 text-xs text-muted-foreground">
 						Customer self-service untuk brand ini sedang dimatikan dari admin.
@@ -844,7 +843,7 @@ function OrderPage() {
 								<img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={logoUrl} />
 							) : (
 								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-									<ShoppingCart className="h-5 w-5" />
+									<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-6 w-6 object-contain" />
 								</div>
 							)}
 							<div>
@@ -901,7 +900,7 @@ function OrderPage() {
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users className="h-5 w-5" /></div>
+									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Djiwa3DIcon name="party-size" size="micro" alt="" className="h-6 w-6 object-contain" /></div>
 									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
 								</div>
 								<div className="mt-2.5 grid grid-cols-3 gap-1.5">
@@ -971,7 +970,7 @@ function OrderPage() {
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Grid2X2 className="h-3.5 w-3.5" />} onClick={() => setStep("menu")} />
-							<BottomButton label="Keranjang" icon={<ShoppingCart className="h-3.5 w-3.5" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
+							<BottomButton label="Keranjang" icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
 							<BottomButton label="Staff" icon={<Bell className="h-3.5 w-3.5" />} onClick={() => setServiceOpen(true)} />
 							<BottomButton label={receipt ? "Struk" : "Checkout"} icon={receipt ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />} onClick={() => setStep(receipt ? "receipt" : "checkout")} primary disabled={!receipt && !cart.length} />
 						</div>
@@ -989,7 +988,7 @@ function OrderPage() {
 						className="flex h-full flex-col"
 					>
 						<div className="border-b border-border px-4 pb-3 pt-4"><div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Review pesanan</p><h3 className="font-display text-lg font-black">Order basket</h3></div><button type="button" aria-label="Tutup keranjang" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={() => setCartOpen(false)}><X className="h-3.5 w-3.5" /></button></div></div>
-						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground"><ShoppingCart aria-hidden="true" className="h-7 w-7" strokeWidth={2} /><p className="mt-2 font-display text-sm font-bold text-foreground">Keranjang masih kosong</p><p className="mt-1 text-xs">Pilih menu untuk mulai memesan.</p></div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
+						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground"><Djiwa3DIcon name="navigation-order" size="sm" alt="" className="h-8 w-8 object-contain" /><p className="mt-2 font-display text-sm font-bold text-foreground">Keranjang masih kosong</p><p className="mt-1 text-xs">Pilih menu untuk mulai memesan.</p></div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
 						<div className="border-t border-border px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3"><SummaryCardLines productGrossSubtotal={productGrossSubtotal} freeRefillCharge={freeRefillCharge} promoDiscount={promoDiscount} taxAmount={taxAmount} taxRate={taxRate} serviceChargeAmount={serviceChargeAmount} serviceChargeRate={serviceChargeRate} total={total} /><button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black text-white shadow-sm disabled:opacity-60" style={{ background: themeColor }} onClick={() => { setCartOpen(false); setStep("checkout"); }} disabled={!cart.length}>Lanjut checkout <ChevronRight className="h-4 w-4" /></button></div>
 					</motion.div>
 				</SheetContent>

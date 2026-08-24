@@ -41,6 +41,7 @@ import posHome from "../../assets/djiwa-icons-v2/navigation/pos-home.webp";
 import posTransactions from "../../assets/djiwa-icons-v2/navigation/pos-transactions.webp";
 import posAi from "../../assets/djiwa-icons-v2/navigation/pos-ai.webp";
 import posOrders from "../../assets/djiwa-icons-v2/navigation/pos-orders.webp";
+import partySize from "../../assets/djiwa-icons-v2/navigation/party-size.webp";
 
 export const djiwa3DIconSources = {
   "customer-food-ordering": customerFoodOrdering,
@@ -85,6 +86,7 @@ export const djiwa3DIconSources = {
   "pos-transactions": posTransactions,
   "pos-ai": posAi,
   "pos-orders": posOrders,
+  "party-size": partySize,
 } as const;
 
 export type Djiwa3DIconName = keyof typeof djiwa3DIconSources;
