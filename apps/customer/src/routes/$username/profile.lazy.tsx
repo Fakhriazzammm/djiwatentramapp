@@ -68,7 +68,14 @@ function ProfilePage() {
 		.slice(0, 2);
 
 	const handleSave = async () => {
-		if (!editName.trim()) return;
+		if (!editName.trim()) {
+			toast.error("Nama lengkap wajib diisi");
+			return;
+		}
+		if (editPhone.trim() && editPhone.replace(/[^\d]/g, "").length < 10) {
+			toast.error("Nomor WhatsApp minimal 10 digit");
+			return;
+		}
 		if (!customer) return;
 		setSaving(true);
 		try {
