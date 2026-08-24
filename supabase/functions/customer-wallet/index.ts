@@ -57,8 +57,15 @@ async function createTopup(payload: Json) {
 async function createHold(payload: Json) {
   const sourceId = text(payload.sourceId); const email = text(payload.email);
   await ownedCustomer(sourceId, email);
-  const orderId = text(payload.orderId); const amount = Number(payload.amount); const key = idempotency(payload.idempotencyKey);
-  if (!orderId || !Number.isSafeInteger(amount) || amount <= 0) throw new Error("orderId dan nominal wallet wajib valid");
+  const orderId = text(payload.orderId); const key = idempotency(payload.idempotencyKey);
+  if (!orderId) throw new Error("orderId wajib diisi");
+  const { data: order, error: orderError } = await admin.schema("pos").from("orders").select("source_id,customer_source_id,total_amount,payment_method,status").eq("source_id", orderId).maybeSingle();
+  if (orderError) throw orderError;
+  if (!order || order.customer_source_id !== sourceId) throw new Error("Order bukan milik customer");
+  if (String(order.payment_method || "").toLowerCase() !== "wallet") throw new Error("Order bukan pembayaran Djiwa Pay");
+  if (["paid", "completed", "cancelled"].includes(String(order.status || "").toLowerCase())) throw new Error("Status order tidak dapat ditahan");
+  const amount = Math.round(Number(order.total_amount));
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("Total order tidak valid");
   const { data, error } = await admin.schema("pos").rpc("wallet_create_hold", { p_customer_id: sourceId, p_order_id: orderId, p_amount: amount, p_idempotency_key: key });
   if (error) throw error;
   return data;
@@ -129,7 +136,7 @@ async function adminAdjust(payload: Json) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method === "OPTIONS") return response({ ok: true });
   if (req.method !== "POST") return fail("METHOD_NOT_ALLOWED", "Method not allowed", 405);
   try {
     const body = await req.json() as Json;

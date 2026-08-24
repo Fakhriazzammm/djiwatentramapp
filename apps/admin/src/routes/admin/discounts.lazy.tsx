@@ -399,6 +399,7 @@ function AdminDiscountsPage() {
 						<p className="text-muted-foreground text-xs md:text-sm lg:text-base">
 							Kelola promosi dan voucher
 						</p>
+						<p className="mt-1 text-[11px] font-semibold text-emerald-700">Djiwa Pay: diskon otomatis 20% · reward transaksi +Rp1.000 saldo</p>
 					</div>
 					<div className="flex flex-wrap gap-3">
 						<button
