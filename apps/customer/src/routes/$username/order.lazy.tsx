@@ -274,7 +274,7 @@ function OrderPage() {
 	const grossSubtotal = productGrossSubtotal + freeRefillCharge;
 	const promoDiscount = Math.max(0, grossSubtotal - subtotal);
 	const djiwaPayDiscountPercent = Number(siteSettings?.djiwaPayDiscountPercent ?? 20);
-	const djiwaPayDiscount = paymentChoice === "wallet"
+	const djiwaPayDiscount = paymentChoice === "wallet" && promoDiscount === 0
 		? Math.min(productSubtotal, Math.max(0, Math.round(productSubtotal * (djiwaPayDiscountPercent / 100))))
 		: 0;
 	const chargeableSubtotal = Math.max(0, subtotal - djiwaPayDiscount);

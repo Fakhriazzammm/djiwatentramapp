@@ -139,6 +139,7 @@ export function SummaryCardLines({
 	freeRefillCharge,
 	productGrossSubtotal,
 	promoDiscount,
+	djiwaPayDiscount = 0,
 	serviceChargeAmount,
 	serviceChargeRate,
 	taxAmount,
@@ -148,6 +149,7 @@ export function SummaryCardLines({
 	freeRefillCharge: number;
 	productGrossSubtotal: number;
 	promoDiscount: number;
+	djiwaPayDiscount?: number;
 	serviceChargeAmount: number;
 	serviceChargeRate: number;
 	taxAmount: number;
@@ -160,6 +162,9 @@ export function SummaryCardLines({
 			{freeRefillCharge > 0 ? <Line label="Free refill minuman" value={currency(freeRefillCharge)} /> : null}
 			{promoDiscount > 0 ? (
 				<Line label="Promo / diskon" value={`-${currency(promoDiscount)}`} className="text-orange-600" />
+			) : null}
+			{djiwaPayDiscount > 0 ? (
+				<Line label="Voucher Djiwa Pay (20%)" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
 			) : null}
 			{serviceChargeAmount > 0 ? (
 				<Line label={`Service (${serviceChargeRate}%)`} value={currency(serviceChargeAmount)} />

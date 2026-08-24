@@ -60,6 +60,13 @@ function AdminDiscountsPage() {
 	const [filterStatus, setFilterStatus] = useState<string>("all");
 	const [filterType, setFilterType] = useState<string>("all");
 
+	const djiwaPayRule = {
+		name: "Voucher Djiwa Pay 20%",
+		value: 20,
+		channel: "Djiwa Pay saja",
+		reward: "+Rp1.000 Saldo Djiwa Pay",
+	};
+
 	const [formData, setFormData] = useState<{
 		id?: Id<"discounts">;
 		name: string;
@@ -441,6 +448,16 @@ function AdminDiscountsPage() {
 							<Plus className="h-4 w-4" />
 							Tambah Diskon
 						</button>
+					</div>
+				</div>
+
+				<div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm" data-marketing-rule="djiwa-pay-20">
+					<div className="flex items-start gap-3">
+						<div className="rounded-xl bg-emerald-100 p-2 text-emerald-700"><Tag className="h-4 w-4" /></div>
+						<div className="min-w-0 flex-1">
+							<p className="text-xs font-black">{djiwaPayRule.name}</p>
+							<p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">Diskon {djiwaPayRule.value}% otomatis untuk pembayaran Djiwa Pay. Tunai/kasir dan QRIS Mayar tidak eligible. Reward transaksi: {djiwaPayRule.reward}.</p>
+						</div>
 					</div>
 				</div>
 
