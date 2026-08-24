@@ -46,6 +46,7 @@ import { renderMenuSection } from "@/components/customer/menu-section";
 import { renderCheckoutSection } from "@/components/customer/checkout-section";
 import { renderReceiptSection } from "@/components/customer/receipt-section";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
@@ -122,8 +123,13 @@ function OrderPage() {
 		addToCart,
 		updateCartQuantity,
 	} = useOrderContext();
+	const [guestEmail, setGuestEmail] = useState("");
+	const [guestPhone, setGuestPhone] = useState("");
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const missingContactFields = getMissingCustomerFields(customer);
+	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
+	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
 	const memberDiscounts = useMemo(
 		() => isAuthenticated ? discounts : discounts?.filter((discount) => !discount.isHappyHour),
 		[discounts, isAuthenticated],
@@ -512,8 +518,8 @@ function OrderPage() {
 				paymentMethod: paymentChoice === "mayar" ? "qris" : "cash",
 				idempotencyKey: checkoutRequestKeyRef.current,
 				customerName: normalizedCustomerName,
-				customerEmail: customer?.email?.trim() || null,
-				customerPhone: customer?.phone?.trim() || null,
+				customerEmail: checkoutEmail || null,
+				customerPhone: checkoutPhone || null,
 				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
 				source: "customer_self_service" as const,
@@ -805,7 +811,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, guestEmail, guestPhone, isAuthenticated, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setGuestEmail, setGuestPhone, setDessertLater, setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: () => { setReceipt(null); setDessertLater(false); setNotes(""); setStep("menu"); }, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}

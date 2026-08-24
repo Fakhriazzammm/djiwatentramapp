@@ -52,7 +52,7 @@ import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
-import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
+import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
@@ -131,6 +131,8 @@ function OrderPage() {
 		updateCartQuantity,
 	} = useOrderContext();
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
+	const [guestEmail, setGuestEmail] = useState("");
+	const [guestPhone, setGuestPhone] = useState("");
 
 	const startNewOrder = () => {
 		checkoutRequestKeyRef.current = null;
@@ -141,6 +143,8 @@ function OrderPage() {
 		setScannerOpen(false);
 		setProductSheet(null);
 		setCheckoutError(null);
+		setGuestEmail("");
+		setGuestPhone("");
 		setDessertLater(false);
 		setNotes("");
 		setStep("menu");
@@ -149,6 +153,8 @@ function OrderPage() {
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
+	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
+	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
 	const memberDiscounts = useMemo(
 		() => isAuthenticated ? discounts : discounts?.filter((discount) => !discount.isHappyHour),
 		[discounts, isAuthenticated],
@@ -546,9 +552,21 @@ function OrderPage() {
 			toast.error("Ciri khusus customer wajib diisi");
 			return;
 		}
-		if ((paymentChoice === "mayar" || paymentChoice === "wallet") && (!isAuthenticated || missingContactFields.length > 0)) {
-			toast.error(isAuthenticated ? getCustomerContactMessage(missingContactFields) : "Masuk dan lengkapi email serta nomor WhatsApp untuk pembayaran online");
-			navigate({ to: "/$username/profile", params: { username } });
+		if (paymentChoice === "mayar") {
+			if (isAuthenticated && missingContactFields.length > 0) {
+				toast.error(getCustomerContactMessage(missingContactFields));
+				navigate({ to: "/$username/profile", params: { username } });
+				return;
+			}
+			if (!isAuthenticated && (!/^\S+@\S+\.\S+$/.test(checkoutEmail) || !hasValidCustomerPhone(checkoutPhone))) {
+				toast.error("Isi email dan nomor WhatsApp untuk pembayaran QRIS");
+				return;
+			}
+		}
+		if (paymentChoice === "wallet" && (!isAuthenticated || missingContactFields.length > 0)) {
+			toast.error(isAuthenticated ? getCustomerContactMessage(missingContactFields) : "Masuk dan lengkapi profil untuk pembayaran Djiwa Pay");
+			if (isAuthenticated) navigate({ to: "/$username/profile", params: { username } });
+			else setAuthModalOpen(true);
 			return;
 		}
 		setIsSubmitting(true);
@@ -578,6 +596,8 @@ function OrderPage() {
 				paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
 				idempotencyKey: checkoutRequestKeyRef.current,
 				customerName: orderCustomerName,
+				customerEmail: checkoutEmail || null,
+				customerPhone: checkoutPhone || null,
 				customerDescription: normalizedCustomerDescription,
 				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
@@ -672,8 +692,8 @@ function OrderPage() {
 						idempotencyKey: checkoutRequestKeyRef.current,
 						paymentMethod: "qris",
 						name: normalizedCustomerName,
-						email: customer?.email?.trim() || undefined,
-						mobile: customer?.phone?.trim() || "",
+						email: checkoutEmail || undefined,
+						mobile: checkoutPhone || "",
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
 						expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -922,7 +942,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
