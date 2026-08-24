@@ -1,6 +1,6 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ClipboardList, Home, UserRound, LogIn, LogOut, ShoppingCart, User } from "lucide-react";
+import { ClipboardList, Home, UserRound, LogIn, LogOut, ShoppingCart, User, Wallet } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
