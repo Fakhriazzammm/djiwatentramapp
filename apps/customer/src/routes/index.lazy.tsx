@@ -110,11 +110,7 @@ function BrandCustomerIndex() {
 			<CustomerOnboarding
 				logoUrl={logoUrl}
 				storeName={storeName}
-				onMember={() => {
-					completeOnboarding();
-					if (isAuthenticated && customer) navigate({ to: `/${customer.username}` });
-					else setAuthModalOpen(true);
-				}}
+				onMember={() => { completeOnboarding(); navigate({ to: "/masuk" }); }}
 				onGuest={completeOnboarding}
 			/>
 		);

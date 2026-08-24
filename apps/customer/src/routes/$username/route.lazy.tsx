@@ -201,7 +201,7 @@ function MemberHomePage() {
 						<CustomerGreeting name={guestData.name} />
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
 						<RecentOrdersCarousel username={username} />
-						<DjiwaPayOfferCard isMember={false} onAction={() => setAuthModalOpen(true)} />
+						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
 						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
 						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
 					</main>

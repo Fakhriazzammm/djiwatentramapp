@@ -616,7 +616,7 @@ function OrderPage() {
 		if (paymentChoice === "wallet" && (!isAuthenticated || missingContactFields.length > 0)) {
 			toast.error(isAuthenticated ? getCustomerContactMessage(missingContactFields) : "Masuk dan lengkapi profil untuk pembayaran Djiwa Pay");
 			if (isAuthenticated) navigate({ to: "/$username/profile", params: { username } });
-			else setAuthModalOpen(true);
+			else navigate({ to: "/masuk" });
 			return;
 		}
 		setIsSubmitting(true);
@@ -921,7 +921,7 @@ function OrderPage() {
 							isAuthenticated={isAuthenticated}
 							customer={(customer ?? null) as any}
 							isLoading={authLoading}
-							onOpenAuth={() => setAuthModalOpen(true)}
+							onOpenAuth={() => navigate({ to: "/masuk" })}
 							onLogout={logout}
 							onProfileClick={() => navigate({ to: "/$username/profile", params: { username } })}
 						/>
