@@ -1121,6 +1121,57 @@
       "source_type": "openai-codex-gpt-image-2-medium",
       "generation_status": "approved-prototype",
       "notes": "Clean text-free employee menu/salary icon."
+    },
+    {
+      "name": "customer-benefit-wallet",
+      "source": "generated-by-openai-codex-copy-of-approved-v2",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-benefit-wallet.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Unique landing-page filename to bypass stale PWA asset cache."
+    },
+    {
+      "name": "customer-benefit-happy-hour",
+      "source": "generated-by-openai-codex-copy-of-approved-v2",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-benefit-happy-hour.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Unique landing-page filename to bypass stale PWA asset cache."
+    },
+    {
+      "name": "customer-benefit-promo",
+      "source": "generated-by-openai-codex-copy-of-approved-v2",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-benefit-promo.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        40,
+        64,
+        80
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Unique landing-page filename to bypass stale PWA asset cache."
     }
   ],
   "generated_provider": "openai-codex",

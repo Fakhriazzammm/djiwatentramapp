@@ -641,6 +641,7 @@ Deliverables prototype:
 - Replaced remaining visible Customer ordering/profile icons from the screenshot: Djiwa Pay, Pesanan, party-size Step 1, order header, cart action, and empty-cart state.
 - Generated and integrated 11 clean Karyawan home/menu icons with OpenAI Codex: Gaji, Tunjangan, Bonus, Absensi, Rekap Absensi, Jadwal, Izin/Cuti/Sakit, Slip Gaji, Kontrak, Grup Telegram, and Leaderboard Bonus.
 - Regenerated all 25 canonical shared legacy asset names with OpenAI Codex and replaced their V2 files in-place, preserving existing consumer mappings across all apps.
+- Fixed Customer landing benefit tiles by assigning unique cache-safe asset filenames/keys (`customer-benefit-wallet`, `customer-benefit-happy-hour`, `customer-benefit-promo`) and redeployed the Customer domain.
 - Built and deployed Customer, Karyawan, POS, Admin, and OrderMieYamin bundles.
 - Verified production index HTTP 200 and sampled WebP asset parity on all five domains.
 - Visual contact-sheet QA confirmed object bounds are consistent and not clipped.
