@@ -537,6 +537,10 @@ function OrderPage() {
 			toast.error("Nomor meja wajib diisi");
 			return;
 		}
+		if (!customerDescription.trim()) {
+			toast.error("Ciri khusus customer wajib diisi");
+			return;
+		}
 		if ((paymentChoice === "mayar" || paymentChoice === "wallet") && (!isAuthenticated || missingContactFields.length > 0)) {
 			toast.error(isAuthenticated ? getCustomerContactMessage(missingContactFields) : "Masuk dan lengkapi email serta nomor WhatsApp untuk pembayaran online");
 			navigate({ to: "/$username/profile", params: { username } });
