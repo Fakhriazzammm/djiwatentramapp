@@ -47,7 +47,7 @@ async function findOwnedCustomer(sourceId: string, email: string) {
 	const { data, error } = await supabaseAdmin
 		.schema("pos")
 		.from("customers")
-		.select("source_id, email, name, phone, total_points, lifetime_points")
+		.select("source_id, email, name, phone, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
 		.eq("source_id", sourceId)
 		.maybeSingle();
 
@@ -147,9 +147,17 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	const email = toTrimmedString(payload.email);
 	const name = toTrimmedString(payload.name);
 	const phone = toTrimmedString(payload.phone);
+	const nickname = toTrimmedString(payload.nickname);
+	const birthDate = toTrimmedString(payload.birthDate);
+	const gender = toTrimmedString(payload.gender);
+	const address = toTrimmedString(payload.address);
+	const city = toTrimmedString(payload.city);
+	const province = toTrimmedString(payload.province);
+	const postalCode = toTrimmedString(payload.postalCode);
+	const marketingConsent = typeof payload.marketingConsent === "boolean" ? payload.marketingConsent : undefined;
 
 	if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
-	if (!name && !phone) throw new Error("Tidak ada field yang diubah");
+	if (!name && !phone && !nickname && !birthDate && !gender && !address && !city && !province && !postalCode && marketingConsent === undefined) throw new Error("Tidak ada field yang diubah");
 
 	const { customer, error: ownershipError } = await findOwnedCustomer(sourceId, email);
 	if (ownershipError || !customer) {
@@ -161,13 +169,24 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	};
 	if (name) updates.name = name;
 	if (phone) updates.phone = phone;
+	if (nickname) updates.nickname = nickname;
+	if (birthDate) updates.birth_date = birthDate;
+	if (gender) updates.gender = gender;
+	if (address) updates.address = address;
+	if (city) updates.city = city;
+	if (province) updates.province = province;
+	if (postalCode) updates.postal_code = postalCode;
+	if (marketingConsent !== undefined) updates.marketing_consent = marketingConsent;
+	if ((name || String((customer as Record<string, unknown>).name ?? "").trim()) && (phone || String((customer as Record<string, unknown>).phone ?? "").replace(/[^\d]/g, "").length >= 10)) {
+		updates.profile_completed_at = new Date().toISOString();
+	}
 
 	const { data, error } = await supabaseAdmin
 		.schema("pos")
 		.from("customers")
 		.update(updates)
 		.eq("source_id", sourceId)
-		.select("source_id, name, email, phone, total_points, lifetime_points")
+		.select("source_id, name, email, phone, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
 		.maybeSingle();
 
 	if (error) throw error;

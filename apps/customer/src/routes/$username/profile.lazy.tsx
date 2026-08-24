@@ -21,6 +21,14 @@ function ProfilePage() {
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState("");
 	const [editPhone, setEditPhone] = useState("");
+	const [editNickname, setEditNickname] = useState("");
+	const [editBirthDate, setEditBirthDate] = useState("");
+	const [editGender, setEditGender] = useState("");
+	const [editAddress, setEditAddress] = useState("");
+	const [editCity, setEditCity] = useState("");
+	const [editProvince, setEditProvince] = useState("");
+	const [editPostalCode, setEditPostalCode] = useState("");
+	const [editMarketingConsent, setEditMarketingConsent] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
 
@@ -71,6 +79,14 @@ function ProfilePage() {
 				email: customer.email ?? undefined,
 				name: editName.trim(),
 				phone: editPhone.trim() || undefined,
+				nickname: editNickname.trim() || undefined,
+				birthDate: editBirthDate || undefined,
+				gender: editGender || undefined,
+				address: editAddress.trim() || undefined,
+				city: editCity.trim() || undefined,
+				province: editProvince.trim() || undefined,
+				postalCode: editPostalCode.trim() || undefined,
+				marketingConsent: editMarketingConsent,
 			});
 			await refreshCustomer();
 			setSaving(false);
@@ -87,6 +103,14 @@ function ProfilePage() {
 	const startEditing = () => {
 		setEditName(customer.name || "");
 		setEditPhone(customer.phone || "");
+		setEditNickname(customer.nickname || "");
+		setEditBirthDate(customer.birthDate || "");
+		setEditGender(customer.gender || "");
+		setEditAddress(customer.address || "");
+		setEditCity(customer.city || "");
+		setEditProvince(customer.province || "");
+		setEditPostalCode(customer.postalCode || "");
+		setEditMarketingConsent(customer.marketingConsent);
 		setIsEditing(true);
 	};
 
@@ -109,6 +133,7 @@ function ProfilePage() {
 			</header>
 
 			<main className="px-3 py-4">
+				{!customer.email || !customer.phone ? <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-black text-amber-900">Profile belum lengkap untuk QRIS</p><p className="mt-1 text-[10px] leading-relaxed text-amber-800">Lengkapi email dan nomor WhatsApp agar invoice Mayar dapat dibuat.</p></div> : null}
 				{/* Avatar & Username */}
 				<div className="flex flex-col items-center py-4">
 					{customer.photoUrl ? (
@@ -161,6 +186,15 @@ function ProfilePage() {
 										placeholder="+62 xxx"
 									/>
 								</div>
+								<div className="grid grid-cols-2 gap-2">
+									<div><p className="mb-1 text-[10px] font-semibold text-muted-foreground">Nama panggilan</p><input type="text" value={editNickname} onChange={(e) => setEditNickname(e.target.value)} placeholder="Opsional" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
+									<div><p className="mb-1 text-[10px] font-semibold text-muted-foreground">Tanggal lahir</p><input type="date" value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
+								</div>
+								<div><p className="mb-1 text-[10px] font-semibold text-muted-foreground">Jenis kelamin</p><select value={editGender} onChange={(e) => setEditGender(e.target.value)} className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none"><option value="">Tidak ingin mengisi</option><option value="female">Perempuan</option><option value="male">Laki-laki</option><option value="other">Lainnya</option></select></div>
+								<div><p className="mb-1 text-[10px] font-semibold text-muted-foreground">Alamat (opsional)</p><textarea value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="Untuk kebutuhan delivery" className="min-h-20 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
+								<div className="grid grid-cols-2 gap-2"><input type="text" value={editCity} onChange={(e) => setEditCity(e.target.value)} placeholder="Kota/Kabupaten" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /><input type="text" value={editProvince} onChange={(e) => setEditProvince(e.target.value)} placeholder="Provinsi" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
+								<div><input type="text" value={editPostalCode} onChange={(e) => setEditPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5))} placeholder="Kode pos" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
+								<label className="flex items-start gap-2 rounded-xl bg-muted/40 p-2 text-[10px] leading-relaxed"><input type="checkbox" checked={editMarketingConsent} onChange={(e) => setEditMarketingConsent(e.target.checked)} className="mt-0.5" />Saya bersedia menerima informasi promo dan layanan Djiwa Tentram.</label>
 								<div className="flex gap-2 pt-1">
 									<Button
 										variant="outline"

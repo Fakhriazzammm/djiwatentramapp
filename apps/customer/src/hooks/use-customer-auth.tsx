@@ -19,6 +19,15 @@ export type CustomerUser = {
   name: string | null;
   phone: string | null;
   photoUrl: string | null;
+  nickname: string | null;
+  birthDate: string | null;
+  gender: string | null;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  marketingConsent: boolean;
+  profileCompletedAt: string | null;
   username: string;
   totalPoints: number;
   lifetimePoints: number;
@@ -74,6 +83,15 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
     name: (row.name as string) ?? null,
     phone: (row.phone as string) ?? null,
     photoUrl: (row.photo_url as string) ?? null,
+    nickname: (row.nickname as string) ?? null,
+    birthDate: (row.birth_date as string) ?? null,
+    gender: (row.gender as string) ?? null,
+    address: (row.address as string) ?? null,
+    city: (row.city as string) ?? null,
+    province: (row.province as string) ?? null,
+    postalCode: (row.postal_code as string) ?? null,
+    marketingConsent: row.marketing_consent === true,
+    profileCompletedAt: (row.profile_completed_at as string) ?? null,
     username: deriveUsername((row.email as string) ?? null, (row.name as string) ?? null),
     totalPoints: Number(row.total_points ?? 0),
     lifetimePoints: Number(row.lifetime_points ?? 0),
@@ -136,6 +154,15 @@ function buildFallbackCustomer(
     name: name ?? email?.split("@")[0] ?? "User",
     phone: null,
     photoUrl: null,
+    nickname: null,
+    birthDate: null,
+    gender: null,
+    address: null,
+    city: null,
+    province: null,
+    postalCode: null,
+    marketingConsent: false,
+    profileCompletedAt: null,
     username: deriveUsername(email, name),
     totalPoints: 0,
     lifetimePoints: 0,
