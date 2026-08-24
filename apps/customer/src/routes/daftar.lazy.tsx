@@ -1,4 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useOrderContext } from "@/hooks/use-order-context";
@@ -9,6 +10,7 @@ export const Route = createLazyFileRoute("/daftar")({
 
 function DaftarPage() {
 	const navigate = useNavigate();
+	const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "email" | "phone" | "description", string>>>({});
 	const {
 		guestName: name,
 		setGuestName: setName,
@@ -24,22 +26,41 @@ function DaftarPage() {
 		setTableNumber,
 	} = useOrderContext();
 
+	const focusInvalidField = (fieldId: string, field: "name" | "email" | "phone" | "description", message: string) => {
+		setFieldErrors((current) => ({ ...current, [field]: message }));
+		toast.error(message);
+		window.requestAnimationFrame(() => {
+			const input = document.getElementById(fieldId) as HTMLInputElement | null;
+			input?.scrollIntoView({ behavior: "smooth", block: "center" });
+			input?.focus({ preventScroll: true });
+		});
+	};
+
+	const clearFieldError = (field: "name" | "email" | "phone" | "description") => {
+		setFieldErrors((current) => {
+			if (!current[field]) return current;
+			const next = { ...current };
+			delete next[field];
+			return next;
+		});
+	};
+
 	const handleSubmit = () => {
 		const trimmedName = name.trim();
 		if (!trimmedName) {
-			toast.error("Nama wajib diisi");
+			focusInvalidField("guest-name", "name", "Nama wajib diisi");
 			return;
 		}
 		if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-			toast.error("Email wajib diisi dengan format yang valid");
+			focusInvalidField("guest-email", "email", "Email wajib diisi dengan format yang valid");
 			return;
 		}
 		if (phone.replace(/[^\d]/g, "").length < 10) {
-			toast.error("Nomor WhatsApp wajib diisi minimal 10 digit");
+			focusInvalidField("guest-phone", "phone", "Nomor WhatsApp wajib diisi minimal 10 digit");
 			return;
 		}
 		if (!description.trim()) {
-			toast.error("Ciri khusus customer wajib diisi");
+			focusInvalidField("guest-description", "description", "Ciri khusus customer wajib diisi");
 			return;
 		}
 
@@ -72,7 +93,6 @@ function DaftarPage() {
 				: undefined,
 		});
 	};
-
 	return (
 		<div className="app-page min-h-app">
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
@@ -103,10 +123,13 @@ function DaftarPage() {
 								id="guest-name"
 								type="text"
 								value={name}
-								onChange={(e) => setName(e.target.value)}
+								onChange={(e) => { clearFieldError("name"); setName(e.target.value); }}
 								placeholder="Nama kamu"
-								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								aria-invalid={Boolean(fieldErrors.name)}
+								aria-describedby={fieldErrors.name ? "guest-name-error" : undefined}
+								className={`mt-1 min-h-11 w-full rounded-[14px] border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/20 ${fieldErrors.name ? "border-destructive focus:border-destructive" : "border-border focus:border-primary/50"}`}
 							/>
+							{fieldErrors.name ? <p id="guest-name-error" role="alert" className="mt-1 text-[11px] font-semibold text-destructive">{fieldErrors.name}</p> : null}
 						</div>
 
 						{/* Email */}
@@ -118,11 +141,14 @@ function DaftarPage() {
 								id="guest-email"
 								type="email"
 								value={email}
-								onChange={(e) => setEmail(e.target.value)}
+								onChange={(e) => { clearFieldError("email"); setEmail(e.target.value); }}
 								placeholder="email@example.com"
 								required
-								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								aria-invalid={Boolean(fieldErrors.email)}
+								aria-describedby={fieldErrors.email ? "guest-email-error" : undefined}
+								className={`mt-1 min-h-11 w-full rounded-[14px] border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/20 ${fieldErrors.email ? "border-destructive focus:border-destructive" : "border-border focus:border-primary/50"}`}
 							/>
+							{fieldErrors.email ? <p id="guest-email-error" role="alert" className="mt-1 text-[11px] font-semibold text-destructive">{fieldErrors.email}</p> : null}
 						</div>
 
 						{/* No WhatsApp */}
@@ -134,11 +160,14 @@ function DaftarPage() {
 								id="guest-phone"
 								type="tel"
 								value={phone}
-								onChange={(e) => setPhone(e.target.value)}
+								onChange={(e) => { clearFieldError("phone"); setPhone(e.target.value); }}
 								placeholder="08xxxx"
 								required
-								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								aria-invalid={Boolean(fieldErrors.phone)}
+								aria-describedby={fieldErrors.phone ? "guest-phone-error" : undefined}
+								className={`mt-1 min-h-11 w-full rounded-[14px] border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/20 ${fieldErrors.phone ? "border-destructive focus:border-destructive" : "border-border focus:border-primary/50"}`}
 							/>
+							{fieldErrors.phone ? <p id="guest-phone-error" role="alert" className="mt-1 text-[11px] font-semibold text-destructive">{fieldErrors.phone}</p> : null}
 						</div>
 
 						{/* Ciri khusus customer */}
@@ -150,12 +179,15 @@ function DaftarPage() {
 								id="guest-description"
 								type="text"
 								value={description}
-								onChange={(e) => setGuestDescription(e.target.value.slice(0, 160))}
+								onChange={(e) => { clearFieldError("description"); setGuestDescription(e.target.value.slice(0, 160)); }}
 								placeholder="Contoh: baju merah, topi hitam"
 								maxLength={160}
 								required
-								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								aria-invalid={Boolean(fieldErrors.description)}
+								aria-describedby={fieldErrors.description ? "guest-description-error" : undefined}
+								className={`mt-1 min-h-11 w-full rounded-[14px] border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/20 ${fieldErrors.description ? "border-destructive focus:border-destructive" : "border-border focus:border-primary/50"}`}
 							/>
+							{fieldErrors.description ? <p id="guest-description-error" role="alert" className="mt-1 text-[11px] font-semibold text-destructive">{fieldErrors.description}</p> : null}
 						</div>
 
 						<label className="flex items-start gap-2 rounded-xl bg-muted/40 p-2 text-[10px] leading-relaxed text-muted-foreground">
