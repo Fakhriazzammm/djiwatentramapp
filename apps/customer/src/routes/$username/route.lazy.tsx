@@ -147,7 +147,14 @@ function MemberHomePage() {
 			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
 			onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 			onSkip={() => setAuthModalOpen(false)}
-			onGoogleSignIn={signInWithGoogle}
+			onGoogleSignIn={async () => {
+				try {
+					setAuthError(undefined);
+					await signInWithGoogle();
+				} catch (e: any) {
+					setAuthError(e?.message || "Gagal masuk dengan Google");
+				}
+			}}
 			onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
 			isLoading={isLoading}
 			needsEmailConfirm={registrationNeedsEmailConfirm}

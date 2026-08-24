@@ -276,7 +276,14 @@ function BrandCustomerIndex() {
 						}
 					}}
 					onSkip={() => setAuthModalOpen(false)}
-					onGoogleSignIn={signInWithGoogle}
+					onGoogleSignIn={async () => {
+						try {
+							setAuthError(undefined);
+							await signInWithGoogle();
+						} catch (e: any) {
+							setAuthError(e?.message || "Gagal masuk dengan Google");
+						}
+					}}
 					onResetPassword={async (email) => {
 						try {
 							await resetPassword(email);

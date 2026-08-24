@@ -234,13 +234,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   // ── login ────────────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
+    setRegistrationNeedsEmailConfirm(false);
     try {
-      const { error } = await authClient.signIn.email({ email, password });
+      const { data, error } = await authClient.signIn.email({ email, password });
       if (error) {
         toast.error(error.message || "Gagal masuk.");
         throw new Error(error.message || "Gagal masuk.");
       }
+      if (!data?.user) throw new Error("Sesi login tidak diterima server.");
       toast.success("Berhasil masuk!");
+      // Better Auth has set the session cookie; reload lets useSession recover
+      // it deterministically instead of depending on an in-memory hook update.
+      window.location.assign("/");
     } catch (error) {
       console.error("[customer-auth] Login error:", error);
       setIsLoading(false);
@@ -255,7 +260,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string, name: string) => {
       setIsLoading(true);
       try {
-        const { error } = await authClient.signUp.email({
+        const { data, error } = await authClient.signUp.email({
           email,
           password,
           name,
@@ -264,8 +269,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           toast.error(error.message || "Gagal mendaftar.");
           throw new Error(error.message || "Gagal mendaftar.");
         }
-        // better-auth signs in auto after signup — session will sync via useEffect
+        const requiresEmailConfirm = !data?.token;
+        setRegistrationNeedsEmailConfirm(requiresEmailConfirm);
         toast.success("Akun berhasil dibuat!");
+        if (!requiresEmailConfirm) {
+          // Auto-confirm registration has a session cookie; recover it from a
+          // clean app boot just like password login.
+          window.location.assign("/");
+        }
       } catch (error) {
         console.error("[customer-auth] Register error:", error);
         throw error;
