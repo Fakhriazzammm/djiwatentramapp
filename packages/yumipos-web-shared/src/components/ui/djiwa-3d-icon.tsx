@@ -1,32 +1,32 @@
 import type { ImgHTMLAttributes } from "react";
-import customerFoodOrdering from "../../assets/djiwa-icons/customer-food-ordering.webp";
-import restaurantCafe from "../../assets/djiwa-icons/restaurant-cafe.webp";
-import shoppingCartOrder from "../../assets/djiwa-icons/shopping-cart-order.webp";
-import paymentWallet from "../../assets/djiwa-icons/payment-wallet.webp";
-import orderReceipt from "../../assets/djiwa-icons/order-receipt.webp";
-import orderTracking from "../../assets/djiwa-icons/order-tracking.webp";
-import loyaltyPoints from "../../assets/djiwa-icons/loyalty-points.webp";
-import promoVoucher from "../../assets/djiwa-icons/promo-voucher.webp";
-import foodCustomization from "../../assets/djiwa-icons/food-customization.webp";
-import orderUpsell from "../../assets/djiwa-icons/order-upsell-main-dish-drink.webp";
-import cashierTerminal from "../../assets/djiwa-icons/cashier-terminal.webp";
-import orderQueue from "../../assets/djiwa-icons/order-queue.webp";
-import kitchenDisplay from "../../assets/djiwa-icons/kitchen-display.webp";
-import inventoryStock from "../../assets/djiwa-icons/inventory-stock.webp";
-import stockOpname from "../../assets/djiwa-icons/stock-opname.webp";
-import shiftClosing from "../../assets/djiwa-icons/shift-closing.webp";
-import salesReport from "../../assets/djiwa-icons/sales-report.webp";
-import attendanceCheckIn from "../../assets/djiwa-icons/employee-attendance-check-in.webp";
-import attendanceCheckOut from "../../assets/djiwa-icons/employee-attendance-check-out.webp";
-import workSchedule from "../../assets/djiwa-icons/work-schedule.webp";
-import payrollPayslip from "../../assets/djiwa-icons/payroll-payslip.webp";
-import employeeProfile from "../../assets/djiwa-icons/employee-profile.webp";
-import businessAiAssistant from "../../assets/djiwa-icons/business-ai-assistant.webp";
-import dashboardOverview from "../../assets/djiwa-icons/dashboard-overview.webp";
-import deliveryManagement from "../../assets/djiwa-icons/delivery-management.webp";
-import suppliersPurchaseOrder from "../../assets/djiwa-icons/suppliers-purchase-order.webp";
-import returnManagement from "../../assets/djiwa-icons/return-management.webp";
-import notificationsAlerts from "../../assets/djiwa-icons/notifications-alerts.webp";
+import customerFoodOrdering from "../../assets/djiwa-icons-v2/customer-food-ordering.webp";
+import restaurantCafe from "../../assets/djiwa-icons-v2/restaurant-cafe.webp";
+import shoppingCartOrder from "../../assets/djiwa-icons-v2/shopping-cart-order.webp";
+import paymentWallet from "../../assets/djiwa-icons-v2/payment-wallet.webp";
+import orderReceipt from "../../assets/djiwa-icons-v2/order-receipt.webp";
+import orderTracking from "../../assets/djiwa-icons-v2/order-tracking.webp";
+import loyaltyPoints from "../../assets/djiwa-icons-v2/loyalty-points.webp";
+import promoVoucher from "../../assets/djiwa-icons-v2/promo-voucher.webp";
+import foodCustomization from "../../assets/djiwa-icons-v2/food-customization.webp";
+import orderUpsell from "../../assets/djiwa-icons-v2/order-upsell-main-dish-drink.webp";
+import cashierTerminal from "../../assets/djiwa-icons-v2/cashier-terminal.webp";
+import orderQueue from "../../assets/djiwa-icons-v2/order-queue.webp";
+import kitchenDisplay from "../../assets/djiwa-icons-v2/kitchen-display.webp";
+import inventoryStock from "../../assets/djiwa-icons-v2/inventory-stock.webp";
+import stockOpname from "../../assets/djiwa-icons-v2/stock-opname.webp";
+import shiftClosing from "../../assets/djiwa-icons-v2/shift-closing.webp";
+import salesReport from "../../assets/djiwa-icons-v2/sales-report.webp";
+import attendanceCheckIn from "../../assets/djiwa-icons-v2/employee-attendance-check-in.webp";
+import attendanceCheckOut from "../../assets/djiwa-icons-v2/employee-attendance-check-out.webp";
+import workSchedule from "../../assets/djiwa-icons-v2/work-schedule.webp";
+import payrollPayslip from "../../assets/djiwa-icons-v2/payroll-payslip.webp";
+import employeeProfile from "../../assets/djiwa-icons-v2/employee-profile.webp";
+import businessAiAssistant from "../../assets/djiwa-icons-v2/business-ai-assistant.webp";
+import dashboardOverview from "../../assets/djiwa-icons-v2/dashboard-overview.webp";
+import deliveryManagement from "../../assets/djiwa-icons-v2/delivery-management.webp";
+import suppliersPurchaseOrder from "../../assets/djiwa-icons-v2/suppliers-purchase-order.webp";
+import returnManagement from "../../assets/djiwa-icons-v2/return-management.webp";
+import notificationsAlerts from "../../assets/djiwa-icons-v2/notifications-alerts.webp";
 
 export const djiwa3DIconSources = {
   "customer-food-ordering": customerFoodOrdering,
@@ -60,9 +60,10 @@ export const djiwa3DIconSources = {
 } as const;
 
 export type Djiwa3DIconName = keyof typeof djiwa3DIconSources;
-export type Djiwa3DIconSize = "sm" | "md" | "lg" | "xl";
+export type Djiwa3DIconSize = "micro" | "sm" | "md" | "lg" | "xl";
 
 const sizeClasses: Record<Djiwa3DIconSize, string> = {
+  micro: "h-6 w-6",
   sm: "h-12 w-12",
   md: "h-20 w-20",
   lg: "h-28 w-28",

@@ -1,0 +1,510 @@
+{
+  "version": 2,
+  "purpose": "normalized shared illustration fallback",
+  "assets": [
+    {
+      "name": "business-ai-assistant",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/business-ai-assistant.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/business-ai-assistant.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "cashier-terminal",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/cashier-terminal.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/cashier-terminal.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "customer-food-ordering",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/customer-food-ordering.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-food-ordering.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "dashboard-overview",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/dashboard-overview.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/dashboard-overview.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "delivery-management",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/delivery-management.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/delivery-management.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "employee-attendance-check-in",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/employee-attendance-check-in.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-in.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "employee-attendance-check-out",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/employee-attendance-check-out.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-out.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "employee-profile",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/employee-profile.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-profile.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "food-customization",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/food-customization.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/food-customization.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "inventory-stock",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/inventory-stock.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/inventory-stock.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "kitchen-display",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/kitchen-display.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/kitchen-display.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "loyalty-points",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/loyalty-points.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/loyalty-points.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "notifications-alerts",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/notifications-alerts.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/notifications-alerts.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "order-queue",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-queue.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-queue.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "order-receipt",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-receipt.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-receipt.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "order-tracking",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-tracking.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-tracking.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "order-upsell-main-dish-drink",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-upsell-main-dish-drink.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-upsell-main-dish-drink.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "payment-wallet",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/payment-wallet.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/payment-wallet.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "payroll-payslip",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/payroll-payslip.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/payroll-payslip.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "promo-voucher",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/promo-voucher.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/promo-voucher.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "restaurant-cafe",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/restaurant-cafe.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/restaurant-cafe.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "return-management",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/return-management.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/return-management.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "sales-report",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/sales-report.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/sales-report.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "shift-closing",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/shift-closing.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/shift-closing.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "shopping-cart-order",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/shopping-cart-order.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/shopping-cart-order.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "stock-opname",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/stock-opname.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/stock-opname.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "suppliers-purchase-order",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/suppliers-purchase-order.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/suppliers-purchase-order.webp",
+      "source_bbox": [
+        120,
+        169,
+        904,
+        854
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "work-schedule",
+      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/work-schedule.webp",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/work-schedule.webp",
+      "source_bbox": [
+        120,
+        168,
+        904,
+        856
+      ],
+      "canvas": [
+        1024,
+        1024
+      ],
+      "visible_target": 798,
+      "source_type": "normalized-legacy-fallback",
+      "ai_regeneration": "blocked_until_image_provider_available"
+    }
+  ]
+}
