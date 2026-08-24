@@ -28,7 +28,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 h1, h2, h3, strong { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
 p { color: var(--muted); line-height: 1.6; }
 
-.app-shell { min-height: 100dvh; background: var(--surface-muted); }
+.app-shell { min-height: 100dvh; display: flex; flex-direction: column; background: var(--surface-muted); }
 .topbar { max-width: 1120px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 24px 16px; display: flex; align-items: center; justify-content: space-between; }
 .brand { display: flex; align-items: center; gap: 11px; }
 .brand-mark { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; color: var(--booking-accent); background: var(--booking-accent-soft); box-shadow: none; }
@@ -37,7 +37,7 @@ p { color: var(--muted); line-height: 1.6; }
 .icon-button { width: 44px; height: 44px; border-radius: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 5px 18px rgba(15,23,42,.05); transition: transform 180ms var(--ease-ios); }
 .icon-button:active, .button:active, .date-card:active, .add-button:active, .stepper button:active, .quantity-control button:active { transform: scale(.97); }
 
-main { max-width: 1120px; margin: 0 auto; padding: 20px 24px calc(72px + env(safe-area-inset-bottom)); }
+main { width: 100%; flex: 1; max-width: 1120px; margin: 0 auto; padding: 20px 24px calc(72px + env(safe-area-inset-bottom)); }
 .landing { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(390px, .9fr); gap: 42px; align-items: center; min-height: calc(100dvh - 150px); padding: 10px 0 38px; }
 .hero { padding: 12px 0; }
 .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--booking-accent); font-size: 12px; font-weight: 700; letter-spacing: .01em; }
@@ -204,11 +204,19 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .checkout-total small { grid-column: 1 / -1; color: var(--muted); font-size: 10px; }
 .review-edit { margin-top: 12px; }
 .brand-logo { width: 34px; height: 34px; border-radius: 12px; object-fit: cover; }
+.booking-owner-footer { width: min(calc(100% - 48px), 1120px); margin: 0 auto 20px; padding: 16px 20px 18px; border: 1px solid var(--line); border-radius: 20px; color: var(--muted); background: rgba(255,255,255,.78); text-align: center; box-shadow: 0 8px 24px rgba(15,23,42,.04); }
+.booking-footer-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 11px; font-weight: 800; }
+.booking-footer-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--booking-accent); box-shadow: 0 0 0 4px var(--booking-accent-soft); }
+.booking-owner-footer p { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.booking-owner-footer a { color: var(--booking-accent); font-weight: 700; text-decoration: none; }
+.booking-owner-footer a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.booking-owner-footer .booking-footer-muted { margin-top: 2px; color: #98a2b3; font-size: 9px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {
   main { padding: 4px 16px calc(72px + env(safe-area-inset-bottom)); }
   .topbar { padding-left: 16px; padding-right: 16px; }
+  .booking-owner-footer { width: calc(100% - 32px); margin-bottom: 14px; padding: 14px 14px calc(15px + env(safe-area-inset-bottom)); border-radius: 17px; }
   .landing { display: block; min-height: auto; padding: 22px 0 20px; }
   .hero { padding: 12px 0 22px; }
   h1 { font-size: clamp(38px, 12vw, 52px); line-height: 1.04; letter-spacing: -.07em; margin-top: 16px; }
