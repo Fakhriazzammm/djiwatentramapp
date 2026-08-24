@@ -594,6 +594,8 @@ function OrderPage() {
 					...(djiwaPayDiscount > 0 ? { djiwaPayDiscountPercent, djiwaPayDiscount, djiwaPayDiscountPaymentMethod: "wallet" } : {}),
 				},
 				customerSourceId: customer?.sourceId || null,
+				customerEmail: customer?.email?.trim() || null,
+				customerPhone: customer?.phone?.trim() || null,
 			};
 
 			if (paymentChoice === "wallet") {

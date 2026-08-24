@@ -212,8 +212,8 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
   }
 
   const result = await createInvoice({
-    name: order.customer_name,
-    email: order.customer_email,
+    name: order.customer_name || payload.name,
+    email: order.customer_email || payload.email,
     mobile: order.delivery_contact_phone || payload.mobile,
     redirectUrl: payload.redirectUrl,
     description: `Pembayaran order ${order.order_number || orderId}`,

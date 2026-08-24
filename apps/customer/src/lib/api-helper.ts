@@ -141,12 +141,16 @@ export async function invokeEdgeFunction<T = Record<string, unknown>>(
 		let detail = error.message || "Gagal memanggil edge function";
 		try {
 			const context = (error as any).context;
-			const errBody = context?.clone ? await context.clone().json() : await context?.json?.();
-			if (errBody) {
-				return parseEdgeFunctionResponse<T>(errBody, error.status || 500);
+			let errBody: unknown;
+			if (context?.clone) {
+				const responseText = await context.clone().text();
+				try { errBody = JSON.parse(responseText); } catch { errBody = null; }
+			} else if (context?.json) {
+				errBody = await context.json();
 			}
+			if (errBody) return parseEdgeFunctionResponse<T>(errBody, error.status || 500);
 		} catch {
-			// ignore parse errors and keep the transport message below
+			// keep the transport message when the response body is unavailable
 		}
 		throw new ApiError("FUNCTION_ERROR", detail, error.status || 500);
 	}
