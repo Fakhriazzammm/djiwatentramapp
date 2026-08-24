@@ -1654,7 +1654,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
-        f"💰 Rp{totalAmount:,.0f} — {payment_label or _payment_label(payment_method)}",
+        f"💰 Rp{totalAmount:,.0f} — {_payment_label(payment_method)}",
     ])
     for p in promo_parts:
         lines.append(f"🏷️ {p}")
@@ -2124,7 +2124,7 @@ async def _check_new_orders(app):
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
         transaction_key = f"{order_no}|transaction"
-        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note, payment_label)
+        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note)
         if transaction_sent:
             _channel_sent.add(transaction_key)
             _save_channel_sent()
