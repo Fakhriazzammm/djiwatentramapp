@@ -4,7 +4,7 @@
   "assets": [
     {
       "name": "business-ai-assistant",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/business-ai-assistant.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/business-ai-assistant.webp",
       "source_bbox": [
         120,
@@ -17,12 +17,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "cashier-terminal",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/cashier-terminal.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/cashier-terminal.webp",
       "source_bbox": [
         120,
@@ -35,8 +41,14 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "customer-food-ordering",
@@ -66,7 +78,7 @@
     },
     {
       "name": "dashboard-overview",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/dashboard-overview.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/dashboard-overview.webp",
       "source_bbox": [
         120,
@@ -79,12 +91,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "delivery-management",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/delivery-management.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/delivery-management.webp",
       "source_bbox": [
         120,
@@ -97,12 +115,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "employee-attendance-check-in",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/employee-attendance-check-in.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-in.webp",
       "source_bbox": [
         120,
@@ -115,12 +139,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "employee-attendance-check-out",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/employee-attendance-check-out.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-out.webp",
       "source_bbox": [
         120,
@@ -133,12 +163,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "employee-profile",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/employee-profile.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-profile.webp",
       "source_bbox": [
         120,
@@ -151,12 +187,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "food-customization",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/food-customization.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/food-customization.webp",
       "source_bbox": [
         120,
@@ -169,12 +211,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "inventory-stock",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/inventory-stock.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/inventory-stock.webp",
       "source_bbox": [
         120,
@@ -187,12 +235,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "kitchen-display",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/kitchen-display.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/kitchen-display.webp",
       "source_bbox": [
         120,
@@ -205,12 +259,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "loyalty-points",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/loyalty-points.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/loyalty-points.webp",
       "source_bbox": [
         120,
@@ -223,12 +283,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "notifications-alerts",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/notifications-alerts.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/notifications-alerts.webp",
       "source_bbox": [
         120,
@@ -241,12 +307,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "order-queue",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-queue.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-queue.webp",
       "source_bbox": [
         120,
@@ -259,8 +331,14 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "order-receipt",
@@ -290,7 +368,7 @@
     },
     {
       "name": "order-tracking",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-tracking.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-tracking.webp",
       "source_bbox": [
         120,
@@ -303,12 +381,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "order-upsell-main-dish-drink",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-upsell-main-dish-drink.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-upsell-main-dish-drink.webp",
       "source_bbox": [
         120,
@@ -321,12 +405,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "payment-wallet",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/payment-wallet.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/payment-wallet.webp",
       "source_bbox": [
         120,
@@ -339,12 +429,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "payroll-payslip",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/payroll-payslip.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/payroll-payslip.webp",
       "source_bbox": [
         120,
@@ -357,12 +453,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "promo-voucher",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/promo-voucher.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/promo-voucher.webp",
       "source_bbox": [
         120,
@@ -375,12 +477,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "restaurant-cafe",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/restaurant-cafe.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/restaurant-cafe.webp",
       "source_bbox": [
         120,
@@ -393,12 +501,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "return-management",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/return-management.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/return-management.webp",
       "source_bbox": [
         120,
@@ -411,12 +525,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "sales-report",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/sales-report.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/sales-report.webp",
       "source_bbox": [
         120,
@@ -429,12 +549,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "shift-closing",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/shift-closing.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/shift-closing.webp",
       "source_bbox": [
         120,
@@ -447,8 +573,14 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "shopping-cart-order",
@@ -478,7 +610,7 @@
     },
     {
       "name": "stock-opname",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/stock-opname.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/stock-opname.webp",
       "source_bbox": [
         120,
@@ -491,12 +623,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "suppliers-purchase-order",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/suppliers-purchase-order.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/suppliers-purchase-order.webp",
       "source_bbox": [
         120,
@@ -509,12 +647,18 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "work-schedule",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/work-schedule.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/work-schedule.webp",
       "source_bbox": [
         120,
@@ -527,8 +671,14 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "completed",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        40,
+        64,
+        80
+      ]
     },
     {
       "name": "navigation-home",

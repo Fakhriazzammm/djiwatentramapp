@@ -640,6 +640,7 @@ Deliverables prototype:
 - Generated and integrated 4 POS/Admin bottom-navbar icons with OpenAI Codex: Home/Dashboard, POS/Transaksi, AI, Orders.
 - Replaced remaining visible Customer ordering/profile icons from the screenshot: Djiwa Pay, Pesanan, party-size Step 1, order header, cart action, and empty-cart state.
 - Generated and integrated 11 clean Karyawan home/menu icons with OpenAI Codex: Gaji, Tunjangan, Bonus, Absensi, Rekap Absensi, Jadwal, Izin/Cuti/Sakit, Slip Gaji, Kontrak, Grup Telegram, and Leaderboard Bonus.
+- Regenerated all 25 canonical shared legacy asset names with OpenAI Codex and replaced their V2 files in-place, preserving existing consumer mappings across all apps.
 - Built and deployed Customer, Karyawan, POS, Admin, and OrderMieYamin bundles.
 - Verified production index HTTP 200 and sampled WebP asset parity on all five domains.
 - Visual contact-sheet QA confirmed object bounds are consistent and not clipped.
@@ -648,14 +649,15 @@ Deliverables prototype:
 
 - The first FAL image-generation attempt was blocked because the FAL provider was not configured. Hermes was then correctly routed to the available OpenAI Codex OAuth backend and generated 29 valid assets.
 
-- Remaining AI regeneration could not finish because the Codex OAuth pool started returning:
+- Marketing banner regeneration remains a separate follow-up because Customer's Djiwa Pay banner is a static public image while Karyawan SmartBanner is database-driven; no static banner queue was changed in this icon-focused rollout. Earlier Codex pool errors were transient and the 25 canonical icon batch is now complete.
+
+Earlier Codex OAuth pool errors returned:
 
 ```text
 No Codex/ChatGPT OAuth credentials available
 ```
 
-- 25 of the original 28 shared 3D slots still use normalized legacy fallback and inherit possible content warnings from the source set, including baked-in text, a persona name, and human/avatar elements. These must not be treated as the final V2 generated set. The 17 generated navigation/3D assets are separate approved prototypes.
-- New marketing banners for Customer landing, Customer menu/promo, Karyawan SmartBanner, and OrderMieYamin lifestyle remain pending image-provider availability and visual approval.
+- The canonical 25 shared legacy slots no longer use normalized fallback; they are now approved Codex-generated V2 assets. The generated navigation and Karyawan menu assets are also approved prototypes.
 
 ### Required continuation when image provider is available
 
