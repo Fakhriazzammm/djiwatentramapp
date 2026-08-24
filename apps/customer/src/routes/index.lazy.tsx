@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { CalendarDays, Clock, LogIn, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
@@ -63,6 +63,25 @@ function BrandCustomerIndex() {
 	const storePhone = typeof siteSettings?.storePhone === "string" && siteSettings.storePhone.trim() ? siteSettings.storePhone : null;
 	const storeAddress = typeof siteSettings?.storeAddress === "string" && siteSettings.storeAddress.trim() ? siteSettings.storeAddress : null;
 	const hasHours = Boolean(openTime || closeTime || openingHours);
+	const featuredCarouselRef = useRef<HTMLDivElement>(null);
+	const [carouselPaused, setCarouselPaused] = useState(false);
+
+	useEffect(() => {
+		if (featuredProducts.length < 2 || carouselPaused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+		const intervalId = window.setInterval(() => {
+			if (document.hidden) return;
+			const carousel = featuredCarouselRef.current;
+			if (!carousel) return;
+
+			const firstCard = carousel.querySelector<HTMLElement>("[data-carousel-card]");
+			const step = (firstCard?.offsetWidth ?? 176) + 12;
+			const reachedEnd = carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - step;
+			carousel.scrollTo({ left: reachedEnd ? 0 : carousel.scrollLeft + step, behavior: "smooth" });
+		}, 4500);
+
+		return () => window.clearInterval(intervalId);
+	}, [carouselPaused, featuredProducts.length]);
 
 	// ponytail: sudah login → langsung ke /{username}, bukan /order
 	useEffect(() => {
@@ -185,12 +204,25 @@ function BrandCustomerIndex() {
 											Lihat semua →
 											</button>
 										</div>
-										<div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+										<div
+											ref={featuredCarouselRef}
+											onPointerEnter={() => setCarouselPaused(true)}
+											onPointerLeave={() => setCarouselPaused(false)}
+											onPointerDown={() => setCarouselPaused(true)}
+											onPointerUp={() => setCarouselPaused(false)}
+											onFocusCapture={() => setCarouselPaused(true)}
+											onBlurCapture={(event) => {
+												if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setCarouselPaused(false);
+											}}
+											aria-label="Menu best seller"
+											className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+										>
 											{featuredProducts.map((p) => (
 												<button
 													type="button"
 													key={p.productId}
 													onClick={() => navigate({ to: "/daftar" })}
+													data-carousel-card
 													className="min-w-[176px] snap-start overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]"
 												>
 													<div className="relative h-24 w-full bg-muted">
