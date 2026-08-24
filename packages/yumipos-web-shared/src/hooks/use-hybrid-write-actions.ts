@@ -2534,6 +2534,7 @@ export function useHybridCreateOrder() {
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,
+					customer_source_id: args?.customerSourceId ?? null,
 					customer_description: args?.customerDescription ?? null,
 					table_number: args?.tableNumber ?? null,
 					order_type: args?.orderType ?? null,
@@ -5923,7 +5924,9 @@ export function useHybridMayarCreateInvoice() {
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
 			return invokeEdgeFunction("mayar-proxy", {
-				action: "create-invoice",
+				action: args?.orderId && args?.idempotencyKey
+					? "create-invoice-from-order"
+					: "create-invoice",
 				...args,
 			});
 		},
