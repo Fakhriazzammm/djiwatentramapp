@@ -73,7 +73,7 @@ function BrandCustomerIndex() {
 
 	useEffect(() => {
 		if (entryPhase !== "splash" || isLoading) return;
-		const timeoutId = window.setTimeout(() => setEntryPhase(isAuthenticated ? "home" : "onboarding"), 650);
+		const timeoutId = window.setTimeout(() => setEntryPhase(isAuthenticated ? "home" : "onboarding"), 1800);
 		return () => window.clearTimeout(timeoutId);
 	}, [entryPhase, isAuthenticated, isLoading]);
 

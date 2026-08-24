@@ -8,6 +8,7 @@ type CustomerSplashProps = {
 
 export function CustomerSplash({ logoUrl, storeName }: CustomerSplashProps) {
   const reduceMotion = useReducedMotion();
+  const brandLogoUrl = logoUrl || "/logo-djiwa.png";
 
   return (
     <div className="app-page flex min-h-app items-center justify-center px-4 py-8">
@@ -19,13 +20,7 @@ export function CustomerSplash({ logoUrl, storeName }: CustomerSplashProps) {
         exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
         transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
       >
-        {logoUrl ? (
-          <img alt={storeName} className="h-24 w-24 rounded-[28px] object-contain" src={logoUrl} />
-        ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-[28px] bg-primary/10 text-primary">
-            <Djiwa3DIcon name="navigation-home" size="lg" alt="" className="h-14 w-14 object-contain" />
-          </div>
-        )}
+        <img alt={storeName} className="h-24 w-24 rounded-[28px] object-contain" src={brandLogoUrl} />
         <p className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-primary">Djiwa Tentram</p>
         <p className="mt-2 text-xs text-muted-foreground">Menyiapkan pengalaman pesan yang lebih mudah</p>
       </motion.section>
@@ -48,6 +43,7 @@ type CustomerOnboardingProps = {
 
 export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: CustomerOnboardingProps) {
   const reduceMotion = useReducedMotion();
+  const brandLogoUrl = logoUrl || "/logo-djiwa.png";
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
 
   return (
@@ -60,7 +56,7 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: Cu
         transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
       >
         <div className="flex items-center gap-2">
-          {logoUrl ? <img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={logoUrl} /> : null}
+          <img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={brandLogoUrl} />
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Welcome</p>
             <p className="text-sm font-black tracking-tight">{storeName}</p>
@@ -74,7 +70,7 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: Cu
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ ...spring, delay: 0.05 }}
           >
-            {logoUrl ? <img alt="" className="h-28 w-28 object-contain" src={logoUrl} /> : <Djiwa3DIcon name="customer-food-ordering" size="lg" alt="" className="h-28 w-28 object-contain" />}
+            <img alt="" className="h-28 w-28 object-contain" src={brandLogoUrl} />
           </motion.div>
           <motion.p className="mt-7 text-[11px] font-black uppercase tracking-[0.22em] text-primary" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.12 }}>
             Pesan lebih mudah
