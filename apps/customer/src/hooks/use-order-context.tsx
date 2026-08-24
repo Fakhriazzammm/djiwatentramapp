@@ -92,6 +92,8 @@ export interface OrderContextType {
 	setGuestEmail: (value: string) => void;
 	guestPhone: string;
 	setGuestPhone: (value: string) => void;
+	guestDescription: string;
+	setGuestDescription: (value: string) => void;
 
 	// ── Session ─────────────────────────────────────────────
 	sessionRef: React.MutableRefObject<string>;
@@ -202,6 +204,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	const [guestName, setGuestName] = useState("");
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
+	const [guestDescription, setGuestDescription] = useState("");
 
 	// Session
 	const sessionRef = useRef(getSessionId(undefined));
@@ -209,13 +212,16 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	// Bootstrap client (side-effect-free instantiation at provider mount)
 	createClient();
 
-	// Auto-fill customerName & tableNumber from guest-data (filled at /daftar)
+	// Auto-fill checkout identity from guest-data (filled at /daftar)
 	useEffect(() => {
 		try {
 			const raw = window.localStorage.getItem("guest-data");
 			if (raw) {
 				const data = JSON.parse(raw);
 				if (data?.name && !customerName) setCustomerName(data.name);
+				if (data?.email && !guestEmail) setGuestEmail(data.email);
+				if (data?.phone && !guestPhone) setGuestPhone(data.phone);
+				if (data?.description && !customerDescription) setCustomerDescription(data.description);
 				if (data?.table && !tableNumber) setTableNumber(data.table);
 			}
 		} catch { /* ignore parse errors */ }
@@ -343,6 +349,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				setGuestEmail,
 				guestPhone,
 				setGuestPhone,
+				guestDescription,
+				setGuestDescription,
 
 				// Session
 				sessionRef,

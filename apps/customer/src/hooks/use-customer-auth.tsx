@@ -18,6 +18,7 @@ export type CustomerUser = {
   email: string | null;
   name: string | null;
   phone: string | null;
+  customerDescription: string | null;
   photoUrl: string | null;
   nickname: string | null;
   birthDate: string | null;
@@ -82,6 +83,7 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
     email: (row.email as string) ?? null,
     name: (row.name as string) ?? null,
     phone: (row.phone as string) ?? null,
+    customerDescription: (row.customer_description as string) ?? null,
     photoUrl: (row.photo_url as string) ?? null,
     nickname: (row.nickname as string) ?? null,
     birthDate: (row.birth_date as string) ?? null,
@@ -153,6 +155,7 @@ function buildFallbackCustomer(
     email,
     name: name ?? email?.split("@")[0] ?? "User",
     phone: null,
+    customerDescription: null,
     photoUrl: null,
     nickname: null,
     birthDate: null,

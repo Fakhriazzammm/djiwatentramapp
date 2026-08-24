@@ -152,6 +152,25 @@ function OrderPage() {
 	const missingContactFields = getMissingCustomerFields(customer);
 	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
 	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
+
+	useEffect(() => {
+		if (isAuthenticated && customer) {
+			if (customer.name?.trim() && !customerName.trim()) setCustomerName(customer.name.trim());
+			if (customer.customerDescription?.trim() && !customerDescription.trim()) setCustomerDescription(customer.customerDescription.trim());
+			return;
+		}
+		if (isAuthenticated) return;
+		try {
+			const raw = window.localStorage.getItem("guest-data");
+			if (!raw) return;
+			const data = JSON.parse(raw) as Record<string, unknown>;
+			if (typeof data.email === "string" && data.email.trim() && !guestEmail.trim()) setGuestEmail(data.email.trim());
+			if (typeof data.phone === "string" && data.phone.trim() && !guestPhone.trim()) setGuestPhone(data.phone.trim());
+			if (typeof data.description === "string" && data.description.trim() && !customerDescription.trim()) setCustomerDescription(data.description.trim());
+		} catch {
+			// Ignore malformed guest storage; checkout validation will show the missing field.
+		}
+	}, [customer, customerDescription, customerName, guestEmail, guestPhone, isAuthenticated, setCustomerDescription, setCustomerName]);
 	const memberDiscounts = useMemo(
 		() => isAuthenticated ? discounts : discounts?.filter((discount) => !discount.isHappyHour),
 		[discounts, isAuthenticated],

@@ -47,7 +47,7 @@ async function findOwnedCustomer(sourceId: string, email: string) {
 	const { data, error } = await supabaseAdmin
 		.schema("pos")
 		.from("customers")
-		.select("source_id, email, name, phone, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
+		.select("source_id, email, name, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
 		.eq("source_id", sourceId)
 		.maybeSingle();
 
@@ -147,6 +147,7 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	const email = toTrimmedString(payload.email);
 	const name = toTrimmedString(payload.name);
 	const phone = toTrimmedString(payload.phone);
+	const customerDescription = toTrimmedString(payload.customerDescription).slice(0, 160);
 	const nickname = toTrimmedString(payload.nickname);
 	const birthDate = toTrimmedString(payload.birthDate);
 	const gender = toTrimmedString(payload.gender);
@@ -157,7 +158,7 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	const marketingConsent = typeof payload.marketingConsent === "boolean" ? payload.marketingConsent : undefined;
 
 	if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
-	if (!name && !phone && !nickname && !birthDate && !gender && !address && !city && !province && !postalCode && marketingConsent === undefined) throw new Error("Tidak ada field yang diubah");
+	if (!name && !phone && !customerDescription && !nickname && !birthDate && !gender && !address && !city && !province && !postalCode && marketingConsent === undefined) throw new Error("Tidak ada field yang diubah");
 
 	const { customer, error: ownershipError } = await findOwnedCustomer(sourceId, email);
 	if (ownershipError || !customer) {
@@ -169,6 +170,7 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	};
 	if (name) updates.name = name;
 	if (phone) updates.phone = phone;
+	if (customerDescription) updates.customer_description = customerDescription;
 	if (nickname) updates.nickname = nickname;
 	if (birthDate) updates.birth_date = birthDate;
 	if (gender) updates.gender = gender;
@@ -186,7 +188,7 @@ async function handleUpdateProfile(payload: JsonRecord) {
 		.from("customers")
 		.update(updates)
 		.eq("source_id", sourceId)
-		.select("source_id, name, email, phone, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
+		.select("source_id, name, email, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
 		.maybeSingle();
 
 	if (error) throw error;

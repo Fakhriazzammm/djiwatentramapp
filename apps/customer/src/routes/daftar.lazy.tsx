@@ -16,6 +16,8 @@ function DaftarPage() {
 		setGuestEmail: setEmail,
 		guestPhone: phone,
 		setGuestPhone: setPhone,
+		guestDescription: description,
+		setGuestDescription,
 		tableNumber,
 		setTableNumber,
 	} = useOrderContext();
@@ -24,6 +26,18 @@ function DaftarPage() {
 		const trimmedName = name.trim();
 		if (!trimmedName) {
 			toast.error("Nama wajib diisi");
+			return;
+		}
+		if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+			toast.error("Email wajib diisi dengan format yang valid");
+			return;
+		}
+		if (phone.replace(/[^\d]/g, "").length < 10) {
+			toast.error("Nomor WhatsApp wajib diisi minimal 10 digit");
+			return;
+		}
+		if (!description.trim()) {
+			toast.error("Ciri khusus customer wajib diisi");
 			return;
 		}
 
@@ -42,6 +56,7 @@ function DaftarPage() {
 				name: trimmedName,
 				email: email.trim() || "",
 				phone: phone.trim() || "",
+				description: description.trim().slice(0, 160),
 				username: guestUsername,
 				table: tableNumber.trim() || "",
 			}),
@@ -94,7 +109,7 @@ function DaftarPage() {
 						{/* Email */}
 						<div>
 							<label htmlFor="guest-email" className="text-xs font-bold text-foreground">
-								Email
+								Email <span className="text-destructive">*</span>
 							</label>
 							<input
 								id="guest-email"
@@ -102,6 +117,7 @@ function DaftarPage() {
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder="email@example.com"
+								required
 								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>
@@ -109,7 +125,7 @@ function DaftarPage() {
 						{/* No WhatsApp */}
 						<div>
 							<label htmlFor="guest-phone" className="text-xs font-bold text-foreground">
-								No. WhatsApp
+								No. WhatsApp <span className="text-destructive">*</span>
 							</label>
 							<input
 								id="guest-phone"
@@ -117,6 +133,24 @@ function DaftarPage() {
 								value={phone}
 								onChange={(e) => setPhone(e.target.value)}
 								placeholder="08xxxx"
+								required
+								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+							/>
+						</div>
+
+						{/* Ciri khusus customer */}
+						<div>
+							<label htmlFor="guest-description" className="text-xs font-bold text-foreground">
+								Ciri khusus customer <span className="text-destructive">*</span>
+							</label>
+							<input
+								id="guest-description"
+								type="text"
+								value={description}
+								onChange={(e) => setGuestDescription(e.target.value.slice(0, 160))}
+								placeholder="Contoh: baju merah, topi hitam"
+								maxLength={160}
+								required
 								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 							/>
 						</div>

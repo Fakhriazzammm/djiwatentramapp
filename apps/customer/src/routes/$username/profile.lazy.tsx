@@ -21,6 +21,7 @@ function ProfilePage() {
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState("");
 	const [editPhone, setEditPhone] = useState("");
+	const [editCustomerDescription, setEditCustomerDescription] = useState("");
 	const [editNickname, setEditNickname] = useState("");
 	const [editBirthDate, setEditBirthDate] = useState("");
 	const [editGender, setEditGender] = useState("");
@@ -76,6 +77,10 @@ function ProfilePage() {
 			toast.error("Nomor WhatsApp minimal 10 digit");
 			return;
 		}
+		if (!editCustomerDescription.trim()) {
+			toast.error("Ciri khusus customer wajib diisi");
+			return;
+		}
 		if (!customer) return;
 		setSaving(true);
 		try {
@@ -86,6 +91,7 @@ function ProfilePage() {
 				email: customer.email ?? undefined,
 				name: editName.trim(),
 				phone: editPhone.trim() || undefined,
+				customerDescription: editCustomerDescription.trim().slice(0, 160),
 				nickname: editNickname.trim() || undefined,
 				birthDate: editBirthDate || undefined,
 				gender: editGender || undefined,
@@ -110,6 +116,7 @@ function ProfilePage() {
 	const startEditing = () => {
 		setEditName(customer.name || "");
 		setEditPhone(customer.phone || "");
+		setEditCustomerDescription(customer.customerDescription || "");
 		setEditNickname(customer.nickname || "");
 		setEditBirthDate(customer.birthDate || "");
 		setEditGender(customer.gender || "");
@@ -178,6 +185,11 @@ function ProfilePage() {
 							label="Nomor WhatsApp"
 							value={customer.phone || "Belum diisi"}
 						/>
+						<InfoRow
+							icon={<User className="h-3.5 w-3.5 text-muted-foreground" />}
+							label="Ciri khusus customer"
+							value={customer.customerDescription || "Belum diisi"}
+						/>
 						<div className="my-1 border-t border-border/70" />
 						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Nama panggilan" value={customer.nickname || "Belum diisi"} />
 						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Tanggal lahir" value={customer.birthDate || "Belum diisi"} />
@@ -215,6 +227,18 @@ function ProfilePage() {
 										onChange={(e) => setEditPhone(e.target.value)}
 										className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 										placeholder="+62 xxx"
+									/>
+								</div>
+								<div>
+									<p className="text-[10px] font-semibold text-muted-foreground mb-1">Ciri khusus customer <span className="text-destructive">*</span></p>
+									<input
+										type="text"
+										value={editCustomerDescription}
+										onChange={(e) => setEditCustomerDescription(e.target.value.slice(0, 160))}
+										className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+										placeholder="Contoh: baju merah, topi hitam"
+										maxLength={160}
+										required
 									/>
 								</div>
 								<div className="grid grid-cols-2 gap-2">
