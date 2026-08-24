@@ -154,6 +154,8 @@ function ProfilePage() {
 				{/* Info Card */}
 				<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 					<div className="space-y-2.5">
+						{!isEditing ? (
+							<>
 						<InfoRow
 							icon={<Mail className="h-3.5 w-3.5 text-muted-foreground" />}
 							label="Email"
@@ -178,8 +180,16 @@ function ProfilePage() {
 						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Provinsi" value={customer.province || "Belum diisi"} />
 						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Kode pos" value={customer.postalCode || "Belum diisi"} />
 						<InfoRow icon={<Star className="h-3.5 w-3.5 text-muted-foreground" />} label="Informasi promo" value={customer.marketingConsent ? "Diaktifkan" : "Tidak diaktifkan"} />
+							</>
+						) : null}
 						{isEditing ? (
 							<div className="pt-1.5 space-y-2">
+								<div>
+									<p className="mb-1 text-[10px] font-semibold text-muted-foreground">Email akun</p>
+									<input type="email" value={customer.email || ""} readOnly disabled className="min-h-11 w-full rounded-[14px] border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground outline-none" />
+									<p className="mt-1 text-[10px] text-muted-foreground">Email akun tidak dapat diubah dari sini.</p>
+								</div>
+
 								<div>
 									<p className="text-[10px] font-semibold text-muted-foreground mb-1">Nama lengkap</p>
 									<input
