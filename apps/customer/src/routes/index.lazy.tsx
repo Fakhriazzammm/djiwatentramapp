@@ -80,7 +80,7 @@ function BrandCustomerIndex() {
 	// ── Guest welcome page ───────────────────────────────────
 	return (
 		<div className="app-page min-h-app">
-			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background lg:max-w-5xl">
+			<div className="app-shell mx-auto flex min-h-app w-full max-w-md flex-col bg-background">
 				{/* ── Sticky header ────────────────────────────── */}
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
 					<div className="flex items-center gap-2">
@@ -96,7 +96,7 @@ function BrandCustomerIndex() {
 							</div>
 						)}
 						<div>
-							<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+							<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
 								Welcome
 							</p>
 							<h1 className="text-sm font-black tracking-tight">
@@ -107,12 +107,12 @@ function BrandCustomerIndex() {
 				</header>
 
 				{/* ── Welcome card di tengah ───────────────────── */}
-				<main className="flex flex-1 items-start justify-center px-3 py-4 sm:items-center sm:py-6">
-					<section className="flex w-full flex-col items-center justify-center text-center">
-						<div className="grid w-full gap-3 lg:grid-cols-[1.05fr_1fr] lg:items-stretch lg:gap-4">
+				<main className="flex flex-1 items-start justify-center px-3 py-4 sm:py-6">
+					<section className="w-full max-w-md">
+						<div className="space-y-3">
 							{/* ── Card utama ─────────────────────── */}
 							<div className="app-card-strong w-full px-4 py-6">
-								<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+								<p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
 									Pesan lebih mudah
 								</p>
 								<h2 className="mt-1 font-display text-2xl font-black tracking-tight text-balance">
@@ -141,7 +141,7 @@ function BrandCustomerIndex() {
 								</a>
 
 								{/* ── Ajakan daftar member ─────────────── */}
-								<p className="mt-3 text-[10px] font-semibold leading-relaxed text-muted-foreground">
+								<p className="mt-3 text-[11px] font-semibold leading-relaxed text-muted-foreground">
 									Daftar menjadi member untuk mendapatkan benefit dibawah ini
 								</p>
 
@@ -176,7 +176,7 @@ function BrandCustomerIndex() {
 								{featuredProducts.length > 0 ? (
 									<div className="app-card-strong w-full px-4 py-4 text-left">
 										<div className="flex items-center justify-between">
-											<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Menu Best Seller</p>
+											<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">Menu Best Seller</p>
 											<button
 												type="button"
 												onClick={() => navigate({ to: "/daftar" })}
@@ -185,18 +185,18 @@ function BrandCustomerIndex() {
 											Lihat semua →
 											</button>
 										</div>
-										<div className="mt-3 grid grid-cols-2 gap-2.5">
+										<div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 											{featuredProducts.map((p) => (
 												<button
 													type="button"
 													key={p.productId}
 													onClick={() => navigate({ to: "/daftar" })}
-													className="overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]"
+													className="min-w-[176px] snap-start overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]"
 												>
 													<div className="relative h-24 w-full bg-muted">
 														{p.image ? <img alt={p.name} className="h-full w-full object-cover" src={p.image} /> : <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"><UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>}
-														{p.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white shadow">#{p.menuNumber}</span> : null}
-														{p.totalSold > 0 ? <span className="absolute bottom-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-white shadow">Terjual {p.totalSold.toLocaleString("id-ID")}</span> : null}
+														{p.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-bold text-white shadow">#{p.menuNumber}</span> : null}
+														{p.totalSold > 0 ? <span className="absolute bottom-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[11px] font-black text-white shadow">Terjual {p.totalSold.toLocaleString("id-ID")}</span> : null}
 													</div>
 													<div className="space-y-1 p-2.5">
 														<p className="break-words text-xs font-black leading-snug">{p.name}</p>
@@ -211,13 +211,13 @@ function BrandCustomerIndex() {
 								{/* Info toko */}
 								{openingHours || storePhone || storeAddress || hasHours ? (
 									<div className="app-card-strong w-full px-4 py-4 text-left">
-										<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Info Restoran</p>
+										<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">Info Restoran</p>
 										<div className="mt-2.5 space-y-2">
 											{openTime || closeTime || openingHours ? (
 												<div className="flex items-start gap-2.5">
 													<Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
 													<div>
-														<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Jam operasional</p>
+														<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Jam operasional</p>
 														<p className="text-xs font-bold leading-snug">
 															{openTime && closeTime
 																? `Buka ${openTime} – Tutup ${closeTime}`
@@ -230,7 +230,7 @@ function BrandCustomerIndex() {
 												<div className="flex items-start gap-2.5">
 													<Phone aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
 													<div>
-														<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Telepon</p>
+														<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Telepon</p>
 														<a href={`tel:${storePhone.replace(/[^+\d]/g, "")}`} className="text-xs font-bold leading-snug text-primary">{storePhone}</a>
 													</div>
 												</div>
@@ -239,7 +239,7 @@ function BrandCustomerIndex() {
 												<div className="flex items-start gap-2.5">
 													<MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
 													<div>
-														<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat</p>
+														<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Alamat</p>
 														<p className="text-xs font-bold leading-snug">{storeAddress}</p>
 													</div>
 												</div>
