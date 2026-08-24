@@ -480,6 +480,20 @@ function OrderPage() {
 		setServiceOpen(false);
 	};
 
+	const focusCheckoutField = (label: string) => {
+		if (typeof document === "undefined") return;
+		window.requestAnimationFrame(() => {
+			const field = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+			field?.scrollIntoView({ behavior: "smooth", block: "center" });
+			field?.focus();
+		});
+	};
+
+	const rejectCheckout = (message: string, fieldLabel?: string) => {
+		toast.error(message);
+		if (fieldLabel) focusCheckoutField(fieldLabel);
+	};
+
 	const checkout = async () => {
 		if (isSubmitting) return;
 		if (!cart.length) {
@@ -487,14 +501,23 @@ function OrderPage() {
 			return;
 		}
 		if (config.requireTableNumber && !tableNumber.trim()) {
-			toast.error("Nomor meja wajib diisi");
+			rejectCheckout("Nomor meja wajib diisi sebelum checkout", "Nomor meja");
 			return;
 		}
-		if (paymentChoice === "mayar" && (!isAuthenticated || !customer?.email?.trim() || !customer?.phone?.trim())) {
-			toast.error(isAuthenticated ? "Lengkapi email dan nomor WhatsApp di profil sebelum pembayaran QRIS" : "Masuk dan lengkapi profil sebelum pembayaran QRIS");
-			if (isAuthenticated) navigate({ to: "/$username/profile", params: { username } });
-			else setAuthModalOpen(true);
-			return;
+		if (paymentChoice === "mayar") {
+			if (isAuthenticated && missingContactFields.length > 0) {
+				rejectCheckout(getCustomerContactMessage(missingContactFields), undefined);
+				navigate({ to: "/$username/profile", params: { username } });
+				return;
+			}
+			if (!isAuthenticated && !/^\S+@\S+\.\S+$/.test(checkoutEmail)) {
+				rejectCheckout("Isi email yang valid untuk pembayaran QRIS", "Email untuk pembayaran QRIS");
+				return;
+			}
+			if (!isAuthenticated && !hasValidCustomerPhone(checkoutPhone)) {
+				rejectCheckout("Isi nomor WhatsApp yang valid untuk pembayaran QRIS", "Nomor WhatsApp untuk pembayaran QRIS");
+				return;
+			}
 		}
 		setIsSubmitting(true);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `ordermieyamin-${Date.now()}-${Math.random().toString(36).slice(2)}`);

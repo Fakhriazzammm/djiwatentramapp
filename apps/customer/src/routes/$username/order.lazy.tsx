@@ -538,6 +538,21 @@ function OrderPage() {
 		setServiceOpen(false);
 	};
 
+	const focusCheckoutField = (label: string) => {
+		if (typeof document === "undefined") return;
+		window.requestAnimationFrame(() => {
+			const field = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+			field?.scrollIntoView({ behavior: "smooth", block: "center" });
+			field?.focus();
+		});
+	};
+
+	const rejectCheckout = (message: string, fieldLabel?: string) => {
+		setCheckoutError(message);
+		toast.error(message);
+		if (fieldLabel) focusCheckoutField(fieldLabel);
+	};
+
 	const checkout = async () => {
 		if (isSubmitting) return;
 		if (!cart.length) {
@@ -545,11 +560,11 @@ function OrderPage() {
 			return;
 		}
 		if (config.requireTableNumber && !tableNumber.trim()) {
-			toast.error("Nomor meja wajib diisi");
+			rejectCheckout("Nomor meja wajib diisi sebelum checkout", "Nomor meja");
 			return;
 		}
 		if (!customerDescription.trim()) {
-			toast.error("Ciri khusus customer wajib diisi");
+			rejectCheckout("Isi ciri khusus customer agar kasir mudah mengenali pesanan", "Ciri khusus customer");
 			return;
 		}
 		if (paymentChoice === "mayar") {
@@ -558,8 +573,12 @@ function OrderPage() {
 				navigate({ to: "/$username/profile", params: { username } });
 				return;
 			}
-			if (!isAuthenticated && (!/^\S+@\S+\.\S+$/.test(checkoutEmail) || !hasValidCustomerPhone(checkoutPhone))) {
-				toast.error("Isi email dan nomor WhatsApp untuk pembayaran QRIS");
+			if (!isAuthenticated && !/^\S+@\S+\.\S+$/.test(checkoutEmail)) {
+				rejectCheckout("Isi email yang valid untuk pembayaran QRIS", "Email untuk pembayaran QRIS");
+				return;
+			}
+			if (!isAuthenticated && !hasValidCustomerPhone(checkoutPhone)) {
+				rejectCheckout("Isi nomor WhatsApp yang valid untuk pembayaran QRIS", "Nomor WhatsApp untuk pembayaran QRIS");
 				return;
 			}
 		}
