@@ -40,7 +40,7 @@
     },
     {
       "name": "customer-food-ordering",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/customer-food-ordering.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-food-ordering.webp",
       "source_bbox": [
         120,
@@ -53,8 +53,16 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "blocked_until_image_provider_available",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        32,
+        40,
+        64,
+        80,
+        112
+      ]
     },
     {
       "name": "dashboard-overview",
@@ -256,7 +264,7 @@
     },
     {
       "name": "order-receipt",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/order-receipt.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-receipt.webp",
       "source_bbox": [
         120,
@@ -269,8 +277,16 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "blocked_until_image_provider_available",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        32,
+        40,
+        64,
+        80,
+        112
+      ]
     },
     {
       "name": "order-tracking",
@@ -436,7 +452,7 @@
     },
     {
       "name": "shopping-cart-order",
-      "source": "packages/yumipos-web-shared/src/assets/djiwa-icons/shopping-cart-order.webp",
+      "source": "generated-by-openai-codex",
       "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/shopping-cart-order.webp",
       "source_bbox": [
         120,
@@ -449,8 +465,16 @@
         1024
       ],
       "visible_target": 798,
-      "source_type": "normalized-legacy-fallback",
-      "ai_regeneration": "blocked_until_image_provider_available"
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "ai_regeneration": "blocked_until_image_provider_available",
+      "generation_status": "approved-prototype",
+      "render_targets": [
+        32,
+        40,
+        64,
+        80,
+        112
+      ]
     },
     {
       "name": "stock-opname",
@@ -505,6 +529,93 @@
       "visible_target": 798,
       "source_type": "normalized-legacy-fallback",
       "ai_regeneration": "blocked_until_image_provider_available"
+    },
+    {
+      "name": "navigation-home",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/home.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-order",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/order.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-history",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/history.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-wallet",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/wallet.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
+    },
+    {
+      "name": "navigation-profile",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/profile.webp",
+      "canvas": [
+        1024,
+        1024
+      ],
+      "render_targets": [
+        20,
+        24,
+        32
+      ],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Text-free navigation icon; inspect again at 20px before broad migration."
     }
-  ]
+  ],
+  "generated_provider": "openai-codex",
+  "generated_model": "gpt-image-2-medium"
 }

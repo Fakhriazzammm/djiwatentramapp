@@ -27,6 +27,11 @@ import deliveryManagement from "../../assets/djiwa-icons-v2/delivery-management.
 import suppliersPurchaseOrder from "../../assets/djiwa-icons-v2/suppliers-purchase-order.webp";
 import returnManagement from "../../assets/djiwa-icons-v2/return-management.webp";
 import notificationsAlerts from "../../assets/djiwa-icons-v2/notifications-alerts.webp";
+import navigationHome from "../../assets/djiwa-icons-v2/navigation/home.webp";
+import navigationOrder from "../../assets/djiwa-icons-v2/navigation/order.webp";
+import navigationHistory from "../../assets/djiwa-icons-v2/navigation/history.webp";
+import navigationWallet from "../../assets/djiwa-icons-v2/navigation/wallet.webp";
+import navigationProfile from "../../assets/djiwa-icons-v2/navigation/profile.webp";
 
 export const djiwa3DIconSources = {
   "customer-food-ordering": customerFoodOrdering,
@@ -57,6 +62,11 @@ export const djiwa3DIconSources = {
   "suppliers-purchase-order": suppliersPurchaseOrder,
   "return-management": returnManagement,
   "notifications-alerts": notificationsAlerts,
+  "navigation-home": navigationHome,
+  "navigation-order": navigationOrder,
+  "navigation-history": navigationHistory,
+  "navigation-wallet": navigationWallet,
+  "navigation-profile": navigationProfile,
 } as const;
 
 export type Djiwa3DIconName = keyof typeof djiwa3DIconSources;

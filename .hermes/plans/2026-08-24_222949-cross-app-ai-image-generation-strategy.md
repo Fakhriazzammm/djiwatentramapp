@@ -634,27 +634,31 @@ Deliverables prototype:
 - Added `manifest.json` with source bbox, output size, and generation status.
 - Updated `packages/yumipos-web-shared/src/components/ui/djiwa-3d-icon.tsx` to consume the V2 normalized fallback set.
 - Added `micro` icon size (`h-6 w-6`) for future small button/icon slots.
+- Generated and integrated 5 Customer bottom-navbar icons with OpenAI Codex `gpt-image-2-medium`: Home, Pesan, Riwayat, Saldo, Profil.
+- Generated and integrated 3 clean shared 3D replacements with OpenAI Codex: `customer-food-ordering`, `shopping-cart-order`, and `order-receipt`.
 - Built and deployed Customer, Karyawan, POS, Admin, and OrderMieYamin bundles.
 - Verified production index HTTP 200 and sampled WebP asset parity on all five domains.
 - Visual contact-sheet QA confirmed object bounds are consistent and not clipped.
 
 ### Not completed / blocker
 
-- AI regeneration of navigation icons, button icons, and the 28 3D assets could not run because the configured image-generation provider is unavailable in this environment:
+- The first FAL image-generation attempt was blocked because the FAL provider was not configured. Hermes was then correctly routed to the available OpenAI Codex OAuth backend and generated 8 valid assets.
+
+- Remaining AI regeneration could not finish because the Codex OAuth pool started returning:
 
 ```text
-FAL_KEY is not set
-Nous Portal has no usable paid credits
+No Codex/ChatGPT OAuth credentials available
 ```
 
-- The normalized fallback still inherits legacy content warnings from the source set, including some baked-in text, a persona name, and human/avatar elements. These must not be treated as the final V2 generated set.
+- 25 of the original 28 shared 3D slots still use normalized legacy fallback and inherit possible content warnings from the source set, including baked-in text, a persona name, and human/avatar elements. These must not be treated as the final V2 generated set.
 - New marketing banners for Customer landing, Customer menu/promo, Karyawan SmartBanner, and OrderMieYamin lifestyle remain pending image-provider availability and visual approval.
 
 ### Required continuation when image provider is available
 
-1. Generate 2–3 candidates for Customer bottom navigation/action icon family.
-2. Generate clean text-free replacements for all 28 shared 3D assets.
-3. Repeat 20px–160px crop QA and contact-sheet review.
-4. Replace normalized fallback only after no-text/no-face/no-name inspection passes.
-5. Generate Customer Home/landing, Customer promo, Karyawan SmartBanner, and OrderMieYamin lifestyle banners.
-6. Rebuild, screenshot, approve, deploy, and verify each consumer app.
+1. Refresh/re-authenticate the Codex OAuth pool when the usage limit clears.
+2. Generate 2–3 candidates for the remaining navigation/action icon family.
+3. Generate clean text-free replacements for the remaining 25 shared 3D assets.
+4. Repeat 20px–160px crop QA and contact-sheet review.
+5. Replace normalized fallback only after no-text/no-face/no-name inspection passes.
+6. Generate Customer Home/landing, Customer promo, Karyawan SmartBanner, and OrderMieYamin lifestyle banners.
+7. Rebuild, screenshot, approve, deploy, and verify each consumer app.
