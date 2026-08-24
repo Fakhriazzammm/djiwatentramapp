@@ -1,5 +1,6 @@
 ﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
+import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
 import {
 	endOfDay,
 	endOfMonth,
@@ -911,7 +912,7 @@ function AdminOrders() {
 											</div>
 											<div className="text-[11px] text-muted-foreground">
 												{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black uppercase text-amber-700"><Star className="h-2.5 w-2.5" /> Member</span> : null} ·{" "}
-												{(order.paymentMethod || "-").toUpperCase()}
+												{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
 												{getOrderLocationLabel(order)} · {shiftMeta.shiftName}
@@ -1017,7 +1018,7 @@ function AdminOrders() {
 																{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black uppercase text-amber-700"><Star className="h-2.5 w-2.5" /> Member</span> : null}
 															</p>
 															<p className="text-[10px] text-muted-foreground uppercase">
-																{(order.paymentMethod || "-").toUpperCase()}
+																{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })}
 															</p>
 														</div>
 													</div>
@@ -1308,7 +1309,7 @@ function AdminOrders() {
 													Metode Pembayaran
 												</span>
 												<span className="font-medium capitalize">
-													{selectedOrder.paymentMethod || "-"}
+													{formatPaymentLabel({ source: selectedOrder.source, paymentMethod: selectedOrder.paymentMethod, paymentReceiptKind: selectedOrder.paymentReceiptKind, paymentGateway: selectedOrder.paymentGateway })}
 												</span>
 											</div>
 											<div className="my-1.5 border-border/50 border-t" />

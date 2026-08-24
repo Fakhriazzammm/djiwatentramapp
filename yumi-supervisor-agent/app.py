@@ -34,24 +34,31 @@ MAYAR_WEBHOOK_TOKEN = os.getenv("MAYAR_WEBHOOK_TOKEN", "")
 WIB = timezone(timedelta(hours=7))
 logger = logging.getLogger(__name__)
 
-def _payment_label(raw: str) -> str:
-    """Convert stored payment method to display label."""
-    labels = {
-        "djiwaapp": "DJIWA PAY",
-        "wallet": "DJIWA PAY",
-        "djiwa_pay": "DJIWA PAY",
-        "cash": "Tunai",
-        "qris_mayar": "QRIS",
-        "mayar": "QRIS",
-        "wallet": "DJIWA PAY",
-        "djiwa_pay": "DJIWA PAY",
-        "djiwaapp": "DJIWA PAY",
-    }
-    return labels.get(raw.lower().strip(), raw.upper() if raw else "-")
+def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", payment_gateway=None) -> str:
+    """Return a provenance-safe business payment label."""
+    method = str(raw or "").strip().lower()
+    origin = str(source or "").strip().lower()
+    receipt = str(payment_receipt_kind or "").strip().lower()
+    is_app = origin == "customer_self_service"
+    if method in ("cash", "tunai") or receipt in ("cashier", "cashier_pending"):
+        label = "Bayar Tunai di Kasir"
+    elif method in ("wallet", "djiwa_pay"):
+        label = "Djiwa Pay"
+    elif method in ("qris", "qris_mayar", "mayar"):
+        label = "QRIS"
+    elif method == "djiwaapp":
+        label = "QRIS" if payment_gateway else "Metode pembayaran lama"
+    elif method in ("transfer", "bank_transfer"):
+        label = "Transfer Bank"
+    elif method in ("edc", "debit", "credit"):
+        label = "EDC"
+    else:
+        label = str(raw or "Metode pembayaran tidak diketahui").upper()
+    return f"Djiwa App - {label}" if is_app else label
 
 
-def _sales_channel_label(payment_method: str, source: str = "", order_type: str = "") -> str:
-    """Normalize payment/source values into the cashier report channel."""
+def _sales_channel_label(payment_method: str, source: str = "", order_type: str = "", payment_receipt_kind: str = "", payment_gateway=None) -> str:
+    """Normalize persisted source + payment values into a report label."""
     values = [str(value or "").strip().lower() for value in (payment_method, source, order_type)]
     joined = " ".join(values)
     if "gofood" in joined or "go_food" in joined:
@@ -60,19 +67,8 @@ def _sales_channel_label(payment_method: str, source: str = "", order_type: str 
         return "GrabFood"
     if "shopeefood" in joined or "shopee_food" in joined or "shopee" in joined:
         return "ShopeeFood"
-    if "wallet" in joined or "djiwa_pay" in joined or "djiwaapp" in joined:
-        return "DJIWA PAY"
-    if "customer_self_service" in joined and "mayar" not in joined:
-        return "DjiwaApp"
-    if "mayar" in joined:
-        return "QRIS"
-    if any(value in ("cash", "tunai") for value in values):
-        return "Tunai"
-    if any(value in ("qris", "qris_mayar") for value in values):
-        return "QRIS"
-    if any(value in ("transfer", "bank_transfer") for value in values):
-        return "Transfer"
-    return _payment_label(payment_method or source or order_type or "Tidak diketahui")
+    return _payment_label(payment_method, source, payment_receipt_kind, payment_gateway)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -1021,7 +1017,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
                                       guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
                                       source_label: str | None = None,
                                       arrival_time: str | None = None,
-                                      payment_note: str | None = None) -> bool:
+                                      payment_note: str | None = None,
+                                      payment_label: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1657,7 +1654,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
-        f"💰 Rp{totalAmount:,.0f} — {_payment_label(payment_method)}",
+        f"💰 Rp{totalAmount:,.0f} — {payment_label or _payment_label(payment_method)}",
     ])
     for p in promo_parts:
         lines.append(f"🏷️ {p}")
@@ -1888,7 +1885,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -2081,10 +2078,16 @@ async def _check_new_orders(app):
             source_label = "POS Kasir"
 
         payment_method = str(row.get("paymentMethod") or "").strip()
+        payment_label = _payment_label(
+            payment_method,
+            str(row.get("source") or ""),
+            str(row.get("paymentReceiptKind") or ""),
+            row.get("paymentGateway"),
+        )
         payment_note = (
-            "BELUM LUNAS — BAYAR KE KASIR"
+            f"BELUM LUNAS — {payment_label.upper()}"
             if row.get("paymentReceiptKind") == "cashier_pending"
-            else f"PEMBAYARAN: {_payment_label(payment_method)}"
+            else f"PEMBAYARAN: {payment_label}"
             if payment_method
             else None
         )
@@ -2121,7 +2124,7 @@ async def _check_new_orders(app):
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
         transaction_key = f"{order_no}|transaction"
-        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note)
+        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note, payment_label)
         if transaction_sent:
             _channel_sent.add(transaction_key)
             _save_channel_sent()
@@ -2421,7 +2424,7 @@ async def _check_closed_shifts(bot: Bot):
         try:
             payment_rows = await _fetch(
                 "pos_orders",
-                "select=orderNumber,totalAmount,paymentMethod,source,orderType"
+                "select=orderNumber,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,source,orderType"
                 f"&_creationTime=gte.{s_start}&_creationTime=lte.{s_end}"
                 "&status=in.(completed,paid)&order=_creationTime.asc&limit=500",
             )
@@ -2435,6 +2438,8 @@ async def _check_closed_shifts(bot: Bot):
                     str(order.get("paymentMethod") or ""),
                     str(order.get("source") or ""),
                     str(order.get("orderType") or ""),
+                    str(order.get("paymentReceiptKind") or ""),
+                    order.get("paymentGateway"),
                 )
                 amount = float(order.get("totalAmount") or 0)
                 payment_counts[method] += 1

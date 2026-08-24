@@ -2788,8 +2788,35 @@ async def _check_closed_shift_reports(app) -> None:
         except Exception as e:
             logger.warning("shift_report order fetch %s failed: %s", shift_id, e)
             orders = []
+        try:
+            settled_orders = await _fetch(
+                "pos_orders",
+                "select=orderNumber,totalAmount,paymentMethod,source,paymentReceiptKind,paymentGateway,createdAt,_creationTime,status"
+                "&status=in.(paid,completed)"
+                f"&_creationTime=gte.{start_ms}&_creationTime=lt.{end_ms}&order=_creationTime.asc&limit=1000",
+            )
+        except Exception as e:
+            logger.warning("shift_report payment breakdown %s failed: %s", shift_id, e)
+            settled_orders = []
 
         unique_orders = {str(o.get("order_no") or "?") for o in orders}
+        payment_totals = {}
+        payment_counts = {}
+        seen_payment_orders = set()
+        for order in settled_orders:
+            order_key = str(order.get("orderNumber") or order.get("order_number") or "")
+            if order_key and order_key in seen_payment_orders:
+                continue
+            if order_key:
+                seen_payment_orders.add(order_key)
+            label = _sales_channel_label(
+                str(order.get("paymentMethod") or order.get("payment_method") or ""),
+                str(order.get("source") or ""),
+                str(order.get("orderType") or ""),
+            )
+            amount = float(order.get("totalAmount") or order.get("total_amount") or 0)
+            payment_totals[label] = payment_totals.get(label, 0) + amount
+            payment_counts[label] = payment_counts.get(label, 0) + 1
         dibuat_by = {}
         selesai_by = {}
         for order in orders:
@@ -2830,6 +2857,10 @@ async def _check_closed_shift_reports(app) -> None:
             f"💸 Pengeluaran: Rp{float(summary.get('totalExpenses') or 0):,.0f}",
             f"🏦 Kas fisik: Rp{float(summary.get('endingCashPhysical') or 0):,.0f}",
         ]
+        if payment_totals:
+            lines.extend(["", "💳 *Breakdown Pembayaran:"])
+            for label in sorted(payment_totals):
+                lines.append(f"   {label}: {payment_counts[label]} transaksi — Rp{payment_totals[label]:,.0f}")
         if cash_lines:
             lines.extend(["", "💵 *Rincian Tunai:", *cash_lines, f"   Total: Rp{cash_total:,.0f}"])
         if dibuat_by:

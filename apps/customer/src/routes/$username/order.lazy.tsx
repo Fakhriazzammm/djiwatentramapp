@@ -575,7 +575,7 @@ function OrderPage() {
 				totalAmount: total,
 				taxAmount,
 				serviceChargeAmount,
-				paymentMethod: paymentChoice === "mayar" ? "djiwaapp" : "cash",
+				paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
 				idempotencyKey: checkoutRequestKeyRef.current,
 				customerName: orderCustomerName,
 				customerDescription: normalizedCustomerDescription,

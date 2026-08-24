@@ -1,4 +1,5 @@
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,
@@ -859,12 +860,12 @@ function OrderSimpleDetail({
 		: order.orderType === "takeaway" ? "Bungkus"
 		: order.orderType === "online" ? "Online"
 		: order.orderType ?? "—";
-	const payMethodLabel =
-		["wallet", "djiwa_pay", "djiwaapp"].includes(String(order.paymentMethod ?? "").toLowerCase()) ? "DJIWA PAY"
-		: order.paymentMethod === "tunai" ? "Tunai"
-		: order.paymentMethod === "qris" ? "QRIS"
-		: order.paymentMethod === "transfer" ? "Transfer"
-		: order.paymentMethod ?? "—"
+	const payMethodLabel = formatPaymentLabel({
+		source: order.source,
+		paymentMethod: order.paymentMethod,
+		paymentReceiptKind: order.paymentReceiptKind,
+		paymentGateway: order.paymentGateway,
+	});
 	const statusBg =
 		order.status === "paid" || order.status === "completed"
 			? "bg-emerald-50 text-emerald-600 border-emerald-200"
@@ -1783,12 +1784,12 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 							: order.orderType === "takeaway" ? "Bungkus"
 							: order.orderType === "online" ? "Online"
 							: order.orderType ?? "—";
-						const payMethodLabel =
-							["wallet", "djiwa_pay", "djiwaapp"].includes(String(order.paymentMethod ?? "").toLowerCase()) ? "DJIWA PAY"
-							: order.paymentMethod === "tunai" ? "Tunai"
-							: order.paymentMethod === "qris" ? "QRIS"
-							: order.paymentMethod === "transfer" ? "Transfer"
-							: order.paymentMethod ?? "—";
+						const payMethodLabel = formatPaymentLabel({
+							source: order.source,
+							paymentMethod: order.paymentMethod,
+							paymentReceiptKind: order.paymentReceiptKind,
+							paymentGateway: order.paymentGateway,
+						});
 						const statusBadge =
 							displayStatus === "paid" || displayStatus === "completed"
 								? "text-emerald-600"
