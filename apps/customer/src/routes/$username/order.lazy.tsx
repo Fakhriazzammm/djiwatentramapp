@@ -273,10 +273,15 @@ function OrderPage() {
 	const subtotal = productSubtotal + freeRefillCharge;
 	const grossSubtotal = productGrossSubtotal + freeRefillCharge;
 	const promoDiscount = Math.max(0, grossSubtotal - subtotal);
+	const djiwaPayDiscountPercent = Number(siteSettings?.djiwaPayDiscountPercent ?? 20);
+	const djiwaPayDiscount = paymentChoice === "wallet"
+		? Math.min(productSubtotal, Math.max(0, Math.round(productSubtotal * (djiwaPayDiscountPercent / 100))))
+		: 0;
+	const chargeableSubtotal = Math.max(0, subtotal - djiwaPayDiscount);
 	const taxRate = siteSettings?.taxRate ?? 0;
 	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
-	const serviceChargeAmount = subtotal * (serviceChargeRate / 100);
-	const taxBase = subtotal + serviceChargeAmount;
+	const serviceChargeAmount = chargeableSubtotal * (serviceChargeRate / 100);
+	const taxBase = chargeableSubtotal + serviceChargeAmount;
 	const taxAmount = taxBase * (taxRate / 100);
 	const total = taxBase + taxAmount;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -286,7 +291,7 @@ function OrderPage() {
 	const paymentOptions = [
 		{
 			key: "cashier" as PaymentChoice,
-			label: config.cashPaymentLabel,
+			label: "Bayar Tunai di Kasir",
 			description: "Tampilkan struk dan bayar langsung ke kasir.",
 		},
 		...(canUseWallet
@@ -582,19 +587,13 @@ function OrderPage() {
 				freeRefillSelected: Boolean(freeRefillOptIn),
 				dessertLater,
 				notes: normalizedNotes,
-				discountAmount: promoDiscount,
+				discountAmount: promoDiscount + djiwaPayDiscount,
+				voucherId: djiwaPayDiscount > 0 ? "djiwa-pay-20" : null,
+				receiptMeta: {
+					...(freeRefillOptIn && activeFreeRefillPromo ? { adjustmentLines: [{ label: `${activeFreeRefillPromo.name || "Free Refill"} x${partySize}`, amount: freeRefillCharge }] } : {}),
+					...(djiwaPayDiscount > 0 ? { djiwaPayDiscountPercent, djiwaPayDiscount, djiwaPayDiscountPaymentMethod: "wallet" } : {}),
+				},
 				customerSourceId: customer?.sourceId || null,
-				receiptMeta:
-					freeRefillOptIn && activeFreeRefillPromo
-						? {
-								adjustmentLines: [
-									{
-										label: `${activeFreeRefillPromo.name || "Free Refill"} x${partySize}`,
-										amount: freeRefillCharge,
-									},
-								],
-						  }
-						: undefined,
 			};
 
 			if (paymentChoice === "wallet") {
@@ -921,7 +920,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
