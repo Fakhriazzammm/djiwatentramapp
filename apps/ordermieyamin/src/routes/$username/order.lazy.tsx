@@ -396,25 +396,15 @@ function OrderPage() {
 							.match(/paid|success/)
 					);
 				if (!isPaid) return;
-				await updateOrderPaymentGateway({
-					id: receipt.orderId,
-					paymentGateway: {
-						provider: "mayar",
-						invoiceId,
-						invoiceUrl,
-						status: "paid",
-						paidAt: Date.now(),
-					},
-					paymentReceiptKind: "gateway_paid",
-				});
-				setReceipt((value) => (value ? { ...value, mode: "paid" } : value));
-				toast.success("Pembayaran QRIS terkonfirmasi");
+				// Browser hanya membaca status provider. Settlement order dilakukan
+				// oleh webhook terverifikasi agar tidak ada client-side fulfillment.
+				return;
 			} catch {
 				// Retry quietly.
 			}
 		}, 5000);
 		return () => window.clearInterval(timer);
-	}, [receipt, currentOrder, getMayarInvoiceDetail, updateOrderPaymentGateway]);
+	}, [receipt, currentOrder, getMayarInvoiceDetail]);
 
 	// ── Handlers ────────────────────────────────────────────────
 
@@ -494,6 +484,12 @@ function OrderPage() {
 			toast.error("Nomor meja wajib diisi");
 			return;
 		}
+		if (paymentChoice === "mayar" && (!isAuthenticated || !customer?.email?.trim() || !customer?.phone?.trim())) {
+			toast.error(isAuthenticated ? "Lengkapi email dan nomor WhatsApp di profil sebelum pembayaran QRIS" : "Masuk dan lengkapi profil sebelum pembayaran QRIS");
+			if (isAuthenticated) navigate({ to: "/$username/profile", params: { username } });
+			else setAuthModalOpen(true);
+			return;
+		}
 		setIsSubmitting(true);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `ordermieyamin-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
@@ -513,9 +509,11 @@ function OrderPage() {
 				totalAmount: total,
 				taxAmount,
 				serviceChargeAmount,
-				paymentMethod: paymentChoice === "mayar" ? "djiwaapp" : "cash",
+				paymentMethod: paymentChoice === "mayar" ? "qris" : "cash",
 				idempotencyKey: checkoutRequestKeyRef.current,
 				customerName: normalizedCustomerName,
+				customerEmail: customer?.email?.trim() || null,
+				customerPhone: customer?.phone?.trim() || null,
 				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
 				source: "customer_self_service" as const,
@@ -559,9 +557,10 @@ function OrderPage() {
 					| undefined;
 				try {
 					invoice = await createMayarInvoice({
+						orderId: String(orderId),
 						name: normalizedCustomerName,
-						email: undefined,
-						mobile: siteSettings?.storePhone || "",
+						email: customer?.email?.trim() || undefined,
+						mobile: customer?.phone?.trim() || "",
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
 						expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
