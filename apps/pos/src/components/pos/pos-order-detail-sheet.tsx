@@ -59,6 +59,7 @@ export function PosOrderDetailSheet({ open, order, notification, loading = false
   const items = getItems(order, payload);
   const orderNumber = order?.orderNumber ?? notification?.order_number ?? payload.orderNumber ?? "-";
   const customerName = order?.customerName ?? payload.customerName ?? "Pelanggan DjiwaApp";
+  const customerDescription = order?.customerDescription ?? order?.customer_description ?? payload.customerDescription ?? payload.customer_description ?? "";
   const total = order?.totalAmount ?? payload.totalAmount ?? 0;
   const payment = getPaymentLabel(order, payload);
   const status = getStatusLabel(order, notification);
@@ -84,6 +85,7 @@ export function PosOrderDetailSheet({ open, order, notification, loading = false
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Pelanggan</p><p className="mt-1 font-black">{customerName}</p></div>
                 <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Nomor meja</p><p className="mt-1 flex items-center gap-1 font-black"><MapPin className="h-3.5 w-3.5 text-primary" />{table}</p></div>
+                <div className="col-span-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Ciri khusus customer</p><p className="mt-1 font-semibold text-amber-900">{customerDescription || "Belum diisi"}</p></div>
                 <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Pembayaran</p><p className="mt-1 font-black">{payment}</p></div>
                 <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Status</p><p className="mt-1 flex items-center gap-1 font-black"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />{status}</p></div>
               </div>
