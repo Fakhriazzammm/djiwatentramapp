@@ -2534,6 +2534,7 @@ export function useHybridCreateOrder() {
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,
 					customer_email: args?.customerEmail ?? null,
+					customer_description: args?.customerDescription ?? null,
 					delivery_contact_name: args?.deliveryContactName ?? args?.customerName ?? null,
 					delivery_contact_phone: args?.customerPhone ?? args?.deliveryContactPhone ?? null,
 					table_number: args?.tableNumber ?? null,
