@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import asyncio
 from html import escape
@@ -842,8 +843,63 @@ async def _update_message(order: dict, text: str, keyboard=None):
             order["message_id"] = new_msg.message_id
         # Update message_id in Supabase
         await _update_message_id(order)
+        return True
     except Exception as e:
-        logger.error("edit_text failed for %s: %s", order.get("key"), e)
+        logger.error("edit_text failed for %s", order.get("key"), e)
+        return False
+
+def _payment_status_keyboard(order: dict):
+    """Keep production actions available after a cashier settlement edit."""
+    order_no, group_type = order["key"].split("|")
+    if order.get("status") == "new":
+        return InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Dibuat", callback_data=f"dibuat|{order_no}|{group_type}"),
+                InlineKeyboardButton("🏁 Selesai", callback_data=f"selesai|{order_no}|{group_type}"),
+            ]
+        ])
+    if order.get("status") == "dibuat":
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏁 Selesai", callback_data=f"selesai|{order_no}|{group_type}")]
+        ])
+    return None
+
+async def _mark_operational_message_paid(order_no: str) -> bool:
+    """Edit the existing Bar/Kitchen message instead of sending a second order."""
+    updated = True
+    found = False
+    for group_type in ("barista", "kitchen"):
+        order = _active_orders.get(f"{order_no}|{group_type}")
+        if not order or not order.get("message_id"):
+            continue
+        found = True
+        lines = [line for line in str(order.get("base_text") or "").splitlines() if "BELUM LUNAS" not in line and "SUDAH LUNAS" not in line]
+        insert_at = next((idx + 1 for idx, line in enumerate(lines) if "SUMBER:" in line), 1)
+        lines.insert(insert_at, "✅ SUDAH LUNAS — PEMBAYARAN DITERIMA DI KASIR")
+        order["base_text"] = "\n".join(lines)
+        try:
+            if not await _update_message(order, _build_status_text(order), _payment_status_keyboard(order)):
+                updated = False
+            logger.info("Cashier settlement edited %s message for %s", group_type, order_no)
+        except Exception as exc:
+            updated = False
+            logger.error("Cashier settlement edit failed for %s|%s: %s", order_no, group_type, exc)
+    if not found:
+        logger.warning("No operational message found to mark paid for %s", order_no)
+    return updated
+
+async def _edit_transaction_message_paid(order_no: str, text: str) -> bool:
+    """Edit the original transaction message when its message_id is known."""
+    message_id = _transaction_message_ids.get(order_no)
+    if not message_id:
+        return False
+    try:
+        await _bot().edit_message_text(text, chat_id=TRANSACTION_GROUP_ID, message_id=int(message_id))
+        logger.info("Cashier settlement edited transaction message for %s", order_no)
+        return True
+    except Exception as exc:
+        logger.error("Cashier settlement transaction edit failed for %s: %s", order_no, exc)
+        return False
 
 async def _update_message_id(order: dict):
     """Update message_id in Supabase after editing."""
@@ -1427,6 +1483,7 @@ _last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_upd
 # important when Kitchen/Barista times out after the transaction message was
 # already accepted by Telegram: only the failed destination may retry.
 _CHANNEL_SENT_FILE = os.path.join(_STATE_DIR, "order_channel_notifications.txt")
+_TRANSACTION_MESSAGE_FILE = os.path.join(_STATE_DIR, "transaction_message_ids.json")
 try:
     with open(_CHANNEL_SENT_FILE) as f:
         _channel_sent = {line.strip() for line in f if line.strip()}
@@ -1440,6 +1497,18 @@ def _save_channel_sent() -> None:
             f.write(f"{key}\n")
 
 _save_channel_sent()
+
+try:
+    with open(_TRANSACTION_MESSAGE_FILE) as f:
+        _transaction_message_ids = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    _transaction_message_ids = {}
+
+def _save_transaction_message_ids() -> None:
+    tmp = f"{_TRANSACTION_MESSAGE_FILE}.tmp"
+    with open(tmp, "w") as f:
+        json.dump(_transaction_message_ids, f, sort_keys=True)
+    os.replace(tmp, _TRANSACTION_MESSAGE_FILE)
 
 # ── Shift recap cursor ──
 _LEGACY_SHIFT_RECAP_CURSOR_FILE = os.path.join(_AGENT_DIR, ".shift_recap_cursor.txt")
@@ -1514,7 +1583,7 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 # ── Cashier payment update notification ──
 
 async def _send_cashier_payment_update(app, row: dict):
-    """Notify transaction group when a cashier-paid customer order settles."""
+    """Edit production messages and send one settlement update to Transactions."""
     order_no = str(row.get("orderNumber") or "-")
     daily_no = row.get("daily_receipt_no")
     order_type = str(row.get("orderType") or "dine_in")
@@ -1536,11 +1605,28 @@ async def _send_cashier_payment_update(app, row: dict):
         f"👤 {row.get('customerName') or 'Pelanggan'}",
         f"👥 Kasir: {cashier}",
     ])
-    try:
-        await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(lines))
-        logger.info("Cashier payment update sent for %s", order_no)
-    except Exception as e:
-        logger.error("send_cashier_payment_update failed for %s: %s", order_no, e)
+    operational_ok = await _mark_operational_message_paid(order_no)
+    transaction_key = f"{order_no}|paid-transaction"
+    transaction_ok = transaction_key in _channel_sent
+    if not transaction_ok:
+        settlement_text = "\n".join(lines)
+        if _transaction_message_ids.get(order_no):
+            transaction_ok = await _edit_transaction_message_paid(order_no, settlement_text)
+        else:
+            try:
+                await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, settlement_text)
+                _channel_sent.add(transaction_key)
+                _save_channel_sent()
+                transaction_ok = True
+                logger.info("Cashier payment update sent for %s", order_no)
+            except Exception as e:
+                logger.error("send_cashier_payment_update failed for %s: %s", order_no, e)
+        if transaction_ok:
+            _channel_sent.add(transaction_key)
+            _save_channel_sent()
+    else:
+        logger.info("Cashier payment update already sent for %s", order_no)
+    return operational_ok and transaction_ok
 
 
 # ── Transaction notification to group ──
@@ -1616,7 +1702,9 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         special_lines.extend(["", "✅ Status: Sudah dibayar"])
 
         try:
-            await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(special_lines))
+            msg = await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(special_lines))
+            _transaction_message_ids[order_no] = msg.message_id
+            _save_transaction_message_ids()
             logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
             return True
         except Exception as e:
@@ -1733,7 +1821,9 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     text = "\n".join(lines)
 
     try:
-        await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, text)
+        msg = await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, text)
+        _transaction_message_ids[order_no] = msg.message_id
+        _save_transaction_message_ids()
         logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
         return True
     except Exception as e:
@@ -1967,8 +2057,12 @@ async def _check_new_orders(app):
         )
         if order_no in _reported_order_nos:
             if is_cashier_paid and order_no not in _cashier_paid_update_nos:
-                await _send_cashier_payment_update(app, row)
-                _cashier_paid_update_nos.add(order_no)
+                settlement_ok = await _send_cashier_payment_update(app, row)
+                if settlement_ok:
+                    _cashier_paid_update_nos.add(order_no)
+                    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
+                else:
+                    logger.warning("Settlement delivery incomplete for %s; will retry without duplicating transaction update", order_no)
             continue
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
