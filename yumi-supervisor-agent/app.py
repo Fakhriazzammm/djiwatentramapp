@@ -879,9 +879,11 @@ async def _mark_operational_message_paid(order_no: str) -> bool:
         if not order or not order.get("message_id"):
             continue
         found = True
-        lines = [line for line in str(order.get("base_text") or "").splitlines() if "BELUM LUNAS" not in line and "SUDAH LUNAS" not in line]
-        insert_at = next((idx + 1 for idx, line in enumerate(lines) if "SUMBER:" in line), 1)
-        lines.insert(insert_at, "✅ SUDAH LUNAS — PEMBAYARAN DITERIMA DI KASIR")
+        lines = str(order.get("base_text") or "").splitlines()
+        lines = [
+            line.replace("⚠️ BELUM LUNAS", "✅ SUDAH LUNAS")
+            for line in lines
+        ]
         order["base_text"] = "\n".join(lines)
         try:
             if not await _update_message(order, _build_status_text(order), _payment_status_keyboard(order)):
@@ -896,11 +898,18 @@ async def _mark_operational_message_paid(order_no: str) -> bool:
 
 async def _edit_transaction_message_paid(order_no: str, text: str) -> bool:
     """Edit the original transaction message when its message_id is known."""
-    message_id = _transaction_message_ids.get(order_no)
+    entry = _transaction_message_ids.get(order_no)
+    if isinstance(entry, dict):
+        message_id = entry.get("message_id")
+        original_text = str(entry.get("text") or "")
+    else:
+        message_id = entry
+        original_text = ""
     if not message_id:
         return False
+    paid_text = original_text.replace("⚠️ BELUM LUNAS", "✅ SUDAH LUNAS") if original_text else text
     try:
-        await _bot().edit_message_text(text, chat_id=TRANSACTION_GROUP_ID, message_id=int(message_id))
+        await _bot().edit_message_text(paid_text, chat_id=TRANSACTION_GROUP_ID, message_id=int(message_id))
         logger.info("Cashier settlement edited transaction message for %s", order_no)
         return True
     except Exception as exc:
@@ -1708,8 +1717,9 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         special_lines.extend(["", "✅ Status: Sudah dibayar"])
 
         try:
-            msg = await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, "\n".join(special_lines))
-            _transaction_message_ids[order_no] = msg.message_id
+            transaction_text = "\n".join(special_lines)
+            msg = await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, transaction_text)
+            _transaction_message_ids[order_no] = {"message_id": msg.message_id, "text": transaction_text}
             _save_transaction_message_ids()
             logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
             return True
@@ -1828,7 +1838,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
 
     try:
         msg = await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, text)
-        _transaction_message_ids[order_no] = msg.message_id
+        _transaction_message_ids[order_no] = {"message_id": msg.message_id, "text": text}
         _save_transaction_message_ids()
         logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
         return True
