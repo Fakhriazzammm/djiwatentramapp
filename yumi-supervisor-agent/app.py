@@ -1092,7 +1092,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
                                       source_label: str | None = None,
                                       arrival_time: str | None = None,
                                       payment_note: str | None = None,
-                                      payment_label: str | None = None) -> bool:
+                                      payment_label: str | None = None,
+                                      table_number: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1138,6 +1139,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         "",
         f"{type_label}",
     ]
+    if table_number:
+        extra_lines.append(f"🪑 Meja: {table_number}")
     # Promo tag
     if discount_amount > 0:
         if free_refill:
@@ -1204,7 +1207,8 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
                                       guest_count=None, notes="", discount_amount=0.0, voucher_id=None, free_refill=None,
                                       source_label: str | None = None,
                                       arrival_time: str | None = None,
-                                      payment_note: str | None = None) -> bool:
+                                      payment_note: str | None = None,
+                                      table_number: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1250,6 +1254,8 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         "",
         f"{type_label}",
     ]
+    if table_number:
+        extra_lines.append(f"🪑 Meja: {table_number}")
     if discount_amount > 0:
         if free_refill:
             extra_lines.append("🏷️ Free Refill")
@@ -1653,7 +1659,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
                                           delivery_context: dict | None = None,
                                           source_label: str | None = None,
                                       arrival_time: str | None = None,
-                                      payment_note: str | None = None) -> bool:
+                                      payment_note: str | None = None,
+                                      table_number: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
@@ -1754,6 +1761,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     ])
     if source_label:
         lines.append(f"📲 SUMBER: {source_label}")
+    if table_number:
+        lines.append(f"🪑 Meja: {table_number}")
     if arrival_time:
         lines.append(f"🕒 JAM KEDATANGAN: {arrival_time}")
     payment_display = payment_note or f"PEMBAYARAN: {_payment_label(payment_method)}"
@@ -1994,7 +2003,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,createdAt,items,customerName,customerDescription,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -2012,7 +2021,7 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
@@ -2024,7 +2033,7 @@ async def _check_new_orders(app):
         # menyelesaikan pembayaran. Ini bukan bukti order sudah lunas.
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
             "&source=eq.customer_self_service"
             "&status=eq.pending"
             "&paymentMethod=eq.cash"
@@ -2221,14 +2230,14 @@ async def _check_new_orders(app):
         channel_results = []
         if food_items:
             channel_key = f"{order_no}|kitchen"
-            sent = True if channel_key in _channel_sent else await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note)
+            sent = True if channel_key in _channel_sent else await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, row.get("tableNumber"))
             channel_results.append(sent)
             if sent:
                 _channel_sent.add(channel_key)
                 _save_channel_sent()
         if bev_items:
             channel_key = f"{order_no}|barista"
-            sent = True if channel_key in _channel_sent else await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note)
+            sent = True if channel_key in _channel_sent else await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, None, row.get("tableNumber"))
             channel_results.append(sent)
             if sent:
                 _channel_sent.add(channel_key)
@@ -2237,7 +2246,7 @@ async def _check_new_orders(app):
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
         transaction_key = f"{order_no}|transaction"
-        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note)
+        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note, row.get("tableNumber"))
         if transaction_sent:
             _channel_sent.add(transaction_key)
             _save_channel_sent()
