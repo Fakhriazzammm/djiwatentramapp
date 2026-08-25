@@ -215,6 +215,7 @@ function BrandCustomerIndex() {
 													<div className="relative h-24 w-full bg-muted">
 														{p.image ? <img alt={p.name} className="h-full w-full object-cover" src={p.image} /> : <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"><UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>}
 														{p.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-bold text-white shadow">#{p.menuNumber}</span> : null}
+													{p.totalSold != null ? <span className="absolute bottom-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[11px] font-black text-white shadow">Terjual {Number(p.totalSold).toLocaleString("id-ID")}</span> : null}
 													</div>
 													<div className="space-y-1 p-2.5">
 														<p className="break-words text-xs font-black leading-snug">{p.name}</p>
