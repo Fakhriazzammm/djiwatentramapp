@@ -2619,6 +2619,22 @@ async def _post_init(app):
     logger.info("Kitchen group: %s", KITCHEN_GROUP_ID)
     logger.info("Transaction group: %s", TRANSACTION_GROUP_ID)
 
+    if len({BARISTA_GROUP_ID, KITCHEN_GROUP_ID, TRANSACTION_GROUP_ID}) != 3:
+        raise RuntimeError("Telegram routing invalid: Bar, Kitchen, dan Transaksi harus memakai chat ID berbeda")
+    routing_chats = {
+        "barista": await app.bot.get_chat(BARISTA_GROUP_ID),
+        "kitchen": await app.bot.get_chat(KITCHEN_GROUP_ID),
+        "transaction": await app.bot.get_chat(TRANSACTION_GROUP_ID),
+    }
+    routing_titles = {key: str(chat.title or "").lower() for key, chat in routing_chats.items()}
+    if "bar" not in routing_titles["barista"]:
+        raise RuntimeError(f"Telegram routing invalid: BARISTA_GROUP_ID menunjuk ke {routing_titles['barista']!r}")
+    if "kitchen" not in routing_titles["kitchen"]:
+        raise RuntimeError(f"Telegram routing invalid: KITCHEN_GROUP_ID menunjuk ke {routing_titles['kitchen']!r}")
+    if "transaksi" not in routing_titles["transaction"]:
+        raise RuntimeError(f"Telegram routing invalid: TRANSACTION_GROUP_ID menunjuk ke {routing_titles['transaction']!r}")
+    logger.info("Telegram routing verified: %s", routing_titles)
+
     await _build_beverage_lookup()
     await _build_food_lookup()
     await _build_staff_lookup()
