@@ -851,7 +851,7 @@ async def _update_message(order: dict, text: str, keyboard=None):
         await _update_message_id(order)
         return True
     except Exception as e:
-        logger.error("edit_text failed for %s", order.get("key"), e)
+        logger.error("edit_text failed for %s: %s", order.get("key"), e)
         return False
 
 def _payment_status_keyboard(order: dict):
