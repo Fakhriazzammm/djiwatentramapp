@@ -2063,7 +2063,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				{/* STICKY CONTROL AREA (Search, Categories, Subcategories) */}
 				<div className="sticky top-0 z-30 flex flex-col gap-0 border-b border-border/20 bg-background/95 backdrop-blur-md shadow-sm transition-all pb-1">
-					<div className="px-4 py-2 sm:py-2.5 flex flex-col sm:flex-row gap-2 sm:items-center">
+					<div className="flex items-center gap-2 px-4 py-2 sm:py-2.5">
 						<div className="relative flex-1 group">
 							<Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-primary" />
 							<Input
