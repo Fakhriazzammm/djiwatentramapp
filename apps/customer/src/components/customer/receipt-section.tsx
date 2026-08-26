@@ -4,6 +4,7 @@ import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
 import { BarcodeLines } from "./shared-components";
+import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
 
 // Status lifecycle order — live tracker di struk
 const STATUS_STEPS = [
@@ -62,9 +63,17 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 
 	const currentStepIndex = getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
+	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS Mayar" : "Bayar di Kasir";
+	const printerStatusLabel = mode === "paid" ? "Pembayaran berhasil" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Struk siap ditunjukkan ke kasir";
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-6">
+			<ReceiptPrinterAnimation
+				orderReference={orderReference}
+				total={props.currentOrder?.totalAmount ?? props.total}
+				paymentLabel={paymentLabel}
+				statusLabel={printerStatusLabel}
+			/>
 			<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
 				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{mode === "paid" ? "Payment completed" : "Payment receipt"}</p>
