@@ -517,6 +517,7 @@ function MenuPage() {
 	const paymentRequestIdRef = useRef<string | null>(null);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [isStockPanelOpen, setIsStockPanelOpen] = useState(false);
+	const [productRefreshTick, setProductRefreshTick] = useState(0);
 	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 	const [transactionAlertIds, setTransactionAlertIds] = useState<string[]>([]);
 	const cashierPaidInFlightRef = useRef<Set<string>>(new Set());
@@ -852,7 +853,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	);
 
 	// All products for search
-	const allProducts = useHybridAllProducts();
+	const allProducts = useHybridAllProducts(productRefreshTick);
 
 	// Filtered products based on search
 	const filteredProducts = useMemo(() => {
@@ -1764,7 +1765,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							products={(allProducts ?? products ?? []) as any[]}
 							categories={(categories ?? []) as any[]}
 							onClose={() => setIsStockPanelOpen(false)}
-							onRefresh={() => triggerHybridRefresh()}
+							onRefresh={() => { triggerHybridRefresh(); setProductRefreshTick((value) => value + 1); }}
 						/>
 					</SheetContent>
 				</Sheet>
