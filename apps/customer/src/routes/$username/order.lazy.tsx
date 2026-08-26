@@ -68,7 +68,7 @@ function OrderPage() {
 	const siteSettings = useHybridSiteSettings();
 	const brandSettings = useHybridBookingSettings(brandSlug);
 	const categories = useHybridCategories(menuRefreshTrigger);
-	const products = useHybridProducts(null, menuRefreshTrigger);
+	const products = useHybridAllProducts(menuRefreshTrigger);
 	const discounts = useHybridActiveDiscounts();
 	const createOrder = useHybridCreateOrder();
 	const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
