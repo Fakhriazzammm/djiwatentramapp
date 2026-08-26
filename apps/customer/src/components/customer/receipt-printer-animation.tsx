@@ -52,7 +52,7 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
 
   return (
     <section aria-label="Status pembuatan struk" className="mx-auto mb-3 w-full max-w-sm">
-      <div className="relative isolate overflow-hidden rounded-[24px] border border-border bg-muted/70 p-3 pb-7 shadow-[0_20px_36px_-20px_rgba(9,9,11,0.35),inset_0_1px_0_rgba(255,255,255,0.35)]">
+      <div className="relative isolate overflow-visible rounded-[24px] border border-border bg-muted/70 p-3 pb-7 shadow-[0_20px_36px_-20px_rgba(9,9,11,0.35),inset_0_1px_0_rgba(255,255,255,0.35)]">
         <div className="relative z-10 flex h-10 items-start justify-between px-1">
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-[10px] font-black text-primary-foreground">D</div>
           <div className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground">Djiwa Tentram</div>
@@ -67,7 +67,7 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
           </div>
         </div>
 
-        <div className="relative z-10 -mt-1 h-[46rem] overflow-hidden px-5">
+        <div className={cn("relative z-10 -mt-1 px-5", stage === "complete" ? "h-auto overflow-visible" : "h-[46rem] overflow-hidden")}>
           <motion.div
             animate={{ opacity: 1, transform: stage === "processing" && !reduceMotion ? "translateY(-92%)" : stage === "printing" && !reduceMotion ? paperFeedKeyframes : "translateY(0%)" }}
             className="relative min-h-[46rem] bg-white px-3 py-4 font-mono text-zinc-900 shadow-[0_8px_24px_rgba(9,9,11,0.16)]"
@@ -79,7 +79,7 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
           </motion.div>
         </div>
 
-        <div aria-hidden="true" className="absolute inset-x-6 bottom-3 z-40 h-2 rounded bg-zinc-900 shadow-inner" />
+        <div aria-hidden="true" className="absolute inset-x-6 top-[10.6rem] z-40 h-2 rounded bg-zinc-900 shadow-inner" />
       </div>
     </section>
   );
