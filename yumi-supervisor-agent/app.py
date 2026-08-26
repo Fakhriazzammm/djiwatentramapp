@@ -1139,8 +1139,6 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         "",
         f"{type_label}",
     ]
-    if table_number:
-        extra_lines.append(f"🪑 Meja: {table_number}")
     # Promo tag
     if discount_amount > 0:
         if free_refill:
@@ -1156,6 +1154,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
     barista_team_text = _format_team_by_role(team, "Barista") if team else ""
     if barista_team_text:
         extra_lines.append(f"👥 {barista_team_text}")
+    if table_number:
+        extra_lines.append(f"🪑 Meja: {table_number}")
     if notes:
         extra_lines.append("")
         extra_lines.append(f"📝 {notes}")
@@ -1254,8 +1254,6 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         "",
         f"{type_label}",
     ]
-    if table_number:
-        extra_lines.append(f"🪑 Meja: {table_number}")
     if discount_amount > 0:
         if free_refill:
             extra_lines.append("🏷️ Free Refill")
@@ -1273,6 +1271,8 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         kitchen_team_text = _format_team_by_role(team, "CHEF") if team else ""
     if kitchen_team_text:
         extra_lines.append(f"👥 {kitchen_team_text}")
+    if table_number:
+        extra_lines.append(f"🪑 Meja: {table_number}")
     if notes:
         extra_lines.append("")
         extra_lines.append(f"📝 {notes}")
@@ -1761,8 +1761,6 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     ])
     if source_label:
         lines.append(f"📲 SUMBER: {source_label}")
-    if table_number:
-        lines.append(f"🪑 Meja: {table_number}")
     if arrival_time:
         lines.append(f"🕒 JAM KEDATANGAN: {arrival_time}")
     payment_display = payment_note or f"PEMBAYARAN: {_payment_label(payment_method)}"
@@ -1781,6 +1779,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines.append(customer_line)
     lines.append(f"👥 Kasir: {cashier}")
     lines.extend(team_lines)
+    if table_number:
+        lines.append(f"🪑 Meja: {table_number}")
 
     if delivery_context and delivery_context.get("businessUnit") == "ordermieyamin":
         provider_labels = {"gojek": "Gojek", "maxim": "Maxim"}
