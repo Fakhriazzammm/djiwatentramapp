@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ type ReceiptPrinterAnimationProps = {
   paymentLabel: string;
   statusLabel: string;
   finalStage?: ReceiptPrinterStage;
+  children: ReactNode;
 };
 
 const toothCount = 32;
@@ -24,7 +25,7 @@ const toothPoints = Array.from({ length: toothCount * 2 }, (_, index) => {
 const receiptClipPath = `polygon(0 0, 100% 0, 100% calc(100% - ${toothDepth}px), ${toothPoints})`;
 const paperFeedKeyframes = ["translateY(-92%)", "translateY(-68%)", "translateY(-40%)", "translateY(0%)"];
 
-export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, statusLabel, finalStage = "complete" }: ReceiptPrinterAnimationProps) {
+export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, statusLabel, finalStage = "complete", children }: ReceiptPrinterAnimationProps) {
   const reduceMotion = useReducedMotion();
   const [stage, setStage] = useState<ReceiptPrinterStage>(reduceMotion ? finalStage : "processing");
 
@@ -66,16 +67,15 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
           </div>
         </div>
 
-        <div className="relative z-10 -mt-1 h-28 overflow-hidden px-5">
+        <div className="relative z-10 -mt-1 h-[46rem] overflow-hidden px-5">
           <motion.div
             animate={{ opacity: 1, transform: stage === "processing" && !reduceMotion ? "translateY(-92%)" : stage === "printing" && !reduceMotion ? paperFeedKeyframes : "translateY(0%)" }}
-            className="relative min-h-40 bg-white px-4 py-4 font-mono text-zinc-900 shadow-[0_8px_24px_rgba(9,9,11,0.16)]"
+            className="relative min-h-[46rem] bg-white px-3 py-4 font-mono text-zinc-900 shadow-[0_8px_24px_rgba(9,9,11,0.16)]"
             initial={false}
-            transition={{ opacity: { duration: 0.18 }, transform: { duration: reduceMotion ? 0 : stage === "printing" ? 1.75 : 0.35, ease: stage === "printing" ? "linear" : [0.23, 1, 0.32, 1] } }}
+            transition={{ opacity: { duration: 0.18 }, transform: { duration: reduceMotion ? 0 : stage === "printing" ? 2.4 : 0.35, ease: stage === "printing" ? "linear" : [0.23, 1, 0.32, 1] } }}
             style={{ clipPath: receiptClipPath }}
           >
-            <p className="text-center text-[9px] font-black tracking-[0.18em]">DJIWA TENTRAM</p>
-            <div className="mt-2 space-y-1 text-[9px]"><div className="flex justify-between"><span>{orderReference}</span><span>{currency(total)}</span></div><div className="border-t border-dashed border-zinc-300 pt-1 text-zinc-500">{statusLabel}</div></div>
+            <div className="receipt-paper-content text-[10px] leading-relaxed">{children}</div>
           </motion.div>
         </div>
 

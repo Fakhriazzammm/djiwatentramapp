@@ -73,8 +73,8 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				total={props.currentOrder?.totalAmount ?? props.total}
 				paymentLabel={paymentLabel}
 				statusLabel={printerStatusLabel}
-			/>
-			<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
+			>
+				<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
 				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{mode === "paid" ? "Payment completed" : "Payment receipt"}</p>
 				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
@@ -107,8 +107,10 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					</div>
 					{orderItems.length > 0 ? <div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
 					<BarcodeLines value={orderReference} />
-				</div>
-				{/* ── Live status tracker ─────────────────────────── */}
+					</div>
+					</div>
+					</ReceiptPrinterAnimation>
+			{/* ── Live status tracker ─────────────────────────── */}
 				{currentStepLabel ? (
 					<div className="mt-3 rounded-3xl border border-border bg-card p-3.5 shadow-sm">
 						<div className="flex items-center justify-between">
@@ -137,7 +139,6 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					</div>
 				) : null}
 				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2 text-[10px] font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3 w-3" />Bayar via DjiwaApp</a> : null}
-			</div>
 			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div><button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/20 bg-primary/5 px-2.5 py-2.5 text-[10px] font-black text-primary shadow-sm" onClick={props.onHome}>Kembali ke Home</button>
 		</div>
 	);
