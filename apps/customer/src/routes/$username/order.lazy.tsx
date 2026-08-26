@@ -639,7 +639,7 @@ function OrderPage() {
 				if (!guestCustomerSourceId) throw new Error("Data guest belum berhasil disimpan");
 			}
 			if (paymentChoice === "mayar" && !normalizedCustomerName) {
-				throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
+				throw new Error("Nama customer wajib diisi sebelum pembayaran");
 			}
 			const orderCustomerName = normalizedCustomerName || `Customer ${tableNumber.trim() || "Walk In"}`;
 			const normalizedCustomerDescription = customerDescription.trim().slice(0, 160) || undefined;
@@ -910,7 +910,7 @@ function OrderPage() {
 						step === "menu"
 							? "flex-1 overflow-y-auto pb-safe-with-nav"
 							: step === "receipt"
-								? "flex-1 overflow-y-auto pb-32"
+								? "flex-1 overflow-y-auto pb-[calc(15rem+env(safe-area-inset-bottom))]"
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>

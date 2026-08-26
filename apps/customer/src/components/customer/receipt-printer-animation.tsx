@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ const paperFeedKeyframes = ["translateY(-92%)", "translateY(-68%)", "translateY(
 
 export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, statusLabel, finalStage = "complete", children }: ReceiptPrinterAnimationProps) {
   const reduceMotion = useReducedMotion();
+  const paperRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<ReceiptPrinterStage>(reduceMotion ? finalStage : "processing");
 
   useEffect(() => {
@@ -42,6 +43,17 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
       window.clearTimeout(completeTimer);
     };
   }, [finalStage, reduceMotion, orderReference]);
+
+  useEffect(() => {
+    if (stage !== "printing" && stage !== "complete") return;
+    const scrollTimer = window.setTimeout(() => {
+      paperRef.current?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "end",
+      });
+    }, stage === "printing" ? 120 : 180);
+    return () => window.clearTimeout(scrollTimer);
+  }, [reduceMotion, stage]);
 
   const statusText = useMemo(() => {
     if (stage === "processing") return "Memproses pesanan";
@@ -69,6 +81,7 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
 
         <div className={cn("relative z-10 -mt-1 px-5", stage === "complete" ? "h-auto overflow-visible" : "h-[46rem] overflow-hidden")}>
           <motion.div
+            ref={paperRef}
             animate={{ opacity: 1, transform: stage === "processing" && !reduceMotion ? "translateY(-92%)" : stage === "printing" && !reduceMotion ? paperFeedKeyframes : "translateY(0%)" }}
             className="relative min-h-[46rem] bg-white px-3 py-4 font-mono text-zinc-900 shadow-[0_8px_24px_rgba(9,9,11,0.16)]"
             initial={false}
