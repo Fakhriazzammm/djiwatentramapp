@@ -51,6 +51,7 @@ import {
 	useHybridOrderStatus,
 	useHybridShiftStatus,
 	useHybridProducts,
+	useHybridAllProducts,
 	useHybridStaffRoles,
 	useHybridStaffUsers,
 	useHybridSiteSettings,
@@ -851,11 +852,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	);
 
 	// All products for search
-	const allProducts = useHybridProducts();
+	const allProducts = useHybridAllProducts();
 
 	// Filtered products based on search
 	const filteredProducts = useMemo(() => {
-		if (!searchQuery.trim()) return products;
+		if (!searchQuery.trim()) return allProducts ?? products;
 		if (!allProducts) return [];
 		
 		const query = searchQuery.toLowerCase();
@@ -878,7 +879,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			return matchName || matchMenuNumber || matchCategory || matchDescription;
 		});
 	}, [searchQuery, products, allProducts, categories]);
-	const isLoading = products === undefined || categories === undefined;
+	const isLoading = (products === undefined && allProducts === undefined) || categories === undefined;
 	const filteredProductsLength = filteredProducts?.length ?? 0;
 	const displayedProducts = useMemo(
 		() => (filteredProducts ?? []).slice(0, visibleProductsCount),
@@ -2198,6 +2199,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									{ allowHappyHour: false }
 								);
 								const cartQty = getCartQty(product._id);
+				const isSold = product.isAvailable === false || Number(product.quantity ?? 0) <= 0;
 								const isFocused = isKeyboardActive && isZoneFocused("products") && focusedIndex === index;
 
 								return (
@@ -2262,6 +2264,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 												)}>
 													{(product.quantity ?? 0) <= 0 ? "Habis" : `Stok: ${product.quantity}`}
 												</span>
+											)}
+
+											{isSold && (
+												<div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/55">
+													<span className="rounded-full bg-white px-3 py-1 text-[10px] font-black tracking-[0.18em] text-slate-900">SOLD</span>
+												</div>
 											)}
 
 											{/* Keyboard focus indicator */}

@@ -16,7 +16,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	useHybridActiveDiscounts,
 	useHybridCategories,
-	useHybridProducts,
+	useHybridAllProducts,
 	useHybridSiteSettings,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridBookingSettings } from "@/hooks/use-hybrid-booking-data";
@@ -490,6 +490,10 @@ function OrderPage() {
 	};
 
 	const handleProductSelect = (product: (typeof orderedProducts)[number]) => {
+		if (product.isAvailable === false || Number(product.quantity ?? 0) <= 0) {
+			toast.info(`${product.name} sedang SOLD`);
+			return;
+		}
 		const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 		if (hasVariations) {
 			setProductSheet(product);

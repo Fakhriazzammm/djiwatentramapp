@@ -234,12 +234,14 @@ export function renderMenuSection(props: MenuSectionProps) {
 							{props.filteredProducts.map((product) => {
 								const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
+								const isSold = product.isAvailable === false || Number(product.quantity ?? 0) <= 0;
 								const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 								return (
 									<article key={product._id} className="flex items-center gap-3 rounded-[24px] border border-border/80 bg-card p-2.5 shadow-[0_4px_20px_rgba(9,9,11,0.05)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[18px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
 											<ProductImage src={product.image} alt={product.name} />
 											{product.menuNumber != null ? <span className="absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}
+											{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
 											{pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 										</button>
 										<div className="min-w-0 flex-1 self-stretch py-0.5">
@@ -250,10 +252,10 @@ export function renderMenuSection(props: MenuSectionProps) {
 												</div>
 												<div className="flex items-end justify-between gap-2">
 													<div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>
-													{hasVariations ? <button type="button" className="min-h-11 rounded-[14px] border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-black text-primary transition-transform duration-[180ms] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => props.handleProductSelect(product)}>{quantity > 0 ? `${quantity} di cart` : 'Pilih opsi'}</button> : <div className="flex min-h-11 items-center gap-1 rounded-[14px] border border-border bg-background p-1">
-														{quantity > 0 ? <button type="button" aria-label={`Kurangi ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-muted-foreground transition-transform active:scale-[.97] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => props.updateCartQuantity(product._id, undefined, -1)}><Minus className="h-3.5 w-3.5" /></button> : null}
+													{hasVariations ? <button type="button" disabled={isSold} className="min-h-11 rounded-[14px] border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-black text-primary transition-transform duration-[180ms] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => props.handleProductSelect(product)}>{quantity > 0 ? `${quantity} di cart` : 'Pilih opsi'}</button> : <div className="flex min-h-11 items-center gap-1 rounded-[14px] border border-border bg-background p-1">
+														{quantity > 0 ? <button type="button" disabled={isSold} aria-label={`Kurangi ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-muted-foreground transition-transform active:scale-[.97] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => props.updateCartQuantity(product._id, undefined, -1)}><Minus className="h-3.5 w-3.5" /></button> : null}
 														{quantity > 0 ? <span className="min-w-6 text-center text-xs font-black">{quantity}</span> : null}
-														<button type="button" aria-label={`Tambah ${product.name}`} className="flex h-9 min-w-9 items-center justify-center rounded-[10px] bg-primary px-2 text-primary-foreground transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => quantity > 0 ? props.updateCartQuantity(product._id, undefined, 1) : props.handleProductSelect(product)}><Plus className="h-3.5 w-3.5" /></button>
+														<button type="button" disabled={isSold} aria-label={`Tambah ${product.name}`} className="flex h-9 min-w-9 items-center justify-center rounded-[10px] bg-primary px-2 text-primary-foreground transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => quantity > 0 ? props.updateCartQuantity(product._id, undefined, 1) : props.handleProductSelect(product)}><Plus className="h-3.5 w-3.5" /></button>
 													</div>}
 												</div>
 											</div>
