@@ -7,6 +7,7 @@ export const SHIFT_PAYMENT_CHANNELS = [
   { key: "gofood", label: "GoFood", group: "online" },
   { key: "grabfood", label: "GrabFood", group: "online" },
   { key: "shopeefood", label: "ShopeeFood", group: "online" },
+  { key: "online_unmapped", label: "Online Food — Platform Belum Terpetakan", group: "online" },
 ] as const;
 
 export type ShiftPaymentChannelKey = (typeof SHIFT_PAYMENT_CHANNELS)[number]["key"];
@@ -21,6 +22,7 @@ export const EMPTY_SHIFT_PAYMENT_BREAKDOWN: ShiftPaymentBreakdown = {
   gofood: 0,
   grabfood: 0,
   shopeefood: 0,
+  online_unmapped: 0,
 };
 
 export const EMPTY_SHIFT_PAYMENT_ACTUAL: Partial<Record<ShiftPaymentChannelKey, number | null>> = {
@@ -32,6 +34,7 @@ export const EMPTY_SHIFT_PAYMENT_ACTUAL: Partial<Record<ShiftPaymentChannelKey, 
   gofood: null,
   grabfood: null,
   shopeefood: null,
+  online_unmapped: null,
 };
 
 const ONLINE_PLATFORM_KEYS: Record<string, ShiftPaymentChannelKey> = {
@@ -52,12 +55,13 @@ export function classifyShiftPaymentChannel(order: Record<string, any>): ShiftPa
   const orderType = String(order.orderType ?? order.order_type ?? "").trim().toLowerCase();
   const raw = order.raw && typeof order.raw === "object" ? order.raw : {};
   const paymentChoice = String(raw.paymentChoice ?? raw.payment_choice ?? "").trim().toLowerCase();
-  const platform = String(raw.platform ?? order.platform ?? "").trim().toLowerCase();
+  const receiptMeta = order.receiptMeta && typeof order.receiptMeta === "object" ? order.receiptMeta : {};
+  const platform = String(order.platform ?? receiptMeta.platform ?? raw.platform ?? raw.orderPlatform ?? "").trim().toLowerCase();
   const amount = Number(order.totalAmount ?? order.total_amount ?? 0);
 
   if (amount <= 0) return null;
   const onlineKey = ONLINE_PLATFORM_KEYS[platform];
-  if (orderType === "online" && onlineKey) return onlineKey;
+  if (orderType === "online") return onlineKey ?? "online_unmapped";
 
   if (source === "customer_self_service") {
     if (paymentChoice === "cashier" || ["cash", "tunai", "cashier"].includes(method) || receiptKind === "cashier") {

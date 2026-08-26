@@ -12,7 +12,8 @@ export type ShiftPaymentKey =
   | "djiwaapp_bayar_kasir"
   | "gofood"
   | "grabfood"
-  | "shopeefood";
+  | "shopeefood"
+  | "online_unmapped";
 
 export type ShiftPaymentBreakdown = Record<ShiftPaymentKey, number>;
 
@@ -25,11 +26,12 @@ export const SHIFT_PAYMENT_CHANNELS: Array<{ key: ShiftPaymentKey; label: string
   { key: "gofood", label: "GoFood", group: "online", icon: CreditCard },
   { key: "grabfood", label: "GrabFood", group: "online", icon: CreditCard },
   { key: "shopeefood", label: "ShopeeFood", group: "online", icon: CreditCard },
+  { key: "online_unmapped", label: "Online Food — Platform Belum Terpetakan", group: "online", icon: CreditCard },
 ];
 
 export const EMPTY_SHIFT_PAYMENT_BREAKDOWN: ShiftPaymentBreakdown = {
   qris_kasir: 0, tunai_kasir: 0, djiwa_pay: 0, djiwaapp_qris: 0,
-  djiwaapp_bayar_kasir: 0, gofood: 0, grabfood: 0, shopeefood: 0,
+  djiwaapp_bayar_kasir: 0, gofood: 0, grabfood: 0, shopeefood: 0, online_unmapped: 0,
 };
 
 export const EMPTY_SHIFT_PAYMENT_ACTUAL: Partial<Record<ShiftPaymentKey, number | null>> = {
@@ -40,7 +42,7 @@ export const EMPTY_SHIFT_PAYMENT_ACTUAL: Partial<Record<ShiftPaymentKey, number 
   djiwaapp_bayar_kasir: null,
   gofood: null,
   grabfood: null,
-  shopeefood: null,
+  shopeefood: null, online_unmapped: null,
 };
 
 export function formatRupiah(value: number) {
