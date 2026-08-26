@@ -83,6 +83,7 @@ import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
+import { StockToolbarPanel } from "@/components/pos/stock-toolbar-panel";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 
 const fmt = (n: number) =>
@@ -514,6 +515,7 @@ function MenuPage() {
 	const submitInFlightRef = useRef(false);
 	const paymentRequestIdRef = useRef<string | null>(null);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [isStockPanelOpen, setIsStockPanelOpen] = useState(false);
 	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 	const [transactionAlertIds, setTransactionAlertIds] = useState<string[]>([]);
 	const cashierPaidInFlightRef = useRef<Set<string>>(new Set());
@@ -1500,9 +1502,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						const mayarCustomerName = customerInfo.name.trim();
 						const mayarCustomerEmail = customerInfo.email?.trim() || "";
 						const mayarCustomerPhone = customerInfo.phone?.trim() || "";
-						if (!mayarCustomerName) throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
-						if (!mayarCustomerEmail) throw new Error("Email customer wajib diisi sebelum pembayaran Mayar");
-						if (!mayarCustomerPhone) throw new Error("Nomor WhatsApp customer wajib diisi sebelum pembayaran Mayar");
+						if (!mayarCustomerName) throw new Error("Nama customer wajib diisi sebelum pembayaran");
+						if (!mayarCustomerEmail) throw new Error("Email customer wajib diisi sebelum pembayaran");
+						if (!mayarCustomerPhone) throw new Error("Nomor WhatsApp customer wajib diisi sebelum pembayaran");
 					}
 
 					const shouldOpenBill = Boolean(orderData?.isOpenBill || useMayarGateway);
@@ -1754,6 +1756,17 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						</div>
 					</div>
 				</div>
+
+				<Sheet open={isStockPanelOpen} onOpenChange={setIsStockPanelOpen}>
+					<SheetContent side="bottom" showCloseButton={false} className="h-[min(92dvh,760px)] max-h-[calc(100dvh-0.5rem)] overflow-hidden rounded-t-3xl p-0 sm:mx-auto sm:max-w-xl">
+						<StockToolbarPanel
+							products={(allProducts ?? products ?? []) as any[]}
+							categories={(categories ?? []) as any[]}
+							onClose={() => setIsStockPanelOpen(false)}
+							onRefresh={() => triggerHybridRefresh()}
+						/>
+					</SheetContent>
+				</Sheet>
 
 				{/* MAIN Y-SCROLL CONTAINER */}
 				<main
@@ -2072,6 +2085,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								</button>
 							)}
 						</div>
+						<button
+							type="button"
+							onClick={() => setIsStockPanelOpen(true)}
+							className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-primary-foreground shadow-sm transition-transform active:scale-[0.97]"
+							aria-label="Buka pengaturan stok"
+						>
+							<Package className="h-3.5 w-3.5" />
+							Stok
+						</button>
 					</div>
 
 					{/* Category Tabs - Top Header (Main Categories Only) */}
