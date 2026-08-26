@@ -26,6 +26,7 @@ type StockFilter = "all" | "low" | "out";
 
 function statusFor(product: Product) {
   const quantity = Number(product.quantity ?? 0);
+  if (product.isAvailable === false) return { label: "SOLD", className: "text-rose-600 bg-rose-50" };
   if (quantity <= 0) return { label: "Habis", className: "text-rose-600 bg-rose-50" };
   if (quantity <= 10) return { label: "Menipis", className: "text-amber-700 bg-amber-50" };
   return { label: "Aman", className: "text-emerald-700 bg-emerald-50" };
@@ -53,7 +54,7 @@ export function StockToolbarPanel({ products, categories, onClose, onRefresh }: 
       const matchesCategory = categoryId === "all" || parent?._id === categoryId;
       const matchesSubcategory = subcategoryId === "all" || category?._id === subcategoryId;
       const quantity = Number(product.quantity ?? 0);
-      const matchesStock = stockFilter === "all" || (stockFilter === "low" && quantity > 0 && quantity <= 10) || (stockFilter === "out" && quantity <= 0);
+      const matchesStock = stockFilter === "all" || (stockFilter === "low" && product.isAvailable !== false && quantity > 0 && quantity <= 10) || (stockFilter === "out" && (product.isAvailable === false || quantity <= 0));
       return matchesQuery && matchesCategory && matchesSubcategory && matchesStock;
     });
   }, [categories, categoryId, products, query, stockFilter, subcategoryId]);
