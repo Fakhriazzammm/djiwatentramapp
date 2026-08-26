@@ -56,6 +56,7 @@ SELECT
   o.event_type_key AS "eventTypeKey",
   o.event_type_label AS "eventTypeLabel",
   o.event_type_other AS "eventTypeOther",
+  o.arrival_time AS "arrivalTime",
   COALESCE(NULLIF(o.raw->>'platform', ''), NULLIF(o.raw->>'orderPlatform', ''), NULLIF(o.receipt_meta->>'platform', '')) AS platform,
   COALESCE(oi_items.items, '[]'::jsonb) AS items
 FROM pos.orders o
