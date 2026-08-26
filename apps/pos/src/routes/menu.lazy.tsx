@@ -85,6 +85,7 @@ import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
 import { StockToolbarPanel } from "@/components/pos/stock-toolbar-panel";
+import { StockTutorial, shouldShowStockTutorial } from "@/components/pos/stock-tutorial";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 
 const fmt = (n: number) =>
@@ -517,6 +518,10 @@ function MenuPage() {
 	const paymentRequestIdRef = useRef<string | null>(null);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const [isStockPanelOpen, setIsStockPanelOpen] = useState(false);
+	const [stockTutorialOpen, setStockTutorialOpen] = useState(false);
+	const [stockTutorialShiftName, setStockTutorialShiftName] = useState("");
+	const shiftStateObservedRef = useRef(false);
+	const previousShiftOpenRef = useRef(false);
 	const [productRefreshTick, setProductRefreshTick] = useState(0);
 	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 	const [transactionAlertIds, setTransactionAlertIds] = useState<string[]>([]);
@@ -546,6 +551,20 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	useEffect(() => { setShiftStatusMountKey(c => c + 1); }, []);
 	const shiftStatus = useHybridShiftStatus(shiftStatusMountKey);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
+
+	useEffect(() => {
+		if (!shiftStatus) return;
+		const wasOpen = previousShiftOpenRef.current;
+		if (shiftStateObservedRef.current && !wasOpen && isShiftOpen) {
+			const shiftName = String(shiftStatus.shiftInfo?.shiftName ?? "").trim();
+			if (shouldShowStockTutorial(shiftName)) {
+				setStockTutorialShiftName(shiftName);
+				setStockTutorialOpen(true);
+			}
+		}
+		previousShiftOpenRef.current = isShiftOpen;
+		shiftStateObservedRef.current = true;
+	}, [isShiftOpen, shiftStatus]);
 
 	const [currentTime, setCurrentTime] = useState(new Date());
 	const [happyHourNoticeOpen, setHappyHourNoticeOpen] = useState(false);
@@ -2091,6 +2110,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							type="button"
 							onClick={() => setIsStockPanelOpen(true)}
 							className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-primary-foreground shadow-sm transition-transform active:scale-[0.97]"
+							data-stock-tutorial-target="stock-button"
 							aria-label="Buka pengaturan stok"
 						>
 							<Package className="h-3.5 w-3.5" />
@@ -2346,6 +2366,17 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				</div>
 
 				</main>
+				<StockTutorial
+					open={stockTutorialOpen}
+					onOpenStock={() => setIsStockPanelOpen(true)}
+					onFinish={() => {
+						const dateKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
+						const normalizedShift = stockTutorialShiftName.toLowerCase();
+						const shiftKey = normalizedShift.includes("pagi") ? "pagi" : normalizedShift.includes("sore") ? "sore" : "lainnya";
+						if (shiftKey !== "lainnya") window.localStorage.setItem(`pos-stock-tutorial:${dateKey}:${shiftKey}`, "done");
+						setStockTutorialOpen(false);
+					}}
+				/>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
 				<nav className="fixed inset-x-0 bottom-0 z-30 min-h-[76px] border-t border-border/60 bg-background/95 px-2 pt-2 pb-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur-md safe-area-bottom md:hidden">
 					<div className="mx-auto flex min-h-[60px] max-w-lg items-center justify-around gap-0.5 sm:max-w-none sm:gap-1">
