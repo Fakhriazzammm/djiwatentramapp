@@ -61,6 +61,22 @@ def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", p
     return f"Djiwa App - {label}" if is_app else label
 
 
+def _source_label(row: dict) -> str | None:
+    """Resolve transaction origin strictly from persisted provenance fields."""
+    business_unit = str(row.get("businessUnit") or "").strip().lower()
+    source = str(row.get("source") or "").strip().lower()
+    if business_unit == "ordermieyamin":
+        return "Order Mie Yamin"
+    if source == "booking":
+        return "Booking"
+    if source == "customer_self_service":
+        return "DjiwaApp Member" if row.get("customerSourceId") else "DjiwaApp Guest"
+    if source == "pos":
+        return "POS Kasir"
+    # Never infer POS from payment_method, payment_receipt_kind, or a missing source.
+    return None
+
+
 def _sales_channel_label(payment_method: str, source: str = "", order_type: str = "", payment_receipt_kind: str = "", payment_gateway=None) -> str:
     """Normalize persisted source + payment values into a report label."""
     values = [str(value or "").strip().lower() for value in (payment_method, source, order_type)]
@@ -1610,7 +1626,7 @@ async def _send_cashier_payment_update(app, row: dict):
     order_type = str(row.get("orderType") or "dine_in")
     kind_label = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}.get(order_type, order_type.upper())
     struk_line = f"STRUK NO. {daily_no} - {kind_label}" if daily_no else None
-    source_label = "DjiwaApp Member" if row.get("customerSourceId") else "DjiwaApp Guest"
+    source_label = _source_label(row) or "Tidak diketahui"
     shift = await _find_shift_at_time(int(float(row.get("_creationTime") or row.get("createdAt") or 0)))
     cashier = shift.get("cashier_name", "?")
     lines = []
@@ -2186,20 +2202,9 @@ async def _check_new_orders(app):
             "deliveryArea": "Tasikmalaya" if row.get("businessUnit") == "ordermieyamin" else "",
         }
 
-        # Payment provenance is explicit in every operational channel.
+        # Resolve origin once from persisted provenance; payment is rendered separately.
         payment_method = str(row.get("paymentMethod") or "").strip()
-        payment_label = _payment_label(payment_method)
-        source_label = None
-        if row.get("businessUnit") == "ordermieyamin":
-            source_label = "Order Mie Yamin"
-        elif row.get("source") == "booking":
-            source_label = "Booking"
-        elif row.get("source") == "customer_self_service":
-            source_label = "DjiwaApp Member" if customer_source_id else "DjiwaApp Guest"
-        elif row.get("source") == "pos":
-            source_label = "POS Kasir"
-
-        payment_method = str(row.get("paymentMethod") or "").strip()
+        source_label = _source_label(row)
         payment_label = _payment_label(
             payment_method,
             str(row.get("source") or ""),
