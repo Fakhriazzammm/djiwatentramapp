@@ -54,7 +54,11 @@ const containerVariants: any = {
 
 const itemVariants: any = {
   hidden: { opacity: 0, y: 12 },
-  visible: { transition: { type: "spring", stiffness: 80, damping: 14 } },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 80, damping: 14 },
+  },
 };
 
 const podiumVariants: any = {
