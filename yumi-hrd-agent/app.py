@@ -496,7 +496,7 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 def _main_keyboard(is_registered: bool = True) -> ReplyKeyboardMarkup:
     if is_registered:
         return ReplyKeyboardMarkup(
-            [["✅ Absen Masuk", "📤 Absen Keluar"], ["📋 Status Saya", "📊 Rekap Bulanan"], ["📅 Jadwal Saya"]],
+            [["✅ Absen Masuk", "📤 Absen Keluar"], ["📋 Status Saya", "📊 Rekap Bulanan"], ["📅 Jadwal Saya"], ["📱 Buka Aplikasi Karyawan"]],
             resize_keyboard=True,
         )
     return ReplyKeyboardMarkup(
@@ -510,6 +510,39 @@ def _location_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         one_time_keyboard=True,
     )
+
+async def cmd_employee_app(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    emp = await _require_employee(update)
+    if not emp or not update.message:
+        return
+    emp_id = str(emp.get("employee_user_id") or "")
+    if not emp_id:
+        await update.message.reply_text("❌ Identitas karyawan belum lengkap. Hubungi admin.", reply_markup=_main_keyboard())
+        return
+    ts = int(_now_wib().timestamp() * 1000)
+    sig = hmac.new(
+        ATTENDANCE_HMAC_SECRET.encode(),
+        f"{emp_id}:{ts}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    mini_url = (
+        "https://karyawan.yumme.id/absen-keluar-mini"
+        f"?uid={emp_id}&t={ts}&sig={sig}&mode=home"
+    )
+    try:
+        await update.message.reply_text(
+            "📱 Buka Aplikasi Karyawan untuk mengakses jadwal, absensi, izin, notifikasi, profil, dan payroll.",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("📱 Buka Aplikasi Karyawan", web_app=WebAppInfo(url=mini_url)),
+            ]]),
+        )
+    except Exception:
+        logger.exception("Failed opening employee workspace Mini App for %s", emp_id)
+        await update.message.reply_text(
+            "⚠️ Aplikasi Karyawan belum bisa dibuka. Silakan coba lagi.",
+            reply_markup=_main_keyboard(),
+        )
+
 
 # ── State machine untuk flow clockin ──
 _user_states: dict[int, dict] = {}
@@ -1730,7 +1763,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Absen Masuk" in text or "Absen Keluar" in text or
         "Status Saya" in text or "Status" in text or
         "Rekap Bulanan" in text or "Log" in text or
-        "Jadwal" in text
+        "Jadwal" in text or "Buka Aplikasi Karyawan" in text
     )
     if main_action:
         _clear_state(tg_id)
@@ -1843,6 +1876,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await cmd_mylog(update, context)
     elif "Jadwal" in text:
         await cmd_jadwal(update, context)
+    elif "Buka Aplikasi Karyawan" in text:
+        await cmd_employee_app(update, context)
     else:
         # Check if not registered → show registration prompt
         emp = await _find_employee_by_telegram(tg_id)
