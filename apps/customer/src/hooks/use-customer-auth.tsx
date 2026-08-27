@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -195,6 +196,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [registrationNeedsEmailConfirm, setRegistrationNeedsEmailConfirm] =
     useState(false);
+  const visitRecordedRef = useRef(false);
 
   // ── Sync Better Auth session → customer data ─────────────────
   useEffect(() => {
@@ -233,9 +235,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     const email = customer?.email;
     if (!betterSession?.user || !sourceId || !email) return;
     let active = true;
+    visitRecordedRef.current = false;
     const sendPresence = () => {
       if (!active || document.visibilityState === "hidden") return;
-      void invokeEdgeFunction("customer-sync", { action: "presence", sourceId, email })
+      const recordVisit = !visitRecordedRef.current;
+      void invokeEdgeFunction("customer-sync", { action: "presence", sourceId, email, recordVisit })
+        .then(() => { if (recordVisit) visitRecordedRef.current = true; })
         .catch((error) => console.warn("[customer-auth] presence update skipped:", error));
     };
     sendPresence();
@@ -247,7 +252,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [betterSession?.user, customer?.email, customer?.sourceId]);
+  }, [betterSession?.user?.id, betterSession?.user?.email, customer?.email, customer?.sourceId]);
 
   const session: CustomerSession | null =
     betterSession?.user && customer

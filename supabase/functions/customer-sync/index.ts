@@ -192,10 +192,17 @@ async function handleSync(payload: JsonRecord) {
 async function handlePresence(payload: JsonRecord) {
 	const sourceId = toTrimmedString(payload.sourceId);
 	const email = toTrimmedString(payload.email);
+	const recordVisit = payload.recordVisit === true;
 	if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
 	const { customer, error: ownershipError } = await findOwnedCustomer(sourceId, email);
 	if (ownershipError || !customer) throw new Error("Tidak dapat memverifikasi kepemilikan akun");
 	const lastActiveAt = new Date().toISOString();
+	if (recordVisit) {
+		const { data, error } = await supabaseAdmin.schema("pos").rpc("record_customer_visit", { p_source_id: sourceId });
+		if (error) throw error;
+		const visit = Array.isArray(data) ? data[0] : data;
+		return { message: "Kunjungan customer tercatat", lastActiveAt: visit?.last_active_at ?? lastActiveAt, visitCount: visit?.djiwaapp_visit_count ?? 0 };
+	}
 	const { error } = await supabaseAdmin
 		.schema("pos")
 		.from("customers")

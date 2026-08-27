@@ -26,6 +26,7 @@ interface Customer {
 	total_spent: number;
 	last_order_at: string | null;
 	last_active_at: string | null;
+	djiwaapp_visit_count: number;
 	created_at: string;
 	wallet_balance: number;
 	wallet_held_balance: number;
@@ -105,7 +106,7 @@ function customerMatchesOrder(customer: Customer, order: any) {
 	return normalizeCustomerName(customer.name) !== "" && normalizeCustomerName(customer.name) === normalizeCustomerName(order.customerName ?? order.customer_name);
 }
 
-type CustomerSortKey = "name" | "email" | "phone" | "wallet_balance" | "total_orders" | "total_spent" | "last_order_at" | "last_active_at" | "created_at";
+type CustomerSortKey = "name" | "email" | "phone" | "wallet_balance" | "total_orders" | "djiwaapp_visit_count" | "total_spent" | "last_order_at" | "last_active_at" | "created_at";
 type SortDirection = "asc" | "desc";
 
 function customerSortValue(customer: Customer, key: CustomerSortKey): string | number {
@@ -399,7 +400,7 @@ function AdminCustomers() {
 											</span>
 										<span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-blue-700">
 											<ShoppingBag className="h-3 w-3" />
-											{c.total_orders} pesanan
+											{c.total_orders} order DjiwaApp
 										</span>
 										<span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 text-green-700">
 											<DollarSign className="h-3 w-3" />
@@ -418,7 +419,7 @@ function AdminCustomers() {
 									<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
 										<CircleDot className={`h-3 w-3 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} />
 										<span className={customerPresence(c) === "online" ? "font-bold text-emerald-700" : ""}>{presenceLabel(c)}</span>
-										<span>· Terakhir aktif: {formatDate(c.last_active_at, true)}</span>
+										<span>· Terakhir aktif: {formatDate(c.last_active_at, true)} · {c.djiwaapp_visit_count ?? 0} kunjungan DjiwaApp</span>
 									</div>
 									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
 										<CalendarDays className="h-3 w-3" /> Bergabung {formatDate(c.created_at)}
@@ -433,7 +434,7 @@ function AdminCustomers() {
 			{/* Desktop: Compact table */}
 			<div className="hidden rounded-2xl border border-border bg-card shadow-sm md:block">
 				<div className="overflow-x-auto">
-					<table className="w-full min-w-[1240px] text-left text-xs">
+					<table className="w-full min-w-[1400px] text-left text-xs">
 						<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 							<tr className="text-[10px] text-muted-foreground">
 								<th className="w-12 px-2.5 py-2 text-center"><input type="checkbox" aria-label="Pilih semua customer terlihat" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-5 w-5 accent-red-600" /></th>
@@ -441,7 +442,8 @@ function AdminCustomers() {
 								<th className="px-2.5 py-2"><SortableHeader label="Email" sortKey="email" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="px-2.5 py-2"><SortableHeader label="Telepon" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="px-2.5 py-2 text-right"><SortableHeader label="Saldo" sortKey="wallet_balance" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
-								<th className="px-2.5 py-2 text-center"><SortableHeader label="Orders" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
+								<th className="px-2.5 py-2 text-center"><SortableHeader label="Order DjiwaApp" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
+								<th className="px-2.5 py-2 text-center"><SortableHeader label="Kunjungan DjiwaApp" sortKey="djiwaapp_visit_count" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
 								<th className="px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
 								<th className="px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
@@ -454,7 +456,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={11}
+										colSpan={12}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -486,6 +488,9 @@ function AdminCustomers() {
 										</td>
 										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
 											{c.total_orders}
+										</td>
+										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
+											{c.djiwaapp_visit_count ?? 0}
 										</td>
 										<td className="px-2.5 py-2 text-right align-middle tabular-nums font-medium">
 											{formatRupiah(c.total_spent)}
@@ -537,6 +542,7 @@ function AdminCustomers() {
 							<DetailField label="Order terakhir" value={formatDate(detailCustomer.last_order_at, true)} />
 							<DetailField label="Terakhir aktif di Djiwa App" value={formatDate(detailCustomer.last_active_at, true)} />
 							<DetailField label="Status Djiwa App" value={presenceLabel(detailCustomer)} />
+							<DetailField label="Kunjungan DjiwaApp" value={detailCustomer.djiwaapp_visit_count ?? 0} />
 							<DetailField label="Tanggal lahir" value={formatDate(detailCustomer.birth_date)} />
 							<DetailField label="Gender" value={detailCustomer.gender} />
 							<DetailField label="Marketing consent" value={detailCustomer.marketing_consent === null ? null : detailCustomer.marketing_consent ? "Ya" : "Tidak"} />
