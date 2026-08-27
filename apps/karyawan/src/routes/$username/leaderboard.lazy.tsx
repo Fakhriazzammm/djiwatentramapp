@@ -42,7 +42,8 @@ type ShiftRow = {
 };
 
 type StaffRow = { _id: string; name: string; roleName?: string | null; isActive?: boolean };
-type PayrollBonusRow = { user_id: string; user_name: string; role_name?: string | null; bonus_pay?: number | null; created_at: string };
+type PayrollBonusRow = { user_id: string; user_name: string; role_name?: string | null; bonus_pay?: number | null; created_at: string; payroll_run_id?: string; payroll_period_id?: string };
+type PayrollPeriodRow = { id: string; period_name: string; start_date: string | null; end_date: string | null; status?: string | null };
 
 // ── Animations ────────────────────────────────────────────────────────
 
@@ -100,10 +101,9 @@ const RANK_COLORS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-function isThisMonth(ts: number): boolean {
-  const now = new Date();
+function isInMonth(ts: number, monthKey: string): boolean {
   const d = new Date(ts);
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` === monthKey;
 }
 
 function parseMemberBonuses(raw: any): BonusEntry[] {
@@ -123,11 +123,11 @@ function parseMemberBonuses(raw: any): BonusEntry[] {
   }));
 }
 
-function aggregateBonuses(shifts: ShiftRow[]): BonusEntry[] {
+function aggregateBonuses(shifts: ShiftRow[], monthKey: string): BonusEntry[] {
   const memberMap = new Map<string, BonusEntry>();
 
   for (const shift of shifts) {
-    if (!shift.start_time || !isThisMonth(shift.start_time)) continue;
+    if (!shift.start_time || !isInMonth(shift.start_time, monthKey)) continue;
     if (!shift.end_time) continue; // only completed shifts
 
     const bonuses = parseMemberBonuses(shift.raw);
@@ -389,6 +389,9 @@ function LeaderboardPage() {
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [staffRows, setStaffRows] = useState<StaffRow[]>([]);
   const [payrollBonusRows, setPayrollBonusRows] = useState<PayrollBonusRow[]>([]);
+  const [payrollPeriods, setPayrollPeriods] = useState<PayrollPeriodRow[]>([]);
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -403,15 +406,15 @@ function LeaderboardPage() {
 
         const nextMonthStart = new Date(monthStart);
         nextMonthStart.setMonth(nextMonthStart.getMonth() + 1);
-        const [shiftResult, staffResult, payrollResult] = await Promise.all([
+        const [shiftResult, staffResult, payrollResult, runResult, periodResult] = await Promise.all([
           supabase
             .schema("pos")
             .from("shifts")
             .select("source_id,shift_name,cashier_name,team_members,start_time,end_time,raw")
             .not("start_time", "is", null)
             .not("end_time", "is", null)
-            .gte("start_time", startTs)
-            .order("start_time", { ascending: false }),
+            .order("start_time", { ascending: false })
+            .limit(1000),
           supabase
             .from("pos_users_public")
             .select("_id,name,roleName,isActive")
@@ -419,18 +422,29 @@ function LeaderboardPage() {
             .order("name", { ascending: true }),
           supabase
             .from("pos_payroll_run_items")
-            .select("user_id,user_name,role_name,bonus_pay,created_at")
-            .gte("created_at", monthStart.toISOString())
-            .lt("created_at", nextMonthStart.toISOString())
+            .select("user_id,user_name,role_name,bonus_pay,created_at,payroll_run_id")
+            .order("created_at", { ascending: false })
+            .limit(2000),
+          supabase
+            .from("pos_payroll_runs")
+            .select("id,payroll_period_id,created_at")
             .order("created_at", { ascending: false }),
+          supabase
+            .from("pos_payroll_periods")
+            .select("id,period_name,start_date,end_date,status")
+            .order("start_date", { ascending: true }),
         ]);
         if (shiftResult.error) throw shiftResult.error;
         if (staffResult.error) throw staffResult.error;
         if (payrollResult.error) throw payrollResult.error;
+        if (runResult.error) throw runResult.error;
+        if (periodResult.error) throw periodResult.error;
         if (!cancelled) {
+          const runToPeriod = new Map((runResult.data ?? []).map((run: any) => [run.id, run.payroll_period_id]));
           setShifts((shiftResult.data ?? []) as ShiftRow[]);
           setStaffRows((staffResult.data ?? []) as StaffRow[]);
-          setPayrollBonusRows((payrollResult.data ?? []) as PayrollBonusRow[]);
+          setPayrollPeriods((periodResult.data ?? []) as PayrollPeriodRow[]);
+          setPayrollBonusRows((payrollResult.data ?? []).map((row: any) => ({ ...row, payroll_period_id: runToPeriod.get(row.payroll_run_id) })) as PayrollBonusRow[]);
         }
       } catch (e) {
         console.error("[leaderboard] fetch error", e);
@@ -442,9 +456,12 @@ function LeaderboardPage() {
   }, []);
 
   const leaderboard = useMemo(() => {
-    const byName = new Map(aggregateBonuses(shifts).map((entry) => [entry.name.trim().toLowerCase(), entry]));
+    const shiftBonuses = aggregateBonuses(shifts, selectedMonth);
+    const byName = new Map(shiftBonuses.map((entry) => [entry.name.trim().toLowerCase(), entry]));
+    const selectedPeriodIds = new Set(payrollPeriods.filter((period) => period.start_date?.startsWith(selectedMonth)).map((period) => period.id));
     const latestPayroll = new Map<string, PayrollBonusRow>();
     for (const row of payrollBonusRows) {
+      if (!row.payroll_period_id || !selectedPeriodIds.has(row.payroll_period_id)) continue;
       const key = String(row.user_id || row.user_name || "").trim().toLowerCase();
       if (key && !latestPayroll.has(key)) latestPayroll.set(key, row);
     }
@@ -463,7 +480,7 @@ function LeaderboardPage() {
       } satisfies BonusEntry;
     });
     return allEntries.sort((a, b) => b.totalBonus - a.totalBonus || a.name.localeCompare(b.name));
-  }, [payrollBonusRows, shifts, staffRows]);
+  }, [payrollBonusRows, payrollPeriods, selectedMonth, shifts, staffRows]);
   const maxBonus = leaderboard.length > 0 ? leaderboard[0].totalBonus : 0;
   const currentUserName = staff?.name ?? "";
 
@@ -490,10 +507,20 @@ function LeaderboardPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight">Leaderboard Bonus</h1>
-            <p className="text-[11px] font-medium text-muted-foreground">Bulan {new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</p>
+            <p className="text-[11px] font-medium text-muted-foreground">Semua karyawan · bonus achieved</p>
           </div>
         </div>
       </div>
+
+      <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-2 text-xs font-semibold">
+        <span>Bulan leaderboard</span>
+        <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold">
+          {(payrollPeriods.length ? payrollPeriods : [{ id: currentMonthKey, period_name: "Bulan berjalan", start_date: `${currentMonthKey}-01`, end_date: null }]).filter((period, index, all) => period.start_date && all.findIndex((candidate) => candidate.start_date?.slice(0, 7) === period.start_date?.slice(0, 7)) === index).map((period) => {
+            const monthKey = period.start_date!.slice(0, 7);
+            return <option key={monthKey} value={monthKey}>{new Date(`${monthKey}-01T00:00:00+07:00`).toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</option>;
+          })}
+        </select>
+      </label>
 
       {loading ? (
         <LoadingSkeleton />
