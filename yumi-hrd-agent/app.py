@@ -22,6 +22,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 # Group where attendance notifications are broadcast (overrides yumi-ai-bot behavior)
 REPORT_CHAT_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
+CHANNEL_ID = int(os.getenv("BROADCAST_CHANNEL_ID", "-1003534335147"))
 ATTENDANCE_HMAC_SECRET = os.getenv("ATTENDANCE_HMAC_SECRET", "")
 
 WIB = timezone(timedelta(hours=7))
@@ -76,6 +77,95 @@ async def _post_legacy_mirror(payload: dict) -> dict:
         r.raise_for_status()
         data = r.json()
         return data[0] if isinstance(data, list) and data else {}
+
+async def _claim_channel_dm_delivery(channel_id: int, message_id: int, telegram_user_id: int, employee_name: str) -> bool:
+    payload = {
+        "channel_id": channel_id,
+        "channel_message_id": message_id,
+        "telegram_user_id": telegram_user_id,
+        "employee_name": employee_name,
+        "status": "pending",
+    }
+    try:
+        await _post("telegram_channel_dm_deliveries", payload)
+        return True
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 409:
+            return False
+        raise
+
+
+async def _mark_channel_dm_delivery(channel_id: int, message_id: int, telegram_user_id: int, status: str, dm_message_id: int | None = None, error_message: str | None = None) -> None:
+    payload = {"status": status}
+    if dm_message_id is not None:
+        payload["dm_message_id"] = dm_message_id
+        payload["sent_at"] = datetime.now(timezone.utc).isoformat()
+    if error_message:
+        payload["error_message"] = error_message[:1000]
+    await _patch(
+        "telegram_channel_dm_deliveries",
+        f"channel_id=eq.{channel_id}&channel_message_id=eq.{message_id}&telegram_user_id=eq.{telegram_user_id}",
+        payload,
+    )
+
+
+async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    post = update.channel_post
+    if not post or post.chat.id != CHANNEL_ID:
+        return
+    recipients = await _fetch(
+        "employee_telegram_links",
+        "select=telegram_user_id,employee_name&is_active=eq.true&limit=500",
+    )
+    sent = 0
+    skipped = 0
+    failed = 0
+    for recipient in recipients:
+        telegram_user_id = int(recipient.get("telegram_user_id") or 0)
+        if not telegram_user_id:
+            continue
+        claimed = await _claim_channel_dm_delivery(
+            post.chat.id,
+            post.message_id,
+            telegram_user_id,
+            str(recipient.get("employee_name") or "Karyawan"),
+        )
+        if not claimed:
+            skipped += 1
+            continue
+        try:
+            copied = await context.bot.copy_message(
+                chat_id=telegram_user_id,
+                from_chat_id=post.chat.id,
+                message_id=post.message_id,
+            )
+            await _mark_channel_dm_delivery(
+                post.chat.id,
+                post.message_id,
+                telegram_user_id,
+                "sent",
+                dm_message_id=copied.message_id,
+            )
+            sent += 1
+        except Exception as exc:
+            message = str(exc)
+            status = "blocked" if any(token in message.lower() for token in ("blocked", "chat not found", "forbidden")) else "failed"
+            try:
+                await _mark_channel_dm_delivery(post.chat.id, post.message_id, telegram_user_id, status, error_message=message)
+            except Exception:
+                logger.exception("Failed to persist channel DM delivery error for %s", telegram_user_id)
+            failed += 1
+        await asyncio.sleep(0.15)
+    logger.info(
+        "Channel post relay complete: channel=%s message=%s recipients=%s sent=%s skipped=%s failed=%s",
+        post.chat.id,
+        post.message_id,
+        len(recipients),
+        sent,
+        skipped,
+        failed,
+    )
+
 
 # ── Time helpers ──
 
@@ -1761,6 +1851,7 @@ def main():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("daftar", cmd_daftar))
+    app.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, handle_channel_post))
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
