@@ -485,7 +485,6 @@ function LeaderboardPage() {
   const currentUserName = staff?.name ?? "";
 
   const top3 = leaderboard.slice(0, 3);
-  const rest = leaderboard.slice(3);
 
   const currentUserRank = leaderboard.findIndex((e) => e.name === currentUserName);
   const currentUserEntry = currentUserRank >= 0 ? leaderboard[currentUserRank] : null;
@@ -553,13 +552,17 @@ function LeaderboardPage() {
             </div>
           )}
 
-          {/* Full list */}
+          {/* Full list — tampilkan semua karyawan, termasuk Top 3 */}
+          <div className="flex items-center justify-between pt-1">
+            <h2 className="text-sm font-black text-foreground">Daftar Lengkap</h2>
+            <span className="text-[11px] font-semibold text-muted-foreground">{leaderboard.length} karyawan</span>
+          </div>
           <motion.div className="space-y-1.5" variants={containerVariants} initial="hidden" animate="visible">
-            {rest.map((entry, i) => (
+            {leaderboard.map((entry, i) => (
               <LeaderboardRow
                 key={entry.name}
                 entry={entry}
-                rank={i + 3}
+                rank={i}
                 maxBonus={maxBonus}
                 isMe={entry.name === currentUserName}
               />
