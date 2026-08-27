@@ -135,10 +135,14 @@ export type Djiwa3DIconProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" |
 };
 
 export function Djiwa3DIcon({ name, size = "md", alt = "", className = "", ...props }: Djiwa3DIconProps) {
+  const source = djiwa3DIconSources[name];
+  // Canonical employee routes are nested; keep Vite asset URLs rooted at the domain.
+  const assetSrc = source.startsWith("/") || source.startsWith("data:") ? source : `/${source}`;
+
   return (
     <img
       {...props}
-      src={djiwa3DIconSources[name]}
+      src={assetSrc}
       alt={alt}
       aria-hidden={alt ? undefined : true}
       loading="lazy"
