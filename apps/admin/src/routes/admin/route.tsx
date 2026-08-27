@@ -880,7 +880,7 @@ function AdminLayout() {
 
 				{/* Footer - visible on both desktop and mobile */}
 				{!isAIChat && (
-					<Footer className="border-t bg-muted/20" />
+					<Footer compact className="border-t bg-muted/20" />
 				)}
 			</main>
 
