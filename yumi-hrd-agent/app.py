@@ -1873,7 +1873,10 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     logger.info("Yumi HRD Agent starting...")
-    app.run_polling(timeout=1, drop_pending_updates=True)
+    # Explicitly reset Telegram allowed_updates after channel-only probes;
+    # otherwise Telegram can keep delivering only channel_post and silently
+    # drop normal DM messages/buttons.
+    app.run_polling(timeout=1, drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
