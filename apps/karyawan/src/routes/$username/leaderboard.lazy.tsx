@@ -41,6 +41,9 @@ type ShiftRow = {
   raw: any;
 };
 
+type StaffRow = { _id: string; name: string; roleName?: string | null; isActive?: boolean };
+type PayrollBonusRow = { user_id: string; user_name: string; role_name?: string | null; bonus_pay?: number | null; created_at: string };
+
 // ── Animations ────────────────────────────────────────────────────────
 
 const containerVariants: any = {
@@ -369,7 +372,7 @@ function EmptyState() {
         <Djiwa3DIcon alt="Leaderboard bonus" className="h-20 w-20" name="sales-report" size="lg" />
       </div>
       <p className="text-sm font-bold text-muted-foreground">Belum ada bonus shift bulan ini</p>
-      <p className="text-xs text-muted-foreground/60 mt-1">Leaderboard akan muncul setelah shift selesai</p>
+      <p className="text-xs text-muted-foreground/60 mt-1">Semua karyawan tampil berdasarkan bonus achieved bulan ini</p>
     </div>
   );
 }
@@ -384,6 +387,8 @@ function LeaderboardPage() {
   const navigate = useNavigate();
   const { staff, username } = useStaffProfile();
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
+  const [staffRows, setStaffRows] = useState<StaffRow[]>([]);
+  const [payrollBonusRows, setPayrollBonusRows] = useState<PayrollBonusRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -396,17 +401,36 @@ function LeaderboardPage() {
         monthStart.setHours(0, 0, 0, 0);
         const startTs = monthStart.getTime();
 
-        const { data } = await supabase
-          .schema("pos")
-          .from("shifts")
-          .select("source_id,shift_name,cashier_name,team_members,start_time,end_time,raw")
-          .not("start_time", "is", null)
-          .not("end_time", "is", null)
-          .gte("start_time", startTs)
-          .order("start_time", { ascending: false });
-
+        const nextMonthStart = new Date(monthStart);
+        nextMonthStart.setMonth(nextMonthStart.getMonth() + 1);
+        const [shiftResult, staffResult, payrollResult] = await Promise.all([
+          supabase
+            .schema("pos")
+            .from("shifts")
+            .select("source_id,shift_name,cashier_name,team_members,start_time,end_time,raw")
+            .not("start_time", "is", null)
+            .not("end_time", "is", null)
+            .gte("start_time", startTs)
+            .order("start_time", { ascending: false }),
+          supabase
+            .from("pos_users_public")
+            .select("_id,name,roleName,isActive")
+            .eq("isActive", true)
+            .order("name", { ascending: true }),
+          supabase
+            .from("pos_payroll_run_items")
+            .select("user_id,user_name,role_name,bonus_pay,created_at")
+            .gte("created_at", monthStart.toISOString())
+            .lt("created_at", nextMonthStart.toISOString())
+            .order("created_at", { ascending: false }),
+        ]);
+        if (shiftResult.error) throw shiftResult.error;
+        if (staffResult.error) throw staffResult.error;
+        if (payrollResult.error) throw payrollResult.error;
         if (!cancelled) {
-          setShifts((data ?? []) as ShiftRow[]);
+          setShifts((shiftResult.data ?? []) as ShiftRow[]);
+          setStaffRows((staffResult.data ?? []) as StaffRow[]);
+          setPayrollBonusRows((payrollResult.data ?? []) as PayrollBonusRow[]);
         }
       } catch (e) {
         console.error("[leaderboard] fetch error", e);
@@ -417,7 +441,29 @@ function LeaderboardPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const leaderboard = useMemo(() => aggregateBonuses(shifts), [shifts]);
+  const leaderboard = useMemo(() => {
+    const byName = new Map(aggregateBonuses(shifts).map((entry) => [entry.name.trim().toLowerCase(), entry]));
+    const latestPayroll = new Map<string, PayrollBonusRow>();
+    for (const row of payrollBonusRows) {
+      const key = String(row.user_id || row.user_name || "").trim().toLowerCase();
+      if (key && !latestPayroll.has(key)) latestPayroll.set(key, row);
+    }
+    const allEntries = staffRows.map((staffRow) => {
+      const key = String(staffRow._id || "").trim().toLowerCase();
+      const nameKey = staffRow.name.trim().toLowerCase();
+      const shiftEntry = byName.get(nameKey);
+      const payrollEntry = latestPayroll.get(key) ?? latestPayroll.get(nameKey);
+      const payrollBonus = Number(payrollEntry?.bonus_pay ?? 0);
+      return {
+        name: staffRow.name,
+        roleName: staffRow.roleName || payrollEntry?.role_name || shiftEntry?.roleName || "—",
+        totalBonus: payrollBonus > 0 ? payrollBonus : (shiftEntry?.totalBonus ?? 0),
+        shiftCount: Number((payrollEntry as any)?.total_shifts ?? shiftEntry?.shiftCount ?? 0),
+        bonusHistory: shiftEntry?.bonusHistory ?? [],
+      } satisfies BonusEntry;
+    });
+    return allEntries.sort((a, b) => b.totalBonus - a.totalBonus || a.name.localeCompare(b.name));
+  }, [payrollBonusRows, shifts, staffRows]);
   const maxBonus = leaderboard.length > 0 ? leaderboard[0].totalBonus : 0;
   const currentUserName = staff?.name ?? "";
 
