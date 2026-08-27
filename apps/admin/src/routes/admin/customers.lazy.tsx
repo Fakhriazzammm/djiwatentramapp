@@ -24,13 +24,23 @@ interface Customer {
 	lifetime_points: number;
 	total_orders: number;
 	total_spent: number;
+	last_order_at: string | null;
+	created_at: string;
 	wallet_balance: number;
 	wallet_held_balance: number;
 	wallet_total_credited: number;
 	wallet_total_debited: number;
-	wallet_status: "active" | "blocked";
-	last_order_at: string | null;
-	created_at: string;
+	wallet_status: "active" | "blocked" | string;
+	nickname: string | null;
+	birth_date: string | null;
+	gender: string | null;
+	address: string | null;
+	city: string | null;
+	province: string | null;
+	postal_code: string | null;
+	marketing_consent: boolean | null;
+	profile_completed_at: string | null;
+	customer_description: string | null;
 }
 
 interface WalletLedgerEntry {
@@ -80,6 +90,11 @@ function customerMatchesOrder(customer: Customer, order: any) {
 	if (customerId && orderAuthId && customerId === orderAuthId) return true;
 	if (customer.email && orderEmail && customer.email.toLowerCase() === orderEmail.toLowerCase()) return true;
 	return normalizeCustomerName(customer.name) !== "" && normalizeCustomerName(customer.name) === normalizeCustomerName(order.customerName ?? order.customer_name);
+}
+
+function DetailField({ label, value, wide = false }: { label: string; value: unknown; wide?: boolean }) {
+	const display = value === null || value === undefined || value === "" ? "—" : String(value);
+	return <div className={`rounded-xl bg-muted/50 p-3 ${wide ? "col-span-2" : ""}`}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 break-words font-semibold">{display}</p></div>;
 }
 
 function CustomerAvatar({ customer }: { customer: Customer }) {
@@ -391,7 +406,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={8}
+										colSpan={9}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -448,15 +463,32 @@ function AdminCustomers() {
 							<div className="flex min-w-0 items-center gap-3"><CustomerAvatar customer={detailCustomer} /><div className="min-w-0"><p id="customer-detail-title" className="truncate text-lg font-black">{detailCustomer.name || "Tanpa Nama"}</p><p className="truncate text-sm text-muted-foreground">Detail customer</p></div></div>
 							<button type="button" aria-label="Tutup detail customer" onClick={() => setDetailCustomer(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
 						</div>
-						<div className="mt-5 grid grid-cols-2 gap-2 text-sm">
-							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Email</p><p className="mt-1 break-all font-semibold">{detailCustomer.email || "-"}</p></div>
-							<div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Telepon</p><p className="mt-1 font-semibold">{detailCustomer.phone || "-"}</p></div>
-							<div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Saldo Djiwa Pay</p><p className="mt-1 font-black text-emerald-900">{formatRupiah(detailCustomer.wallet_balance || 0)}</p></div>
-							<div className="rounded-xl bg-blue-50 p-3"><p className="text-xs text-blue-700">Total orders</p><p className="mt-1 font-black text-blue-900">{detailCustomer.total_orders.toLocaleString("id-ID")}</p></div>
-							<div className="rounded-xl bg-cyan-50 p-3"><p className="text-xs text-cyan-700">Total masuk Djiwa Pay</p><p className="mt-1 font-black text-cyan-900">{formatRupiah(detailCustomer.wallet_total_credited || 0)}</p></div>
-							<div className="rounded-xl bg-green-50 p-3"><p className="text-xs text-green-700">Total spending</p><p className="mt-1 font-black text-green-900">{formatRupiah(detailCustomer.total_spent)}</p></div>
+						<div className="mt-5 grid max-h-[45vh] grid-cols-2 gap-2 overflow-y-auto pr-1 text-sm">
+							<DetailField label="Source ID" value={detailCustomer.source_id} wide />
+							<DetailField label="Email" value={detailCustomer.email} wide />
+							<DetailField label="Telepon" value={detailCustomer.phone} />
+							<DetailField label="Nickname" value={detailCustomer.nickname} />
+							<DetailField label="Saldo Djiwa Pay" value={formatRupiah(detailCustomer.wallet_balance || 0)} />
+							<DetailField label="Saldo ditahan" value={formatRupiah(detailCustomer.wallet_held_balance || 0)} />
+							<DetailField label="Total masuk Djiwa Pay" value={formatRupiah(detailCustomer.wallet_total_credited || 0)} />
+							<DetailField label="Total keluar Djiwa Pay" value={formatRupiah(detailCustomer.wallet_total_debited || 0)} />
+							<DetailField label="Status wallet" value={detailCustomer.wallet_status} />
+							<DetailField label="Total points" value={detailCustomer.total_points.toLocaleString("id-ID")} />
+							<DetailField label="Lifetime points" value={detailCustomer.lifetime_points.toLocaleString("id-ID")} />
+							<DetailField label="Total orders" value={detailCustomer.total_orders.toLocaleString("id-ID")} />
+							<DetailField label="Total spending" value={formatRupiah(detailCustomer.total_spent)} />
+							<DetailField label="Bergabung" value={formatDate(detailCustomer.created_at, true)} />
+							<DetailField label="Order terakhir" value={formatDate(detailCustomer.last_order_at, true)} />
+							<DetailField label="Tanggal lahir" value={formatDate(detailCustomer.birth_date)} />
+							<DetailField label="Gender" value={detailCustomer.gender} />
+							<DetailField label="Marketing consent" value={detailCustomer.marketing_consent === null ? null : detailCustomer.marketing_consent ? "Ya" : "Tidak"} />
+							<DetailField label="Profil selesai" value={formatDate(detailCustomer.profile_completed_at, true)} />
+							<DetailField label="Kota" value={detailCustomer.city} />
+							<DetailField label="Provinsi" value={detailCustomer.province} />
+							<DetailField label="Kode pos" value={detailCustomer.postal_code} />
+							<DetailField label="Alamat" value={detailCustomer.address} wide />
+							<DetailField label="Deskripsi customer" value={detailCustomer.customer_description} wide />
 						</div>
-						<div className="mt-4 grid gap-2 text-sm"><div className="flex justify-between gap-4 border-b border-border pb-2"><span className="text-muted-foreground">Bergabung</span><span className="font-semibold">{formatDate(detailCustomer.created_at, true)}</span></div><div className="flex justify-between gap-4"><span className="text-muted-foreground">Order terakhir</span><span className="font-semibold">{formatDate(detailCustomer.last_order_at, true)}</span></div></div>
 						<div className="mt-4 rounded-xl border border-border bg-muted/20 p-3"><p className="text-xs font-black">Adjustment Djiwa Pay admin</p><div className="mt-2 grid grid-cols-2 gap-2"><input type="number" min="1" value={walletAdjustmentAmount} onChange={(event) => setWalletAdjustmentAmount(event.target.value)} placeholder="Nominal" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /><input value={walletAdjustmentNote} onChange={(event) => setWalletAdjustmentNote(event.target.value)} placeholder="Alasan wajib" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("credit")} className="h-10 rounded-lg bg-emerald-600 text-xs font-black text-white disabled:opacity-50">Tambah Saldo</button><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("debit")} className="h-10 rounded-lg bg-rose-600 text-xs font-black text-white disabled:opacity-50">Kurangi Saldo</button></div></div>
 						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat pembelian</p>{customerOrdersLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat riwayat order...</p> : selectedCustomerOrders.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada order yang terhubung.</p> : <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">{selectedCustomerOrders.map((order: any) => <div key={order._id} className="rounded-lg bg-muted/30 p-2 text-[11px]"><div className="flex justify-between gap-2"><span className="font-bold">#{order.orderNumber || "-"}</span><span className="font-bold">{formatRupiah(Number(order.totalAmount || 0))}</span></div><div className="mt-1 text-muted-foreground">{order.status || "-"} · {formatDate(order.createdAt ? new Date(Number(order.createdAt)).toISOString() : null, true)}</div>{Array.isArray(order.items) && order.items.length > 0 ? <div className="mt-1 text-muted-foreground">{order.items.map((item: any) => `${item.quantity || 0}× ${item.productName || item.name || "Item"}`).join(", ")}</div> : null}</div>)}</div>}</div><div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat Djiwa Pay</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi Djiwa Pay.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
 					</div>
