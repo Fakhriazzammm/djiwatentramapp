@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CircleDot, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
@@ -25,6 +25,7 @@ interface Customer {
 	total_orders: number;
 	total_spent: number;
 	last_order_at: string | null;
+	last_active_at: string | null;
 	created_at: string;
 	wallet_balance: number;
 	wallet_held_balance: number;
@@ -71,6 +72,16 @@ function formatDate(value: string | null, withTime = false) {
 	return format(new Date(value), withTime ? "dd MMM yyyy HH:mm" : "dd MMM yyyy", { locale: id });
 }
 
+function customerPresence(customer: Customer): "online" | "offline" | "never" {
+	if (!customer.last_active_at) return "never";
+	return Date.now() - new Date(customer.last_active_at).getTime() <= 5 * 60 * 1000 ? "online" : "offline";
+}
+
+function presenceLabel(customer: Customer) {
+	const status = customerPresence(customer);
+	return status === "online" ? "Sedang aktif" : status === "offline" ? "Offline" : "Belum pernah aktif";
+}
+
 function normalizeCustomerName(value: unknown) {
 	return String(value ?? "")
 		.trim()
@@ -94,12 +105,12 @@ function customerMatchesOrder(customer: Customer, order: any) {
 	return normalizeCustomerName(customer.name) !== "" && normalizeCustomerName(customer.name) === normalizeCustomerName(order.customerName ?? order.customer_name);
 }
 
-type CustomerSortKey = "name" | "email" | "phone" | "wallet_balance" | "total_orders" | "total_spent" | "last_order_at" | "created_at";
+type CustomerSortKey = "name" | "email" | "phone" | "wallet_balance" | "total_orders" | "total_spent" | "last_order_at" | "last_active_at" | "created_at";
 type SortDirection = "asc" | "desc";
 
 function customerSortValue(customer: Customer, key: CustomerSortKey): string | number {
 	if (key === "name" || key === "email" || key === "phone") return String(customer[key] ?? "").toLowerCase();
-	if (key === "last_order_at" || key === "created_at") return customer[key] ? new Date(customer[key] as string).getTime() : 0;
+	if (key === "last_order_at" || key === "last_active_at" || key === "created_at") return customer[key] ? new Date(customer[key] as string).getTime() : 0;
 	return Number(customer[key] ?? 0);
 }
 
@@ -404,11 +415,16 @@ function AdminCustomers() {
 											})}
 										</p>
 									)}
+									<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+										<CircleDot className={`h-3 w-3 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} />
+										<span className={customerPresence(c) === "online" ? "font-bold text-emerald-700" : ""}>{presenceLabel(c)}</span>
+										<span>· Terakhir aktif: {formatDate(c.last_active_at, true)}</span>
+									</div>
 									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
 										<CalendarDays className="h-3 w-3" /> Bergabung {formatDate(c.created_at)}
 									</p>
-								</div>
 							</div>
+					</div>
 					</div>
 					))
 				)}
@@ -417,7 +433,7 @@ function AdminCustomers() {
 			{/* Desktop: Compact table */}
 			<div className="hidden rounded-2xl border border-border bg-card shadow-sm md:block">
 				<div className="overflow-x-auto">
-					<table className="w-full min-w-[1040px] text-left text-xs">
+					<table className="w-full min-w-[1240px] text-left text-xs">
 						<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 							<tr className="text-[10px] text-muted-foreground">
 								<th className="w-12 px-2.5 py-2 text-center"><input type="checkbox" aria-label="Pilih semua customer terlihat" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-5 w-5 accent-red-600" /></th>
@@ -428,6 +444,8 @@ function AdminCustomers() {
 								<th className="px-2.5 py-2 text-center"><SortableHeader label="Orders" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
 								<th className="px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
 								<th className="px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="px-2.5 py-2">Status</th>
 								<th className="px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 							</tr>
 						</thead>
@@ -436,7 +454,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={9}
+										colSpan={11}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -476,9 +494,17 @@ function AdminCustomers() {
 											{formatDate(c.last_order_at, true)}
 										</td>
 										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+											{formatDate(c.last_active_at, true)}
+										</td>
+										<td className="px-2.5 py-2 align-middle whitespace-nowrap">
+											<span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${customerPresence(c) === "online" ? "bg-emerald-50 text-emerald-700" : customerPresence(c) === "offline" ? "bg-slate-100 text-slate-600" : "bg-muted text-muted-foreground"}`}>
+												<CircleDot className={`h-2.5 w-2.5 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} /> {presenceLabel(c)}
+											</span>
+										</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
 											{formatDate(c.created_at)}
 										</td>
-										</tr>
+									</tr>
 								))
 							)}
 						</tbody>
@@ -509,6 +535,8 @@ function AdminCustomers() {
 							<DetailField label="Total spending" value={formatRupiah(detailCustomer.total_spent)} />
 							<DetailField label="Bergabung" value={formatDate(detailCustomer.created_at, true)} />
 							<DetailField label="Order terakhir" value={formatDate(detailCustomer.last_order_at, true)} />
+							<DetailField label="Terakhir aktif di Djiwa App" value={formatDate(detailCustomer.last_active_at, true)} />
+							<DetailField label="Status Djiwa App" value={presenceLabel(detailCustomer)} />
 							<DetailField label="Tanggal lahir" value={formatDate(detailCustomer.birth_date)} />
 							<DetailField label="Gender" value={detailCustomer.gender} />
 							<DetailField label="Marketing consent" value={detailCustomer.marketing_consent === null ? null : detailCustomer.marketing_consent ? "Ya" : "Tidak"} />

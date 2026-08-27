@@ -228,6 +228,27 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       });
   }, [betterSession, isPending]);
 
+  useEffect(() => {
+    const sourceId = customer?.sourceId;
+    const email = customer?.email;
+    if (!betterSession?.user || !sourceId || !email) return;
+    let active = true;
+    const sendPresence = () => {
+      if (!active || document.visibilityState === "hidden") return;
+      void invokeEdgeFunction("customer-sync", { action: "presence", sourceId, email })
+        .catch((error) => console.warn("[customer-auth] presence update skipped:", error));
+    };
+    sendPresence();
+    const interval = window.setInterval(sendPresence, 60_000);
+    const handleVisibility = () => { if (document.visibilityState === "visible") sendPresence(); };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [betterSession?.user, customer?.email, customer?.sourceId]);
+
   const session: CustomerSession | null =
     betterSession?.user && customer
       ? { user: customer }

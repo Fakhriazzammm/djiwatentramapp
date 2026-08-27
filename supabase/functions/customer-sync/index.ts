@@ -188,6 +188,23 @@ async function handleSync(payload: JsonRecord) {
 	};
 }
 
+/** Record a lightweight authenticated customer's recent app activity. */
+async function handlePresence(payload: JsonRecord) {
+	const sourceId = toTrimmedString(payload.sourceId);
+	const email = toTrimmedString(payload.email);
+	if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
+	const { customer, error: ownershipError } = await findOwnedCustomer(sourceId, email);
+	if (ownershipError || !customer) throw new Error("Tidak dapat memverifikasi kepemilikan akun");
+	const lastActiveAt = new Date().toISOString();
+	const { error } = await supabaseAdmin
+		.schema("pos")
+		.from("customers")
+		.update({ last_active_at: lastActiveAt, updated_at: lastActiveAt })
+		.eq("source_id", sourceId);
+	if (error) throw error;
+	return { message: "Aktivitas customer tercatat", lastActiveAt };
+}
+
 /** Update the customer's own profile (name / phone). Ownership verified via email. */
 async function handleUpdateProfile(payload: JsonRecord) {
 	const sourceId = toTrimmedString(payload.sourceId);
@@ -260,6 +277,8 @@ Deno.serve(async (req) => {
 				return json(await handleCaptureGuest(body));
 			case "sync":
 				return json(await handleSync(body));
+			case "presence":
+				return json(await handlePresence(body));
 			case "updateProfile":
 				return json(await handleUpdateProfile(body));
 			case "redeem":
