@@ -581,6 +581,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Telegram deep-link `?start=checkin|checkout` arrives here as context.args.
     # Dispatch it to the same verified location/photo flow as the reply keyboard;
     # otherwise the Mini App only opens the generic welcome message.
+    tg_id = update.effective_user.id if update.effective_user else 0
+    if tg_id:
+        # /start is a safe reset point for an interrupted location/photo flow.
+        _clear_state(tg_id)
     action = (context.args[0].strip().lower() if context.args else "")
     if action == "checkin":
         await cmd_clockin(update, context)
@@ -1717,6 +1721,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ Dibatalakan. Silakan pilih menu di bawah.",
             reply_markup=_main_keyboard())
         return
+
+    # Main keyboard actions must always remain reachable. If a user abandoned
+    # location/photo/registration, do not let that stale state swallow a new
+    # button press such as Absen Masuk or Status Saya.
+    main_action = (
+        "Daftar" in text or "Hubungkan" in text or
+        "Absen Masuk" in text or "Absen Keluar" in text or
+        "Status Saya" in text or "Status" in text or
+        "Rekap Bulanan" in text or "Log" in text or
+        "Jadwal" in text
+    )
+    if main_action:
+        _clear_state(tg_id)
 
     # ── Check state machine ──
     state = _get_state(tg_id)
