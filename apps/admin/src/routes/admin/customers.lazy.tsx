@@ -85,8 +85,10 @@ function isSettledOrder(order: any) {
 
 function customerMatchesOrder(customer: Customer, order: any) {
 	const customerId = String(customer.source_id ?? "");
+	const orderCustomerId = String(order.customerSourceId ?? order.customer_source_id ?? "");
 	const orderAuthId = String(order.authUserId ?? order.auth_user_id ?? "");
 	const orderEmail = String(order.customerEmail ?? order.customer_email ?? "");
+	if (customerId && orderCustomerId && customerId === orderCustomerId) return true;
 	if (customerId && orderAuthId && customerId === orderAuthId) return true;
 	if (customer.email && orderEmail && customer.email.toLowerCase() === orderEmail.toLowerCase()) return true;
 	return normalizeCustomerName(customer.name) !== "" && normalizeCustomerName(customer.name) === normalizeCustomerName(order.customerName ?? order.customer_name);
@@ -128,7 +130,7 @@ function AdminCustomers() {
 			const supabase = createClient();
 			const [{ data: customerRows, error: customerError }, { data: orderRows, error: orderError }] = await Promise.all([
 				supabase.from("pos_customers_view").select("*").order("total_spent", { ascending: false }),
-				supabase.from("pos_orders").select("*").limit(2000),
+				supabase.from("pos_orders").select("*").in("source", ["customer_self_service", "ordermieyamin_b2b"]).order("createdAt", { ascending: false }).limit(2000),
 			]);
 			if (customerError) throw customerError;
 			if (orderError) throw orderError;
