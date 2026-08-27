@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
@@ -94,6 +94,22 @@ function customerMatchesOrder(customer: Customer, order: any) {
 	return normalizeCustomerName(customer.name) !== "" && normalizeCustomerName(customer.name) === normalizeCustomerName(order.customerName ?? order.customer_name);
 }
 
+type CustomerSortKey = "name" | "email" | "phone" | "wallet_balance" | "total_orders" | "total_spent" | "last_order_at" | "created_at";
+type SortDirection = "asc" | "desc";
+
+function customerSortValue(customer: Customer, key: CustomerSortKey): string | number {
+	if (key === "name" || key === "email" || key === "phone") return String(customer[key] ?? "").toLowerCase();
+	if (key === "last_order_at" || key === "created_at") return customer[key] ? new Date(customer[key] as string).getTime() : 0;
+	return Number(customer[key] ?? 0);
+}
+
+function SortableHeader({ label, sortKey, activeKey, direction, onSort, align = "left" }: { label: string; sortKey: CustomerSortKey; activeKey: CustomerSortKey; direction: SortDirection; onSort: (key: CustomerSortKey) => void; align?: "left" | "right" | "center" }) {
+	const active = activeKey === sortKey;
+	return <button type="button" onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 font-inherit hover:text-foreground ${align === "right" ? "ml-auto" : align === "center" ? "mx-auto" : ""}`} aria-label={`Urutkan ${label} ${active && direction === "desc" ? "terkecil ke terbesar" : "terbesar ke terkecil"}`}>
+		{label}{active ? (direction === "desc" ? <ArrowDown className="h-3 w-3" aria-hidden="true" /> : <ArrowUp className="h-3 w-3" aria-hidden="true" />) : <ArrowUpDown className="h-3 w-3 opacity-50" aria-hidden="true" />}
+	</button>;
+}
+
 function DetailField({ label, value, wide = false }: { label: string; value: unknown; wide?: boolean }) {
 	const display = value === null || value === undefined || value === "" ? "—" : String(value);
 	return <div className={`rounded-xl bg-muted/50 p-3 ${wide ? "col-span-2" : ""}`}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 break-words font-semibold">{display}</p></div>;
@@ -114,6 +130,8 @@ function AdminCustomers() {
 	const [selectedCustomerOrders, setSelectedCustomerOrders] = useState<any[]>([]);
 	const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [sortKey, setSortKey] = useState<CustomerSortKey>("total_spent");
+	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
 	const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
@@ -179,6 +197,16 @@ function AdminCustomers() {
 			(c.phone || "").toLowerCase().includes(q)
 		);
 	});
+	const sortedCustomers = [...(filteredCustomers ?? [])].sort((a, b) => {
+		const left = customerSortValue(a, sortKey);
+		const right = customerSortValue(b, sortKey);
+		const comparison = typeof left === "string" && typeof right === "string" ? left.localeCompare(right, "id") : Number(left) - Number(right);
+		return (sortDirection === "desc" ? -comparison : comparison) || String(a.name ?? "").localeCompare(String(b.name ?? ""), "id");
+	});
+	const handleSort = (key: CustomerSortKey) => {
+		if (sortKey === key) setSortDirection((current) => current === "desc" ? "asc" : "desc");
+		else { setSortKey(key); setSortDirection("desc"); }
+	};
 
 	const toggleSelected = (sourceId: string) => {
 		setSelectedIds((current) => {
@@ -329,7 +357,7 @@ function AdminCustomers() {
 						Belum ada pelanggan.
 					</div>
 				) : (
-					filteredCustomers?.map((c) => (
+					sortedCustomers.map((c) => (
 						<div
 							key={c.source_id}
 							className="cursor-pointer rounded-xl border border-border bg-card p-3 shadow-sm transition hover:border-primary/30 hover:shadow-md"
@@ -393,14 +421,14 @@ function AdminCustomers() {
 						<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 							<tr className="text-[10px] text-muted-foreground">
 								<th className="w-12 px-2.5 py-2 text-center"><input type="checkbox" aria-label="Pilih semua customer terlihat" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-5 w-5 accent-red-600" /></th>
-								<th className="px-2.5 py-2">Nama</th>
-								<th className="px-2.5 py-2">Email</th>
-								<th className="px-2.5 py-2">Telepon</th>
-									<th className="px-2.5 py-2 text-right">Saldo</th>
-								<th className="px-2.5 py-2 text-center"><span className="inline-flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" /> Orders</span></th>
-								<th className="px-2.5 py-2 text-right"><span className="inline-flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" aria-hidden="true" /> Total Spending</span></th>
-								<th className="px-2.5 py-2">Terakhir Order</th>
-								<th className="px-2.5 py-2">Bergabung</th>
+								<th className="px-2.5 py-2"><SortableHeader label="Nama" sortKey="name" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="px-2.5 py-2"><SortableHeader label="Email" sortKey="email" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="px-2.5 py-2"><SortableHeader label="Telepon" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="px-2.5 py-2 text-right"><SortableHeader label="Saldo" sortKey="wallet_balance" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
+								<th className="px-2.5 py-2 text-center"><SortableHeader label="Orders" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
+								<th className="px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
+								<th className="px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
@@ -414,7 +442,7 @@ function AdminCustomers() {
 									</td>
 								</tr>
 							) : (
-								filteredCustomers?.map((c) => (
+								sortedCustomers.map((c) => (
 									<tr
 										key={c.source_id}
 										className="cursor-pointer transition-colors hover:bg-muted/30"
