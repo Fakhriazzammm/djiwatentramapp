@@ -1166,7 +1166,7 @@ function BookingSettingsPage() {
 						<div><p className="text-sm font-bold text-foreground">Daftar Booking</p><p className="text-xs text-muted-foreground">{formatDate(startDate)}{startDate !== endDate ? ` – ${formatDate(endDate)}` : ""}</p></div>
 					</div>
 					{/* Toolbar */}
-					<div className="flex flex-col gap-4 p-4 rounded-2xl border border-border bg-card shadow-sm lg:flex-row lg:items-end">
+					<div className="grid gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-sm lg:grid-cols-[minmax(220px,1.5fr)_140px_260px_minmax(190px,auto)] lg:items-end">
 						<div className="flex-1 space-y-1.5">
 							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Pencarian</label>
 							<div className="relative">
@@ -1174,7 +1174,7 @@ function BookingSettingsPage() {
 								<input
 									className="w-full rounded-xl bg-muted/50 pl-10 pr-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
 									onChange={(e) => setSearchTerm(e.target.value)}
-									placeholder="Nama, Kode, atau WhatsApp..."
+									placeholder="Nama, kode, WhatsApp"
 									type="text"
 									value={searchTerm}
 								/>
@@ -1207,7 +1207,7 @@ function BookingSettingsPage() {
 								</select>
 							</div>
 
-							<div className="grid grid-cols-2 gap-3 lg:w-80">
+							<div className="grid grid-cols-2 gap-2 lg:w-auto">
 								<div className="space-y-1.5">
 									<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Mulai</label>
 									<input
@@ -1228,8 +1228,8 @@ function BookingSettingsPage() {
 								</div>
 							</div>
 
-						<div className="flex gap-2">
-							<div className="flex-1 lg:w-40 space-y-1.5">
+						<div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+							<div className="min-w-0 space-y-1.5">
 								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Urutkan</label>
 								<div className="flex gap-1">
 									<select
@@ -1252,7 +1252,7 @@ function BookingSettingsPage() {
 							</div>
 
 								<button
-									className="flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-bold text-primary-foreground text-sm shadow-sm transition-all hover:opacity-90 active:scale-95"
+									className="flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground text-sm shadow-sm transition-all hover:opacity-90 active:scale-95"
 									onClick={() => setIsCreateDialogOpen(true)}
 									type="button"
 								>
@@ -1262,10 +1262,10 @@ function BookingSettingsPage() {
 							</div>
 						</div>
 
-					<div className="flex flex-wrap items-center gap-2">
+					<div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1">
 						{(["all", "pending", "confirmed", "arrived", "seated", "completed", "cancelled"] as const).map((f) => (
 							<button
-								className={`rounded-full px-4 py-1.5 font-bold text-xs transition-all ${
+								className={`min-h-9 shrink-0 rounded-full px-3 font-bold text-xs transition-all ${
 									listFilter === f
 										? "bg-primary text-primary-foreground"
 										: "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1279,7 +1279,7 @@ function BookingSettingsPage() {
 						))}
 						{(["all", "pending", "paid"] as const).map((f) => (
 							<button
-								className={`rounded-full px-4 py-1.5 font-bold text-xs transition-all ${
+								className={`min-h-9 shrink-0 rounded-full px-3 font-bold text-xs transition-all ${
 									paymentFilter === f ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
 								}`}
 								key={`payment-${f}`}
@@ -1344,19 +1344,19 @@ function BookingSettingsPage() {
 
 			{/* ── CAPACITY TAB ── */}
 			{activeTab === "capacity" && (
-				<div className="space-y-6" ref={capacitySectionRef}>
-					<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+				<div className="space-y-4" ref={capacitySectionRef}>
+					<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
 						{[
 							["Tamu terpakai", Number(summary?.[capDate]?.bookedPeople ?? 0), "text-emerald-700"],
 							["Meja terpakai", Number(summary?.[capDate]?.bookedTables ?? 0), "text-violet-700"],
 							["Booking aktif", Number(summary?.[capDate]?.count ?? 0), "text-blue-700"],
 							["Status", summary?.[capDate]?.isClosed ? "Ditutup" : "Terbuka", "text-amber-700"],
-						].map(([label, value, color]) => <div className="rounded-xl border border-border bg-card p-3" key={label}><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className={`mt-1 text-lg font-black ${color}`}>{value}</p></div>)}
+						].map(([label, value, color]) => <div className="rounded-2xl border border-border/70 bg-card p-3 shadow-sm" key={label}><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className={`mt-1 text-xl font-black ${color}`}>{value}</p></div>)}
 					</div>
-					<section className="rounded-2xl border border-primary/20 bg-primary/5 p-5 space-y-4">
+					<section className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm space-y-3">
 						<div>
 							<h3 className="font-bold">Kapasitas Default & Periode Booking</h3>
-							<p className="mt-1 text-muted-foreground text-sm">Atur sekali. Semua tanggal dalam periode ini otomatis tersedia, kecuali tanggal yang ditutup atau diberi override.</p>
+							<p className="mt-1 text-xs text-muted-foreground">Berlaku untuk tanggal tanpa pengaturan khusus.</p>
 						</div>
 						<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
 							<label className="space-y-1.5 text-xs font-bold"><span>Booking ke depan (hari)</span><Input min={1} type="number" value={formData.bookingWindowDays} onChange={(e) => setFormData({ ...formData, bookingWindowDays: Math.max(1, Number(e.target.value)) })} /></label>
@@ -1368,14 +1368,13 @@ function BookingSettingsPage() {
 					</section>
 
 					{/* Add/edit capacity form */}
-					<section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+					<section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm space-y-3">
 						<div className="flex items-center gap-2">
 							<Settings2 className="h-4 w-4 text-primary" />
 							<h3 className="font-bold">Atur Kapasitas Per Tanggal</h3>
 						</div>
-						<p className="text-muted-foreground text-sm">
-							Tentukan maksimal jumlah booking yang diizinkan untuk tanggal tertentu.
-							Isi <span className="font-bold">0</span> untuk kapasitas tidak terbatas.
+						<p className="text-xs text-muted-foreground">
+							Atur pengecualian untuk tanggal atau rentang tertentu. Nilai 0 berarti tidak terbatas.
 						</p>
 						<div className="flex flex-wrap gap-4 items-end">
 							<div className="flex bg-muted/50 rounded-xl p-1 shrink-0">
