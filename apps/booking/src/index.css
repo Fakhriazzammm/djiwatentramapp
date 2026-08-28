@@ -239,47 +239,29 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   color: #667085;
   background: rgba(255, 255, 255, .92);
   box-shadow: 0 4px 16px rgba(15, 23, 42, .04);
-  text-align: left;
+  text-align: center;
   font-size: 11px;
   line-height: 16px;
 }
-.app-shell > .owner-footer > div {
-  display: flex;
-  width: 100%;
-  min-width: max-content;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  overflow-x: auto;
-  white-space: nowrap;
-  padding: 0 2px;
-  scrollbar-width: none;
-}
-.app-shell > .owner-footer > div::-webkit-scrollbar { display: none; }
-.app-shell > .owner-footer span,
-.app-shell > .owner-footer a {
-  flex: 0 0 auto;
-  font-size: 11px;
-  line-height: 16px;
-}
-.app-shell > .owner-footer a { color: var(--booking-accent); font-weight: 600; }
-.app-shell > .owner-footer a:last-child { color: #344054; }
-
 .app-shell > .owner-footer > .owner-footer-two-line {
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-items: center;
   gap: 3px;
   width: 100%;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
   text-align: center;
 }
 .app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row {
-  display: block;
+  display: flex;
   width: 100%;
-  max-width: none;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
   min-height: 16px;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   white-space: nowrap;
   text-align: center;
@@ -290,6 +272,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row span,
 .app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row a {
   display: inline;
+  flex: 0 0 auto;
   font-size: 10px;
   line-height: 16px;
 }
