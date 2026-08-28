@@ -29,20 +29,12 @@ let audioUnlocked = false;
  * background poll without a fresh gesture.
  */
 export function unlockAudio() {
-	if (audioUnlocked || !isBrowser()) return;
+	// Intentionally a no-op flag. We do NOT play any silent utterance here:
+	// doing so triggered the browser's speech engine on every user gesture /
+	// page navigation. Real announcements are spoken only via playMp3Once() +
+	// speakNative() when an actual transaction arrives (which already happens
+	// after a genuine user gesture, so autoplay policy is satisfied).
 	audioUnlocked = true;
-	// Only unlock the Web Speech API. The transaction MP3 is played exclusively
-	// through playMp3Once() when a real transaction arrives — never as a probe
-	// on user gesture, so it does not ding on every page/click.
-	if ("speechSynthesis" in window) {
-		try {
-			const utterance = new SpeechSynthesisUtterance("");
-			utterance.volume = 0;
-			window.speechSynthesis.speak(utterance);
-		} catch {
-			/* ignore */
-		}
-	}
 }
 const MP3_URL = "/sounds/transaction-success.mp3";
 const AUDIO_TIMEOUT_MS = 15_000;
