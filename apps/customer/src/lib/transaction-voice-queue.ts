@@ -154,32 +154,47 @@ function speakNative(text: string) {
 }
 
 function speakResponsiveVoice(text: string) {
-  const rv = getResponsiveVoice();
-  if (!rv || typeof rv.speak !== "function") return Promise.resolve();
-  return withTimeout(new Promise<void>((resolve) => {
-    const finish = () => resolve();
-    try {
-      try {
-        rv.disablePermissionPopup = true;
-      } catch {
-        /* ignore */
-      }
-      rv.speak(text, { pitch: 1, rate: 0.95, volume: 1 });
-      window.setTimeout(finish, 1500);
-    } catch {
-      finish();
-    }
-  }), TTS_TIMEOUT_MS);
+	const rv = getResponsiveVoice();
+	if (!rv || typeof rv.speak !== "function") return Promise.resolve();
+	return withTimeout(new Promise<void>((resolve) => {
+		let settled = false;
+		const finish = () => {
+			if (settled) return;
+			settled = true;
+			resolve();
+		};
+		try {
+			// Per ResponsiveVoice docs (Quick Start): call speak() on the global
+			// instance, optionally with a voice name and an onend/onerror callback.
+			rv.speak(text, "Indonesian Female", {
+				pitch: 1,
+				rate: 0.95,
+				volume: 1,
+				onstart: () => undefined,
+				onend: finish,
+				onerror: () => finish(),
+			});
+		} catch {
+			finish();
+		}
+		// Safety net: resolve even if onend never fires.
+		window.setTimeout(finish, TTS_TIMEOUT_MS);
+	}), TTS_TIMEOUT_MS);
 }
 
 async function speak(text: string) {
-  if (!isBrowser()) return;
-  if ("speechSynthesis" in window) {
-    await speakNative(text);
-    return;
-  }
-  await whenResponsiveVoiceReady();
-  await speakResponsiveVoice(text);
+	if (!isBrowser()) return;
+	// Primary: ResponsiveVoice browser SDK (per official docs).
+	const rv = getResponsiveVoice();
+	if (rv && typeof rv.speak === "function") {
+		await whenResponsiveVoiceReady();
+		await speakResponsiveVoice(text);
+		return;
+	}
+	// Fallback: native Web Speech API if the SDK is unavailable.
+	if ("speechSynthesis" in window) {
+		await speakNative(text);
+	}
 }
 
 async function processQueue() {
