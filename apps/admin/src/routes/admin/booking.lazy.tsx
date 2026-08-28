@@ -50,6 +50,7 @@ import {
 } from "@/hooks/use-hybrid-booking-data";
 import {
 	useHybridCreateBookingOrder,
+	useHybridDeleteBookingDateCapacity,
 	useHybridDeleteBookingOrder,
 	useHybridPatchBookingOrder,
 	useHybridSetBookingBulkDateCapacity,
@@ -570,6 +571,7 @@ function BookingSettingsPage() {
 	const patchBookingOrder = useHybridPatchBookingOrder();
 	const deleteBookingOrder = useHybridDeleteBookingOrder();
 	const setDateCapacity = useHybridSetBookingDateCapacity();
+	const deleteDateCapacity = useHybridDeleteBookingDateCapacity();
 	const setBulkDateCapacity = useHybridSetBookingBulkDateCapacity();
 	const dateCapacities = useHybridBookingDateCapacities("booking");
 
@@ -645,6 +647,8 @@ function BookingSettingsPage() {
 	const [capNotes, setCapNotes] = useState("");
 	const [capIsClosed, setCapIsClosed] = useState(false);
 	const [isSavingCap, setIsSavingCap] = useState(false);
+	const [selectedCapacityIds, setSelectedCapacityIds] = useState<string[]>([]);
+	const [isDeletingCapacity, setIsDeletingCapacity] = useState(false);
 
 
 
@@ -809,6 +813,23 @@ function BookingSettingsPage() {
 			toast.error("Gagal menyimpan kapasitas");
 		} finally {
 			setIsSavingCap(false);
+		}
+	};
+
+	const handleBulkDeleteCapacity = async () => {
+		if (selectedCapacityIds.length === 0 || isDeletingCapacity) return;
+		if (!confirm(`Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`)) return;
+		setIsDeletingCapacity(true);
+		const tid = toast.loading(`Menghapus ${selectedCapacityIds.length} kapasitas...`);
+		try {
+			for (const id of selectedCapacityIds) await deleteDateCapacity({ id, slug: "booking" });
+			setSelectedCapacityIds([]);
+			triggerHybridRefresh();
+			toast.success("Kapasitas terpilih berhasil dihapus", { id: tid });
+		} catch {
+			toast.error("Sebagian kapasitas gagal dihapus", { id: tid });
+		} finally {
+			setIsDeletingCapacity(false);
 		}
 	};
 
@@ -1018,6 +1039,8 @@ function BookingSettingsPage() {
 	const selectedProductIds = new Set(formData.featuredProductIds.map(String));
 	const filteredProductIds = (filteredProducts ?? []).map((product: any) => String(product._id));
 	const allFilteredSelected = filteredProductIds.length > 0 && filteredProductIds.every((id) => selectedProductIds.has(id));
+	const capacityRows = dateCapacities ?? [];
+	const allCapacitySelected = capacityRows.length > 0 && capacityRows.every((cap: any) => selectedCapacityIds.includes(String(cap._id)));
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-4 pb-8 md:space-y-5">
@@ -1522,7 +1545,14 @@ function BookingSettingsPage() {
 
 					{/* Existing capacities list */}
 					<div className="space-y-2">
-						<h3 className="font-bold text-sm">Kapasitas yang Telah Diatur</h3>
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<h3 className="font-bold text-sm">Kapasitas yang Telah Diatur</h3>
+							{selectedCapacityIds.length > 0 && (
+								<button className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-600 hover:bg-red-100 disabled:opacity-50" disabled={isDeletingCapacity} onClick={handleBulkDeleteCapacity} type="button">
+									{isDeletingCapacity ? "Menghapus..." : `Hapus ${selectedCapacityIds.length} terpilih`}
+								</button>
+							)}
+						</div>
 						{!dateCapacities ? (
 							<div className="flex justify-center py-6">
 								<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1536,6 +1566,9 @@ function BookingSettingsPage() {
 								<table className="w-full text-sm">
 									<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold tracking-wider">
 										<tr>
+											<th className="w-12 px-3 py-3 text-center">
+												<input aria-label="Pilih semua kapasitas" checked={allCapacitySelected} className="h-4 w-4 rounded border-border text-primary" onChange={(event) => setSelectedCapacityIds(event.target.checked ? capacityRows.map((cap: any) => String(cap._id)) : [])} type="checkbox" />
+											</th>
 											<th className="px-4 py-3 text-left">Tanggal</th>
 											<th className="px-4 py-3 text-center">Kapasitas</th>
 											<th className="px-4 py-3 text-left">Catatan</th>
@@ -1547,6 +1580,9 @@ function BookingSettingsPage() {
 											.sort((a: any, b: any) => a.date.localeCompare(b.date))
 											.map((cap: any) => (
 												<tr className="hover:bg-muted/30" key={cap._id}>
+													<td className="w-12 px-3 py-3 text-center">
+														<input aria-label={`Pilih kapasitas ${formatDate(cap.date)}`} checked={selectedCapacityIds.includes(String(cap._id))} className="h-4 w-4 rounded border-border text-primary" onChange={(event) => setSelectedCapacityIds((current) => event.target.checked ? [...new Set([...current, String(cap._id)])] : current.filter((id) => id !== String(cap._id)))} type="checkbox" />
+													</td>
 													<td className="px-4 py-3 font-medium">{formatDate(cap.date)}</td>
 													<td className="px-4 py-3 text-center">
 														<div className="flex flex-col gap-1 items-center">

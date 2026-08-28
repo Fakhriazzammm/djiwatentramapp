@@ -3672,6 +3672,17 @@ export function useHybridSetBookingDateCapacity() {
 	);
 }
 
+export function useHybridDeleteBookingDateCapacity() {
+	const fallback = useMutation(api.booking.deleteDateCapacity);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			return await invokeBookingAdmin("deleteCapacity", { capacityId: args?.id, slug: args?.slug ?? "booking" });
+		},
+		[fallback]
+	);
+}
+
 export function useHybridSetBookingBulkDateCapacity() {
 	const fallback = useMutation(api.booking.setBulkDateCapacity);
 	return useCallback(
@@ -6046,7 +6057,7 @@ export function useHybridProduceBaseRecipeBatch() {
 
 export function useHybridMayarCreateInvoice() {
 	return useCallback(async (args: any) => {
-		if (!hasSupabaseConfig) throw new Error("Mayar server proxy belum dikonfigurasi");
+		if (!hasSupabaseConfig) throw new Error("Server pembayaran belum dikonfigurasi");
 		const data = await invokeEdgeFunction<any>("mayar-proxy", {
 			action: "create-invoice-from-order",
 			orderId: args.orderId,
@@ -6060,7 +6071,7 @@ export function useHybridMayarCreateInvoice() {
 
 export function useHybridMayarGetInvoiceDetail() {
 	return useCallback(async (args: any) => {
-		if (!hasSupabaseConfig) throw new Error("Mayar server proxy belum dikonfigurasi");
+		if (!hasSupabaseConfig) throw new Error("Server pembayaran belum dikonfigurasi");
 		const data = await invokeEdgeFunction<any>("mayar-proxy", {
 			action: "get-invoice-detail",
 			invoiceId: args.invoiceId,

@@ -17,6 +17,7 @@ const actionMap: Record<string, string> = {
   upsertSettings: "admin_upsert_booking_settings",
   upsertCapacity: "admin_upsert_booking_capacity",
   upsertBulkCapacity: "admin_upsert_booking_bulk_capacity",
+  deleteCapacity: "admin_delete_booking_capacity",
   readTimeline: "booking_read_timeline",
   readDelivery: "booking_read_delivery",
 };
@@ -71,6 +72,13 @@ Deno.serve(async (req) => {
     } else if (action === "upsertSettings") {
       const result = await db.rpc(fn, { p_payload: body.payload ?? {} });
       data = { sourceId: result.data };
+      if (result.error) throw result.error;
+    } else if (action === "deleteCapacity") {
+      const sourceId = String(body.capacityId ?? "");
+      const slug = String(body.slug ?? "booking");
+      if (!sourceId) throw new Error("capacityId is required");
+      const result = await db.from("booking_date_capacity").delete().eq("source_id", sourceId).eq("slug", slug).select("source_id").maybeSingle();
+      data = { sourceId: result.data?.source_id ?? sourceId };
       if (result.error) throw result.error;
     } else if (action === "readTimeline") {
       const result = await db.rpc(fn, { p_booking_id: String(body.bookingId ?? "") });
