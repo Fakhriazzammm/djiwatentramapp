@@ -199,8 +199,27 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .checkout-total strong { font-size: 18px; }
 .checkout-total small { grid-column: 1 / -1; color: var(--muted); font-size: 10px; }
 .review-edit { margin-top: 12px; }
-.brand-logo { width: 34px; height: 34px; border-radius: 12px; object-fit: cover; }
-
+.menu-shell .topbar { padding: calc(14px + env(safe-area-inset-top)) 18px 18px; background: linear-gradient(135deg, #f8fcff 0%, #e4f5ff 100%); }
+.menu-shell .brand { gap: 12px; }
+.menu-shell .brand-mark { width: 52px; height: 52px; border-radius: 20px; }
+.menu-shell .brand strong { font-size: 18px; }
+.menu-shell .brand span { font-size: 13px; }
+.menu-back-button { width: 48px; height: 48px; flex: 0 0 48px; display: grid; place-items: center; border-radius: 50%; color: var(--ink); background: rgba(255,255,255,.88); }
+.menu-eyebrow { display: block !important; margin-bottom: 3px; color: var(--booking-accent) !important; font-size: 10px !important; font-weight: 900 !important; letter-spacing: .28em; }
+.menu-item-count { min-width: 64px; padding: 9px 12px; border-radius: 30px; color: var(--booking-accent); background: rgba(189,226,255,.75); text-align: center; }
+.menu-item-count strong, .menu-item-count span { display: block; }
+.menu-item-count strong { font-size: 20px; line-height: 1; }
+.menu-item-count span { margin-top: 4px; font-size: 9px; font-weight: 900; letter-spacing: .2em; }
+.menu-intro { margin: 0 0 16px; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.menu-catalog-panel { margin-bottom: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow-soft); }
+.menu-catalog-panel h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-size: 20px; letter-spacing: -.04em; }
+.catalog-icon { width: 28px; height: 28px; display: grid; place-items: center; color: var(--booking-accent); }
+.menu-catalog-panel .search-box { margin: 0 0 14px; }
+.category-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.category-chips::-webkit-scrollbar { display: none; }
+.category-chips button { min-height: 44px; flex: 0 0 auto; padding: 0 18px; border: 1px solid var(--line); border-radius: 24px; color: var(--muted); background: var(--surface); font-size: 13px; font-weight: 800; }
+.category-chips button.active { color: var(--booking-accent); border-color: #b9d0f5; background: var(--booking-accent-soft); }
+.menu-catalog-panel + .menu-filters { display: none; }
 
 .app-shell > .owner-footer {
   width: calc(100% - 2rem);
@@ -300,10 +319,11 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .product-body { min-width: 0; flex: 1; padding: 2px 0; }
   .menu-number { font-size: 10px; }
   .product-body h3 { min-height: 0; margin: 4px 0 7px; font-size: 14px; line-height: 1.25; }
-  .product-body > strong { display: block; font-size: 14px; line-height: 1.2; }
+  .product-description { display: -webkit-box; margin: 5px 0 8px; overflow: hidden; color: var(--muted); font-size: 12px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .product-body > strong { color: var(--booking-accent); font-size: 15px; }
   .quantity-control { min-height: 38px; margin-top: 9px; gap: 7px; }
   .quantity-control button { width: 38px; height: 38px; border-radius: 11px; }
-  .quantity-control .add-button { width: auto; min-width: 92px; min-height: 38px; padding: 0 14px; border-radius: 12px; }
+  .quantity-control .add-button { width: 54px; min-width: 54px; padding: 0; color: #fff; background: var(--booking-accent); }
   .quantity-control b { min-width: 24px; }
   .calendar-card { padding: 14px; }
   .calendar-toolbar { margin-bottom: 16px; }

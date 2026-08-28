@@ -22,7 +22,7 @@ export default defineConfig({
         orientation: "portrait",
       },
       workbox: {
-        cacheId: "djiwa-booking-v6",
+        cacheId: "djiwa-booking-v7",
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,webmanifest,svg,png}"],
         cleanupOutdatedCaches: true,
