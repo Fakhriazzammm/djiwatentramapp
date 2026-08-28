@@ -744,7 +744,7 @@ function OrderPage() {
 				if (!isAuthenticated) rememberGuestOrder(String(orderId));
 				const redirectUrl =
 					typeof window !== "undefined"
-						? `${window.location.origin}/${brandSlug}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
+						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
 						: undefined;
 				let invoice:
 					| {
