@@ -20,30 +20,14 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import {
-	exportBookingOrdersExcel,
-	exportBookingOrdersJPG,
-	exportBookingOrdersPDF,
-} from "@/lib/export-utils";
 import { 
-	Download, 
 	ArrowUpDown, 
 	Calendar as CalendarIcon,
-	FileText,
-	FileSpreadsheet,
-	Image as ImageIcon,
-	MoreVertical,
 	Plus
 } from "lucide-react";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
 	Dialog,
 	DialogContent,
@@ -502,11 +486,11 @@ function OrderRow({
 						</div>
 					</div>
 
-					<div className="rounded-xl border border-border bg-card p-3 space-y-2">
-						<div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Timeline & delivery</p><span className="text-[10px] text-muted-foreground">{timelineState.loading ? "Memuat..." : `${timelineState.timeline.length} event · ${timelineState.deliveries.length} delivery`}</span></div>
-						{!timelineState.loading && timelineState.timeline.length === 0 ? <p className="text-xs text-muted-foreground">Belum ada event timeline.</p> : <div className="space-y-1">{timelineState.timeline.slice(0, 4).map((event: any) => <div className="flex items-center justify-between gap-2 text-xs" key={String(event.id)}><span className="font-medium">{event.event_type}</span><span className="text-muted-foreground">{event.to_value ?? "—"}</span></div>)}</div>}
-						{timelineState.deliveries.length > 0 && <div className="flex flex-wrap gap-1">{timelineState.deliveries.slice(0, 6).map((delivery: any) => <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold" key={String(delivery.id)}>{delivery.channel}: {delivery.status}</span>)}</div>}
-					</div>
+					<BookingTimelineSummary
+						deliveries={timelineState.deliveries}
+						loading={timelineState.loading}
+						timeline={timelineState.timeline}
+					/>
 
 					<div className="flex flex-wrap gap-2 pt-2 border-t border-border">
 						<span className="text-[10px] font-bold text-muted-foreground self-center">Ubah Status:</span>
@@ -692,7 +676,7 @@ function BookingSettingsPage() {
 			|| fields.some((field: any) => {
 				if (field.type !== "dropdown") return false;
 				const options = (field.options ?? []).map((option: string) => option.trim()).filter(Boolean);
-				return options.length < 2 || new Set(options.map((option) => option.toLowerCase())).size !== options.length;
+				return options.length < 2 || new Set(options.map((option: string) => option.toLowerCase())).size !== options.length;
 			});
 		if (hasInvalidField) {
 			toast.error("Periksa field formulir: label wajib unik dan dropdown minimal memiliki 2 opsi unik.");
@@ -902,12 +886,9 @@ function BookingSettingsPage() {
 	};
 
 	const tabs = [
-		{ id: "calendar", label: "Kalender", icon: Calendar, group: "Operasional" },
-		{ id: "orders", label: "Booking", icon: List, group: "Operasional" },
-		{ id: "capacity", label: "Kapasitas", icon: Users, group: "Operasional" },
-		{ id: "general", label: "Halaman Publik", icon: Smartphone, group: "Pengaturan" },
-		{ id: "products", label: "Menu Booking", icon: ShoppingBag, group: "Pengaturan" },
-		{ id: "form", label: "Formulir", icon: FileText, group: "Pengaturan" },
+		{ id: "calendar", label: "Kalender", icon: Calendar },
+		{ id: "orders", label: "Booking", icon: List },
+		{ id: "capacity", label: "Kapasitas", icon: Users },
 	] as const;
 
 	const filteredOrders = useMemo(() => {
@@ -946,39 +927,6 @@ function BookingSettingsPage() {
 			paid: orders.filter((order: any) => order.paymentStatus === "paid").length,
 		};
 	}, [allOrders]);
-
-	const handleExport = (format: "pdf" | "csv" | "jpg") => {
-		if (!filteredOrders || filteredOrders.length === 0) {
-			toast.error("Tidak ada data untuk diekspor");
-			return;
-		}
-
-		const period = `${startDate} s/d ${endDate}`;
-		const storeName = settings?.title || "Djiwa Tentram";
-
-		const exportData = filteredOrders.map((o: any) => ({
-			bookingCode: o.bookingCode,
-			customerName: o.customerName,
-			customerPhone: o.customerPhone,
-			customerEmail: o.customerEmail,
-			bookingDate: o.bookingDate,
-			totalAmount: o.totalAmount,
-			paymentMethod: o.paymentMethod,
-			paymentStatus: o.paymentStatus,
-			bookingStatus: o.bookingStatus,
-			guestCount: o.guestCount,
-			createdAt: o.createdAt,
-		}));
-
-		if (format === "pdf") {
-			exportBookingOrdersPDF(exportData, storeName, period);
-		} else if (format === "csv") {
-			exportBookingOrdersExcel(exportData, storeName, period);
-		} else if (format === "jpg") {
-			exportBookingOrdersJPG(exportData, storeName, period);
-		}
-		toast.success(`Ekspor ${format.toUpperCase()} berhasil`);
-	};
 
 	const categoryGroups = useMemo(() => {
 		if (!categories) return [];
@@ -1072,15 +1020,16 @@ function BookingSettingsPage() {
 	const allFilteredSelected = filteredProductIds.length > 0 && filteredProductIds.every((id) => selectedProductIds.has(id));
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-4 md:space-y-6">
+		<div className="mx-auto max-w-6xl space-y-4 pb-8 md:space-y-5">
 			{/* Header */}
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<h2 className="font-bold text-foreground text-xl tracking-tight md:text-2xl">
+					<p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Workspace operasional</p>
+					<h2 className="font-display text-2xl font-black tracking-tight text-foreground md:text-3xl">
 						Manajemen Booking
 					</h2>
-					<p className="mt-0.5 text-muted-foreground text-xs">
-						Kelola reservasi dan pengaturan halaman booking online
+					<p className="mt-1 max-w-xl text-sm text-muted-foreground">
+						Kelola reservasi, kapasitas, dan status customer dari satu tempat.
 					</p>
 				</div>
 				<div className="flex gap-2">
@@ -1092,7 +1041,7 @@ function BookingSettingsPage() {
 					>
 						<LinkIcon className="h-4 w-4" /> Lihat Halaman Publik
 					</a>
-					{(activeTab === "general" || activeTab === "products" || activeTab === "form" || activeTab === "capacity") && (
+					{activeTab === "capacity" && (
 						<button
 							className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground text-sm hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all"
 							disabled={isSaving}
@@ -1106,29 +1055,38 @@ function BookingSettingsPage() {
 				</div>
 			</div>
 
-			{/* Tabs: operational workspace and public configuration */}
-			<div className="space-y-2">
-				{(["Operasional", "Pengaturan"] as const).map((group) => (
-					<div className="flex items-center gap-2" key={group}>
-						<span className="hidden w-20 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:block">{group}</span>
-						<div className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-2xl bg-muted/50 p-1">
-							{tabs.filter((tab) => tab.group === group).map((tab) => (
-								<button
-									className={`flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 font-bold text-xs transition-all md:px-4 md:text-sm ${
-										activeTab === tab.id ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:bg-card/70 hover:text-foreground"
-									}`}
-									key={tab.id}
-									onClick={() => setActiveTab(tab.id)}
-									type="button"
-								>
-									<tab.icon className="h-4 w-4" />
-									{tab.label}
-								</button>
-							))}
-						</div>
-					</div>
+			{/* Primary navigation */}
+			<nav aria-label="Navigasi booking" className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card p-1 shadow-sm">
+				{tabs.map((tab) => (
+					<button
+						className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-black transition-all md:flex-1 md:justify-center md:px-4 md:text-sm ${
+							activeTab === tab.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+						}`}
+						key={tab.id}
+						onClick={() => setActiveTab(tab.id)}
+						type="button"
+					>
+						<tab.icon className="h-4 w-4" />
+						{tab.label}
+					</button>
 				))}
-			</div>
+			</nav>
+
+			{(activeTab === "calendar" || activeTab === "orders") && (
+				<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+					{[
+						["Total booking", bookingStats.total, "text-foreground"],
+						["Total tamu", bookingStats.guests, "text-emerald-700"],
+						["Belum lunas", bookingStats.pendingPayment, "text-amber-700"],
+						["Sudah lunas", bookingStats.paid, "text-primary"],
+					].map(([label, value, tone]) => (
+						<div className="rounded-2xl border border-border/70 bg-card px-3 py-3 shadow-sm" key={label}>
+							<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+							<p className={`mt-1 text-xl font-black tabular-nums ${tone}`}>{value}</p>
+						</div>
+					))}
+				</div>
+			)}
 
 			{/* ── CALENDAR TAB ── */}
 			{activeTab === "calendar" && (
@@ -1207,20 +1165,6 @@ function BookingSettingsPage() {
 					<div className="flex items-end justify-between gap-3">
 						<div><p className="text-sm font-bold text-foreground">Daftar Booking</p><p className="text-xs text-muted-foreground">{formatDate(startDate)}{startDate !== endDate ? ` – ${formatDate(endDate)}` : ""}</p></div>
 					</div>
-					<div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-						{[
-							["Total booking", bookingStats.total, "bg-blue-50 text-blue-700"],
-							["Total tamu", bookingStats.guests, "bg-emerald-50 text-emerald-700"],
-							["Belum lunas", bookingStats.pendingPayment, "bg-amber-50 text-amber-700"],
-							["Sudah lunas", bookingStats.paid, "bg-violet-50 text-violet-700"],
-						].map(([label, value, tone]) => (
-							<div className={`rounded-xl border border-border p-3 ${tone}`} key={label}>
-								<p className="text-[10px] font-bold uppercase tracking-wider opacity-75">{label}</p>
-								<p className="mt-1 text-xl font-black tabular-nums">{value}</p>
-							</div>
-						))}
-					</div>
-
 					{/* Toolbar */}
 					<div className="flex flex-col gap-4 p-4 rounded-2xl border border-border bg-card shadow-sm lg:flex-row lg:items-end">
 						<div className="flex-1 space-y-1.5">
@@ -1307,27 +1251,6 @@ function BookingSettingsPage() {
 								</div>
 							</div>
 
-							<div className="space-y-1.5">
-								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest invisible">Export</label>
-								<DropdownMenu>
-									<DropdownMenuTrigger
-										className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-bold text-white text-sm hover:bg-emerald-700 transition-all shadow-sm"
-									>
-										<Download className="h-4 w-4" /> Export
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align="end" className="w-48 rounded-xl p-2">
-										<DropdownMenuItem className="rounded-lg font-bold gap-2 cursor-pointer" onClick={() => handleExport("pdf")}>
-											<FileText className="h-4 w-4 text-red-500" /> Export PDF
-										</DropdownMenuItem>
-										<DropdownMenuItem className="rounded-lg font-bold gap-2 cursor-pointer" onClick={() => handleExport("csv")}>
-											<FileSpreadsheet className="h-4 w-4 text-green-600" /> Export CSV (Excel)
-										</DropdownMenuItem>
-										<DropdownMenuItem className="rounded-lg font-bold gap-2 cursor-pointer" onClick={() => handleExport("jpg")}>
-											<ImageIcon className="h-4 w-4 text-blue-500" /> Export JPG Image
-										</DropdownMenuItem>
-									</DropdownMenuContent>
-								</DropdownMenu>
-
 								<button
 									className="flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-bold text-primary-foreground text-sm shadow-sm transition-all hover:opacity-90 active:scale-95"
 									onClick={() => setIsCreateDialogOpen(true)}
@@ -1338,7 +1261,6 @@ function BookingSettingsPage() {
 								</button>
 							</div>
 						</div>
-					</div>
 
 					<div className="flex flex-wrap items-center gap-2">
 						{(["all", "pending", "confirmed", "arrived", "seated", "completed", "cancelled"] as const).map((f) => (
@@ -1662,361 +1584,6 @@ function BookingSettingsPage() {
 						)}
 					</div>
 				</div>
-			)}
-
-			{/* ── GENERAL SETTINGS TAB ── */}
-			{activeTab === "general" && (
-				<section className="space-y-5 rounded-2xl border border-border bg-card p-5 md:p-8">
-					<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-						<div className="space-y-1.5">
-							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest" htmlFor="page-title">
-								Judul Halaman
-							</label>
-							<input
-								className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-								id="page-title"
-								onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-								placeholder="Djiwa Tentram Cafe"
-								value={formData.title}
-							/>
-						</div>
-						<div className="space-y-1.5">
-							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">
-								Slug URL
-							</label>
-							<div className="flex items-center rounded-xl bg-muted/50 px-3">
-								<span className="text-muted-foreground text-sm">/</span>
-								<input
-									className="w-full bg-transparent p-3.5 font-medium text-foreground outline-none"
-									disabled
-									value={formData.slug}
-								/>
-							</div>
-						</div>
-						<div className="space-y-1.5 md:col-span-2">
-							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest" htmlFor="page-desc">
-								Deskripsi / Bio
-							</label>
-							<textarea
-								className="min-h-[90px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-								id="page-desc"
-								onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-								placeholder="Deskripsi singkat bisnis anda..."
-								value={formData.description}
-							/>
-						</div>
-						<div className="space-y-1.5">
-							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">
-								Warna Tema
-							</label>
-							<div className="flex items-center gap-3">
-								<input
-									className="h-10 w-14 cursor-pointer rounded-lg border border-border"
-									onChange={(e) => setFormData({ ...formData, themeColor: e.target.value })}
-									type="color"
-									value={formData.themeColor}
-								/>
-								<span className="font-mono text-sm">{formData.themeColor}</span>
-							</div>
-						</div>
-						<div className="space-y-1.5">
-							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">
-								Status Halaman
-							</label>
-							<div className="flex items-center gap-3">
-								<button
-									className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.isActive ? "bg-primary" : "bg-muted"}`}
-									onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-									type="button"
-								>
-									<span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.isActive ? "translate-x-6" : "translate-x-1"}`} />
-								</button>
-								<span className="text-sm font-medium">{formData.isActive ? "Aktif" : "Nonaktif"}</span>
-							</div>
-						</div>
-					</div>
-					<div className="overflow-hidden rounded-2xl border border-border bg-slate-50">
-						<div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
-							<div><p className="text-xs font-bold">Preview Halaman Publik</p><p className="text-[10px] text-muted-foreground">Perubahan preview belum disimpan.</p></div>
-							<a className="text-xs font-bold text-primary hover:underline" href={(import.meta.env.VITE_PUBLIC_BOOKING_URL as string | undefined)?.trim() || "https://booking.yumme.id/"} rel="noreferrer" target="_blank">Buka ↗</a>
-						</div>
-						<div className="mx-auto max-w-sm space-y-3 p-6 text-center">
-							<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-xl font-black text-primary shadow-sm">D</div>
-							<p className="text-lg font-black" style={{ color: formData.themeColor }}>{formData.title || "Djiwa Tentram"}</p>
-							<p className="text-xs leading-relaxed text-muted-foreground">{formData.description || "Deskripsi halaman booking akan tampil di sini."}</p>
-							<div className="rounded-xl bg-white px-4 py-3 text-left shadow-sm"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preview CTA</p><button className="mt-2 w-full rounded-xl px-4 py-3 text-sm font-bold text-white" style={{ backgroundColor: formData.themeColor }} type="button">Pilih tanggal booking</button></div>
-						</div>
-					</div>
-				</section>
-			)}
-
-			{/* ── PRODUCTS TAB ── */}
-			{activeTab === "products" && (
-				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-4">
-					<div className="flex items-center justify-between">
-						<h3 className="font-bold">Pilih Produk yang Ditampilkan</h3>
-						<Badge variant="secondary">{formData.featuredProductIds.length} dipilih</Badge>
-					</div>
-					<p className="text-muted-foreground text-sm">
-						Pilih menu yang tampil di halaman booking. Jika tidak ada pilihan, semua produk aktif akan tampil.
-					</p>
-					<div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Produk nonaktif, tanpa harga, atau tanpa gambar perlu diperiksa sebelum dipublikasikan.</div>
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-						<div className="relative flex-1">
-							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-							<input
-								className="w-full rounded-xl bg-muted/50 py-2.5 pl-10 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
-								onChange={(e) => setProductSearch(e.target.value)}
-								placeholder="Cari produk..."
-								type="text"
-								value={productSearch}
-							/>
-						</div>
-						<div className="relative shrink-0">
-							<button
-								className={`flex min-w-[220px] items-center justify-between gap-3 rounded-xl bg-muted/50 px-4 py-2.5 text-left text-sm font-bold outline-none transition-colors hover:bg-muted ${isCategoryMenuOpen ? "ring-2 ring-primary/20" : ""}`}
-								onClick={() => setIsCategoryMenuOpen((open) => !open)}
-								type="button"
-							>
-								<span className="truncate">
-									{selectedCategoryIds.length === 0
-										? "Semua Kategori"
-										: `${selectedCategoryIds.length} kategori dipilih`}
-								</span>
-								<ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${isCategoryMenuOpen ? "rotate-90" : ""}`} />
-							</button>
-							{isCategoryMenuOpen && (
-								<div className="absolute right-0 z-30 mt-2 w-[min(320px,calc(100vw-2rem))] rounded-xl border border-border bg-card p-2 shadow-xl">
-									<div className="flex items-center justify-between border-b border-border px-2 pb-2">
-										<span className="text-[11px] font-bold text-muted-foreground">Filter kategori</span>
-										{selectedCategoryIds.length > 0 && (
-											<button
-												className="text-[11px] font-bold text-primary hover:underline"
-												onClick={() => setSelectedCategoryIds([])}
-												type="button"
-											>
-												Reset
-											</button>
-										)}
-									</div>
-									<div className="max-h-72 space-y-0.5 overflow-y-auto pt-1">
-										{categoryGroups.map((category: any) => (
-											<div key={category._id}>
-												<button
-													className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold hover:bg-muted"
-													onClick={() => toggleCategoryFilter(String(category._id))}
-													type="button"
-												>
-													<span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selectedCategoryIds.includes(String(category._id)) ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
-														{selectedCategoryIds.includes(String(category._id)) && <Check className="h-3 w-3" />}
-													</span>
-													<span className="truncate">{category.name}</span>
-												</button>
-												{category.children.map((child: any) => (
-													<button
-														className="ml-5 flex w-[calc(100%-1.25rem)] items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
-														key={child._id}
-														onClick={() => toggleCategoryFilter(String(child._id))}
-														type="button"
-													>
-														<span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${selectedCategoryIds.includes(String(child._id)) ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
-															{selectedCategoryIds.includes(String(child._id)) && <Check className="h-2.5 w-2.5" />}
-														</span>
-														<span className="truncate">{child.name}</span>
-													</button>
-												))}
-											</div>
-										))}
-									</div>
-								</div>
-							)}
-						</div>
-					</div>
-
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						{!allProducts ? (
-							Array.from({ length: 6 }).map((_, i) => (
-								<div className="flex items-center gap-3 rounded-xl border border-border p-4" key={i}>
-									<Skeleton className="h-12 w-12 rounded-lg" />
-									<div className="flex-1 space-y-2">
-										<Skeleton className="h-4 w-3/4" />
-										<Skeleton className="h-3 w-1/2" />
-									</div>
-								</div>
-							))
-						) : filteredProducts?.map((product: any) => (
-							<button
-								className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
-									selectedProductIds.has(String(product._id))
-										? "border-primary bg-primary/5 ring-1 ring-primary"
-										: "border-border hover:bg-muted/50"
-								}`}
-								key={product._id}
-								onClick={() => toggleProductIds([String(product._id)])}
-								type="button"
-							>
-								<div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
-									{product.image ? (
-										<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
-									) : (
-										<div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground text-lg">
-											{product.name.charAt(0)}
-										</div>
-									)}
-								</div>
-								<div className="min-w-0 flex-1">
-									<p className="truncate font-bold text-sm">{product.name}</p>
-									<p className="text-muted-foreground text-xs">
-										Rp {Number(product.price ?? 0).toLocaleString("id-ID")}
-									</p>
-								</div>
-								{selectedProductIds.has(String(product._id)) && (
-									<Check className="h-4 w-4 text-primary shrink-0" />
-								)}
-							</button>
-						))}
-					</div>
-				</section>
-			)}
-
-			{/* ── FORM BUILDER TAB ── */}
-			{activeTab === "form" && (
-				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-6">
-					<div className="flex items-center justify-between">
-						<div>
-							<h3 className="font-bold">Formulir Pendaftaran</h3>
-							<p className="text-muted-foreground text-sm">
-								Atur field tambahan yang ingin ditanyakan kepada pelanggan saat booking.
-							</p>
-						</div>
-						<Button
-							className="rounded-xl font-bold bg-primary"
-							onClick={() => {
-								const newField = {
-									id: Math.random().toString(36).substr(2, 9),
-									label: "Label Baru",
-									type: "text",
-									required: false,
-									placeholder: "",
-									options: [],
-								};
-								setFormData({
-									...formData,
-									customFields: [...(formData.customFields || []), newField],
-								});
-							}}
-							size="sm"
-						>
-							<Plus className="h-4 w-4 mr-2" /> Tambah Field
-						</Button>
-					</div>
-
-					<div className="space-y-4">
-						{formData.customFields?.length === 0 ? (
-							<div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
-								Belum ada field tambahan. Klik "Tambah Field" untuk memulai.
-							</div>
-						) : (
-							formData.customFields?.map((field, idx) => (
-								<div className="group relative rounded-2xl border border-border bg-muted/20 p-5 pt-14 space-y-4" key={field.id}>
-									<div className="absolute right-3 top-3 flex items-center gap-1">
-										<button aria-label="Naikkan field" className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={idx === 0} onClick={() => moveCustomField(idx, -1)} type="button">↑</button>
-										<button aria-label="Turunkan field" className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={idx === (formData.customFields?.length ?? 1) - 1} onClick={() => moveCustomField(idx, 1)} type="button">↓</button>
-										<button className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-muted-foreground hover:text-foreground" onClick={() => duplicateCustomField(idx)} type="button">Duplikat</button>
-										<button aria-label="Hapus field" className="min-h-11 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100" onClick={() => { if (confirm("Hapus field ini dari formulir? Data booking lama tetap tersimpan.")) setFormData({ ...formData, customFields: (formData.customFields || []).filter((_, i) => i !== idx) }); }} type="button">Hapus</button>
-									</div>
-
-									<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-										<div className="space-y-1.5">
-											<label className="text-[10px] font-bold text-muted-foreground uppercase">Label</label>
-											<Input
-												className="rounded-xl"
-												onChange={(e) => {
-													const updated = [...(formData.customFields || [])];
-													updated[idx].label = e.target.value;
-													setFormData({ ...formData, customFields: updated });
-												}}
-												value={field.label}
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-[10px] font-bold text-muted-foreground uppercase">Tipe Data</label>
-											<select
-												className="w-full rounded-xl border border-input bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-												onChange={(e) => {
-													const updated = [...(formData.customFields || [])];
-													updated[idx].type = e.target.value;
-													setFormData({ ...formData, customFields: updated });
-												}}
-												value={field.type}
-											>
-												<option value="text">Teks Bebas</option>
-												<option value="number">Angka</option>
-												<option value="dropdown">Pilihan (Dropdown)</option>
-												<option value="checkbox">Centang (Checkbox)</option>
-											</select>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-[10px] font-bold text-muted-foreground uppercase">Wajib Diisi?</label>
-											<div className="flex items-center h-10 px-1">
-												<button
-													className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${field.required ? "bg-primary" : "bg-muted"}`}
-													onClick={() => {
-														const updated = [...(formData.customFields || [])];
-														updated[idx].required = !updated[idx].required;
-														setFormData({ ...formData, customFields: updated });
-													}}
-													type="button"
-												>
-													<span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${field.required ? "translate-x-6" : "translate-x-1"}`} />
-												</button>
-											</div>
-										</div>
-										{field.type !== "checkbox" && (
-											<div className="space-y-1.5">
-												<label className="text-[10px] font-bold text-muted-foreground uppercase">Placeholder</label>
-												<Input
-													className="rounded-xl"
-													onChange={(e) => {
-														const updated = [...(formData.customFields || [])];
-														updated[idx].placeholder = e.target.value;
-														setFormData({ ...formData, customFields: updated });
-													}}
-													placeholder="Tuliskan petunjuk..."
-													value={field.placeholder || ""}
-												/>
-											</div>
-										)}
-									</div>
-
-									{field.type === "dropdown" && (
-										<div className="space-y-2 border-t border-border pt-4">
-											<label className="text-[10px] font-bold text-muted-foreground uppercase">Opsi Pilihan (Pisahkan dengan koma)</label>
-											<Textarea
-												className="min-h-[80px] rounded-xl"
-												onChange={(e) => {
-													const updated = [...(formData.customFields || [])];
-													updated[idx].options = e.target.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
-													setFormData({ ...formData, customFields: updated });
-												}}
-												placeholder="Satu opsi per baris atau pisahkan dengan koma"
-												value={field.options?.join("\n") || ""}
-											/>
-										</div>
-									)}
-								</div>
-							))
-						)}
-					</div>
-					<div className="rounded-2xl border border-border bg-slate-50 p-4">
-						<p className="text-xs font-bold">Preview Formulir Customer</p>
-						<div className="mt-3 space-y-3 rounded-xl bg-white p-4 shadow-sm">
-							<div><p className="text-sm font-bold">Data booking</p><p className="text-[11px] text-muted-foreground">Field wajib diberi tanda pada halaman publik.</p></div>
-							{(formData.customFields ?? []).slice(0, 4).map((field: any) => <div className="space-y-1" key={`preview-${field.id}`}><label className="text-[11px] font-bold">{field.label || "Label field"}{field.required ? " *" : ""}</label><div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">{field.placeholder || (field.type === "dropdown" ? "Pilih opsi" : "Isi jawaban")}</div></div>)}
-							{(formData.customFields ?? []).length === 0 && <p className="text-xs text-muted-foreground">Belum ada field tambahan.</p>}
-						</div>
-					</div>
-				</section>
 			)}
 
 			{/* Edit Booking Dialog */}
