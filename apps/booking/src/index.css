@@ -293,6 +293,22 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   vertical-align: middle;
 }
 
+@media (min-width: 761px) {
+  .app-shell.menu-shell { width: min(100%, 1040px); }
+  .menu-shell main { padding: 24px 32px 32px; }
+  .menu-shell .topbar { padding-left: 32px; padding-right: 32px; }
+  .menu-flow { max-width: 976px; }
+  .menu-flow .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .menu-flow .product-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: stretch; min-height: 132px; gap: 14px; padding: 10px; border-radius: 24px; }
+  .menu-flow .product-card img, .menu-flow .product-card .product-image { width: 112px; height: 112px; min-width: 112px; min-height: 112px; border-radius: 18px; }
+  .menu-flow .product-body { padding: 3px 0; }
+  .menu-flow .product-body h3 { min-height: 0; margin: 5px 0 7px; font-size: 14px; line-height: 1.25; }
+  .menu-flow .product-description { display: -webkit-box; margin: 5px 0 8px; overflow: hidden; font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .menu-flow .product-body > strong { color: var(--booking-accent); font-size: 14px; }
+  .menu-flow .quantity-control { margin-top: 9px; }
+  .menu-flow .quantity-control .add-button { width: 42px; min-width: 42px; min-height: 38px; padding: 0; color: #fff; background: var(--booking-accent); }
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {
   main { padding: 4px 16px calc(8px + env(safe-area-inset-bottom)); }
