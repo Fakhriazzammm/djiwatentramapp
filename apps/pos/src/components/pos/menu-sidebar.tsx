@@ -187,11 +187,11 @@ function createEmptyOnlineFoodChecklist(): OnlineFoodChecklist {
 const playedShiftSoundKeys = new Set<string>();
 
 // Plays the supplied shift music exactly once per successful shift action.
-function playShiftSound(eventKey: string) {
+function playShiftSound(eventKey: string, soundPath: string) {
 	if (playedShiftSoundKeys.has(eventKey) || typeof Audio === "undefined") return;
 	playedShiftSoundKeys.add(eventKey);
 	try {
-		const audio = new Audio("/sounds/cashier-shift.mp3");
+		const audio = new Audio(soundPath);
 		audio.loop = false;
 		audio.volume = 0.7;
 		void audio.play().catch(() => undefined);
@@ -2605,7 +2605,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				cashBreakdown: breakdown as any,
 				notes,
 			});
-			playShiftSound(`close:${String(shiftStatus.shiftInfo.shiftId)}`);
+			playShiftSound(`close:${String(shiftStatus.shiftInfo.shiftId)}`, "/sounds/cashier-shift-close.mp3");
 			
 			const shiftInfo = result?.shift;
 			const summary = result?.summary;
@@ -2822,7 +2822,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				onlineFoodChecklist,
 				openRequestId: openRequestId ?? undefined,
 			});
-			playShiftSound(`open:${openRequestId ?? `${cashierName.trim()}:${shiftName.trim()}`}`);
+			playShiftSound(`open:${openRequestId ?? `${cashierName.trim()}:${shiftName.trim()}`}`, "/sounds/cashier-shift-open.mp3");
 			setShowStartConfirm(false);
 			setShowStartChecklist(false);
 			toast.success("Shift berhasil dimulai");
