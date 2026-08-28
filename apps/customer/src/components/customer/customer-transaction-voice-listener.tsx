@@ -23,6 +23,23 @@ export function CustomerTransactionVoiceListener() {
 	const seedStarted = useRef(false);
 	const knownStatuses = useRef(new Map<string, string>());
 	const seedTimer = useRef<number | undefined>(undefined);
+	const trackedSourceId = useRef<string | null | undefined>(undefined);
+
+	// Reset all voice state when the logged-in user changes so one customer's
+	// orders never trigger sounds for another customer on the same device.
+	useEffect(() => {
+		const currentSourceId = customer?.sourceId ?? null;
+		if (trackedSourceId.current !== currentSourceId) {
+			trackedSourceId.current = currentSourceId;
+			seeded.current = false;
+			seedStarted.current = false;
+			knownStatuses.current = new Map();
+			if (seedTimer.current) {
+				window.clearTimeout(seedTimer.current);
+				seedTimer.current = undefined;
+			}
+		}
+	}, [customer]);
 
 	useEffect(() => {
 		if (!customer || isLoading || !orders) return;
