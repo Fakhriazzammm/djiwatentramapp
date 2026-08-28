@@ -1,91 +1,179 @@
-interface ResponsiveVoiceOptions {
-  onend?: () => void;
-  onerror?: () => void;
+interface ResponsiveVoiceApi {
+  speak: (text: string, voice?: string | Record<string, unknown>, options?: Record<string, unknown>) => void;
+  cancel?: () => void;
+  init?: (config?: Record<string, unknown>) => void;
+  initialized?: boolean;
+  isReady?: () => boolean;
+  disablePermissionPopup?: boolean;
 }
 
 declare global {
   interface Window {
-    responsiveVoice?: {
-      speak: (text: string, voice?: string, options?: ResponsiveVoiceOptions) => void;
-      cancel?: () => void;
-    };
+    responsiveVoice?: ResponsiveVoiceApi;
+    rvApiKey?: string;
+    getResponsiveVoice?: () => ResponsiveVoiceApi | undefined;
   }
 }
 
-export type TransactionVoiceEvent = { eventKey: string; text: string };
+export type TransactionVoiceEvent = {
+  eventKey: string;
+  text: string;
+};
+
 const MP3_URL = "/sounds/transaction-success.mp3";
-const pending: TransactionVoiceEvent[] = [];
-const seen = new Set<string>();
+const AUDIO_TIMEOUT_MS = 15_000;
+const TTS_TIMEOUT_MS = 20_000;
+const queuedOrPlayedKeys = new Set<string>();
+const pendingEvents: TransactionVoiceEvent[] = [];
 let processing = false;
 
-function inBrowser() {
+function isBrowser() {
   return typeof window !== "undefined" && typeof Audio !== "undefined";
 }
 
-function wait<T>(promise: Promise<T>, timeout: number) {
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
   return new Promise<T>((resolve) => {
-    let done = false;
+    let settled = false;
     const finish = (value: T) => {
-      if (done) return;
-      done = true;
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timer);
       resolve(value);
     };
-    const timer = window.setTimeout(() => finish(undefined as T), timeout);
+    const timer = window.setTimeout(() => finish(undefined as T), timeoutMs);
     promise.then(finish).catch(() => finish(undefined as T));
   });
 }
 
 function playMp3Once() {
-  if (!inBrowser()) return Promise.resolve();
-  return wait(new Promise<void>((resolve) => {
+  if (!isBrowser()) return Promise.resolve();
+
+  return withTimeout(new Promise<void>((resolve) => {
     const audio = new Audio(MP3_URL);
     audio.volume = 0.6;
+
     const finish = () => {
       audio.removeEventListener("ended", finish);
       audio.removeEventListener("error", finish);
       resolve();
     };
+
     audio.addEventListener("ended", finish, { once: true });
     audio.addEventListener("error", finish, { once: true });
     void audio.play().catch(finish);
-  }), 15_000);
+  }), AUDIO_TIMEOUT_MS);
 }
 
-function speak(text: string) {
-  if (!inBrowser()) return Promise.resolve();
-  if (window.responsiveVoice?.speak) {
-    return wait(new Promise<void>((resolve) => {
-      const finish = () => resolve();
-      try {
-        window.responsiveVoice?.speak(text, "Indonesian Female", { onend: finish, onerror: finish });
-      } catch {
-        finish();
-      }
-    }), 20_000);
+function getResponsiveVoice() {
+  if (typeof window === "undefined") return undefined;
+  if (typeof window.getResponsiveVoice === "function") {
+    try {
+      const rv = window.getResponsiveVoice();
+      if (rv) return rv;
+    } catch {
+      /* ignore */
+    }
   }
-  return Promise.resolve();
+  return window.responsiveVoice;
 }
 
-async function drain() {
-  if (processing || !inBrowser()) return;
+function whenResponsiveVoiceReady() {
+  return new Promise<void>((resolve) => {
+    const rv = getResponsiveVoice();
+    if (!rv) {
+      resolve();
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener("ResponsiveVoice_OnReady", finish);
+      resolve();
+    };
+    try {
+      if (rv.initialized || (typeof rv.isReady === "function" && rv.isReady())) {
+        finish();
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    window.addEventListener("ResponsiveVoice_OnReady", finish, { once: true });
+    window.setTimeout(finish, 4000);
+  });
+}
+
+function speakNative(text: string) {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+    return Promise.resolve();
+  }
+  return withTimeout(new Promise<void>((resolve) => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "id-ID";
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      resolve();
+    }
+  }), TTS_TIMEOUT_MS);
+}
+
+function speakResponsiveVoice(text: string) {
+  const rv = getResponsiveVoice();
+  if (!rv || typeof rv.speak !== "function") return Promise.resolve();
+  return withTimeout(new Promise<void>((resolve) => {
+    const finish = () => resolve();
+    try {
+      try {
+        rv.disablePermissionPopup = true;
+      } catch {
+        /* ignore */
+      }
+      rv.speak(text, { pitch: 1, rate: 0.95, volume: 1 });
+      window.setTimeout(finish, 1500);
+    } catch {
+      finish();
+    }
+  }), TTS_TIMEOUT_MS);
+}
+
+async function speak(text: string) {
+  if (!isBrowser()) return;
+  if ("speechSynthesis" in window) {
+    await speakNative(text);
+    return;
+  }
+  await whenResponsiveVoiceReady();
+  await speakResponsiveVoice(text);
+}
+
+async function processQueue() {
+  if (processing || !isBrowser()) return;
   processing = true;
+
   try {
-    while (pending.length) {
-      const event = pending.shift();
+    while (pendingEvents.length > 0) {
+      const event = pendingEvents.shift();
       if (!event) continue;
       await playMp3Once();
       await speak(event.text);
     }
   } finally {
     processing = false;
-    if (pending.length) void drain();
+    if (pendingEvents.length > 0) void processQueue();
   }
 }
 
 export function enqueueCustomerTransactionVoice(event: TransactionVoiceEvent) {
-  if (!event.eventKey || !event.text || seen.has(event.eventKey)) return;
-  seen.add(event.eventKey);
-  pending.push(event);
-  void drain();
+  if (!event.eventKey || !event.text || queuedOrPlayedKeys.has(event.eventKey)) return;
+  queuedOrPlayedKeys.add(event.eventKey);
+  pendingEvents.push(event);
+  void processQueue();
 }

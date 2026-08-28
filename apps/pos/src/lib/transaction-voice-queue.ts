@@ -1,16 +1,17 @@
-interface ResponsiveVoiceOptions {
-  onend?: () => void;
-  onerror?: () => void;
-}
-
 interface ResponsiveVoiceApi {
-  speak: (text: string, voice?: string, options?: ResponsiveVoiceOptions) => void;
+  speak: (text: string, voice?: string | Record<string, unknown>, options?: Record<string, unknown>) => void;
   cancel?: () => void;
+  init?: (config?: Record<string, unknown>) => void;
+  initialized?: boolean;
+  isReady?: () => boolean;
+  disablePermissionPopup?: boolean;
 }
 
 declare global {
   interface Window {
     responsiveVoice?: ResponsiveVoiceApi;
+    rvApiKey?: string;
+    getResponsiveVoice?: () => ResponsiveVoiceApi | undefined;
   }
 }
 
@@ -24,7 +25,6 @@ type AudioLike = {
   addEventListener: (type: string, listener: () => void, options?: { once?: boolean }) => void;
   removeEventListener: (type: string, listener: () => void) => void;
   play: () => Promise<void>;
-  pause: () => void;
 };
 
 const MP3_URL = "/sounds/transaction-success.mp3";
@@ -71,38 +71,100 @@ function playMp3Once() {
   }), AUDIO_TIMEOUT_MS);
 }
 
-function speakWithFallbackTts(text: string) {
-  if (!isBrowser()) return Promise.resolve();
-
-  const responsiveVoice = window.responsiveVoice;
-  if (responsiveVoice?.speak) {
-    return withTimeout(new Promise<void>((resolve) => {
-      const finish = () => resolve();
-      try {
-        responsiveVoice.speak(text, "Indonesian Female", {
-          onend: finish,
-          onerror: finish,
-        });
-      } catch {
-        finish();
-      }
-    }), TTS_TIMEOUT_MS);
+function getResponsiveVoice() {
+  if (typeof window === "undefined") return undefined;
+  if (typeof window.getResponsiveVoice === "function") {
+    try {
+      const rv = window.getResponsiveVoice();
+      if (rv) return rv;
+    } catch {
+      /* ignore */
+    }
   }
+  return window.responsiveVoice;
+}
 
+function whenResponsiveVoiceReady() {
+  return new Promise<void>((resolve) => {
+    const rv = getResponsiveVoice();
+    if (!rv) {
+      resolve();
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener("ResponsiveVoice_OnReady", finish);
+      resolve();
+    };
+    try {
+      if (rv.initialized || (typeof rv.isReady === "function" && rv.isReady())) {
+        finish();
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    window.addEventListener("ResponsiveVoice_OnReady", finish, { once: true });
+    // Safety: don't block the queue forever if the event never fires.
+    window.setTimeout(finish, 4000);
+  });
+}
+
+function speakNative(text: string) {
   if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
     return Promise.resolve();
   }
-
   return withTimeout(new Promise<void>((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "id-ID";
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
-    window.speechSynthesis.speak(utterance);
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "id-ID";
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      resolve();
+    }
   }), TTS_TIMEOUT_MS);
+}
+
+function speakResponsiveVoice(text: string) {
+  const rv = getResponsiveVoice();
+  if (!rv || typeof rv.speak !== "function") return Promise.resolve();
+  return withTimeout(new Promise<void>((resolve) => {
+    const finish = () => resolve();
+    try {
+      // SDK v2 may prompt for mic/speech permission; disable the popup so
+      // transactional announcements never block on user consent.
+      try {
+        rv.disablePermissionPopup = true;
+      } catch {
+        /* ignore */
+      }
+      rv.speak(text, { pitch: 1, rate: 0.95, volume: 1 });
+      // SDK v2 does not always report onend reliably; resolve after a short grace.
+      window.setTimeout(finish, 1500);
+    } catch {
+      finish();
+    }
+  }), TTS_TIMEOUT_MS);
+}
+
+async function speak(text: string) {
+  if (!isBrowser()) return;
+  // Primary: native Web Speech API — reliable, no API key, no permission popup.
+  if ("speechSynthesis" in window) {
+    await speakNative(text);
+    return;
+  }
+  // Fallback: ResponsiveVoice CDN (kept per deployment requirement).
+  await whenResponsiveVoiceReady();
+  await speakResponsiveVoice(text);
 }
 
 async function processQueue() {
@@ -114,7 +176,7 @@ async function processQueue() {
       const event = pendingEvents.shift();
       if (!event) continue;
       await playMp3Once();
-      await speakWithFallbackTts(event.text);
+      await speak(event.text);
     }
   } finally {
     processing = false;
@@ -136,6 +198,10 @@ export function enqueueTransactionVoice(event: TransactionVoiceEvent) {
 export function clearTransactionVoiceQueue() {
   pendingEvents.length = 0;
   if (!isBrowser()) return;
-  window.responsiveVoice?.cancel?.();
+  try {
+    getResponsiveVoice()?.cancel?.();
+  } catch {
+    /* ignore */
+  }
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
