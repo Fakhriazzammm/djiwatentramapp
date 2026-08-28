@@ -216,7 +216,7 @@ function MenuStep({ products, categories, bookingType, eventType, date, guests, 
   const stopCardClick = (event: React.MouseEvent) => event.stopPropagation();
   const selectCategory = (value: string) => { setCategoryFilter(value); setSubcategoryFilter("all"); };
 
-  return <section className="flow">
+  return <section className="flow menu-flow">
     <Progress active="menu" hasEvent={bookingType?.key === "event"} />
     <StepHeader number="04" title="Pilih menu untuk pre-order" detail="Klik card atau gunakan +/− untuk mengatur jumlah menu." />
     <ContextSummary bookingType={bookingType} eventType={eventType} date={date} guests={guests} />

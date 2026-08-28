@@ -147,6 +147,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .quantity-control b { min-width: 20px; text-align: center; }
 .add-button { min-height: 44px; width: 100%; border-radius: 12px; color: var(--booking-accent); background: var(--booking-accent-soft); font-weight: 700; }
 .sticky-action { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); display: flex; justify-content: flex-end; padding: 25px 0 10px; z-index: 2; background: linear-gradient(to bottom, transparent, var(--surface-muted) 28%); }
+.menu-flow .sticky-action { position: static; padding: 16px 0 4px; background: none; }
 .skip-link { display: block; margin: 10px auto; }
 .form-card, .review-card { padding: 22px; }
 .form-field { display: block; color: var(--ink); font-size: 13px; font-weight: 700; margin-bottom: 17px; }
@@ -289,19 +290,20 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .info-card .info-icon { grid-row: span 2; }
   .info-card strong { align-self: end; }
   .info-card span:last-child { align-self: start; }
-  .menu-filters { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: -2px; }
-  .menu-filters select { min-height: 42px; padding: 0 9px; font-size: 12px; }
-  .menu-filters label { font-size: 9px; }
-  .clear-filter { margin-bottom: 8px; }
+  .menu-filters { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 10px; padding-bottom: 2px; scrollbar-width: none; }
+  .menu-filters::-webkit-scrollbar { display: none; }
+  .menu-filters label { display: block; flex: 0 0 auto; min-width: 150px; color: var(--muted); font-size: 10px; font-weight: 800; }
+  .menu-filters select { min-height: 44px; padding: 0 10px; border-radius: 14px; font-size: 12px; }
   .product-grid { display: flex; flex-direction: column; gap: 10px; }
-  .product-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); min-height: 124px; border-radius: 16px; }
-  .product-card img, .product-card .product-image { height: 100%; min-height: 124px; }
-  .product-body { min-width: 0; padding: 12px 13px; }
-  .product-body h3 { min-height: 0; margin: 4px 0 7px; font-size: 14px; }
-  .product-body > strong { font-size: 13px; }
-  .quantity-control { margin-top: 9px; gap: 7px; }
+  .product-card { display: flex; align-items: center; gap: 12px; min-height: 0; padding: 10px; border-radius: 24px; }
+  .product-card img, .product-card .product-image { width: 88px; height: 88px; min-width: 88px; min-height: 88px; flex: 0 0 88px; border-radius: 18px; object-fit: cover; }
+  .product-body { min-width: 0; flex: 1; padding: 2px 0; }
+  .menu-number { font-size: 10px; }
+  .product-body h3 { min-height: 0; margin: 4px 0 7px; font-size: 14px; line-height: 1.25; }
+  .product-body > strong { display: block; font-size: 14px; line-height: 1.2; }
+  .quantity-control { min-height: 38px; margin-top: 9px; gap: 7px; }
   .quantity-control button { width: 38px; height: 38px; border-radius: 11px; }
-  .quantity-control .add-button { width: auto; min-width: 92px; min-height: 38px; padding: 0 14px; }
+  .quantity-control .add-button { width: auto; min-width: 92px; min-height: 38px; padding: 0 14px; border-radius: 12px; }
   .quantity-control b { min-width: 24px; }
   .calendar-card { padding: 14px; }
   .calendar-toolbar { margin-bottom: 16px; }
