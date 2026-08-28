@@ -56,11 +56,12 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .payment-note svg { flex: 0 0 auto; margin-top: 1px; }
 .info-grid { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; }
 .info-card, .panel, .form-card, .review-card, .success, .state-card { background: var(--surface); border: 1px solid rgba(228,231,235,.9); border-radius: 22px; box-shadow: var(--shadow-soft); }
-.info-card { min-height: 0; padding: 15px; display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; align-items: center; }
+.info-card { min-height: 0; padding: 15px; display: grid; grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; align-items: center; }
+.info-card .info-icon { grid-column: 1; grid-row: 1 / span 2; }
 .info-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 14px; color: var(--booking-accent); background: var(--booking-accent-soft); }
 .info-icon svg { width: 19px; }
-.info-card strong { font-size: 13px; line-height: 1.28; }
-.info-card span:last-child { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.info-card strong { grid-column: 2; grid-row: 1; font-size: 13px; line-height: 1.28; }
+.info-card span:last-child { grid-column: 2; grid-row: 2; color: var(--muted); font-size: 12px; line-height: 1.45; }
 
 .flow { width: 100%; max-width: 480px; margin: 0 auto; }
 .progress { display: flex; gap: 8px; margin: 8px 0 28px; }
