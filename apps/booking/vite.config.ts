@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       manifest: {
         name: "Booking Djiwa Tentram",
         short_name: "Booking",
@@ -22,10 +22,12 @@ export default defineConfig({
         orientation: "portrait",
       },
       workbox: {
-        cacheId: "djiwa-booking-v5",
+        cacheId: "djiwa-booking-v6",
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,webmanifest,svg,png}"],
         cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
