@@ -2605,7 +2605,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				cashBreakdown: breakdown as any,
 				notes,
 			});
-			playShiftSound(`close:${String(shiftStatus.shiftInfo.shiftId)}`, "/sounds/cashier-shift-close.mp3");
+			playShiftSound(`close:${String(shiftStatus.shiftInfo.shiftId)}`, "/sounds/cashier-shift-open.mp3");
 			
 			const shiftInfo = result?.shift;
 			const summary = result?.summary;
