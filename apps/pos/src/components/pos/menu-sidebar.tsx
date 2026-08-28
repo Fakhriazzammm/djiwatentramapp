@@ -184,6 +184,22 @@ function createEmptyOnlineFoodChecklist(): OnlineFoodChecklist {
 	};
 }
 
+const playedShiftSoundKeys = new Set<string>();
+
+// Plays the supplied shift music exactly once per successful shift action.
+function playShiftSound(eventKey: string) {
+	if (playedShiftSoundKeys.has(eventKey) || typeof Audio === "undefined") return;
+	playedShiftSoundKeys.add(eventKey);
+	try {
+		const audio = new Audio("/sounds/cashier-shift.mp3");
+		audio.loop = false;
+		audio.volume = 0.7;
+		void audio.play().catch(() => undefined);
+	} catch {
+		/* ignore audio playback failure */
+	}
+}
+
 export function MenuSidebar({ 
 	triggerOpen, 
 	onOpenChange,
@@ -2589,6 +2605,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				cashBreakdown: breakdown as any,
 				notes,
 			});
+			playShiftSound(`close:${String(shiftStatus.shiftInfo.shiftId)}`);
 			
 			const shiftInfo = result?.shift;
 			const summary = result?.summary;
@@ -2805,6 +2822,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				onlineFoodChecklist,
 				openRequestId: openRequestId ?? undefined,
 			});
+			playShiftSound(`open:${openRequestId ?? `${cashierName.trim()}:${shiftName.trim()}`}`);
 			setShowStartConfirm(false);
 			setShowStartChecklist(false);
 			toast.success("Shift berhasil dimulai");
