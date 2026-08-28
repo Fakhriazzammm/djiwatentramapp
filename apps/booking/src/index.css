@@ -239,20 +239,25 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 
 .app-shell > .owner-footer > .owner-footer-two-line {
   display: grid;
+  place-items: center;
   gap: 3px;
   width: 100%;
+  min-width: 0;
+  overflow: visible;
   text-align: center;
 }
 .app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row {
   display: flex;
   width: max-content;
   max-width: 100%;
-  margin-inline: auto;
+  margin: 0;
   align-items: center;
   justify-content: center;
   gap: 7px;
   min-height: 16px;
   white-space: nowrap;
+  justify-self: center;
+  text-align: center;
 }
 .app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row span,
 .app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row a {
