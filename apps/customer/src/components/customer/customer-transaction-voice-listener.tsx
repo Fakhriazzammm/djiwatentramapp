@@ -42,12 +42,12 @@ export function CustomerTransactionVoiceListener() {
         // Order baru muncul saat customer sedang aktif.
         if (paid) {
           enqueueCustomerTransactionVoice({
-            eventKey: `customer-order:${orderId}:order_paid:${method}`,
+            eventKey: `customer-order:${orderId}`,
             text: resolveCustomerTransactionVoice({ eventType: "order_paid", paymentMethod: method, customerName: customer.name }).text,
           });
         } else if (method === "kasir") {
           enqueueCustomerTransactionVoice({
-            eventKey: `customer-order:${orderId}:order_cashier_pending`,
+            eventKey: `customer-order:${orderId}`,
             text: resolveCustomerTransactionVoice({ eventType: "order_cashier_pending", customerName: customer.name }).text,
           });
         }
@@ -57,7 +57,7 @@ export function CustomerTransactionVoiceListener() {
 
       if (previous !== status && paid) {
         enqueueCustomerTransactionVoice({
-          eventKey: `customer-order:${orderId}:order_paid:${method}`,
+          eventKey: `customer-order:${orderId}`,
           text: resolveCustomerTransactionVoice({ eventType: "order_paid", paymentMethod: method, customerName: customer.name }).text,
         });
       }
