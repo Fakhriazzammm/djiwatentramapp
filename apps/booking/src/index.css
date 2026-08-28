@@ -37,7 +37,7 @@ p { color: var(--muted); line-height: 1.6; }
 .icon-button { width: 44px; height: 44px; border-radius: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 5px 18px rgba(15,23,42,.05); transition: transform 180ms var(--ease-ios); }
 .icon-button:active, .button:active, .date-card:active, .add-button:active, .stepper button:active, .quantity-control button:active { transform: scale(.97); }
 
-main { width: 100%; flex: 1; padding: 8px 18px calc(28px + env(safe-area-inset-bottom)); }
+main { width: 100%; flex: 1; padding: 8px 18px calc(8px + env(safe-area-inset-bottom)); }
 .landing { display: block; min-height: auto; padding: 12px 0 18px; }
 .hero { padding: 22px; border: 1px solid rgba(228,231,235,.9); border-radius: 28px; background: var(--surface); box-shadow: var(--shadow-soft); }
 .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--booking-accent); font-size: 12px; font-weight: 700; letter-spacing: .01em; }
@@ -203,7 +203,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 
 .app-shell > .owner-footer {
   width: calc(100% - 2rem);
-  margin: 12px auto 0;
+  margin: 6px auto 8px;
   padding: 8px 12px;
   overflow: hidden;
   border: 1px solid rgba(228, 231, 235, .9);
