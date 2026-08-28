@@ -240,6 +240,10 @@ function MenuStep({ products, categories, bookingType, eventType, date, guests, 
         <button className={categoryFilter === "all" ? "active" : ""} onClick={() => selectCategory("all")} type="button">Semua</button>
         {roots.map((category) => <button className={categoryFilter === category.id ? "active" : ""} key={category.id} onClick={() => selectCategory(category.id)} type="button">{category.name}</button>)}
       </div>
+      {children.length > 0 && <div className="subcategory-chips" aria-label="Subkategori menu">
+        <button className={subcategoryFilter === "all" ? "active" : ""} onClick={() => setSubcategoryFilter("all")} type="button">Semua subkategori</button>
+        {(categoryFilter === "all" ? children : visibleSubcategories).map((category) => <button className={subcategoryFilter === category.id ? "active" : ""} key={category.id} onClick={() => setSubcategoryFilter(category.id)} type="button">{category.name}</button>)}
+      </div>}
     </div>
     <div className="menu-filters" aria-label="Filter menu">
       <label><span>Kategori</span><select value={categoryFilter} onChange={(event) => selectCategory(event.target.value)}><option value="all">Semua kategori</option>{roots.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
