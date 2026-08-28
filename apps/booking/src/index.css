@@ -245,6 +245,9 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 }
 .app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row {
   display: flex;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
   align-items: center;
   justify-content: center;
   gap: 7px;
