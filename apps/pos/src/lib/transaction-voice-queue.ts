@@ -27,7 +27,34 @@ type AudioLike = {
   play: () => Promise<void>;
 };
 
-const MP3_URL = "/sounds/transaction-success.mp3";
+let audioUnlocked = false;
+
+/**
+ * Browsers block Audio / speechSynthesis until the user interacts with the
+ * page. Call this once from any real user gesture (click / keydown / touch) so
+ * later transaction announcements can play even when the event arrives from a
+ * background poll without a fresh gesture.
+ */
+export function unlockAudio() {
+  if (audioUnlocked || !isBrowser()) return;
+  audioUnlocked = true;
+  try {
+    const probe = new Audio(MP3_URL);
+    probe.volume = 0;
+    void probe.play().catch(() => undefined);
+  } catch {
+    /* ignore */
+  }
+  if ("speechSynthesis" in window) {
+    try {
+      const utterance = new SpeechSynthesisUtterance("");
+      utterance.volume = 0;
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 const AUDIO_TIMEOUT_MS = 15_000;
 const TTS_TIMEOUT_MS = 20_000;
 const queuedOrPlayedKeys = new Set<string>();
