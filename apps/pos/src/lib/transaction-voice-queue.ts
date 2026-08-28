@@ -36,24 +36,20 @@ let audioUnlocked = false;
  * background poll without a fresh gesture.
  */
 export function unlockAudio() {
-  if (audioUnlocked || !isBrowser()) return;
-  audioUnlocked = true;
-  try {
-    const probe = new Audio(MP3_URL);
-    probe.volume = 0;
-    void probe.play().catch(() => undefined);
-  } catch {
-    /* ignore */
-  }
-  if ("speechSynthesis" in window) {
-    try {
-      const utterance = new SpeechSynthesisUtterance("");
-      utterance.volume = 0;
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      /* ignore */
-    }
-  }
+	if (audioUnlocked || !isBrowser()) return;
+	audioUnlocked = true;
+	// Only unlock the Web Speech API. The transaction MP3 is played exclusively
+	// through playMp3Once() when a real transaction arrives — never as a probe
+	// on user gesture, so it does not ding on every page/click.
+	if ("speechSynthesis" in window) {
+		try {
+			const utterance = new SpeechSynthesisUtterance("");
+			utterance.volume = 0;
+			window.speechSynthesis.speak(utterance);
+		} catch {
+			/* ignore */
+		}
+	}
 }
 const AUDIO_TIMEOUT_MS = 15_000;
 const TTS_TIMEOUT_MS = 20_000;
