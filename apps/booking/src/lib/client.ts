@@ -186,7 +186,7 @@ async function callMayar(body: Record<string, unknown>) {
   const key = getPublishableKey();
   const response = await fetch(`${SUPABASE_URL}/functions/v1/mayar-proxy`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify(body) });
   const result = await response.json().catch(() => null) as { success?: boolean; data?: any; error?: { message?: string } } | null;
-  if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Pembayaran Mayar belum berhasil disiapkan.");
+  if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Pembayaran belum berhasil disiapkan.");
   return result.data;
 }
 
@@ -216,7 +216,7 @@ export async function createBooking(draft: BookingDraft): Promise<BookingResult>
 }
 
 export async function createBookingPayment(booking: BookingResult, draft: BookingDraft) {
-  if (!booking.bookingId || !booking.bookingCode || !booking.totalAmount || booking.totalAmount <= 0 || !booking.items.length) throw new Error("Pilih minimal satu menu agar booking dapat dibayar melalui Mayar.");
+  if (!booking.bookingId || !booking.bookingCode || !booking.totalAmount || booking.totalAmount <= 0 || !booking.items.length) throw new Error("Pilih minimal satu menu agar booking dapat dibayar.");
   const credentials = getGuestCredentials();
   const storageKey = `booking-payment-${booking.bookingCode}`;
   const stored = sessionStorage.getItem(storageKey);
@@ -234,12 +234,12 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
     await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: pending.invoiceId, invoiceUrl: pending.invoiceUrl, status: "pending" } });
     return pending;
   }
-  const redirectUrl = `${window.location.origin}/booking/status?code=${encodeURIComponent(booking.bookingCode)}`;
+  const redirectUrl = `${window.location.origin}/status?code=${encodeURIComponent(booking.bookingCode)}`;
   const invoiceResponse = await callMayar({ action: "create-invoice", name: draft.customer.name, email: draft.customer.email || undefined, mobile: draft.customer.phone, redirectUrl, description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`, expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG }, items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })) });
   const payment = invoiceResponse?.data || invoiceResponse;
   const invoiceId = String(payment?.id || "");
   const invoiceUrl = String(payment?.link || payment?.paymentUrl || payment?.url || "");
-  if (!invoiceId || !invoiceUrl) throw new Error("Mayar belum mengembalikan link pembayaran.");
+  if (!invoiceId || !invoiceUrl) throw new Error("Link pembayaran belum tersedia.");
   sessionStorage.setItem(storageKey, JSON.stringify({ invoiceId, invoiceUrl }));
   sessionStorage.setItem(`booking-pending-payment-${booking.bookingCode}`, JSON.stringify({ invoiceId, invoiceUrl }));
   await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId, invoiceUrl, transactionId: payment?.transactionId || null, status: "pending" } });

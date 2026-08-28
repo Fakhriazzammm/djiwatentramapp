@@ -27,14 +27,15 @@ function go(path: string) { window.history.pushState({}, "", path); window.dispa
 function validStep(value: string | null): value is BookingStep { return Boolean(value && (BOOKING_STEPS as readonly string[]).includes(value)); }
 function readScreen(): Screen {
   const path = window.location.pathname;
-  if (path === "/booking/status") return "status";
-  if (path === "/booking/success") return "success";
+  const search = new URLSearchParams(window.location.search);
+  if (path === "/status" || path === "/booking/status") return "status";
+  if (path === "/success" || path === "/booking/success") return "success";
   if (path === "/booking/menu") return "menu";
   if (path === "/booking/customer") return "checkout";
   if (path === "/booking/review") return "review";
   if (path === "/booking/date") return "date";
-  if (path === "/booking") return validStep(new URLSearchParams(window.location.search).get("step")) ? new URLSearchParams(window.location.search).get("step") as BookingStep : "type";
-  return "landing";
+  if (path === "/booking") return validStep(search.get("step")) ? search.get("step") as BookingStep : "type";
+  return validStep(search.get("step")) ? search.get("step") as BookingStep : "type";
 }
 function loadDraft(): DraftState {
   try {
@@ -79,7 +80,7 @@ export default function App() {
   const selectedType = settings?.bookingTypes.find((item) => item.key === draft.bookingType);
   const selectedEvent = settings?.eventTypes.find((item) => item.key === draft.eventType);
   const updateDraft = (patch: Partial<DraftState>) => setDraft((current) => ({ ...current, ...patch }));
-  const navigate = (next: Screen) => go(next === "landing" ? "/" : next === "status" ? "/booking/status" : next === "success" ? "/booking/success" : `/booking?step=${encodeURIComponent(next)}`);
+  const navigate = (next: Screen) => go(next === "landing" ? "/" : next === "status" ? "/status" : next === "success" ? "/success" : `/?step=${encodeURIComponent(next)}`);
   const setQuantity = (id: string, quantity: number) => updateDraft({ cart: (() => { const next = { ...draft.cart }; if (quantity <= 0) delete next[id]; else next[id] = quantity; return next; })() });
   const nextFromType = () => { if (!selectedType) return; if (selectedType.key === "event") navigate("event-type"); else { updateDraft({ eventType: "", eventTypeOther: "" }); navigate("date"); } };
   const nextFromEvent = () => { if (!selectedEvent || (selectedEvent.requiresCustomText && !draft.eventTypeOther.trim())) return; navigate("date"); };
