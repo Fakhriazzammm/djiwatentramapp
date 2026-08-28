@@ -243,7 +243,8 @@ function buildMonthSummary(
 			};
 		}
 
-		if (order.bookingStatus !== "cancelled") {
+		const isActiveBooking = !["cancelled", "expired", "no_show"].includes(String(order.bookingStatus));
+		if (isActiveBooking) {
 			summary[bookingDate]!.count += 1;
 			summary[bookingDate]!.bookedPeople += Number(order.guestCount ?? 0);
 			summary[bookingDate]!.bookedTables += Number(order.tableCount ?? 0);

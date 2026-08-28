@@ -11,7 +11,6 @@ import {
 	Save,
 	Search,
 	Settings2,
-	ShoppingBag,
 	Smartphone,
 	Trash2,
 	Users,
@@ -40,7 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useHybridAllProducts, useHybridCategories } from "@/hooks/use-hybrid-pos-data";
+import { useHybridAllProducts } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBookingDateCapacities,
@@ -217,6 +216,7 @@ function AdminCalendar({
 				</button>
 				<div className="flex items-center gap-2">
 					<span className="font-bold text-foreground">{MONTH_NAMES[month]} {year}</span>
+					<button className="min-h-9 rounded-lg bg-muted px-2.5 text-[11px] font-bold text-muted-foreground hover:bg-muted/80" onClick={() => { const now = new Date(); onNavigate(now.getFullYear(), now.getMonth()); onDayClick(todayStr()); }} type="button">Hari ini</button>
 					<button className="flex min-h-9 items-center gap-1 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-primary-foreground" onClick={onAddBooking} type="button"><Plus className="h-3 w-3" />Tambah</button>
 				</div>
 				<button
@@ -566,7 +566,7 @@ function BookingSettingsPage() {
 	const settings = useHybridBookingSettings("booking");
 	const updateSettings = useHybridUpdateBookingSettings();
 	const allProducts = useHybridAllProducts();
-	const categories = useHybridCategories();
+
 	const updateBookingStatus = useHybridUpdateBookingStatus();
 	const patchBookingOrder = useHybridPatchBookingOrder();
 	const deleteBookingOrder = useHybridDeleteBookingOrder();
@@ -580,7 +580,7 @@ function BookingSettingsPage() {
 	const today = new Date();
 	const [calYear, setCalYear] = useState(today.getFullYear());
 	const [calMonth, setCalMonth] = useState(today.getMonth());
-	const [selectedDate, setSelectedDate] = useState<string | null>(null);
+	const [selectedDate, setSelectedDate] = useState<string | null>(todayStr());
 	const [listFilter, setListFilter] = useState<"all" | "pending" | "confirmed" | "arrived" | "seated" | "completed" | "cancelled">("all");
 	const [paymentFilter, setPaymentFilter] = useState<"all" | "pending" | "paid">("all");
 
@@ -632,10 +632,6 @@ function BookingSettingsPage() {
 	});
 	const allOrders = ordersState.data;
 
-	// Products search & multi-category filter
-	const [productSearch, setProductSearch] = useState("");
-	const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-	const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
 	// Capacity form
 	const [capDate, setCapDate] = useState(todayStr());
@@ -949,96 +945,6 @@ function BookingSettingsPage() {
 		};
 	}, [allOrders]);
 
-	const categoryGroups = useMemo(() => {
-		if (!categories) return [];
-		const categoryList = categories as any[];
-		const roots = categoryList.filter((category) => !category.parentId);
-		const knownRootIds = new Set(roots.map((category) => String(category._id)));
-		const orphanRoots = categoryList.filter(
-			(category) => category.parentId && !knownRootIds.has(String(category.parentId))
-		);
-		return [...roots, ...orphanRoots].map((category) => ({
-			...category,
-			children: categoryList
-				.filter((child) => String(child.parentId) === String(category._id))
-				.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-		}));
-	}, [categories]);
-
-	const getCategoryTreeIds = (categoryId: string) => {
-		const ids = new Set([String(categoryId)]);
-		const categoryList = (categories ?? []) as any[];
-		let changed = true;
-		while (changed) {
-			changed = false;
-			for (const category of categoryList) {
-				if (category.parentId && ids.has(String(category.parentId)) && !ids.has(String(category._id))) {
-					ids.add(String(category._id));
-					changed = true;
-				}
-			}
-		}
-		return ids;
-	};
-
-	const getProductsForCategory = (categoryId: string) => {
-		const categoryIds = getCategoryTreeIds(categoryId);
-		return (allProducts ?? [])
-			.filter((product: any) => categoryIds.has(String(product.categoryId)))
-			.map((product: any) => String(product._id));
-	};
-
-	const toggleProductIds = (productIds: string[]) => {
-		const selected = new Set(formData.featuredProductIds.map(String));
-		const allSelected = productIds.length > 0 && productIds.every((id) => selected.has(id));
-		if (allSelected) {
-			productIds.forEach((id) => selected.delete(id));
-		} else {
-			productIds.forEach((id) => selected.add(id));
-		}
-		setFormData({ ...formData, featuredProductIds: [...selected] });
-	};
-
-	const toggleCategoryFilter = (categoryId: string) => {
-		const isActive = selectedCategoryIds.includes(categoryId);
-		setSelectedCategoryIds(
-			isActive
-				? selectedCategoryIds.filter((id) => id !== categoryId)
-				: [...selectedCategoryIds, categoryId]
-		);
-	};
-
-	const selectedCategoryTreeIds = useMemo(() => {
-		const ids = new Set<string>();
-		selectedCategoryIds.forEach((categoryId) => {
-			getCategoryTreeIds(categoryId).forEach((id) => ids.add(id));
-		});
-		return ids;
-	}, [selectedCategoryIds, categories]);
-
-	const filteredProducts = allProducts?.filter((p: any) => {
-		const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
-		const matchesCategory = selectedCategoryTreeIds.size === 0 || selectedCategoryTreeIds.has(String(p.categoryId));
-		return matchesSearch && matchesCategory;
-	});
-
-	const updateCustomFields = (nextFields: any[]) => setFormData({ ...formData, customFields: nextFields });
-	const moveCustomField = (index: number, direction: -1 | 1) => {
-		const fields = [...(formData.customFields ?? [])];
-		const target = index + direction;
-		if (target < 0 || target >= fields.length) return;
-		[fields[index], fields[target]] = [fields[target], fields[index]];
-		updateCustomFields(fields);
-	};
-	const duplicateCustomField = (index: number) => {
-		const field = formData.customFields?.[index];
-		if (!field) return;
-		updateCustomFields([...formData.customFields.slice(0, index + 1), { ...field, id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`, label: `${field.label} (salinan)` }, ...formData.customFields.slice(index + 1)]);
-	};
-
-	const selectedProductIds = new Set(formData.featuredProductIds.map(String));
-	const filteredProductIds = (filteredProducts ?? []).map((product: any) => String(product._id));
-	const allFilteredSelected = filteredProductIds.length > 0 && filteredProductIds.every((id) => selectedProductIds.has(id));
 	const capacityRows = dateCapacities ?? [];
 	const allCapacitySelected = capacityRows.length > 0 && capacityRows.every((cap: any) => selectedCapacityIds.includes(String(cap._id)));
 
@@ -1288,11 +1194,7 @@ function BookingSettingsPage() {
 					<div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1">
 						{(["all", "pending", "confirmed", "arrived", "seated", "completed", "cancelled"] as const).map((f) => (
 							<button
-								className={`min-h-9 shrink-0 rounded-full px-3 font-bold text-xs transition-all ${
-									listFilter === f
-										? "bg-primary text-primary-foreground"
-										: "bg-muted text-muted-foreground hover:bg-muted/80"
-								}`}
+								className={`${["seated", "cancelled"].includes(f) ? "hidden lg:inline-flex" : "inline-flex"} min-h-9 shrink-0 rounded-full px-3 font-bold text-xs transition-all ${listFilter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
 								key={f}
 								onClick={() => setListFilter(f)}
 								type="button"
