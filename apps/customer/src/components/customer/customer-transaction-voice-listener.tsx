@@ -56,8 +56,12 @@ export function CustomerTransactionVoiceListener() {
 		// or arrive from realtime are treated as "already existing".
 		if (!seeded.current) {
 			for (const [id, status] of next) knownStatuses.current.set(id, status);
-			if (!seedStarted.current && next.size > 0) {
+			if (next.size > 0) {
 				seedStarted.current = true;
+				// Debounce: restart the grace timer on every data change so the
+				// seed only completes once orders have stopped changing (handles
+				// slow / progressive loads that exceed a fixed 1.5s window).
+				if (seedTimer.current) window.clearTimeout(seedTimer.current);
 				seedTimer.current = window.setTimeout(() => {
 					seeded.current = true;
 				}, 1500);
