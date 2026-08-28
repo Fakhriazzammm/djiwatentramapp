@@ -48,7 +48,7 @@ function readScreen(): Screen {
   if (path === "/booking/review") return "review";
   if (path === "/booking/date") return "date";
   if (path === "/booking") return validStep(search.get("step")) ? search.get("step") as BookingStep : "type";
-  return validStep(search.get("step")) ? search.get("step") as BookingStep : "type";
+  return validStep(search.get("step")) ? search.get("step") as BookingStep : "landing";
 }
 function loadDraft(): DraftState {
   try {
