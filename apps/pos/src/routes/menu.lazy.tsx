@@ -77,7 +77,8 @@ import {
 	buildReceiptMetaFromCart,
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
-import { playSuccessSound } from "@/lib/play-success-sound";
+import { enqueueTransactionVoice } from "@/lib/transaction-voice-queue";
+import { resolveTransactionVoice } from "@/lib/transaction-voice-resolver";
 import { NotificationCenter } from "@/components/pos/notification-center";
 import { TransactionAlertStack } from "@/components/pos/transaction-alert-popup";
 import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
@@ -624,8 +625,18 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		} else {
 			newlySettledOrderIds.forEach((orderId) => {
 				if (transactionSoundIdsRef.current.has(orderId)) return;
+				const order = (orders as any[]).find((item) => String(item._id ?? item.sourceId ?? item.orderNumber ?? "") === orderId);
+				if (!order) return;
 				transactionSoundIdsRef.current.add(orderId);
-				playSuccessSound();
+				const voiceEvent = resolveTransactionVoice({
+					eventKey: `order:${orderId}:order_paid`,
+					source: String(order.source ?? order.sourceApp ?? order.source_app ?? ""),
+					eventType: "order_paid",
+					paymentMethod: order.paymentMethod ?? order.payment_method,
+					orderId,
+					customerName: order.customerName ?? order.customer_name,
+				});
+				enqueueTransactionVoice(voiceEvent);
 			});
 		}
 
@@ -650,7 +661,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				const orderId = String(item.action_payload?.orderId ?? item.order_source_id ?? item.id);
 				if (transactionSoundIdsRef.current.has(orderId)) return;
 				transactionSoundIdsRef.current.add(orderId);
-				playSuccessSound();
+				const voiceEvent = resolveTransactionVoice({
+					eventKey: `order:${orderId}:${item.notification_type}`,
+					source: String(item.source ?? item.action_payload?.source ?? ""),
+					eventType: item.notification_type === "order_cashier_pending" ? "order_cashier_pending" : "order_paid",
+					paymentMethod: String(item.action_payload?.paymentMethod ?? ""),
+					orderId,
+					customerName: String(item.action_payload?.customerName ?? ""),
+				});
+				enqueueTransactionVoice(voiceEvent);
 			});
 			setTransactionAlertIds((current) => Array.from(new Set([...current, ...newTransactionAlerts.map((item) => item.id)])).slice(-3));
 		}
@@ -1607,16 +1626,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				if (shouldOpenBill) {
 					if (useMayarGateway) {
-						toast.success("Invoice pembayaran berhasil dibuat"); triggerHybridRefresh(); playSuccessSound();
+						toast.success("Invoice pembayaran berhasil dibuat"); triggerHybridRefresh(); enqueueTransactionVoice(resolveTransactionVoice({ eventKey: `pos-order:${orderId}:created`, source: "pos", eventType: "pos_created", orderId }));
 						if (mayarInvoice?.link && typeof window !== "undefined") {
 							window.open(mayarInvoice.link, "_blank", "noopener,noreferrer");
 						}
 					} else {
-						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh(); playSuccessSound();
+						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh(); enqueueTransactionVoice(resolveTransactionVoice({ eventKey: `pos-order:${orderId}:created`, source: "pos", eventType: "pos_created", orderId }));
 					}
 					setLastOrderId(orderId);
 				} else {
-					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh(); playSuccessSound();
+					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh(); enqueueTransactionVoice(resolveTransactionVoice({ eventKey: `pos-order:${orderId}:created`, source: "pos", eventType: "pos_created", orderId }));
 					setLastOrderId(orderId);
 
 					if (siteSettings?.autoPrint !== false) {
