@@ -25,6 +25,19 @@ const DRAFT_STORAGE_KEY = "booking-draft-v2";
 
 function go(path: string) { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); }
 function validStep(value: string | null): value is BookingStep { return Boolean(value && (BOOKING_STEPS as readonly string[]).includes(value)); }
+function canonicalizeLegacyPath() {
+  const path = window.location.pathname;
+  const legacySteps: Record<string, string> = { "/booking/menu": "menu", "/booking/customer": "checkout", "/booking/review": "review", "/booking/date": "date" };
+  const params = new URLSearchParams(window.location.search);
+  if (path === "/booking") {
+    const step = params.get("step");
+    window.history.replaceState({}, "", step && validStep(step) ? `/?step=${encodeURIComponent(step)}` : "/");
+  } else if (legacySteps[path]) {
+    window.history.replaceState({}, "", `/?step=${legacySteps[path]}`);
+  } else if (path === "/booking/status" || path === "/booking/success") {
+    window.history.replaceState({}, "", `${path.replace("/booking", "")}${window.location.search}`);
+  }
+}
 function readScreen(): Screen {
   const path = window.location.pathname;
   const search = new URLSearchParams(window.location.search);
@@ -63,6 +76,7 @@ export default function App() {
   const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
+    canonicalizeLegacyPath();
     const onPop = () => setScreen(readScreen());
     window.addEventListener("popstate", onPop);
     loadBookingData().then(setData).catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Data booking tidak dapat dimuat."));
