@@ -39,20 +39,20 @@ p { color: var(--muted); line-height: 1.6; }
 
 main { width: 100%; flex: 1; padding: 8px 18px calc(8px + env(safe-area-inset-bottom)); }
 .landing { display: block; min-height: auto; padding: 12px 0 18px; }
-.hero { padding: 22px; border: 1px solid rgba(228,231,235,.9); border-radius: 28px; background: var(--surface); box-shadow: var(--shadow-soft); }
-.eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--booking-accent); font-size: 12px; font-weight: 700; letter-spacing: .01em; }
-h1 { max-width: none; font-size: clamp(38px, 10vw, 52px); line-height: 1.04; letter-spacing: -.07em; margin: 16px 0 14px; }
+.hero { padding: 18px; border: 1px solid rgba(228,231,235,.9); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow-soft); }
+.eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--booking-accent); font-size: 11px; font-weight: 700; letter-spacing: .01em; }
+h1 { max-width: none; font-size: clamp(35px, 9vw, 46px); line-height: 1.06; letter-spacing: -.065em; margin: 13px 0 12px; }
 h1 em { color: var(--booking-accent); font-style: normal; }
-.hero > p { max-width: none; margin: 0; font-size: 15px; }
-.hero-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 20px; }
-.button { width: 100%; min-height: 50px; padding: 0 18px; border-radius: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-size: 14px; font-weight: 700; transition: transform 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios), background 180ms var(--ease-ios); }
+.hero > p { max-width: none; margin: 0; font-size: 14px; }
+.hero-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 16px; }
+.button { width: 100%; min-height: 48px; padding: 0 18px; border-radius: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-size: 14px; font-weight: 700; transition: transform 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios), background 180ms var(--ease-ios); }
 .button.primary { color: #fff; background: var(--booking-accent); box-shadow: 0 10px 22px rgba(26,93,198,.22); }
 .button.primary:hover { background: #164fa9; box-shadow: 0 14px 28px rgba(26,93,198,.26); }
 .button.secondary { color: var(--ink); background: var(--surface); border: 1px solid var(--line); }
 .button.secondary:hover { background: var(--booking-accent-soft); border-color: #c6d8f5; }
 .button.full { width: 100%; }
 
-.payment-note { max-width: none; margin-top: 11px; padding: 11px 12px; display: flex; align-items: flex-start; gap: 8px; border: 1px solid #cfe0fa; border-radius: 14px; color: #164fa9; background: var(--booking-accent-soft); font-size: 11px; line-height: 1.45; }
+.payment-note { max-width: none; margin-top: 9px; padding: 9px 10px; display: flex; align-items: flex-start; gap: 8px; border: 1px solid #cfe0fa; border-radius: 14px; color: #164fa9; background: var(--booking-accent-soft); font-size: 11px; line-height: 1.45; }
 .payment-note svg { flex: 0 0 auto; margin-top: 1px; }
 .info-grid { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; }
 .info-card, .panel, .form-card, .review-card, .success, .state-card { background: var(--surface); border: 1px solid rgba(228,231,235,.9); border-radius: 22px; box-shadow: var(--shadow-soft); }
@@ -275,14 +275,14 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {
-  main { padding: 4px 16px calc(72px + env(safe-area-inset-bottom)); }
+  main { padding: 4px 16px calc(8px + env(safe-area-inset-bottom)); }
   .topbar { padding-left: 16px; padding-right: 16px; }
 
-  .landing { display: block; min-height: auto; padding: 22px 0 20px; }
-  .hero { padding: 12px 0 22px; }
-  h1 { font-size: clamp(38px, 12vw, 52px); line-height: 1.04; letter-spacing: -.07em; margin-top: 16px; }
-  .hero > p { font-size: 15px; }
-  .hero-actions { display: grid; grid-template-columns: 1fr; margin-top: 22px; }
+  .landing { display: block; min-height: auto; padding: 12px 0 14px; }
+  .hero { padding: 18px; }
+  h1 { font-size: clamp(35px, 9vw, 46px); line-height: 1.06; letter-spacing: -.065em; margin-top: 13px; }
+  .hero > p { font-size: 14px; }
+  .hero-actions { gap: 8px; margin-top: 16px; }
   .hero-actions .button { width: 100%; }
   .info-grid { margin-top: 18px; grid-template-columns: 1fr; gap: 10px; }
   .info-card { min-height: 0; padding: 16px; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; }
