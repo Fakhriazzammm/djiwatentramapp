@@ -4,10 +4,11 @@ type OwnerFooterProps = {
   className?: string;
   children?: ReactNode;
   compact?: boolean;
+  twoLine?: boolean;
 };
 
 /** Compact, mobile-safe attribution footer shared by every Djiwa Tentram app shell. */
-export function OwnerFooter({ className = "", children, compact = false }: OwnerFooterProps) {
+export function OwnerFooter({ className = "", children, compact = false, twoLine = false }: OwnerFooterProps) {
   return (
     <footer
       className={compact
@@ -16,16 +17,23 @@ export function OwnerFooter({ className = "", children, compact = false }: Owner
       style={compact ? undefined : { paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
     >
       {compact ? (
-        <div className="flex w-full items-center justify-start gap-2 overflow-x-auto whitespace-nowrap px-1 text-[11px] leading-4">
-          <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-          <span className="shrink-0 font-semibold text-foreground">Djiwa Tentram</span>
-          <span aria-hidden="true" className="text-border">•</span>
-          <span className="shrink-0">Dibuat oleh <a className="font-medium text-primary underline-offset-2 hover:underline" href="https://instagram.com/fakhriazzamm" target="_blank" rel="noreferrer">@fakhriazzamm</a></span>
-          <span aria-hidden="true" className="text-border">•</span>
-          <span className="shrink-0">Yumme Group</span>
-          <span aria-hidden="true" className="text-border">•</span>
-          <span className="shrink-0">Dikembangkan oleh <a className="font-medium text-foreground underline decoration-border underline-offset-2 hover:text-primary" href="https://zantaratechnology.com" target="_blank" rel="noreferrer">Zantara Technology</a></span>
-        </div>
+        twoLine ? (
+          <div className="owner-footer-two-line">
+            <div className="owner-footer-row"><span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /><span className="font-semibold text-foreground">Djiwa Tentram</span><span aria-hidden="true">•</span><span>Dibuat oleh <a className="font-medium text-primary" href="https://instagram.com/fakhriazzamm" target="_blank" rel="noreferrer">@fakhriazzamm</a></span><span aria-hidden="true">•</span><span>Yumme Group</span></div>
+            <div className="owner-footer-row"><span>Dikembangkan oleh <a className="font-medium text-foreground" href="https://zantaratechnology.com" target="_blank" rel="noreferrer">Zantara Technology</a></span></div>
+          </div>
+        ) : (
+          <div className="flex w-full items-center justify-start gap-2 overflow-x-auto whitespace-nowrap px-1 text-[11px] leading-4">
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+            <span className="shrink-0 font-semibold text-foreground">Djiwa Tentram</span>
+            <span aria-hidden="true" className="text-border">•</span>
+            <span className="shrink-0">Dibuat oleh <a className="font-medium text-primary underline-offset-2 hover:underline" href="https://instagram.com/fakhriazzamm" target="_blank" rel="noreferrer">@fakhriazzamm</a></span>
+            <span aria-hidden="true" className="text-border">•</span>
+            <span className="shrink-0">Yumme Group</span>
+            <span aria-hidden="true" className="text-border">•</span>
+            <span className="shrink-0">Dikembangkan oleh <a className="font-medium text-foreground underline decoration-border underline-offset-2 hover:text-primary" href="https://zantaratechnology.com" target="_blank" rel="noreferrer">Zantara Technology</a></span>
+          </div>
+        )
       ) : (
         <div className="flex items-center justify-center gap-2 text-[11px] font-extrabold text-foreground">
           <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--primary)/.12)]" />

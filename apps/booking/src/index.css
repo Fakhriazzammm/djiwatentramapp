@@ -237,6 +237,30 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .app-shell > .owner-footer a { color: var(--booking-accent); font-weight: 600; }
 .app-shell > .owner-footer a:last-child { color: #344054; }
 
+.app-shell > .owner-footer > .owner-footer-two-line {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  text-align: center;
+}
+.app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 16px;
+  white-space: nowrap;
+}
+.app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row span,
+.app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row a {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 16px;
+}
+.app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row:first-child span[aria-hidden="true"] { color: #98a2b3; }
+.app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row:last-child { color: #98a2b3; }
+.app-shell > .owner-footer > .owner-footer-two-line .owner-footer-row:last-child a { color: #667085; font-weight: 600; }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {
   main { padding: 4px 16px calc(72px + env(safe-area-inset-bottom)); }
