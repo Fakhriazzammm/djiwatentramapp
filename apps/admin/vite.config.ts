@@ -4,7 +4,7 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vite";
-import { posPwaSettings } from "./src/pwa-settings";
+import { adminPwaSettings } from "./src/pwa-settings";
 
 export default defineConfig({
 	plugins: [
@@ -15,28 +15,28 @@ export default defineConfig({
 			registerType: "autoUpdate",
 			includeAssets: ["logo.png", "vite.svg"],
 			manifest: {
-				name: posPwaSettings.name,
-				short_name: posPwaSettings.short_name,
-				description: posPwaSettings.description,
-				theme_color: posPwaSettings.theme_color,
-				background_color: posPwaSettings.background_color,
+				name: adminPwaSettings.name,
+				short_name: adminPwaSettings.short_name,
+				description: adminPwaSettings.description,
+				theme_color: adminPwaSettings.theme_color,
+				background_color: adminPwaSettings.background_color,
 				display: "standalone",
-				start_url: posPwaSettings.start_url,
+				start_url: adminPwaSettings.start_url,
 				scope: "/",
-				orientation: posPwaSettings.orientation,
+				orientation: adminPwaSettings.orientation,
 				icons: [
 					{
-						src: posPwaSettings.icon192,
+						src: adminPwaSettings.icon192,
 						sizes: "192x192",
 						type: "image/png",
 					},
 					{
-						src: posPwaSettings.icon512,
+						src: adminPwaSettings.icon512,
 						sizes: "512x512",
 						type: "image/png",
 					},
 					{
-						src: posPwaSettings.icon512,
+						src: adminPwaSettings.icon512,
 						sizes: "512x512",
 						type: "image/png",
 						purpose: "maskable",
@@ -44,6 +44,7 @@ export default defineConfig({
 				],
 			},
 			workbox: {
+				cacheId: "djiwa-admin-booking-v2",
 				navigateFallback: "/index.html",
 				maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
 				globPatterns: ["**/*.{js,css,html,png,svg,gif,ico,webmanifest}"],
