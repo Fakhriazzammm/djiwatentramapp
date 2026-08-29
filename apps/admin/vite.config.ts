@@ -44,7 +44,7 @@ export default defineConfig({
 				],
 			},
 			workbox: {
-				cacheId: "djiwa-admin-booking-v2",
+				cacheId: "djiwa-admin-booking-v3",
 				navigateFallback: "/index.html",
 				maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
 				globPatterns: ["**/*.{js,css,html,png,svg,gif,ico,webmanifest}"],
