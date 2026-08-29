@@ -17,7 +17,6 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	ClipboardList,
-	Coffee,
 	ChefHat,
 	Beer,
 	FileBarChart,
@@ -101,6 +100,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/customer-service": "Layanan Customer",
 	"/admin/minigames": "Mini Games",
 	"/admin/customers": "Pelanggan",
+	"/admin/kol": "KOL",
 };
 
 // Bottom nav items (Djiwa Tentram AI at center index 2)
@@ -135,6 +135,7 @@ const MORE_MENU_PATHS = [
 	"/admin/customer-service",
 	"/admin/minigames",
 	"/admin/customers",
+	"/admin/kol",
 	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
 	"/admin/operational-team/attendance",
@@ -187,6 +188,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
 			{ to: "/admin/customers", icon: Users, label: "Pelanggan" },
+			{ to: "/admin/kol", icon: Users, label: "KOL" },
 			{ to: "/admin/operational-team/rekrutmen", icon: FileText, label: "Rekrutmen", permission: "users:manage" },
 		],
 	},
@@ -368,15 +370,11 @@ function AdminLayout() {
 				<div className="flex h-14 items-center gap-2 border-border border-b px-4">
 					{headerLogoUrl ? (
 						<div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-background p-1">
-							<img
-								alt={`${storeName} logo`}
-								className="h-full w-full object-contain"
-								src={headerLogoUrl}
-							/>
+							<img alt={`${storeName} logo`} className="h-full w-full object-contain" src={headerLogoUrl}/>
 						</div>
 					) : (
 						<div className="shrink-0 rounded-md bg-primary p-1.5">
-							<Coffee className="h-4 w-4 text-primary-foreground" />
+							<img alt="Djiwa Tentram" className="h-full w-full object-contain" src="/logo-djiwa.png"/>
 						</div>
 					)}
 					<AnimatePresence>
@@ -689,6 +687,12 @@ function AdminLayout() {
 						label="Pelanggan"
 						to="/admin/customers"
 					/>
+					<DesktopNavLink
+						icon={<Users />}
+						isCollapsed={isCollapsed}
+						label="KOL"
+						to="/admin/kol"
+					/>
 				</nav>
 
 				{/* Footer: User Profile + Pengaturan + Keluar */}
@@ -799,13 +803,9 @@ function AdminLayout() {
 					<div className="flex items-center gap-3">
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
 							{headerLogoUrl ? (
-								<img
-									alt={`${storeName} logo`}
-									className="h-6 w-6 object-contain"
-									src={headerLogoUrl}
-								/>
+								<img alt={`${storeName} logo`} className="h-6 w-6 object-contain" src={headerLogoUrl}/>
 							) : (
-								<Coffee className="h-4 w-4 text-primary-foreground" />
+								<img alt="Djiwa Tentram" className="h-full w-full object-contain" src="/logo-djiwa.png"/>
 							)}
 						</div>
 						<div>

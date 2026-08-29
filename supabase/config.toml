@@ -59,3 +59,7 @@ verify_jwt = false
 [functions.record-attendance]
 enabled = true
 verify_jwt = false
+
+[functions.kol-public]
+enabled = true
+verify_jwt = false
