@@ -242,12 +242,7 @@ function AdminLayout() {
 		if (!permId) return true;
 		return role?.permissions?.includes(permId) || false;
 	};
-	const [isCollapsed, setIsCollapsed] = useState(() => {
-		if (typeof window !== "undefined") {
-			return localStorage.getItem("admin-sidebar-collapsed") === "true";
-		}
-		return false;
-	});
+	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
 	const [adminPopupDensity] = useState<"compact" | "normal">(() => {
 		if (typeof window !== "undefined") {
