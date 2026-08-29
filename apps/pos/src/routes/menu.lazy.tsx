@@ -531,11 +531,13 @@ function MenuPage() {
 	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 	const notificationIdsRef = useRef<Set<string>>(new Set());
 	const hasSeededNotificationsRef = useRef(false);
+const notificationSeedTimerRef = useRef<number | undefined>(undefined);
 	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
+	const djiwaAppOrderSeedTimerRef = useRef<number | undefined>(undefined);
 	const transactionSoundIdsRef = useRef<Set<string>>(new Set());
 	const autoPrintedCustomerOrderIdsRef = useRef<Set<string>>(new Set());
 	const autoPrintRetryTimersRef = useRef<Map<string, number>>(new Map());
@@ -613,32 +615,39 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			if (!orderId) return;
 			currentStatuses.set(orderId, status);
 
-			if (!hasSeededDjiwaAppOrdersRef.current) return;
-			const previousStatus = djiwaAppOrderStatusRef.current.get(orderId);
-			if ((previousStatus === undefined || previousStatus !== status) && (status === "paid" || status === "completed")) {
-				newlySettledOrderIds.push(orderId);
+			if (hasSeededDjiwaAppOrdersRef.current) {
+				const previousStatus = djiwaAppOrderStatusRef.current.get(orderId);
+				if ((previousStatus === undefined || previousStatus !== status) && (status === "paid" || status === "completed")) {
+					newlySettledOrderIds.push(orderId);
+				}
 			}
 		});
 
 		if (!hasSeededDjiwaAppOrdersRef.current) {
-			hasSeededDjiwaAppOrdersRef.current = true;
-		} else {
-			newlySettledOrderIds.forEach((orderId) => {
-				if (transactionSoundIdsRef.current.has(orderId)) return;
-				const order = (orders as any[]).find((item) => String(item._id ?? item.sourceId ?? item.orderNumber ?? "") === orderId);
-				if (!order) return;
-				transactionSoundIdsRef.current.add(orderId);
-				const voiceEvent = resolveTransactionVoice({
-					eventKey: `order:${orderId}`,
-					source: String(order.source ?? order.sourceApp ?? order.source_app ?? ""),
-					eventType: "order_paid",
-					paymentMethod: order.paymentMethod ?? order.payment_method,
-					orderId,
-					customerName: order.customerName ?? order.customer_name,
-				});
-				enqueueTransactionVoice(voiceEvent);
-			});
+			djiwaAppOrderStatusRef.current = currentStatuses;
+			if (djiwaAppOrderSeedTimerRef.current) window.clearTimeout(djiwaAppOrderSeedTimerRef.current);
+			djiwaAppOrderSeedTimerRef.current = window.setTimeout(() => {
+				hasSeededDjiwaAppOrdersRef.current = true;
+				djiwaAppOrderSeedTimerRef.current = undefined;
+			}, 1500);
+			return;
 		}
+
+		newlySettledOrderIds.forEach((orderId) => {
+			if (transactionSoundIdsRef.current.has(orderId)) return;
+			const order = (orders as any[]).find((item) => String(item._id ?? item.sourceId ?? item.orderNumber ?? "") === orderId);
+			if (!order) return;
+			transactionSoundIdsRef.current.add(orderId);
+			const voiceEvent = resolveTransactionVoice({
+				eventKey: `order:${orderId}`,
+				source: String(order.source ?? order.sourceApp ?? order.source_app ?? ""),
+				eventType: "order_paid",
+				paymentMethod: order.paymentMethod ?? order.payment_method,
+				orderId,
+				customerName: order.customerName ?? order.customer_name,
+			});
+			enqueueTransactionVoice(voiceEvent);
+		});
 
 		djiwaAppOrderStatusRef.current = currentStatuses;
 	}, [orders]);
@@ -647,8 +656,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		if (!notifications) return;
 		const nextIds = new Set(notifications.map((item) => item.id));
 		if (!hasSeededNotificationsRef.current) {
-			hasSeededNotificationsRef.current = true;
 			notificationIdsRef.current = nextIds;
+			if (notificationSeedTimerRef.current) window.clearTimeout(notificationSeedTimerRef.current);
+			notificationSeedTimerRef.current = window.setTimeout(() => {
+				hasSeededNotificationsRef.current = true;
+				notificationSeedTimerRef.current = undefined;
+			}, 1500);
 			return;
 		}
 		const newTransactionAlerts = notifications.filter((item) =>
