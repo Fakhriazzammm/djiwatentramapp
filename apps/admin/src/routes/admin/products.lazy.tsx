@@ -1517,7 +1517,7 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+							className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
 							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
@@ -2084,9 +2084,9 @@ function SettingsTab({
 				/>
 			</div>
 
-		<div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+		<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 			{/* Categories Section */}
-			<div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+			<div className="rounded-xl border border-border bg-card p-4 shadow-sm">
 				<div className="mb-4 flex items-center justify-between">
 					<h3 className="font-bold text-lg">Manajemen Kategori</h3>
 					<button
@@ -2206,7 +2206,7 @@ function SettingsTab({
 			</div>
 
 			{/* Variation Presets Section */}
-			<div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+			<div className="rounded-xl border border-border bg-card p-4 shadow-sm">
 				<div className="mb-4 flex items-center justify-between">
 					<h3 className="font-bold text-lg">Preset Variasi</h3>
 					<button
@@ -2299,7 +2299,7 @@ function SettingsTab({
 					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
+							className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-2xl"
 							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
@@ -2444,7 +2444,7 @@ function SettingsTab({
 					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+							className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
 							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
@@ -2928,7 +2928,7 @@ function BaseRecipesTab() {
 					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+							className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
 							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}

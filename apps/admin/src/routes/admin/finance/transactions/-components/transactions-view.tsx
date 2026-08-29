@@ -259,7 +259,7 @@ export function TransactionsView() {
 			: undefined; // not shown
 
 	return (
-		<div className="space-y-2 bg-white text-slate-900">
+		<div className="min-w-0 space-y-2 bg-white text-slate-900">
 			<TransactionDetailReport
 				range={dateRange}
 				viewMode={viewMode}

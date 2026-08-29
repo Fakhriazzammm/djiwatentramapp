@@ -393,7 +393,7 @@ function AdminDiscountsPage() {
 			<div className="mb-4 md:mb-8">
 				<div className="mb-4 flex flex-wrap items-start justify-between gap-3 md:mb-6 md:gap-4">
 					<div>
-						<h1 className="mb-1 font-bold text-xl tracking-tight md:mb-2 md:text-3xl lg:text-4xl">
+						<h1 className="mb-1 font-bold text-xl tracking-tight md:mb-2 md:text-2xl lg:text-2xl">
 							Manajemen Diskon
 						</h1>
 						<p className="text-muted-foreground text-xs md:text-sm lg:text-base">
@@ -452,12 +452,12 @@ function AdminDiscountsPage() {
 					</div>
 				</div>
 
-				<div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm" data-marketing-rule="djiwa-pay-20">
+				<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm" data-marketing-rule="djiwa-pay-20">
 					<div className="flex items-start gap-3">
 						<div className="rounded-xl bg-emerald-100 p-2 text-emerald-700"><Tag className="h-4 w-4" /></div>
 						<div className="min-w-0 flex-1">
 							<p className="text-xs font-black">{djiwaPayRule.name}</p>
-							<p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">Diskon {djiwaPayRule.value}% otomatis untuk pembayaran Djiwa Pay. Tunai/kasir dan QRIS Mayar tidak eligible. Reward transaksi: {djiwaPayRule.reward}.</p>
+							<p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">Diskon {djiwaPayRule.value}% otomatis untuk pembayaran Djiwa Pay. Tunai/kasir dan QRIS tidak eligible. Reward transaksi: {djiwaPayRule.reward}.</p>
 						</div>
 					</div>
 				</div>
@@ -475,7 +475,7 @@ function AdminDiscountsPage() {
 								<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
 									Total Diskon
 								</p>
-								<p className="mt-1 font-bold text-2xl">{stats.total}</p>
+								<p className="mt-1 font-bold text-xl">{stats.total}</p>
 							</div>
 							<div className="rounded-lg bg-blue-100 p-3 dark:bg-blue-900">
 								<Tag className="h-5 w-5 text-blue-600 dark:text-blue-300" />
@@ -494,7 +494,7 @@ function AdminDiscountsPage() {
 								<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
 									Aktif
 								</p>
-								<p className="mt-1 font-bold text-2xl text-green-600">
+								<p className="mt-1 font-bold text-xl text-green-600">
 									{stats.active}
 								</p>
 							</div>
@@ -515,7 +515,7 @@ function AdminDiscountsPage() {
 								<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
 									Terjadwal
 								</p>
-								<p className="mt-1 font-bold text-2xl text-blue-600">
+								<p className="mt-1 font-bold text-xl text-blue-600">
 									{stats.scheduled}
 								</p>
 							</div>
@@ -536,7 +536,7 @@ function AdminDiscountsPage() {
 								<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
 									Kedaluwarsa
 								</p>
-								<p className="mt-1 font-bold text-2xl text-red-600">
+								<p className="mt-1 font-bold text-xl text-red-600">
 									{stats.expired}
 								</p>
 							</div>
@@ -726,7 +726,7 @@ function AdminDiscountsPage() {
 									{/* Status Badge */}
 									<div className="mb-4 flex flex-wrap gap-2">
 										<span
-											className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold text-xs ${status.class}`}
+											className={`inline-flex max-w-[48%] items-center gap-1 overflow-hidden rounded-full px-2 py-0.5 font-semibold text-[10px] whitespace-nowrap ${status.class}`}
 										>
 											<StatusIcon className="h-3 w-3" />
 											{status.label}
@@ -748,7 +748,7 @@ function AdminDiscountsPage() {
 									{/* Discount Value */}
 									<div className="mb-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 p-4">
 										<div className="flex items-baseline gap-2">
-											<span className="font-bold text-3xl text-primary">
+											<span className="font-bold text-xl text-primary">
 												{(() => {
 													if (d.type === "PERCENTAGE") {
 														return `${d.value}%`;
@@ -897,16 +897,16 @@ function AdminDiscountsPage() {
 					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1, y: 0 }}
-							className="relative my-auto flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+							className="relative my-auto flex w-full max-w-3xl flex-col overflow-hidden rounded-xl border bg-card shadow-2xl"
 							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95, y: 20 }}
 							initial={{ opacity: 0, scale: 0.95, y: 20 }}
 						>
 							{/* Modal Header */}
-							<div className="border-b bg-gradient-to-r from-primary/5 to-primary/10 p-6">
+							<div className="border-b bg-gradient-to-r from-primary/5 to-primary/10 p-4">
 								<div className="flex items-center justify-between">
 									<div>
-										<h3 className="font-bold text-2xl">
+										<h3 className="font-bold text-xl">
 											{formData.id ? "Edit Diskon" : "Buat Diskon Baru"}
 										</h3>
 										<p className="mt-1 text-muted-foreground text-sm">
@@ -925,7 +925,7 @@ function AdminDiscountsPage() {
 
 							{/* Modal Body */}
 							<form
-								className="scrollbar-thin max-h-[70vh] space-y-6 overflow-y-auto p-6"
+								className="scrollbar-thin max-h-[70vh] space-y-6 overflow-y-auto p-4"
 								onSubmit={handleSubmit}
 							>
 								{/* Basic Information */}
@@ -1528,7 +1528,7 @@ function AdminDiscountsPage() {
 							</form>
 
 							{/* Modal Footer */}
-							<div className="flex gap-3 border-t bg-muted/30 p-6">
+							<div className="flex gap-3 border-t bg-muted/30 p-4">
 								<button
 									className="flex-1 rounded-lg border bg-background px-6 py-3 font-semibold text-sm transition-all hover:bg-muted"
 									onClick={() => setIsModalOpen(false)}

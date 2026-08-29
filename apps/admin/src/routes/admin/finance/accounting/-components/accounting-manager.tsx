@@ -389,17 +389,19 @@ export function AccountingManager() {
 													</div>
 													<div className="flex shrink-0 gap-0.5">
 														<button
-															className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+															className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 															onClick={() => openEdit(acct)}
-															title="Edit"
+															aria-label="Edit akun"
+								title="Edit"
 															type="button"
 														>
 															<Pencil className="h-3.5 w-3.5" />
 														</button>
 														<button
-															className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+															className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
 															onClick={() => setConfirmDelete(acct.id)}
-															title="Hapus"
+															aria-label="Hapus akun"
+								title="Hapus"
 															type="button"
 														>
 															<Trash2 className="h-3.5 w-3.5" />
@@ -431,7 +433,7 @@ export function AccountingManager() {
 									Kode
 								</label>
 								<Input
-									className="h-8 font-mono text-xs"
+									className="h-9 font-mono text-xs"
 									onChange={(e) =>
 										setFormData({ ...formData, code: e.target.value })
 									}
@@ -447,7 +449,7 @@ export function AccountingManager() {
 									onValueChange={(v) => setFormData({ ...formData, type: v ?? "" })}
 									value={formData.type}
 								>
-									<SelectTrigger className="h-8 text-xs">
+									<SelectTrigger className="h-9 text-xs">
 										<SelectValue placeholder="Pilih tipe" />
 									</SelectTrigger>
 									<SelectContent>
@@ -465,7 +467,7 @@ export function AccountingManager() {
 								Nama Akun
 							</label>
 							<Input
-								className="h-8 text-xs"
+								className="h-9 text-xs"
 								onChange={(e) =>
 									setFormData({ ...formData, name: e.target.value })
 								}
@@ -478,7 +480,7 @@ export function AccountingManager() {
 								Deskripsi (opsional)
 							</label>
 							<Input
-								className="h-8 text-xs"
+								className="h-9 text-xs"
 								onChange={(e) =>
 									setFormData({ ...formData, description: e.target.value })
 								}
@@ -507,7 +509,7 @@ export function AccountingManager() {
 						)}
 						<div className="flex justify-end gap-2 pt-2">
 							<Button
-								className="h-8 text-xs"
+								className="h-9 text-xs"
 								onClick={() => setShowDialog(false)}
 								size="sm"
 								variant="outline"
@@ -515,7 +517,7 @@ export function AccountingManager() {
 								Batal
 							</Button>
 							<Button
-								className="h-8 text-xs"
+								className="h-9 text-xs"
 								disabled={
 									saving || !formData.code.trim() || !formData.name.trim()
 								}
@@ -548,7 +550,7 @@ export function AccountingManager() {
 					</p>
 					<div className="flex justify-end gap-2 pt-2">
 						<Button
-							className="h-8 text-xs"
+							className="h-9 text-xs"
 							onClick={() => setConfirmDelete(null)}
 							size="sm"
 							variant="outline"
@@ -556,7 +558,7 @@ export function AccountingManager() {
 							Batal
 						</Button>
 						<Button
-							className="h-8 text-xs"
+							className="h-9 text-xs"
 							onClick={() => confirmDelete && handleDelete(confirmDelete)}
 							size="sm"
 							variant="destructive"

@@ -1536,12 +1536,12 @@ export function SettingsPage({
 				] as const);
 	const pageContainerClass =
 		mode === "operational-team"
-			? "mx-auto w-full max-w-7xl space-y-4 md:space-y-8"
-			: "mx-auto max-w-5xl space-y-4 md:space-y-8";
+			? "mx-auto w-full max-w-7xl space-y-4 md:space-y-6"
+			: "mx-auto max-w-5xl space-y-4 md:space-y-6";
 	const teamUsersGridClass =
 		mode === "operational-team"
-			? "grid grid-cols-1 gap-4 md:gap-8 xl:grid-cols-2"
-			: "grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2";
+			? "grid grid-cols-1 gap-3 md:gap-6 xl:grid-cols-2"
+			: "grid grid-cols-1 gap-3 md:gap-6 lg:grid-cols-2";
 	const teamShiftsGridClass =
 		mode === "operational-team"
 			? "grid grid-cols-1 gap-3 xl:grid-cols-2"
@@ -1552,7 +1552,7 @@ export function SettingsPage({
 			{/* Header */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h2 className="font-bold text-foreground text-xl tracking-tight md:text-3xl">
+					<h2 className="font-bold text-foreground text-xl tracking-tight md:text-xl">
 						{mode === "operational-team" ? "Tim Operasional" : "Pengaturan Sistem"}
 					</h2>
 					<p className="mt-0.5 text-muted-foreground text-xs md:mt-1 md:text-sm">
@@ -1573,7 +1573,7 @@ export function SettingsPage({
 
 			{/* Tab Switcher - horizontal scroll on mobile */}
 			{mode !== "operational-team" && (
-				<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-3xl bg-muted p-1 md:p-1.5">
+				<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted p-1 md:p-1.5">
 					<Tabs
 						className="w-full"
 						onValueChange={(value) =>
@@ -1597,9 +1597,9 @@ export function SettingsPage({
 			<div className="space-y-6">
 				{activeTab === "landing" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+						<section className="space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 							<div className="flex items-center gap-4">
-								<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<Layout className="h-5 w-5" />
 								</div>
 								<div>
@@ -1621,7 +1621,7 @@ export function SettingsPage({
 										Judul Utama
 									</label>
 									<input
-										className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
+										className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
 										id="landing-title"
 										onChange={(e) =>
 											setLandingSettings({
@@ -1641,7 +1641,7 @@ export function SettingsPage({
 										Teks Tombol
 									</label>
 									<input
-										className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
+										className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
 										id="landing-btn-text"
 										onChange={(e) =>
 											setLandingSettings({
@@ -1661,7 +1661,7 @@ export function SettingsPage({
 										Deskripsi Singkat
 									</label>
 									<textarea
-										className="min-h-[120px] w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
+										className="min-h-[120px] w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
 										id="landing-desc"
 										onChange={(e) =>
 											setLandingSettings({
@@ -1680,7 +1680,7 @@ export function SettingsPage({
 										Icon (Lucide Name)
 									</label>
 									<select
-										className="w-full appearance-none rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										className="w-full appearance-none rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 										id="landing-icon"
 										onChange={(e) =>
 											setLandingSettings({
@@ -1706,7 +1706,7 @@ export function SettingsPage({
 										URL Gambar Logo (Opsional)
 									</label>
 									<input
-										className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
+										className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:ring-2 focus:ring-primary/20"
 										id="landing-logo"
 										onChange={(e) =>
 											setLandingSettings({
@@ -1726,10 +1726,10 @@ export function SettingsPage({
 
 				{activeTab === "attendance-report" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-6 rounded-3xl border border-border bg-card p-4 md:p-6">
+						<section className="space-y-6 rounded-xl border border-border bg-card p-4 md:p-5">
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<FileBarChart className="h-5 w-5" />
 									</div>
 									<div>
@@ -1779,9 +1779,9 @@ export function SettingsPage({
 								</div>
 							</div>
 
-							<div id="payroll-report-table" className="overflow-hidden rounded-3xl border border-border bg-background shadow-sm">
+							<div id="payroll-report-table" className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
 								<div className="overflow-x-auto">
-									<table className="w-full text-left text-sm">
+									<table className="min-w-[720px] w-full text-left text-sm">
 										<thead className="bg-muted/50 font-bold text-muted-foreground text-xs uppercase tracking-widest">
 											<tr className="border-b border-border/50">
 												<th className="px-3 py-2.5 text-[11px]">Staff</th>
@@ -1824,7 +1824,7 @@ export function SettingsPage({
 														<td className="px-3 py-2.5 text-xs">
 															<div className="flex items-center gap-1.5">
 																<span className="font-bold text-foreground">{staff.name}</span>
-																{!staff.isActive && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Tidak Aktif</span>}
+																{!staff.isActive && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Tidak Aktif</span>}
 															</div>
 														</td>
 														<td className="px-3 py-2.5 text-[10px] font-medium text-muted-foreground">{staff.roleName}</td>
@@ -1860,7 +1860,7 @@ export function SettingsPage({
 								</div>
 							</div>
 
-							<div className="flex items-center gap-2 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-[10px] text-amber-800 leading-relaxed dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-300">
+							<div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-[10px] text-amber-800 leading-relaxed dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-300">
 								<AlertCircle className="h-4 w-4 shrink-0" />
 								<p>
 									Laporan ini dihitung secara real-time berdasarkan log check-in/out staff dan aturan yang berlaku saat ini.
@@ -1894,7 +1894,7 @@ export function SettingsPage({
 									</div>
 
 									{/* Attendance summary */}
-									<div className="rounded-3xl border bg-muted/20 p-3 space-y-1 text-xs">
+									<div className="rounded-xl border bg-muted/20 p-3 space-y-1 text-xs">
 										<div className="flex justify-between"><span className="text-muted-foreground">Hari Kerja</span><span className="font-semibold">{staff.daysWorked || 0} hari</span></div>
 										<div className="flex justify-between"><span className="text-muted-foreground">Jumlah Shift</span><span className="font-semibold">{staff.sessionCount || 0} shift</span></div>
 										<div className="flex justify-between"><span className="text-muted-foreground">Total Jam</span><span className="font-semibold">{((staff.totalHours || 0)).toFixed(1)} jam</span></div>
@@ -1908,7 +1908,7 @@ export function SettingsPage({
 									{/* Earnings */}
 									<div className="space-y-1">
 										<p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Komponen Gaji</p>
-										<div className="rounded-3xl border bg-card divide-y text-xs">
+										<div className="rounded-xl border bg-card divide-y text-xs">
 											{(staff.monthlyFixedSalary || 0) > 0 && (
 												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Gaji Tetap</span><span className="font-semibold">{formatCurrency(staff.monthlyFixedSalary)}</span></div>
 											)}
@@ -1933,7 +1933,7 @@ export function SettingsPage({
 											<p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
 												Bonus Target ({staff.bonusTargetBasis === "shift" ? "Per Shift" : staff.bonusTargetBasis === "daily" ? "Per Hari" : "Per Bulan"})
 											</p>
-											<div className="rounded-3xl border border-emerald-200/60 bg-emerald-50/60 dark:bg-emerald-500/10 dark:border-emerald-400/20 p-3 space-y-2">
+											<div className="rounded-xl border border-emerald-200/60 bg-emerald-50/60 dark:bg-emerald-500/10 dark:border-emerald-400/20 p-3 space-y-2">
 												{/* Show per-session bonus if shift basis */}
 												{staff.bonusTargetBasis === "shift" && Array.isArray(staff.sessions) && staff.sessions.length > 0 && (
 													<div className="space-y-1.5">
@@ -1968,7 +1968,7 @@ export function SettingsPage({
 									)}
 
 									{/* Total */}
-									<div className="rounded-3xl border-2 border-primary/30 bg-primary/5 px-4 py-3 flex justify-between items-center">
+									<div className="rounded-xl border-2 border-primary/30 bg-primary/5 px-4 py-3 flex justify-between items-center">
 										<span className="text-sm font-black text-foreground uppercase tracking-wide">Total Gaji Bersih</span>
 										<span className="text-lg font-black text-primary">{formatCurrency(staff.netSalary || 0)}</span>
 									</div>
@@ -1980,10 +1980,10 @@ export function SettingsPage({
 
 				{activeTab === "attendance-logs" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-6 rounded-3xl border border-border bg-card p-4 md:p-6">
+						<section className="space-y-6 rounded-xl border border-border bg-card p-4 md:p-5">
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<ClipboardList className="h-5 w-5" />
 									</div>
 									<div>
@@ -2010,7 +2010,7 @@ export function SettingsPage({
 
 							{/* Create Form */}
 							{showCreateLog && (
-								<div className="space-y-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
+								<div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
 									<p className="font-bold text-sm text-foreground">Tambah Log Manual</p>
 									<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
 										<select className="rounded-lg border border-border bg-background p-2 text-xs" value={newLog.userId} onChange={(e) => setNewLog({ ...newLog, userId: e.target.value })}>
@@ -2035,7 +2035,7 @@ export function SettingsPage({
 
 							{/* Edit Form */}
 							{editingLog && (
-								<div className="space-y-3 rounded-3xl border border-amber-300/30 bg-amber-50 p-4 dark:bg-amber-900/10">
+								<div className="space-y-3 rounded-xl border border-amber-300/30 bg-amber-50 p-4 dark:bg-amber-900/10">
 									<p className="font-bold text-sm text-foreground">Edit Log — {editingLog.userName}</p>
 									<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 										<select className="rounded-lg border border-border bg-background p-2 text-xs" value={editingLog.type} onChange={(e) => setEditingLog({ ...editingLog, type: e.target.value })}>
@@ -2053,9 +2053,9 @@ export function SettingsPage({
 								</div>
 							)}
 
-							<div className="overflow-hidden rounded-3xl border border-border bg-background shadow-sm">
+							<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
 								<div className="overflow-x-auto">
-									<table className="w-full text-left text-sm">
+									<table className="min-w-[720px] w-full text-left text-sm">
 										<thead className="bg-muted/50 font-bold text-muted-foreground text-xs uppercase tracking-widest">
 											<tr className="border-b border-border/50">
 												<th className="px-2 py-2.5 w-8">
@@ -2141,9 +2141,9 @@ export function SettingsPage({
 
 				{activeTab === "payroll" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-6 rounded-3xl border border-border bg-card p-4 md:p-6">
+						<section className="space-y-6 rounded-xl border border-border bg-card p-4 md:p-5">
 							<div className="flex items-center gap-4">
-								<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<Wallet className="h-5 w-5" />
 								</div>
 								<div>
@@ -2178,9 +2178,9 @@ export function SettingsPage({
 									</Button>
 								</div>
 
-								<div className="overflow-hidden rounded-3xl border border-border bg-background shadow-sm">
+								<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
 									<div className="overflow-x-auto">
-										<table className="w-full text-left text-sm">
+										<table className="min-w-[720px] w-full text-left text-sm">
 											<thead className="bg-muted/50 font-bold text-muted-foreground text-[10px] uppercase tracking-widest border-b border-border">
 												<tr>
 													<th className="px-4 py-3">Nama Role</th>
@@ -2918,7 +2918,7 @@ export function SettingsPage({
 											<Input className="h-11 w-full bg-muted/50 font-medium" type="email" placeholder="reports@domain.com" onChange={(e) => setSettings({ ...settings, resendFromEmail: normalizeEmail(e.target.value) })} value={settings.resendFromEmail} />
 										</div>
 
-										<div className="md:col-span-2 rounded-3xl bg-blue-50/50 p-4 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+										<div className="md:col-span-2 rounded-xl bg-blue-50/50 p-4 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
 											<label className="flex cursor-pointer items-start gap-3">
 												<input
 													type="checkbox"
@@ -2940,7 +2940,7 @@ export function SettingsPage({
 									</div>
 								</div>
 
-							<div className="rounded-3xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700 leading-relaxed dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
+							<div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700 leading-relaxed dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
 								<p className="font-bold">Tips Penggajian:</p>
 								<ul className="mt-2 list-inside list-disc space-y-1">
 									<li>Gaji tetap bulanan diberikan sebagai kompensasi dasar staff per bulan.</li>
@@ -2959,7 +2959,7 @@ export function SettingsPage({
 						{/* ── Header ── */}
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-3xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></div>
+								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></div>
 								<div>
 									<h3 className="font-bold text-base text-foreground tracking-tight">Pendaftaran Karyawan</h3>
 									<p className="text-muted-foreground text-xs">Konfigurasi halaman pendaftaran publik /register</p>
@@ -2972,7 +2972,7 @@ export function SettingsPage({
 						</div>
 
 						{/* ── Register Command Center ── */}
-						<div className="overflow-hidden rounded-3xl border border-sky-200/70 bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-4 shadow-sm dark:border-sky-900/40 dark:from-sky-950/30 dark:via-card dark:to-emerald-950/20 md:p-5">
+						<div className="overflow-hidden rounded-xl border border-sky-200/70 bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-4 shadow-sm dark:border-sky-900/40 dark:from-sky-950/30 dark:via-card dark:to-emerald-950/20 md:p-5">
 							<div className="grid gap-4 lg:grid-cols-[1.4fr_1fr] lg:items-center">
 								<div className="space-y-3">
 									<div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-sky-700 shadow-sm dark:bg-background/60 dark:text-sky-300">
@@ -2980,7 +2980,7 @@ export function SettingsPage({
 										{employeeOnboardingSettings.registrationEnabled ? "Pendaftaran Aktif" : "Pendaftaran Ditutup"}
 									</div>
 									<div>
-										<h4 className="text-lg font-black tracking-tight text-foreground md:text-2xl">Register Center</h4>
+										<h4 className="text-lg font-black tracking-tight text-foreground md:text-xl">Register Center</h4>
 										<p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground md:text-sm">Satu tempat untuk mengatur form kandidat, kontrak kerja, tanda tangan, dan review onboarding. Urutan aman: aktifkan form, cek kontrak, preview, lalu review pendaftar.</p>
 									</div>
 									<div className="flex flex-wrap gap-2">
@@ -2992,15 +2992,15 @@ export function SettingsPage({
 									</div>
 								</div>
 								<div className="grid grid-cols-3 gap-2 text-center">
-									<div className="rounded-3xl border bg-background p-3"><p className="text-lg font-black">{Object.keys(employeeOnboardingSettings.contractTemplatesByRoleId || {}).length}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Template</p></div>
-									<div className="rounded-3xl border bg-background p-3"><p className="text-lg font-black">{Object.values(employeeOnboardingSettings.fields || {}).filter((field: any) => field?.required).length}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Wajib</p></div>
-									<div className="rounded-3xl border bg-background p-3"><p className="text-lg font-black">{employeeOnboardingSettings.documentChecklist?.filter((item: any) => item?.required).length || 0}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dokumen</p></div>
+									<div className="rounded-xl border bg-background p-3"><p className="text-lg font-black">{Object.keys(employeeOnboardingSettings.contractTemplatesByRoleId || {}).length}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Template</p></div>
+									<div className="rounded-xl border bg-background p-3"><p className="text-lg font-black">{Object.values(employeeOnboardingSettings.fields || {}).filter((field: any) => field?.required).length}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Wajib</p></div>
+									<div className="rounded-xl border bg-background p-3"><p className="text-lg font-black">{employeeOnboardingSettings.documentChecklist?.filter((item: any) => item?.required).length || 0}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dokumen</p></div>
 								</div>
 							</div>
 						</div>
 
 						{/* ── Kontrak Card ── */}
-						<div className="rounded-3xl border border-border bg-card p-4 md:p-5">
+						<div className="rounded-xl border border-border bg-card p-4 md:p-5">
 							<div className="flex items-center justify-between gap-3">
 								<div className="flex items-center gap-3">
 									<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><FileSignature className="h-4 w-4" /></div>
@@ -3014,8 +3014,8 @@ export function SettingsPage({
 						</div>
 
 						{/* ── Status Pendaftaran ── */}
-						<section className="space-y-4 rounded-3xl border border-border bg-card p-4 shadow-sm md:p-6">
-							<div className="rounded-3xl border bg-background/50 p-4">
+						<section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm md:p-5">
+							<div className="rounded-xl border bg-background/50 p-4">
 								<div className="flex items-center justify-between mb-3">
 									<div>
 										<p className="font-semibold text-sm">Status Pendaftaran</p>
@@ -3087,7 +3087,7 @@ export function SettingsPage({
 							</div>
 
 							{/* ── Default Akun Baru ── */}
-							<div className="rounded-3xl border bg-background/50 p-4">
+							<div className="rounded-xl border bg-background/50 p-4">
 								<p className="font-semibold text-sm mb-3">Default Akun Baru</p>
 								<div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
 									<div>
@@ -3114,7 +3114,7 @@ export function SettingsPage({
 							</div>
 
 							{/* ── Pengaturan Lanjutan (collapsible) ── */}
-							<details className="group rounded-3xl border bg-background/50">
+							<details className="group rounded-xl border bg-background/50">
 								<summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-sm select-none">
 									Pengaturan Lanjutan
 									<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
@@ -3178,9 +3178,9 @@ export function SettingsPage({
 
 				{activeTab === "pos" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+						<section className="space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 							<div className="flex items-center gap-4">
-								<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<CreditCard className="h-5 w-5" />
 								</div>
 								<div>
@@ -3194,7 +3194,7 @@ export function SettingsPage({
 							</div>
 
 							<div className="space-y-6">
-								<div className="space-y-4 rounded-3xl border border-border bg-card p-5">
+								<div className="space-y-4 rounded-xl border border-border bg-card p-5">
 									<p className="font-bold text-foreground text-sm">
 										Metode Pembayaran Kasir (Manual)
 									</p>
@@ -3279,7 +3279,7 @@ export function SettingsPage({
 										</label>
 										<div className="relative">
 											<input
-												className="w-full rounded-[14px] bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												className="w-full rounded-lg bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												id="tax-rate"
 												onChange={(e) =>
 													setSettings({
@@ -3306,7 +3306,7 @@ export function SettingsPage({
 										</label>
 										<div className="relative">
 											<input
-												className="w-full rounded-[14px] bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												className="w-full rounded-lg bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												id="service-charge"
 												onChange={(e) =>
 													setSettings({
@@ -3544,7 +3544,7 @@ export function SettingsPage({
 									</div>
 									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 										{ (localPreviews.qrisImage || landingSettings.qrisImage) && (
-											<div className="relative h-48 w-48 overflow-hidden rounded-3xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
+											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
 												<img
 													alt="QRIS Preview"
 													className="max-h-full max-w-full object-contain"
@@ -3555,7 +3555,7 @@ export function SettingsPage({
 										<div className="flex flex-1 flex-col gap-3">
 											<input
 												accept="image/*"
-												className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-[14px] file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
+												className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
 												id="qris-image"
 												onChange={async (e) => {
 													const file = e.target.files?.[0];
@@ -3616,7 +3616,7 @@ export function SettingsPage({
 									</div>
 									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 										{ (localPreviews.paymentPopupImage || landingSettings.paymentPopupImage) && (
-											<div className="relative h-48 w-48 overflow-hidden rounded-3xl border-4 border-muted bg-muted shadow-inner">
+											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-muted shadow-inner">
 												<img
 													alt="Popup Preview"
 													className="h-full w-full object-cover"
@@ -3629,7 +3629,7 @@ export function SettingsPage({
 										<div className="flex flex-1 flex-col gap-3">
 											<input
 												accept="image/*"
-												className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-[14px] file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
+												className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
 												id="payment-popup-image"
 												onChange={async (e) => {
 													const file = e.target.files?.[0];
@@ -3678,7 +3678,7 @@ export function SettingsPage({
 								</div>
 
 								{/* Pembayaran QRIS Section */}
-								<div className="space-y-4 rounded-3xl border border-border/50 bg-muted/30 p-4 md:p-6">
+								<div className="space-y-4 rounded-xl border border-border/50 bg-muted/30 p-4 md:p-5">
 									<div className="flex items-center gap-3 border-border/50 border-b pb-4">
 										<Wallet className="h-5 w-5 text-primary" />
 										<div>
@@ -3692,7 +3692,7 @@ export function SettingsPage({
 									</div>
 
 									{!mayarApiConfigured && (
-										<div className="flex items-center gap-3 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4">
+										<div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
 											<ShieldCheck className="h-5 w-5 text-amber-600" />
 											<p className="text-amber-700 text-xs">
 												Konfigurasi pembayaran QRIS belum tersedia. Hubungi administrator untuk mengaktifkan fitur ini.
@@ -3702,7 +3702,7 @@ export function SettingsPage({
 
 									{mayarApiConfigured && (
 										<>
-											<div className="flex items-center justify-between rounded-3xl border border-border bg-card p-4">
+											<div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
 												<div>
 													<span className="block font-bold text-foreground text-sm tracking-tight">
 														Aktifkan Pembayaran QRIS
@@ -3728,7 +3728,7 @@ export function SettingsPage({
 											</div>
 
 											{paymentSettings.mayarEnabled && (
-												<div className="flex items-center justify-between rounded-3xl border border-border bg-card p-4">
+												<div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
 													<div>
 														<span className="block font-bold text-foreground text-sm tracking-tight">
 															Mode Testing (Sandbox)
@@ -3755,7 +3755,7 @@ export function SettingsPage({
 											)}
 
 											{paymentSettings.mayarEnabled && paymentSettings.mayarTestMode && (
-												<div className="rounded-3xl border border-amber-500/20 bg-amber-500/5 p-4">
+												<div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
 													<p className="text-amber-700 text-xs">
 														<strong>Mode Sandbox Aktif:</strong> Transaksi tidak akan diproses secara nyata. Pastikan untuk menonaktifkan mode ini saat production.
 													</p>
@@ -3763,7 +3763,7 @@ export function SettingsPage({
 											)}
 
 											{paymentSettings.mayarEnabled && !paymentSettings.mayarTestMode && (
-												<div className="rounded-3xl border border-green-500/20 bg-green-500/5 p-4">
+												<div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
 													<p className="text-green-700 text-xs">
 														<strong>Mode Production Aktif:</strong> Semua transaksi akan diproses secara nyata melalui pembayaran QRIS
 													</p>
@@ -3773,7 +3773,7 @@ export function SettingsPage({
 									)}
 								</div>
 
-								<div className="space-y-5 rounded-3xl border border-border bg-card p-4 md:p-6">
+								<div className="space-y-5 rounded-xl border border-border bg-card p-4 md:p-5">
 									<div className="flex items-center gap-3 border-b border-border/50 pb-4">
 										<Users className="h-5 w-5 text-primary" />
 										<div>
@@ -3835,7 +3835,7 @@ export function SettingsPage({
 											},
 										] as const).map((item) => (
 											<div
-												className="flex items-center justify-between rounded-3xl border border-border bg-card p-4"
+												className="flex items-center justify-between rounded-xl border border-border bg-card p-4"
 												key={item.key}
 											>
 												<div className="pr-4">
@@ -3879,7 +3879,7 @@ export function SettingsPage({
 											</label>
 											<input
 												id="customer-ordering-welcome-title"
-												className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												onChange={(e) =>
 													setCustomerOrderingSettings((prev) => ({
 														...prev,
@@ -3896,7 +3896,7 @@ export function SettingsPage({
 											</label>
 											<textarea
 												id="customer-ordering-welcome-subtitle"
-												className="min-h-[90px] w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												className="min-h-[90px] w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												onChange={(e) =>
 													setCustomerOrderingSettings((prev) => ({
 														...prev,
@@ -3912,7 +3912,7 @@ export function SettingsPage({
 											</label>
 											<input
 												id="customer-ordering-welcome-button"
-												className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												onChange={(e) =>
 													setCustomerOrderingSettings((prev) => ({
 														...prev,
@@ -3929,7 +3929,7 @@ export function SettingsPage({
 											</label>
 											<input
 												id="customer-ordering-cash-label"
-												className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												onChange={(e) =>
 													setCustomerOrderingSettings((prev) => ({
 														...prev,
@@ -3946,7 +3946,7 @@ export function SettingsPage({
 											</label>
 											<input
 												id="customer-ordering-mayar-label"
-												className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												onChange={(e) =>
 													setCustomerOrderingSettings((prev) => ({
 														...prev,
@@ -3966,9 +3966,9 @@ export function SettingsPage({
 
 				{activeTab === "store" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+						<section className="space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 							<div className="flex items-center gap-4">
-								<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<MapPin className="h-5 w-5" />
 								</div>
 								<div>
@@ -3990,7 +3990,7 @@ export function SettingsPage({
 										Nama Toko
 									</label>
 									<input
-										className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 										id="store-name"
 										onChange={(e) =>
 											setSettings({ ...settings, storeName: e.target.value })
@@ -4008,7 +4008,7 @@ export function SettingsPage({
 										Alamat Toko
 									</label>
 									<input
-										className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 										id="store-address"
 										onChange={(e) =>
 											setSettings({ ...settings, storeAddress: e.target.value })
@@ -4027,7 +4027,7 @@ export function SettingsPage({
 										Nomor Telepon
 									</label>
 									<input
-										className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 										id="store-phone"
 										onChange={(e) =>
 											setSettings({ ...settings, storePhone: e.target.value })
@@ -4045,9 +4045,9 @@ export function SettingsPage({
 				{activeTab === "branding" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<div className="space-y-6">
-							<section className="space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+							<section className="space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Globe className="h-5 w-5" />
 									</div>
 									<div>
@@ -4066,7 +4066,7 @@ export function SettingsPage({
 											Nama Aplikasi
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="appName"
 											onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
 											type="text"
@@ -4079,7 +4079,7 @@ export function SettingsPage({
 											Versi Aplikasi
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="appVersion"
 											onChange={(e) => setSettings({ ...settings, appVersion: e.target.value })}
 											type="text"
@@ -4092,7 +4092,7 @@ export function SettingsPage({
 											Nama Developer
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="developerName"
 											onChange={(e) => setSettings({ ...settings, developerName: e.target.value })}
 											type="text"
@@ -4113,7 +4113,7 @@ export function SettingsPage({
 									</div>
 									<div className="flex flex-col gap-4 md:flex-row md:items-center">
 										{(localPreviews.headerLogoUrl || settings.headerLogoUrl) && (
-											<div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl border bg-background p-2">
+											<div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background p-2">
 												<img
 													alt="Preview logo global"
 													className="max-h-full max-w-full object-contain"
@@ -4123,7 +4123,7 @@ export function SettingsPage({
 										)}
 										<input
 											accept="image/*"
-											className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-[14px] file:border-0 file:bg-green-600 file:px-6 file:py-2.5 file:font-bold file:text-white file:text-xs file:transition-all hover:file:opacity-90 disabled:opacity-50"
+											className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-green-600 file:px-6 file:py-2.5 file:font-bold file:text-white file:text-xs file:transition-all hover:file:opacity-90 disabled:opacity-50"
 											disabled={globalLogoUploading}
 											onChange={async (e) => {
 												const file = e.target.files?.[0];
@@ -4147,9 +4147,9 @@ export function SettingsPage({
 
 							</section>
 
-							<section className="space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+							<section className="space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Globe className="h-5 w-5" />
 									</div>
 									<div>
@@ -4168,7 +4168,7 @@ export function SettingsPage({
 											SEO Meta Title
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="seoMetaTitle"
 											onChange={(e) => setSettings({ ...settings, seoMetaTitle: e.target.value })}
 											placeholder="Judul halaman untuk Google"
@@ -4182,7 +4182,7 @@ export function SettingsPage({
 											SEO Meta Description
 										</label>
 										<textarea
-											className="min-h-[100px] w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="min-h-[100px] w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="seoMetaDescription"
 											onChange={(e) => setSettings({ ...settings, seoMetaDescription: e.target.value })}
 											placeholder="Deskripsi singkat untuk mesin pencari"
@@ -4195,7 +4195,7 @@ export function SettingsPage({
 											SEO Keywords
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="seoMetaKeywords"
 											onChange={(e) => setSettings({ ...settings, seoMetaKeywords: e.target.value })}
 											placeholder="pos, kasir, coffee shop, restoran"
@@ -4209,7 +4209,7 @@ export function SettingsPage({
 											Canonical URL
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="seoCanonicalUrl"
 											onChange={(e) => setSettings({ ...settings, seoCanonicalUrl: e.target.value })}
 											placeholder="https://domainbisnis.com/"
@@ -4223,7 +4223,7 @@ export function SettingsPage({
 											Share Title (OG/Twitter)
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="seoShareTitle"
 											onChange={(e) => setSettings({ ...settings, seoShareTitle: e.target.value })}
 											placeholder="Judul saat link dibagikan"
@@ -4237,7 +4237,7 @@ export function SettingsPage({
 											Share Image (OG/Twitter)
 										</label>
 										<input
-											className="w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="seoShareImageUrl"
 											onChange={(e) => setSettings({ ...settings, seoShareImageUrl: e.target.value })}
 											placeholder="https://domain.com/share-image.png"
@@ -4269,7 +4269,7 @@ export function SettingsPage({
 											Share Description (OG/Twitter)
 										</label>
 										<textarea
-											className="min-h-[100px] w-full rounded-[14px] bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											className="min-h-[100px] w-full rounded-lg bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
 											id="seoShareDescription"
 											onChange={(e) => setSettings({ ...settings, seoShareDescription: e.target.value })}
 											placeholder="Deskripsi saat link dibagikan ke WhatsApp, Telegram, dll."
@@ -4284,9 +4284,9 @@ export function SettingsPage({
 
 				{activeTab === "yumiAI" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-6 rounded-3xl border border-border bg-card p-4 md:p-6">
+						<section className="space-y-6 rounded-xl border border-border bg-card p-4 md:p-5">
 							<div className="flex items-center gap-4">
-								<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<ShieldCheck className="h-5 w-5" />
 								</div>
 								<div>
@@ -4299,7 +4299,7 @@ export function SettingsPage({
 								</div>
 							</div>
 
-							<div className="rounded-3xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted-foreground leading-relaxed">
+							<div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted-foreground leading-relaxed">
 								Perubahan model akan tersimpan di settings dan langsung dipakai di Djiwa Tentram AI Chat admin, Djiwa Tentram AI Chat POS, OCR scan struk, serta fitur ringkasan/sintesis.
 							</div>
 
@@ -4425,10 +4425,10 @@ export function SettingsPage({
 
 			{activeTab === "users" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-6 rounded-3xl border border-border bg-card p-4 md:p-6">
+						<section className="space-y-6 rounded-xl border border-border bg-card p-4 md:p-5">
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Users className="h-5 w-5" />
 									</div>
 									<div>
@@ -4449,7 +4449,7 @@ export function SettingsPage({
 							<div className="space-y-6">
 								{/* Create/Edit Form (Moved to a conditional area or modal for cleaner look) */}
 								{(newUser.name || editingUser) && (
-									<div className="rounded-3xl border border-primary/20 bg-primary/5 p-4 md:p-6 space-y-4">
+									<div className="rounded-xl border border-primary/20 bg-primary/5 p-4 md:p-5 space-y-4">
 										<div className="flex items-center justify-between border-b border-primary/10 pb-3">
 											<h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
 												{editingUser ? "Edit Pengguna" : "Tambah User Baru"}
@@ -4510,14 +4510,14 @@ export function SettingsPage({
 								)}
 
 								{selectedUserIds.size > 0 && (
-									<div className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-3xl px-4 py-2.5">
+									<div className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-xl px-4 py-2.5">
 										<span className="text-xs font-medium text-muted-foreground">{selectedUserIds.size} pengguna dipilih</span>
 										<Button variant="destructive" size="sm" onClick={handleBulkDeleteUsers} className="text-xs h-8 ml-auto"><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Hapus {selectedUserIds.size}</Button>
 									</div>
 								)}
-								<div className="overflow-hidden rounded-3xl border border-border bg-background shadow-sm">
+								<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
 									<div className="overflow-x-auto">
-										<table className="w-full text-left text-sm">
+										<table className="min-w-[720px] w-full text-left text-sm">
 											<thead className="bg-muted/50 font-bold text-muted-foreground text-[10px] uppercase tracking-widest border-b border-border">
 												<tr>
 													<th className="px-4 py-3 w-10">
@@ -4589,11 +4589,11 @@ export function SettingsPage({
 
 				{activeTab === "system" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							{/* Branding Section (Hidden to prevent confusion with Store Name for general admin) */}
-							<section className="hidden space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+							<section className="hidden space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Settings2 className="h-5 w-5" />
 									</div>
 									<div>
@@ -4615,7 +4615,7 @@ export function SettingsPage({
 											Nama Aplikasi
 										</label>
 										<input
-											className="w-full rounded-[14px] border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
+											className="w-full rounded-lg border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
 											id="appName"
 											onChange={(e) =>
 												setSettings({ ...settings, appName: e.target.value })
@@ -4633,7 +4633,7 @@ export function SettingsPage({
 											Versi Aplikasi
 										</label>
 										<input
-											className="w-full rounded-[14px] border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
+											className="w-full rounded-lg border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
 											id="appVersion"
 											onChange={(e) =>
 												setSettings({ ...settings, appVersion: e.target.value })
@@ -4651,7 +4651,7 @@ export function SettingsPage({
 											Nama Developer
 										</label>
 										<input
-											className="w-full rounded-[14px] border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
+											className="w-full rounded-lg border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
 											id="developerName"
 											onChange={(e) =>
 												setSettings({
@@ -4666,9 +4666,9 @@ export function SettingsPage({
 								</div>
 							</section>
 
-							<section className="space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+							<section className="space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Printer className="h-5 w-5" />
 									</div>
 									<div>
@@ -4682,7 +4682,7 @@ export function SettingsPage({
 								</div>
 
 								<div className="space-y-6">
-									<div className="flex items-center justify-between rounded-3xl border border-border bg-card p-4">
+									<div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
 										<div>
 											<span className="block font-bold text-foreground text-sm tracking-tight">
 												Cetak Struk Lunas Otomatis
@@ -4707,7 +4707,7 @@ export function SettingsPage({
 										</button>
 									</div>
 
-									<div className="flex items-center justify-between rounded-3xl border border-border bg-card p-4">
+									<div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
 										<div>
 											<span className="block font-bold text-foreground text-sm tracking-tight">
 												Cetak Tiket Kitchen Otomatis
@@ -4732,7 +4732,7 @@ export function SettingsPage({
 										</button>
 									</div>
 
-									<div className="flex items-center justify-between rounded-3xl border border-border bg-card p-4">
+									<div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
 										<div>
 											<span className="block font-bold text-foreground text-sm tracking-tight">
 												Izinkan Print Open Bill
@@ -4789,9 +4789,9 @@ export function SettingsPage({
 							</section>
 
 							{/* Receipt Design Customization Section */}
-							<section className="space-y-5 rounded-3xl border border-border bg-card p-4 md:space-y-6 md:p-6">
+							<section className="space-y-5 rounded-xl border border-border bg-card p-4 md:space-y-6 md:p-5">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Layout className="h-5 w-5" />
 									</div>
 									<div>
@@ -4916,7 +4916,7 @@ export function SettingsPage({
 										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 											{/* Show Logo */}
 											<div 
-												className="flex items-center justify-between rounded-3xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
 												onClick={() => setSettings({ ...settings, receiptShowLogo: !settings.receiptShowLogo })}
 											>
 												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Logo Toko</span>
@@ -4930,7 +4930,7 @@ export function SettingsPage({
 
 											{/* Show Address */}
 											<div 
-												className="flex items-center justify-between rounded-3xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
 												onClick={() => setSettings({ ...settings, receiptShowAddress: !settings.receiptShowAddress })}
 											>
 												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Alamat Toko</span>
@@ -4944,7 +4944,7 @@ export function SettingsPage({
 
 											{/* Show Phone */}
 											<div 
-												className="flex items-center justify-between rounded-3xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
 												onClick={() => setSettings({ ...settings, receiptShowPhone: !settings.receiptShowPhone })}
 											>
 												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Nomor Telepon</span>
@@ -4958,7 +4958,7 @@ export function SettingsPage({
 
 											{/* Show Order Number */}
 											<div 
-												className="flex items-center justify-between rounded-3xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
 												onClick={() => setSettings({ ...settings, receiptShowOrderNumber: !settings.receiptShowOrderNumber })}
 											>
 												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Nomor Antrian</span>
@@ -4972,7 +4972,7 @@ export function SettingsPage({
 
 											{/* Show Customer Name */}
 											<div 
-												className="flex items-center justify-between rounded-3xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
 												onClick={() => setSettings({ ...settings, receiptShowCustomerName: !settings.receiptShowCustomerName })}
 											>
 												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Nama Pelanggan</span>
@@ -4986,7 +4986,7 @@ export function SettingsPage({
 
 											{/* Show Cashier & Shift Info */}
 											<div 
-												className="flex items-center justify-between rounded-3xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
 												onClick={() => setSettings({ ...settings, receiptShowCashierName: !settings.receiptShowCashierName })}
 											>
 												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Info Kasir & Shift</span>
@@ -5000,7 +5000,7 @@ export function SettingsPage({
 
 											{/* Show Notes */}
 											<div 
-												className="flex items-center justify-between rounded-3xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
 												onClick={() => setSettings({ ...settings, receiptShowNotes: !settings.receiptShowNotes })}
 											>
 												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Catatan Pesanan</span>
@@ -5026,7 +5026,7 @@ export function SettingsPage({
 										</div>
 										<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 											{ (localPreviews.receiptLogo || settings.receiptLogo) && (
-												<div className="relative h-32 w-32 overflow-hidden rounded-3xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
+												<div className="relative h-32 w-32 overflow-hidden rounded-xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
 													<img
 														alt="Receipt Logo Preview"
 														className="max-h-full max-w-full object-contain grayscale"
@@ -5037,7 +5037,7 @@ export function SettingsPage({
 											<div className="flex flex-1 flex-col gap-3">
 												<input
 													accept="image/*"
-													className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-[14px] file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
+													className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
 													onChange={async (e) => {
 														const file = e.target.files?.[0];
 														if (!file) return;
@@ -5075,9 +5075,9 @@ export function SettingsPage({
 								</div>
 							</section>
 
-							<section className="space-y-5 rounded-3xl border border-destructive/10 bg-destructive/5 p-4 shadow-sm md:space-y-8 md:p-8">
+							<section className="space-y-5 rounded-xl border border-destructive/10 bg-destructive/5 p-4 shadow-sm md:space-y-6 md:p-5">
 								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-destructive/10 text-destructive">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
 										<Bell className="h-5 w-5" />
 									</div>
 									<div>
@@ -5096,7 +5096,7 @@ export function SettingsPage({
 										Pastikan Anda telah melakukan backup sebelum melanjutkan.
 									</p>
 									<button
-										className="w-full rounded-[14px] bg-destructive py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-95"
+										className="w-full rounded-lg bg-destructive py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-95"
 										type="button"
 									>
 										RESET SEMUA DATA

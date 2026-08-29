@@ -10,6 +10,7 @@
     ".": "./src/index.ts",
     "./lib/*": "./src/lib/*.ts",
     "./booking/*": "./src/booking/*.ts",
+    "./booking/timeline": "./src/booking/timeline.tsx",
     "./hooks/useYumiAuth": "./src/hooks/useYumiAuth.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./types/*": "./src/types/*.ts",
@@ -17,6 +18,7 @@
     "./components/ui/*": "./src/components/ui/*.tsx",
     "./components/layout/*": "./src/components/layout/*.tsx",
     "./components/attendance/*": "./src/components/attendance/*.tsx",
+    "./components/admin/*": "./src/components/admin/*.tsx",
     "./components/home/*": "./src/components/home/*.tsx"
   },
   "dependencies": {

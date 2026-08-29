@@ -550,10 +550,10 @@ function CalendarHeader({
           {format(currentDate, "MMMM yyyy", { locale: id })}
         </h2>
         <div className="flex items-center rounded-md border bg-background">
-          <Button className="h-8 w-8" variant="ghost" size="icon" onClick={onPrev}>
+          <Button className="h-9 w-9 focus-visible:ring-2 focus-visible:ring-primary/40" variant="ghost" size="icon" onClick={onPrev} aria-label="Bulan sebelumnya">
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-          <Button className="h-8 w-8" variant="ghost" size="icon" onClick={onNext}>
+          <Button className="h-9 w-9 focus-visible:ring-2 focus-visible:ring-primary/40" variant="ghost" size="icon" onClick={onNext} aria-label="Bulan berikutnya">
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -725,19 +725,19 @@ function QuickAddPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative flex h-full w-full max-w-md flex-col bg-background shadow-xl animate-in slide-in-from-right">
+      <div className="relative flex h-full max-h-dvh w-full max-w-md flex-col overflow-hidden bg-background shadow-xl animate-in slide-in-from-right motion-reduce:animate-none">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h3 className="font-semibold">
             {mode === "edit" ? "Edit Jadwal" : "Tambah Jadwal"}
           </h3>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Tutup panel jadwal">
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto space-y-4 p-4">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
           {/* Date */}
           <div>
             <label className="mb-1 block text-sm font-medium">Tanggal</label>
@@ -882,7 +882,7 @@ function QuickAddPanel({
         </div>
 
         {/* Footer */}
-        <div className="border-t p-4">
+        <div className="border-t bg-background p-3 sm:p-4">
           <Button
             className="w-full"
             onClick={handleSubmit}
@@ -1217,7 +1217,7 @@ function AttendanceJadwalPage() {
       {/* Empty state */}
       {!isLoading &&
         Object.keys(schedulesByDate ?? {}).length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/70 px-4 py-8 text-center">
             <CalendarDays className="h-12 w-12 text-muted-foreground/40" />
             <p className="text-muted-foreground">
               Belum ada jadwal untuk bulan ini

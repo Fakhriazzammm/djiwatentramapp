@@ -38,7 +38,7 @@ export function AccountingEntriesView() {
 	}
 
 	return (
-		<div className="p-3 space-y-3">
+		<div className="space-y-3 p-3">
 			{/* Period filter */}
 			<div className="flex items-center gap-1 flex-wrap">
 				{PERIOD_BUTTONS.map((item) => (
@@ -59,7 +59,7 @@ export function AccountingEntriesView() {
 
 			{/* Summary cards */}
 			{!accData.loading && (
-				<div className="grid grid-cols-3 gap-3">
+				<div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
 					<div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3">
 						<div className="text-[10px] font-medium text-sky-700">Total Debit</div>
 						<div className="mt-1 font-bold text-sky-800 text-sm">
@@ -92,7 +92,7 @@ export function AccountingEntriesView() {
 
 			{/* Entries Table */}
 			<div className="overflow-x-auto rounded-xl border border-slate-200">
-				<table className="w-full">
+				<table className="w-full text-xs">
 					<colgroup>
 						<col style={{ width: "28px" }} />
 						<col style={{ width: "68px" }} />
@@ -124,7 +124,7 @@ export function AccountingEntriesView() {
 							))
 						) : accData.entries.length === 0 ? (
 							<tr>
-								<td colSpan={8} className="px-2 py-8 text-center text-[10px] text-slate-400">
+								<td colSpan={8} className="px-3 py-6 text-center text-[10px] text-slate-400">
 									Belum ada entry akuntansi untuk periode ini.
 								</td>
 							</tr>
@@ -138,7 +138,7 @@ export function AccountingEntriesView() {
 								return (
 									<Fragment key={rowId}>
 										<tr
-											className={`group transition-colors hover:bg-slate-50 ${
+											className={`group transition-colors hover:bg-slate-50 focus-within:bg-slate-50 ${
 												hasItems ? "cursor-pointer" : ""
 											}`}
 											onClick={() => hasItems && toggleExpand(rowId)}
@@ -213,7 +213,7 @@ export function AccountingEntriesView() {
 											<tr key={`${rowId}-detail`}>
 												<td colSpan={8} className="bg-slate-50/80 p-0">
 													<div className="border-t border-slate-200">
-														<table className="w-full">
+														<table className="w-full text-xs">
 							<thead>
 								<tr className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
 									<th className="w-8 px-3 py-1.5 text-center">No</th>

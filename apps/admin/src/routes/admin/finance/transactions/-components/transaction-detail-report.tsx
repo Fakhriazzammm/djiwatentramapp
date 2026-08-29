@@ -824,7 +824,7 @@ export function TransactionDetailReport({
 								type="date"
 								value={customStartInput}
 								onChange={(e) => setCustomStartInput(e.target.value)}
-								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
 							/>
 							<span className="text-[11px] text-slate-400">–</span>
 							<span className="text-[11px] font-medium text-slate-600">Sampai</span>
@@ -832,7 +832,7 @@ export function TransactionDetailReport({
 								type="date"
 								value={customEndInput}
 								onChange={(e) => setCustomEndInput(e.target.value)}
-								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
 							/>
 							<button type="button" onClick={applyCustomRange}
 								className="inline-flex h-5 items-center rounded bg-emerald-600 px-2 text-[11px] font-semibold text-white hover:bg-emerald-700">
@@ -870,13 +870,13 @@ export function TransactionDetailReport({
 							<Search className="absolute left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
 							<input type="text" placeholder="Cari..." value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-6 w-full rounded border border-slate-300 bg-slate-50 pl-6 pr-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400" />
+								className="h-6 w-full rounded border border-slate-300 bg-slate-50 pl-6 pr-1.5 text-[10px] placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400" />
 						</div>
 
 						{/* Shift filter */}
 						{availableShifts.length > 0 && (
 							<select value={filterShift} onChange={(e) => setFilterShift(e.target.value)}
-								className={`h-6 rounded border px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 ${filterShift ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 bg-slate-50"}`}>
+								className={`h-6 rounded border px-1.5 text-[11px] text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 ${filterShift ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 bg-slate-50"}`}>
 								<option value="">Semua Shift</option>
 								{availableShifts.map((s: string) => (
 									<option key={s} value={s}>{s}</option>
@@ -929,15 +929,15 @@ export function TransactionDetailReport({
 							<div className="flex items-center gap-1">
 								<span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Nominal:</span>
 								<input type="number" placeholder="Min" value={minAmount} onChange={(e) => setMinAmount(e.target.value)}
-									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
+									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300" />
 								<span className="text-slate-300">–</span>
 								<input type="number" placeholder="Max" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)}
-									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
+									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300" />
 							</div>
 							<div className="flex items-center gap-1">
 								<span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Kategori:</span>
 								<select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-									className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300">
+									className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[11px] text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
 									<option value="">Semua</option>
 									{EXPENSE_CATEGORIES.map((cat) => (
 										<option key={cat} value={cat}>{cat.replace(/_/g, " ")}</option>
@@ -1365,12 +1365,12 @@ export function TransactionDetailReport({
 								<div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
 									<button type="button" onClick={(e) => { e.stopPropagation(); handleEdit(t); }}
 										className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-										title="Edit">
+										aria-label="Edit transaksi" title="Edit">
 										<Pencil className="h-3 w-3" />
 									</button>
 									<button type="button" onClick={(e) => { e.stopPropagation(); void handleDelete(t); }}
 										className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-										title="Hapus">
+										aria-label="Hapus transaksi" title="Hapus">
 										<Trash2 className="h-3 w-3" />
 									</button>
 								</div>
@@ -1386,7 +1386,7 @@ export function TransactionDetailReport({
 													</div>
 													{hasScanItems && (
 														<div className="overflow-hidden rounded-md border border-slate-200">
-															<table className="w-full text-[10px]">
+															<table className="w-full text-[10px] whitespace-nowrap">
 							<thead className="bg-slate-50">
 								<tr>
 									<th className="w-8 px-2 py-1.5 text-center font-medium text-slate-600">No</th>
@@ -1506,7 +1506,7 @@ export function TransactionDetailReport({
 														<div className="border-slate-200 border-t pt-1.5 mt-1.5">
 															<span className="block text-[10px] font-medium text-slate-500 mb-1">Daftar Item:</span>
 		<div className="overflow-hidden rounded-md border border-slate-200">
-			<table className="w-full text-[10px]">
+			<table className="w-full text-[10px] whitespace-nowrap">
 				<thead className="bg-slate-50">
 					<tr>
 						<th className="px-3 py-1.5 text-left font-medium text-slate-600">Item</th>
