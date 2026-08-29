@@ -24,6 +24,7 @@ export function CustomerTransactionVoiceListener() {
 	const knownStatuses = useRef(new Map<string, string>());
 	const announcedSettledOrderIds = useRef(new Set<string>());
 	const seedTimer = useRef<number | undefined>(undefined);
+	const seedCompletedAt = useRef<number | null>(null);
 	const trackedSourceId = useRef<string | null | undefined>(undefined);
 
 	// Reset all voice state when the logged-in user changes so one customer's
@@ -37,6 +38,7 @@ export function CustomerTransactionVoiceListener() {
 			seedStarted.current = false;
 			knownStatuses.current = new Map();
 			announcedSettledOrderIds.current = new Set();
+			seedCompletedAt.current = null;
 			if (seedTimer.current) {
 				window.clearTimeout(seedTimer.current);
 				seedTimer.current = undefined;
@@ -67,6 +69,7 @@ export function CustomerTransactionVoiceListener() {
 				if (seedTimer.current) window.clearTimeout(seedTimer.current);
 				seedTimer.current = window.setTimeout(() => {
 					seeded.current = true;
+					seedCompletedAt.current = Date.now();
 				}, 1500);
 			}
 			return;
@@ -75,17 +78,19 @@ export function CustomerTransactionVoiceListener() {
 		// Phase 2: only genuinely new orders (or a status change to paid) beep.
 		for (const [orderId, status] of next) {
 			const previous = knownStatuses.current.get(orderId);
-			const method = paymentLabel((orders as any[]).find((o) => String(o.id) === orderId)?.paymentMethod ?? null);
+			const currentOrder = (orders as any[]).find((o) => String(o.id) === orderId);
+			const method = paymentLabel(currentOrder?.paymentMethod ?? null);
 			const paid = isPaid(status);
+			const isNewOrderAfterSeed = seedCompletedAt.current !== null && Number(currentOrder?.createdAt ?? 0) > seedCompletedAt.current;
 
 			if (previous === undefined) {
-				if (paid) {
+				if (paid && isNewOrderAfterSeed) {
 					announcedSettledOrderIds.current.add(orderId);
 					enqueueCustomerTransactionVoice({
 						eventKey: `customer-order:${orderId}`,
 						text: resolveCustomerTransactionVoice({ eventType: "order_paid", paymentMethod: method, customerName: customer.name }).text,
 					});
-				} else if (method === "kasir") {
+				} else if (method === "kasir" && isNewOrderAfterSeed) {
 					enqueueCustomerTransactionVoice({
 						eventKey: `customer-order:${orderId}`,
 						text: resolveCustomerTransactionVoice({ eventType: "order_cashier_pending", customerName: customer.name }).text,

@@ -116,6 +116,7 @@
 |---|--------|--------|
 || 90 | **Queue audio harus menjaga scope callback dan urutan media** — saat mengintegrasikan polling order dan notifikasi, buat resolver di dalam callback event agar `orderId`/metadata tidak keluar scope; setiap event wajib menyelesaikan MP3 preamble lalu TTS sebelum queue mengambil event berikutnya. | pos/audio/debug |
 || 91 | **State array kosong saat loading tidak boleh menjadi baseline audio** — hook notifikasi POS mengembalikan `[]` sebelum request selesai; listener wajib menunggu `isLoading=false` sebelum seed historical IDs, jika tidak transaksi lama yang datang terlambat akan dianggap event realtime dan diputar ulang. | pos/audio/notification/debug |
+|| 92 | **Customer voice perlu cutoff waktu setelah seed** — realtime reload mengembalikan seluruh daftar order, sehingga order historical yang baru muncul dapat memiliki `previous === undefined`; hanya order dengan `createdAt` setelah seed yang boleh diperlakukan sebagai order baru, sedangkan perubahan status order yang sudah dikenal tetap diproses. | customer/audio/realtime/debug |
 
 ## KOL Marketing
 
