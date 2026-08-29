@@ -6,7 +6,7 @@ import { preloadFaceModels } from "../components/auth/FaceRecognition";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useDemoMode } from "@yumipos/web-shared";
 import { useEffect } from "react";
-import { unlockAudio } from "../lib/transaction-voice-queue";
+import { clearTransactionVoiceQueue, unlockAudio } from "../lib/transaction-voice-queue";
 
 function RootContent() {
 	const navigate = useNavigate();
@@ -24,6 +24,7 @@ function RootContent() {
 	// Unlock browser audio on first user gesture so transaction voice alerts
 	// can play even when notifications arrive from a background poll.
 	useEffect(() => {
+		clearTransactionVoiceQueue();
 		const unlock = () => unlockAudio();
 		window.addEventListener("pointerdown", unlock, { once: true });
 		window.addEventListener("keydown", unlock, { once: true });

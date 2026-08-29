@@ -655,7 +655,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	}, [orders]);
 
 	useEffect(() => {
-		if (!notifications) return;
+		if (!notifications || notificationsLoading) return;
 		const nextIds = new Set(notifications.map((item) => item.id));
 		if (!hasSeededNotificationsRef.current) {
 			notificationIdsRef.current = nextIds;
@@ -690,7 +690,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			setTransactionAlertIds((current) => Array.from(new Set([...current, ...newTransactionAlerts.map((item) => item.id)])).slice(-3));
 		}
 		notificationIdsRef.current = nextIds;
-	}, [notifications]);
+	}, [notifications, notificationsLoading]);
 
 	useEffect(() => {
 		const offlineManager = getOfflineManager();

@@ -208,3 +208,14 @@ export function enqueueCustomerTransactionVoice(event: TransactionVoiceEvent) {
   pendingEvents.push(event);
   void processQueue();
 }
+
+export function clearCustomerTransactionVoiceQueue() {
+  pendingEvents.length = 0;
+  if (!isBrowser()) return;
+  try {
+    getResponsiveVoice()?.cancel?.();
+  } catch {
+    /* ignore */
+  }
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+}

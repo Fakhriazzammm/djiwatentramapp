@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
-import { enqueueCustomerTransactionVoice } from "@/lib/transaction-voice-queue";
+import { clearCustomerTransactionVoiceQueue, enqueueCustomerTransactionVoice } from "@/lib/transaction-voice-queue";
 import { resolveCustomerTransactionVoice } from "@/lib/transaction-voice-resolver";
 
 function paymentLabel(method: string | null) {
@@ -31,6 +31,7 @@ export function CustomerTransactionVoiceListener() {
 	useEffect(() => {
 		const currentSourceId = customer?.sourceId ?? null;
 		if (trackedSourceId.current !== currentSourceId) {
+			clearCustomerTransactionVoiceQueue();
 			trackedSourceId.current = currentSourceId;
 			seeded.current = false;
 			seedStarted.current = false;
