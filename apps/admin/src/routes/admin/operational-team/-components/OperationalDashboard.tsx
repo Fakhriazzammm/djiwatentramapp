@@ -60,7 +60,7 @@ function CardShell({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="rounded-3xl border border-border bg-card p-4 md:p-6 shadow-sm">
+		<div className="rounded-[22px] border border-border bg-card p-4 md:p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 			<div className="mb-4 flex items-center gap-2">
 				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
 					<Icon className="h-4 w-4" />
@@ -87,7 +87,7 @@ function RealtimeStatusSection({
 		return (
 			<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
 				{[1, 2, 3, 4].map((i) => (
-					<div key={i} className="rounded-3xl border bg-card p-4">
+					<div key={i} className="rounded-[22px] border bg-card p-4">
 						<Skeleton className="mb-2 h-3 w-20" />
 						<Skeleton className="mb-1 h-7 w-32" />
 						<Skeleton className="h-3 w-24" />
@@ -145,7 +145,7 @@ function RealtimeStatusSection({
 			{cards.map((card) => (
 				<div
 					key={card.label}
-					className="rounded-3xl border border-border bg-card p-4 shadow-sm transition-all hover:shadow-md"
+					className="rounded-[22px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] transition-all hover:shadow-[0_6px_20px_rgba(15,23,42,0.05)]"
 				>
 					<div className="mb-3 flex items-center gap-2">
 						<div
@@ -182,7 +182,7 @@ function StaffRow({
 		? Math.round((Date.now() - timestamp) / (1000 * 60 * 60))
 		: null;
 	return (
-		<div className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50">
+		<div className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors duration-200 hover:bg-muted/50">
 			<div
 				className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
 					status === "check_in"
@@ -469,11 +469,11 @@ function ShiftSummarySection({ shiftStatus }: { shiftStatus: any }) {
 	const latestShift = allShifts[0];
 
 	if (!shiftStatus) {
-		return <Skeleton className="h-32 w-full rounded-3xl" />;
+		return <Skeleton className="h-32 w-full rounded-[22px]" />;
 	}
 
 	return (
-		<section className="rounded-3xl border border-border bg-card p-4 shadow-sm md:p-6">
+		<section className="rounded-[22px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] md:p-4">
 			<div className="mb-4 flex items-center gap-2">
 				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
 					<Clock className="h-4 w-4" />
@@ -558,7 +558,7 @@ export default function OperationalDashboard() {
 				dashboardStats={dashboardStats}
 			/>
 
-			<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 				<StaffAttendanceSection
 					currentlyIn={currentlyIn}
 					allStaff={allStaff}

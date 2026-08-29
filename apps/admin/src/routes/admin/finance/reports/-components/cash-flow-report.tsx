@@ -30,14 +30,14 @@ export function CashFlowReport({ range }: Props) {
 			<div className="space-y-6">
 				<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 					{Array.from({ length: 3 }).map((_, i) => (
-						<div key={i} className="rounded-xl border border-border bg-card p-5 space-y-3">
+						<div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
 							<Skeleton className="h-3 w-24" />
 							<Skeleton className="h-6 w-32" />
 						</div>
 					))}
 				</div>
 				<Skeleton className="h-[300px] w-full rounded-xl" />
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<Skeleton className="h-64 w-full rounded-xl" />
 					<Skeleton className="h-64 w-full rounded-xl" />
 				</div>
@@ -61,7 +61,7 @@ export function CashFlowReport({ range }: Props) {
 		<div className="space-y-6">
 			{/* Summary Cards */}
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<div className="rounded-xl border border-border bg-card p-5">
+				<div className="rounded-xl border border-border bg-card p-4">
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="text-xs text-muted-foreground">Total Pemasukan</p>
@@ -72,7 +72,7 @@ export function CashFlowReport({ range }: Props) {
 						</div>
 					</div>
 				</div>
-				<div className="rounded-xl border border-border bg-card p-5">
+				<div className="rounded-xl border border-border bg-card p-4">
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="text-xs text-muted-foreground">Total Pengeluaran</p>
@@ -83,7 +83,7 @@ export function CashFlowReport({ range }: Props) {
 						</div>
 					</div>
 				</div>
-				<div className="rounded-xl border border-border bg-card p-5">
+				<div className="rounded-xl border border-border bg-card p-4">
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="text-xs text-muted-foreground">Arus Kas Bersih</p>
@@ -100,7 +100,7 @@ export function CashFlowReport({ range }: Props) {
 
 			{/* Area Chart */}
 			{chartData.length > 0 && (
-				<div className="rounded-xl border border-border bg-card p-6">
+				<div className="rounded-xl border border-border bg-card p-4">
 					<h3 className="font-bold text-base mb-4">Tren Arus Kas</h3>
 					<ResponsiveContainer width="100%" height={240}>
 						<AreaChart data={chartData}>

@@ -138,7 +138,7 @@ export function FinancialReports() {
 						type="button"
 						onClick={() => handleExport("pdf")}
 						disabled={!canExport || isExporting}
-						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400"
+						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 text-[11px] font-semibold text-red-700 transition-colors duration-200 hover:bg-red-100 disabled:opacity-40 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400"
 					>
 						<FileText className="h-3.5 w-3.5" />
 						PDF
@@ -147,7 +147,7 @@ export function FinancialReports() {
 						type="button"
 						onClick={() => handleExport("excel")}
 						disabled={!canExport || isExporting}
-						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-green-200 bg-green-50 px-2.5 text-[11px] font-semibold text-green-700 transition-colors hover:bg-green-100 disabled:opacity-40 dark:border-green-900/30 dark:bg-green-900/20 dark:text-green-400"
+						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-green-200 bg-green-50 px-2.5 text-[11px] font-semibold text-green-700 transition-colors duration-200 hover:bg-green-100 disabled:opacity-40 dark:border-green-900/30 dark:bg-green-900/20 dark:text-green-400"
 					>
 						<FileSpreadsheet className="h-3.5 w-3.5" />
 						Excel
@@ -156,7 +156,7 @@ export function FinancialReports() {
 						type="button"
 						onClick={() => handleExport("jpg")}
 						disabled={!canExport || isExporting || activeTab !== "profit_loss" || focusMode}
-						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-purple-200 bg-purple-50 px-2.5 text-[11px] font-semibold text-purple-700 transition-colors hover:bg-purple-100 disabled:opacity-40 dark:border-purple-900/30 dark:bg-purple-900/20 dark:text-purple-400"
+						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-purple-200 bg-purple-50 px-2.5 text-[11px] font-semibold text-purple-700 transition-colors duration-200 hover:bg-purple-100 disabled:opacity-40 dark:border-purple-900/30 dark:bg-purple-900/20 dark:text-purple-400"
 					>
 						<ImageIcon className="h-3.5 w-3.5" />
 						JPG
@@ -164,7 +164,7 @@ export function FinancialReports() {
 					<button
 						type="button"
 						onClick={handlePrint}
-						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-muted/70"
+						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 text-[11px] font-semibold text-muted-foreground transition-colors duration-200 hover:bg-muted/70"
 					>
 						<Printer className="h-3.5 w-3.5" />
 						Print
@@ -173,7 +173,7 @@ export function FinancialReports() {
 						type="button"
 						onClick={handleSendEmail}
 						disabled={!plData || !cfData || isSendingEmail || focusMode}
-						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
+						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-semibold text-blue-700 transition-colors duration-200 hover:bg-blue-100 disabled:opacity-40 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
 					>
 						<Mail className="h-3.5 w-3.5" />
 						{isSendingEmail ? "Mengirim..." : "Kirim Email"}
@@ -202,7 +202,7 @@ export function FinancialReports() {
 						onClick={() => setActiveTab(tab.value)}
 						className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
 							activeTab === tab.value
-								? "bg-background text-foreground shadow-sm"
+								? "bg-background text-foreground shadow-[0_4px_18px_rgba(15,23,42,0.04)]"
 								: "text-muted-foreground hover:text-foreground"
 						}`}
 					>

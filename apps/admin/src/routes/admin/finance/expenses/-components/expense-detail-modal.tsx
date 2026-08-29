@@ -50,7 +50,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 			<div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
 			{/* Modal */}
-			<div className="relative z-10 w-full max-w-lg mx-4 bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+			<div className="relative z-10 w-full max-w-lg mx-4 bg-white rounded-[20px] shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
 				{/* Header */}
 				<div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
 					<div className="flex items-center gap-2">
@@ -66,9 +66,9 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 				</div>
 
 				{/* Body */}
-				<div className="p-5 space-y-4 overflow-y-auto">
+				<div className="p-4 space-y-4 overflow-y-auto">
 					{/* Summary card */}
-					<div className="rounded-xl bg-slate-50 p-4 space-y-3">
+					<div className="rounded-xl bg-slate-50/70 p-4 space-y-3">
 						<div className="flex justify-between items-start">
 							<span className="text-sm text-slate-500">Tanggal</span>
 							<span className="text-sm font-medium text-slate-800">
@@ -76,7 +76,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 							</span>
 						</div>
 
-						<hr className="border-slate-200" />
+						<hr className="border-slate-200/80" />
 
 						<div className="flex justify-between items-start">
 							<span className="text-sm text-slate-500">Kategori</span>
@@ -99,7 +99,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 							</div>
 						)}
 
-						<hr className="border-slate-200" />
+						<hr className="border-slate-200/80" />
 
 						<div className="flex justify-between items-center">
 							<span className="text-sm text-slate-500">Jumlah</span>
@@ -129,7 +129,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 					{receiptUrl && (
 						<div className="space-y-2">
 							<button
-								className="w-full flex items-center gap-2 rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition-colors"
+								className="w-full flex items-center gap-2 rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600 hover:bg-slate-50/70 hover:border-slate-400 transition-colors"
 								onClick={() => setShowReceipt(!showReceipt)}
 							>
 								<Image className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 							</button>
 
 							{showReceipt && (
-								<div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+								<div className="rounded-xl overflow-hidden border border-slate-200/80 bg-slate-100">
 									<img
 										alt="Foto Struk"
 										className="w-full h-auto max-h-[400px] object-contain bg-white"
@@ -164,7 +164,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 				{/* Footer */}
 				<div className="px-5 py-3 border-t border-slate-100 bg-white">
 					<button
-						className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+						className="w-full rounded-lg border border-slate-200/80 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50/70 transition-colors"
 						onClick={onClose}
 					>
 						Tutup

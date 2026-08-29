@@ -204,7 +204,7 @@ function AdminCalendar({
 	};
 
 	return (
-		<div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+		<div className="rounded-[20px] border border-border bg-card shadow-sm overflow-hidden">
 			{/* Header */}
 			<div className="flex items-center justify-between border-b border-border px-5 py-3">
 				<button
@@ -985,7 +985,7 @@ function BookingSettingsPage() {
 			</div>
 
 			{/* Primary navigation */}
-			<nav aria-label="Navigasi booking" className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card p-1 shadow-sm">
+			<nav aria-label="Navigasi booking" className="no-scrollbar flex gap-1 overflow-x-auto rounded-[20px] border border-border/70 bg-card p-1 shadow-sm">
 				{tabs.map((tab) => (
 					<button
 						className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-black transition-all md:flex-1 md:justify-center md:px-4 md:text-sm ${
@@ -1009,7 +1009,7 @@ function BookingSettingsPage() {
 						["Belum lunas", bookingStats.pendingPayment, "text-amber-700"],
 						["Sudah lunas", bookingStats.paid, "text-primary"],
 					].map(([label, value, tone]) => (
-						<div className="rounded-2xl border border-border/70 bg-card px-3 py-3 shadow-sm" key={label}>
+						<div className="rounded-[20px] border border-border/70 bg-card px-3 py-3 shadow-sm" key={label}>
 							<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
 							<p className={`mt-1 text-xl font-black tabular-nums ${tone}`}>{value}</p>
 						</div>
@@ -1080,7 +1080,7 @@ function BookingSettingsPage() {
 					)}
 
 					{!selectedDate && (
-						<div className="rounded-2xl border border-border bg-card p-5">
+						<div className="rounded-[20px] border border-border bg-card p-4">
 							<div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-foreground">Ringkasan booking</p><p className="mt-1 text-xs text-muted-foreground">Pilih tanggal untuk melihat detail operasional.</p></div><Button className="min-h-11 shrink-0 rounded-xl" onClick={() => setIsCreateDialogOpen(true)} size="sm" type="button"><Plus className="mr-1.5 h-4 w-4" />Tambah</Button></div>
 							<div className="mt-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Booking</p><p className="mt-1 text-lg font-black">{bookingStats.total}</p></div><div className="rounded-xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Tamu</p><p className="mt-1 text-lg font-black">{bookingStats.guests}</p></div><div className="rounded-xl bg-muted/50 p-3"><p className="text-[10px] font-bold uppercase text-muted-foreground">Lunas</p><p className="mt-1 text-lg font-black">{bookingStats.paid}</p></div></div>
 						</div>
@@ -1095,7 +1095,7 @@ function BookingSettingsPage() {
 						<div><p className="text-sm font-bold text-foreground">Daftar Booking</p><p className="text-xs text-muted-foreground">{formatDate(startDate)}{startDate !== endDate ? ` – ${formatDate(endDate)}` : ""}</p></div>
 					</div>
 					{/* Toolbar */}
-					<div className="grid gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-sm lg:grid-cols-[minmax(220px,1.5fr)_140px_260px_minmax(190px,auto)] lg:items-end">
+					<div className="grid gap-3 rounded-[20px] border border-border/70 bg-card p-3 shadow-sm lg:grid-cols-[minmax(220px,1.5fr)_140px_260px_minmax(190px,auto)] lg:items-end">
 						<div className="flex-1 space-y-1.5">
 							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Pencarian</label>
 							<div className="relative">
@@ -1243,7 +1243,7 @@ function BookingSettingsPage() {
 							<button className="mt-3 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white" onClick={() => void ordersState.reload()} type="button">Coba lagi</button>
 						</div>
 					) : filteredOrders?.length === 0 ? (
-						<div className="rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center">
+						<div className="rounded-[20px] border border-dashed border-border bg-card px-5 py-14 text-center">
 							<p className="font-bold text-foreground">{searchTerm || listFilter !== "all" || paymentFilter !== "all" ? "Tidak ada booking yang cocok dengan filter" : "Belum ada booking pada periode ini"}</p>
 							<p className="mt-1 text-xs text-muted-foreground">{searchTerm || listFilter !== "all" || paymentFilter !== "all" ? "Coba reset filter atau ubah kata pencarian." : "Buat booking manual atau buka halaman publik untuk melihat reservasi baru."}</p>
 							<div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -1276,9 +1276,9 @@ function BookingSettingsPage() {
 							["Meja terpakai", Number(summary?.[capDate]?.bookedTables ?? 0), "text-violet-700"],
 							["Booking aktif", Number(summary?.[capDate]?.count ?? 0), "text-blue-700"],
 							["Status", summary?.[capDate]?.isClosed ? "Ditutup" : "Terbuka", "text-amber-700"],
-						].map(([label, value, color]) => <div className="rounded-2xl border border-border/70 bg-card p-3 shadow-sm" key={label}><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className={`mt-1 text-xl font-black ${color}`}>{value}</p></div>)}
+						].map(([label, value, color]) => <div className="rounded-[20px] border border-border/70 bg-card p-3 shadow-sm" key={label}><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><p className={`mt-1 text-xl font-black ${color}`}>{value}</p></div>)}
 					</div>
-					<section className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm space-y-3">
+					<section className="rounded-[20px] border border-primary/20 bg-primary/5 p-4 shadow-sm space-y-3">
 						<div>
 							<h3 className="font-bold">Kapasitas Default & Periode Booking</h3>
 							<p className="mt-1 text-xs text-muted-foreground">Berlaku untuk tanggal tanpa pengaturan khusus.</p>
@@ -1293,7 +1293,7 @@ function BookingSettingsPage() {
 					</section>
 
 					{/* Add/edit capacity form */}
-					<section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm space-y-3">
+					<section className="rounded-[20px] border border-border/70 bg-card p-4 shadow-sm space-y-3">
 						<div className="flex items-center gap-2">
 							<Settings2 className="h-4 w-4 text-primary" />
 							<h3 className="font-bold">Atur Kapasitas Per Tanggal</h3>
@@ -1468,13 +1468,13 @@ function BookingSettingsPage() {
 								<table className="w-full text-sm">
 									<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold tracking-wider">
 										<tr>
-											<th className="w-12 px-3 py-3 text-center">
+											<th className="whitespace-nowrap w-12 px-3 py-3 text-center">
 												<input aria-label="Pilih semua kapasitas" checked={allCapacitySelected} className="h-4 w-4 rounded border-border text-primary" onChange={(event) => setSelectedCapacityIds(event.target.checked ? capacityRows.map((cap: any) => String(cap._id)) : [])} type="checkbox" />
 											</th>
-											<th className="px-4 py-3 text-left">Tanggal</th>
-											<th className="px-4 py-3 text-center">Kapasitas</th>
-											<th className="px-4 py-3 text-left">Catatan</th>
-											<th className="px-4 py-3 text-right">Aksi</th>
+											<th className="whitespace-nowrap px-4 py-3 text-left">Tanggal</th>
+											<th className="whitespace-nowrap px-4 py-3 text-center">Kapasitas</th>
+											<th className="whitespace-nowrap px-4 py-3 text-left">Catatan</th>
+											<th className="whitespace-nowrap px-4 py-3 text-right">Aksi</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y divide-border">
@@ -1482,19 +1482,19 @@ function BookingSettingsPage() {
 											.sort((a: any, b: any) => a.date.localeCompare(b.date))
 											.map((cap: any) => (
 												<tr className="hover:bg-muted/30" key={cap._id}>
-													<td className="w-12 px-3 py-3 text-center">
+													<td className="whitespace-nowrap w-12 px-3 py-3 text-center">
 														<input aria-label={`Pilih kapasitas ${formatDate(cap.date)}`} checked={selectedCapacityIds.includes(String(cap._id))} className="h-4 w-4 rounded border-border text-primary" onChange={(event) => setSelectedCapacityIds((current) => event.target.checked ? [...new Set([...current, String(cap._id)])] : current.filter((id) => id !== String(cap._id)))} type="checkbox" />
 													</td>
-													<td className="px-4 py-3 font-medium">{formatDate(cap.date)}</td>
-													<td className="px-4 py-3 text-center">
+													<td className="whitespace-nowrap px-4 py-3 font-medium">{formatDate(cap.date)}</td>
+													<td className="whitespace-nowrap px-4 py-3 text-center">
 														<div className="flex flex-col gap-1 items-center">
 															{cap.isClosed ? "Ditutup" : <><span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-0.5 font-bold text-primary text-[10px]"><Users className="h-3 w-3" />{cap.maxPeople === 0 ? "∞" : cap.maxPeople} org</span><span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-0.5 font-bold text-purple-700 text-[10px]"><Smartphone className="h-3 w-3 rotate-90" />{cap.maxTables === 0 ? "∞" : cap.maxTables} meja</span></>}
 														</div>
 													</td>
-													<td className="px-4 py-3 text-muted-foreground text-xs">
+													<td className="whitespace-nowrap px-4 py-3 text-muted-foreground text-xs">
 														{cap.notes || "—"}
 													</td>
-													<td className="px-4 py-3 text-right">
+													<td className="whitespace-nowrap px-4 py-3 text-right">
 														<button
 															className="text-xs text-muted-foreground hover:text-foreground"
 															onClick={() => {
@@ -1525,7 +1525,7 @@ function BookingSettingsPage() {
 
 			{/* Edit Booking Dialog */}
 			<Dialog onOpenChange={setIsEditDialogOpen} open={isEditDialogOpen}>
-				<DialogContent className="sm:max-w-[425px] rounded-2xl">
+				<DialogContent className="sm:max-w-[425px] rounded-[20px]">
 					<DialogHeader>
 						<DialogTitle className="text-xl font-bold">Edit Booking</DialogTitle>
 						<DialogDescription>
@@ -1629,7 +1629,7 @@ function BookingSettingsPage() {
 
 			{/* Create Booking Dialog */}
 			<Dialog onOpenChange={setIsCreateDialogOpen} open={isCreateDialogOpen}>
-				<DialogContent className="sm:max-w-[425px] rounded-2xl">
+				<DialogContent className="sm:max-w-[425px] rounded-[20px]">
 					<DialogHeader>
 						<DialogTitle className="text-xl font-bold">Tambah Booking Baru</DialogTitle>
 						<DialogDescription>

@@ -172,3 +172,125 @@ body.admin-shell[data-admin-density="compact"] [data-admin-modal-backdrop] {
 	background-size: 200% 100%;
 	animation: shimmer 1.5s ease-in-out infinite;
 }
+
+.kol-admin input:not([type="checkbox"]),
+.kol-admin select,
+.kol-admin textarea {
+	width: 100%;
+	min-height: 2.75rem;
+	border: 1px solid hsl(var(--border));
+	border-radius: 0.75rem;
+	background: hsl(var(--background));
+	padding: 0.65rem 0.75rem;
+	font-size: 0.875rem;
+	outline: none;
+}
+.kol-admin textarea { min-height: 6rem; }
+.kol-admin input:not([type="checkbox"]):focus,
+.kol-admin select:focus,
+.kol-admin textarea:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12); }
+
+/* ── Admin Apple-style visual foundation ── */
+body.admin-shell {
+  background: #f7f9fc;
+  color: #172033;
+  font-family: "Geist", Inter, ui-sans-serif, system-ui, sans-serif;
+}
+body.admin-shell [data-admin-shell="true"] {
+  background: #f7f9fc;
+}
+body.admin-shell [data-admin-shell="true"] > aside {
+  width: 15rem;
+  border-color: #e6eaf0;
+  background: rgba(255,255,255,.88);
+  box-shadow: 8px 0 28px rgba(15,23,42,.035);
+}
+body.admin-shell [data-admin-shell="true"] > aside > div:first-child {
+  height: 4rem;
+  border-color: #e6eaf0;
+  padding: 0 1rem;
+}
+body.admin-shell [data-admin-shell="true"] > aside nav {
+  padding: .75rem;
+}
+body.admin-shell [data-admin-shell="true"] > aside nav a,
+body.admin-shell [data-admin-shell="true"] > aside nav button {
+  min-height: 2.5rem;
+  border-radius: .875rem;
+  font-size: .8125rem;
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+body.admin-shell [data-admin-shell="true"] > aside nav a:hover,
+body.admin-shell [data-admin-shell="true"] > aside nav button:hover {
+  background: #f1f5f9;
+}
+body.admin-shell [data-admin-shell="true"] > aside nav a[aria-current="page"],
+body.admin-shell [data-admin-shell="true"] > aside nav a.bg-primary\/10 {
+  background: #edf4ff;
+  color: #1a5dc6;
+}
+body.admin-shell [data-admin-shell="true"] > div:last-child {
+  min-width: 0;
+  background: #f7f9fc;
+}
+body.admin-shell [data-admin-shell="true"] > div:last-child > div {
+  max-width: 88rem;
+  padding: 1.25rem 1.5rem 2rem;
+}
+body.admin-shell h1,
+body.admin-shell h2,
+body.admin-shell h3 {
+  letter-spacing: -.025em;
+}
+body.admin-shell [class*="rounded-3xl"],
+body.admin-shell [class*="rounded-2xl"] {
+  border-radius: 1.25rem;
+}
+body.admin-shell [class*="shadow-lg"] {
+  box-shadow: 0 10px 30px rgba(15,23,42,.07);
+}
+body.admin-shell [class*="shadow-sm"] {
+  box-shadow: 0 6px 20px rgba(15,23,42,.045);
+}
+body.admin-shell [data-slot="button"],
+body.admin-shell button:not([data-radix-collection-item]) {
+  transition: transform 180ms cubic-bezier(.32,.72,0,1), background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+body.admin-shell [data-slot="button"]:active,
+body.admin-shell button:not([data-radix-collection-item]):active {
+  transform: scale(.97);
+}
+body.admin-shell input:not([type="checkbox"]):not([type="radio"]),
+body.admin-shell textarea,
+body.admin-shell select {
+  border-color: #e0e6ef;
+  border-radius: .875rem;
+  background: rgba(255,255,255,.9);
+}
+body.admin-shell table thead {
+  background: #f8fafc;
+}
+body.admin-shell table th {
+  color: #667085;
+  font-size: .625rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+body.admin-shell table td,
+body.admin-shell table th {
+  border-color: #edf0f4;
+}
+body.admin-shell [data-admin-density="compact"] [data-slot="dialog-content"],
+body.admin-shell [data-admin-density="compact"] [data-slot="sheet-content"] {
+  border: 1px solid #e6eaf0;
+  border-radius: 1.25rem;
+  box-shadow: 0 18px 50px rgba(15,23,42,.13);
+}
+@media (max-width: 767px) {
+  body.admin-shell [data-admin-shell="true"] > div:last-child > div {
+    padding: .75rem .75rem 1.5rem;
+  }
+  body.admin-shell [data-admin-shell="true"] > aside {
+    width: 100%;
+  }
+}

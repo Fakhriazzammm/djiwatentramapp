@@ -85,7 +85,7 @@ export function ProfitLossReport({ range }: Props) {
 			</div>
 
 			{/* Bar Chart */}
-			<div className="rounded-xl border border-border bg-card p-6">
+			<div className="rounded-xl border border-border bg-card p-4">
 				<h3 className="mb-4 font-bold text-base">Ringkasan Visual</h3>
 				<ResponsiveContainer width="100%" height={200}>
 					<BarChart data={chartData} barSize={48}>

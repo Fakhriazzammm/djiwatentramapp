@@ -185,7 +185,7 @@ export function ExpensesTable() {
 	// ── Loading state ──
 	if (!txData) {
 		return (
-			<div className="bg-white min-h-screen p-6">
+			<div className="bg-white min-h-screen p-4">
 				<div className="flex items-center justify-between mb-6">
 					<Skeleton className="h-8 w-48" />
 					<Skeleton className="h-9 w-32" />
@@ -205,7 +205,7 @@ export function ExpensesTable() {
 
 	return (
 		<div className="bg-white min-h-screen">
-			<div className="p-4 md:p-6">
+			<div className="p-4 md:p-4">
 				{/* ── Header ── */}
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
 					<div>
@@ -217,7 +217,7 @@ export function ExpensesTable() {
 						</p>
 					</div>
 					<button
-						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						onClick={() =>
 							exportExpensesCSV(filtered.length > 0 ? filtered : allTransactions, dateRange.label)
 						}
@@ -234,7 +234,7 @@ export function ExpensesTable() {
 						{PERIOD_BUTTONS.map((btn) => (
 							<button
 								key={btn.value}
-								className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+								className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
 									period === btn.value
 										? "bg-slate-900 text-white"
 										: "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -250,7 +250,7 @@ export function ExpensesTable() {
 
 					{/* Category filter */}
 					<select
-						className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+						className="rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
 						onChange={(e) => setFilterCategory(e.target.value)}
 						value={filterCategory}
 					>
@@ -266,7 +266,7 @@ export function ExpensesTable() {
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
 						<input
-							className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-12 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+							className="w-full sm:w-56 rounded-lg border border-slate-200/80 bg-white pl-9 pr-12 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
 							onChange={(e) => setSearchQuery(e.target.value)}
 							placeholder="Cari deskripsi / merchant..."
 							type="text"
@@ -286,7 +286,7 @@ export function ExpensesTable() {
 
 				{/* ── Empty state ── */}
 				{isEmpty && (
-					<div className="flex flex-col items-center justify-center py-20 text-slate-400">
+					<div className="flex flex-col items-center justify-center py-12 text-slate-400">
 						<Receipt className="h-12 w-12 mb-3" />
 						<p className="text-lg font-medium">Tidak ada pengeluaran</p>
 						<p className="text-sm mt-1">
@@ -297,7 +297,7 @@ export function ExpensesTable() {
 
 				{/* ── No results ── */}
 				{noResults && (
-					<div className="flex flex-col items-center justify-center py-20 text-slate-400">
+					<div className="flex flex-col items-center justify-center py-12 text-slate-400">
 						<Search className="h-12 w-12 mb-3" />
 						<p className="text-lg font-medium">Tidak ditemukan</p>
 						<p className="text-sm mt-1">
@@ -309,10 +309,10 @@ export function ExpensesTable() {
 				{/* ── Table ── */}
 				{filtered.length > 0 && (
 					<>
-						<div className="overflow-x-auto rounded-xl border border-slate-200">
+						<div className="overflow-x-auto rounded-xl border border-slate-200/80">
 							<table className="w-full text-sm">
 								<thead>
-									<tr className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
+									<tr className="bg-slate-50/70 text-left text-xs font-semibold uppercase text-slate-500">
 										<th className="px-4 py-3 w-4">#</th>
 										<th
 											className="px-4 py-3 cursor-pointer hover:text-slate-700 select-none"
@@ -354,7 +354,7 @@ export function ExpensesTable() {
 										return (
 											<tr
 												key={tx._id}
-												className="hover:bg-slate-50 cursor-pointer transition-colors"
+												className="hover:bg-slate-50/70 cursor-pointer transition-colors"
 												onClick={() => setSelectedTx(tx)}
 											>
 												<td className="px-4 py-3 text-xs text-slate-400">
@@ -403,7 +403,7 @@ export function ExpensesTable() {
 													{hasReceipt ? (
 														<img
 															alt="Struk"
-															className="h-9 w-9 rounded object-cover border border-slate-200 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
+															className="h-9 w-9 rounded object-cover border border-slate-200/80 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
 															onClick={(e) => { e.stopPropagation(); setSelectedTx(tx); }}
 															src={(tx as any).metadata.receipt_image_url}
 														/>
@@ -427,7 +427,7 @@ export function ExpensesTable() {
 								</span>
 								<div className="flex items-center gap-2">
 									<button
-										className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-30"
+										className="rounded-lg border border-slate-200/80 p-1.5 hover:bg-slate-50/70 disabled:opacity-30"
 										disabled={safePage <= 1}
 										onClick={() => setPage((p) => Math.max(1, p - 1))}
 									>
@@ -437,7 +437,7 @@ export function ExpensesTable() {
 										{safePage} / {totalPages}
 									</span>
 									<button
-										className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-30"
+										className="rounded-lg border border-slate-200/80 p-1.5 hover:bg-slate-50/70 disabled:opacity-30"
 										disabled={safePage >= totalPages}
 										onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 									>

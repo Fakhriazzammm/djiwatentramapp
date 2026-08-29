@@ -425,17 +425,17 @@ export function ShiftReport({ range }: Props) {
 			<div className="space-y-4">
 				<div className="grid gap-3 md:grid-cols-4">
 					{Array.from({ length: 4 }).map((_, index) => (
-						<Skeleton key={index} className="h-24 rounded-2xl" />
+						<Skeleton key={index} className="h-24 rounded-[20px]" />
 					))}
 				</div>
-				<Skeleton className="h-[420px] rounded-2xl" />
+				<Skeleton className="h-[420px] rounded-[20px]" />
 			</div>
 		);
 	}
 
 	if (rows.length === 0) {
 		return (
-			<div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center text-muted-foreground">
+			<div className="flex flex-col items-center justify-center rounded-[20px] border border-dashed border-border bg-card px-6 py-16 text-center text-muted-foreground">
 				<Users className="mb-3 h-10 w-10 opacity-30" />
 				<p className="font-semibold text-foreground">Belum ada data shift</p>
 				<p className="mt-1 text-sm">
@@ -536,7 +536,7 @@ export function ShiftReport({ range }: Props) {
 				<button
 					type="button"
 					onClick={() => { setCreateForm({ shiftName: "", cashierName: "", teamMembers: "", startingCash: 0, notes: "" }); setShowCreateDialog(true); }}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 sm:min-w-[112px]"
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 sm:min-w-[112px]"
 				>
 					<Plus className="h-3.5 w-3.5" />
 					Buka Shift
@@ -546,7 +546,7 @@ export function ShiftReport({ range }: Props) {
 					type="button"
 					onClick={() => void handleExport("pdf")}
 					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40 sm:min-w-[92px]"
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors duration-200 hover:bg-red-100 disabled:opacity-40 sm:min-w-[92px]"
 				>
 					<FileText className="h-3.5 w-3.5" />
 					PDF
@@ -555,7 +555,7 @@ export function ShiftReport({ range }: Props) {
 					type="button"
 					onClick={() => void handleExport("csv")}
 					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 sm:min-w-[92px]"
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors duration-200 hover:bg-blue-100 disabled:opacity-40 sm:min-w-[92px]"
 				>
 					<Download className="h-3.5 w-3.5" />
 					CSV
@@ -564,7 +564,7 @@ export function ShiftReport({ range }: Props) {
 					type="button"
 					onClick={() => void handleExport("jpg")}
 					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-40 sm:min-w-[92px]"
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors duration-200 hover:bg-amber-100 disabled:opacity-40 sm:min-w-[92px]"
 				>
 					<ImageIcon className="h-3.5 w-3.5" />
 					JPG
@@ -573,7 +573,7 @@ export function ShiftReport({ range }: Props) {
 					type="button"
 					onClick={() => void handleSendFullReportEmail()}
 					disabled={isSendingFullEmail || !rows?.length}
-					className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40 sm:col-span-1 sm:min-w-[132px]"
+					className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 disabled:opacity-40 sm:col-span-1 sm:min-w-[132px]"
 				>
 					{isSendingFullEmail ? (
 						<Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -612,8 +612,8 @@ export function ShiftReport({ range }: Props) {
 				/>
 			</div>
 
-			<div className="grid gap-5 xl:grid-cols-[1.45fr_1fr]">
-				<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+			<div className="grid gap-4 xl:grid-cols-[1.45fr_1fr]">
+				<div className="overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 					<div className="flex items-center justify-between border-b border-border px-4 py-3">
 						<div>
 							<h3 className="font-bold text-base">Tabel Laporan Shift</h3>
@@ -814,7 +814,7 @@ export function ShiftReport({ range }: Props) {
 													<button
 														type="button"
 														onClick={(e) => openEdit(shift, e)}
-														className="inline-flex h-6 w-6 items-center justify-center rounded border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+														className="inline-flex h-6 w-6 items-center justify-center rounded border border-border bg-background text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
 														title="Edit shift"
 													>
 														<Pencil className="h-3 w-3" />
@@ -822,7 +822,7 @@ export function ShiftReport({ range }: Props) {
 													<button
 														type="button"
 														onClick={(e) => { e.stopPropagation(); setConfirmDeleteIds([shift.shiftId]); }}
-														className="inline-flex h-6 w-6 items-center justify-center rounded border border-destructive/30 bg-destructive/8 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+														className="inline-flex h-6 w-6 items-center justify-center rounded border border-destructive/30 bg-destructive/8 text-destructive transition-colors duration-200 hover:bg-destructive hover:text-destructive-foreground"
 														title="Hapus shift"
 													>
 														<Trash2 className="h-3 w-3" />
@@ -834,7 +834,7 @@ export function ShiftReport({ range }: Props) {
 															void handleSendShiftEmail(shift);
 														}}
 														disabled={sendingShiftStart === shift.startTime}
-														className="inline-flex h-6 w-6 items-center justify-center rounded border border-blue-200 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+														className="inline-flex h-6 w-6 items-center justify-center rounded border border-blue-200 bg-blue-50 text-blue-600 transition-colors duration-200 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
 														title="Kirim email laporan"
 													>
 														{sendingShiftStart === shift.startTime ? (
@@ -854,7 +854,7 @@ export function ShiftReport({ range }: Props) {
 				</div>
 
 				<div className="space-y-4">
-					<div className="rounded-2xl border border-border bg-card shadow-sm">
+					<div className="rounded-[20px] border border-border bg-card shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 						<div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4">
 							<div>
 								<p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
@@ -878,7 +878,7 @@ export function ShiftReport({ range }: Props) {
 									await navigator.clipboard.writeText(summaryText);
 									toast.success("Ringkasan shift berhasil disalin");
 								}}
-								className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted"
+								className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-muted"
 							>
 								<Copy className="h-3.5 w-3.5" />
 								Salin
@@ -912,7 +912,7 @@ export function ShiftReport({ range }: Props) {
 									/>
 								</div>
 
-								<div className="rounded-2xl border border-border bg-muted/20 p-3">
+								<div className="rounded-[20px] border border-border bg-muted/20 p-3">
 									<div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 										<TrendingUp className="h-3.5 w-3.5" />
 										Status Target
@@ -944,7 +944,7 @@ export function ShiftReport({ range }: Props) {
 								</div>
 
 								{selectedShift.memberBonuses && selectedShift.memberBonuses.length > 0 && (
-									<div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/60 p-3 dark:border-emerald-400/20 dark:bg-emerald-500/10">
+									<div className="rounded-[20px] border border-emerald-200/60 bg-emerald-50/60 p-3 dark:border-emerald-400/20 dark:bg-emerald-500/10">
 										<div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
 											<BadgeDollarSign className="h-3.5 w-3.5" />
 											Bonus Tim Shift
@@ -962,7 +962,7 @@ export function ShiftReport({ range }: Props) {
 															return (
 																<span
 																	key={tier.thresholdPct}
-																	className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white/60 text-muted-foreground/50 border-border/30 dark:bg-muted/30"}`}
+																	className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-[0_4px_18px_rgba(15,23,42,0.04)]" : "bg-white/60 text-muted-foreground/50 border-border/30 dark:bg-muted/30"}`}
 																>
 																	{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {formatCurrencyIDR(tier.bonusAmount)}
 																</span>
@@ -999,7 +999,7 @@ export function ShiftReport({ range }: Props) {
 									/>
 								</div>
 
-								<div className="rounded-2xl border border-border bg-muted/20 p-3">
+								<div className="rounded-[20px] border border-border bg-muted/20 p-3">
 									<div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 										<CalendarDays className="h-3.5 w-3.5" />
 										Informasi Shift
@@ -1050,7 +1050,7 @@ export function ShiftReport({ range }: Props) {
 								</div>
 
 								<div className="grid gap-3">
-									<div className="rounded-2xl border border-border bg-background p-3">
+									<div className="rounded-[20px] border border-border bg-background p-3">
 										<h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 											Top Produk
 										</h4>
@@ -1082,7 +1082,7 @@ export function ShiftReport({ range }: Props) {
 										)}
 									</div>
 
-									<div className="rounded-2xl border border-border bg-background p-3">
+									<div className="rounded-[20px] border border-border bg-background p-3">
 										<h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 											Rincian Produk per Kategori
 										</h4>
@@ -1124,7 +1124,7 @@ export function ShiftReport({ range }: Props) {
 									</div>
 								</div>
 
-								<div className="rounded-2xl border border-border bg-slate-950 p-3 text-slate-50 shadow-inner">
+								<div className="rounded-[20px] border border-border bg-slate-950 p-3 text-slate-50 shadow-inner">
 									<div className="mb-3 flex items-center justify-between">
 										<h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
 											Format Ringkasan
@@ -1151,7 +1151,7 @@ export function ShiftReport({ range }: Props) {
 		{/* ── DELETE CONFIRMATION DIALOG ── */}
 		{confirmDeleteIds && (
 			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-				<div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4">
+				<div className="w-full max-w-sm rounded-[20px] border border-border bg-card shadow-2xl p-4 space-y-4">
 					<div className="flex items-start gap-3">
 						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
 							<Trash2 className="h-5 w-5 text-destructive" />
@@ -1191,7 +1191,7 @@ export function ShiftReport({ range }: Props) {
 		{/* ── EDIT SHIFT DIALOG ── */}
 		{editingShift && (
 			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-				<div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+				<div className="w-full max-w-md rounded-[20px] border border-border bg-card shadow-2xl">
 					<div className="flex items-center justify-between border-b border-border px-5 py-4">
 						<div>
 							<h3 className="font-bold text-base text-foreground">Edit Shift</h3>
@@ -1207,7 +1207,7 @@ export function ShiftReport({ range }: Props) {
 							<X className="h-4 w-4" />
 						</button>
 					</div>
-					<div className="p-5 space-y-4">
+					<div className="p-4 space-y-4">
 						{[
 							{ key: "shiftName", label: "Nama Shift", type: "text", placeholder: "" },
 							{ key: "cashierName", label: "Kasir", type: "text", placeholder: "" },
@@ -1260,7 +1260,7 @@ export function ShiftReport({ range }: Props) {
 		{/* ── CREATE SHIFT DIALOG ── */}
 		{showCreateDialog && (
 			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-				<div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+				<div className="w-full max-w-md rounded-[20px] border border-border bg-card shadow-2xl">
 					<div className="flex items-center justify-between border-b border-border px-5 py-4">
 						<div>
 							<h3 className="font-bold text-base text-foreground">Buka Shift Baru</h3>
@@ -1277,7 +1277,7 @@ export function ShiftReport({ range }: Props) {
 							<X className="h-4 w-4" />
 						</button>
 					</div>
-					<div className="p-5 space-y-4">
+					<div className="p-4 space-y-4">
 						{[
 							{ key: "shiftName", label: "Nama Shift *", type: "text", placeholder: "Shift Pagi" },
 							{ key: "cashierName", label: "Kasir", type: "text", placeholder: "Nama kasir" },
@@ -1343,7 +1343,7 @@ function SummaryCard({
 	helper: string;
 }) {
 	return (
-		<div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+		<div className="rounded-[20px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 			<div className="flex items-center justify-between">
 				<p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 					{label}
@@ -1402,7 +1402,7 @@ function MiniStat({
 	value: string;
 }) {
 	return (
-		<div className="rounded-2xl border border-border bg-background p-3">
+		<div className="rounded-[20px] border border-border bg-background p-3">
 			<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 				<Icon className="h-3.5 w-3.5" />
 				{label}
@@ -1481,7 +1481,7 @@ function DetailBlock({
 	items: Array<[string, string]>;
 }) {
 	return (
-		<div className="rounded-2xl border border-border bg-background p-3">
+		<div className="rounded-[20px] border border-border bg-background p-3">
 			<h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 				{title}
 			</h4>

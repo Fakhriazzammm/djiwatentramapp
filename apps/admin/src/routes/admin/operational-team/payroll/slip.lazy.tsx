@@ -341,7 +341,7 @@ function PayslipAdminPage() {
 
 	if (isLoading) {
 		return (
-			<div className="space-y-4 p-6">
+			<div className="space-y-4 p-4">
 				<div className="flex items-center justify-between">
 					<div>
 						<Skeleton className="h-7 w-40" />
@@ -363,7 +363,7 @@ function PayslipAdminPage() {
 
 	if (isError) {
 		return (
-			<div className="flex flex-col items-center justify-center py-20">
+			<div className="flex flex-col items-center justify-center py-12">
 				<AlertCircle className="h-12 w-12 text-destructive" />
 				<p className="mt-4 text-sm font-medium text-destructive">Gagal memuat data slip gaji</p>
 				<p className="text-xs text-muted-foreground">Terjadi kesalahan saat mengambil data dari server</p>
@@ -378,7 +378,7 @@ function PayslipAdminPage() {
 	const isFilteredEmpty = !isEmpty && filteredPayslips && filteredPayslips.length === 0;
 
 	return (
-		<div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:p-6">
+		<div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:p-4">
 			{/* HEADER */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
@@ -499,7 +499,7 @@ function PayslipAdminPage() {
 			{/* MASTER TABLE */}
 			{!isEmpty && !isFilteredEmpty && filteredPayslips && (
 				<>
-					<div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+					<div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 						<div className="overflow-x-auto">
 							<table className="w-full text-left text-sm">
 								<thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-widest">
@@ -528,7 +528,7 @@ function PayslipAdminPage() {
 										return (
 											<tr
 												key={payslip.id}
-												className="group transition-colors hover:bg-muted/30 cursor-pointer"
+												className="group transition-colors duration-200 hover:bg-muted/30 cursor-pointer"
 												onClick={() => setSelectedPayslip(payslip)}
 											>
 												<td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>

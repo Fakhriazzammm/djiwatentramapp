@@ -869,7 +869,7 @@ function AdminOrders() {
 			<div>
 				<div className="space-y-2 pb-24 md:hidden">
 					{filteredOrders?.length === 0 ? (
-						<div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-card px-4 py-12 text-center">
+						<div className="flex flex-col items-center rounded-[20px] border border-dashed border-border bg-card px-4 py-12 text-center">
 							<ShoppingBag className="mb-3 h-9 w-9 text-muted-foreground/40" />
 							<p className="font-display text-base font-bold text-foreground">Tidak ada pesanan ditemukan</p>
 							<p className="mt-1 text-sm text-muted-foreground">Coba ubah pencarian, status, atau periode tanggal.</p>
@@ -941,24 +941,24 @@ function AdminOrders() {
 					)}
 				</div>
 
-				<div className="hidden rounded-2xl border border-border bg-card shadow-sm md:block">
+				<div className="hidden rounded-[20px] border border-border bg-card shadow-sm md:block">
 					<div className="overflow-x-auto">
 						<table className="w-full min-w-[980px] text-left text-sm">
 							<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 								<tr className="text-[11px] text-muted-foreground">
-									<th className="w-10 px-3 py-2.5 text-center">
+									<th className="whitespace-nowrap w-10 px-3 py-2.5 text-center">
 										<input aria-label="Pilih semua pesanan yang terlihat" checked={allVisibleSelected} onChange={toggleAllVisibleOrders} type="checkbox" />
 									</th>
-									<th className="w-[190px] px-3 py-2.5">ID order</th>
-									<th className="min-w-[190px] px-3 py-2.5">Pelanggan</th>
-									<th className="px-3 py-2.5">Lokasi</th>
-									<th className="px-3 py-2.5">Shift</th>
-									<th className="px-3 py-2.5 text-right">Total</th>
-									<th className="px-3 py-2.5 text-right">Laba / HPP</th>
-									<th className="min-w-[120px] px-3 py-2.5">Status</th>
-									<th className="px-3 py-2.5">Channel</th>
-									<th className="px-3 py-2.5 text-right">Waktu</th>
-									<th className="px-3 py-2.5 text-center">Aksi</th>
+									<th className="whitespace-nowrap w-[190px] px-3 py-2.5">ID order</th>
+									<th className="whitespace-nowrap min-w-[190px] px-3 py-2.5">Pelanggan</th>
+									<th className="whitespace-nowrap px-3 py-2.5">Lokasi</th>
+									<th className="whitespace-nowrap px-3 py-2.5">Shift</th>
+									<th className="whitespace-nowrap px-3 py-2.5 text-right">Total</th>
+									<th className="whitespace-nowrap px-3 py-2.5 text-right">Laba / HPP</th>
+									<th className="whitespace-nowrap min-w-[120px] px-3 py-2.5">Status</th>
+									<th className="whitespace-nowrap px-3 py-2.5">Channel</th>
+									<th className="whitespace-nowrap px-3 py-2.5 text-right">Waktu</th>
+									<th className="whitespace-nowrap px-3 py-2.5 text-center">Aksi</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-border">
@@ -992,10 +992,10 @@ function AdminOrders() {
 												role="button"
 												tabIndex={0}
 											>
-												<td className="px-3 py-2.5 text-center align-top" onClick={(event) => event.stopPropagation()}>
+												<td className="whitespace-nowrap px-3 py-2.5 text-center align-top" onClick={(event) => event.stopPropagation()}>
 													<input aria-label={`Pilih pesanan ${order.displayId}`} checked={selectedOrderIds.has(String(order._id))} onChange={() => toggleOrderSelection(String(order._id))} type="checkbox" />
 												</td>
-												<td className="px-3 py-2.5 align-top">
+												<td className="whitespace-nowrap px-3 py-2.5 align-top">
 													<div className="flex items-start gap-1.5">
 														<div className="min-w-0 leading-tight">
 															<span className="block whitespace-nowrap font-bold font-mono text-xs text-primary" title={`${order.type === "booking" ? "BK-" : "#"}${order.displayId}`}>
@@ -1008,7 +1008,7 @@ function AdminOrders() {
 														</Button>
 													</div>
 												</td>
-												<td className="px-3 py-2.5 align-top">
+												<td className="whitespace-nowrap px-3 py-2.5 align-top">
 													<div className="flex items-center gap-2">
 														<div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">
 															<User className="h-3 w-3" />
@@ -1023,10 +1023,10 @@ function AdminOrders() {
 														</div>
 													</div>
 												</td>
-												<td className="px-3 py-2.5 align-top text-[11px]">
+												<td className="whitespace-nowrap px-3 py-2.5 align-top text-[11px]">
 													{getOrderLocationLabel(order)}
 												</td>
-												<td className="px-3 py-2.5 align-top">
+												<td className="whitespace-nowrap px-3 py-2.5 align-top">
 													<div className="flex flex-col gap-1">
 														{shiftMeta.shiftName !== "-" ? (
 															<span className="inline-flex w-fit rounded-md bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary uppercase">
@@ -1040,10 +1040,10 @@ function AdminOrders() {
 														</span>
 													</div>
 												</td>
-												<td className="px-3 py-2.5 text-right align-top font-semibold text-xs tabular-nums">
+												<td className="whitespace-nowrap px-3 py-2.5 text-right align-top font-semibold text-xs tabular-nums">
 													{formatrupiah(order.totalAmount)}
 												</td>
-												<td className="px-3 py-2.5 text-right align-top">
+												<td className="whitespace-nowrap px-3 py-2.5 text-right align-top">
 													{(() => {
 														if (!hppProductMap || !order.items?.length) {
 															return (
@@ -1076,7 +1076,7 @@ function AdminOrders() {
 														);
 													})()}
 												</td>
-														<td className="px-3 py-2.5 align-top" onClick={(event) => event.stopPropagation()}>
+														<td className="whitespace-nowrap px-3 py-2.5 align-top" onClick={(event) => event.stopPropagation()}>
 															<div className="min-w-[120px] space-y-1.5">
 																<div className="flex items-center gap-2">
 																	<Badge className="rounded-md px-1.5 py-0 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getPaymentLabel(order)}</Badge>
@@ -1096,7 +1096,7 @@ function AdminOrders() {
 																)}
 															</div>
 													</td>
-												<td className="px-3 py-2.5 align-top">
+												<td className="whitespace-nowrap px-3 py-2.5 align-top">
 													<div className="flex flex-col gap-1 leading-tight">
 														{(() => {
 															const channel = resolveOrderChannel(order);
@@ -1107,13 +1107,13 @@ function AdminOrders() {
 														</span>
 													</div>
 												</td>
-												<td className="px-3 py-2.5 text-right align-top text-[10px] text-muted-foreground tabular-nums">
+												<td className="whitespace-nowrap px-3 py-2.5 text-right align-top text-[10px] text-muted-foreground tabular-nums">
 													<div className="leading-tight">
 														<div>{format(order.createdAt, "dd MMM", { locale: id })}</div>
 														<div>{format(order.createdAt, "HH:mm", { locale: id })}</div>
 													</div>
 												</td>
-												<td className="px-3 py-2.5 text-center align-top">
+												<td className="whitespace-nowrap px-3 py-2.5 text-center align-top">
 													<div className="flex items-center justify-center gap-0.5">
 														<Button
 															className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"

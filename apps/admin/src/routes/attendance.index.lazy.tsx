@@ -425,8 +425,8 @@ function AttendancePage() {
 			<header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border/30 bg-background/90 px-3 backdrop-blur-lg md:h-14 md:px-6">
 				<div className="flex items-center gap-2 md:gap-4">
 					<div className="group relative">
-						<div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 opacity-20 blur transition duration-300 group-hover:opacity-40" />
-						<div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-card text-primary shadow-sm">
+						<div className="absolute -inset-1 rounded-[20px] bg-primary/10 opacity-60 transition duration-200" />
+						<div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-card text-primary shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 							<Coffee className="h-5 w-5" />
 						</div>
 					</div>
@@ -469,7 +469,7 @@ function AttendancePage() {
 				</div>
 			</header>
 
-			<main className="flex flex-1 flex-col p-3 md:p-6">
+			<main className="flex flex-1 flex-col p-3 md:p-4">
 				<AnimatePresence mode="wait">
 					{step === "select" && (
 						<motion.div
@@ -477,7 +477,7 @@ function AttendancePage() {
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: -20 }}
 							key="select-step"
-							className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6"
+							className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-4"
 						>
 							{/* Left: User Selection Grid */}
 							<div className="space-y-4 lg:col-span-8 lg:space-y-6">
@@ -505,7 +505,7 @@ function AttendancePage() {
 													className={`group relative aspect-square rounded-xl border-2 p-3 text-center transition-all duration-200 ${
 														isIn 
 														? "bg-emerald-50/30 border-emerald-500/20 hover:border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.05)]" 
-														: "bg-card border-border/50 hover:border-primary shadow-sm"
+														: "bg-card border-border/50 hover:border-primary shadow-[0_4px_18px_rgba(15,23,42,0.04)]"
 													}`}
 												>
 													<div className="flex flex-col items-center gap-2 h-full justify-center">
@@ -547,7 +547,7 @@ function AttendancePage() {
 							{/* Right: Live Status Board */}
 							<div className="lg:col-span-4">
 								<div className="space-y-3 lg:sticky lg:top-28 lg:space-y-4">
-									<div className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card p-4 shadow-lg">
+									<div className="group relative overflow-hidden rounded-[20px] border border-border/50 bg-card p-4 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
 										<div className="relative space-y-3 md:space-y-4">
 											<div className="flex items-center gap-2">
 												<div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600">
@@ -565,7 +565,7 @@ function AttendancePage() {
 														<Skeleton key={i} className="h-10 w-full rounded-xl" />
 													))
 												) : currentlyIn.length === 0 ? (
-													<div className="py-8 text-center space-y-2">
+													<div className="py-6 text-center space-y-2">
 														<div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground">
 															<UserCheck className="h-6 w-6" />
 														</div>
@@ -595,7 +595,7 @@ function AttendancePage() {
 
 									{/* Shift Info Card */}
 									{detectedShift && (
-										<div className={`rounded-2xl border p-3 ${
+										<div className={`rounded-[20px] border p-3 ${
 											isShiftActive 
 												? "bg-blue-50/50 border-blue-100/50" 
 												: "bg-amber-50/50 border-amber-100/50"
@@ -743,8 +743,8 @@ function AttendancePage() {
 							<div className="relative group">
 								{!isInRadius && siteSettings?.attendanceLat ? (
 									<div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
-										<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
-											<Navigation className="h-7 w-7 animate-bounce" />
+										<div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-red-100 text-red-600">
+											<Navigation className="h-7 w-7 animate-pulse" />
 										</div>
 										<div className="space-y-2">
 											<p className="font-bold text-red-900">DI LUAR AREA KERJA</p>
@@ -756,7 +756,7 @@ function AttendancePage() {
 									</div>
 								) : !isEnrolling && !user?.hasFace ? (
 									<div className="flex aspect-[4/3] w-full flex-col items-center justify-center space-y-3 rounded-xl bg-muted p-4 text-center">
-										<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-amber-100 text-amber-600">
+										<div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-amber-100 text-amber-600">
 											<AlertCircle className="h-7 w-7" />
 										</div>
 										<div className="space-y-2">
@@ -790,7 +790,7 @@ function AttendancePage() {
 								<div className="flex flex-col gap-2">
 									{!isEnrolling && (
 										<Button 
-											className="h-12 w-full rounded-xl font-bold text-sm shadow-md active:scale-95"
+											className="h-12 w-full rounded-xl font-bold text-sm shadow-[0_6px_20px_rgba(15,23,42,0.05)] active:scale-95"
 											onClick={() => {
 												setStep("pin");
 												toast.info(`Masukkan PIN untuk ${user?.isCurrentlyIn ? 'Keluar' : 'Masuk'} manual.`);
@@ -836,7 +836,7 @@ function AttendancePage() {
 							key="success-step"
 							className="max-w-md mx-auto w-full"
 						>
-							<div className="flex flex-col items-center space-y-5 text-center bg-card border border-border/50 rounded-2xl p-6 shadow-lg relative overflow-hidden">
+							<div className="flex flex-col items-center space-y-5 text-center bg-card border border-border/50 rounded-[20px] p-4 shadow-[0_8px_28px_rgba(15,23,42,0.06)] relative overflow-hidden">
 										
 								<motion.div
 									className="relative"
@@ -844,7 +844,7 @@ function AttendancePage() {
 									animate={{ scale: 1 }}
 									transition={{ duration: 0.3 }}
 								>
-												<div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+												<div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_8px_28px_rgba(15,23,42,0.06)] shadow-emerald-500/20">
 										<UserCheck className="h-12 w-12" />
 									</div>
 								</motion.div>
@@ -856,7 +856,7 @@ function AttendancePage() {
 									transition={{ delay: 0.3 }}
 								>
 									<div className="flex justify-center">
-										<div className={`rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] shadow-sm ${
+										<div className={`rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] shadow-[0_4px_18px_rgba(15,23,42,0.04)] ${
 											user?.isCurrentlyIn 
 												? "bg-amber-100 text-amber-600 border border-amber-200 text-center" 
 												: "bg-emerald-100 text-emerald-600 border border-emerald-200 text-center"

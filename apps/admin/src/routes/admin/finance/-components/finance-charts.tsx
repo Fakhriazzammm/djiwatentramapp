@@ -110,7 +110,7 @@ export function PeriodComparisonCards() {
 				return (
 					<div
 						key={item.label}
-						className={`rounded-2xl border ${item.border} ${item.bg} p-3 flex flex-col justify-between transition-colors group`}
+						className={`rounded-[20px] border ${item.border} ${item.bg} p-3 flex flex-col justify-between transition-colors group`}
 					>
 						<div className="flex items-center justify-between mb-1.5">
 							<div className="flex items-center gap-1.5">
@@ -178,7 +178,7 @@ export function TrendChart() {
 	const CustomTooltip = ({ active, payload, label }: any) => {
 		if (!active || !payload?.length) return null;
 		return (
-			<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg text-xs">
+			<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-[0_8px_28px_rgba(15,23,42,0.06)] text-xs">
 				<p className="mb-1 font-semibold">{label}</p>
 				{payload.map((p: any) => (
 					<p key={p.dataKey} style={{ color: p.color }}>
@@ -190,7 +190,7 @@ export function TrendChart() {
 	};
 
 	return (
-		<div className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
+		<div className="rounded-[22px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:p-4">
 			<div className="mb-2 flex items-center justify-between">
 				<h3 className="font-bold text-xs">Tren Keuangan</h3>
 				<div className="flex gap-1">
@@ -352,7 +352,7 @@ export function ExpenseCategoryPieChart() {
 		if (!active || !payload?.length) return null;
 		const d = payload[0];
 		return (
-			<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg text-xs">
+			<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-[0_8px_28px_rgba(15,23,42,0.06)] text-xs">
 				<p className="font-semibold">{label(d.name)}</p>
 				<p style={{ color: d.payload.fill }}>{formatFull(d.value)}</p>
 				<p className="text-muted-foreground">{d.payload.percentage.toFixed(1)}%</p>
@@ -382,7 +382,7 @@ export function ExpenseCategoryPieChart() {
 	};
 
 	return (
-		<div className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
+		<div className="rounded-[22px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:p-4">
 			<div className="mb-4 flex items-center justify-between">
 				<h3 className="font-bold text-base">Breakdown Kategori</h3>
 				<div className="flex rounded-lg border border-border overflow-hidden text-xs">

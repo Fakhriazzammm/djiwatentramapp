@@ -85,7 +85,7 @@ export function FinanceDashboard() {
 	return (
 		<div className="space-y-4">
 			{/* ── Page identity and primary actions ───────────── */}
-			<section className="flex flex-col justify-between gap-4 rounded-3xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:p-5">
+			<section className="flex flex-col justify-between gap-4 rounded-[22px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:p-4">
 				<div>
 					<p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Kontrol finansial</p>
 					<h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Keuangan</h1>
@@ -94,7 +94,7 @@ export function FinanceDashboard() {
 				<div className="flex flex-wrap items-center gap-2">
 					<Link
 						to="/admin/finance/transactions"
-						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<ListOrdered className="h-4 w-4" /> Transaksi
 					</Link>
@@ -108,7 +108,7 @@ export function FinanceDashboard() {
 			</section>
 
 			{/* ── Period selector ────────────────────────────── */}
-			<div aria-label="Pilih periode laporan" className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-2xl border border-border bg-card p-1.5 shadow-sm">
+			<div aria-label="Pilih periode laporan" className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-[20px] border border-border bg-card p-1.5 shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 				{PERIODS.map((p) => (
 					<button
 						key={p.id}
@@ -128,7 +128,7 @@ export function FinanceDashboard() {
 
 			{/* ── Primary balance with supporting cash flow ───── */}
 			<section className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
-				<div className="rounded-3xl border border-primary/15 bg-primary/5 p-4 shadow-sm sm:p-5">
+				<div className="rounded-[22px] border border-primary/15 bg-primary/5 p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:p-4">
 					<div className="flex items-center justify-between gap-3">
 						<div>
 							<p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Saldo bersih</p>
@@ -145,11 +145,11 @@ export function FinanceDashboard() {
 					)}
 				</div>
 				<div className="grid grid-cols-2 gap-2">
-					<div className="rounded-2xl border border-emerald-500/15 bg-card p-3 shadow-sm">
+					<div className="rounded-[20px] border border-emerald-500/15 bg-card p-3 shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 						<div className="flex items-center justify-between text-emerald-600"><span className="text-xs font-semibold">Pemasukan</span><ArrowDownLeft className="h-4 w-4" /></div>
 						{summary?.totalIncome !== undefined ? <p className="mt-3 break-words text-sm font-bold tabular-nums text-emerald-700">{fmt(summary.totalIncome)}</p> : <Skeleton className="mt-3 h-5 w-full" />}
 					</div>
-					<div className="rounded-2xl border border-orange-500/15 bg-card p-3 shadow-sm">
+					<div className="rounded-[20px] border border-orange-500/15 bg-card p-3 shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
 						<div className="flex items-center justify-between text-orange-600"><span className="text-xs font-semibold">Pengeluaran</span><ArrowUpRight className="h-4 w-4" /></div>
 						{summary?.totalExpense !== undefined ? <p className="mt-3 break-words text-sm font-bold tabular-nums text-orange-700">{fmt(summary.totalExpense)}</p> : <Skeleton className="mt-3 h-5 w-full" />}
 					</div>

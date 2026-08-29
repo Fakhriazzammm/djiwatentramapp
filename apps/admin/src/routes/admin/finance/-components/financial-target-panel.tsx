@@ -89,7 +89,7 @@ function SetTargetModal({
 				initial={{ opacity: 0, scale: 0.95 }}
 				animate={{ opacity: 1, scale: 1 }}
 				exit={{ opacity: 0, scale: 0.95 }}
-				className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl mx-4"
+				className="relative w-full max-w-md rounded-[20px] border border-border bg-card p-4 shadow-2xl mx-4"
 				data-admin-modal-card
 			>
 				<div className="mb-5 flex items-center justify-between">
@@ -230,7 +230,7 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 
 	if (progress === undefined) {
 		return (
-			<div className={`rounded-xl border border-border bg-card animate-pulse ${compact ? "p-2.5" : "p-6"}`}>
+			<div className={`rounded-xl border border-border bg-card animate-pulse ${compact ? "p-2.5" : "p-4"}`}>
 				<div className={`rounded bg-muted/50 mb-2 ${compact ? "h-3 w-24" : "h-4 w-32"}`} />
 				<div className={`w-full rounded bg-muted/50 ${compact ? "h-12" : "h-20"}`} />
 			</div>
@@ -250,7 +250,7 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 	if (!progress.hasTarget) {
 		return (
 			<>
-				<div className="rounded-xl border border-border border-dashed bg-card/50 p-6 flex flex-col items-center text-center gap-3">
+				<div className="rounded-xl border border-border border-dashed bg-card/50 p-4 flex flex-col items-center text-center gap-3">
 					<div className="rounded-full bg-muted p-3">
 						<Target className="h-6 w-6 text-muted-foreground" />
 					</div>
@@ -283,7 +283,7 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 
 	return (
 		<>
-			<div className={`rounded-xl border border-border bg-card ${compact ? "p-2.5" : "p-5"}`}>
+			<div className={`rounded-xl border border-border bg-card ${compact ? "p-2.5" : "p-4"}`}>
 				<div className={`flex items-center justify-between ${compact ? "mb-2" : "mb-4"}`}>
 					<div className="flex items-center gap-2">
 						<div className={`rounded-md ${compact ? "p-1" : "p-1.5"} ${isOverTarget ? "bg-green-500/10" : "bg-primary/10"}`}>
@@ -309,7 +309,7 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 				</div>
 
 				{/* Progress Visualization */}
-				<div className="flex items-center gap-5">
+				<div className="flex items-center gap-4">
 					{/* Circular */}
 					<div className="relative flex-shrink-0">
 						<CircularProgress pct={pct} size={compact ? 64 : 88} />

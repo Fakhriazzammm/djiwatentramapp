@@ -41,7 +41,7 @@ function DashboardAdmin() {
 
 	if (stats == null || shiftStatus == null) {
 		return (
-			<div className="space-y-3 animate-pulse pb-6">
+			<div className="space-y-3 pb-6">
 				<div className="flex items-center justify-between">
 					<div className="space-y-1.5">
 						<Skeleton className="h-3 w-32 rounded" />
@@ -75,7 +75,7 @@ function DashboardAdmin() {
 
 	return (
 		<div className="space-y-4 pb-6">
-			<section className="grid gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
+			<section className="grid gap-3 rounded-[24px] border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-soft)] sm:p-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,1fr)]">
 				<div className="min-w-0">
 					<div className="mb-3 flex items-center gap-2 text-primary">
 						<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -83,13 +83,13 @@ function DashboardAdmin() {
 						</span>
 						<span className="text-xs font-semibold uppercase tracking-[0.12em]">Ringkasan 7 hari</span>
 					</div>
-					<h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+					<h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
 						Pusat Pantau Operasional
 					</h1>
 					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
 						Monitor pesanan, selisih kas, dan anomali yang perlu ditindaklanjuti.
 					</p>
-					<div className="mt-5">
+					<div className="mt-4">
 						<p className="text-xs font-medium text-muted-foreground">Pendapatan 7 hari</p>
 						<p className="mt-1 break-words font-display text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
 							{formatCurrencyIDR(sevenDayRevenue)}
@@ -108,12 +108,12 @@ function DashboardAdmin() {
 					</div>
 				</div>
 				<div className="grid content-start gap-2 sm:grid-cols-2 lg:grid-cols-1">
-					<div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-3">
+					<div className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-3">
 						<p className="text-xs font-semibold text-amber-800">Rekonsiliasi tertunda</p>
 						<p className="mt-1 text-xl font-bold tabular-nums text-amber-900">{stats.paymentReconciliation.pendingNonCashCount}</p>
 						<p className="text-xs text-amber-800/80">transaksi QRIS/transfer perlu diperiksa</p>
 					</div>
-					<div className="rounded-2xl border border-border bg-muted/30 p-3">
+					<div className="rounded-xl border border-border bg-muted/30 p-3">
 						<p className="text-xs font-semibold text-muted-foreground">Anomali hari ini</p>
 						<p className="mt-1 text-xl font-bold tabular-nums text-foreground">{stats.anomalies.length}</p>
 						<p className="text-xs text-muted-foreground">temuan otomatis pada operasional</p>
@@ -147,7 +147,7 @@ function DashboardAdmin() {
 			</section>
 
 			<div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<div className="flex items-center justify-between mb-2">
 						<h3 className="text-xs font-bold flex items-center gap-1.5">
 							<AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
@@ -178,7 +178,7 @@ function DashboardAdmin() {
 					</div>
 				</div>
 
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<div className="flex items-center justify-between mb-2">
 						<h3 className="text-xs font-bold flex items-center gap-1.5">
 							<AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
@@ -212,7 +212,7 @@ function DashboardAdmin() {
 
 			{/* Shift Information */}
 			{validShifts.length > 0 && (
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<div className="flex items-center justify-between mb-2">
 						<h3 className="text-xs font-bold flex items-center gap-1.5">
 							<Clock className="w-3.5 h-3.5 text-primary" />
@@ -291,7 +291,7 @@ function DashboardAdmin() {
 
 			<div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
 				{/* Revenue Chart */}
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<div className="flex items-center justify-between mb-3">
 						<div>
 							<h3 className="text-xs font-bold">Grafik Pendapatan</h3>
@@ -324,7 +324,7 @@ function DashboardAdmin() {
 				</div>
 
 				{/* Order Status Breakdown */}
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<h3 className="text-xs font-bold mb-3">Breakdown Pesanan</h3>
 					<div className="space-y-2">
 						<CompactStatusRow
@@ -370,7 +370,7 @@ function DashboardAdmin() {
 
 			<div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
 				{/* Low Stock Alert */}
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<div className="flex items-center justify-between mb-2">
 						<div>
 							<h3 className="text-xs font-bold">Stok Kritis</h3>
@@ -409,7 +409,7 @@ function DashboardAdmin() {
 				</div>
 
 				{/* Top Products */}
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<h3 className="text-xs font-bold mb-2">Best Sellers</h3>
 					{stats.topProducts.length === 0 ? (
 						<div className="flex flex-col items-center justify-center py-6 text-center bg-muted/20 rounded-lg border border-dashed border-border">
@@ -441,7 +441,7 @@ function DashboardAdmin() {
 				</div>
 
 				{/* Recent Orders */}
-				<div className="rounded-xl border border-border bg-card p-3">
+				<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)]">
 					<h3 className="text-xs font-bold mb-2">Riwayat Terbaru</h3>
 					{stats.recentOrders.length === 0 ? (
 						<div className="flex flex-col items-center justify-center py-6 text-center bg-muted/20 rounded-lg border border-dashed border-border">
@@ -482,7 +482,7 @@ function DashboardAdmin() {
 			</div>
 
 			{/* Financial Summary */}
-			<div className="rounded-xl border border-border bg-card p-3 relative">
+			<div className="rounded-2xl border border-border/80 bg-card p-3 shadow-[var(--shadow-soft)] relative">
 				<h3 className="text-xs font-bold mb-2">Ringkasan Keuangan Global</h3>
 				<div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
 					<div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/10">

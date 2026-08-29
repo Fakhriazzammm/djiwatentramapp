@@ -432,23 +432,23 @@ function AdminCustomers() {
 			</div>
 
 			{/* Desktop: Compact table */}
-			<div className="hidden rounded-2xl border border-border bg-card shadow-sm md:block">
+			<div className="hidden rounded-[20px] border border-border bg-card shadow-sm md:block">
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-[1400px] text-left text-xs">
 						<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 							<tr className="text-[10px] text-muted-foreground">
-								<th className="w-12 px-2.5 py-2 text-center"><input type="checkbox" aria-label="Pilih semua customer terlihat" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-5 w-5 accent-red-600" /></th>
-								<th className="px-2.5 py-2"><SortableHeader label="Nama" sortKey="name" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="px-2.5 py-2"><SortableHeader label="Email" sortKey="email" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="px-2.5 py-2"><SortableHeader label="Telepon" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="px-2.5 py-2 text-right"><SortableHeader label="Saldo" sortKey="wallet_balance" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
-								<th className="px-2.5 py-2 text-center"><SortableHeader label="Order DjiwaApp" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
-								<th className="px-2.5 py-2 text-center"><SortableHeader label="Kunjungan DjiwaApp" sortKey="djiwaapp_visit_count" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
-								<th className="px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
-								<th className="px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="px-2.5 py-2">Status</th>
-								<th className="px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap w-12 px-2.5 py-2 text-center"><input type="checkbox" aria-label="Pilih semua customer terlihat" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-5 w-5 accent-red-600" /></th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Nama" sortKey="name" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Email" sortKey="email" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Telepon" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap px-2.5 py-2 text-right"><SortableHeader label="Saldo" sortKey="wallet_balance" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
+								<th className="whitespace-nowrap px-2.5 py-2 text-center"><SortableHeader label="Order DjiwaApp" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
+								<th className="whitespace-nowrap px-2.5 py-2 text-center"><SortableHeader label="Kunjungan DjiwaApp" sortKey="djiwaapp_visit_count" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
+								<th className="whitespace-nowrap px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap px-2.5 py-2">Status</th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
@@ -468,8 +468,8 @@ function AdminCustomers() {
 										className="cursor-pointer transition-colors hover:bg-muted/30"
 										onClick={() => setDetailCustomer(c)}
 									>
-										<td className="w-12 px-2.5 py-2 text-center align-middle"><input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(c.source_id)} className="h-5 w-5 accent-red-600" /></td>
-										<td className="px-2.5 py-2 align-middle">
+										<td className="whitespace-nowrap w-12 px-2.5 py-2 text-center align-middle"><input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(c.source_id)} className="h-5 w-5 accent-red-600" /></td>
+										<td className="whitespace-nowrap px-2.5 py-2 align-middle">
 											<div className="flex items-center gap-2">
 												<CustomerAvatar customer={c} />
 												<span className="truncate font-medium text-xs">
@@ -477,22 +477,22 @@ function AdminCustomers() {
 												</span>
 											</div>
 										</td>
-										<td className="max-w-[200px] truncate px-2.5 py-2 align-middle text-muted-foreground">
+										<td className="whitespace-nowrap max-w-[200px] truncate px-2.5 py-2 align-middle text-muted-foreground">
 											{c.email || "-"}
 										</td>
 										<td className="px-2.5 py-2 align-middle text-muted-foreground whitespace-nowrap">
 											{c.phone || "-"}
 										</td>
-										<td className="px-2.5 py-2 text-right align-middle tabular-nums font-semibold text-emerald-700">
+										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-semibold text-emerald-700">
 											{formatRupiah(c.wallet_balance || 0)}
 										</td>
-										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
+										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">
 											{c.total_orders}
 										</td>
-										<td className="px-2.5 py-2 text-center align-middle tabular-nums">
+										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">
 											{c.djiwaapp_visit_count ?? 0}
 										</td>
-										<td className="px-2.5 py-2 text-right align-middle tabular-nums font-medium">
+										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-medium">
 											{formatRupiah(c.total_spent)}
 										</td>
 										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
@@ -519,7 +519,7 @@ function AdminCustomers() {
 
 			{detailCustomer ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailCustomer(null); }}>
-					<div role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-2xl">
+					<div role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="w-full max-w-lg rounded-[20px] border border-border bg-card p-4 shadow-xl">
 						<div className="flex items-start justify-between gap-4">
 							<div className="flex min-w-0 items-center gap-3"><CustomerAvatar customer={detailCustomer} /><div className="min-w-0"><p id="customer-detail-title" className="truncate text-lg font-black">{detailCustomer.name || "Tanpa Nama"}</p><p className="truncate text-sm text-muted-foreground">Detail customer</p></div></div>
 							<button type="button" aria-label="Tutup detail customer" onClick={() => setDetailCustomer(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
@@ -561,7 +561,7 @@ function AdminCustomers() {
 
 			{confirmDeleteCustomers ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setConfirmDeleteCustomers(null); }}>
-					<div role="dialog" aria-modal="true" aria-labelledby="bulk-delete-customer-title" className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl">
+					<div role="dialog" aria-modal="true" aria-labelledby="bulk-delete-customer-title" className="w-full max-w-md rounded-[20px] border border-border bg-card p-4 shadow-xl">
 						<div className="flex items-start justify-between gap-4">
 							<div><p id="bulk-delete-customer-title" className="text-lg font-black">Hapus customer terpilih?</p><p className="mt-1 text-sm text-muted-foreground">{confirmDeleteCustomers.length} akun akan dinonaktifkan.</p></div>
 							<button type="button" aria-label="Tutup" disabled={deleting} onClick={() => setConfirmDeleteCustomers(null)} className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
