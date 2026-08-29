@@ -87,11 +87,14 @@ export function CustomerTransactionVoiceListener() {
 						text: resolveCustomerTransactionVoice({ eventType: "order_cashier_pending", customerName: customer.name }).text,
 					});
 				}
-			} else if (previous !== status && paid) {
+			} else {
+				const wasPaid = previous === "paid" || previous === "completed";
+				if (!wasPaid && paid) {
 				enqueueCustomerTransactionVoice({
 					eventKey: `customer-order:${orderId}`,
 					text: resolveCustomerTransactionVoice({ eventType: "order_paid", paymentMethod: method, customerName: customer.name }).text,
 				});
+				}
 			}
 
 			knownStatuses.current.set(orderId, status);

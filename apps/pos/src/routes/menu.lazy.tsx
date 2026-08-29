@@ -617,7 +617,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 			if (hasSeededDjiwaAppOrdersRef.current) {
 				const previousStatus = djiwaAppOrderStatusRef.current.get(orderId);
-				if ((previousStatus === undefined || previousStatus !== status) && (status === "paid" || status === "completed")) {
+				const wasSettled = previousStatus === "paid" || previousStatus === "completed";
+			if (!wasSettled && (status === "paid" || status === "completed")) {
 					newlySettledOrderIds.push(orderId);
 				}
 			}
