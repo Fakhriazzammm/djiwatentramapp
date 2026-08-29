@@ -22,6 +22,7 @@ export function CustomerTransactionVoiceListener() {
 	const seeded = useRef(false);
 	const seedStarted = useRef(false);
 	const knownStatuses = useRef(new Map<string, string>());
+	const announcedSettledOrderIds = useRef(new Set<string>());
 	const seedTimer = useRef<number | undefined>(undefined);
 	const trackedSourceId = useRef<string | null | undefined>(undefined);
 
@@ -34,6 +35,7 @@ export function CustomerTransactionVoiceListener() {
 			seeded.current = false;
 			seedStarted.current = false;
 			knownStatuses.current = new Map();
+			announcedSettledOrderIds.current = new Set();
 			if (seedTimer.current) {
 				window.clearTimeout(seedTimer.current);
 				seedTimer.current = undefined;
@@ -77,6 +79,7 @@ export function CustomerTransactionVoiceListener() {
 
 			if (previous === undefined) {
 				if (paid) {
+					announcedSettledOrderIds.current.add(orderId);
 					enqueueCustomerTransactionVoice({
 						eventKey: `customer-order:${orderId}`,
 						text: resolveCustomerTransactionVoice({ eventType: "order_paid", paymentMethod: method, customerName: customer.name }).text,
@@ -88,8 +91,9 @@ export function CustomerTransactionVoiceListener() {
 					});
 				}
 			} else {
-				const wasPaid = previous === "paid" || previous === "completed";
-				if (!wasPaid && paid) {
+				const wasAnnounced = announcedSettledOrderIds.current.has(orderId);
+				if (!wasAnnounced && paid) {
+					announcedSettledOrderIds.current.add(orderId);
 				enqueueCustomerTransactionVoice({
 					eventKey: `customer-order:${orderId}`,
 					text: resolveCustomerTransactionVoice({ eventType: "order_paid", paymentMethod: method, customerName: customer.name }).text,

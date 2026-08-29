@@ -539,6 +539,7 @@ const notificationSeedTimerRef = useRef<number | undefined>(undefined);
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
 	const djiwaAppOrderSeedTimerRef = useRef<number | undefined>(undefined);
 	const transactionSoundIdsRef = useRef<Set<string>>(new Set());
+	const announcedSettledOrderIdsRef = useRef<Set<string>>(new Set());
 	const autoPrintedCustomerOrderIdsRef = useRef<Set<string>>(new Set());
 	const autoPrintRetryTimersRef = useRef<Map<string, number>>(new Map());
 	const customerAutoPrintStatusRef = useRef<Map<string, string>>(new Map());
@@ -616,9 +617,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			currentStatuses.set(orderId, status);
 
 			if (hasSeededDjiwaAppOrdersRef.current) {
-				const previousStatus = djiwaAppOrderStatusRef.current.get(orderId);
-				const wasSettled = previousStatus === "paid" || previousStatus === "completed";
-			if (!wasSettled && (status === "paid" || status === "completed")) {
+				const wasAnnounced = announcedSettledOrderIdsRef.current.has(orderId);
+				if (!wasAnnounced && (status === "paid" || status === "completed")) {
 					newlySettledOrderIds.push(orderId);
 				}
 			}
@@ -639,6 +639,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			const order = (orders as any[]).find((item) => String(item._id ?? item.sourceId ?? item.orderNumber ?? "") === orderId);
 			if (!order) return;
 			transactionSoundIdsRef.current.add(orderId);
+			announcedSettledOrderIdsRef.current.add(orderId);
 			const voiceEvent = resolveTransactionVoice({
 				eventKey: `order:${orderId}`,
 				source: String(order.source ?? order.sourceApp ?? order.source_app ?? ""),
@@ -675,6 +676,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				const orderId = String(item.action_payload?.orderId ?? item.order_source_id ?? item.id);
 				if (transactionSoundIdsRef.current.has(orderId)) return;
 				transactionSoundIdsRef.current.add(orderId);
+				announcedSettledOrderIdsRef.current.add(orderId);
 				const voiceEvent = resolveTransactionVoice({
 					eventKey: `order:${orderId}`,
 					source: String(item.source ?? item.action_payload?.source ?? ""),
