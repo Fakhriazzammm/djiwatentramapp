@@ -532,12 +532,14 @@ function MenuPage() {
 	const notificationIdsRef = useRef<Set<string>>(new Set());
 	const hasSeededNotificationsRef = useRef(false);
 const notificationSeedTimerRef = useRef<number | undefined>(undefined);
+const notificationSeedCompletedAtRef = useRef<number | null>(null);
 	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
 	const djiwaAppOrderSeedTimerRef = useRef<number | undefined>(undefined);
+	const djiwaAppOrderSeedCompletedAtRef = useRef<number | null>(null);
 	const transactionSoundIdsRef = useRef<Set<string>>(new Set());
 	const announcedSettledOrderIdsRef = useRef<Set<string>>(new Set());
 	const autoPrintedCustomerOrderIdsRef = useRef<Set<string>>(new Set());
@@ -617,8 +619,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			currentStatuses.set(orderId, status);
 
 			if (hasSeededDjiwaAppOrdersRef.current) {
+				const previousStatus = djiwaAppOrderStatusRef.current.get(orderId);
 				const wasAnnounced = announcedSettledOrderIdsRef.current.has(orderId);
-				if (!wasAnnounced && (status === "paid" || status === "completed")) {
+				const isNewOrderAfterSeed = djiwaAppOrderSeedCompletedAtRef.current !== null
+					&& Number(order.createdAt ?? 0) > djiwaAppOrderSeedCompletedAtRef.current;
+				const isSettled = status === "paid" || status === "completed";
+				const isStatusTransition = previousStatus !== undefined && previousStatus !== status;
+				if (!wasAnnounced && isSettled && (isNewOrderAfterSeed || isStatusTransition)) {
 					newlySettledOrderIds.push(orderId);
 				}
 			}
@@ -629,6 +636,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			if (djiwaAppOrderSeedTimerRef.current) window.clearTimeout(djiwaAppOrderSeedTimerRef.current);
 			djiwaAppOrderSeedTimerRef.current = window.setTimeout(() => {
 				hasSeededDjiwaAppOrdersRef.current = true;
+				djiwaAppOrderSeedCompletedAtRef.current = Date.now();
 				djiwaAppOrderSeedTimerRef.current = undefined;
 			}, 1500);
 			return;
@@ -662,12 +670,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			if (notificationSeedTimerRef.current) window.clearTimeout(notificationSeedTimerRef.current);
 			notificationSeedTimerRef.current = window.setTimeout(() => {
 				hasSeededNotificationsRef.current = true;
+				notificationSeedCompletedAtRef.current = Date.now();
 				notificationSeedTimerRef.current = undefined;
 			}, 1500);
 			return;
 		}
 		const newTransactionAlerts = notifications.filter((item) =>
 			!notificationIdsRef.current.has(item.id) &&
+			notificationSeedCompletedAtRef.current !== null &&
+			new Date(item.created_at).getTime() > notificationSeedCompletedAtRef.current &&
 			(item.notification_type === "order_cashier_pending" || item.notification_type === "order_paid") &&
 			String(item.source ?? item.action_payload?.source ?? "").toLowerCase() !== "admin"
 		);
