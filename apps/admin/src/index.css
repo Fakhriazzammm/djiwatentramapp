@@ -299,11 +299,11 @@ body.admin-shell [data-admin-density="compact"] [data-slot="sheet-content"] {
 .kol-admin table {
   table-layout: fixed;
   width: 100%;
-  font-size: .75rem;
+  font-size: .6875rem;
 }
 .kol-admin table th,
 .kol-admin table td {
-  padding: .5rem .5rem;
+  padding: .375rem .375rem;
 }
 .kol-admin table th:nth-child(1),
 .kol-admin table td:nth-child(1) { width: 2.5rem; }
@@ -322,13 +322,14 @@ body.admin-shell [data-admin-density="compact"] [data-slot="sheet-content"] {
 .kol-admin table th:nth-child(8),
 .kol-admin table td:nth-child(8) { width: 15%; }
 .kol-admin table th:nth-child(9),
-.kol-admin table td:nth-child(9) { width: 9%; }
+.kol-admin table td:nth-child(9) { width: 8rem; white-space: nowrap; }
 .kol-admin table th:nth-child(10),
 .kol-admin table td:nth-child(10) { width: 3.5rem; }
 .kol-admin table td:nth-child(3) > span {
   max-width: 100%;
 }
 .kol-admin table td:nth-child(9) select {
+  width: 100%;
   max-width: 100%;
   min-width: 0;
 }
