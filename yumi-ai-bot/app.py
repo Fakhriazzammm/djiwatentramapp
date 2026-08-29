@@ -142,16 +142,30 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 SUMOPOD_API_KEY = os.getenv("SUMOPOD_API_KEY", "")
 SUMOPOD_BASE_URL = os.getenv("SUMOPOD_BASE_URL", "https://ai.sumopod.com/v1")
 SUMOPOD_VISION_MODEL = os.getenv("SUMOPOD_VISION_MODEL", "seed-2-0-mini")
-ALLOWED_USERS = {
-    int(x.strip())
-    for x in os.getenv("ALLOWED_USERS", "").split(",")
-    if x.strip().isdigit()
-}
+def _parse_id_set(value: str) -> set[int]:
+    ids: set[int] = set()
+    for raw in value.split(","):
+        try:
+            ids.add(int(raw.strip()))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+ALLOWED_USERS = _parse_id_set(os.getenv("ALLOWED_USERS", ""))
 TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
 SHIFT_REPORT_GROUP_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
 MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "-5288006237"))
 BROADCAST_CHANNEL_ID = int(os.getenv("BROADCAST_CHANNEL_ID", "-1003534335147"))
+# Channel/group IDs are explicit targets; unlike a channel post, a DM still
+# requires the user ID allowlist below.
+AUTHORIZED_CHAT_IDS = _parse_id_set(os.getenv("AUTHORIZED_CHAT_IDS", "")) | {
+    BROADCAST_CHANNEL_ID,
+    REPORT_GROUP_ID,
+    SHIFT_REPORT_GROUP_ID,
+    MARKETLIST_GROUP_ID,
+}
 
 # ponytail: kill-switch notifikasi otomatis (polling 30s, daily summary, marketlist).
 # Default ON agar tidak breaking behaviour lama. Set "false" di .env untuk mematikan
@@ -480,13 +494,18 @@ def _service_headers():
 
 
 def _is_allowed(update: Update, bot_username: str | None = None) -> bool:
+    chat = update.effective_chat
+    # Channel posts may not have effective_user. Authorize the configured
+    # official channel by chat ID before checking user-based allowlists.
+    if chat and chat.type == "channel" and chat.id in AUTHORIZED_CHAT_IDS:
+        return True
+
     user = update.effective_user
     if not user:
         return False
     if not ALLOWED_USERS:
         return True
     # Di grup: izinkan jika @mention atau reply ke bot
-    chat = update.effective_chat
     if chat and chat.type in ("group", "supergroup"):
         msg = update.effective_message
         if msg:
@@ -2621,7 +2640,7 @@ async def _check_new_transactions(app):
         # ── Check new expenses (look back to today's midnight for OCR receipts) ──
         today_start_ms = _start_of_day_ms(_now_wib())
         expense_lookback = min(_last_expense_check_ms, today_start_ms) if _last_expense_check_ms > 0 else today_start_ms
-        fin_rows = await _fetch(
+        fin_rows = await _fetch_svc(
             "pos_financial_transactions",
             f"select=_id,amount,category,description,date,metadata"
             f"&type=eq.expense"
