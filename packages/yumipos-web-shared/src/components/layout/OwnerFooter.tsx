@@ -12,15 +12,15 @@ export function OwnerFooter({ className = "", children, compact = false, twoLine
   return (
     <footer
       className={compact
-        ? `owner-footer mx-auto mt-3 w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-border/60 bg-background/90 px-3 py-2 text-left text-[11px] leading-4 text-muted-foreground shadow-sm ${className}`
+        ? `owner-footer mx-auto mt-3 w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-border/60 bg-background/90 px-3 py-2 text-center text-[10px] leading-4 text-muted-foreground shadow-sm ${className}`
         : `owner-footer mx-auto mt-4 w-[calc(100%-2rem)] max-w-5xl rounded-2xl border border-border/70 bg-background/85 px-4 py-4 text-center text-[10px] leading-5 text-muted-foreground shadow-sm ${className}`}
       style={compact ? undefined : { paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
     >
       {compact ? (
         twoLine ? (
-          <div className="owner-footer-two-line">
-            <div className="owner-footer-row"><span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /><span className="font-semibold text-foreground">Djiwa Tentram</span><span aria-hidden="true">•</span><span>Dibuat oleh <a className="font-medium text-primary" href="https://instagram.com/fakhriazzamm" target="_blank" rel="noreferrer">@fakhriazzamm</a></span><span aria-hidden="true">•</span><span>Yumme Group</span></div>
-            <div className="owner-footer-row"><span>Dikembangkan oleh <a className="font-medium text-foreground" href="https://zantaratechnology.com" target="_blank" rel="noreferrer">Zantara Technology</a></span></div>
+          <div className="owner-footer-two-line flex flex-col items-center gap-0.5 text-center">
+            <div className="owner-footer-row flex items-center justify-center gap-1 whitespace-nowrap"><span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /><span className="font-semibold text-foreground">Djiwa Tentram</span><span aria-hidden="true">•</span><span>Dibuat oleh <a className="font-medium text-primary" href="https://instagram.com/fakhriazzamm" target="_blank" rel="noreferrer">@fakhriazzamm</a></span><span aria-hidden="true">•</span><span>Yumme Group</span></div>
+            <div className="owner-footer-row flex items-center justify-center gap-1 whitespace-nowrap"><span>Dikembangkan oleh <a className="font-medium text-foreground" href="https://zantaratechnology.com" target="_blank" rel="noreferrer">Zantara Technology</a></span></div>
           </div>
         ) : (
           <div className="flex w-full items-center justify-start gap-2 overflow-x-auto whitespace-nowrap px-1 text-[11px] leading-4">

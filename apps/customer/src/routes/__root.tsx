@@ -31,7 +31,7 @@ export const Route = createRootRoute({
 						<div className="mobile-shell">
 							<div className="min-h-app bg-background font-sans text-foreground antialiased">
 								<Outlet />
-								<OwnerFooter compact className="mb-[calc(5.5rem+env(safe-area-inset-bottom))]" />
+								<OwnerFooter compact twoLine className="mb-[calc(5.5rem+env(safe-area-inset-bottom))]" />
 							</div>
 						</div>
 					</OrderProvider>
