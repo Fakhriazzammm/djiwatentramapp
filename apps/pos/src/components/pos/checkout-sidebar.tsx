@@ -115,6 +115,8 @@ export function CheckoutSidebar({
 	} = useCart();
 
 	const { siteSettings, activeDiscounts: allActiveDiscounts } = useAppData();
+	const taxRate = Number(siteSettings?.taxRate) > 0 ? Number(siteSettings?.taxRate) : 10;
+	const serviceChargeRate = Number(siteSettings?.serviceChargeRate ?? 0);
 	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
