@@ -303,7 +303,7 @@ function OrderPage() {
 		? Math.min(productSubtotal, Math.max(0, Math.round(productSubtotal * (djiwaPayDiscountPercent / 100))))
 		: 0;
 	const chargeableSubtotal = Math.max(0, subtotal - djiwaPayDiscount);
-	const taxRate = siteSettings?.taxRate ?? 0;
+	const taxRate = Number(siteSettings?.taxRate) > 0 ? Number(siteSettings?.taxRate) : 10;
 	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
 	const taxCalculation = calculateOrderTax({
 		items: [

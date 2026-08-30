@@ -793,14 +793,14 @@ export function CheckoutSidebar({
 										</div>
 									)}
 									<div className="flex items-center justify-between text-muted-foreground">
-										<span>Pajak ({taxRate}%)</span>
+										<span>PBJT/Pajak Restoran ({taxRate}%)</span>
 										<span>{fmt(taxAmount)}</span>
 									</div>
 									<div className="flex items-center justify-between text-muted-foreground">
 										<span>Service Charge ({serviceChargeRate}%)</span>
 										<span>{fmt(serviceChargeAmount)}</span>
 									</div>
-									<p className="text-[10px] leading-relaxed text-muted-foreground">Dasar pajak: subtotal setelah diskon. Pajak dan service charge mengikuti tax policy aktif.</p>
+									<p className="text-[10px] leading-relaxed text-muted-foreground">Dasar PBJT: subtotal setelah diskon. Tarif mengikuti policy Kota Tasikmalaya.</p>
 								</div>
 
 								<Separator className="my-2 border-dashed" />

@@ -44,8 +44,8 @@ INSERT INTO pos.tax_policies (
   source_id, policy_name, tax_type, rate_percent,
   service_charge_rate_percent, is_active, policy_version, raw
 ) VALUES (
-  'default', 'Default inactive tax policy', 'none', 0,
-  0, false, 'default-v1', jsonb_build_object('seed', 'tax_policy_foundation')
+  'default', 'PBJT Makanan dan Minuman - Kota Tasikmalaya', 'pb1', 10,
+  0, true, 'tasikmalaya-pbjt-10-v1', jsonb_build_object('seed', 'tax_policy_foundation', 'jurisdiction', 'Kota Tasikmalaya')
 ) ON CONFLICT (source_id, policy_version) DO NOTHING;
 
 ALTER TABLE pos.orders
