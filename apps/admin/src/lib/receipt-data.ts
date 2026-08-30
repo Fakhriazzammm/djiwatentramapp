@@ -9,6 +9,18 @@ export interface ReceiptAdjustmentLine {
 export interface ReceiptMeta {
 	promotionLabels?: string[];
 	adjustmentLines?: ReceiptAdjustmentLine[];
+	/** Tax/rounding values snapshotted with the order (new orders only). */
+	subtotalAmount?: number;
+	taxBaseAmount?: number;
+	taxRateSnapshot?: number;
+	serviceChargeBaseAmount?: number;
+	serviceChargeRateSnapshot?: number;
+	rawTotalAmount?: number;
+	roundingAdjustment?: number;
+	paymentChannelCanonical?: string;
+	taxExemptionReason?: string;
+	taxPolicyVersion?: string;
+	roundingMode?: string;
 }
 
 interface CartLikeItem {
@@ -33,6 +45,17 @@ export function buildReceiptMetaFromCart({
 	taxAmount,
 	serviceChargeAmount,
 	createdAt,
+	subtotalAmount,
+	taxBaseAmount,
+	taxRateSnapshot,
+	serviceChargeBaseAmount,
+	serviceChargeRateSnapshot,
+	rawTotalAmount,
+	roundingAdjustment,
+	paymentChannelCanonical,
+	taxExemptionReason,
+	taxPolicyVersion,
+	roundingMode,
 }: {
 	items: CartLikeItem[];
 	allDiscounts?: Doc<"discounts">[] | null;
@@ -42,6 +65,18 @@ export function buildReceiptMetaFromCart({
 	taxAmount: number;
 	serviceChargeAmount: number;
 	createdAt?: number;
+	// Optional authoritative tax snapshot from the order calculation.
+	subtotalAmount?: number;
+	taxBaseAmount?: number;
+	taxRateSnapshot?: number;
+	serviceChargeBaseAmount?: number;
+	serviceChargeRateSnapshot?: number;
+	rawTotalAmount?: number;
+	roundingAdjustment?: number;
+	paymentChannelCanonical?: string;
+	taxExemptionReason?: string;
+	taxPolicyVersion?: string;
+	roundingMode?: string;
 }): ReceiptMeta {
 	const timestamp = createdAt ?? Date.now();
 	const date = new Date(timestamp);
@@ -113,6 +148,17 @@ export function buildReceiptMetaFromCart({
 	return {
 		promotionLabels: [...new Set(promotionLabels.filter(Boolean))],
 		adjustmentLines,
+		subtotalAmount,
+		taxBaseAmount,
+		taxRateSnapshot,
+		serviceChargeBaseAmount,
+		serviceChargeRateSnapshot,
+		rawTotalAmount,
+		roundingAdjustment,
+		paymentChannelCanonical,
+		taxExemptionReason,
+		taxPolicyVersion,
+		roundingMode,
 	};
 }
 
@@ -121,6 +167,17 @@ export function buildReceiptMetaFromOrder(params: {
 		discountAmount?: number;
 		taxAmount?: number;
 		serviceChargeAmount?: number;
+		subtotalAmount?: number;
+		taxBaseAmount?: number;
+		taxRateSnapshot?: number;
+		serviceChargeBaseAmount?: number;
+		serviceChargeRateSnapshot?: number;
+		rawTotalAmount?: number;
+		roundingAdjustment?: number;
+		paymentChannelCanonical?: string;
+		taxExemptionReason?: string;
+		taxPolicyVersion?: string;
+		roundingMode?: string;
 		voucherId?: string;
 		receiptMeta?: ReceiptMeta | null;
 		items?: Array<{ price: number; originalPrice?: number }>;
@@ -169,6 +226,17 @@ export function buildReceiptMetaFromOrder(params: {
 	return {
 		promotionLabels,
 		adjustmentLines,
+		subtotalAmount: order.subtotalAmount,
+		taxBaseAmount: order.taxBaseAmount,
+		taxRateSnapshot: order.taxRateSnapshot,
+		serviceChargeBaseAmount: order.serviceChargeBaseAmount,
+		serviceChargeRateSnapshot: order.serviceChargeRateSnapshot,
+		rawTotalAmount: order.rawTotalAmount,
+		roundingAdjustment: order.roundingAdjustment,
+		paymentChannelCanonical: order.paymentChannelCanonical,
+		taxExemptionReason: order.taxExemptionReason,
+		taxPolicyVersion: order.taxPolicyVersion,
+		roundingMode: order.roundingMode,
 	};
 }
 

@@ -115,6 +115,11 @@ export interface ReceiptAdjustmentLine {
 export interface ReceiptMeta {
 	promotionLabels?: string[];
 	adjustmentLines?: ReceiptAdjustmentLine[];
+	rawTotalAmount?: number;
+	roundingAdjustment?: number;
+	taxBaseAmount?: number;
+	taxRateSnapshot?: number;
+	paymentChannelCanonical?: string;
 }
 
 export interface ReceiptOrderPayload {
@@ -132,6 +137,11 @@ export interface ReceiptOrderPayload {
 	discountAmount?: number;
 	taxAmount?: number;
 	serviceChargeAmount?: number;
+	rawTotalAmount?: number;
+	roundingAdjustment?: number;
+	taxBaseAmount?: number;
+	taxRateSnapshot?: number;
+	paymentChannelCanonical?: string;
 	cashReceived?: number;
 	changeAmount?: number;
 	cashierName?: string;
@@ -659,7 +669,10 @@ export class BluetoothPrinterService {
 		printKeyValue("WAKTU", dateStr);
 
 		if (mode === "paid") {
-			printKeyValue("BAYAR", order.paymentMethod.toUpperCase());
+			printKeyValue(
+				"BAYAR",
+				(order.paymentChannelCanonical || order.paymentMethod).toUpperCase()
+			);
 		} else if (mode === "open_bill") {
 			printKeyValue("STATUS", "OPEN BILL");
 		}
@@ -786,12 +799,32 @@ export class BluetoothPrinterService {
 				printKeyValue("DISKON", formatReceiptAmount(-(order.discountAmount ?? 0)));
 			}
 
-			// Tax & service charge
+			// Tax & service charge. Prefer immutable snapshots, with metadata as a
+			// compatibility fallback for receipts persisted before direct fields.
+			const taxBaseAmount = order.taxBaseAmount ?? order.receiptMeta?.taxBaseAmount;
+			const taxRateSnapshot = order.taxRateSnapshot ?? order.receiptMeta?.taxRateSnapshot;
+			const rawTotalAmount = order.rawTotalAmount ?? order.receiptMeta?.rawTotalAmount;
+			const roundingAdjustment =
+				order.roundingAdjustment ?? order.receiptMeta?.roundingAdjustment;
+			if (taxBaseAmount != null) {
+				printKeyValue("DASAR PAJAK", formatReceiptAmount(taxBaseAmount));
+			}
 			if (order.taxAmount != null && order.taxAmount > 0) {
-				printKeyValue("PAJAK", formatReceiptAmount(order.taxAmount));
+				const taxLabel =
+					taxRateSnapshot != null
+						? `PAJAK (${taxRateSnapshot.toFixed(2).replace(/\.00$/, "")}%)`
+						: "PAJAK";
+				printKeyValue(taxLabel, formatReceiptAmount(order.taxAmount));
 			}
 			if (order.serviceChargeAmount != null && order.serviceChargeAmount > 0) {
 				printKeyValue("SERVICE", formatReceiptAmount(order.serviceChargeAmount));
+			}
+			if (roundingAdjustment != null || rawTotalAmount != null) {
+				if (rawTotalAmount != null) {
+					printKeyValue("SEBELUM PEMBULATAN", formatReceiptAmount(rawTotalAmount));
+				}
+				printKeyValue("PEMBULATAN", formatReceiptAmount(roundingAdjustment ?? 0));
+				printWrappedLines("Pembulatan ke Rp1.000; sisa <= Rp500 turun, > Rp500 naik", RECEIPT_LINE_WIDTH);
 			}
 
 			printSeparator("-");

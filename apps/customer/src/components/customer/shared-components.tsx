@@ -156,6 +156,12 @@ export function SummaryCardLines({
 	taxRate: number;
 	total: number;
 }) {
+	// The checkout caller predates the persisted tax fields. Derive these values
+	// from the values it already supplies; receipt history uses persisted values.
+	const taxBase = Math.max(0, productGrossSubtotal + freeRefillCharge - promoDiscount - djiwaPayDiscount);
+	const rawTotal = taxBase + serviceChargeAmount + taxAmount;
+	const roundingAdjustment = total - rawTotal;
+
 	return (
 		<div className="space-y-1.5 rounded-xl bg-muted/35 p-3">
 			<Line label="Subtotal produk" value={currency(productGrossSubtotal)} />
@@ -170,10 +176,42 @@ export function SummaryCardLines({
 				<Line label={`Service (${serviceChargeRate}%)`} value={currency(serviceChargeAmount)} />
 			) : null}
 			{taxAmount > 0 ? <Line label={`Pajak (${taxRate}%)`} value={currency(taxAmount)} /> : null}
+			{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}
 			<div className="flex items-center justify-between border-t border-border pt-2">
 				<span className="text-xs font-black uppercase tracking-[0.16em] text-foreground">Total</span>
 				<span className="text-lg font-black text-foreground">{currency(total)}</span>
 			</div>
+			<p className="text-[10px] leading-relaxed text-muted-foreground">
+				{roundingAdjustment === 0
+					? "Total sudah sesuai perhitungan."
+					: "Pembulatan ke kelipatan Rp1.000 terdekat; tepat Rp500 dibulatkan ke bawah (half-down)."}
+			</p>
+		</div>
+	);
+}
+
+/** Breakdown for an order whose tax calculation was persisted by the backend. */
+export function ReceiptTotalsBreakdown({
+	rawTotal,
+	taxBase,
+	roundingAdjustment,
+	total,
+}: {
+	rawTotal: number;
+	taxBase: number;
+	roundingAdjustment: number;
+	total: number;
+}) {
+	return (
+		<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
+			<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Rincian pembulatan</p>
+			<div className="mt-1.5 space-y-1">
+				<Line label="Dasar pajak" value={currency(taxBase)} />
+				<Line label="Sebelum pembulatan" value={currency(rawTotal)} />
+				{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}
+				<Line label="Total dibayar" value={currency(total)} />
+			</div>
+			<p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Total dibulatkan ke kelipatan Rp1.000 terdekat. Jika sisa tepat Rp500, pembulatan dilakukan ke bawah (half-down).</p>
 		</div>
 	);
 }

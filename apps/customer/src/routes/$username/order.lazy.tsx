@@ -31,6 +31,8 @@ import {
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
+import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
+import { CustomerHeader } from "@/components/customer/customer-shell";
 import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
 
@@ -303,10 +305,23 @@ function OrderPage() {
 	const chargeableSubtotal = Math.max(0, subtotal - djiwaPayDiscount);
 	const taxRate = siteSettings?.taxRate ?? 0;
 	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
-	const serviceChargeAmount = chargeableSubtotal * (serviceChargeRate / 100);
-	const taxBase = chargeableSubtotal + serviceChargeAmount;
-	const taxAmount = taxBase * (taxRate / 100);
-	const total = taxBase + taxAmount;
+	const taxCalculation = calculateOrderTax({
+		items: [
+			...cart.map((item) => ({ price: item.price, quantity: item.quantity })),
+			...(freeRefillCharge > 0 ? [{ price: freeRefillCharge, quantity: 1 }] : []),
+		],
+		discountAmount: djiwaPayDiscount,
+		taxRate,
+		serviceChargeRate,
+		source: "customer_self_service",
+		paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
+		paymentChoice,
+		paymentReceiptKind: paymentChoice === "cashier" ? "cashier_pending" : null,
+	});
+	const serviceChargeAmount = taxCalculation.serviceChargeAmount;
+	const taxBase = taxCalculation.taxBase;
+	const taxAmount = taxCalculation.taxAmount;
+	const total = taxCalculation.finalTotal;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 	const hasDessertInCart = cart.some((item) =>
 		/(dessert|cake|pudding|ice cream|gelato|tiramisu|sweet)/i.test(item.name)
@@ -679,6 +694,10 @@ function OrderPage() {
 				discountAmount: promoDiscount + djiwaPayDiscount,
 				voucherId: djiwaPayDiscount > 0 ? "djiwa-pay-20" : null,
 				receiptMeta: {
+					happyHourApplied: cart.some((item) => {
+						const pricing = calculateEffectivePrice({ _id: item.productId, price: item.originalPrice ?? item.price, categoryId: item.categoryId }, memberDiscounts);
+						return pricing.isHappyHour && item.price < (item.originalPrice ?? item.price);
+					}),
 					...(freeRefillOptIn && activeFreeRefillPromo ? { adjustmentLines: [{ label: `${activeFreeRefillPromo.name || "Free Refill"} x${partySize}`, amount: freeRefillCharge }] } : {}),
 					...(djiwaPayDiscount > 0 ? { djiwaPayDiscountPercent, djiwaPayDiscount, djiwaPayDiscountPaymentMethod: "wallet" } : {}),
 				},
@@ -869,45 +888,25 @@ function OrderPage() {
 
 	// ── Render ───────────────────────────────────────────────────
 
+	const handleOrderHeaderBack = () => {
+		if (step === "party") navigate({ to: "/$username", params: { username } });
+		if (step === "refill") setStep(config.enablePartySizeSelection ? "party" : "party");
+		if (step === "menu") setStep(config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : config.enablePartySizeSelection ? "party" : "party");
+		if (step === "checkout") setStep("menu");
+	};
+
 	return (
 		<div className="app-page min-h-app">
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				{/* ── Sticky header ──────────────────────────────── */}
-				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
-					<div className="flex items-center justify-between gap-2">
-						<div className="flex items-center gap-2">
-							<button
-								type="button"
-								aria-label="Kembali"
-								className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
-								onClick={() => {
-									if (step === "party") navigate({ to: "/$username", params: { username } });
-									if (step === "refill") setStep(config.enablePartySizeSelection ? "party" : "party");
-									if (step === "menu") setStep(config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : config.enablePartySizeSelection ? "party" : "party");
-									if (step === "checkout") setStep("menu");
-								}}
-							>
-								<ArrowLeft className="h-3.5 w-3.5" />
-							</button>
-							{logoUrl ? (
-								<img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={logoUrl} />
-							) : (
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-									<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-6 w-6 object-contain" />
-								</div>
-							)}
-							<div>
-								<p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: themeColor }}>
-									{step}
-								</p>
-								<h1 className="text-sm font-black tracking-tight">{storeName}</h1>
-							</div>
-						</div>
-						<div className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-							{totalItems} item
-						</div>
-					</div>
-				</header>
+				<CustomerHeader
+					eyebrow={step.toUpperCase()}
+					title={storeName}
+					subtitle="Djiwa Tentram Cafe & Resto"
+					onBack={handleOrderHeaderBack}
+					leading={<ArrowLeft className="h-4 w-4" />}
+					right={<span className="inline-flex min-h-9 items-center rounded-full bg-primary/10 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-primary">{totalItems} item</span>}
+				/>
 
 				<main
 					className={

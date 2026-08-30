@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
-import { BarcodeLines } from "./shared-components";
+import { BarcodeLines, ReceiptTotalsBreakdown } from "./shared-components";
 import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
 
 // Status lifecycle order — live tracker di struk
@@ -65,6 +65,13 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
 	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS Mayar" : "Bayar di Kasir";
 	const printerStatusLabel = mode === "paid" ? "Pembayaran berhasil" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Struk siap ditunjukkan ke kasir";
+	// Do not reconstruct historical totals from item prices. Show this breakdown
+	// only when the backend stored the authoritative tax calculation.
+	const persistedTaxBase = Number(props.currentOrder?.taxBaseAmount ?? props.currentOrder?.tax_base_amount);
+	const persistedRawTotal = Number(props.currentOrder?.rawTotalAmount ?? props.currentOrder?.raw_total_amount);
+	const persistedRounding = Number(props.currentOrder?.roundingAdjustment ?? props.currentOrder?.rounding_adjustment);
+	const persistedTotal = Number(props.currentOrder?.totalAmount ?? props.currentOrder?.total_amount);
+	const hasPersistedTotals = [persistedTaxBase, persistedRawTotal, persistedRounding, persistedTotal].every(Number.isFinite);
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-6">
@@ -80,6 +87,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
 				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice pembayaran sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
 				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+					{hasPersistedTotals ? <ReceiptTotalsBreakdown rawTotal={persistedRawTotal} taxBase={persistedTaxBase} roundingAdjustment={persistedRounding} total={persistedTotal} /> : null}
 					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
 						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>
 						<div className="mt-1.5 space-y-1">

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useAppData } from "@/context/app-data-context";
 import { isDiscountApplicable, isFreeRefillActive } from "@/lib/utils/pricing";
+import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
 
 export interface CartItem {
 	productId: string;
@@ -320,17 +321,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const discountAmount = promoDiscountAmount + voucherDiscountAmount;
 
-	const subTotalAfterDiscount = Math.max(0, totalAmount - voucherDiscountAmount);
+	// POS preview defaults to cashier cash/tunai until the payment modal
+	// supplies the actual payment channel. Item prices already include promo
+	// discounts; only the eligible voucher discount is passed to the calculator.
+	const taxCalculation = calculateOrderTax({
+		items,
+		voucherDiscountAmount,
+		taxRate: siteSettings?.taxRate ?? 0,
+		serviceChargeRate: siteSettings?.serviceChargeRate ?? 0,
+		source: "pos",
 
-	// Calculate Tax & Service Charge
-	const taxRate = siteSettings?.taxRate ?? 0;
-	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
+	});
 
-	// Formula: (Subtotal - Discount) * Rate
-	const serviceChargeAmount = subTotalAfterDiscount * (serviceChargeRate / 100);
-	const taxAmount = subTotalAfterDiscount * (taxRate / 100);
-
-	const finalTotal = subTotalAfterDiscount + serviceChargeAmount + taxAmount;
+	const taxRate = taxCalculation.taxRate;
+	const serviceChargeRate = taxCalculation.serviceChargeRate;
+	const serviceChargeAmount = taxCalculation.serviceChargeAmount;
+	const taxAmount = taxCalculation.taxAmount;
+	const finalTotal = taxCalculation.finalTotal;
 
 	// Platform-specific calculations (for online orders)
 	const platformTotal = items.reduce((sum, i) => sum + (i.platformPrice ?? i.price) * i.quantity, 0);

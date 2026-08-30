@@ -115,6 +115,17 @@ export interface ReceiptAdjustmentLine {
 export interface ReceiptMeta {
 	promotionLabels?: string[];
 	adjustmentLines?: ReceiptAdjustmentLine[];
+	subtotalAmount?: number;
+	taxBaseAmount?: number;
+	taxRateSnapshot?: number;
+	serviceChargeBaseAmount?: number;
+	serviceChargeRateSnapshot?: number;
+	rawTotalAmount?: number;
+	roundingAdjustment?: number;
+	paymentChannelCanonical?: string;
+	taxExemptionReason?: string;
+	taxPolicyVersion?: string;
+	roundingMode?: string;
 }
 
 export interface ReceiptOrderPayload {
@@ -128,6 +139,18 @@ export interface ReceiptOrderPayload {
 	orderType?: string;
 	tableNumber?: string;
 	subtotal?: number;
+	// Optional authoritative tax snapshot; legacy receipts use the fields above.
+	subtotalAmount?: number;
+	taxBaseAmount?: number;
+	taxRateSnapshot?: number;
+	serviceChargeBaseAmount?: number;
+	serviceChargeRateSnapshot?: number;
+	rawTotalAmount?: number;
+	roundingAdjustment?: number;
+	paymentChannelCanonical?: string;
+	taxExemptionReason?: string;
+	taxPolicyVersion?: string;
+	roundingMode?: string;
 	discountAmount?: number;
 	taxAmount?: number;
 	serviceChargeAmount?: number;
@@ -760,8 +783,10 @@ export class BluetoothPrinterService {
 			printSeparator("-");
 
 			// Subtotal (before discounts)
-			if (order.subtotal !== undefined) {
-				printKeyValue("SUBTOTAL", formatReceiptAmount(order.subtotal));
+			const receiptMeta = order.receiptMeta;
+			const subtotal = order.subtotal ?? order.subtotalAmount ?? receiptMeta?.subtotalAmount;
+			if (subtotal !== undefined) {
+				printKeyValue("SUBTOTAL", formatReceiptAmount(subtotal));
 			}
 
 			// Adjustment lines (e.g. promo discounts, voucher)
@@ -779,12 +804,41 @@ export class BluetoothPrinterService {
 				printKeyValue("DISKON", formatReceiptAmount(-(order.discountAmount ?? 0)));
 			}
 
-			// Tax & service charge
-			if (order.taxAmount != null && order.taxAmount > 0) {
+			// Tax & service charge. Prefer the persisted receipt breakdown, with the
+			// historical order fields as a fallback for older rows.
+			const hasTaxAdjustment = receiptMeta?.adjustmentLines?.some((line) =>
+				line.label.toLowerCase() === "pajak"
+			);
+			const hasServiceAdjustment = receiptMeta?.adjustmentLines?.some((line) =>
+				line.label.toLowerCase() === "service charge"
+			);
+			const taxBase = order.taxBaseAmount ?? receiptMeta?.taxBaseAmount;
+			if (taxBase !== undefined) {
+				const taxRate = order.taxRateSnapshot ?? receiptMeta?.taxRateSnapshot;
+				printKeyValue("DASAR PAJAK", formatReceiptAmount(taxBase));
+				if (taxRate !== undefined) {
+					printKeyValue("TARIF PAJAK", `${taxRate}%`);
+				}
+			}
+			if (!hasTaxAdjustment && order.taxAmount != null && order.taxAmount > 0) {
 				printKeyValue("PAJAK", formatReceiptAmount(order.taxAmount));
 			}
-			if (order.serviceChargeAmount != null && order.serviceChargeAmount > 0) {
+			if (!hasServiceAdjustment && order.serviceChargeAmount != null && order.serviceChargeAmount > 0) {
 				printKeyValue("SERVICE", formatReceiptAmount(order.serviceChargeAmount));
+			}
+			if (order.taxExemptionReason ?? receiptMeta?.taxExemptionReason) {
+				printWrappedLines(`Pajak: ${order.taxExemptionReason ?? receiptMeta?.taxExemptionReason}`);
+			}
+
+			const rawTotal = order.rawTotalAmount ?? receiptMeta?.rawTotalAmount;
+			const roundingAdjustment = order.roundingAdjustment ?? receiptMeta?.roundingAdjustment;
+			if (rawTotal !== undefined && roundingAdjustment !== undefined && roundingAdjustment !== 0) {
+				printKeyValue("SEBELUM BULAT", formatReceiptAmount(rawTotal));
+				printKeyValue("PEMBULATAN", formatReceiptAmount(roundingAdjustment));
+				printWrappedLines(
+					"Pembulatan ke kelipatan Rp1.000 (sisa sampai Rp500 turun, di atas Rp500 naik).",
+					RECEIPT_LINE_WIDTH
+				);
 			}
 
 			printSeparator("-");

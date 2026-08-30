@@ -2526,10 +2526,28 @@ export function useHybridCreateOrder() {
 			});
 				const orderId = makeSourceId("order");
 
-				const orderRow = {
+
+				let authoritativeTax: any = null;
+				try {
+					const { data: taxData, error: taxError } = await pos.rpc("calculate_order_tax", {
+						p_items: Array.isArray(args?.items) ? args.items.map((item: any) => ({ price: Number(item?.price ?? 0), quantity: Number(item?.quantity ?? 0) })) : [],
+						p_discount_amount: Number(args?.discountAmount ?? 0),
+						p_tax_policy_id: null,
+						p_service_charge_override: null,
+						p_source: args?.source ?? null,
+						p_payment_method: args?.paymentMethod ?? null,
+						p_payment_choice: args?.paymentChoice ?? null,
+						p_payment_receipt_kind: args?.paymentReceiptKind ?? null,
+					});
+					if (taxError) throw taxError;
+					authoritativeTax = taxData;
+				} catch (taxError) {
+					console.warn("Tax authority unavailable; preserving legacy order path", taxError);
+				}
+const orderRow = {
 					source_id: orderId,
 					order_number: orderNumber,
-					total_amount: Number(args?.totalAmount ?? 0),
+					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0),
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,
@@ -2552,16 +2570,19 @@ export function useHybridCreateOrder() {
 					notes: args?.notes ?? null,
 					created_at: orderCreatedAt,
 					voucher_source_id: args?.voucherId ?? null,
-					discount_amount:
-						args?.discountAmount === undefined
-							? null
-							: Number(args.discountAmount ?? 0),
-					tax_amount:
-						args?.taxAmount === undefined ? null : Number(args.taxAmount ?? 0),
-					service_charge_amount:
-						args?.serviceChargeAmount === undefined
-							? null
-							: Number(args.serviceChargeAmount ?? 0),
+					discount_amount: Number(authoritativeTax?.discountAmount ?? args?.discountAmount ?? 0),
+					tax_amount: authoritativeTax ? Number(authoritativeTax.taxAmount ?? 0) : (args?.taxAmount === undefined ? null : Number(args?.taxAmount ?? 0)),
+					service_charge_amount: authoritativeTax ? Number(authoritativeTax.serviceChargeAmount ?? 0) : (args?.serviceChargeAmount === undefined ? null : Number(args?.serviceChargeAmount ?? 0)),
+					subtotal_amount: authoritativeTax ? Number(authoritativeTax.subtotalAmount ?? 0) : null,
+					tax_base_amount: authoritativeTax ? Number(authoritativeTax.taxBaseAmount ?? 0) : null,
+					tax_rate_snapshot: authoritativeTax ? Number(authoritativeTax.taxRate ?? 0) : null,
+					service_charge_base_amount: authoritativeTax ? Number(authoritativeTax.serviceChargeBaseAmount ?? 0) : null,
+					service_charge_rate_snapshot: authoritativeTax ? Number(authoritativeTax.serviceChargeRate ?? 0) : null,
+					raw_total_amount: authoritativeTax ? Number(authoritativeTax.rawTotalAmount ?? 0) : null,
+					rounding_adjustment: authoritativeTax ? Number(authoritativeTax.roundingAdjustment ?? 0) : null,
+					payment_channel_canonical: authoritativeTax?.paymentChannelCanonical ?? null,
+					tax_exemption_reason: authoritativeTax?.taxExemptionReason ?? null,
+					tax_policy_version: authoritativeTax?.taxPolicyVersion ?? null,
 					receipt_meta: args?.receiptMeta ?? null,
 					payment_receipt_kind: args?.paymentReceiptKind ?? null,
 					daily_receipt_no: dailyReceiptNo,
