@@ -107,7 +107,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 					{props.paymentChoice === "mayar" && !props.isAuthenticated ? (
 						<div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
 							<p className="text-[10px] font-black uppercase tracking-[0.12em] text-primary">Data untuk pembayaran QRIS</p>
-							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Email dan nomor WhatsApp diperlukan untuk membuat invoice Mayar.</p>
+							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Email dan nomor WhatsApp diperlukan untuk menyiapkan pembayaran QRIS.</p>
 							<div className="mt-2 space-y-2">
 								<div className="space-y-0.5">
 									<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Email <span className="text-destructive">*</span></label>
@@ -133,7 +133,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 			</div>
 			{props.checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{props.checkoutError}</div> : null}
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} taxAmount={props.taxAmount} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
+				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
 				{props.paymentChoice === "wallet" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-bold leading-relaxed text-emerald-800">Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil.</p> : <p className="mt-2 rounded-xl bg-muted/50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-muted-foreground">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</p>}
 				<button type="button" className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={props.checkout} disabled={props.isSubmitting}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : <>Checkout {props.currency(props.total)}</>}</button>
 			</div>

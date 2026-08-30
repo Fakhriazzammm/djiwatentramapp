@@ -140,6 +140,7 @@ export function SummaryCardLines({
 	productGrossSubtotal,
 	promoDiscount,
 	djiwaPayDiscount = 0,
+	paymentChoice,
 	serviceChargeAmount,
 	serviceChargeRate,
 	taxAmount,
@@ -150,6 +151,7 @@ export function SummaryCardLines({
 	productGrossSubtotal: number;
 	promoDiscount: number;
 	djiwaPayDiscount?: number;
+	paymentChoice?: "cashier" | "wallet" | "mayar";
 	serviceChargeAmount: number;
 	serviceChargeRate: number;
 	taxAmount: number;
@@ -161,6 +163,7 @@ export function SummaryCardLines({
 	const taxBase = Math.max(0, productGrossSubtotal + freeRefillCharge - promoDiscount - djiwaPayDiscount);
 	const rawTotal = taxBase + serviceChargeAmount + taxAmount;
 	const roundingAdjustment = total - rawTotal;
+	const isCashierFree = paymentChoice === "cashier";
 
 	return (
 		<div className="space-y-1.5 rounded-xl bg-muted/35 p-3">
@@ -172,10 +175,12 @@ export function SummaryCardLines({
 			{djiwaPayDiscount > 0 ? (
 				<Line label="Voucher Djiwa Pay (20%)" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
 			) : null}
-			{serviceChargeAmount > 0 ? (
-				<Line label={`Service (${serviceChargeRate}%)`} value={currency(serviceChargeAmount)} />
-			) : null}
-			{taxAmount > 0 ? <Line label={`Pajak (${taxRate}%)`} value={currency(taxAmount)} /> : null}
+			<Line label={`Service Charge (${serviceChargeRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(serviceChargeAmount)} />
+			<Line label={`Pajak (${taxRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(taxAmount)} />
+			<Line label="Dasar pajak" value={currency(taxBase)} />
+			<p className="text-[10px] leading-relaxed text-muted-foreground">
+				{isCashierFree ? "Bayar tunai di kasir: pajak dan service charge gratis / Rp0." : "Pajak dan service charge mengikuti tax policy aktif."}
+			</p>
 			{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}
 			<div className="flex items-center justify-between border-t border-border pt-2">
 				<span className="text-xs font-black uppercase tracking-[0.16em] text-foreground">Total</span>
