@@ -810,7 +810,7 @@ export class BluetoothPrinterService {
 			const effectiveTaxRate = taxRateSnapshot ?? 10;
 			printKeyValue(`PBJT/PAJAK RESTORAN (${effectiveTaxRate}%)`, formatReceiptAmount(order.taxAmount ?? 0));
 			printKeyValue("SERVICE CHARGE", formatReceiptAmount(order.serviceChargeAmount ?? 0));
-			printWrappedLines("PBJT makanan/minuman Kota Tasikmalaya; tunai kasir gratis/Rp0 bila channel tunai.", RECEIPT_LINE_WIDTH);
+			printWrappedLines("PBJT makanan dan minuman Kota Tasikmalaya 10%; service charge bukan pajak daerah.", RECEIPT_LINE_WIDTH);
 			if (roundingAdjustment != null || rawTotalAmount != null) {
 				if (rawTotalAmount != null) {
 					printKeyValue("SEBELUM PEMBULATAN", formatReceiptAmount(rawTotalAmount));

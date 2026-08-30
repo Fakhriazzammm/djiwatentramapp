@@ -179,7 +179,7 @@ export function SummaryCardLines({
 			<Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(taxAmount)} />
 			<Line label="Dasar pajak" value={currency(taxBase)} />
 			<p className="text-[10px] leading-relaxed text-muted-foreground">
-				{isCashierFree ? "Bayar tunai di kasir: PBJT dan service charge gratis / Rp0." : "PBJT/Pajak Restoran dan service charge mengikuti tax policy aktif."}
+				{isCashierFree ? "Pembayaran tunai di kasir: PBJT dan service charge Rp0 sesuai kebijakan operasional." : "PBJT makanan dan minuman Kota Tasikmalaya 10%. Service charge ditampilkan terpisah dan bukan pajak daerah."}
 			</p>
 			{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}
 			<div className="flex items-center justify-between border-t border-border pt-2">

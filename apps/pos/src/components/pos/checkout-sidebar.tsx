@@ -800,7 +800,7 @@ export function CheckoutSidebar({
 										<span>Service Charge ({serviceChargeRate}%)</span>
 										<span>{fmt(serviceChargeAmount)}</span>
 									</div>
-									<p className="text-[10px] leading-relaxed text-muted-foreground">Dasar PBJT: subtotal setelah diskon. Tarif mengikuti policy Kota Tasikmalaya.</p>
+									<p className="text-[10px] leading-relaxed text-muted-foreground">PBJT makanan dan minuman Kota Tasikmalaya 10%. Service charge ditampilkan terpisah dan bukan pajak daerah.</p>
 								</div>
 
 								<Separator className="my-2 border-dashed" />
