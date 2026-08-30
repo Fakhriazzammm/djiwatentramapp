@@ -764,68 +764,7 @@ export function CheckoutSidebar({
 								</div>
 							)}
 
-							{/* Struk Compact */}
-							<div className="mt-4 rounded-xl border border-border/70 bg-background p-2.5 shadow-sm">
-								<div className="space-y-1 text-center">
-									<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-										Ringkasan Struk
-									</p>
-									<p className="text-[11px] font-black uppercase tracking-wide text-foreground">
-										Subtotal, Promo, Pajak, dan Total
-									</p>
-								</div>
 
-								{(activeMarketingPromos.length > 0 || appliedVoucher) && (
-									<div className="mt-3 rounded-lg bg-primary/5 px-3 py-2 text-center">
-										{activeMarketingPromos.map((promo, index) => (
-											<p key={`${index}-${String(promo)}`} className="text-[11px] font-bold uppercase tracking-wider text-primary">
-												{String(promo)}
-											</p>
-										))}
-										{appliedVoucher && (
-											<p className="text-[11px] font-bold uppercase tracking-wider text-primary">
-												Voucher - {appliedVoucher.name}
-											</p>
-										)}
-									</div>
-								)}
-
-								<div className="mt-3 space-y-1.5 text-[11px] sm:text-xs">
-									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground">Subtotal</span>
-										<span className="font-bold">{fmt(grossAmount)}</span>
-									</div>
-									{promoDiscountAmount > 0 && (
-										<div className="flex items-center justify-between text-primary">
-											<span>Promo / Marketing</span>
-											<span className="font-bold">-{fmt(promoDiscountAmount)}</span>
-										</div>
-									)}
-									{voucherDiscountAmount > 0 && (
-										<div className="flex items-center justify-between text-primary">
-											<span>Diskon Voucher</span>
-											<span className="font-bold">-{fmt(voucherDiscountAmount)}</span>
-										</div>
-									)}
-									<div className="flex items-center justify-between text-muted-foreground">
-										<span>PBJT/Pajak Restoran ({taxRate}%)</span>
-										<span>{fmt(taxAmount)}</span>
-									</div>
-									<div className="flex items-center justify-between text-muted-foreground">
-										<span>Service Charge ({serviceChargeRate}%)</span>
-										<span>{fmt(serviceChargeAmount)}</span>
-									</div>
-									<p className="text-[10px] leading-relaxed text-muted-foreground">PBJT makanan dan minuman Kota Tasikmalaya 10%. Service charge ditampilkan terpisah dan bukan pajak daerah.</p>
-									{!selectedPaymentMethod && <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[10px] font-bold leading-relaxed text-amber-800">Pilih metode pembayaran terlebih dahulu untuk menghitung PBJT.</p>}
-								</div>
-
-								<Separator className="my-2 border-dashed" />
-
-								<div className="flex items-center justify-between font-sans">
-									<span className="text-xs sm:text-sm font-black uppercase tracking-widest">Total</span>
-									<span className="text-base font-black text-primary tracking-tight">{fmt(finalTotal)}</span>
-								</div>
-							</div>
 
 						</div>
 					)}
@@ -853,7 +792,7 @@ export function CheckoutSidebar({
 								<div>
 									<div className="flex items-center justify-between border-b border-dashed border-primary/20 pb-2"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Review Struk</span><span className="text-[10px] font-bold text-muted-foreground">{selectedPaymentMethod ? (selectedPaymentMethod === "tunai" ? "Tunai" : "QRIS") : "Pilih metode"}</span></div>
 									<div className="mt-2 space-y-1">{items.slice(0, 4).map((item) => <div key={`${item.productId}-${item.variant || "default"}`} className="flex justify-between gap-2 text-[10px]"><span className="min-w-0 truncate">{item.quantity}× {item.name}</span><span className="shrink-0 font-semibold">{fmt(item.price * item.quantity)}</span></div>)}{items.length > 4 && <p className="text-[10px] text-muted-foreground">+{items.length - 4} item lainnya</p>}</div>
-									<div className="mt-2 space-y-1 border-t border-dashed border-primary/20 pt-2 text-[10px]"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal setelah diskon</span><span>{fmt(Math.max(0, totalAmount - voucherDiscountAmount))}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PBJT/Pajak Restoran ({taxRate}%)</span><span>{selectedPaymentMethod ? fmt(taxAmount) : "Pilih metode"}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service charge ({serviceChargeRate}%)</span><span>{selectedPaymentMethod ? fmt(serviceChargeAmount) : "Pilih metode"}</span></div><div className="flex justify-between border-t border-primary/10 pt-1 font-black text-primary"><span>Total</span><span>{fmt(finalTotal)}</span></div></div>
+									<div className="mt-2 space-y-1 border-t border-dashed border-primary/20 pt-2 text-[10px]"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{fmt(grossAmount)}</span></div>{promoDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Promo / Marketing</span><span>-{fmt(promoDiscountAmount)}</span></div>}{voucherDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Diskon Voucher</span><span>-{fmt(voucherDiscountAmount)}</span></div>}<div className="flex justify-between"><span className="text-muted-foreground">Dasar pajak</span><span>{fmt(Math.max(0, totalAmount - voucherDiscountAmount))}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PBJT/Pajak Restoran ({taxRate}%)</span><span>{selectedPaymentMethod ? fmt(taxAmount) : "Pilih metode"}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service charge ({serviceChargeRate}%)</span><span>{selectedPaymentMethod ? fmt(serviceChargeAmount) : "Pilih metode"}</span></div>{selectedTaxCalculation && selectedTaxCalculation.roundingAdjustment !== 0 && <div className="flex justify-between"><span className="text-muted-foreground">Pembulatan</span><span>{fmt(selectedTaxCalculation.roundingAdjustment)}</span></div>}<div className="flex justify-between border-t border-primary/10 pt-1 font-black text-primary"><span>Total</span><span>{fmt(finalTotal)}</span></div></div>
 									{!selectedPaymentMethod && <p className="mt-2 text-[10px] font-bold text-amber-700">Pilih Tunai atau QRIS untuk menampilkan perhitungan pajak.</p>}
 								</div>
 							</div>
