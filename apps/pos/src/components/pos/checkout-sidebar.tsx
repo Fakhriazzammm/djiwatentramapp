@@ -41,6 +41,7 @@ import {
 	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
 import { useAppData } from "@/context/app-data-context";
+import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
 import type { Doc } from "@/types/backend-compat";
 import { CustomerSearchModal } from "./customer-search-modal";
 
@@ -98,14 +99,13 @@ export function CheckoutSidebar({
 		updateQuantity,
 		updateItemPrice,
 		grossAmount,
+		totalAmount,
 		totalItems,
 		customerInfo,
 		updateCustomerInfo,
 		promoDiscountAmount,
 		voucherDiscountAmount,
-		finalTotal,
-		taxAmount,
-		serviceChargeAmount,
+
 		appliedVoucher,
 		applyVoucher,
 		clearCart,
@@ -148,11 +148,24 @@ export function CheckoutSidebar({
 	);
 	
 	// Payment State
-	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("tunai");
+	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("");
 	const [cashReceived, setCashReceived] = useState<number | "">("");
 	const [changeAmount, setChangeAmount] = useState(0);
 	const [autoComplete, setAutoComplete] = useState(false);
 	const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(appliedVoucher?._id || null);
+	const selectedTaxCalculation = selectedPaymentMethod
+		? calculateOrderTax({
+				items,
+				voucherDiscountAmount,
+				taxRate,
+				serviceChargeRate,
+				source: "pos",
+				paymentMethod: selectedPaymentMethod,
+			})
+		: null;
+	const finalTotal = selectedTaxCalculation?.finalTotal ?? Math.max(0, totalAmount - voucherDiscountAmount);
+	const taxAmount = selectedTaxCalculation?.taxAmount ?? 0;
+	const serviceChargeAmount = selectedTaxCalculation?.serviceChargeAmount ?? 0;
 
 	// ── Assignment state for Step 4 ──
 	interface GroupAssignment {
@@ -803,6 +816,7 @@ export function CheckoutSidebar({
 										<span>{fmt(serviceChargeAmount)}</span>
 									</div>
 									<p className="text-[10px] leading-relaxed text-muted-foreground">PBJT makanan dan minuman Kota Tasikmalaya 10%. Service charge ditampilkan terpisah dan bukan pajak daerah.</p>
+									{!selectedPaymentMethod && <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[10px] font-bold leading-relaxed text-amber-800">Pilih metode pembayaran terlebih dahulu untuk menghitung PBJT.</p>}
 								</div>
 
 								<Separator className="my-2 border-dashed" />
@@ -1161,7 +1175,7 @@ export function CheckoutSidebar({
 				{activeStep === "payment" && (
 					<Button
 						onClick={handleConfirmPayment}
-						disabled={items.length === 0 || isSubmitting || (selectedPaymentMethod === "tunai" && typeof cashReceived === "number" && cashReceived < finalTotal)}
+						disabled={items.length === 0 || isSubmitting || !selectedPaymentMethod || (selectedPaymentMethod === "tunai" && typeof cashReceived === "number" && cashReceived < finalTotal)}
 						className="w-full h-10 text-xs font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all"
 						size="lg"
 					>
