@@ -173,9 +173,17 @@ export function CheckoutSidebar({
 	const serviceChargeAmount = selectedTaxCalculation?.serviceChargeAmount ?? 0;
 	const receiptReference = lastOrderId || "ORDER BARU";
 	const receiptCustomer = customerInfo as any;
+	const [printerConnected, setPrinterConnected] = useState(() => bluetoothPrinter.isConnected());
+	useEffect(() => {
+		const syncPrinterState = () => setPrinterConnected(bluetoothPrinter.isConnected());
+		syncPrinterState();
+		const timer = window.setInterval(syncPrinterState, 1000);
+		return () => window.clearInterval(timer);
+	}, []);
 	const handleConnectPrinter = async () => {
 		try {
 			await bluetoothPrinter.connect();
+			setPrinterConnected(true);
 			toast.success("Printer Bluetooth berhasil terhubung");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Gagal menghubungkan printer Bluetooth");
@@ -1139,7 +1147,7 @@ export function CheckoutSidebar({
 				)}
 
 				{activeStep === "receipt" && (
-					<div className="space-y-2"><div className="grid grid-cols-4 gap-2"><Button type="button" variant="outline" onClick={handleConnectPrinter} className="h-9 px-1 text-[10px] font-bold"><Bluetooth className="mr-1 h-3 w-3" />Connect</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintLastOrder} onClick={onPrintLastOrder} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Lunas</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintOpenBill || !canPrintOpenBill} onClick={onPrintOpenBill} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Open Bill</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintKitchen} onClick={onPrintKitchen} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Kitchen</Button></div><div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("payment")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Bayar</Button><Button type="button" onClick={() => setActiveStep("assign")} className="h-10 text-xs font-black">Konfirmasi & Tim<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
+					<div className="space-y-2"><div className="grid grid-cols-4 gap-2"><Button type="button" variant="outline" onClick={handleConnectPrinter} className={cn("h-9 px-1 text-[10px] font-bold", printerConnected ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100")}><Bluetooth className="mr-1 h-3 w-3" />{printerConnected ? "Terhubung" : "Connect"}</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintLastOrder} onClick={onPrintLastOrder} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Lunas</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintOpenBill || !canPrintOpenBill} onClick={onPrintOpenBill} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Open Bill</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintKitchen} onClick={onPrintKitchen} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Kitchen</Button></div><div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("payment")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Bayar</Button><Button type="button" onClick={() => setActiveStep("assign")} className="h-10 text-xs font-black">Konfirmasi & Tim<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
 				)}
 
 				{activeStep === "assign" && (
