@@ -13,10 +13,11 @@ describe("rounding helpers", () => {
     expect(roundRupiah(1234.5)).toBe(1235);
   });
 
-  it("uses nearest Rp1,000 with exact Rp500 rounding down", () => {
+  it("always rounds down to the previous Rp1,000", () => {
     expect(roundToThousandHalfDown(20120)).toBe(20000);
     expect(roundToThousandHalfDown(20500)).toBe(20000);
-    expect(roundToThousandHalfDown(20600)).toBe(21000);
+    expect(roundToThousandHalfDown(20600)).toBe(20000);
+    expect(roundToThousandHalfDown(20999)).toBe(20000);
   });
 });
 

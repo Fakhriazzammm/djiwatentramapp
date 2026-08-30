@@ -102,11 +102,11 @@ function assertValidRate(rate: number, field: string): void {
   if (!result.valid) throw new RangeError(`${field}: ${result.error}`);
 }
 
-/** Nearest Rp1,000 with half-down semantics: exactly Rp500 rounds down. */
+/** Always rounds down to the previous Rp1,000 boundary. */
 export function roundToThousandHalfDown(amount: number): number {
   finiteNonNegative(amount, "amount");
   const floor = Math.floor(amount / 1000) * 1000;
-  return amount - floor > 500 ? floor + 1000 : floor;
+  return floor;
 }
 
 /** Resolve payment provenance before applying the cashier-cash exemption. */

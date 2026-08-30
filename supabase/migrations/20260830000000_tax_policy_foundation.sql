@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS pos.tax_policies (
   service_charge_rate_percent numeric(10,4) NOT NULL DEFAULT 0
     CHECK (service_charge_rate_percent >= 0 AND service_charge_rate_percent <= 100),
   service_charge_taxable boolean NOT NULL DEFAULT false,
-  rounding_mode text NOT NULL DEFAULT 'rupiah_nearest_thousand_half_down'
-    CHECK (rounding_mode = 'rupiah_nearest_thousand_half_down'),
+  rounding_mode text NOT NULL DEFAULT 'rupiah_thousand_floor'
+    CHECK (rounding_mode = 'rupiah_thousand_floor'),
   is_active boolean NOT NULL DEFAULT false,
   effective_from timestamptz NOT NULL DEFAULT now(),
   effective_until timestamptz,
@@ -245,8 +245,7 @@ BEGIN
   v_service_amount := round(v_tax_base * v_service_rate / 100, 2);
   v_tax_amount := round(v_tax_base * v_tax_rate / 100, 2);
   v_raw_total := v_tax_base + v_service_amount + v_tax_amount;
-  v_final_total := floor(v_raw_total / 1000) * 1000
-    + CASE WHEN v_raw_total - floor(v_raw_total / 1000) * 1000 > 500 THEN 1000 ELSE 0 END;
+  v_final_total := floor(v_raw_total / 1000) * 1000;
   v_rounding := v_final_total - v_raw_total;
 
   RETURN jsonb_build_object(
@@ -264,7 +263,7 @@ BEGIN
     'paymentChannelCanonical', v_channel,
     'taxPolicyVersion', coalesce(v_policy.policy_version, 'none'),
     'taxType', coalesce(v_policy.tax_type, 'none'),
-    'roundingMode', 'rupiah_nearest_thousand_half_down'
+    'roundingMode', 'rupiah_thousand_floor'
   );
 END;
 $$;
