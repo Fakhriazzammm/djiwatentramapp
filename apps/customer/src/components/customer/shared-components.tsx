@@ -199,11 +199,17 @@ export function SummaryCardLines({
 export function ReceiptTotalsBreakdown({
 	rawTotal,
 	taxBase,
+	taxAmount = 0,
+	taxRate = 10,
+	serviceChargeAmount = 0,
 	roundingAdjustment,
 	total,
 }: {
 	rawTotal: number;
 	taxBase: number;
+	taxAmount?: number;
+	taxRate?: number;
+	serviceChargeAmount?: number;
 	roundingAdjustment: number;
 	total: number;
 }) {
@@ -212,6 +218,8 @@ export function ReceiptTotalsBreakdown({
 			<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Rincian pembulatan</p>
 			<div className="mt-1.5 space-y-1">
 				<Line label="Dasar pajak" value={currency(taxBase)} />
+				<Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={currency(taxAmount)} />
+				<Line label="Service charge" value={currency(serviceChargeAmount)} />
 				<Line label="Sebelum pembulatan" value={currency(rawTotal)} />
 				{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}
 				<Line label="Total dibayar" value={currency(total)} />

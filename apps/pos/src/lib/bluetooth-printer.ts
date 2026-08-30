@@ -806,19 +806,11 @@ export class BluetoothPrinterService {
 			const rawTotalAmount = order.rawTotalAmount ?? order.receiptMeta?.rawTotalAmount;
 			const roundingAdjustment =
 				order.roundingAdjustment ?? order.receiptMeta?.roundingAdjustment;
-			if (taxBaseAmount != null) {
-				printKeyValue("DASAR PAJAK", formatReceiptAmount(taxBaseAmount));
-			}
-			if (order.taxAmount != null && order.taxAmount > 0) {
-				const taxLabel =
-					taxRateSnapshot != null
-						? `PAJAK (${taxRateSnapshot.toFixed(2).replace(/\.00$/, "")}%)`
-						: "PAJAK";
-				printKeyValue(taxLabel, formatReceiptAmount(order.taxAmount));
-			}
-			if (order.serviceChargeAmount != null && order.serviceChargeAmount > 0) {
-				printKeyValue("SERVICE", formatReceiptAmount(order.serviceChargeAmount));
-			}
+			printKeyValue("DASAR PBJT", formatReceiptAmount(taxBaseAmount ?? 0));
+			const effectiveTaxRate = taxRateSnapshot ?? 10;
+			printKeyValue(`PBJT/PAJAK RESTORAN (${effectiveTaxRate}%)`, formatReceiptAmount(order.taxAmount ?? 0));
+			printKeyValue("SERVICE CHARGE", formatReceiptAmount(order.serviceChargeAmount ?? 0));
+			printWrappedLines("PBJT makanan/minuman Kota Tasikmalaya; tunai kasir gratis/Rp0 bila channel tunai.", RECEIPT_LINE_WIDTH);
 			if (roundingAdjustment != null || rawTotalAmount != null) {
 				if (rawTotalAmount != null) {
 					printKeyValue("SEBELUM PEMBULATAN", formatReceiptAmount(rawTotalAmount));

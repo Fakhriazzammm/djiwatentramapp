@@ -806,26 +806,12 @@ export class BluetoothPrinterService {
 
 			// Tax & service charge. Prefer the persisted receipt breakdown, with the
 			// historical order fields as a fallback for older rows.
-			const hasTaxAdjustment = receiptMeta?.adjustmentLines?.some((line) =>
-				line.label.toLowerCase() === "pajak"
-			);
-			const hasServiceAdjustment = receiptMeta?.adjustmentLines?.some((line) =>
-				line.label.toLowerCase() === "service charge"
-			);
 			const taxBase = order.taxBaseAmount ?? receiptMeta?.taxBaseAmount;
-			if (taxBase !== undefined) {
-				const taxRate = order.taxRateSnapshot ?? receiptMeta?.taxRateSnapshot;
-				printKeyValue("DASAR PAJAK", formatReceiptAmount(taxBase));
-				if (taxRate !== undefined) {
-					printKeyValue("TARIF PAJAK", `${taxRate}%`);
-				}
-			}
-			if (!hasTaxAdjustment && order.taxAmount != null && order.taxAmount > 0) {
-				printKeyValue("PAJAK", formatReceiptAmount(order.taxAmount));
-			}
-			if (!hasServiceAdjustment && order.serviceChargeAmount != null && order.serviceChargeAmount > 0) {
-				printKeyValue("SERVICE", formatReceiptAmount(order.serviceChargeAmount));
-			}
+			printKeyValue("DASAR PBJT", formatReceiptAmount(taxBase ?? subtotal ?? 0));
+			const effectiveTaxRate = order.taxRateSnapshot ?? receiptMeta?.taxRateSnapshot ?? 10;
+			printKeyValue(`PBJT/PAJAK RESTORAN (${effectiveTaxRate}%)`, formatReceiptAmount(order.taxAmount ?? 0));
+			printKeyValue("SERVICE CHARGE", formatReceiptAmount(order.serviceChargeAmount ?? 0));
+			printWrappedLines("PBJT makanan/minuman Kota Tasikmalaya; tunai kasir gratis/Rp0 bila channel tunai.", RECEIPT_LINE_WIDTH);
 			if (order.taxExemptionReason ?? receiptMeta?.taxExemptionReason) {
 				printWrappedLines(`Pajak: ${order.taxExemptionReason ?? receiptMeta?.taxExemptionReason}`);
 			}

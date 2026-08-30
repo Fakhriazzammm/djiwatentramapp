@@ -120,7 +120,7 @@ export function buildReceiptMetaFromCart({
 		});
 	}
 	if (taxAmount > 0) {
-		adjustmentLines.push({ label: "Pajak", amount: taxAmount });
+		adjustmentLines.push({ label: "PBJT/Pajak Restoran", amount: taxAmount });
 	}
 	if (serviceChargeAmount > 0) {
 		adjustmentLines.push({ label: "Service Charge", amount: serviceChargeAmount });
