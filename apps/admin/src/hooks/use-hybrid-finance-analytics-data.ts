@@ -98,6 +98,16 @@ async function fetchFinancialTransactions(args?: {
 		isRecurring: Boolean(row.isRecurring),
 		recurringInterval: row.recurringInterval ?? null,
 		tags: Array.isArray(row.tags) ? row.tags : [],
+		transactionKind: row.transactionKind ?? row.transaction_kind ?? null,
+		isCashOutflow: row.isCashOutflow ?? row.is_cash_outflow ?? null,
+		cogsOrderSourceId: row.cogsOrderSourceId ?? row.cogs_order_source_id ?? null,
+		// Tax/service/rounding are order snapshots; null means the historical order had no snapshot.
+		subtotalAmount: null as number | null,
+		taxBaseAmount: null as number | null,
+		taxAmount: null as number | null,
+		serviceChargeAmount: null as number | null,
+		rawTotalAmount: null as number | null,
+		roundingAdjustment: null as number | null,
 		metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
 	}));
 	// ── Batch-fetch order items untuk income transaksi ──
@@ -108,10 +118,17 @@ async function fetchFinancialTransactions(args?: {
 	const orderNumTxIds = mapped
 		.filter((tx: any) => tx.type === "income" && !tx.orderId && tx.metadata?.orderNumber)
 		.map((tx: any) => tx.metadata.orderNumber);
+	const orderSnapshotsById = new Map<string, any>();
+	const orderSnapshotsByNumber = new Map<string, any>();
 	if (orderTxIds.length > 0) {
 		// items ada di view public.pos_orders (kolom JSONB `items`)
-		const orders = await fetchOrderRowsInBatches("_id", orderTxIds, "_id, items");
+		const orders = await fetchOrderRowsInBatches(
+			"_id",
+			orderTxIds,
+			"_id, items, subtotalAmount, taxBaseAmount, taxAmount, serviceChargeAmount, rawTotalAmount, roundingAdjustment"
+		);
 		if (orders.length > 0) {
+			for (const order of orders) orderSnapshotsById.set(String(order._id), order);
 			const itemsByOrder = new Map<string, any[]>();
 			for (const order of orders) {
 				const orderItems = Array.isArray(order.items) ? order.items : [];
@@ -138,9 +155,10 @@ async function fetchFinancialTransactions(args?: {
 		const ordersByNum = await fetchOrderRowsInBatches(
 			"orderNumber",
 			orderNumTxIds,
-			"_id, items, orderNumber"
+			"_id, items, orderNumber, subtotalAmount, taxBaseAmount, taxAmount, serviceChargeAmount, rawTotalAmount, roundingAdjustment"
 		);
 		if (ordersByNum.length > 0) {
+			for (const order of ordersByNum) orderSnapshotsByNumber.set(String(order.orderNumber), order);
 			const itemsByOrderNum = new Map<string, any[]>();
 			for (const order of ordersByNum) {
 				const orderItems = Array.isArray(order.items) ? order.items : [];
@@ -161,6 +179,23 @@ async function fetchFinancialTransactions(args?: {
 				}
 			}
 		}
+	}
+	// ── Enrich linked income rows with immutable order pricing snapshots ──
+	// Missing snapshots intentionally remain null/zero so historical totals still use financial_transactions.amount.
+	for (const tx of mapped) {
+		if (tx.type !== "income") continue;
+		const order = tx.orderId
+			? orderSnapshotsById.get(String(tx.orderId))
+			: tx.metadata?.orderNumber != null
+				? orderSnapshotsByNumber.get(String(tx.metadata.orderNumber))
+				: undefined;
+		if (!order) continue;
+		tx.subtotalAmount = order.subtotalAmount == null ? null : safeNum(order.subtotalAmount);
+		tx.taxBaseAmount = order.taxBaseAmount == null ? null : safeNum(order.taxBaseAmount);
+		tx.taxAmount = order.taxAmount == null ? null : safeNum(order.taxAmount);
+		tx.serviceChargeAmount = order.serviceChargeAmount == null ? null : safeNum(order.serviceChargeAmount);
+		tx.rawTotalAmount = order.rawTotalAmount == null ? null : safeNum(order.rawTotalAmount);
+		tx.roundingAdjustment = order.roundingAdjustment == null ? null : safeNum(order.roundingAdjustment);
 	}
 	// ── Safety dedup ──
 	const seen = new Set<string>();
@@ -587,33 +622,45 @@ export function useHybridProfitLossReport(args?: {
 			);
 			const incomeRows = completed.filter((tx: any) => tx.type === "income");
 			const expenseRows = completed.filter((tx: any) => tx.type === "expense");
+			const hppRows = expenseRows.filter((tx: any) =>
+				String(tx.category || "").toLowerCase() === "hpp" ||
+				String(tx.transactionKind || tx.transaction_kind || "").toLowerCase() === "order_cogs" ||
+				tx.isCashOutflow === false || tx.is_cash_outflow === false
+			);
+			const operatingExpenseRows = expenseRows.filter((tx: any) => !hppRows.includes(tx));
 			const totalIncome = incomeRows.reduce(
 				(sum: number, tx: any) => sum + safeNum(tx.amount),
 				0
 			);
-			const totalExpense = expenseRows.reduce(
+			const totalExpense = operatingExpenseRows.reduce(
 				(sum: number, tx: any) => sum + safeNum(tx.amount),
 				0
 			);
-			const hppAmount = expenseRows
-				.filter((tx: any) =>
-					String(tx.category || "").toLowerCase().match(/hpp|cogs|pokok|bahan/)
-				)
-				.reduce((sum: number, tx: any) => sum + safeNum(tx.amount), 0);
+			const hppAmount = hppRows.reduce((sum: number, tx: any) => sum + safeNum(tx.amount), 0);
 			const grossSalesRevenue = totalIncome;
 			const totalDiscount = incomeRows.reduce(
 				(sum: number, tx: any) => sum + safeNum((tx.metadata as any)?.discount ?? 0),
 				0
 			);
+			const totalTax = incomeRows.reduce((sum: number, tx: any) => sum + safeNum(tx.taxAmount), 0);
+			const totalServiceCharge = incomeRows.reduce((sum: number, tx: any) => sum + safeNum(tx.serviceChargeAmount), 0);
+			const totalRoundingAdjustment = incomeRows.reduce((sum: number, tx: any) => sum + safeNum(tx.roundingAdjustment), 0);
 			const salesRevenue = Math.max(0, grossSalesRevenue - totalDiscount);
 			const grossProfit = salesRevenue - hppAmount;
-			const netProfit = totalIncome - totalExpense;
+			const netProfit = salesRevenue - hppAmount - totalExpense;
 			const netMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
 			return {
 				income: {
 					total: totalIncome,
 					grossSalesRevenue,
 					totalDiscount,
+					totalTax,
+					totalServiceCharge,
+					totalRoundingAdjustment,
+					// Direct snapshot names keep the order-level breakdown discoverable to consumers.
+					taxAmount: totalTax,
+					serviceChargeAmount: totalServiceCharge,
+					roundingAdjustment: totalRoundingAdjustment,
 					salesRevenue,
 					sources: Array.from(
 						groupBy(incomeRows, (tx: any) => String(tx.category || "Penjualan")).entries()
@@ -629,7 +676,7 @@ export function useHybridProfitLossReport(args?: {
 					total: totalExpense,
 					hppAmount,
 					operatingExpenses: Array.from(
-						groupBy(expenseRows, (tx: any) => String(tx.category || "lainnya")).entries()
+						groupBy(operatingExpenseRows, (tx: any) => String(tx.category || "lainnya")).entries()
 					).map(([category, items]) => ({
 						category,
 						amount: items.reduce(
@@ -662,7 +709,12 @@ export function useHybridCashFlowReport(args?: {
 				.filter((tx: any) => tx.type === "income")
 				.reduce((sum: number, tx: any) => sum + safeNum(tx.amount), 0);
 			const totalOutflow = completed
-				.filter((tx: any) => tx.type === "expense")
+				.filter((tx: any) =>
+					tx.type === "expense" &&
+					String(tx.category || "").toLowerCase() !== "hpp" &&
+					String(tx.transactionKind || tx.transaction_kind || "").toLowerCase() !== "order_cogs" &&
+					tx.isCashOutflow !== false && tx.is_cash_outflow !== false
+				)
 				.reduce((sum: number, tx: any) => sum + safeNum(tx.amount), 0);
 			const byDay = groupBy(
 				completed,
