@@ -69,6 +69,7 @@ export function CheckoutSidebar({
 	lastOrderId,
 	onPrintLastOrder,
 	onPrintOpenBill,
+	onPrintKitchen,
 	canPrintOpenBill = true,
 }: { 
 	onConfirmPayment?: (
@@ -88,10 +89,11 @@ export function CheckoutSidebar({
 	) => void;
 	isSubmitting?: boolean;
 	onClose?: () => void;
-	initialStep?: "customer" | "menu" | "payment" | "assign";
+	initialStep?: "customer" | "menu" | "payment" | "receipt" | "assign";
 	lastOrderId?: string | null;
 	onPrintLastOrder?: () => void;
 	onPrintOpenBill?: () => void;
+	onPrintKitchen?: () => void;
 	canPrintOpenBill?: boolean;
 }) {
 	const {
@@ -143,7 +145,7 @@ export function CheckoutSidebar({
 	}, [platforms, customerInfo.platform]);
 	const platformName = selectedPlatform?.name ?? "";
 
-	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment" | "assign">(
+	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment" | "receipt" | "assign">(
 		initialStep || "menu"
 	);
 	
@@ -391,7 +393,7 @@ export function CheckoutSidebar({
 	}, [selectedDiscountId, allActiveDiscounts, appliedVoucher, applyVoucher]);
 
 	const handleConfirmPayment = () => {
-		setActiveStep("assign");
+		setActiveStep("receipt");
 	};
 
 	const handleSubmitAssignment = () => {
@@ -479,10 +481,12 @@ export function CheckoutSidebar({
 					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
 						<div className={cn(
 							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
-							activeStep === "assign" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
+							activeStep === "receipt" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>4</div>
-						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "assign" ? "text-foreground" : "text-muted-foreground")}>Tim</span>
+						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "receipt" ? "text-foreground" : "text-muted-foreground")}>Struk</span>
 					</div>
+					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
+					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2"><div className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]", activeStep === "assign" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground")}>5</div><span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "assign" ? "text-foreground" : "text-muted-foreground")}>Tim</span></div>
 				</div>
 				</nav>
 				<div className="flex shrink-0 items-center gap-2 text-muted-foreground">
@@ -512,7 +516,7 @@ export function CheckoutSidebar({
 			</div>
 
 			<ScrollArea className="flex-1 min-h-0">
-				<div className={cn("space-y-3 p-3 md:space-y-3 md:p-3", activeStep === "payment" || activeStep === "assign" ? "pb-24" : "pb-20")}>
+				<div className={cn("space-y-3 p-3 md:space-y-3 md:p-3", activeStep === "payment" || activeStep === "receipt" || activeStep === "assign" ? "pb-24" : "pb-20")}>
 					{/* Section 1: Informasi Pelanggan */}
 					{activeStep === "customer" && (
 						<div className="fade-in animate-in space-y-3 duration-300 slide-in-from-right-4 md:space-y-3.5">
@@ -962,7 +966,16 @@ export function CheckoutSidebar({
 						</div>
 					)}
 
-					{/* Section 4: Assign Produksi */}
+					{/* Section 4: Struk */}
+					{activeStep === "receipt" && (
+						<div className="space-y-3 animate-in slide-in-from-bottom-6 duration-500">
+							<div className="flex items-center justify-between"><div className="flex items-center gap-2"><Printer className="h-4 w-4 text-primary" /><h3 className="text-xs font-bold uppercase tracking-wider">Struk</h3></div><span className="text-[10px] font-bold text-emerald-600">Siap ditinjau</span></div>
+							<div className="mx-auto max-w-sm rounded-xl border border-slate-200 bg-white p-4 text-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.08)]"><div className="text-center"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">DJIWA TENTRAM</p><p className="mt-1 text-[10px] text-slate-500">REVIEW STRUK</p></div><div className="my-3 border-t border-dashed border-slate-300" />{items.slice(0, 8).map((item) => <div key={`${item.productId}-${item.variant || "default"}`} className="flex justify-between gap-2 text-[10px]"><span className="min-w-0 truncate">{item.quantity}× {item.name}</span><span className="shrink-0">{fmt(item.price * item.quantity)}</span></div>)}<div className="my-3 border-t border-dashed border-slate-300" /><div className="space-y-1 text-[10px]"><div className="flex justify-between"><span>Subtotal</span><span>{fmt(grossAmount)}</span></div>{promoDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Promo</span><span>-{fmt(promoDiscountAmount)}</span></div>}{voucherDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Voucher</span><span>-{fmt(voucherDiscountAmount)}</span></div>}<div className="flex justify-between"><span>Dasar pajak</span><span>{fmt(Math.max(0, totalAmount - voucherDiscountAmount))}</span></div><div className="flex justify-between"><span>PBJT ({taxRate}%)</span><span>{selectedPaymentMethod ? fmt(taxAmount) : "Pilih metode"}</span></div><div className="flex justify-between"><span>Service charge ({serviceChargeRate}%)</span><span>{selectedPaymentMethod ? fmt(serviceChargeAmount) : "Pilih metode"}</span></div>{selectedTaxCalculation && selectedTaxCalculation.roundingAdjustment !== 0 && <div className="flex justify-between"><span>Pembulatan</span><span>{fmt(selectedTaxCalculation.roundingAdjustment)}</span></div>}<div className="flex justify-between border-t border-slate-200 pt-2 text-sm font-black text-primary"><span>TOTAL</span><span>{fmt(finalTotal)}</span></div></div><div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-center text-[9px] text-slate-500">{selectedPaymentMethod ? (selectedPaymentMethod === "tunai" ? "Tunai" : "QRIS") : "Metode pembayaran belum dipilih"}</div></div>
+							<div className="grid grid-cols-3 gap-2"><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintLastOrder} onClick={onPrintLastOrder} className="h-10 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Struk Lunas</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintOpenBill || !canPrintOpenBill} onClick={onPrintOpenBill} className="h-10 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Open Bill</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintKitchen} onClick={onPrintKitchen} className="h-10 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Kitchen</Button></div>{!lastOrderId && <p className="text-center text-[10px] text-muted-foreground">Cetakan aktif setelah order tersimpan.</p>}
+						</div>
+					)}
+
+					{/* Section 5: Assign Produksi */}
 					{activeStep === "assign" && (
 						<div className="space-y-3 fade-in animate-in slide-in-from-right-4 duration-300">
 							<div className="flex items-center justify-between">
@@ -1131,24 +1144,19 @@ export function CheckoutSidebar({
 						{isSubmitting ? (
 							<ShimmerSkeleton className="h-4 w-20 bg-white/20" />
 						) : (
-							"Konfirmasi Bayar"
+							"Lanjut Struk"
 						)}
 					</Button>
 				)}
 
+				{activeStep === "receipt" && (
+					<div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("payment")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Bayar</Button><Button type="button" onClick={() => setActiveStep("assign")} className="h-10 text-xs font-black">Lanjut Tim<ChevronRight className="ml-1 h-4 w-4" /></Button></div>
+				)}
+
 				{activeStep === "assign" && (
-					<Button
-						onClick={handleSubmitAssignment}
-						disabled={items.length === 0 || isSubmitting}
-						className="w-full h-10 text-xs font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all"
-						size="lg"
-					>
-						{isSubmitting ? (
-							<ShimmerSkeleton className="h-4 w-20 bg-white/20" />
-						) : (
-							"Kirim ke Produksi"
-						)}
-					</Button>
+					<div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("receipt")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Struk</Button><Button onClick={handleSubmitAssignment} disabled={items.length === 0 || isSubmitting} className="h-10 text-xs font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all" size="lg">
+						{isSubmitting ? <ShimmerSkeleton className="h-4 w-20 bg-white/20" /> : "Kirim ke Produksi"}
+					</Button></div>
 				)}
 			</div>
 

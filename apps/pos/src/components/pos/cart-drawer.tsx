@@ -9,6 +9,7 @@ export function CartDrawer({
 	lastOrderId,
 	onPrintLastOrder,
 	onPrintOpenBill,
+	onPrintKitchen,
 	canPrintOpenBill,
 }: {
 	isOpen: boolean;
@@ -18,6 +19,7 @@ export function CartDrawer({
 	lastOrderId?: string | null;
 	onPrintLastOrder?: () => void;
 	onPrintOpenBill?: () => void;
+	onPrintKitchen?: () => void;
 	canPrintOpenBill?: boolean;
 }) {
 	return (
@@ -47,6 +49,7 @@ export function CartDrawer({
 							lastOrderId={lastOrderId}
 							onPrintLastOrder={onPrintLastOrder}
 							onPrintOpenBill={onPrintOpenBill}
+							onPrintKitchen={onPrintKitchen}
 							canPrintOpenBill={canPrintOpenBill}
 						/>
 					</motion.div>

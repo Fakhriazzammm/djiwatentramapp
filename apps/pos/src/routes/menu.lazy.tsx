@@ -2498,6 +2498,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					lastOrderId={lastOrderId}
 					onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
 					onPrintOpenBill={handlePrintCurrentOpenBill}
+					onPrintKitchen={() => lastOrderId && handlePrint(lastOrderId, "kitchen")}
 					canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
 				/>
 			</div>
@@ -2558,6 +2559,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				lastOrderId={lastOrderId}
 				onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
 				onPrintOpenBill={handlePrintCurrentOpenBill}
+				onPrintKitchen={() => lastOrderId && handlePrint(lastOrderId, "kitchen")}
 				canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
 			/>
 
