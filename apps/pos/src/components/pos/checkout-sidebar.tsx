@@ -21,6 +21,7 @@ import {
 	ChevronDown,
 	X,
 	Printer,
+	Bluetooth,
 	Search,
 	Star,
 	MousePointerClick,
@@ -45,6 +46,7 @@ import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
 import type { Doc } from "@/types/backend-compat";
 import { CustomerSearchModal } from "./customer-search-modal";
 import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
+import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
 // ── Role → Production Track mapping ──
 const ROLE_TRACK_MAP: Record<string, "bar" | "kitchen" | "both"> = {
@@ -171,6 +173,14 @@ export function CheckoutSidebar({
 	const serviceChargeAmount = selectedTaxCalculation?.serviceChargeAmount ?? 0;
 	const receiptReference = lastOrderId || "ORDER BARU";
 	const receiptCustomer = customerInfo as any;
+	const handleConnectPrinter = async () => {
+		try {
+			await bluetoothPrinter.connect();
+			toast.success("Printer Bluetooth berhasil terhubung");
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Gagal menghubungkan printer Bluetooth");
+		}
+	};
 
 	// ── Assignment state for Step 4 ──
 	interface GroupAssignment {
@@ -1129,7 +1139,7 @@ export function CheckoutSidebar({
 				)}
 
 				{activeStep === "receipt" && (
-					<div className="space-y-2"><div className="grid grid-cols-3 gap-2"><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintLastOrder} onClick={onPrintLastOrder} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Lunas</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintOpenBill || !canPrintOpenBill} onClick={onPrintOpenBill} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Open Bill</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintKitchen} onClick={onPrintKitchen} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Kitchen</Button></div><div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("payment")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Bayar</Button><Button type="button" onClick={() => setActiveStep("assign")} className="h-10 text-xs font-black">Konfirmasi & Tim<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
+					<div className="space-y-2"><div className="grid grid-cols-4 gap-2"><Button type="button" variant="outline" onClick={handleConnectPrinter} className="h-9 px-1 text-[10px] font-bold"><Bluetooth className="mr-1 h-3 w-3" />Connect</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintLastOrder} onClick={onPrintLastOrder} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Lunas</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintOpenBill || !canPrintOpenBill} onClick={onPrintOpenBill} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Open Bill</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintKitchen} onClick={onPrintKitchen} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Kitchen</Button></div><div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("payment")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Bayar</Button><Button type="button" onClick={() => setActiveStep("assign")} className="h-10 text-xs font-black">Konfirmasi & Tim<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
 				)}
 
 				{activeStep === "assign" && (
