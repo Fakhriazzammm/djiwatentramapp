@@ -848,10 +848,9 @@ export function CheckoutSidebar({
 								</Button>
 							</div>
 
-							{/* Dynamic receipt review: image is visual paper only; all values stay live data. */}
-							<div className="relative min-h-[360px] overflow-hidden rounded-2xl bg-transparent py-12">
-								<img src="/assets/receipt-preview-paper.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-100" />
-								<div className="relative mx-auto w-[72%] text-slate-800">
+							{/* Dynamic receipt review: native paper keeps live transaction data precise. */}
+							<div className="mx-auto w-full max-w-md rounded-xl border border-slate-200 bg-white px-4 py-4 text-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+								<div>
 									<div className="flex items-center justify-between border-b border-dashed border-primary/20 pb-2"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Review Struk</span><span className="text-[10px] font-bold text-muted-foreground">{selectedPaymentMethod ? (selectedPaymentMethod === "tunai" ? "Tunai" : "QRIS") : "Pilih metode"}</span></div>
 									<div className="mt-2 space-y-1">{items.slice(0, 4).map((item) => <div key={`${item.productId}-${item.variant || "default"}`} className="flex justify-between gap-2 text-[10px]"><span className="min-w-0 truncate">{item.quantity}× {item.name}</span><span className="shrink-0 font-semibold">{fmt(item.price * item.quantity)}</span></div>)}{items.length > 4 && <p className="text-[10px] text-muted-foreground">+{items.length - 4} item lainnya</p>}</div>
 									<div className="mt-2 space-y-1 border-t border-dashed border-primary/20 pt-2 text-[10px]"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal setelah diskon</span><span>{fmt(Math.max(0, totalAmount - voucherDiscountAmount))}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PBJT/Pajak Restoran ({taxRate}%)</span><span>{selectedPaymentMethod ? fmt(taxAmount) : "Pilih metode"}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service charge ({serviceChargeRate}%)</span><span>{selectedPaymentMethod ? fmt(serviceChargeAmount) : "Pilih metode"}</span></div><div className="flex justify-between border-t border-primary/10 pt-1 font-black text-primary"><span>Total</span><span>{fmt(finalTotal)}</span></div></div>
