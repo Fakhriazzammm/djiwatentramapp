@@ -792,31 +792,6 @@ export function CheckoutSidebar({
 								</Button>
 							</div>
 
-							{/* Dynamic receipt review: native paper keeps live transaction data precise. */}
-							<div className="mx-auto w-full max-w-md rounded-xl border border-slate-200 bg-white px-4 py-4 text-slate-800 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-								<div>
-									<div className="flex items-center justify-between border-b border-dashed border-primary/20 pb-2"><span className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Review Struk</span><span className="text-[10px] font-bold text-muted-foreground">{selectedPaymentMethod ? (selectedPaymentMethod === "tunai" ? "Tunai" : "QRIS") : "Pilih metode"}</span></div>
-									<div className="mt-2 space-y-1">{items.slice(0, 4).map((item) => <div key={`${item.productId}-${item.variant || "default"}`} className="flex justify-between gap-2 text-[10px]"><span className="min-w-0 truncate">{item.quantity}× {item.name}</span><span className="shrink-0 font-semibold">{fmt(item.price * item.quantity)}</span></div>)}{items.length > 4 && <p className="text-[10px] text-muted-foreground">+{items.length - 4} item lainnya</p>}</div>
-									<div className="mt-2 space-y-1 border-t border-dashed border-primary/20 pt-2 text-[10px]"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{fmt(grossAmount)}</span></div>{promoDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Promo / Marketing</span><span>-{fmt(promoDiscountAmount)}</span></div>}{voucherDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Diskon Voucher</span><span>-{fmt(voucherDiscountAmount)}</span></div>}<div className="flex justify-between"><span className="text-muted-foreground">Dasar pajak</span><span>{fmt(Math.max(0, totalAmount - voucherDiscountAmount))}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PBJT/Pajak Restoran ({taxRate}%)</span><span>{selectedPaymentMethod ? fmt(taxAmount) : "Pilih metode"}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service charge ({serviceChargeRate}%)</span><span>{selectedPaymentMethod ? fmt(serviceChargeAmount) : "Pilih metode"}</span></div>{selectedTaxCalculation && selectedTaxCalculation.roundingAdjustment !== 0 && <div className="flex justify-between"><span className="text-muted-foreground">Pembulatan</span><span>{fmt(selectedTaxCalculation.roundingAdjustment)}</span></div>}<div className="flex justify-between border-t border-primary/10 pt-1 font-black text-primary"><span>Total</span><span>{fmt(finalTotal)}</span></div></div>
-									{!selectedPaymentMethod && <p className="mt-2 text-[10px] font-bold text-amber-700">Pilih Tunai atau QRIS untuk menampilkan perhitungan pajak.</p>}
-								</div>
-							</div>
-
-							{/* Total Box */}
-							{customerInfo.orderType === "online" && selectedPlatform && (
-								<div className="rounded-xl border border-orange-200 bg-orange-50/70 p-2.5 space-y-1 mb-2">
-									<p className="text-[11px] font-bold uppercase tracking-widest text-orange-600 mb-1">Ringkasan {platformName}</p>
-									<div className="flex justify-between text-xs"><span>Total {platformName}</span><span className="font-bold">{fmt(platformTotal)}</span></div>
-									<div className="flex justify-between text-xs text-muted-foreground"><span>Komisi ({(selectedPlatform.commissionRate * 100).toFixed(0)}%)</span><span className="text-red-500">-{fmt(commissionAmount)}</span></div>
-									<Separator />
-									<div className="flex justify-between text-sm font-black text-green-700"><span>Pendapatan Bersih</span><span>{fmt(netRevenue)}</span></div>
-								</div>
-							)}
-							<div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-center">
-								<p className="text-[10px] font-bold uppercase tracking-widest text-primary/60 mb-0.5">Total Tagihan</p>
-								<p className="text-xl font-black text-primary tracking-tighter">{fmt(finalTotal)}</p>
-							</div>
-
 							{/* Metode Pembayaran */}
 							<div className="space-y-2">
 								<h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Pilih Metode</h3>
