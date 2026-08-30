@@ -80,7 +80,7 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 // (status order berubah dari kasir/dapur → notifikasi ikut ter-update).
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
-export function useCustomerOrders() {
+export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 	const { customer, isLoading: authLoading } = useCustomerAuth();
 	const sourceId = customer?.sourceId ?? null;
 
@@ -115,6 +115,7 @@ export function useCustomerOrders() {
 		[sourceId],
 		{
 			realtimeSchemas: ["pos"],
+			onRealtimeUpdate: options?.onRealtimeUpdate,
 			cacheKey: sourceId ? `customer:orders:${sourceId}` : undefined,
 			cacheTtlMs: 300_000,
 		},

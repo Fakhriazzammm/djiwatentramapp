@@ -28,6 +28,7 @@ type AudioLike = {
 };
 
 let audioUnlocked = false;
+const MP3_URL = "/sounds/transaction-success.mp3";
 
 /**
  * Browsers block Audio / speechSynthesis until the user interacts with the

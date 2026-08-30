@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { clearCustomerTransactionVoiceQueue, enqueueCustomerTransactionVoice } from "@/lib/transaction-voice-queue";
@@ -18,7 +18,9 @@ function isPaid(status: string) {
 
 export function CustomerTransactionVoiceListener() {
 	const { customer } = useCustomerAuth();
-	const { orders, isLoading } = useCustomerOrders();
+	const [realtimeVersion, setRealtimeVersion] = useState(0);
+	const onRealtimeUpdate = useCallback(() => setRealtimeVersion((version) => version + 1), []);
+	const { orders, isLoading } = useCustomerOrders({ onRealtimeUpdate });
 	const seeded = useRef(false);
 	const seedStarted = useRef(false);
 	const knownStatuses = useRef(new Map<string, string>());
@@ -26,6 +28,7 @@ export function CustomerTransactionVoiceListener() {
 	const seedTimer = useRef<number | undefined>(undefined);
 	const seedCompletedAt = useRef<number | null>(null);
 	const trackedSourceId = useRef<string | null | undefined>(undefined);
+	const processedRealtimeVersion = useRef(0);
 
 	// Reset all voice state when the logged-in user changes so one customer's
 	// orders never trigger sounds for another customer on the same device.
@@ -39,6 +42,7 @@ export function CustomerTransactionVoiceListener() {
 			knownStatuses.current = new Map();
 			announcedSettledOrderIds.current = new Set();
 			seedCompletedAt.current = null;
+			processedRealtimeVersion.current = 0;
 			if (seedTimer.current) {
 				window.clearTimeout(seedTimer.current);
 				seedTimer.current = undefined;
@@ -75,6 +79,9 @@ export function CustomerTransactionVoiceListener() {
 			return;
 		}
 
+		if (realtimeVersion === 0 || realtimeVersion === processedRealtimeVersion.current) return;
+		processedRealtimeVersion.current = realtimeVersion;
+
 		// Phase 2: only genuinely new orders (or a status change to paid) beep.
 		for (const [orderId, status] of next) {
 			const previous = knownStatuses.current.get(orderId);
@@ -109,7 +116,7 @@ export function CustomerTransactionVoiceListener() {
 
 			knownStatuses.current.set(orderId, status);
 		}
-	}, [customer, orders, isLoading]);
+	}, [customer, orders, isLoading, realtimeVersion]);
 
 	useEffect(() => {
 		return () => {

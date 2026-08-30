@@ -340,7 +340,7 @@ function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[],
-	options?: { refreshTrigger?: number; refreshMs?: number; tables?: string[] }
+	options?: { refreshTrigger?: number; refreshMs?: number; tables?: string[]; onRealtimeUpdate?: () => void }
 ) {
 	const globalTick = useGlobalRefreshTrigger();
 	const mergedTrigger = options?.refreshTrigger !== undefined
@@ -2112,14 +2112,16 @@ export function useHybridAllDiscounts(refreshTrigger?: number) {
 	return supabaseData as DiscountRecord[] | undefined;
 }
 
-export function useHybridOrders(options?: { status?: string; limit?: number; refreshTrigger?: number }) {
+export function useHybridOrders(options?: { status?: string; limit?: number; refreshTrigger?: number; onRealtimeUpdate?: () => void }) {
 	const supabaseData = useSupabaseValue(
 		`orders:${options?.status ?? "all"}:${options?.limit ?? "default"}`,
 		() => fetchOrders(options),
 		[options?.status, options?.limit],
-		options?.refreshTrigger !== undefined 
-			? { refreshTrigger: options.refreshTrigger, tables: ['pos_orders'] } 
-			: { tables: ['pos_orders'] }
+		{
+			tables: ['pos_orders'],
+			...(options?.refreshTrigger !== undefined ? { refreshTrigger: options.refreshTrigger } : {}),
+			onRealtimeUpdate: options?.onRealtimeUpdate,
+		}
 	);
 	return supabaseData as OrderRecord[] | undefined;
 }

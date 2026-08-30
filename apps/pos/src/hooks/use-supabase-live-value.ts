@@ -5,6 +5,7 @@ export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
 	refreshMs?: number;
 	refreshTrigger?: number;
+	onRealtimeUpdate?: () => void;
 	/** If provided, only listen to changes on these specific tables instead of all tables in the schema. */
 	tables?: string[];
 };
@@ -22,6 +23,8 @@ export function useSupabaseLiveValue<T>(
 ) {
 	const [data, setData] = useState<T | null | undefined>(undefined);
 	const reloadFnRef = useRef<() => Promise<void>>(async () => {});
+	const onRealtimeUpdateRef = useRef(options?.onRealtimeUpdate);
+	onRealtimeUpdateRef.current = options?.onRealtimeUpdate;
 
 	useEffect(() => {
 		if (!hasSupabaseConfig) {
@@ -56,7 +59,7 @@ export function useSupabaseLiveValue<T>(
 				if (active) setData(null);
 			} finally {
 				inFlight = false;
-				if (pendingReload && active) void reload();
+				if (pendingReload && active) await reload();
 			}
 		};
 
@@ -73,14 +76,22 @@ export function useSupabaseLiveValue<T>(
 					channel = channel.on(
 						"postgres_changes",
 						{ event: "*", schema, table },
-						() => { void reload(); }
+						() => {
+							void reload().then(() => {
+								if (active) onRealtimeUpdateRef.current?.();
+							});
+						}
 					);
 				}
 			} else {
 				channel = channel.on(
 					"postgres_changes",
 					{ event: "*", schema },
-					() => { void reload(); }
+					() => {
+						void reload().then(() => {
+							if (active) onRealtimeUpdateRef.current?.();
+						});
+					}
 				);
 			}
 		}

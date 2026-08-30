@@ -449,7 +449,9 @@ function MenuPage() {
 	const siteSettings = useHybridSiteSettings();
 	const mayarConfig = useHybridMayarConfig();
 	const categories = useHybridCategories();
-	const orders = useHybridOrders();
+	const [ordersRealtimeVersion, setOrdersRealtimeVersion] = useState(0);
+	const onOrdersRealtimeUpdate = useCallback(() => setOrdersRealtimeVersion((version) => version + 1), []);
+	const orders = useHybridOrders({ onRealtimeUpdate: onOrdersRealtimeUpdate });
 	const orderRefreshKey = useMemo(() => (orders ?? []).slice(0, 50).map((order: any) => `${order._id}:${order.status}:${order.createdAt}`).join("|"), [orders]);
 	const { notifications, unreadCount, isLoading: notificationsLoading, error: notificationsError, refresh: refreshNotifications, markRead: markNotificationRead, removeNotification } = usePosNotifications(orderRefreshKey);
 	const activeDiscounts = useHybridActiveDiscounts();
@@ -542,6 +544,7 @@ const notificationSeedCompletedAtRef = useRef<number | null>(null);
 	const djiwaAppOrderSeedCompletedAtRef = useRef<number | null>(null);
 	const transactionSoundIdsRef = useRef<Set<string>>(new Set());
 	const announcedSettledOrderIdsRef = useRef<Set<string>>(new Set());
+	const processedOrdersRealtimeVersionRef = useRef(0);
 	const autoPrintedCustomerOrderIdsRef = useRef<Set<string>>(new Set());
 	const autoPrintRetryTimersRef = useRef<Map<string, number>>(new Map());
 	const customerAutoPrintStatusRef = useRef<Map<string, string>>(new Map());
@@ -642,6 +645,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			return;
 		}
 
+		if (ordersRealtimeVersion === 0 || ordersRealtimeVersion === processedOrdersRealtimeVersionRef.current) return;
+		processedOrdersRealtimeVersionRef.current = ordersRealtimeVersion;
+
 		newlySettledOrderIds.forEach((orderId) => {
 			if (transactionSoundIdsRef.current.has(orderId)) return;
 			const order = (orders as any[]).find((item) => String(item._id ?? item.sourceId ?? item.orderNumber ?? "") === orderId);
@@ -660,7 +666,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		});
 
 		djiwaAppOrderStatusRef.current = currentStatuses;
-	}, [orders]);
+	}, [orders, ordersRealtimeVersion]);
 
 	useEffect(() => {
 		if (!notifications || notificationsLoading) return;
@@ -683,21 +689,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			String(item.source ?? item.action_payload?.source ?? "").toLowerCase() !== "admin"
 		);
 		if (newTransactionAlerts.length > 0) {
-			newTransactionAlerts.forEach((item) => {
-				const orderId = String(item.action_payload?.orderId ?? item.order_source_id ?? item.id);
-				if (transactionSoundIdsRef.current.has(orderId)) return;
-				transactionSoundIdsRef.current.add(orderId);
-				announcedSettledOrderIdsRef.current.add(orderId);
-				const voiceEvent = resolveTransactionVoice({
-					eventKey: `order:${orderId}`,
-					source: String(item.source ?? item.action_payload?.source ?? ""),
-					eventType: item.notification_type === "order_cashier_pending" ? "order_cashier_pending" : "order_paid",
-					paymentMethod: String(item.action_payload?.paymentMethod ?? ""),
-					orderId,
-					customerName: String(item.action_payload?.customerName ?? ""),
-				});
-				enqueueTransactionVoice(voiceEvent);
-			});
 			setTransactionAlertIds((current) => Array.from(new Set([...current, ...newTransactionAlerts.map((item) => item.id)])).slice(-3));
 		}
 		notificationIdsRef.current = nextIds;
@@ -1653,16 +1644,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				if (shouldOpenBill) {
 					if (useMayarGateway) {
-						toast.success("Invoice pembayaran berhasil dibuat"); triggerHybridRefresh(); enqueueTransactionVoice(resolveTransactionVoice({ eventKey: `pos-order:${orderId}`, source: "pos", eventType: "pos_created", orderId }));
+						toast.success("Invoice pembayaran berhasil dibuat"); triggerHybridRefresh();
 						if (mayarInvoice?.link && typeof window !== "undefined") {
 							window.open(mayarInvoice.link, "_blank", "noopener,noreferrer");
 						}
 					} else {
-						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh(); enqueueTransactionVoice(resolveTransactionVoice({ eventKey: `pos-order:${orderId}`, source: "pos", eventType: "pos_created", orderId }));
+						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh();
 					}
 					setLastOrderId(orderId);
 				} else {
-					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh(); enqueueTransactionVoice(resolveTransactionVoice({ eventKey: `pos-order:${orderId}`, source: "pos", eventType: "pos_created", orderId }));
+					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh();
 					setLastOrderId(orderId);
 
 					if (siteSettings?.autoPrint !== false) {

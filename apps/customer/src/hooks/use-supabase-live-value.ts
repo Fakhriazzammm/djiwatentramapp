@@ -5,6 +5,7 @@ export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
 	refreshMs?: number;
 	refreshTrigger?: number;
+	onRealtimeUpdate?: () => void;
 	/** Cache key for localStorage. When set, data is cached and rendered instantly on next load */
 	cacheKey?: string;
 	/** Cache TTL in ms (default: 5 minutes). Only used when cacheKey is set */
@@ -13,7 +14,7 @@ export type UseSupabaseLiveValueOptions = {
 
 
 /** Shared channel registry — dedup WebSocket connections per schema set */
-const sharedChannels = new Map<string, { refCount: number; unsubscribe: () => void }>();
+const sharedChannels = new Map<string, { refCount: number; listeners: Set<() => void>; unsubscribe: () => void }>();
 
 function loadCache<T>(key: string, ttlMs: number): T | null {
 	try {
@@ -50,6 +51,8 @@ export function useSupabaseLiveValue<T>(
 			: undefined
 	);
 	const reloadFnRef = useRef<() => Promise<void>>(async () => {});
+	const onRealtimeUpdateRef = useRef(options?.onRealtimeUpdate);
+	onRealtimeUpdateRef.current = options?.onRealtimeUpdate;
 
 	useEffect(() => {
 		if (!isSupabaseConfigured()) {
@@ -92,7 +95,7 @@ export function useSupabaseLiveValue<T>(
 				if (active) setData(null);
 			} finally {
 				inFlight = false;
-				if (pendingReload && active) void reload();
+				if (pendingReload && active) await reload();
 			}
 		};
 
@@ -115,7 +118,7 @@ export function useSupabaseLiveValue<T>(
 					"postgres_changes",
 					{ event: "*", schema },
 					() => {
-						void reload();
+						for (const listener of sharedChannels.get(channelKey)?.listeners ?? []) listener();
 					}
 				);
 			}
@@ -126,6 +129,7 @@ export function useSupabaseLiveValue<T>(
 			});
 			channelEntry = {
 				refCount: 1,
+				listeners: new Set(),
 				unsubscribe: () => {
 					void supabase.removeChannel(channel);
 				},
@@ -134,6 +138,14 @@ export function useSupabaseLiveValue<T>(
 		} else {
 			channelEntry.refCount++;
 		}
+		if (!channelEntry) return;
+		const activeChannelEntry = channelEntry;
+		const realtimeListener = () => {
+			void reload().then(() => {
+				if (active) onRealtimeUpdateRef.current?.();
+			});
+		};
+		activeChannelEntry.listeners.add(realtimeListener);
 
 		// Only poll for non-cached data (cached data uses 5 min interval above)
 		const timer = !options?.cacheKey
@@ -144,9 +156,10 @@ export function useSupabaseLiveValue<T>(
 			active = false;
 			if (timer) window.clearInterval(timer);
 
-			channelEntry.refCount--;
-			if (channelEntry.refCount <= 0) {
-				channelEntry.unsubscribe();
+			activeChannelEntry.refCount--;
+			activeChannelEntry.listeners.delete(realtimeListener);
+			if (activeChannelEntry.refCount <= 0) {
+				activeChannelEntry.unsubscribe();
 				sharedChannels.delete(channelKey);
 			}
 		};
