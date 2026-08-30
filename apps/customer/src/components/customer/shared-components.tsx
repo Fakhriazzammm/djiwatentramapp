@@ -186,11 +186,7 @@ export function SummaryCardLines({
 				<span className="text-xs font-black uppercase tracking-[0.16em] text-foreground">Total</span>
 				<span className="text-lg font-black text-foreground">{currency(total)}</span>
 			</div>
-			<p className="text-[10px] leading-relaxed text-muted-foreground">
-				{roundingAdjustment === 0
-					? "Total sudah sesuai perhitungan."
-					: "Pembulatan ke kelipatan Rp1.000 terdekat; tepat Rp500 dibulatkan ke bawah (half-down)."}
-			</p>
+
 		</div>
 	);
 }
@@ -224,7 +220,7 @@ export function ReceiptTotalsBreakdown({
 				{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}
 				<Line label="Total dibayar" value={currency(total)} />
 			</div>
-			<p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Total dibulatkan ke kelipatan Rp1.000 terdekat. Jika sisa tepat Rp500, pembulatan dilakukan ke bawah (half-down).</p>
+
 		</div>
 	);
 }

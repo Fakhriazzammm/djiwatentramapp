@@ -816,7 +816,7 @@ export class BluetoothPrinterService {
 					printKeyValue("SEBELUM PEMBULATAN", formatReceiptAmount(rawTotalAmount));
 				}
 				printKeyValue("PEMBULATAN", formatReceiptAmount(roundingAdjustment ?? 0));
-				printWrappedLines("Pembulatan ke Rp1.000; sisa <= Rp500 turun, > Rp500 naik", RECEIPT_LINE_WIDTH);
+
 			}
 
 			printSeparator("-");

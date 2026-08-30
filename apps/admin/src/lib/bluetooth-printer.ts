@@ -821,10 +821,7 @@ export class BluetoothPrinterService {
 			if (rawTotal !== undefined && roundingAdjustment !== undefined && roundingAdjustment !== 0) {
 				printKeyValue("SEBELUM BULAT", formatReceiptAmount(rawTotal));
 				printKeyValue("PEMBULATAN", formatReceiptAmount(roundingAdjustment));
-				printWrappedLines(
-					"Pembulatan ke kelipatan Rp1.000 (sisa sampai Rp500 turun, di atas Rp500 naik).",
-					RECEIPT_LINE_WIDTH
-				);
+
 			}
 
 			printSeparator("-");
