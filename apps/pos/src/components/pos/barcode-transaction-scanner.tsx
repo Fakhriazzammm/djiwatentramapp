@@ -132,7 +132,7 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected, tran
 
 	const visibleSuggestions = manualCode.trim()
 		? transactionSuggestions.filter((item) => `${item.value} ${item.label} ${item.detail ?? ""}`.toLowerCase().includes(manualCode.trim().toLowerCase())).slice(0, 6)
-		: transactionSuggestions.slice(0, 6);
+		: [];
 
 	return (
 		<div className={open ? "fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" : "hidden"} role="dialog" aria-modal="true" aria-label="Scan barcode transaksi">
