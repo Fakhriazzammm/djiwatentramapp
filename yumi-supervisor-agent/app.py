@@ -1652,14 +1652,14 @@ async def _seed_existing_order_notifications() -> bool:
     try:
         settled_rows = await _fetch(
             "pos_orders",
-            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source"
+            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source,businessUnit,orderType,daily_receipt_no"
             "&status=in.(paid,completed)"
             f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}"
             "&order=_creationTime.desc&limit=1000",
         )
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source"
+            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source,businessUnit,orderType,daily_receipt_no"
             "&source=eq.customer_self_service&status=eq.pending"
             "&paymentMethod=eq.cash&paymentReceiptKind=eq.cashier_pending"
             f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}&limit=100",
