@@ -869,7 +869,9 @@ function OrderSimpleDetail({
 
 	const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
 	const promoLabels: string[] = (order.receiptMeta?.promotionLabels ?? []).map((label: string) => normalizePromotionLabel(label, order.createdAt));
-	const subtotal = order.items?.reduce((sum: number, i: any) => sum + (i.originalPrice ?? i.price) * (i.quantity || 0), 0) ?? 0;
+	// `price` is the effective historical unit price already persisted on the order.
+	// `originalPrice` is display-only and must not inflate the subtotal.
+	const subtotal = order.items?.reduce((sum: number, i: any) => sum + i.price * (i.quantity || 0), 0) ?? 0;
 	const totalDiscount = order.discountAmount ?? 0;
 	const orderTypeLabel =
 		order.orderType === "dine_in" ? "Makan di Tempat"
@@ -1049,7 +1051,7 @@ function OrderSimpleDetail({
 				</div>
 				<div className="divide-y divide-border/50 rounded-xl border">
 					{order.items.map((item: { quantity: number; productName: string; variant?: string; price: number; originalPrice?: number | null; status?: string | null }, idx: number) => {
-						const itemSubtotal = (item.originalPrice ?? item.price) * item.quantity;
+						const itemSubtotal = item.price * item.quantity;
 						const hasDiscount = item.originalPrice != null && item.originalPrice > item.price;
 						return (
 							<div key={idx} className="flex items-center justify-between px-3 py-2">
@@ -1789,7 +1791,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 						const shiftLabel = matchedShift?.shiftName || "Di luar shift";
 						const cashierName = matchedShift?.cashierName || "—";
 						const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
-						const subtotal = order.items?.reduce((sum: number, i: any) => sum + (i.originalPrice ?? i.price) * (i.quantity || 0), 0) ?? 0;
+						const subtotal = order.items?.reduce((sum: number, i: any) => sum + i.price * (i.quantity || 0), 0) ?? 0;
 						const promoLabels = getOrderPromotionLabel(order, allDiscounts);
 						const delivered = getIsDelivered(order._id, !!order.is_delivered);
 						const isCashierPending = order.status === "pending" && ["cash", "cashier", "tunai"].includes(String(order.paymentMethod ?? "").toLowerCase());

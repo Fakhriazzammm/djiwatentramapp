@@ -272,7 +272,7 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 				quantity: i.quantity,
 			}));
 			const subtotal = items.reduce(
-				(sum: number, item: OrderItem) => sum + (item.originalPrice ?? item.price) * item.quantity,
+				(sum: number, item: OrderItem) => sum + item.price * item.quantity,
 				0
 			);
 			const receiptMode: ReceiptPrintMode =
