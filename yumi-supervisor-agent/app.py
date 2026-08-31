@@ -1548,6 +1548,9 @@ def _save_booking_notification_ids(ids: set[str]):
 _booking_notification_ids = _load_booking_notification_ids()
 
 _last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos = _load_supervisor_cursor()
+# Failed settlement edits must not hammer Telegram every 5 seconds.
+_settlement_retry_not_before: dict[str, int] = {}
+_cashier_paid_seed_ready = False
 
 # Delivery dedupe is tracked independently for each destination. This is
 # important when Kitchen/Barista times out after the transaction message was
@@ -1649,6 +1652,38 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
     except Exception as e:
         logger.warning("find_shift_at_time failed: %s", e)
     return {}
+
+async def _seed_existing_cashier_paid_updates() -> bool:
+    """Acknowledge historical cashier settlements without sending on startup.
+
+    This is intentionally read-only: it prevents a restart from replaying the
+    bounded historical lookback as fresh payment updates.
+    """
+    global _cashier_paid_update_nos, _cashier_paid_seed_ready
+    now_ms = int(_now_wib().timestamp() * 1000)
+    try:
+        rows = await _fetch(
+            "pos_orders",
+            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source"
+            "&source=eq.customer_self_service"
+            "&paymentReceiptKind=eq.cashier_pending"
+            "&status=in.(paid,completed)"
+            f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
+            f"&_creationTime=lte.{now_ms}&limit=100",
+        )
+    except Exception as e:
+        _cashier_paid_seed_ready = False
+        logger.warning("Existing cashier settlement seed skipped: %s", e)
+        return False
+    existing = {_display_order_no(row) for row in rows if _display_order_no(row) != "-"}
+    new_ids = existing - _cashier_paid_update_nos
+    if new_ids:
+        _cashier_paid_update_nos.update(new_ids)
+        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
+    _cashier_paid_seed_ready = True
+    logger.info("Cashier settlement seed: acknowledged=%d new=%d", len(existing), len(new_ids))
+    return True
+
 
 # ── Cashier payment update notification ──
 
@@ -2045,6 +2080,9 @@ async def _check_new_booking_transactions(app):
 
 async def _check_new_orders(app):
     global _last_order_check_ms, _reported_order_nos, _cashier_paid_update_nos
+    if not _cashier_paid_seed_ready:
+        logger.warning("Order polling paused: cashier settlement seed is not ready")
+        return
     now_ms = int(_now_wib().timestamp() * 1000)
     # min(cursor, now-10min) → backfill: pakai cursor (24h), normal: lookback 10m dari now
     scan_from = min(_last_order_check_ms, max(0, now_ms - _LOOKBACK_MS))
@@ -2052,7 +2090,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,createdAt,items,customerName,customerDescription,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -2070,7 +2108,7 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
@@ -2082,7 +2120,7 @@ async def _check_new_orders(app):
         # menyelesaikan pembayaran. Ini bukan bukti order sudah lunas.
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,customerDescription,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress,bookingCode,bookingDate,arrivalTime,bookingTypeLabel,eventTypeLabel,eventTypeOther"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&source=eq.customer_self_service"
             "&status=eq.pending"
             "&paymentMethod=eq.cash"
@@ -2131,12 +2169,17 @@ async def _check_new_orders(app):
         )
         if order_no in _reported_order_nos:
             if is_cashier_paid and order_no not in _cashier_paid_update_nos:
+                retry_at = _settlement_retry_not_before.get(order_no, 0)
+                if now_ms < retry_at:
+                    continue
                 settlement_ok = await _send_cashier_payment_update(app, row)
                 if settlement_ok:
                     _cashier_paid_update_nos.add(order_no)
+                    _settlement_retry_not_before.pop(order_no, None)
                     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
                 else:
-                    logger.warning("Settlement delivery incomplete for %s; will retry without duplicating transaction update", order_no)
+                    _settlement_retry_not_before[order_no] = now_ms + 60_000
+                    logger.warning("Settlement delivery incomplete for %s; retry after 60s", order_no)
             continue
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
@@ -2689,6 +2732,8 @@ async def _post_init(app):
 
     # Restore active orders from Supabase (persistent across restarts)
     await _load_active_orders(app.bot)
+    # Seed historical cashier settlements without sending replay notifications.
+    await _seed_existing_cashier_paid_updates()
 
     # First poll check (catch up with any orders since start)
     await _reconcile_mayar_payments(force=True)
@@ -2705,6 +2750,8 @@ async def _post_init(app):
             await asyncio.sleep(5)
             await _reconcile_mayar_payments()
             await _check_new_booking_transactions(app)
+            if not _cashier_paid_seed_ready:
+                await _seed_existing_cashier_paid_updates()
             await _check_new_orders(app)
             await _check_new_csr(app)
             await _check_closed_shifts(app.bot)
