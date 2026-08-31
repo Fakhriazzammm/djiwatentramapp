@@ -935,13 +935,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	// All products for search
 	const allProducts = useHybridAllProducts(productRefreshTick);
 	const transactionSuggestions = useMemo(() => (orders ?? [])
-		.filter((order: any) => String(order.source ?? "").toLowerCase() === "customer_self_service" && String(order.paymentMethod ?? order.payment_method ?? "").toLowerCase() === "cash" && ["pending", "cashier_pending"].includes(String(order.status ?? "").toLowerCase()))
 		.map((order: any) => {
 			const displayNumber = getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo ?? order.daily_receipt_no, createdAt: order.createdAt ?? order._creationTime, source: order.source, sourceApp: order.sourceApp, businessUnit: order.businessUnit, orderType: order.orderType });
 			const match = displayNumber.match(/-(\d{4})-(\d{6})$/);
-			return { value: match ? `${match[1]}-${match[2]}` : displayNumber, label: order.customerName || "Customer DjiwaApp", detail: `Rp${Number(order.totalAmount ?? 0).toLocaleString("id-ID")}` };
-		})
-		.slice(0, 30), [orders]);
+			const status = String(order.status ?? "").toLowerCase();
+			const statusLabel = status === "pending" ? "Belum lunas" : status === "completed" ? "Selesai" : status === "paid" ? "Lunas" : status || "Status tidak diketahui";
+			return { value: match ? `${match[1]}-${match[2]}` : displayNumber, label: order.customerName || "Pelanggan", detail: `Rp${Number(order.totalAmount ?? 0).toLocaleString("id-ID")} · ${statusLabel}` };
+		}), [orders]);
 
 	// Filtered products based on search
 	const filteredProducts = useMemo(() => {
