@@ -22,6 +22,7 @@ function getDetector(): BarcodeDetectorLike | null {
 export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: ScannerProps) {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const streamRef = useRef<MediaStream | null>(null);
+	const zxingControlsRef = useRef<{ stop: () => void } | null>(null);
 	const frameRef = useRef<number | null>(null);
 	const detectedRef = useRef(false);
 	const [manualCode, setManualCode] = useState("");
@@ -38,6 +39,8 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: Sc
 		const stop = () => {
 			if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
 			frameRef.current = null;
+			zxingControlsRef.current?.stop();
+			zxingControlsRef.current = null;
 			streamRef.current?.getTracks().forEach((track) => track.stop());
 			streamRef.current = null;
 		};
@@ -47,11 +50,25 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: Sc
 				setError("Kamera tidak tersedia. Masukkan kode barcode secara manual.");
 				return;
 			}
-			if (!getDetector()) {
-				setError("Browser belum mendukung scan barcode otomatis. Masukkan kode secara manual.");
-				return;
-			}
+			const nativeDetector = getDetector();
 			try {
+				if (!nativeDetector) {
+					const { BrowserMultiFormatReader } = await import("@zxing/browser");
+					if (!videoRef.current) return;
+					const reader = new BrowserMultiFormatReader();
+					zxingControlsRef.current = await reader.decodeFromConstraints(
+						{ video: { facingMode: { ideal: "environment" } }, audio: false },
+						videoRef.current,
+						(result) => {
+							const value = result?.getText()?.trim();
+							if (!value || detectedRef.current) return;
+							detectedRef.current = true;
+							onDetected(value);
+							onOpenChange(false);
+						},
+					);
+					return;
+				}
 				const stream = await navigator.mediaDevices.getUserMedia({
 					video: { facingMode: { ideal: "environment" } },
 					audio: false,
@@ -64,7 +81,7 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: Sc
 				if (!videoRef.current) return;
 				videoRef.current.srcObject = stream;
 				await videoRef.current.play();
-				const detector = getDetector();
+				const detector = nativeDetector;
 				const scan = async () => {
 					if (cancelled || detectedRef.current || !videoRef.current || !detector) return;
 					try {
@@ -116,7 +133,6 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: Sc
 		<div className={open ? "fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" : "hidden"} role="dialog" aria-modal="true" aria-label="Scan barcode transaksi">
 			<div className="w-full max-w-md overflow-hidden rounded-t-3xl bg-background shadow-2xl sm:rounded-3xl">
 				<div className="flex items-center justify-between border-b border-border px-4 py-3">
-					<div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Transaksi</p><h2 className="text-base font-black">Scan Barcode Produk</h2></div>
 					<div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Transaksi</p><h2 className="text-base font-black">Scan Barcode Transaksi</h2></div><div className="flex items-center gap-1"><button type="button" onClick={() => void toggleTorch()} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground" aria-label="Nyalakan flash"><Flashlight className={torchOn ? "h-4 w-4 text-amber-500" : "h-4 w-4"} /></button><button type="button" onClick={() => onOpenChange(false)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border" aria-label="Tutup scanner"><X className="h-4 w-4" /></button></div>
 				</div>
 				<div className="relative aspect-[4/3] bg-zinc-950">

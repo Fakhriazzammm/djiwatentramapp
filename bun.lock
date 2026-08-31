@@ -185,6 +185,27 @@
         "vite": "^6.2.2",
       },
     },
+    "apps/kol": {
+      "name": "@yumipos/kol",
+      "version": "0.1.0",
+      "dependencies": {
+        "@supabase/supabase-js": "^2.103.3",
+        "@tailwindcss/vite": "^4.0.15",
+        "framer-motion": "^12.29.0",
+        "lucide-react": "^0.473.0",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "tailwindcss": "^4.0.15",
+        "vite": "^6.4.2",
+        "vite-plugin-pwa": "^1.0.1",
+      },
+      "devDependencies": {
+        "@types/react": "19.2.7",
+        "@types/react-dom": "19.2.3",
+        "@vitejs/plugin-react": "^4.3.4",
+        "typescript": "catalog:",
+      },
+    },
     "apps/linkbio": {
       "name": "@yumipos/linkbio",
       "version": "0.0.0",
@@ -258,6 +279,7 @@
         "@yumipos/backend": "workspace:*",
         "@yumipos/env": "workspace:*",
         "@yumipos/web-shared": "workspace:*",
+        "@zxing/browser": "^0.2.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
@@ -1044,6 +1066,8 @@
 
     "@yumipos/karyawan": ["@yumipos/karyawan@workspace:apps/karyawan"],
 
+    "@yumipos/kol": ["@yumipos/kol@workspace:apps/kol"],
+
     "@yumipos/linkbio": ["@yumipos/linkbio@workspace:apps/linkbio"],
 
     "@yumipos/ordermieyamin": ["@yumipos/ordermieyamin@workspace:apps/ordermieyamin"],
@@ -1051,6 +1075,12 @@
     "@yumipos/pos": ["@yumipos/pos@workspace:apps/pos"],
 
     "@yumipos/web-shared": ["@yumipos/web-shared@workspace:packages/yumipos-web-shared"],
+
+    "@zxing/browser": ["@zxing/browser@0.2.1", "", { "optionalDependencies": { "@zxing/text-encoding": "^0.9.0" }, "peerDependencies": { "@zxing/library": "^0.23.0" } }, ""],
+
+    "@zxing/library": ["@zxing/library@0.23.0", "", { "dependencies": { "ts-custom-error": "^3.3.1" }, "optionalDependencies": { "@zxing/text-encoding": "~0.9.0" } }, "sha512-6fkkoFwP8CHxl6ugnPsj74PLJgX2iRv5zczGAyt5OBzQgxFhuhF0NCEc4t4OvSr8xAv2MRLlI0Iu9ZGDZQ2urA=="],
+
+    "@zxing/text-encoding": ["@zxing/text-encoding@0.9.0", "", {}, ""],
 
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 
@@ -1849,6 +1879,8 @@
     "toidentifier": ["toidentifier@1.0.1", "", {}, "sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA=="],
 
     "tr46": ["tr46@1.0.1", "", { "dependencies": { "punycode": "^2.1.0" } }, "sha512-dTpowEjclQ7Kgx5SdBkqRzVhERQXov8/l9Ft9dVM9fmg0W0KQSVaXX9T4i6twCPNtYiZM53lpSSUAwJbFPOHxA=="],
+
+    "ts-custom-error": ["ts-custom-error@3.3.1", "", {}, "sha512-5OX1tzOjxWEgsr/YEUWSuPrQ00deKLh6D7OTWcvNHm12/7QPyRh8SYpyWvA4IZv8H/+GQWQEh/kwo95Q9OVW1A=="],
 
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
