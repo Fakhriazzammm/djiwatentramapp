@@ -2,8 +2,7 @@ import EscPosEncoder from "esc-pos-encoder";
 import { formatDateTimeWIB } from "@/lib/wib-utils";
 
 const RECEIPT_LINE_WIDTH = 32;
-const RECEIPT_HEADER_WIDTH = 24;
-const RECEIPT_SEPARATOR_WIDTH = 28;
+const RECEIPT_SEPARATOR_WIDTH = RECEIPT_LINE_WIDTH;
 const BLUETOOTH_PRINTER_DEVICE_ID_KEY = "pos_bluetooth_printer_device_id";
 const LEGACY_BLUETOOTH_PRINTER_DEVICE_ID_KEY = "bluetooth_printer_device_id";
 const BLE_UUID_SUFFIX = "-0000-1000-8000-00805f9b34fb";
@@ -581,9 +580,12 @@ export class BluetoothPrinterService {
 
 		const printCenteredLines = (
 			text: string,
-			width = RECEIPT_HEADER_WIDTH
+			width = RECEIPT_LINE_WIDTH
 		) => {
 			for (const line of wrapReceiptText(text, width)) {
+				// Set alignment for every line so a preceding separator or detail
+				// line cannot leak its left alignment into the header/footer.
+				result.align("center");
 				result.line(line);
 			}
 		};
@@ -617,28 +619,28 @@ export class BluetoothPrinterService {
 		// v3 EscPosEncoder: width/height untuk ukuran font, size() string sudah deprecated
 
 		result.bold(true);
-		printCenteredLines(headerText.toUpperCase(), RECEIPT_HEADER_WIDTH);
+		printCenteredLines(headerText.toUpperCase(), RECEIPT_LINE_WIDTH);
 		result.bold(false);
 		result.size("normal");
 
 		if (settings.receiptShowAddress && settings.storeAddress) {
-			printCenteredLines(settings.storeAddress, RECEIPT_HEADER_WIDTH);
+			printCenteredLines(settings.storeAddress, RECEIPT_LINE_WIDTH);
 		}
 		if (settings.receiptShowPhone && settings.storePhone) {
-			printCenteredLines(settings.storePhone, RECEIPT_HEADER_WIDTH);
+			printCenteredLines(settings.storePhone, RECEIPT_LINE_WIDTH);
 		}
 
 		printSeparator("=", "center");
 		result.bold(true);
 
 		if (mode === "open_bill") {
-			printCenteredLines("OPEN BILL", RECEIPT_HEADER_WIDTH);
-			printCenteredLines("BELUM LUNAS", RECEIPT_HEADER_WIDTH);
+			printCenteredLines("OPEN BILL", RECEIPT_LINE_WIDTH);
+			printCenteredLines("BELUM LUNAS", RECEIPT_LINE_WIDTH);
 		} else if (mode === "kitchen") {
-			printCenteredLines("TIKET KITCHEN", RECEIPT_HEADER_WIDTH);
-			printCenteredLines("PRODUK YANG HARUS DIBUAT", RECEIPT_HEADER_WIDTH);
+			printCenteredLines("TIKET KITCHEN", RECEIPT_LINE_WIDTH);
+			printCenteredLines("PRODUK YANG HARUS DIBUAT", RECEIPT_LINE_WIDTH);
 		} else {
-			printCenteredLines(order.paymentStatusLabel || "LUNAS", RECEIPT_HEADER_WIDTH);
+			printCenteredLines(order.paymentStatusLabel || "LUNAS", RECEIPT_LINE_WIDTH);
 		}
 
 		result.bold(false);
@@ -712,7 +714,7 @@ export class BluetoothPrinterService {
 			result.align("center");
 			result.bold(true);
 			for (const label of order.receiptMeta.promotionLabels) {
-				printCenteredLines(label.toUpperCase(), RECEIPT_HEADER_WIDTH);
+				printCenteredLines(label.toUpperCase(), RECEIPT_LINE_WIDTH);
 			}
 			result.bold(false);
 			result.align("left");
@@ -841,9 +843,9 @@ export class BluetoothPrinterService {
 		result.align("center");
 		printSeparator("-", "center");
 		result.bold(true);
-		printCenteredLines(footerText.toUpperCase(), RECEIPT_HEADER_WIDTH);
+		printCenteredLines(footerText.toUpperCase(), RECEIPT_LINE_WIDTH);
 		if (mode === "kitchen") {
-			printCenteredLines("TANPA HARGA - UNTUK PRODUKSI", RECEIPT_HEADER_WIDTH);
+			printCenteredLines("TANPA HARGA - UNTUK PRODUKSI", RECEIPT_LINE_WIDTH);
 		}
 		result.bold(false).line(" ").cut();
 
