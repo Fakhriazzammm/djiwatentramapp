@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, MapPin, ReceiptText, X } from "lucide-react";
+import { Banknote, CheckCircle2, Clock3, MapPin, ReceiptText, X } from "lucide-react";
 import type { PosNotification } from "@/hooks/use-pos-notifications";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -65,46 +65,62 @@ export function PosOrderDetailSheet({ open, order, notification, loading = false
   const total = order?.totalAmount ?? payload.totalAmount ?? 0;
   const payment = getPaymentLabel(order, payload);
   const status = getStatusLabel(order, notification);
+  const paid = ["paid", "completed"].includes(String(order?.status ?? notification?.action_payload?.paymentStatus ?? "").toLowerCase());
   const table = getTableLabel(order, payload);
 
   return (
     <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
-      <SheetContent side="right" className="flex w-full max-w-xl flex-col p-0 sm:max-w-xl">
-        <SheetHeader className="border-b border-border px-5 py-4 pr-14">
+      <SheetContent side="right" className="flex w-full max-w-xl flex-col overflow-hidden border-l border-border/70 bg-background p-0 shadow-2xl sm:max-w-xl">
+        <SheetHeader className="border-b border-border/70 bg-background px-5 py-5 pr-14 sm:px-6">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ReceiptText className="h-5 w-5" /></span>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm"><ReceiptText className="h-5 w-5" /></span>
             <div className="min-w-0">
-              <SheetTitle className="text-base font-black">Detail Pesanan DjiwaApp</SheetTitle>
-              <SheetDescription className="mt-1 text-xs font-bold">#{orderNumber} · {status}</SheetDescription>
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">Pesanan masuk · DjiwaApp</p>
+              <SheetTitle className="font-display text-xl font-extrabold tracking-tight">Detail pesanan</SheetTitle>
+              <SheetDescription className="mt-1 break-all text-xs font-semibold text-muted-foreground">#{orderNumber}</SheetDescription>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup detail pesanan" className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl hover:bg-muted"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} aria-label="Tutup detail pesanan" className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[.97]"><X className="h-4 w-4" /></button>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading ? <div className="space-y-3"><div className="h-20 animate-pulse rounded-2xl bg-muted" /><div className="h-32 animate-pulse rounded-2xl bg-muted" /><div className="h-24 animate-pulse rounded-2xl bg-muted" /></div> : (
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+          {loading ? <div className="space-y-3"><div className="h-20 animate-pulse rounded-3xl bg-muted" /><div className="h-32 animate-pulse rounded-3xl bg-muted" /><div className="h-24 animate-pulse rounded-3xl bg-muted" /></div> : (
             <>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Pelanggan</p><p className="mt-1 font-black">{customerName}</p></div>
-                <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Nomor meja</p><p className="mt-1 flex items-center gap-1 font-black"><MapPin className="h-3.5 w-3.5 text-primary" />{table}</p></div>
-                <div className="col-span-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Ciri khusus customer</p><p className="mt-1 font-semibold text-amber-900">{customerDescription || "Belum diisi"}</p></div>
-                <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Pembayaran</p><p className="mt-1 font-black">{payment}</p></div>
-                <div className="rounded-xl border bg-muted/30 p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Status</p><p className="mt-1 flex items-center gap-1 font-black"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />{status}</p></div>
+              <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/25 px-4 py-3">
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Status pembayaran</p><p className={`mt-1 text-sm font-extrabold ${paid ? "text-emerald-700" : "text-amber-700"}`}>{status}</p></div>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${paid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`} aria-hidden="true">{paid ? <CheckCircle2 className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}</span>
               </div>
 
-              <section className="mt-5">
-                <div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-black">Detail item</h3><span className="text-xs font-bold text-muted-foreground">{items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0)} item</span></div>
+              <section aria-labelledby="customer-info-heading">
+                <h3 id="customer-info-heading" className="mb-3 font-display text-sm font-extrabold tracking-tight">Informasi pelanggan</h3>
+                <div className="grid grid-cols-2 gap-2.5 text-sm">
+                  <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-3.5 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Pelanggan</p><p className="mt-1.5 break-words font-extrabold">{customerName}</p></div>
+                  <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-3.5 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Nomor meja</p><p className="mt-1.5 flex items-start gap-1.5 break-words font-extrabold"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{table}</p></div>
+                  <div className="col-span-2 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-amber-700">Ciri khusus customer</p><p className="mt-1.5 text-sm font-semibold text-amber-950">{customerDescription || "Belum diisi"}</p></div>
+                </div>
+              </section>
+
+              <section aria-labelledby="payment-info-heading" className="mt-6">
+                <h3 id="payment-info-heading" className="mb-3 font-display text-sm font-extrabold tracking-tight">Pembayaran</h3>
+                <div className="grid grid-cols-2 gap-2.5 text-sm">
+                  <div className="rounded-2xl border border-border/70 bg-card p-3.5 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Metode</p><p className="mt-1.5 font-extrabold">{payment}</p></div>
+                  <div className="rounded-2xl border border-border/70 bg-card p-3.5 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sumber</p><p className="mt-1.5 font-extrabold">DjiwaApp</p></div>
+                </div>
+              </section>
+
+              <section className="mt-7">
+                <div className="mb-3 flex items-end justify-between gap-3"><h3 className="font-display text-sm font-extrabold tracking-tight">Detail item</h3><span className="text-xs font-bold text-muted-foreground">{items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0)} item</span></div>
                 <div className="space-y-2">
-                  {items.length === 0 ? <div className="rounded-2xl border border-dashed p-4 text-center text-xs text-muted-foreground">Detail item sedang dimuat dari pesanan.</div> : items.map((item: any, index: number) => {
+                  {items.length === 0 ? <div className="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground">Detail item belum tersedia.</div> : items.map((item: any, index: number) => {
                     const quantity = Number(item.quantity ?? 0);
                     const price = Number(item.price ?? 0);
                     const extras = getItemExtras(item);
-                    return <div key={`${getItemName(item)}-${index}`} className="rounded-2xl border p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-black">{quantity}× {getItemName(item)}</p>{item.variant ? <p className="mt-1 text-xs text-muted-foreground">Varian: {item.variant}</p> : null}{extras ? <p className="mt-1 text-xs text-muted-foreground">Add-on: {extras}</p> : null}{item.notes || item.note ? <p className="mt-1 text-xs text-muted-foreground">Catatan: {item.notes ?? item.note}</p> : null}</div><p className="shrink-0 text-sm font-black">{formatCurrency(price * quantity)}</p></div></div>;
+                    return <article key={`${getItemName(item)}-${index}`} className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="text-sm font-extrabold leading-snug">{quantity}× {getItemName(item)}</p>{item.variant ? <p className="mt-1.5 text-xs text-muted-foreground">Varian: {item.variant}</p> : null}{extras ? <p className="mt-1 text-xs text-muted-foreground">Add-on: {extras}</p> : null}{item.notes || item.note ? <p className="mt-1 text-xs text-muted-foreground">Catatan: {item.notes ?? item.note}</p> : null}</div><p className="shrink-0 text-sm font-extrabold">{formatCurrency(price * quantity)}</p></div></article>;
                   })}
                 </div>
               </section>
 
-              <section className="mt-5 rounded-2xl border bg-muted/20 p-4"><div className="flex justify-between text-xs"><span className="text-muted-foreground">Subtotal</span><span className="font-bold">{formatCurrency(order?.subtotalAmount ?? order?.subtotal ?? total)}</span></div>{Number(order?.discountAmount ?? 0) > 0 ? <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Diskon</span><span className="font-bold text-rose-600">-{formatCurrency(order?.discountAmount)}</span></div> : null}<div className="mt-3 flex justify-between border-t pt-3"><span className="font-black">Total</span><span className="text-lg font-black text-primary">{formatCurrency(total)}</span></div><p className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> Sumber: DjiwaApp</p>{order && String(order.status).toLowerCase() === "pending" && String(order.paymentMethod ?? order.payment_method ?? "").toLowerCase() === "cash" && onMarkCashierPaid ? <button type="button" onClick={() => void onMarkCashierPaid()} className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 text-xs font-black text-white shadow-sm transition-colors hover:bg-emerald-700">Konfirmasi Bayar Tunai di Kasir</button> : null}</section>
+              <section aria-labelledby="total-heading" className="mt-7 rounded-3xl border border-border/70 bg-muted/25 p-5 shadow-sm"><h3 id="total-heading" className="sr-only">Ringkasan pembayaran</h3><div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-bold">{formatCurrency(order?.subtotalAmount ?? order?.subtotal ?? total)}</span></div>{Number(order?.discountAmount ?? 0) > 0 ? <div className="mt-2 flex justify-between text-sm"><span className="text-muted-foreground">Diskon</span><span className="font-bold text-rose-600">-{formatCurrency(order?.discountAmount)}</span></div> : null}<div className="mt-4 flex items-end justify-between gap-3 border-t border-border/70 pt-4"><span className="font-display text-base font-extrabold">Total</span><span className="text-2xl font-black tracking-tight text-primary">{formatCurrency(total)}</span></div>{order && String(order.status).toLowerCase() === "pending" && String(order.paymentMethod ?? order.payment_method ?? "").toLowerCase() === "cash" && onMarkCashierPaid ? <button type="button" onClick={() => void onMarkCashierPaid()} className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-extrabold text-white shadow-sm transition-all hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 active:scale-[.98]"><Banknote className="h-4 w-4" />Konfirmasi bayar tunai</button> : null}</section>
             </>
           )}
         </div>
