@@ -73,7 +73,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const unifiedStatusColor = orderStatus === "paid" ? "text-blue-600"
 		: orderStatus === "completed" ? "text-emerald-600"
 		: "text-amber-600";
-	const normalizedPaymentMethod = String(props.currentOrder?.paymentMethod ?? props.receipt.paymentChoice).toLowerCase();
+	const normalizedPaymentMethod = String(props.currentOrder?.paymentMethod ?? (props.currentOrder as any)?.payment_method ?? props.receipt.paymentChoice).toLowerCase();
 	const canRetryPayment = mode !== "paid" && (normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa") || normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar") || props.receipt.paymentChoice === "mayar");
 
 	const currentStepIndex = getStatusStepIndex(orderStatus);
