@@ -15,6 +15,7 @@ import {
 	Settings2,
 	ShoppingBag,
 	ShoppingCart,
+	ScanLine,
 	Wallet,
 	X,
 	Printer,
@@ -41,6 +42,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
 import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
+import { BarcodeTransactionScanner } from "@/components/pos/barcode-transaction-scanner";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import {
 	useHybridActiveDiscounts,
@@ -531,6 +533,7 @@ function MenuPage() {
 	const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
+	const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
 	const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 	const [isCartOpen, setIsCartOpen] = useState(false);
 	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -1059,6 +1062,27 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			}
 		},
 		[filteredProducts, activeDiscounts, addToCart, customerInfo.orderType]
+	);
+
+	const handleBarcodeDetected = useCallback(
+		(code: string) => {
+			const normalizedCode = code.trim().toLowerCase();
+			const product = (allProducts ?? []).find((candidate: any) =>
+				[String(candidate.barcode ?? ""), String(candidate.sku ?? ""), String(candidate.productCode ?? ""), String(candidate.menuNumber ?? "")]
+					.some((value) => value.trim().toLowerCase() === normalizedCode)
+			);
+			if (!product) {
+				toast.error(`Produk dengan barcode ${code} belum ditemukan`);
+				return;
+			}
+			if (product.isAvailable === false || Number(product.quantity ?? 0) <= 0) {
+				toast.error(`${product.name} sedang SOLD atau stok habis`);
+				return;
+			}
+			setSelectedProduct(product);
+			toast.success(`${product.name} ditemukan — konfirmasi sebelum masuk keranjang`);
+		},
+		[allProducts]
 	);
 
 	const handleCategorySelect = useCallback(
@@ -2134,6 +2158,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					onOpenChange={setIsSidebarOpen} 
 					initialTab={activeSidebarTab}
 				/>
+				<BarcodeTransactionScanner
+					open={isBarcodeScannerOpen}
+					onOpenChange={setIsBarcodeScannerOpen}
+					onDetected={handleBarcodeDetected}
+				/>
 
 				{/* HORIZONTAL QUEUE BAR */}
 				<QueueHorizontalBar />
@@ -2141,6 +2170,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				{/* STICKY CONTROL AREA (Search, Categories, Subcategories) */}
 				<div className="sticky top-0 z-30 flex flex-col gap-0 border-b border-border/20 bg-background/95 backdrop-blur-md shadow-sm transition-all pb-1">
 					<div className="flex items-center gap-2 px-4 py-2 sm:py-2.5">
+						<button
+							type="button"
+							onClick={() => setIsBarcodeScannerOpen(true)}
+							className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-3 text-[11px] font-black text-primary shadow-sm transition-transform active:scale-[0.97]"
+							aria-label="Scan barcode untuk transaksi"
+						>
+							<ScanLine className="h-4 w-4" />
+							<span className="hidden sm:inline">Scan Barcode</span>
+							<span className="sm:hidden">Scan</span>
+						</button>
 						<div className="relative flex-1 group">
 							<Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-primary" />
 							<Input

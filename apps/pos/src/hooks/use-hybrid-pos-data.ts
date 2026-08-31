@@ -530,6 +530,8 @@ async function fetchProducts() {
 			row.menuNumber === null || row.menuNumber === undefined
 				? null
 				: Number(row.menuNumber),
+		barcode: row.barcode ?? row.barcodeValue ?? row.sku ?? null,
+		sku: row.sku ?? null,
 		variations: row.variations,
 	})) as ProductRecord[];
 }
@@ -563,6 +565,8 @@ async function fetchAllProducts() {
 			row.menuNumber === null || row.menuNumber === undefined
 				? null
 				: Number(row.menuNumber),
+		barcode: row.barcode ?? row.barcodeValue ?? row.sku ?? null,
+		sku: row.sku ?? null,
 		variations: row.variations,
 	})) as ProductRecord[];
 }
