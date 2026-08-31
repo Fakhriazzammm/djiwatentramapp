@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import JsBarcode from "jsbarcode";
 import { cn } from "@/lib/utils";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import type { CartItem } from "./types";
@@ -248,21 +250,27 @@ export function Line({
 }
 
 export function BarcodeLines({ value }: { value: string }) {
-	const pattern = Array.from(value.replace(/\s+/g, ""))
-		.map((character, index) => ((character.charCodeAt(0) + index * 7) % 4) + 1)
-		.flatMap((width) => [width, 1]);
+	const svgRef = useRef<SVGSVGElement>(null);
+
+	useEffect(() => {
+		if (!svgRef.current || !value.trim()) return;
+		JsBarcode(svgRef.current, value.trim(), {
+			format: "CODE128",
+			displayValue: false,
+			margin: 0,
+			height: 74,
+			width: 1.6,
+			background: "#ffffff",
+			lineColor: "#000000",
+		});
+	}, [value]);
+
 	return (
 		<div className="mt-4 rounded-xl border border-border bg-white px-3 py-3 shadow-inner">
-			<div className="flex h-20 items-end justify-center gap-[2px]">
-				{pattern.map((width, index) => (
-					<span
-						key={`${value}-${index}`}
-						className="bg-black"
-						style={{ width: `${Math.max(2, width * 2)}px`, height: `${index % 2 === 0 ? 74 : 64}px` }}
-					/>
-				))}
+			<div className="flex h-20 items-center justify-center overflow-hidden">
+				<svg ref={svgRef} className="h-[74px] max-w-full" role="img" aria-label={`Barcode ${value}`} />
 			</div>
-			<p className="mt-3 text-center font-mono text-xs font-bold tracking-[0.28em] text-foreground">{value}</p>
+			<p className="mt-3 text-center font-mono text-xs font-bold tracking-[0.18em] text-foreground">{value}</p>
 		</div>
 	);
 }
