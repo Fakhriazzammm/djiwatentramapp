@@ -167,6 +167,7 @@ function OrderPage() {
 			const raw = window.localStorage.getItem("guest-data");
 			if (!raw) return;
 			const data = JSON.parse(raw) as Record<string, unknown>;
+			if (typeof data.name === "string" && data.name.trim() && !customerName.trim()) setCustomerName(data.name.trim());
 			if (typeof data.email === "string" && data.email.trim() && !guestEmail.trim()) setGuestEmail(data.email.trim());
 			if (typeof data.phone === "string" && data.phone.trim() && !guestPhone.trim()) setGuestPhone(data.phone.trim());
 			if (typeof data.description === "string" && data.description.trim() && !customerDescription.trim()) setCustomerDescription(data.description.trim());
@@ -605,7 +606,7 @@ function OrderPage() {
 			rejectCheckout("Isi ciri khusus customer agar kasir mudah mengenali pesanan", "Ciri khusus customer");
 			return;
 		}
-		if (!isAuthenticated) {
+		if (!isAuthenticated && paymentChoice === "mayar") {
 			if (!customerName.trim()) {
 				rejectCheckout("Nama customer wajib diisi", "Nama customer");
 				return;
