@@ -179,12 +179,12 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
   if (!items.length) throw new Error("Order tidak memiliki item pembayaran");
   const itemTotal = items.reduce((sum, item) => sum + item.quantity * item.rate, 0);
   const orderTotal = Number(order.total_amount || 0);
-  if (!Number.isFinite(orderTotal) || orderTotal <= 0 || itemTotal > orderTotal + 0.01) {
+  const recordedDiscount = Math.max(0, Number(order.discount_amount || 0));
+  if (!Number.isFinite(orderTotal) || orderTotal <= 0 || itemTotal - orderTotal > recordedDiscount + 0.01) {
     throw new Error("Total order tidak cocok dengan item database");
   }
   const adjustment = Math.round((orderTotal - itemTotal) * 100) / 100;
   if (adjustment < 0) {
-    const recordedDiscount = Math.max(0, Number(order.discount_amount || 0));
     if (recordedDiscount + 0.01 < Math.abs(adjustment)) {
       throw new Error("Total order tidak cocok dengan item database");
     }

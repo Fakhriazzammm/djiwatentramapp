@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/client";
 import { invokeEdgeFunction } from "../lib/api-helper";
+import { getDisplayOrderNumber } from "../lib/order-number";
 import { useSupabaseLiveValue } from "./use-supabase-live-value";
 
 // Global refresh — call triggerHybridRefresh() after any write to
@@ -753,6 +754,16 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 			_id: String(row._id ?? ""),
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		orderNumber: row.orderNumber ?? "",
+		displayOrderNumber: getDisplayOrderNumber(row.orderNumber, {
+			sequence: row.daily_receipt_no,
+			createdAt: row.createdAt ?? row._creationTime,
+			source: row.source,
+			sourceApp: row.sourceApp,
+			businessUnit: row.businessUnit,
+			orderType: row.orderType,
+			platform: row.platform,
+		}),
+		orderChannel: row.orderChannel ?? null,
 		totalAmount: Number(row.totalAmount ?? 0),
 		status: row.status ?? null,
 		paymentMethod: row.paymentMethod ?? null,

@@ -1,6 +1,7 @@
 ﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import {
 	endOfDay,
 	endOfMonth,
@@ -278,7 +279,15 @@ function AdminOrders() {
 			type: "regular",
 			businessCategory: o.businessUnit === "ordermieyamin" || o.business_unit === "ordermieyamin" ? "mieyamin" : "pos",
 			id: o._id,
-			displayId: o.orderNumber,
+			displayId: getDisplayOrderNumber(o.orderNumber, {
+				sequence: o.dailyReceiptNo ?? o.daily_receipt_no,
+				createdAt: o.createdAt,
+				source: o.source,
+				sourceApp: o.sourceApp,
+				businessUnit: o.businessUnit,
+				orderType: o.orderType,
+				platform: o.platform,
+			}),
 			date: o.createdAt,
 		}));
 		

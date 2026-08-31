@@ -48,3 +48,6 @@ describe("resolveCustomerTransactionVoice", () => {
     expect(text).toBe("Pesanan baru diterima.");
   });
 });
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void) => void;
+declare const expect: (value: unknown) => { toBe(expected: unknown): void };

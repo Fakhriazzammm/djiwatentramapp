@@ -224,12 +224,6 @@ async function buildStockOpnameReport(
     group.set(storeName, current);
   }
 
-  for (const groups of [urgent, menipis]) {
-    for (const group of groups.values()) {
-      group.items.sort((a, b) => a.localeCompare(b));
-    }
-  }
-
   const sortStores = (
     groups: Map<string, { phone: string; items: string[] }>,
   ) =>
@@ -237,26 +231,50 @@ async function buildStockOpnameReport(
       (a, b) =>
         b[1].items.length - a[1].items.length || a[0].localeCompare(b[0]),
     );
+  const totalUrgent = [...urgent.values()].reduce(
+    (sum, group) => sum + group.items.length,
+    0,
+  );
+  const totalMenipis = [...menipis.values()].reduce(
+    (sum, group) => sum + group.items.length,
+    0,
+  );
+  const allItems = [...urgent.values(), ...menipis.values()].flatMap(
+    (group) => group.items,
+  );
+  const habis = allItems
+    .filter((item) => item.endsWith("— HABIS"))
+    .map((item) => item.replace(/^[🔴🟡]\s*/, "").replace(/\s+— HABIS$/, ""));
+  const supplierNames = new Set([...urgent.keys(), ...menipis.keys()]);
+  const urgentStores = sortStores(urgent);
+
   const lines = [
-    "📋 STOCK OPNAME",
-    `🔴 Urgent: ${[...urgent.values()].reduce((sum, group) => sum + group.items.length, 0)} item  |  🟡 Menipis: ${[...menipis.values()].reduce((sum, group) => sum + group.items.length, 0)} item`,
+    "📦 ALERT STOK",
+    `🔴 Urgent: ${totalUrgent}  |  🟡 Menipis: ${totalMenipis}`,
+    `🚨 Habis: ${habis.length}  |  🏪 Supplier: ${supplierNames.size}`,
     "",
   ];
-  for (const [title, groups, icon] of [
-    ["URGENT", urgent, "🔴"],
-    ["MENIPIS", menipis, "🟡"],
-  ] as const) {
-    if (!groups.size) continue;
-    lines.push(`━━━ ${icon} ${title} ━━━`, "");
-    sortStores(groups).forEach(([name, group], index) => {
-      lines.push(
-        `${index + 1}. ${name}${group.phone ? `  ☎️ ${group.phone}` : ""}`,
-        ...group.items,
-        "",
-      );
-    });
+
+  if (habis.length) {
+    lines.push("🚨 HABIS", ...habis.slice(0, 10).map((name) => `• ${name}`));
+    if (habis.length > 10) lines.push(`• ...dan ${habis.length - 10} item lainnya`);
     lines.push("");
   }
+
+  if (urgentStores.length) {
+    lines.push(
+      "🔴 URGENT PER SUPPLIER",
+      ...urgentStores.slice(0, 8).map(
+        ([name, group]) => `• ${name}: ${group.items.length} item`,
+      ),
+    );
+    if (urgentStores.length > 8) {
+      lines.push(`• ...dan ${urgentStores.length - 8} supplier lainnya`);
+    }
+    lines.push("");
+  }
+
+  lines.push("Detail lengkap tersedia di menu Stok Menipis.");
   return lines;
 }
 
@@ -347,31 +365,6 @@ async function notifyCheckoutToReportGroup(params: {
       return { sent: false, personalSent: false };
     }
 
-    if (params.isLastPerson && (params.roleName || "").trim()) {
-      const reportLines = await buildStockOpnameReport(params.supabase);
-      let chunk = "";
-      for (const line of reportLines) {
-        if ((chunk + (chunk ? "\n" : "") + line).length > 3900) {
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: chunk }),
-            signal: controller.signal,
-          });
-          chunk = line;
-        } else {
-          chunk += (chunk ? "\n" : "") + line;
-        }
-      }
-      if (chunk.trim()) {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text: chunk }),
-          signal: controller.signal,
-        });
-      }
-    }
 
     for (const area of photoAreas) {
       try {

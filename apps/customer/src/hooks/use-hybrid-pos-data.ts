@@ -6,6 +6,7 @@ import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 // instantly refresh ALL hybrid data hooks across the entire app.
 let _refreshCounter = 0;
 const _refreshListeners = new Set<() => void>();
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function triggerHybridRefresh() {
 	_refreshCounter++;
@@ -336,7 +337,7 @@ function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[],
-	options?: { refreshTrigger?: number; refreshMs?: number }
+	options?: { refreshTrigger?: number; refreshMs?: number; cacheKey?: string; cacheTtlMs?: number }
 ) {
 	const globalTick = useGlobalRefreshTrigger();
 	const mergedTrigger = options?.refreshTrigger !== undefined

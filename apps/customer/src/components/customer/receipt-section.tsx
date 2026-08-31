@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { BarcodeLines, ReceiptTotalsBreakdown } from "./shared-components";
 import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
 
@@ -37,7 +38,16 @@ export interface ReceiptSectionProps {
 }
 
 export function renderReceiptSection(props: ReceiptSectionProps) {
-	const orderReference = props.currentOrder?.orderNumber || props.receipt.fallbackReference;
+	const currentOrder = props.currentOrder as any;
+	const orderReference = getDisplayOrderNumber(currentOrder?.orderNumber, {
+		sequence: currentOrder?.dailyReceiptNo ?? currentOrder?.daily_receipt_no,
+		createdAt: currentOrder?.createdAt,
+		source: currentOrder?.source,
+		sourceApp: currentOrder?.sourceApp,
+		businessUnit: currentOrder?.businessUnit,
+		orderType: currentOrder?.orderType,
+		platform: currentOrder?.platform,
+	}) || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
 	const cartSnapshotItems = (props.cartSnapshot ?? []).map((item: CartItem) => ({

@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import asyncio
+import re
 from html import escape
 from collections import Counter
 from datetime import datetime, timezone, timedelta
@@ -34,6 +35,38 @@ MAYAR_WEBHOOK_TOKEN = os.getenv("MAYAR_WEBHOOK_TOKEN", "")
 
 WIB = timezone(timedelta(hours=7))
 logger = logging.getLogger(__name__)
+
+
+def _display_order_no(row: dict) -> str:
+    """Canonical display code; legacy DB order_number remains unchanged."""
+    raw = str(row.get("orderNumber") or row.get("order_number") or "-").strip()
+    if re.match(r"^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$", raw, re.I):
+        return raw.upper()
+    match = re.match(r"^ORD(\d{1,6})-", raw, re.I)
+    sequence = row.get("daily_receipt_no") or (match.group(1) if match else None)
+    if not sequence:
+        return raw
+    source = str(row.get("source") or "").strip().lower()
+    source_app = str(row.get("sourceApp") or "").strip().lower()
+    business = str(row.get("businessUnit") or "").strip().lower()
+    joined = f"{source} {source_app} {row.get('platform') or ''}".lower()
+    if source == "booking": channel = "BOOK"
+    elif business in ("ordermieyamin", "mieyamin") or source == "customer_self_service" or "djiwaapp" in joined: channel = "APP"
+    elif "gofood" in joined: channel = "GF"
+    elif "grabfood" in joined: channel = "GRAB"
+    elif "shopeefood" in joined: channel = "SF"
+    elif "telegram" in joined: channel = "TG"
+    elif not source or source in ("pos", "kasir", "internal"): channel = "POS"
+    else: channel = "UNK"
+    order_type = str(row.get("orderType") or "").lower()
+    type_code = "D" if order_type in ("dine_in", "dinein") else "T" if order_type in ("takeaway", "take_away") else "O" if order_type == "online" else "X"
+    timestamp = row.get("createdAt") or row.get("_creationTime")
+    try:
+        dt = datetime.fromtimestamp(float(timestamp) / 1000, tz=WIB)
+        date_code = dt.strftime("%d%m%y")
+    except (TypeError, ValueError, OSError):
+        date_code = "000000"
+    return f"ORD-{channel}-{type_code}-{int(sequence):04d}-{date_code}"
 
 def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", payment_gateway=None) -> str:
     """Return a provenance-safe business payment label."""
@@ -1621,7 +1654,7 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 
 async def _send_cashier_payment_update(app, row: dict):
     """Edit production messages and send one settlement update to Transactions."""
-    order_no = str(row.get("orderNumber") or "-")
+    order_no = _display_order_no(row)
     daily_no = row.get("daily_receipt_no")
     order_type = str(row.get("orderType") or "dine_in")
     kind_label = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}.get(order_type, order_type.upper())
@@ -2085,7 +2118,7 @@ async def _check_new_orders(app):
     for row in rows:
         if str(row.get("status") or "").lower() == "cancelled":
             continue
-        order_no = row.get("orderNumber", "???")
+        order_no = _display_order_no(row)
         ts = int(float(row.get("_creationTime") or 0))
         if ts > max_creation_time:
             max_creation_time = ts
@@ -2341,7 +2374,7 @@ async def _check_new_csr(app):
                 )
                 if o:
                     oo = o[0]
-                    struk_no = str(oo.get("daily_receipt_no") or oo.get("orderNumber") or "-")
+                    struk_no = _display_order_no(oo)
                     g = oo.get("guestCount")
                     if g:
                         guest = str(int(g))
@@ -2557,7 +2590,7 @@ async def _check_closed_shifts(bot: Bot):
             )
             seen_payment_orders: set[str] = set()
             for order in payment_rows:
-                order_no = str(order.get("orderNumber") or "")
+                order_no = _display_order_no(order)
                 if not order_no or order_no in seen_payment_orders:
                     continue
                 seen_payment_orders.add(order_no)

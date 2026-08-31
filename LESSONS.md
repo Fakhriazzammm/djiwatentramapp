@@ -123,4 +123,12 @@
 ## KOL Marketing
 
 || 1 | **KOL public intake memisahkan profil publik dan kontak admin** — Guest boleh auto-submit ke Edge Function tervalidasi; public view hanya expose creator/platform, sedangkan kontak, rate card, notes, dan history disimpan di tabel private dengan grant service-role saja. | arsitektur, security, public-intake |
-| 120 | **Target Telegram wajib konsisten lintas bot dan Edge Function** — `yumi-hrd-agent`/`yumi-ai-bot` memakai grup report canonical, sedangkan `process-closing` dapat tetap membawa env lama; setelah mengubah `.env`, container Functions harus di-recreate dan target diverifikasi dengan Bot API. | attendance/telegram/deployment |
+| 126 | **Target Telegram wajib konsisten lintas bot dan Edge Function** — `yumi-hrd-agent`/`yumi-ai-bot` memakai grup report canonical, sedangkan `process-closing` dapat tetap membawa env lama; setelah mengubah `.env`, container Functions harus di-recreate dan target diverifikasi dengan Bot API. | attendance/telegram/deployment |
+
+## POS Checkout
+
+| # | Lesson | Sumber |
+|---|--------|--------|
+| 1 | **Harga promo yang sudah masuk ke item tidak boleh dikurangkan lagi sebagai diskon order** — Happy Hour menurunkan `item.price`, sehingga RPC pajak hanya boleh menerima diskon tambahan seperti voucher. Mengirim total promo ke `p_discount_amount` membuat subtotal terdiskon dikurangi sekali lagi dan total menjadi terlalu rendah. | pos/checkout/debug |
+| 2 | **Kontrak diskon order harus shared lintas POS dan Customer** — gunakan `getAdditionalOrderDiscount(promoDiscountAmount, voucherDiscountAmount)` agar promo item selalu dikecualikan dari diskon level-order; lindungi dengan regression test untuk promo, voucher, dan kombinasi keduanya. | pos/customer/checkout/konvensi |
+| 3 | **Order code harus memisahkan channel, tipe, sequence, dan tanggal** — format baru `ORD-{CHANNEL}-{TYPE}-{SEQUENCE}-{DDMMYY}` tidak memasukkan nama customer. Order lama tetap immutable di database, tetapi UI dan notifikasi memakai formatter canonical berbasis provenance tersimpan. | pos/customer/admin/order-id/arsitektur |

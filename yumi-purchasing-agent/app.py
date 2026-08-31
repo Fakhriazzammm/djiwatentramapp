@@ -860,39 +860,41 @@ async def _notify_stock_update():
 
             total_urgent = sum(len(urgent_by_store[s]["items"]) for s in urgent_by_store)
             total_menipis = sum(len(menipis_by_store[s]["items"]) for s in menipis_by_store)
+            all_items = [
+                item
+                for groups in (urgent_by_store, menipis_by_store)
+                for group in groups.values()
+                for item in group["items"]
+            ]
+            habis = [item["name"] for item in all_items if item["sisa"] == "HABIS"]
 
-            lines = ["📋 STOCK OPNAME"]
-            lines.append(f"🔴 Urgent: {total_urgent} item  |  🟡 Menipis: {total_menipis} item")
-            lines.append("")
+            # Telegram group receives a compact alert. Full item details remain
+            # available through the bot's existing "Stok Menipis" action.
+            lines = [
+                "📦 ALERT STOK",
+                f"🔴 Urgent: {total_urgent}  |  🟡 Menipis: {total_menipis}",
+                f"🚨 Habis: {len(habis)}  |  🏪 Supplier: {len(set(urgent_by_store) | set(menipis_by_store))}",
+                "",
+            ]
 
-            if urgent_by_store:
-                lines.append("━━━ 🔴 URGENT ━━━")
-                lines.append("")
-                for idx, sname in enumerate(urgent_order, 1):
-                    grp = urgent_by_store[sname]
-                    phone = grp["phone"]
-                    h = f"{idx}. {sname}"
-                    if phone:
-                        h += f"  ☎️ {phone}"
-                    lines.append(h)
-                    for item in grp["items"]:
-                        lines.append(f"🔴 {item['name']} — {item['sisa']}")
-                    lines.append("")
+            if habis:
+                lines.append("🚨 HABIS")
+                lines.extend(f"• {name}" for name in habis[:10])
+                if len(habis) > 10:
+                    lines.append(f"• ...dan {len(habis) - 10} item lainnya")
                 lines.append("")
 
-            if menipis_by_store:
-                lines.append("━━━ 🟡 MENIPIS ━━━")
+            if urgent_order:
+                lines.append("🔴 URGENT PER SUPPLIER")
+                lines.extend(
+                    f"• {sname}: {len(urgent_by_store[sname]['items'])} item"
+                    for sname in urgent_order[:8]
+                )
+                if len(urgent_order) > 8:
+                    lines.append(f"• ...dan {len(urgent_order) - 8} supplier lainnya")
                 lines.append("")
-                for idx, sname in enumerate(menipis_order, 1):
-                    grp = menipis_by_store[sname]
-                    phone = grp["phone"]
-                    h = f"{idx}. {sname}"
-                    if phone:
-                        h += f"  ☎️ {phone}"
-                    lines.append(h)
-                    for item in grp["items"]:
-                        lines.append(f"🟡 {item['name']} — {item['sisa']}")
-                    lines.append("")
+
+            lines.append("Detail lengkap: tekan menu ⚠️ Stok Menipis")
 
             async with httpx.AsyncClient(timeout=10) as client:
                 await client.post(

@@ -9,6 +9,7 @@ import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import type { CartItem } from "@/components/customer/types";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
@@ -17,10 +18,22 @@ export const Route = createLazyFileRoute("/$username/riwayat")({
 });
 
 const fmtDate = (ms: number) => {
-	const d = new Date(ms);
-	if (!ms || Number.isNaN(d.getTime())) return "";
-	return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const d = new Date(ms);
+  if (!ms || Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 };
+
+function displayOrderNumber(order: any) {
+  return getDisplayOrderNumber(order.orderNumber, {
+    sequence: order.dailyReceiptNo ?? order.daily_receipt_no,
+    createdAt: order.createdAt,
+    source: order.source,
+    sourceApp: order.sourceApp,
+    businessUnit: order.businessUnit,
+    orderType: order.orderType,
+    platform: order.platform,
+  }) || order.id.slice(0, 8);
+}
 
 const STATUS_LABEL: Record<string, string> = {
 	pending: "Menunggu",
@@ -192,7 +205,7 @@ function RiwayatPage() {
 														<div className="shrink-0 text-right"><p className="text-sm font-black">{currency(order.totalAmount)}</p><span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_STYLE[statusKey] ?? "bg-muted text-muted-foreground"}`}>{humanizeStatus(order.status)}</span></div><ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
 													</button>
 													<AnimatePresence initial={false}>{isExpanded ? <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }} className="overflow-hidden"><div className="border-t border-border/60 px-4 pb-4 pt-3">
-														<div className="mb-3 flex flex-wrap items-center gap-2"><p className="text-[10px] font-medium text-muted-foreground">#{order.orderNumber || order.id.slice(0, 8)} · {fmtDate(order.createdAt)}</p>{happyHourApplied ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">Happy Hour</span> : null}</div>
+														<div className="mb-3 flex flex-wrap items-center gap-2"><p className="text-[10px] font-medium text-muted-foreground">#{displayOrderNumber(order)} · {fmtDate(order.createdAt)}</p>{happyHourApplied ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">Happy Hour</span> : null}</div>
 														<div className="space-y-2">{order.items.map((item, index) => <div key={`${order.id}-${index}`} className="flex items-start justify-between gap-3 text-xs"><span className="min-w-0 text-foreground"><span className="font-bold">{item.quantity}×</span> {item.productName}{item.variant ? ` (${item.variant})` : ""}<span className="ml-1 text-muted-foreground">· {currency(item.price)} / item</span></span><span className="shrink-0 font-semibold">{currency(item.price * item.quantity)}</span></div>)}</div>
 														<div className="mt-3 space-y-1 border-t border-border/60 pt-3 text-xs">{itemSubtotal !== order.totalAmount ? <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{currency(itemSubtotal)}</span></div> : null}{discount > 0 ? <div className="flex justify-between text-emerald-600"><span>Diskon</span><span>-{currency(discount)}</span></div> : null}{(Number(order.taxAmount ?? 0) > 0 || Number((order.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0) ? <div className="flex justify-between text-muted-foreground"><span>PBJT/Pajak Restoran ({Number((order.receiptMeta as any)?.taxRateSnapshot ?? 0)}%)</span><span>{currency(order.taxAmount ?? 0)}</span></div> : null}<div className="flex justify-between text-muted-foreground"><span>Service charge</span><span>{currency(order.serviceChargeAmount ?? 0)}</span></div><div className="flex justify-between pt-1 text-sm font-black"><span>Total</span><span>{currency(order.totalAmount)}</span></div></div>
 														<button type="button" onClick={(event) => { event.stopPropagation(); pesanLagi(order); }} className="mt-4 flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[13px] bg-primary px-3 py-2 text-xs font-black text-primary-foreground transition-transform duration-200 active:scale-[.97]"><RotateCcw className="h-3.5 w-3.5" /> Pesan lagi</button>

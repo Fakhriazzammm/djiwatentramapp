@@ -88,6 +88,7 @@ import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
 import { StockToolbarPanel } from "@/components/pos/stock-toolbar-panel";
 import { StockTutorial, shouldShowStockTutorial } from "@/components/pos/stock-tutorial";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
 
 const fmt = (n: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -1609,7 +1610,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						platform: customerInfo.platform,
 						platformCommission: customerInfo.platformCommission,
 						voucherId: discountId as Id<"discounts"> | undefined,
-						discountAmount,
+						// Promo/Happy Hour sudah tercermin di item.price.
+						// Hanya voucher yang boleh dikurangkan lagi oleh tax authority,
+						// agar diskon promo tidak terhitung dua kali.
+						discountAmount: getAdditionalOrderDiscount(promoDiscountAmount, voucherDiscountAmount),
 						taxAmount,
 						serviceChargeAmount,
 					receiptMeta: buildReceiptMetaFromCart({
