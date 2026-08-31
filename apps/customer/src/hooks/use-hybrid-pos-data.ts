@@ -2139,9 +2139,10 @@ export function useHybridProducts(categoryId?: string | null, refreshTrigger?: n
 }
 
 export function useHybridBestSellers(refreshTrigger?: number) {
+	// Best-seller totals are derived from pos.orders/order_items. Do not cache
+	// this read model: the shared realtime listener reloads it after settlement.
 	const supabaseData = useSupabaseValue("best-sellers", fetchBestSellers, [], {
-		cacheKey: "customer:best-sellers",
-		cacheTtlMs: 300_000,
+		refreshMs: 30_000,
 		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
 	});
 	return supabaseData as BestSellerRecord[] | undefined;

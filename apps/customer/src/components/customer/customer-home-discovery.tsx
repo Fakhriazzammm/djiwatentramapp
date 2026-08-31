@@ -95,7 +95,7 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
                   {product.image ? <img src={product.image} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-muted-foreground"><UtensilsCrossed className="h-5 w-5" aria-hidden="true" /></div>}
                   {product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-bold text-white">#{product.menuNumber}</span> : null}
                 </div>
-                <div className="space-y-1 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><p className="text-sm font-black text-primary">{currency(product.price)}</p></div>
+                <div className="space-y-1 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><p className="text-sm font-black text-primary">{currency(product.price)}</p><p className="text-[10px] font-semibold text-muted-foreground">Terjual {product.totalSold.toLocaleString("id-ID")}x</p></div>
               </motion.button>
             ))}
           </div>
