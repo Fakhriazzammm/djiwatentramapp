@@ -56,7 +56,7 @@ function FavoritPage() {
 	const [query, setQuery] = useState("");
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
-	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } });
+	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } });
 
 	const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 

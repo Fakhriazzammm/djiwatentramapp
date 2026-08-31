@@ -275,21 +275,22 @@ export function BarcodeLines({ value }: { value: string }) {
 	);
 }
 
-export function CustomerOrderProgress({ step }: { step: "party" | "refill" | "menu" | "checkout" | "receipt" }) {
+export function CustomerOrderProgress({ step }: { step: "table" | "party" | "refill" | "menu" | "checkout" | "payment" | "receipt" }) {
 	const steps = [
-		{ key: "party", label: "Data meja" },
-		{ key: "menu", label: "Menu" },
-		{ key: "checkout", label: "Checkout" },
-		{ key: "receipt", label: "Selesai" },
+		{ key: "table", label: "Step 1 · Pilih meja" },
+		{ key: "party", label: "Step 2 · Jumlah orang" },
+		{ key: "menu", label: "Step 3 · Menu" },
+		{ key: "checkout", label: "Step 4 · Checkout / Pembayaran" },
+		{ key: "receipt", label: "Step 5 · Selesai / Struk" },
 	] as const;
-	const normalizedStep = step === "refill" ? "party" : step;
+	const normalizedStep = step === "refill" ? "party" : step === "payment" ? "checkout" : step === "party" ? "party" : step;
 	const activeIndex = steps.findIndex((item) => item.key === normalizedStep);
 	return (
-		<div className="flex items-center gap-1.5 px-3 pb-1 pt-2" aria-label={`Progress order: ${steps[Math.max(0, activeIndex)]?.label ?? "Order"}`}>
+		<div className="flex items-center gap-1.5 overflow-x-auto px-3 pb-1 pt-2" aria-label={`Progress order: ${steps[Math.max(0, activeIndex)]?.label ?? "Order"}`}>
 			{steps.map((item, index) => (
-				<div key={item.key} className="flex min-w-0 flex-1 items-center gap-1.5">
+				<div key={item.key} className="flex min-w-[120px] flex-none items-center gap-1.5">
 					<div className={cn("h-1.5 flex-1 rounded-full", index <= activeIndex ? "bg-primary" : "bg-muted")} />
-					<span className={cn("hidden text-[9px] font-bold sm:inline", index === activeIndex ? "text-primary" : "text-muted-foreground")}>{item.label}</span>
+					<span className={cn("whitespace-nowrap text-[9px] font-bold", index === activeIndex ? "text-primary" : "text-muted-foreground")}>{item.label}</span>
 				</div>
 			))}
 		</div>

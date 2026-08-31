@@ -72,7 +72,7 @@ function PromoPage() {
 							</p>
 							<button
 								type="button"
-								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
+								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
 								className="mt-4 min-h-11 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 							>
 								Lihat menu
@@ -109,7 +109,7 @@ function PromoPage() {
 												) : null}
 											</div>
 										) : null}
-										<button type="button" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-border px-3 py-2.5 text-xs font-black text-primary hover:bg-primary/5">Gunakan promo <ArrowLeft className="h-3.5 w-3.5 rotate-180" /></button>
+										<button type="button" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-border px-3 py-2.5 text-xs font-black text-primary hover:bg-primary/5">Gunakan promo <ArrowLeft className="h-3.5 w-3.5 rotate-180" /></button>
 									</div>
 								);
 							})}

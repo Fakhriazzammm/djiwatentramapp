@@ -87,7 +87,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 			<div data-banner-variant={bannerVariant} className={cn("overflow-hidden rounded-[24px] border border-black/[0.04] bg-card shadow-[0_8px_28px_rgba(15,23,42,0.06)]", bannerVariant !== "default" ? "text-white" : "text-foreground")} style={bannerVariant === "default" ? undefined : bannerVariant === "siang" ? { backgroundColor: "#b45309" } : { backgroundColor: "#312e81" }}>
 				<div className="flex items-center justify-between gap-3 px-4 py-3.5">
 					<div className="min-w-0">
-						<p className={cn("text-[10px] font-black uppercase tracking-[0.18em]", bannerVariant === "default" ? "text-primary" : "text-white/70")}>{happyHourBanner ? `Happy Hour ${happyHourBanner.session}` : "Pesanan kamu"}</p>
+						<p className={cn("text-[10px] font-black uppercase tracking-[0.18em]", bannerVariant === "default" ? "text-primary" : "text-white/70")}>{happyHourBanner ? `Happy Hour ${happyHourBanner.session}` : "Step 3 · Pilih menu"}</p>
 						<h2 className="mt-1 font-display text-[21px] font-black leading-tight tracking-[-0.03em]">{happyHourBanner ? happyHourBanner.priceLabel : "Pilih menu"}</h2>
 						{happyHourBanner ? <p className="mt-1 text-[11px] font-medium text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p> : <p className="mt-1 text-xs text-muted-foreground">Tambahkan menu favoritmu ke pesanan.</p>}
 					</div>

@@ -4,6 +4,7 @@ import {
 	ChevronRight,
 	LogIn,
 	PhoneCall,
+	Table2,
 	X,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -148,7 +149,8 @@ function OrderPage() {
 		setGuestPhone("");
 		setDessertLater(false);
 		setNotes("");
-		setStep("menu");
+		setTableNumber("");
+		setStep("table");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
@@ -383,6 +385,12 @@ function OrderPage() {
 			setTableNumber(search.table);
 		}
 	}, [search.table]);
+
+	useEffect(() => {
+		if ((step === "menu" || step === "checkout") && !tableNumber.trim()) {
+			setStep("table");
+		}
+	}, [step, tableNumber]);
 
 	// ── Side effects ────────────────────────────────────────────
 
@@ -620,6 +628,16 @@ function OrderPage() {
 				rejectCheckout("Isi nomor WhatsApp yang valid", "Nomor WhatsApp untuk pembayaran QRIS");
 				return;
 			}
+		}
+		if (!tableNumber.trim()) {
+			rejectCheckout("Pilih nomor meja terlebih dahulu", "Nomor meja");
+			setStep("table");
+			return;
+		}
+		if (!Number.isInteger(partySize) || partySize < 1) {
+			rejectCheckout("Pilih jumlah orang terlebih dahulu", "Jumlah orang");
+			setStep("party");
+			return;
 		}
 		if (paymentChoice === "mayar") {
 			if (isAuthenticated && missingContactFields.length > 0) {
@@ -897,7 +915,8 @@ function OrderPage() {
 	// ── Render ───────────────────────────────────────────────────
 
 	const handleOrderHeaderBack = () => {
-		if (step === "party") navigate({ to: "/$username", params: { username } });
+		if (step === "table") navigate({ to: "/$username", params: { username } });
+		if (step === "party") setStep("table");
 		if (step === "refill") setStep(config.enablePartySizeSelection ? "party" : "party");
 		if (step === "menu") setStep(config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : config.enablePartySizeSelection ? "party" : "party");
 		if (step === "checkout") setStep("menu");
@@ -952,13 +971,29 @@ function OrderPage() {
 						error={authError}
 					/>
 
-					{/* ── Party section ───────────────────────────── */}
+					{/* ── Step 1: table selection ───────────────────── */}
+					{step === "table" ? (
+						<section className="space-y-2 px-2 py-2">
+							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+								<div className="flex items-center gap-2.5">
+									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div>
+								</div>
+								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
+								<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
+								<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
+								<button type="button" disabled={!tableNumber.trim()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("party")}>Lanjut ke jumlah orang <ChevronRight className="h-4 w-4" /></button>
+							</div>
+						</section>
+					) : null}
+
+					{/* ── Step 2: party size ───────────────────────── */}
 					{step === "party" ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Djiwa3DIcon name="party-size" size="micro" alt="" className="h-6 w-6 object-contain" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
 								</div>
 								<div className="mt-2.5 grid grid-cols-3 gap-1.5">
 									{[1,2,3,4,5,6,7,8].map((value) => (
@@ -1023,7 +1058,7 @@ function OrderPage() {
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
-				{step !== "party" && step !== "refill" && step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
+				{step !== "table" && step !== "party" && step !== "refill" && step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep("menu")} />

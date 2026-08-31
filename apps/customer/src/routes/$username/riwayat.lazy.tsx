@@ -89,7 +89,7 @@ function RiwayatPage() {
 	const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
-	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } });
+	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } });
 	const lihatStruk = (orderId: string) => {
 		navigate({
 			to: "/$username/order",
@@ -141,7 +141,7 @@ function RiwayatPage() {
 		setCart(items);
 		if (skipped.length > 0) toast.info(`${skipped.length} menu sudah tidak tersedia dan dilewati`);
 		else toast.success("Keranjang diisi ulang dari pesanan ini");
-		navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } });
+		navigate({ to: "/$username/order", params: { username }, search: { step: "table" } });
 	};
 
 	return (

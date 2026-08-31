@@ -57,7 +57,7 @@ function MemberHomePage() {
 	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
-		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } }) },
+		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
 		{ label: "Riwayat", icon: <Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/riwayat"), onSelect: () => navigate({ to: "/$username/riwayat", params: { username } }) },
 		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
 		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
@@ -204,7 +204,7 @@ function MemberHomePage() {
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
-						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
+						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} />
 						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
 					</main>
 				</div>
@@ -239,15 +239,15 @@ function MemberHomePage() {
 						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
-						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
-						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })} />
+						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} />
+						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} />
 					</main>
 				</div>
 			</div>
 			<CustomerBottomNav items={customerNav} />
 			{authModal}
 			{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={displayName} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
-			{!showProfileCompletion && showMemberOnboarding && customer ? <MemberOnboarding name={displayName} onDismiss={dismissMemberOnboarding} onStartOrdering={() => { dismissMemberOnboarding(); navigate({ to: "/$username/order", params: { username }, search: { step: "party" } }); }} /> : null}
+			{!showProfileCompletion && showMemberOnboarding && customer ? <MemberOnboarding name={displayName} onDismiss={dismissMemberOnboarding} onStartOrdering={() => { dismissMemberOnboarding(); navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }); }} /> : null}
 		</>
 	);
 }

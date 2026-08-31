@@ -27,7 +27,7 @@ import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 // ── Types ──────────────────────────────────────────────────────
 
-export type OrderStep = "party" | "refill" | "menu" | "checkout" | "payment" | "receipt";
+export type OrderStep = "table" | "party" | "refill" | "menu" | "checkout" | "payment" | "receipt";
 
 export interface OrderContextType {
 	// ── Step / navigation ────────────────────────────────────
@@ -138,7 +138,7 @@ function getCartOwnerKey(
 
 export function OrderProvider({ children }: { children: ReactNode }) {
 	// Step / navigation — always starts at a non-welcome step
-	const [step, setStep] = useState<OrderStep>("party");
+	const [step, setStep] = useState<OrderStep>("table");
 
 	// Party & refill
 	const [partySize, setPartySize] = useState(1);

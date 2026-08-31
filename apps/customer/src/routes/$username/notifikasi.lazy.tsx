@@ -126,7 +126,7 @@ function NotifikasiPage() {
 							<p className="mt-2 text-xs text-muted-foreground">Belum ada notifikasi. Update pesananmu akan muncul di sini.</p>
 							<button
 								type="button"
-								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "party" } })}
+								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
 								className="mt-3 min-h-11 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 							>
 								Pesan sekarang
