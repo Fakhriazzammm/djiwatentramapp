@@ -328,6 +328,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	const taxCalculation = calculateOrderTax({
 		items,
 		voucherDiscountAmount,
+		taxEnabled: siteSettings?.taxEnabled ?? false,
 		taxRate: siteSettings?.taxRate ?? 0,
 		serviceChargeRate: siteSettings?.serviceChargeRate ?? 0,
 		source: "pos",

@@ -10,6 +10,7 @@
 
 | # | Lesson | Sumber |
 |---|--------|--------|
+| 1 | **Gunakan nama kolom schema aktual saat membaca tax policy** — `pos.tax_policies` memakai `effective_until`, bukan `effective_to`; validasi kolom melalui `information_schema` sebelum query/update. | debug |
 | 2 | **Bedakan cloud project dan custom self-hosted URL** — `supabase db query --linked` menargetkan project cloud, sedangkan aplikasi memakai `supabase.yumme.id`. Selalu smoke-test kedua endpoint dan apply migration/deploy function ke runtime yang benar. | deployment |
 | 3 | **Extension PostgreSQL dapat berada di schema `extensions`** — gunakan `extensions.digest(...)`, bukan `digest(...)`, pada function SECURITY DEFINER agar tidak bergantung pada `search_path`. | debug |
 | 4 | **Payment booking harus payment-first** — simpan booking sebagai `pending` dengan hold kapasitas singkat, buat invoice Mayar lewat Edge Function, korelasikan `extraData.bookingId`, dan ubah menjadi `confirmed/paid` hanya setelah webhook memverifikasi `GET /transactions/{id}` berstatus `paid`. Redirect browser bukan bukti settlement. | payment |
@@ -116,8 +117,10 @@
 |---|--------|--------|
 || 90 | **Queue audio harus menjaga scope callback dan urutan media** — saat mengintegrasikan polling order dan notifikasi, buat resolver di dalam callback event agar `orderId`/metadata tidak keluar scope; setiap event wajib menyelesaikan MP3 preamble lalu TTS sebelum queue mengambil event berikutnya. | pos/audio/debug |
 || 91 | **State array kosong saat loading tidak boleh menjadi baseline audio** — hook notifikasi POS mengembalikan `[]` sebelum request selesai; listener wajib menunggu `isLoading=false` sebelum seed historical IDs, jika tidak transaksi lama yang datang terlambat akan dianggap event realtime dan diputar ulang. | pos/audio/notification/debug |
-|| 92 | **Customer voice perlu cutoff waktu setelah seed** — realtime reload mengembalikan seluruh daftar order, sehingga order historical yang baru muncul dapat memiliki `previous === undefined`; hanya order dengan `createdAt` setelah seed yang boleh diperlakukan sebagai order baru, sedangkan perubahan status order yang sudah dikenal tetap diproses. | customer/audio/realtime/debug |
+||| 92 | **Customer voice perlu cutoff waktu setelah seed** — realtime reload mengembalikan seluruh daftar order, sehingga order historical yang baru muncul dapat memiliki `previous === undefined`; hanya order dengan `createdAt` setelah seed yang boleh diperlakukan sebagai order baru, sedangkan perubahan status order yang sudah dikenal tetap diproses. | customer/audio/realtime/debug |
+||| 93 | **Audio transaksi wajib dibatasi ke sumber realtime** — Jangan enqueue suara dari polling notification atau handler create lokal; expose callback setelah reload realtime selesai, lalu proses snapshot hanya sekali per versi event dengan key order yang sama. | pos/customer/audio/realtime/idempotency |
 
 ## KOL Marketing
 
 || 1 | **KOL public intake memisahkan profil publik dan kontak admin** — Guest boleh auto-submit ke Edge Function tervalidasi; public view hanya expose creator/platform, sedangkan kontak, rate card, notes, dan history disimpan di tabel private dengan grant service-role saja. | arsitektur, security, public-intake |
+| 120 | **Target Telegram wajib konsisten lintas bot dan Edge Function** — `yumi-hrd-agent`/`yumi-ai-bot` memakai grup report canonical, sedangkan `process-closing` dapat tetap membawa env lama; setelah mengubah `.env`, container Functions harus di-recreate dan target diverifikasi dengan Bot API. | attendance/telegram/deployment |

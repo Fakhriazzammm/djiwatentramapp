@@ -11,6 +11,11 @@ export type CustomerOrder = {
 	orderNumber: string;
 	status: string;
 	totalAmount: number;
+	discountAmount?: number;
+	taxAmount?: number;
+	serviceChargeAmount?: number;
+	paymentReceiptKind?: string | null;
+	receiptMeta?: Record<string, unknown> | null;
 	paymentMethod: string | null;
 	orderType: string | null;
 	tableNumber: string | null;
@@ -23,6 +28,7 @@ export type CustomerOrderItem = {
 	productName: string;
 	quantity: number;
 	price: number;
+	originalPrice?: number;
 	variant?: string | null;
 };
 
@@ -45,6 +51,11 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 		orderNumber: String(row.orderNumber ?? ""),
 		status: String(row.status ?? ""),
 		totalAmount: Number(row.totalAmount ?? 0),
+		discountAmount: Number(row.discountAmount ?? 0),
+		taxAmount: Number(row.taxAmount ?? 0),
+		serviceChargeAmount: Number(row.serviceChargeAmount ?? 0),
+		paymentReceiptKind: (row.paymentReceiptKind as string) ?? null,
+		receiptMeta: row.receiptMeta && typeof row.receiptMeta === "object" ? row.receiptMeta as Record<string, unknown> : null,
 		paymentMethod: (row.paymentMethod as string) ?? null,
 		orderType: (row.orderType as string) ?? null,
 		tableNumber: (row.tableNumber as string) ?? null,
@@ -54,6 +65,7 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 					productName: String(item.productName ?? ""),
 					quantity: Number(item.quantity ?? 0),
 					price: Number(item.price ?? 0),
+					originalPrice: item.originalPrice == null ? undefined : Number(item.originalPrice),
 					variant: (item.variant as string | null | undefined) ?? null,
 				}))
 			: [],
@@ -126,6 +138,15 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 		isLoading: authLoading || data === undefined,
 		error: null,
 	};
+}
+
+export function useCustomerOrderCount() {
+	const { orders, isLoading, error } = useCustomerOrders();
+	const orderCount = (orders ?? []).reduce(
+		(total, order) => total + order.items.reduce((itemsTotal, item) => itemsTotal + Math.max(0, Number(item.quantity) || 0), 0),
+		0,
+	);
+	return { orderCount, isLoading, error };
 }
 
 // ── useCustomerPoints ──────────────────────────────────────────

@@ -233,7 +233,7 @@ function MenuStep({ products, categories, bookingType, eventType, date, guests, 
   const stopCardClick = (event: React.MouseEvent) => event.stopPropagation();
   const selectCategory = (value: string) => { setCategoryFilter(value); setSubcategoryFilter("all"); };
 
-  return <section className="flow menu-flow">
+  return <section className={`flow menu-flow${itemCount > 0 ? " has-cart" : ""}`}>
     <div className="menu-intro">Pilih makanan dan minuman dari katalog.</div>
     <div className="menu-catalog-panel">
       <h2><span className="catalog-icon"><UtensilsCrossed size={20} /></span>Katalog produk</h2>
@@ -258,7 +258,7 @@ function MenuStep({ products, categories, bookingType, eventType, date, guests, 
         <div className="product-body"><span className="menu-number">{item.menuNumber ? `#${item.menuNumber}` : "Menu"}</span><h3>{item.name}</h3>{item.description && <p className="product-description">{item.description}</p>}<strong>{currency(item.promoPrice ?? item.price)}</strong><div className="quantity-control" onClick={stopCardClick}>{quantity > 0 ? <><button aria-label={`Kurangi ${item.name}`} onClick={() => setQuantity(item.id, quantity - 1)}><Minus size={15} /></button><b aria-live="polite">{quantity}</b><button aria-label={`Tambah ${item.name}`} onClick={() => setQuantity(item.id, quantity + 1)}><Plus size={15} /></button></> : <button className="add-button" aria-label={`Tambah ${item.name}`} onClick={() => addOne(item.id)}><Plus size={24} /></button>}</div></div>
       </article>; })}
     </div>}
-    <StickyAction disabled={!itemCount} onClick={onNext}>{itemCount ? `Lihat review · ${itemCount} item` : "Pilih menu untuk lanjut"}<ChevronRight size={18} /></StickyAction>
+    {itemCount > 0 && <StickyAction onClick={onNext}>{`Lihat review · ${itemCount} item`}<ChevronRight size={18} /></StickyAction>}
   </section>;
 }
 function Review({ bookingType, eventType, eventTypeOther, date, arrivalTime, guests, tableCount, items, total, onEdit, onNext }: { bookingType?: BookingOption; eventType?: BookingOption; eventTypeOther: string; date: string; arrivalTime: string; guests: number; tableCount: number; items: Array<Product & { quantity: number }>; total: number; onEdit: (step: BookingStep) => void; onNext: () => void }) { return <section className="flow"><StepHeader number="05" title="Review pesanan" detail="Pastikan detail booking dan menu sudah benar." /><div className="review-card"><ReviewRow label="Tipe booking" value={eventType ? `${bookingType?.label || "Acara"} · ${eventType.label}${eventTypeOther ? ` · ${eventTypeOther}` : ""}` : bookingType?.label || "-"} edit={() => onEdit("type")} /><ReviewRow label="Tanggal & kedatangan" value={`${formatDate(date)} · ${arrivalTime || "Jam belum diisi"} · ${guests} orang · ${tableCount} meja`} edit={() => onEdit("date")} /><div className="review-section"><span>Menu pre-order</span>{items.map((item) => <div className="line" key={item.id}><span>{item.quantity} × {item.name}</span><strong>{currency((item.promoPrice ?? item.price) * item.quantity)}</strong></div>)}<div className="total"><span>Total menu</span><strong>{currency(total)}</strong></div><button className="text-button review-edit" onClick={() => onEdit("menu")}>Ubah menu</button></div></div><StickyAction disabled={!items.length} onClick={onNext}>Lanjut ke checkout <ChevronRight size={18} /></StickyAction></section>; }

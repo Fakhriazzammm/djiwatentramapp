@@ -9,6 +9,13 @@ export interface OpnameItem {
   qtyBefore: number;
   qtyAfter: number;
   isChanged: boolean;
+  baseUnit?: string;
+  conversionFactor?: number;
+  operationalUnit?: string;
+  operationalQtyBefore?: number;
+  operationalQtyAfter?: number;
+  baseQuantityBefore?: number;
+  baseQuantityAfter?: number;
 }
 
 export interface KebersihanPhoto {
@@ -30,6 +37,11 @@ export interface ClosingEdgeResponse {
   isLastPerson: boolean;
   staffName: string;
   shiftName: string;
+  attendanceSaved?: boolean;
+  reportNotified?: boolean;
+  reportMessageId?: number;
+  personalNotified?: boolean;
+  personalMessageId?: number;
   error?: { code: string; message: string };
 }
 
@@ -105,24 +117,27 @@ export async function fetchOpnameItems(
 ): Promise<OpnameItem[]> {
   const supabase = createClient().schema("pos");
   const ingredients = getIngredientSet(role);
+  const factorFor = (item: any) => Number(item.content_to_base_factor ?? item.conversion_factor ?? 1) || 1;
 
-  const { data, error } = await supabase
+  const operationalQuery = await supabase
     .from("inventory")
-    .select("source_id, ingredient_name, quantity, unit")
+    .select("source_id, ingredient_name, quantity, unit, operational_unit, operational_quantity, operational_area, base_unit, content_to_base_factor, conversion_factor")
     .limit(500);
+  let data: any[] = operationalQuery.data ?? [];
+  if (operationalQuery.error) {
+    const legacyQuery = await supabase.from("inventory").select("source_id, ingredient_name, quantity, unit").limit(500);
+    if (legacyQuery.error) throw legacyQuery.error;
+    data = legacyQuery.data ?? [];
+  }
 
-  if (error) throw error;
-
-  return (data ?? [])
-    .filter((item) => ingredients.has(item.ingredient_name))
-    .map((item) => ({
-      inventoryId: item.source_id,
-      name: item.ingredient_name,
-      unit: item.unit ?? "pcs",
-      qtyBefore: Number(item.quantity ?? 0),
-      qtyAfter: Number(item.quantity ?? 0),
-      isChanged: false,
-    }));
+  const scoped = operationalQuery.error ? [] : data.filter((item: any) => item.operational_area === role || item.operational_area === "general");
+  const source = scoped.length > 0 ? scoped : data.filter((item) => ingredients.has(item.ingredient_name));
+  return source.map((item: any) => {
+    const factor = factorFor(item);
+    const base = Number(item.quantity ?? 0);
+    const operational = item.operational_quantity == null ? base / factor : Number(item.operational_quantity);
+    return { inventoryId: item.source_id, name: item.ingredient_name, unit: item.base_unit ?? item.unit ?? "pcs", qtyBefore: base, qtyAfter: base, isChanged: false, baseUnit: item.base_unit ?? item.unit ?? "pcs", conversionFactor: factor, operationalUnit: item.operational_unit ?? item.unit ?? "pcs", operationalQtyBefore: operational, operationalQtyAfter: operational, baseQuantityBefore: base, baseQuantityAfter: base };
+  });
 }
 
 // ────────────────────────────────────────────────────────────
@@ -159,6 +174,11 @@ export async function submitOpnamePerPerson(
       unit: i.unit,
       qtyBefore: i.qtyBefore,
       qtyAfter: i.qtyAfter,
+      baseQuantityBefore: i.baseQuantityBefore ?? i.qtyBefore,
+      baseQuantityAfter: i.baseQuantityAfter ?? i.qtyAfter,
+      operationalUnit: i.operationalUnit ?? i.unit,
+      operationalQtyBefore: i.operationalQtyBefore,
+      operationalQtyAfter: i.operationalQtyAfter,
     })),
     notes: params.notes || `Opname by ${params.staffName} (${params.role})`,
     creation_time: now,
@@ -232,38 +252,8 @@ export async function applyFinalOpname(
   staffName: string,
   userId: string,
 ): Promise<void> {
-  const supabase = createClient().schema("pos");
-  const changed = items.filter((i) => i.isChanged);
-  if (changed.length === 0) return;
-
-  const now = Date.now();
-
-  for (const item of changed) {
-    const qtyDiff = item.qtyAfter - item.qtyBefore;
-
-    // Insert inventory transaction (tx_type = stock_opname_final)
-    const { error: txError } = await supabase
-      .from("inventory_transactions")
-      .insert({
-        source_id: makeSourceId("invtx"),
-        inventory_source_id: item.inventoryId,
-        quantity: qtyDiff,
-        tx_type: "stock_opname_final",
-        remaining_quantity: item.qtyAfter,
-        tx_timestamp: now,
-        notes: `[FINAL] Shift closing opname by ${staffName}: ${item.qtyBefore} → ${item.qtyAfter}`,
-        creation_time: now,
-        raw: { userId, staffName, qtyBefore: item.qtyBefore, qtyAfter: item.qtyAfter, type: "final" },
-      });
-    if (txError) throw txError;
-
-    // Update inventory quantity
-    const { error: invError } = await supabase
-      .from("inventory")
-      .update({ quantity: item.qtyAfter })
-      .eq("source_id", item.inventoryId);
-    if (invError) throw invError;
-  }
+  void items; void staffName; void userId;
+  throw new ClosingSubmitError("Final opname harus diproses melalui process-closing server-side", "SERVER_SIDE_REQUIRED");
 }
 
 // ────────────────────────────────────────────────────────────
@@ -318,38 +308,8 @@ export async function submitOpname(
   userId: string,
   staffName: string,
 ): Promise<void> {
-  const supabase = createClient().schema("pos");
-  const changed = items.filter((i) => i.isChanged);
-  if (changed.length === 0) return;
-
-  const now = Date.now();
-
-  for (const item of changed) {
-    const qtyDiff = item.qtyAfter - item.qtyBefore;
-
-    const { error: txError } = await supabase
-      .from("inventory_transactions")
-      .insert({
-        source_id: makeSourceId("invtx"),
-        inventory_source_id: item.inventoryId,
-        quantity: qtyDiff,
-        tx_type: "stock_opname",
-        remaining_quantity: item.qtyAfter,
-        tx_timestamp: now,
-        notes: `Stock opname by ${staffName} (${userId}): ${item.qtyBefore} → ${item.qtyAfter}`,
-        creation_time: now,
-        raw: { userId, staffName, qtyBefore: item.qtyBefore, qtyAfter: item.qtyAfter },
-      });
-
-    if (txError) throw txError;
-
-    const { error: invError } = await supabase
-      .from("inventory")
-      .update({ quantity: item.qtyAfter })
-      .eq("source_id", item.inventoryId);
-
-    if (invError) throw invError;
-  }
+  void items; void userId; void staffName;
+  throw new ClosingSubmitError("Gunakan submitClosingViaEdge untuk finalisasi opname", "SERVER_SIDE_REQUIRED");
 }
 
 // ────────────────────────────────────────────────────────────

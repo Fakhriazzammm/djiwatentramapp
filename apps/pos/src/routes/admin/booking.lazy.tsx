@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -324,6 +325,7 @@ function OrderRow({
 		customerPhone: string;
 		customerEmail: string;
 		bookingDate: string;
+		arrivalTime?: string | null;
 		totalAmount: number;
 		paymentMethod: string;
 		paymentStatus: string;
@@ -487,11 +489,11 @@ function OrderRow({
 						</div>
 					</div>
 
-					<div className="rounded-xl border border-border bg-card p-3 space-y-2">
-						<div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Timeline & delivery</p><span className="text-[10px] text-muted-foreground">{timelineState.loading ? "Memuat..." : `${timelineState.timeline.length} event · ${timelineState.deliveries.length} delivery`}</span></div>
-						{!timelineState.loading && timelineState.timeline.length === 0 ? <p className="text-xs text-muted-foreground">Belum ada event timeline.</p> : <div className="space-y-1">{timelineState.timeline.slice(0, 4).map((event: any) => <div className="flex items-center justify-between gap-2 text-xs" key={String(event.id)}><span className="font-medium">{event.event_type}</span><span className="text-muted-foreground">{event.to_value ?? "—"}</span></div>)}</div>}
-						{timelineState.deliveries.length > 0 && <div className="flex flex-wrap gap-1">{timelineState.deliveries.slice(0, 6).map((delivery: any) => <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold" key={String(delivery.id)}>{delivery.channel}: {delivery.status}</span>)}</div>}
-					</div>
+					<BookingTimelineSummary
+						deliveries={timelineState.deliveries}
+						loading={timelineState.loading}
+						timeline={timelineState.timeline}
+					/>
 
 					<div className="flex flex-wrap gap-2 pt-2 border-t border-border">
 						<span className="text-[10px] font-bold text-muted-foreground self-center">Ubah Status:</span>
@@ -647,7 +649,7 @@ function BookingSettingsPage() {
 			|| fields.some((field: any) => {
 				if (field.type !== "dropdown") return false;
 				const options = (field.options ?? []).map((option: string) => option.trim()).filter(Boolean);
-				return options.length < 2 || new Set(options.map((option) => option.toLowerCase())).size !== options.length;
+				return options.length < 2 || new Set(options.map((option: string) => option.toLowerCase())).size !== options.length;
 			});
 		if (hasInvalidField) {
 			toast.error("Periksa field formulir: label wajib unik dan dropdown minimal memiliki 2 opsi unik.");

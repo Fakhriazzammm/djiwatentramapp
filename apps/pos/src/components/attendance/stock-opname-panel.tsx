@@ -14,7 +14,12 @@ export type OpnameItem = {
   name: string;
   unit: string;
   qtyBefore: number;  // stok sistem saat ini
-  qtyAfter: number;   // input staff (sisa)
+  qtyAfter: number;   // base quantity sent to server
+  baseUnit?: string;
+  conversionFactor?: number;
+  operationalUnit?: string;
+  operationalQtyBefore?: number;
+  operationalQtyAfter?: number;
 };
 
 export type OpnameRole = "bar" | "kitchen";
@@ -101,8 +106,10 @@ export function StockOpnamePanel({
   // Adjust display quantity (simple adjustments)
   const adjustQty = (index: number, delta: number) => {
     const item = state.items[index];
-    const newQty = Math.max(0, item.qtyAfter + delta);
-    onUpdateItem(index, newQty);
+    const current = item.operationalQtyAfter ?? item.qtyAfter;
+    const nextOperational = Math.max(0, current + delta);
+    const factor = item.conversionFactor || 1;
+    onUpdateItem(index, nextOperational * factor);
   };
 
   return (
@@ -186,8 +193,8 @@ export function StockOpnamePanel({
             className="mt-2 flex-1 overflow-y-auto space-y-1.5"
           >
             {state.items.map((item, i) => {
-              const changed = Math.abs(item.qtyAfter - item.qtyBefore) > 0.01;
-              const depleted = item.qtyAfter <= 0;
+              const changed = Math.abs((item.operationalQtyAfter ?? item.qtyAfter) - (item.operationalQtyBefore ?? item.qtyBefore)) > 0.01;
+              const depleted = (item.operationalQtyAfter ?? item.qtyAfter) <= 0;
               return (
                 <motion.div
                   key={item.inventoryId}
@@ -225,14 +232,11 @@ export function StockOpnamePanel({
                         <p className="text-[11px] text-muted-foreground">
                           {changed ? (
                             <span>
-                              <span className="line-through">{item.qtyBefore.toLocaleString()} {item.unit}</span>
-                              {" → "}
-                              <span className={cn("font-bold", depleted ? "text-red-600" : "text-emerald-600")}>
-                                {item.qtyAfter.toLocaleString()} {item.unit}
-                              </span>
+                              <span className="line-through">{(item.operationalQtyBefore ?? item.qtyBefore).toLocaleString()} {item.operationalUnit || item.unit}</span>{" → "}
+                              <span className={cn("font-bold", depleted ? "text-red-600" : "text-emerald-600")}>{(item.operationalQtyAfter ?? item.qtyAfter).toLocaleString()} {item.operationalUnit || item.unit}</span>
                             </span>
                           ) : (
-                            <span>{item.qtyBefore.toLocaleString()} {item.unit} (tetap)</span>
+                            <span>{(item.operationalQtyBefore ?? item.qtyBefore).toLocaleString()} {item.operationalUnit || item.unit} (tetap)</span>
                           )}
                         </p>
                       </div>
@@ -247,16 +251,16 @@ export function StockOpnamePanel({
                         </button>
                         <Input
                           type="number"
-                          value={Math.round(item.qtyAfter)}
+                          value={Math.round(item.operationalQtyAfter ?? item.qtyAfter)}
                           onChange={(e) => {
                             const v = parseFloat(e.target.value);
-                            if (!isNaN(v) && v >= 0) onUpdateItem(i, v);
+                            if (!isNaN(v) && v >= 0) onUpdateItem(i, v * (item.conversionFactor || 1));
                           }}
                           className="h-9 w-16 text-center text-[11px] font-bold p-0"
                           min={0}
                         />
                         <button
-                          onClick={() => adjustQty(i, Math.max(1, Math.round(item.qtyAfter * 0.1)))}
+                          onClick={() => adjustQty(i, Math.max(1, Math.round((item.operationalQtyAfter ?? item.qtyAfter) * 0.1)))}
                         className="flex h-9 w-9 items-center justify-center rounded-lg border bg-white hover:bg-emerald-50 hover:border-emerald-200"
                       >
                         <Plus className="h-4 w-4" />
@@ -266,8 +270,9 @@ export function StockOpnamePanel({
 
                   {/* Adaptive step: adjust granularity based on stock magnitude */}
                   {(() => {
-                    const adaptiveStep = Math.max(1, Math.round(item.qtyBefore / 50));
-                    const maxVal = Math.max(item.qtyBefore * 2, 10);
+                    const adaptiveStep = Math.max(1, Math.round((item.operationalQtyBefore ?? item.qtyBefore) / 50));
+                    const displayBefore = item.operationalQtyBefore ?? item.qtyBefore;
+                    const maxVal = Math.max(displayBefore * 2, 10);
                     return (
                       <div className="mt-1.5">
                         <input
@@ -275,8 +280,8 @@ export function StockOpnamePanel({
                           min={0}
                           max={maxVal}
                           step={adaptiveStep}
-                          value={Math.round(item.qtyAfter)}
-                          onChange={(e) => onUpdateItem(i, parseInt(e.target.value))}
+                          value={Math.round(item.operationalQtyAfter ?? item.qtyAfter)}
+                          onChange={(e) => onUpdateItem(i, parseInt(e.target.value) * (item.conversionFactor || 1))}
                           className="w-full h-1.5 appearance-none rounded-full bg-muted/50 cursor-pointer accent-primary
                             [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5
                             [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm
@@ -300,7 +305,7 @@ export function StockOpnamePanel({
                         0
                       </button>
                       <button
-                        onClick={() => onUpdateItem(i, Math.round(item.qtyBefore / 2))}
+                        onClick={() => onUpdateItem(i, Math.round((item.operationalQtyBefore ?? item.qtyBefore) / 2) * (item.conversionFactor || 1))}
                         className="flex h-8 min-w-[2.5rem] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-[10px] font-bold text-amber-700 hover:bg-amber-100"
                       >
                         ½
@@ -319,7 +324,7 @@ export function StockOpnamePanel({
                       </button>
                       <button
                         onClick={() => adjustQty(i, -1)}
-                        disabled={item.qtyAfter <= 0}
+                        disabled={(item.operationalQtyAfter ?? item.qtyAfter) <= 0}
                         className="flex h-8 min-w-[2.5rem] items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         -1

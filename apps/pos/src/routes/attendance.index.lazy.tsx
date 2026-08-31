@@ -185,6 +185,8 @@ function AttendancePage() {
 		return distance <= (siteSettings?.attendanceRadius ?? 50);
 	}, [distance, siteSettings]);
 
+	const locationBlocked = !locationLoading && (!!locationError || (Boolean(siteSettings?.attendanceLat) && !isInRadius));
+
 	const attendanceLocation = useMemo(() => {
 		if (!userLocation) return undefined;
 		return { lat: userLocation.lat, lng: userLocation.lng };
@@ -270,6 +272,10 @@ function AttendancePage() {
 	}, [user?.id, step]);
 
 	const handleUserSelect = (staff: any) => {
+		if (locationBlocked) {
+			toast.error(locationError || "Anda berada di luar area kafe. Aktifkan lokasi dan coba lagi.");
+			return;
+		}
 		const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff._id);
 		setUser({
 			id: staff._id,
@@ -470,6 +476,22 @@ function AttendancePage() {
 			</header>
 
 			<main className="flex flex-1 flex-col p-3 md:p-6">
+				{locationBlocked && (
+					<div role="alert" className="mx-auto mb-4 flex w-full max-w-7xl items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900 shadow-sm">
+						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+							<MapPin className="h-5 w-5" />
+						</div>
+						<div className="min-w-0 flex-1">
+							<p className="text-sm font-bold">Absensi belum dapat dilakukan</p>
+							<p className="mt-1 text-xs leading-relaxed text-red-700">
+								{locationError || `Anda berada di luar area kafe. Berada dalam radius ${siteSettings?.attendanceRadius ?? 50}m dari lokasi untuk melanjutkan.`}
+							</p>
+							<button type="button" onClick={fetchLocation} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-600 px-3 text-xs font-bold text-white hover:bg-red-700">
+								<RefreshCw className="h-3.5 w-3.5" /> Coba deteksi ulang lokasi
+							</button>
+						</div>
+					</div>
+				)}
 				<AnimatePresence mode="wait">
 					{step === "select" && (
 						<motion.div

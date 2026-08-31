@@ -24,7 +24,7 @@ const DEFAULT_POS = {
 	theme_color: "#fefefe",
 	background_color: "#0a0a0b",
 	start_url: "/menu",
-	orientation: "landscape",
+	orientation: "portrait",
 	icon192: "/pwa-192x192.png",
 	icon512: "/pwa-512x512.png",
 };
@@ -76,7 +76,9 @@ async function main() {
 			const raw = rows?.[0]?.raw;
 
 			if (raw?.posPwa) {
-				posPwa = { ...DEFAULT_POS, ...raw.posPwa };
+				// All Djiwa Tentram web apps are mobile-first. Keep POS portrait;
+				// legacy site settings may still contain the old landscape value.
+				posPwa = { ...DEFAULT_POS, ...raw.posPwa, orientation: "portrait" };
 			}
 			if (raw?.customerPwa) {
 				customerPwa = { ...DEFAULT_CUSTOMER, ...raw.customerPwa };

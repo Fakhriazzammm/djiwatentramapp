@@ -1,5 +1,7 @@
+import { CustomerHeader } from "@/components/customer/customer-shell";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, LogIn, LogOut, Mail, Star, User, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, LogIn, LogOut, Mail, MapPin, Phone, ShieldCheck, Star, User, Wallet } from "lucide-react";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +10,7 @@ import { invokeEdgeFunction } from "@/lib/api-helper";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { currency } from "@/components/customer/types";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
+import { useCustomerOrderCount } from "@/hooks/use-customer-data";
 
 export const Route = createLazyFileRoute("/$username/profile")({
 	component: ProfilePage,
@@ -17,11 +20,13 @@ function ProfilePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const { customer, logout, isLoading: authLoading, refreshCustomer } = useCustomerAuth();
+	const goHome = () => navigate({ to: "/$username", params: { username } });
+	const { orderCount } = useCustomerOrderCount();
 
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState("");
 	const [editPhone, setEditPhone] = useState("");
-	const [editCustomerDescription, setEditCustomerDescription] = useState("");
+	const [editUsername, setEditUsername] = useState("");
 	const [editNickname, setEditNickname] = useState("");
 	const [editBirthDate, setEditBirthDate] = useState("");
 	const [editGender, setEditGender] = useState("");
@@ -77,8 +82,8 @@ function ProfilePage() {
 			toast.error("Nomor WhatsApp minimal 10 digit");
 			return;
 		}
-		if (!editCustomerDescription.trim()) {
-			toast.error("Ciri khusus customer wajib diisi");
+		if (!/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/.test(editUsername.trim().toLowerCase())) {
+			toast.error("Username 3–32 karakter: huruf kecil, angka, dan tanda hubung");
 			return;
 		}
 		if (!customer) return;
@@ -90,8 +95,8 @@ function ProfilePage() {
 				sourceId: customer.sourceId,
 				email: customer.email ?? undefined,
 				name: editName.trim(),
+				username: editUsername.trim().toLowerCase(),
 				phone: editPhone.trim() || undefined,
-				customerDescription: editCustomerDescription.trim().slice(0, 160),
 				nickname: editNickname.trim() || undefined,
 				birthDate: editBirthDate || undefined,
 				gender: editGender || undefined,
@@ -106,6 +111,9 @@ function ProfilePage() {
 			setSaved(true);
 			setTimeout(() => setSaved(false), 2000);
 			setIsEditing(false);
+			if (editUsername.trim().toLowerCase() !== username) {
+				await navigate({ to: "/$username/profile", params: { username: editUsername.trim().toLowerCase() } });
+			}
 			toast.success("Profil berhasil diperbarui");
 		} catch (err) {
 			setSaving(false);
@@ -115,8 +123,8 @@ function ProfilePage() {
 
 	const startEditing = () => {
 		setEditName(customer.name || "");
+		setEditUsername(customer.username || "");
 		setEditPhone(customer.phone || "");
-		setEditCustomerDescription(customer.customerDescription || "");
 		setEditNickname(customer.nickname || "");
 		setEditBirthDate(customer.birthDate || "");
 		setEditGender(customer.gender || "");
@@ -132,74 +140,50 @@ function ProfilePage() {
 		<div className="app-page min-h-app">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 			{/* Header */}
-			<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
-				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
-						aria-label="Kembali ke halaman member"
-						onClick={() => navigate({ to: "/$username", params: { username } })}
-					>
-						<ArrowLeft className="h-3.5 w-3.5" />
-					</button>
-					<h1 className="font-display text-base font-black tracking-tight">Profil Saya</h1>
-				</div>
-			</header>
+			<CustomerHeader title="Profil Saya" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
 
-			<main className="px-3 py-4">
+			<main className="space-y-3 px-3 pb-28 pt-4 sm:px-4">
 				{!customer.email || !customer.phone ? <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-black text-amber-900">Profile belum lengkap untuk QRIS</p><p className="mt-1 text-[10px] leading-relaxed text-amber-800">Lengkapi email dan nomor WhatsApp agar invoice Mayar dapat dibuat.</p></div> : null}
 				{/* Avatar & Username */}
-				<div className="flex flex-col items-center py-4">
-					{customer.photoUrl ? (
-						<img
-							src={customer.photoUrl}
-							alt="Avatar"
-							className="h-16 w-16 rounded-full object-cover ring-4 ring-border"
-						/>
-					) : (
-						<div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl font-black text-primary ring-4 ring-border">
-							{initials}
-						</div>
-					)}
-					<p className="mt-2 text-lg font-black">{customer.name}</p>
-					<p className="text-[11px] text-muted-foreground">@{username}</p>
+				<div className="relative overflow-hidden rounded-[28px] bg-card px-5 py-7 text-center shadow-[0_10px_34px_rgba(15,23,42,0.06)]">
+					<div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-28 rounded-full bg-primary/[0.08] blur-3xl" />
+					<div className="relative mx-auto flex h-[88px] w-[88px] items-center justify-center rounded-full bg-background p-1 shadow-[0_10px_26px_rgba(15,23,42,0.12)] ring-1 ring-border/60">
+						{customer.photoUrl ? (
+							<img src={customer.photoUrl} alt="Avatar" className="h-full w-full rounded-full object-cover" />
+						) : (
+							<div className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 text-3xl font-black text-primary">{initials}</div>
+						)}
+					</div>
+					<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }}>
+						<p className="mt-4 truncate text-[22px] font-black tracking-[-0.04em] text-foreground">{customer.name || "Member"}</p>
+						<p className="mt-1 text-xs font-medium text-muted-foreground">@{username}</p>
+						<div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-primary"><ShieldCheck className="h-3.5 w-3.5" /> Member Djiwa Tentram</div>
+					</motion.div>
 				</div>
 
-				{/* Info Card */}
-				<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-					<div className="space-y-2.5">
+				{/* Profile details */}
+				<div className="overflow-hidden rounded-[26px] bg-card shadow-[0_8px_28px_rgba(15,23,42,0.05)]">
+					<div className="flex items-center justify-between border-b border-border/60 px-4 py-4 sm:px-5">
+						<div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Akun & profil</p><h2 className="mt-1 text-base font-black tracking-[-0.02em]">Informasi kamu</h2></div>
+						{!isEditing ? <button type="button" onClick={startEditing} className="inline-flex min-h-10 items-center gap-1.5 rounded-[13px] bg-primary/10 px-3 text-xs font-black text-primary transition-colors hover:bg-primary/15 active:scale-[.97]"><User className="h-3.5 w-3.5" /> Edit</button> : null}
+					</div>
+					<div className="p-4 sm:p-5">
 						{!isEditing ? (
-							<>
-						<InfoRow
-							icon={<Mail className="h-3.5 w-3.5 text-muted-foreground" />}
-							label="Email"
-							value={customer.email || "—"}
-						/>
-						<InfoRow
-							icon={<User className="h-3.5 w-3.5 text-muted-foreground" />}
-							label="Nama"
-							value={customer.name || "—"}
-						/>
-						<InfoRow
-							icon={<User className="h-3.5 w-3.5 text-muted-foreground" />}
-							label="Nomor WhatsApp"
-							value={customer.phone || "Belum diisi"}
-						/>
-						<InfoRow
-							icon={<User className="h-3.5 w-3.5 text-muted-foreground" />}
-							label="Ciri khusus customer"
-							value={customer.customerDescription || "Belum diisi"}
-						/>
-						<div className="my-1 border-t border-border/70" />
-						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Nama panggilan" value={customer.nickname || "Belum diisi"} />
-						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Tanggal lahir" value={customer.birthDate || "Belum diisi"} />
-						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Jenis kelamin" value={customer.gender === "female" ? "Perempuan" : customer.gender === "male" ? "Laki-laki" : customer.gender === "other" ? "Lainnya" : "Belum diisi"} />
-						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Alamat" value={customer.address || "Belum diisi"} />
-						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Kota/Kabupaten" value={customer.city || "Belum diisi"} />
-						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Provinsi" value={customer.province || "Belum diisi"} />
-						<InfoRow icon={<User className="h-3.5 w-3.5 text-muted-foreground" />} label="Kode pos" value={customer.postalCode || "Belum diisi"} />
-						<InfoRow icon={<Star className="h-3.5 w-3.5 text-muted-foreground" />} label="Informasi promo" value={customer.marketingConsent ? "Diaktifkan" : "Tidak diaktifkan"} />
-							</>
+							<div className="space-y-1">
+								<InfoRow icon={<Mail className="h-4 w-4 text-primary" />} label="Email" value={customer.email || "Belum diisi"} />
+								<InfoRow icon={<Phone className="h-4 w-4 text-primary" />} label="Nomor WhatsApp" value={customer.phone || "Belum diisi"} />
+								<InfoRow icon={<User className="h-4 w-4 text-primary" />} label="Username" value={`@${customer.username}`} />
+								<div className="my-3 border-t border-border/60" />
+								<div className="grid grid-cols-2 gap-2">
+									<InfoRow icon={<User className="h-4 w-4 text-muted-foreground" />} label="Nama panggilan" value={customer.nickname || "Belum diisi"} />
+									<InfoRow icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />} label="Tanggal lahir" value={customer.birthDate || "Belum diisi"} />
+									<InfoRow icon={<User className="h-4 w-4 text-muted-foreground" />} label="Jenis kelamin" value={customer.gender === "female" ? "Perempuan" : customer.gender === "male" ? "Laki-laki" : customer.gender === "other" ? "Lainnya" : "Belum diisi"} />
+									<InfoRow icon={<MapPin className="h-4 w-4 text-muted-foreground" />} label="Kota / Provinsi" value={[customer.city, customer.province].filter(Boolean).join(" · ") || "Belum diisi"} />
+								</div>
+								<InfoRow icon={<MapPin className="h-4 w-4 text-muted-foreground" />} label="Alamat" value={customer.address || "Belum diisi"} />
+								<InfoRow icon={<MapPin className="h-4 w-4 text-muted-foreground" />} label="Kode pos" value={customer.postalCode || "Belum diisi"} />
+								<InfoRow icon={<Star className="h-4 w-4 text-muted-foreground" />} label="Informasi promo" value={customer.marketingConsent ? "Diaktifkan" : "Tidak diaktifkan"} />
+							</div>
 						) : null}
 						{isEditing ? (
 							<div className="pt-1.5 space-y-2">
@@ -230,16 +214,9 @@ function ProfilePage() {
 									/>
 								</div>
 								<div>
-									<p className="text-[10px] font-semibold text-muted-foreground mb-1">Ciri khusus customer <span className="text-destructive">*</span></p>
-									<input
-										type="text"
-										value={editCustomerDescription}
-										onChange={(e) => setEditCustomerDescription(e.target.value.slice(0, 160))}
-										className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-										placeholder="Contoh: baju merah, topi hitam"
-										maxLength={160}
-										required
-									/>
+									<p className="mb-1 text-[10px] font-semibold text-muted-foreground">Username</p>
+									<div className="flex items-center rounded-[14px] border border-border bg-background px-3 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20"><span className="text-sm font-bold text-muted-foreground">@</span><input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32))} className="min-h-11 w-full bg-transparent px-1.5 py-2 text-xs font-medium outline-none" placeholder="username" maxLength={32} autoCapitalize="none" autoComplete="username" /><span className="sr-only">Username 3 sampai 32 karakter, huruf kecil, angka, dan tanda hubung</span></div>
+									<p className="mt-1 text-[10px] text-muted-foreground">Dipakai pada alamat profil kamu.</p>
 								</div>
 								<div className="grid grid-cols-2 gap-2">
 									<div><p className="mb-1 text-[10px] font-semibold text-muted-foreground">Nama panggilan</p><input type="text" value={editNickname} onChange={(e) => setEditNickname(e.target.value)} placeholder="Opsional" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
@@ -270,20 +247,11 @@ function ProfilePage() {
 									</Button>
 								</div>
 							</div>
-						) : (
-							<button
-								type="button"
-								className="mt-1 min-h-11 w-full rounded-[14px] bg-primary/10 py-2 text-xs font-bold text-primary transition-all hover:bg-primary/20"
-								onClick={startEditing}
-							>
-								Edit profil
-							</button>
-						)}
+						) : null}
 					</div>
 				</div>
-
 				{/* Stats */}
-				<div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+				<div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
 					<ProfileStat
 						icon={<Wallet className="h-4 w-4 text-emerald-500" />}
 						label="Djiwa Pay"
@@ -292,7 +260,7 @@ function ProfilePage() {
 					<ProfileStat
 						icon={<User className="h-4 w-4 text-blue-500" />}
 						label="Pesanan"
-						value={String(customer.totalOrders ?? 0)}
+						value={String(orderCount)}
 					/>
 					<ProfileStat
 						icon={<Star className="h-4 w-4 text-emerald-500" />}
@@ -302,21 +270,21 @@ function ProfilePage() {
 				</div>
 
 				<div className="mt-3 grid grid-cols-2 gap-2">
-					<div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+					<div className="rounded-[20px] bg-emerald-50 p-3.5 shadow-sm">
 						<p className="text-[10px] font-semibold text-emerald-700">Total saldo masuk / top up</p>
 						<p className="mt-1 text-sm font-black text-emerald-900">{currency(customer.walletTotalCredited ?? 0)}</p>
 					</div>
-					<div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
+					<div className="rounded-[20px] bg-amber-50 p-3.5 shadow-sm">
 						<p className="text-[10px] font-semibold text-amber-700">Saldo tertahan</p>
 						<p className="mt-1 text-sm font-black text-amber-900">{currency(customer.walletHeldBalance ?? 0)}</p>
 					</div>
 				</div>
 
 				{/* Logout */}
-				<div className="mt-4">
+				<div className="pt-1">
 					<button
 						type="button"
-						className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs font-bold text-destructive transition-all hover:bg-destructive/10"
+						className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[15px] border border-destructive/15 bg-transparent px-3 py-2.5 text-xs font-bold text-destructive transition-all hover:bg-destructive/5 active:scale-[.98]"
 						onClick={() => {
 							logout();
 							navigate({ to: "/$username", params: { username } });
@@ -364,7 +332,7 @@ function ProfileStat({
 	value: string;
 }) {
 	return (
-		<div className="flex items-center gap-2 rounded-xl border border-border bg-card p-2.5 shadow-sm">
+		<div className="flex min-h-[68px] items-center gap-2.5 rounded-[18px] bg-card p-3 shadow-[0_6px_20px_rgba(15,23,42,0.04)] transition-transform duration-200 active:scale-[.98]">
 			{icon}
 			<div>
 				<p className="text-[10px] font-semibold text-muted-foreground">{label}</p>

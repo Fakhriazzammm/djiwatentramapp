@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ProfileCard } from "./profile-card";
+import { useCustomerOrderCount } from "@/hooks/use-customer-data";
 import { LogIn, User } from "lucide-react";
 
 type CustomerData = {
@@ -33,6 +34,7 @@ export function AuthHeader({
   isLoading = false,
   className,
 }: AuthHeaderProps) {
+  const { orderCount } = useCustomerOrderCount();
   if (isLoading) {
     return (
       <div
@@ -50,7 +52,7 @@ export function AuthHeader({
   }
 
   if (isAuthenticated) {
-    return <ProfileCard customer={customer ?? { name: "Pengguna", email: "" }} onLogout={onLogout} onProfileClick={onProfileClick} className={className} />;
+    return <ProfileCard customer={{ ...(customer ?? { name: "Pengguna", email: "" }), liveOrderCount: orderCount }} onLogout={onLogout} onProfileClick={onProfileClick} className={className} />;
   }
 
   return (

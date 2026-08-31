@@ -1,3 +1,4 @@
+import { CustomerHeader } from "@/components/customer/customer-shell";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Copy, TicketPercent } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -57,14 +58,7 @@ function PromoPage() {
 	return (
 		<div className="app-page min-h-app">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
-				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur-xl">
-					<div className="flex items-center gap-2">
-						<button type="button" onClick={goHome} className="flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
-							<ArrowLeft className="h-4 w-4" /> Kembali
-						</button>
-						<h1 className="ml-1 text-sm font-black tracking-tight">Promo</h1>
-					</div>
-				</header>
+				<CustomerHeader title="Promo" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
 
 				<main className="px-3 py-4">
 					{activePromos === undefined ? (

@@ -12,6 +12,7 @@ type CustomerData = {
   photoUrl?: string | null;
   totalPoints?: number;
   totalOrders?: number;
+  liveOrderCount?: number;
   totalSpent?: number;
   walletBalance?: number;
   // Legacy aliases kept for callers that still pass database-shaped rows.
@@ -102,7 +103,7 @@ export function ProfileCard({
         <Stat
           icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-4 w-4 object-contain" />}
           label="Pesanan"
-          value={String(customer.totalOrders ?? customer.total_orders ?? 0)}
+          value={String(customer.liveOrderCount ?? customer.totalOrders ?? customer.total_orders ?? 0)}
         />
       </div>
     </div>

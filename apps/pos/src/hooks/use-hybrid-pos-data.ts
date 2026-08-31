@@ -477,6 +477,7 @@ async function fetchSiteSettings() {
 	return {
 		_id: data._id,
 		...raw,
+		taxEnabled: raw.taxEnabled ?? data.tax_enabled ?? Number(data.tax_rate ?? raw.taxRate ?? 0) > 0,
 		orderTypes,
 		platforms,
 	} as SiteSettingsRecord;

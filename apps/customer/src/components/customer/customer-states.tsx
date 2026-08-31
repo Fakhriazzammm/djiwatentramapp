@@ -1,6 +1,8 @@
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import type { ReactNode } from "react";
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { motion } from "framer-motion";
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function CustomerPageSkeleton({ label = "Memuat halaman" }: { label?: string }) {
@@ -80,6 +82,12 @@ export function CustomerSuccessState({
 }
 
 export function CustomerErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+	const [retrying, setRetrying] = useState(false);
+	const retry = async () => {
+		if (!onRetry || retrying) return;
+		setRetrying(true);
+		try { await onRetry(); } finally { setRetrying(false); }
+	};
 	return (
 		<div className="app-card flex items-start gap-3 p-4 text-destructive" role="alert">
 			<AlertCircle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2} />
@@ -90,10 +98,12 @@ export function CustomerErrorState({ message, onRetry }: { message: string; onRe
 					<button
 						type="button"
 						className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-[14px] border border-destructive/25 px-3 text-xs font-bold text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
-						onClick={onRetry}
+						onClick={() => void retry()}
+						disabled={retrying}
+						aria-busy={retrying}
 					>
-						<RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />
-						Coba lagi
+						<motion.span aria-hidden="true" animate={retrying ? { rotate: 360 } : { rotate: 0 }} transition={retrying ? { duration: 0.8, repeat: Infinity, ease: "linear" } : { duration: 0.2 }}><RefreshCw className="h-3.5 w-3.5" /></motion.span>
+						{retrying ? "Mencoba lagi..." : "Coba lagi"}
 					</button>
 				) : null}
 			</div>

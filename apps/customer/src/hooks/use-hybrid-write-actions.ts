@@ -5245,6 +5245,7 @@ export function useHybridUpdateSiteSettings() {
 				if (args?.storePhone !== undefined) payload.store_phone = args.storePhone;
 				if (args?.appName !== undefined) payload.app_name = args.appName;
 				if (args?.appVersion !== undefined) payload.app_version = args.appVersion;
+				if (args?.taxEnabled !== undefined) payload.tax_enabled = Boolean(args.taxEnabled);
 				if (args?.taxRate !== undefined) payload.tax_rate = Number(args.taxRate ?? 0);
 				if (args?.serviceChargeRate !== undefined)
 					payload.service_charge_rate = Number(args.serviceChargeRate ?? 0);

@@ -807,11 +807,16 @@ export class BluetoothPrinterService {
 			// Tax & service charge. Prefer the persisted receipt breakdown, with the
 			// historical order fields as a fallback for older rows.
 			const taxBase = order.taxBaseAmount ?? receiptMeta?.taxBaseAmount;
-			printKeyValue("DASAR PBJT", formatReceiptAmount(taxBase ?? subtotal ?? 0));
-			const effectiveTaxRate = order.taxRateSnapshot ?? receiptMeta?.taxRateSnapshot ?? 10;
-			printKeyValue(`PBJT/PAJAK RESTORAN (${effectiveTaxRate}%)`, formatReceiptAmount(order.taxAmount ?? 0));
+			const effectiveTaxRate = order.taxRateSnapshot ?? receiptMeta?.taxRateSnapshot ?? 0;
+			const hasTax = Number(order.taxAmount ?? 0) > 0 || effectiveTaxRate > 0;
+			if (hasTax) {
+				printKeyValue("DASAR PBJT", formatReceiptAmount(taxBase ?? subtotal ?? 0));
+				printKeyValue(`PBJT/PAJAK RESTORAN (${effectiveTaxRate}%)`, formatReceiptAmount(order.taxAmount ?? 0));
+				printWrappedLines("PBJT makanan dan minuman Kota Tasikmalaya; service charge bukan pajak daerah.", RECEIPT_LINE_WIDTH);
+			} else {
+				printWrappedLines("Harga menu sudah termasuk PBJT atas makanan dan/atau minuman sesuai ketentuan yang berlaku di Kota Tasikmalaya.", RECEIPT_LINE_WIDTH);
+			}
 			printKeyValue("SERVICE CHARGE", formatReceiptAmount(order.serviceChargeAmount ?? 0));
-			printWrappedLines("PBJT makanan dan minuman Kota Tasikmalaya 10%; service charge bukan pajak daerah.", RECEIPT_LINE_WIDTH);
 			if (order.taxExemptionReason ?? receiptMeta?.taxExemptionReason) {
 				printWrappedLines(`Pajak: ${order.taxExemptionReason ?? receiptMeta?.taxExemptionReason}`);
 			}

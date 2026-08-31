@@ -41,6 +41,7 @@ export function CustomerHeader({
 	right,
 	subtitle,
 	title,
+	eyebrow,
 }: {
 	backLabel?: string;
 	leading?: ReactNode;
@@ -48,24 +49,28 @@ export function CustomerHeader({
 	right?: ReactNode;
 	subtitle?: string;
 	title: string;
+	eyebrow?: string;
 }) {
 	return (
-		<header className="flex min-h-14 items-center gap-2 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-			{onBack ? (
-				<button
-					type="button"
-					className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
-					aria-label={backLabel}
-					onClick={onBack}
-				>
-					{leading}
-				</button>
-			) : leading ? <div className="flex h-11 w-11 shrink-0 items-center justify-center">{leading}</div> : null}
-			<div className="min-w-0 flex-1">
-				<h1 className="font-display truncate text-base font-extrabold leading-tight text-foreground">{title}</h1>
-				{subtitle ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p> : null}
+		<header className="sticky top-0 z-30 border-b border-black/[0.04] bg-background/90 px-3 py-2.5 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+			<div className="grid min-h-11 grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+				{onBack ? (
+					<button
+						type="button"
+						className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all duration-[180ms] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
+						aria-label={backLabel}
+						onClick={onBack}
+					>
+						{leading}
+					</button>
+				) : leading ? <div className="flex h-11 w-11 shrink-0 items-center justify-center">{leading}</div> : <span aria-hidden="true" />}
+				<div className="min-w-0 text-center">
+					{eyebrow ? <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{eyebrow}</p> : null}
+					<h1 className="font-display truncate text-[15px] font-black leading-tight tracking-[-0.02em] text-foreground">{title}</h1>
+					{subtitle ? <p className="mt-0.5 truncate text-[11px] font-medium text-muted-foreground">{subtitle}</p> : null}
+				</div>
+				<div className="flex min-h-11 w-11 shrink-0 items-center justify-end">{right ?? null}</div>
 			</div>
-			{right ? <div className="flex min-h-11 shrink-0 items-center justify-end gap-1">{right}</div> : null}
 		</header>
 	);
 }

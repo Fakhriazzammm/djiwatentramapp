@@ -1,0 +1,599 @@
+normalized_name,variants,mentions,units,unique_prices,price_min,price_max,price_conflict,sources
+1 cup,"1 Cup, 1 cup",3,pcs,"8500.0, 9000.0, 27000.0",8500.0,27000.0,True,"fin_47f9b830bc16427283c0aae04dfa7afb, fin_7cfbf25a8c1e4f53ac74d9999e6fe31c, fin_d9905afb412346a5acbb79a46049673e"
+1224948 maxtea peach bd10,1224948-MAXTEA PEACH BD10,1,pcs,15800.0,15800.0,15800.0,False,fin_086cae8150ca4c9196c242f4493c4334
+1230006 frm amago ref 2lt,1230006-FRM/AMAGO REF 2LT,1,pcs,40800.0,40800.0,40800.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2 lt,2 LT,2,pcs,43450.0,43450.0,43450.0,False,"fin_09524d571d9041f8a9e9ac380322d23c, fin_869ddd956e3245189c121b1732f30f60"
+2009352 polytex multi purpos,2009352-POLYTEX MULTI PURPOS,1,pcs,12000.0,12000.0,12000.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2035402 multi mp 08,2035402-MULTI MP-08,1,pcs,35500.0,35500.0,35500.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2090409 kresek asia 35,2090409-KRESEK ASIA 35,1,pcs,1000.0,1000.0,1000.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2288609 ekonomi pencuci piri,2288609-EKONOMI PENCUCI PIRI,1,pcs,19600.0,19600.0,19600.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2299156 baygon ae 600 japame,2299156-BAYGON AE 600 JAPAME,1,pcs,34900.0,34900.0,34900.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2319761 polytex htp spon ext,2319761-POLYTEX HTP SPON EXT,1,pcs,31000.0,31000.0,31000.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2328219 dahlia ae heritage t,2328219-DAHLIA AE HERITAGE T,1,pcs,25100.0,25100.0,25100.0,False,fin_086cae8150ca4c9196c242f4493c4334
+2333526 ekonomi dishwash nah,2333526-EKONOMI DISHWASH NAH,1,pcs,10700.0,10700.0,10700.0,False,fin_086cae8150ca4c9196c242f4493c4334
+431112 label harga no 112 koa bam,431112/LABEL HARGA NO.112 KOA/BAM,1,pcs,5000.0,5000.0,5000.0,False,fin_da3ef076c68e4b069e2bcf87bcb33a93
+680104 goldtp hj x72 12 24slp,680104/GOLDTP HJ #X72 [12] @24SLP,1,pcs,23000.0,23000.0,23000.0,False,fin_da3ef076c68e4b069e2bcf87bcb33a93
+abc kecap asin,ABC Kecap Asin,1,pcs,18000.0,18000.0,18000.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+abc lr03 aaa 4s mpur,ABC LR03-AAA/4S MPUR,1,pcs,44500.0,44500.0,44500.0,False,fin_352e309118d54dd3b19ebea11919d533
+ac 260 1 sisi a3,AC 260 1 SISI A3,1,pcs,5000.0,5000.0,5000.0,False,fin_f82016b9ba304e55aafb58e12fe73565
+air,Air,1,Dus,42000.0,42000.0,42000.0,False,fin_76ab2a24fb3a401092e64ba71717efdf
+air galon,Air Galon,30,"Galon, L, Pcs, galon, ml, pcs","22.5, 5500.0, 6450.0, 22500.0, 42000.0, 42500.0, 43500.0, 87000.0",22.5,87000.0,True,"16175ff6-53cc-4264-87d2-6fbaa7513950, 1c5c5715-e328-43d5-9817-5d35e1de5fbb, 35914f6c-6434-4a4d-8be8-e04bf312b944, a602c2e9-77c8-4855-912e-918e67284f47, b52db62c-ec60-4425-96da-5abe8e6ddf8f, e3f764c8-0b46-4be3-a2c9-6c3269f0bfdc, fin_08286da03c864275bf8db973958bd283, fin_12de6cf79147401798e02f8f1159b08d, fin_1cd35c1e4d5142e894376d151a8d1301, fin_2d877acbe0574489a25fb7d081b0acfb, fin_3b07892e126143e985d9f0cc0ce7c96a, fin_42bed9056f9140a4b647c0506b1c4979, fin_449dcf39900d4fe39b45d9a2, fin_5aec0523cbaa4234901e65af09106655, fin_60070d2f2ca9428084967be3577b280b, fin_608260ee9cb745509529133d766504fe, fin_6e8ec70793e54d8596e7f096ba9b9b60, fin_6f836e5f66534fc0b7fc53fc4b1e955d, fin_6ff485df3df44494b29b282a98677d6f, fin_88925b24554347139ffeec289e78c315, fin_9a88643f8b9c47a2a7ef20eb174e8be7, fin_a3596d8c442741049c7dc4cf85cb7d4c, fin_bd718caf196d4278a253e3eadf6500c0, fin_ca65c1696c224ef9aefc1d5cd2737918, fin_d56be465f6a4463d8d6f6f786f8b41ee, fin_d78fb09e142e4821b933ee2ef0422720, fin_dc1f1b33adbe4f499c26c4e16398200f, fin_e1750b5fc0c245d486d05ffc355bf6c2, fin_e8f1faf8146c4a32bf6e43b75e0f389e, fin_f6099490ee834d1ba322afe54313145e"
+air mineral,Air Mineral,16,"Ball, Dus, Pack, dus, ml, pcs","42.0, 40000.0, 42000.0, 400000.0",42.0,400000.0,True,"43fd2bc5-c3fe-422c-8a8f-2c4f2d9a9f8d, b0ee07b7-694c-41cd-8bcc-dcea13d7a93f, c431eb59-7310-44e8-9c05-9db5063a771f, e4fafc11-dc4f-47be-aef2-5f373c8de436, fin_039d999f29cd49dc880f641f277be933, fin_1df6d5fb87f24ee488b8e45a4e9ec503, fin_8d585e9e75904ec5ad95848ddd53e8ba, fin_aede943968754f3eaa3d7c21e05da83b, fin_b766adfcae2c46f3b8fbb7da62e97a10, fin_c4f0718225e544e38b7574dd356dca2a, fin_c6daf7bb62f147fbb0ce481f718467d1, fin_cd128613de0b49659cbd4e3f2986f41d, fin_d13d49bfe34049dabcdfefbabf1601e0, fin_db0ef3ef8fab40959dd2639a1f75e50d, fin_eb097ec5150b4f3aa5277b4d49c8984e, fin_f1b79dfff55f4d4788c06e7d52d4b192"
+almond alinga frams repack,Almond Alinga Frams 250 GR Repack,1,,51400.0,51400.0,51400.0,False,fin_e44fb3a9d458464c8bf09725c4ee43bd
+angkak,"ANGKAK 100 GR, Angkak",3,"Pcs, gram","100.0, 5666.67, 10000.0",100.0,10000.0,True,"fin_3ba25af2819845e8b6d3ac2f09c9f6e2, fin_7cf04e591c7b47a89c80f26ae286d543, j57659d5911dq77qaxb90kk2r584xkyj"
+angkak kg,ANGKAK/KG,3,"kg, pcs",90000.0,90000.0,90000.0,False,"fin_1130949672a74fc48e831228e826c502, fin_6aeedfb18ac54bff90a09a7c4af74710, fin_bf4545b5d4cb4833ba0c3d6cbd1007c0"
+apple juice,Apple Juice,1,pcs,5500.0,5500.0,5500.0,False,457cd3b6-57c6-431d-9bf4-bbceb1eb2c3d
+aquaproof,Aquaproof,2,"kg, pcs",62500.0,62500.0,62500.0,False,"fin_4f96bb4c6b014825a14462a1fe0a3efa, fin_58ddd1ce9d4d4736af96da8c518b5462"
+aquaproof putih,Aquaproof Putih,1,pcs,230000.0,230000.0,230000.0,False,fin_0ef0126cb4664f77bb6b1d77e69c9c02
+arabica beans,Arabica Beans,1,kg,11500.0,11500.0,11500.0,False,fin_c434c8a12ef74fdebfa267cbbba68dce
+argopuro fw,Argopuro fw,3,pcs,"275000.0, 285000.0",275000.0,285000.0,True,"fin_412145c95684487f8c96dd01c3052ec2, fin_d12c4d8043bf4eaa98d5626a6f01d759, fin_f519e8f633924ee18dbd12eb86e5df80"
+ayam,Ayam,2,pcs,370000.0,370000.0,370000.0,False,"fin_a9c986efe7744dedb26f3fb3d4e774e8, fin_d42d34ce5e5346798f315a0256cdb6f1"
+ayam giling,Ayam Giling 200gr,1,pack,15600.0,15600.0,15600.0,False,j578fjc61de4mhyhzm8e46gv5s84esrt
+b bombay,B. Bombay,4,"kg, pcs","32000.0, 34000.0, 38000.0",32000.0,38000.0,True,"fin_3705b868a8914e3faed730f99847102e, fin_6033c24e9e6147edaf8dd2229b162aea, fin_7cb80bcd303741779cae7c55dbe8b08a, fin_bf1c3168feac4c579341d9b6a8b00579"
+b daun,"B daun, B. Daun, B. Daun ( ), B. daun",13,"ikat, pcs","1666.67, 13000.0, 14000.0, 15000.0, 16000.0",1666.6666666666667,16000.0,True,"fin_11cef6e6e16841828a50bae8daec3c7c, fin_3705b868a8914e3faed730f99847102e, fin_621659dfbf204075b77002836e0f7c03, fin_6648175af1ff4671b83bbe064d520a7f, fin_6793cbbe2e7f4ab99ee6a218b35bd69a, fin_6a55e4a5b1df4aad9db0d50fed3b446a, fin_7cb80bcd303741779cae7c55dbe8b08a, fin_a930816eae0b4500ba9bf4fac84bc9e8, fin_bf1c3168feac4c579341d9b6a8b00579, fin_c23fe5ad174e4bf991f8ddeace618e22, fin_d863b13f37be48668585cca0013868eb, fin_d9883252503a4805bc18eaf0143441d2, fin_fad475c1e8b04a0193bd21aec3139351"
+b daw,B. Daw,1,,14000.0,14000.0,14000.0,False,fin_cf9f0d4f2800463eb38112b1b2509081
+b dur,B. Dur,1,,,,,False,fin_c775522318794bfeb211c0aad821fbfc
+b gery,B. gery,2,,54000.0,54000.0,54000.0,False,"fin_c775522318794bfeb211c0aad821fbfc, fin_cf9f0d4f2800463eb38112b1b2509081"
+b goreng,"B goreng, B. goreng",4,pcs,54000.0,54000.0,54000.0,False,"fin_563af3ced4f14f4a8a0aed5eb7b74a33, fin_6648175af1ff4671b83bbe064d520a7f, fin_b2c08b5f8c4c4b0fbbdd61469a91e343, fin_d9883252503a4805bc18eaf0143441d2"
+b gores,B. gores,1,pcs,54000.0,54000.0,54000.0,False,fin_6a55e4a5b1df4aad9db0d50fed3b446a
+b gorg,"B gorg, B. gorg",2,kg,54000.0,54000.0,54000.0,False,"fin_3705b868a8914e3faed730f99847102e, fin_6d6797da839742849f107a7a8d7e00ca"
+b jambu,B. Jambu,2,pcs,13000.0,13000.0,13000.0,False,"fin_b81490fffe744b75859bb2292f992b76, fin_db7b96f6a40444d58601ed2191d38142"
+b jamin,B-Jamin,2,pcs,13000.0,13000.0,13000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_ca5e73f5421e4806acacff5fef08c68b"
+b janu v,B- Janu v,2,pcs,13000.0,13000.0,13000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+b jorz,B. Jorz,1,pcs,54000.0,54000.0,54000.0,False,fin_a930816eae0b4500ba9bf4fac84bc9e8
+b merah,"B. merah, B.merah",3,"kg, pcs",36000.0,36000.0,36000.0,False,"fin_5191b256a74b4801b416f653cd4eed58, fin_64be442f8892494a9f4c9f9790ead9b1, fin_ca5e73f5421e4806acacff5fef08c68b"
+b merah v,B. merah v,2,kg,36000.0,36000.0,36000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+b mrh,B mrh,1,pcs,7000.0,7000.0,7000.0,False,fin_6d6797da839742849f107a7a8d7e00ca
+b purir v,B_purir. v,2,pcs,34000.0,34000.0,34000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+b putih,"B putih, B-putih, B. Putih, B. putih",9,"kg, pcs","32000.0, 34000.0, 36000.0, 38000.0, 39000.0",32000.0,39000.0,True,"fin_2f242f44c36f40d2b59c2401fb05a74e, fin_3705b868a8914e3faed730f99847102e, fin_64be442f8892494a9f4c9f9790ead9b1, fin_6648175af1ff4671b83bbe064d520a7f, fin_6d6797da839742849f107a7a8d7e00ca, fin_b81490fffe744b75859bb2292f992b76, fin_ca5e73f5421e4806acacff5fef08c68b, fin_db3a28eb011d41d1bd14da6eb79ed891, fin_db7b96f6a40444d58601ed2191d38142"
+b putih kupas,"B. PUTIH KUPAS, B. Putih kupas, B. putih kupas",4,pcs,40000.0,40000.0,40000.0,False,"fin_563af3ced4f14f4a8a0aed5eb7b74a33, fin_6033c24e9e6147edaf8dd2229b162aea, fin_6568ee3efaa14db7991b11a9cd67ffb0, fin_c23fe5ad174e4bf991f8ddeace618e22"
+bagus cw box 30x30,BAGUS CW BOX 30X30,1,,33500.0,33500.0,33500.0,False,fin_fb2d7ce70bca4c4c8e54577ec7af1778
+bagus krbol pine 575,BAGUS KRBOL PINE 575,1,pcs,10700.0,10700.0,10700.0,False,fin_ffae3c26e4d74fe3a602a934faba6a81
+bakso,Bakso,3,"pack, pcs","6000.0, 18000.0",6000.0,18000.0,True,"fin_3705b868a8914e3faed730f99847102e, fin_5191b256a74b4801b416f653cd4eed58, j572t0j59rpg7zsgame79dg6j184xktn"
+bakso tunas 20 biji,BAKSO TUNAS 20 BIJI,2,,12000.0,12000.0,12000.0,False,"fin_41547646219d443e92aba1b55c77880c, fin_60b7b177c9fc4d34a86909b40b2b8354"
+barbeque sauce,Barbeque Sauce,2,pcs,33500.0,33500.0,33500.0,False,"fin_0ceb63782f0e4abb99096091043b8ce4, fin_ac134bc4769f4bb4a9c58fd45efc21ae"
+baso,Baso,3,pcs,6000.0,6000.0,6000.0,False,"fin_010674d3766a45b7a00570bd0b4c5f02, fin_621659dfbf204075b77002836e0f7c03, fin_cf9f0d4f2800463eb38112b1b2509081"
+baso kecil,Baso kecil,1,pcs,6000.0,6000.0,6000.0,False,fin_624a0b2840fa4dcc82a4337e7ebca173
+baso sapi,Baso Sapi,1,pcs,5000.0,5000.0,5000.0,False,fin_52d344ea24a945ad912fd53fe1405a36
+bata,Bata,1,,,,,False,fin_9b4cb2be67754c7b844ed52550019301
+baterai abc,Baterai ABC,1,pcs,2500.0,2500.0,2500.0,False,j573ed3r2vgpdeqjw7kx9wx2kd84ebme
+batok robot rt k4,Batok Robot RT-K4,1,pcs,18000.0,18000.0,18000.0,False,fin_9b405f4b8337420ab1c62a2940c06a04
+bawang,Bawang,1,pcs,9000.0,9000.0,9000.0,False,fin_34c0125351914541bec23e7a244e7e27
+bawang bombai,Bawang Bombai,2,pcs,"5500.0, 34000.0",5500.0,34000.0,True,"fin_3644c9f032814d1db89c88724280eee6, fin_d42e96fdf50c4ec4bb73612297ef11fe"
+bawang daun,Bawang Daun,6,"gram, ikat, pcs","16.0, 25.0, 4000.0, 5000.0, 13000.0",16.0,13000.0,True,"fin_b0f830a7f1b2484bbcfdbd2e46520d35, fin_e81c8932eea7422ea7dbca15d1dd68bf, j570w0y02fswp0t5ees2s1tnyn84x2ee, j571wq3gkrrqk1navrq1a1x9ns84enz7, j5729mgqpcbs43sfwbmnm65gwh84nw9q, j57fz0a820hzvqe2z5j9smav7x850yqg"
+bawang goreng,Bawang Goreng,3,"gram, pcs","54.0, 36000.0",54.0,36000.0,True,"fin_b0f830a7f1b2484bbcfdbd2e46520d35, j5729mgqpcbs43sfwbmnm65gwh84nw9q, j57fz0a820hzvqe2z5j9smav7x850yqg"
+bawang merah,Bawang Merah,4,"kg, pcs","5500.0, 36000.0, 40000.0, 44000.0",5500.0,44000.0,True,"fin_3644c9f032814d1db89c88724280eee6, fin_3705b868a8914e3faed730f99847102e, fin_4c5d82f07ae04f2d8ac8882f905229f6, fin_621659dfbf204075b77002836e0f7c03"
+bawang putih,"BAWANG PUTIH, Bawang Putih",7,"gram, pcs","36.0, 11000.0, 34000.0, 35000.0",36.0,35000.0,True,"fin_187a44827f8e44e2881120ddcfd4a757, fin_b0f830a7f1b2484bbcfdbd2e46520d35, fin_b6bde5f74cc14a1b92ef69ac85bbeae4, fin_da3ef076c68e4b069e2bcf87bcb33a93, j5729mgqpcbs43sfwbmnm65gwh84nw9q, j57fz0a820hzvqe2z5j9smav7x850yqg"
+baygon ae citrus 600,BAYGON AE CITRUS 600,1,pcs,42500.0,42500.0,42500.0,False,fin_356a4a2d525e4fea839bc0c083ab4622
+baygon ae flower 600,BAYGON AE FLOWER 600,1,pcs,27900.0,27900.0,27900.0,False,fin_ae0250e67eca4a06a5fd5508a34b5f7e
+beans arabika,Beans Arabika,1,kg,275000.0,275000.0,275000.0,False,j57d4c4c6exvsg5den12sha13x856bx7
+beans arabika flores bajawa fw,Beans Arabika Flores Bajawa FW,4,"kg, pcs","19500.0, 275000.0",19500.0,275000.0,True,"fin_412145c95684487f8c96dd01c3052ec2, fin_80da598892684a04a93530aa56ea87a0, fin_f45e083e0e3a4992b5e5ff635d0e7650, j578n908ybxdp70fj3ry4fecrd84nm0d"
+beans robusta,Beans Robusta,2,kg,150000.0,150000.0,150000.0,False,"j57bdq0fkg4nfnxvcsbs643ags84ny7v, j57d4c4c6exvsg5den12sha13x856bx7"
+belagu,Belagu,4,kg,40000.0,40000.0,40000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_b81490fffe744b75859bb2292f992b76, fin_ca5e73f5421e4806acacff5fef08c68b, fin_db7b96f6a40444d58601ed2191d38142"
+belagu v,Belagu v,2,kg,40000.0,40000.0,40000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+bensin,Bensin,2,Liter,10000.0,10000.0,10000.0,False,"j57a0r97xhqtwtc3acf7j9c68d856xtx, j57ehrycye9amef2e4hekf62558510r9"
+bensin rian,Bensin Rian,1,Liter,10000.0,10000.0,10000.0,False,j579dmtnrfserv08ckh4hpat4n84wdn6
+bento tupai 4 sekat,Bento Tupai 4 Sekat,1,pack,42000.0,42000.0,42000.0,False,j578dj1839wm1bwq4vxhj47dad84n4gn
+beras,"Beras, beras",2,kg,"14900.0, 15000.0",14900.0,15000.0,True,"fin_734d7652dfd04e2b9beddbacddd08b2f, j570ejt7s943dgnnx2pe92cj19856xte"
+beras dt,Beras DT,16,kg,"16481.48, 16500.0",16481.48148148148,16500.0,True,"fin_0c1c22fa1fe5430e8dae68e643fad2ba, fin_1776950c767747cba55dfa18edc788e1, fin_217dc5b8937f428793a5a59d2e4d4499, fin_4b6ad3de3e9f477f89e2f43f623b9e56, fin_6277488856ac4ac18aaee683c879dff4, fin_759e2547ead24b85a098b4c25ad40144, fin_8a8e0c2acadc487d87a6677521ea8387, fin_8f9ef5e884064171a7941ece59d282b7, fin_a191398af1e0429983f0129cb02146b9, fin_ab41ca25706742ffb1d70cd07c8c3de9, fin_b3adc559dd3e4772b84c179ae88c0656, fin_bc39c74468e64ba4942b011c8195bb34, fin_c3204302542549d6946a99bcbd4a2aff, fin_cfbabd52e02047ed97d5c195838737c5, fin_d29d232299e74fbeaa0d34e71913efec, fin_d37834e5b190460b8f8666bf92032d11"
+beras kt,Beras KT,1,kg,15729.27,15729.265967588179,15729.265967588179,False,fin_d5d53ca982064713a21bc0839bc57d17
+beras pt,Beras PT,2,kg,16500.0,16500.0,16500.0,False,"fin_7ad90dcca8e5435a8ab6ac6fee8d8c43, fin_912a19f9d4b34bd0959c6ffef42351ba"
+bernardi horeca pack sosis sapi vp,BERNARDI HORECA PACK SOSIS SAPI 1KG VP,3,,70500.0,70500.0,70500.0,False,"fin_41e26243ef324d9fb94a721698dd35ff, fin_45abfa2a42ab4278894059220155cff5, fin_83e913d6e23a4418a73393ef3feddeee"
+bernardi horeca sosis,Bernardi Horeca Sosis,2,kg,70500.0,70500.0,70500.0,False,"j57ch52s43r1yx5wfv6f5sh421851t91, j57ctfb45ha12dpbrh1241j53n84w3cj"
+bernardi horeca sosis sapi,BERNARDI HORECA SOSIS SAPI,17,pcs,"70500.0, 141000.0",70500.0,141000.0,True,"fin_08a4af991d5e45d6b419d9ed6692c413, fin_09b8996e16824347b3430cff73f2f9f6, fin_10a615ad201c4f30ba65f7b1ef88b696, fin_12ea489e3ea247c39e8364e96402b7c7, fin_19bf63f7f76d47ba9c59851a370577c7, fin_2097b39037834a0fa497b66ef0a0aa7d, fin_2ee28d042dff4bfeaf6777d735dea271, fin_44e422f6ab0c419da2a7def12d0e266c, fin_6c308dfdc8c74a8aa0129453f0c5c240, fin_71fb6198344948479d76aa051f7d9b10, fin_926672b5fed94f53a7d7b127399e75d6, fin_9de3c24e6a8840519261962bf51e8127, fin_ac134bc4769f4bb4a9c58fd45efc21ae, fin_b1306f3beeeb4c3dbca2e52b4cfe0ebe, fin_b7f7ee3372d74345b28d8788214b4649, fin_be8fcfd6e50a4010ad505975076277ce, fin_fcb6262b4d1d4f1fb78824673fe4396d"
+bg,BG,1,pcs,17000.0,17000.0,17000.0,False,fin_b6bde5f74cc14a1b92ef69ac85bbeae4
+biji wijen,"Biji Wijen, biji wijen",2,"ons, pcs","5000.0, 49000.0",5000.0,49000.0,True,"fin_cae65f7801cd4d59a2af025438d60286, j57891jzrpa6jb5f9vy8fncr5d84ksvg"
+bikin mie,Bikin Mie,2,pcs,30000.0,30000.0,30000.0,False,"fin_1effd27287114ebe81f56e903a39de13, fin_ed5eb911b2e4462c8a0978f7f3c19e55"
+bikin yamin,Bikin Yamin,23,"Box, Kg, Kotak, pack, pcs","1000.0, 1666.67, 10000.0, 20000.0, 30000.0, 45000.0, 50000.0",1000.0,50000.0,True,"1c737e1a-8074-4a5a-a1d7-19c538c2a074, b25dd69e-073f-4c8f-9dc6-2932693e7097, c7872423-cfeb-4234-88fa-d2acf94ea7d5, cfdc7f38-8daa-4bbb-a337-10be4fa0948b, fde1c618-0231-4555-ae82-cd7bd9fbdd42, fin_182ea8695dd74ea9a2da2c8b93ed02d2, fin_19de31eb1fc34581b72b22b5eae911be, fin_24922ceaa76144149ca6181275e8e866, fin_324e9679a5ef4bd287b22d4a, fin_35902ac2e40e4e3ab0681f8faf4f7853, fin_47715a53b8a54b338e08bdcd1048a1a6, fin_55e576f6d4fc420d81089b6da2b96937, fin_5a42bf0c04ac4c028cafad23df8e8d92, fin_8083b5d20c6944689d8813b2551eda8c, fin_84b6a640fe5b4ddaaae425108c1af97f, fin_8ed94aa743f446cda3e6e1732bf38220, fin_a4ef57e2eeb84aaf9629ff9492425b75, fin_abe7d0357af0411d9fcbc0bf0ce54b2f, fin_e6b04276d397478bbf26d17122b71cb1, fin_eba9783317da4187823103ec57655db7, fin_ef156fd3f39f4b35a83915727500b403, j57355c4r077exh2hreb1ngegd856tzw, j57a0bzkqxx1pf166e9ef12ymh850acn"
+bimoli,BIMOLI,1,pcs,44750.0,44750.0,44750.0,False,fin_64f43465d89344fcae5be625b6507916
+biokul st straw 80,BIOKUL ST STRAW 80,1,pcs,9550.0,9550.0,9550.0,False,fin_e775931577aa433681205b09dcede52b
+bm tlr omega 3 10s,BM TLR OMEGA 3 10S,1,pcs,59300.0,59300.0,59300.0,False,fin_4e24104520944c55b0df378cd421613b
+bngs,Bngs,1,pcs,7000.0,7000.0,7000.0,False,fin_f07705800dcf4a33a91f82dfef85a36c
+bombay,Bombay,1,pcs,14000.0,14000.0,14000.0,False,fin_a930816eae0b4500ba9bf4fac84bc9e8
+bonteng,Bonteng,3,pcs,"7000.0, 8000.0, 20000.0",7000.0,20000.0,True,"fin_b0f830a7f1b2484bbcfdbd2e46520d35, fin_b6bde5f74cc14a1b92ef69ac85bbeae4, fin_cc98f438c8f3475aa209142ed2a81102"
+bontx,Bontx,1,pcs,14000.0,14000.0,14000.0,False,fin_d9883252503a4805bc18eaf0143441d2
+botol,Botol 1 Liter,2,pcs,"4350.0, 4400.0",4350.0,4400.0,True,"j57bw4xa40rgyxym9jz9pz0ggh84mn5a, j57cnmmwkv62fe8e5gg9ensrt984mkce"
+bowl,Bowl,2,pcs,"15000.0, 30000.0",15000.0,30000.0,True,"fin_090990053cb44a0c879d2e0c1b4fbc6f, fin_903ddb5cb6244280a3b2d059597ed4eb"
+bowl 500,Bowl 500,4,pcs,15000.0,15000.0,15000.0,False,"fin_6f13adc4b14a41eb837d5be979685c13, fin_7cfbf25a8c1e4f53ac74d9999e6fe31c, fin_8457c99308a94aef9d1695a382316134, fin_b26d3dfac80e40008261e97e1c8c9571"
+bowl 500 tutup,Bowl 500 + tutup,1,pcs,23500.0,23500.0,23500.0,False,fin_9afe38c5d6b945caa074bf97fc3d1f06
+brex rjk cireng 20s,BREX RJK CIRENG 20S,1,,20950.0,20950.0,20950.0,False,fin_80dfd8e3d4574060933597cd54c34eb2
+bumbu merah,Bumbu Merah,2,pcs,36000.0,36000.0,36000.0,False,"fin_b81490fffe744b75859bb2292f992b76, fin_db7b96f6a40444d58601ed2191d38142"
+buttersub milky,Buttersub Milky,1,pcs,19700.0,19700.0,19700.0,False,fin_75588a7996d84d53a633e816acbb92cd
+c domba,c. domba,2,"kg, pcs","60000.0, 70000.0",60000.0,70000.0,True,"fin_6648175af1ff4671b83bbe064d520a7f, fin_869d390ce15148efabeba4c4915317a6"
+c kerig merah,c. kerig merah,1,kg,50000.0,50000.0,50000.0,False,fin_5191b256a74b4801b416f653cd4eed58
+c kering,C. kering,1,,90000.0,90000.0,90000.0,False,fin_010674d3766a45b7a00570bd0b4c5f02
+c keriting,c. keriting,1,pcs,52000.0,52000.0,52000.0,False,fin_869d390ce15148efabeba4c4915317a6
+c kuning mentah,C. kuning mentah,1,,56000.0,56000.0,56000.0,False,fin_010674d3766a45b7a00570bd0b4c5f02
+c lomba,C. Lomba,1,pcs,60000.0,60000.0,60000.0,False,fin_2f242f44c36f40d2b59c2401fb05a74e
+c m besar,C.m. Besar,2,pcs,72000.0,72000.0,72000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_ca5e73f5421e4806acacff5fef08c68b"
+c m besar v,C.m. Besar v,2,kg,72000.0,72000.0,72000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+c merah b,C. Merah B.,1,pcs,6400.0,6400.0,6400.0,False,fin_13951db02e4a4a46a8e67dbc20c0b3f1
+c somba,C. Somba,1,pcs,81000.0,81000.0,81000.0,False,fin_6a55e4a5b1df4aad9db0d50fed3b446a
+c1000 apple,C1000 Apple,3,pcs,7500.0,7500.0,7500.0,False,"fin_4cee5a2c52b74897b9561e319b9decc1, fin_72160362ec5a4bcf98008b8bfab69b43, fin_ce644238d4fb46f9b2a07517b0e7f5bc"
+cabe besar,Cabe Besar,2,pcs,72000.0,72000.0,72000.0,False,"fin_b81490fffe744b75859bb2292f992b76, fin_db7b96f6a40444d58601ed2191d38142"
+cabe domba,"CABE DOMBA, Cabe Domba, Cabe domba",4,"kg, pcs","11000.0, 18000.0, 60000.0, 100000.0",11000.0,100000.0,True,"fin_34c0125351914541bec23e7a244e7e27, fin_40259ce3f2074c6e8a827f161caf9a77, fin_42a18cf377ad4e71b1d506b1cced1271, fin_4e9800aceb174dd68f27011837d8877f"
+cabe kering,Cabe Kering,2,pcs,"5500.0, 90000.0",5500.0,90000.0,True,"fin_5f0e5aaffea84f1786b0e1c874119429, fin_6793cbbe2e7f4ab99ee6a218b35bd69a"
+cabe keriting,Cabe keriting,1,kg,52000.0,52000.0,52000.0,False,fin_42a18cf377ad4e71b1d506b1cced1271
+cabe keriting merah,Cabe Keriting Merah,1,gram,50.0,50.0,50.0,False,fin_8608c29e2e59451a8f30d38ce2bfda95
+cabe rawit,"Cabe Rawit, Cabe rawit",5,"kg, pcs","15000.0, 52000.0, 60000.0",15000.0,60000.0,True,"fin_42a18cf377ad4e71b1d506b1cced1271, fin_621659dfbf204075b77002836e0f7c03, fin_6a55e4a5b1df4aad9db0d50fed3b446a, fin_869d390ce15148efabeba4c4915317a6, fin_b0f830a7f1b2484bbcfdbd2e46520d35"
+caisim,Caisim,2,pcs,68000.0,68000.0,68000.0,False,"fin_b81490fffe744b75859bb2292f992b76, fin_db7b96f6a40444d58601ed2191d38142"
+calcifer ghibli lampu estetik usb switch,Calcifer | Ghibli | Lampu Estetik | USB + Switch,1,pcs,105000.0,105000.0,105000.0,False,fin_1035b3136ece43699dd2163ae2208e0e
+cap anggur kecap manis,Cap Anggur Kecap Manis,1,pcs,29500.0,29500.0,29500.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+capitan stls 1pt3 12,Capitan Stls 1PT3-12,1,pcs,18500.0,18500.0,18500.0,False,fin_a700f7856b6540a69355686c2fcc4f5e
+carnation,Carnation,3,pcs,53900.0,53900.0,53900.0,False,"fin_005f139d3e3142f3b3db413234b7bd30, fin_645558f2f55e44a7adbf003d8a8bfcf7, fin_ad94afc39e7d4d92b10078d2b4125b7c"
+carnationkntlmns488g,CARNATIONKNTLMNS488G,2,pcs,"7100.0, 15150.0",7100.0,15150.0,True,"fin_0aad7d5028ca4636b655fd4da2d20c99, fin_4fa7fef60b904e9e91ea107ac01e9813"
+cat avian,Cat Avian,1,Kg,80000.0,80000.0,80000.0,False,j570y0beerwvwrz22tevyntg8x84m29e
+cengek v,Cengek - v,2,kg,68000.0,68000.0,68000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+cenger,Cenger,2,pcs,68000.0,68000.0,68000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_ca5e73f5421e4806acacff5fef08c68b"
+cimory fm fullcrm950,"CIMORY FM FULLCRM950, Cimory FM FullCRM950",5,pcs,"21850.0, 23750.0, 24850.0, 71250.0",21850.0,71250.0,True,"fin_0aad7d5028ca4636b655fd4da2d20c99, fin_5a23f17506b94d37b6993b3a48af1112, fin_64a3a961fcd8499d9cc1c0cc25efb957, fin_a15fdcb743844f908be2bcaae547892e, fin_c1506ecf4e89437dbecd431137e2b4e3"
+cincang,Cincang,1,pcs,36000.0,36000.0,36000.0,False,fin_b6bde5f74cc14a1b92ef69ac85bbeae4
+cincang ayam,"Cincang Ayam, Cincang Ayam 200g, Cincang ayam 200 g, cincang ayam",22,"pack, pcs",14800.0,14800.0,14800.0,False,"fin_2e2d823033b5440aae65e47b75e3e799, fin_2e636ad20d044797a46ef63e3f043ac6, fin_35b8c64985134aa5a7e16b3ffd11cd1e, fin_436741f2b4a14afab756dbc16cf53d04, fin_4ab7469fe1ee4a2ab770354facd75217, fin_4db74a1d0285450caae3dd0282e6f266, fin_58870f1fef63430f923bf255ebdc0100, fin_615a579868dc44f3b7307eb87099dc61, fin_6e2985bcbf8648a98514e79ebac37c04, fin_749c0c859b3545b3983b31bb9f91b11e, fin_8041e7e2e6bc4df5afcb2385402de71c, fin_8d31f19df98d4db2abc7dae9606cff9c, fin_94c20453e4134062a0bcc71b641dfe11, fin_acba7d0bd68f405b9972c128052d45f2, fin_b43f49331df14ce1b63f0f7918da2c21, fin_b90d055f165145eebacf3de4af1d2320, fin_bc451b52552f407ca232e86aad63381c, fin_bdd841905f5e4a758032ef30da0239c2, fin_c8652796f9f54fb7995d804a2b72db2e, fin_d01bf2437f0a4c80bd56831782203b35, fin_d2aaf569d6cc44aebedc66446bd6c507, fin_d32ccabe003e4c6290f15031e16f8163"
+cireng,Cireng,1,pack,3333.33,3333.3333333333335,3333.3333333333335,False,j570ch4y0f37e5xq7mbkhp9vzh84e20y
+cireng rujak kumis,CIRENG RUJAK KUMIS,2,,12000.0,12000.0,12000.0,False,"fin_41547646219d443e92aba1b55c77880c, fin_60b7b177c9fc4d34a86909b40b2b8354"
+cleo,"CLEO, Cleo",6,pcs,"22000.0, 22500.0, 31250.0, 40000.0",22000.0,40000.0,True,"e7ac7bbd-947b-4d7e-8e9a-1a9f7b477234, fin_187608e7fcb340078fd205e2808c2703, fin_66d801970bea4d979652c04d9d565543, fin_6bac22e5769d4cf2ac0a455d003a39f1, fin_9aa4de0dfdb84b838e423cf67861e662, j57ana2r61eqxt71na0c2evrt9856w4x"
+cling,Cling,1,pcs,3400.0,3400.0,3400.0,False,j571z878984t9vkvnw791myan184e3ws
+cling kaca ungu ref,CLING KACA UNGU REF,1,pcs,3100.0,3100.0,3100.0,False,fin_9f23b762eb2a494baa48265207b541d3
+cling pk ungu r400,CLING PK UNGU R400,1,pcs,4000.0,4000.0,4000.0,False,fin_49f54407eac04fecab27c995993876f5
+cling pkbirupch400,CLING PKBIRUPCH400,1,pcs,4000.0,4000.0,4000.0,False,fin_c1506ecf4e89437dbecd431137e2b4e3
+cling pkkngpch400,CLING PKKNGPCH400,1,,4000.0,4000.0,4000.0,False,fin_fb2d7ce70bca4c4c8e54577ec7af1778
+cream,Cream,8,pcs,"57000.0, 57500.0, 58400.0",57000.0,58400.0,True,"fin_12f52354a99e464dbeb6d7f2379cb98f, fin_3629f63003f342ceae8ae7bbbe3d4629, fin_4ff32903d26e4fd4aca33931700c72bf, fin_6f13adc4b14a41eb837d5be979685c13, fin_7d8a41e1dd7d402b8e6530917f9d9c40, fin_a0959bb4f18245678f5e54551d5d3783, fin_c1e2e5bd6db148a19623561582b59cc0, fin_d8ee020453e3471b9372818a7a09d5b6"
+cueng,Cueng,1,,3333.0,3333.0,3333.0,False,fin_010674d3766a45b7a00570bd0b4c5f02
+cumi,cumi,1,kg,51000.0,51000.0,51000.0,False,fin_9771a0c7dcd647c780a929e772586e97
+cup,"Cup, Cup 25 ml",2,pcs,"8500.0, 10000.0",8500.0,10000.0,True,"fin_261dd28c3e3145648ec759b34ff7f57e, fin_7c4302f725854784b179c8d318956605"
+cup 12 pet,Cup 12 PET,2,toros,"24500.0, 26500.0",24500.0,26500.0,True,"j577ttmdzxc6aa3p2n6p61kp9584nm8c, j57av0x97rbcjbc4m6j0s3bfmn85063t"
+cup pet,Cup PET,1,pcs,26500.0,26500.0,26500.0,False,fin_b1788580265f4f52809c0e12b5c1d043
+d bawang,D. bawang,1,pcs,15000.0,15000.0,15000.0,False,fin_1a66dc897bd541e1a88ce2a62ce3ad68
+daging ayam,Daging Ayam,4,"pack, pcs","5500.0, 6000.0, 10500.0, 11500.0",5500.0,11500.0,True,"8d1e1d5c-9ce6-4aa6-b2b3-0ecaad76d562, fin_0ef288290f9d48f2bd374e375de5ce1e, fin_45ba6299a4df46f481219bcc9b1602fc, fin_ccd424b938114d948bb78c5fde022075"
+daging sapi cincang,"Daging Sapi Cincang, Daging Sapi Cincang 200g, Daging sapi cincang, Daging sapi cincang 200 g",23,"pack, pcs",30000.0,30000.0,30000.0,False,"fin_2e2d823033b5440aae65e47b75e3e799, fin_2e636ad20d044797a46ef63e3f043ac6, fin_35b8c64985134aa5a7e16b3ffd11cd1e, fin_436741f2b4a14afab756dbc16cf53d04, fin_4ab7469fe1ee4a2ab770354facd75217, fin_4db74a1d0285450caae3dd0282e6f266, fin_58870f1fef63430f923bf255ebdc0100, fin_615a579868dc44f3b7307eb87099dc61, fin_6e2985bcbf8648a98514e79ebac37c04, fin_749c0c859b3545b3983b31bb9f91b11e, fin_75d2453acea24ae588b8d761319b802f, fin_8041e7e2e6bc4df5afcb2385402de71c, fin_8d31f19df98d4db2abc7dae9606cff9c, fin_94c20453e4134062a0bcc71b641dfe11, fin_acba7d0bd68f405b9972c128052d45f2, fin_b43f49331df14ce1b63f0f7918da2c21, fin_b90d055f165145eebacf3de4af1d2320, fin_bc451b52552f407ca232e86aad63381c, fin_bdd841905f5e4a758032ef30da0239c2, fin_c8652796f9f54fb7995d804a2b72db2e, fin_d01bf2437f0a4c80bd56831782203b35, fin_d2aaf569d6cc44aebedc66446bd6c507, fin_d32ccabe003e4c6290f15031e16f8163"
+dahlia aer tehkrt350,DAHLIA AER TEHKRT350,1,pcs,11750.0,11750.0,11750.0,False,fin_ae0250e67eca4a06a5fd5508a34b5f7e
+dark soy,Dark soy,1,pcs,43000.0,43000.0,43000.0,False,fin_b1788580265f4f52809c0e12b5c1d043
+del bbq,"Del BBQ, Del bbq",2,"kg, pcs","30000.0, 34000.0",30000.0,34000.0,True,"fin_534791307e0b4b54a2745975278ecfc3, fin_b1788580265f4f52809c0e12b5c1d043"
+del hot,Del hot,1,pcs,23700.0,23700.0,23700.0,False,fin_b1788580265f4f52809c0e12b5c1d043
+del hot sct,Del Hot Sct,1,pcs,7000.0,7000.0,7000.0,False,fin_2c455f8fa40940248bee2a7aafc516d1
+del monte exthotsach,DEL MONTE EXTHOTSACH,1,,7100.0,7100.0,7100.0,False,fin_5569a7eab34c436fb0e83f7ace47fde2
+del tomat,Del tomat,2,pcs,17200.0,17200.0,17200.0,False,"fin_6cd650e9dcac48c9b25616ccf88d54d7, fin_b1788580265f4f52809c0e12b5c1d043"
+delhot,Delhot,1,pcs,23700.0,23700.0,23700.0,False,fin_cd53c1ce17b64da687837c0f05f4ef29
+deli bb,Deli BB,1,pcs,34000.0,34000.0,34000.0,False,fin_261dd28c3e3145648ec759b34ff7f57e
+deli bbq,Deli BBQ,2,"kg, pcs","34000.0, 68000.0",34000.0,68000.0,True,"fin_36051726140b4d77ab2fe2dd7b2f6348, fin_abc044e4df5b42219f0fc4316127f1d8"
+deli hot,Deli Hot,1,kg,23700.0,23700.0,23700.0,False,fin_abc044e4df5b42219f0fc4316127f1d8
+deli hot saos,Deli Hot Saos,1,pcs,21000.0,21000.0,21000.0,False,fin_36051726140b4d77ab2fe2dd7b2f6348
+deli tomat,Deli Tomat,1,kg,17200.0,17200.0,17200.0,False,fin_abc044e4df5b42219f0fc4316127f1d8
+dell bbq,Dell BBQ,1,kg,30000.0,30000.0,30000.0,False,fin_4a9a712dd1ad4c4983d4003bae3ae3ea
+dell hot,Dell Hot,1,kg,31700.0,31700.0,31700.0,False,fin_4a9a712dd1ad4c4983d4003bae3ae3ea
+delmonte cabe,Delmonte Cabe,1,,23000.0,23000.0,23000.0,False,fin_56e495e5f56e4abfaa27144c7140e81c
+delmonte extra hot,Delmonte Extra Hot,2,"pak, pcs","7400.0, 24400.0",7400.0,24400.0,True,fin_ad94afc39e7d4d92b10078d2b4125b7c
+delmonte saus cabe,Delmonte Saus Cabe,1,Kg,26500.0,26500.0,26500.0,False,fin_9e849aa34952451cab78d76d
+delmonte tomat,Delmonte Tomat,1,,17000.0,17000.0,17000.0,False,fin_56e495e5f56e4abfaa27144c7140e81c
+delmontebarbeque250g,DELMONTEBARBEQUE250G,1,pcs,9700.0,9700.0,9700.0,False,fin_986af6fb55fd4f8192e5303459fd71a9
+depan dtf logo 6cm x 8cm,Depan->DTF Logo(6cm x 8cm),1,pcs,10000.0,10000.0,10000.0,False,fin_691dfe82f5ef4b6890424e8fa31be57d
+desakubwgptihbbk100g,DESAKUBWGPTIHBBK100G,2,pcs,23800.0,23800.0,23800.0,False,"fin_9795304599854a3daf49be7e553a89d6, fin_a5f139dbe9824991a786a0056b19654f"
+dey hod,Dey Hod,1,kg,23700.0,23700.0,23700.0,False,fin_4ff32903d26e4fd4aca33931700c72bf
+dfamonl,Dfamonl,2,pcs,32.0,32.0,32.0,False,"fin_694e01bb10754642bd200fa65e90d0e1, fin_eb31551ffc124a92b8bbd9eb4cc911ef"
+diamond 1 cup,Diamond 1 Cup,1,pcs,8500.0,8500.0,8500.0,False,fin_b26d3dfac80e40008261e97e1c8c9571
+diamond plain946,DIAMOND PLAIN946,1,,31850.0,31850.0,31850.0,False,fin_1306993a67b84d2fa4e6430d07e695ad
+discount biokul st straw 80,DISCOUNT BIOKUL ST STRAW 80,1,pcs,,,,False,fin_e775931577aa433681205b09dcede52b
+discount ph fac tissue 1000s,DISCOUNT PH FAC TISSUE 1000S,1,pcs,,,,False,fin_e775931577aa433681205b09dcede52b
+djoe hoa cap ikan merah,Djoe Hoa Cap Ikan Merah,1,pcs,38900.0,38900.0,38900.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+djuho,Djuho,2,pcs,41000.0,41000.0,41000.0,False,"fin_47f9b830bc16427283c0aae04dfa7afb, fin_d9905afb412346a5acbb79a46049673e"
+dollar pp,Dollar PP,1,pcs,14000.0,14000.0,14000.0,False,fin_5769a50709414821b9c858bfe74db312
+dollar pp 15x30 03 1 pak,DOLLAR PP 15X30-03 1/ PAK,2,"pak, pcs",14000.0,14000.0,14000.0,False,"fin_6480b9c72d3a4ca4b7da6cab25e7115d, fin_b6827e3fbee04336ae9614c80908fce5"
+donatku 7307 green leaf,Donatku 7307 Green Leaf,1,bh,39000.0,39000.0,39000.0,False,fin_f3c6ac0e9b3544a19e5ba496e72bf03f
+dramond 1cup,Dramond 1cup,1,pcs,18000.0,18000.0,18000.0,False,fin_eb0dd995b0ac488d9595996da9318aeb
+drip chocolate,Drip Chocolate,1,pcs,156000.0,156000.0,156000.0,False,fin_7c4302f725854784b179c8d318956605
+drip matcha,Drip Matcha,4,pcs,242000.0,242000.0,242000.0,False,"fin_36051726140b4d77ab2fe2dd7b2f6348, fin_5619cb2263a140b79232b57c1abded59, fin_7c4302f725854784b179c8d318956605, fin_b6aee424f2d8411ab0d1be7e1580c8e9"
+dripp coklat,Dripp coklat,1,pcs,156000.0,156000.0,156000.0,False,fin_93ffd31161414943b0e411ed357a080e
+dripp coklat prem,Dripp coklat prem,1,pcs,156000.0,156000.0,156000.0,False,fin_d8ee020453e3471b9372818a7a09d5b6
+dripp matcha,Dripp matcha,1,pcs,242000.0,242000.0,242000.0,False,fin_cd53c1ce17b64da687837c0f05f4ef29
+dripp powder coklat,Dripp Powder Coklat,3,pcs,164600.0,164600.0,164600.0,False,"fin_2c10a5663da54138aa2ed804e16d1cdd, fin_994e910d7b9d4eff8461f37ff15db962, fin_ad94afc39e7d4d92b10078d2b4125b7c"
+dripp powder matcha,Dripp Powder Matcha,3,pcs,255200.0,255200.0,255200.0,False,"fin_2c10a5663da54138aa2ed804e16d1cdd, fin_994e910d7b9d4eff8461f37ff15db962, fin_ad0f1cf8f4f24bb8b1a2e349e2ad5fe8"
+dus sekat 4,Dus Sekat 4,1,pak,102000.0,102000.0,102000.0,False,fin_3d7606ee4251436da99d8775493d7d58
+duwang,duwang,1,,,,,False,fin_0caee204df9a41babf4321ac59d53cfd
+ebi,"Ebi, Ebi.",7,"kg, pcs","9000.0, 108000.0",9000.0,108000.0,True,"fin_13951db02e4a4a46a8e67dbc20c0b3f1, fin_64be442f8892494a9f4c9f9790ead9b1, fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_b81490fffe744b75859bb2292f992b76, fin_ca5e73f5421e4806acacff5fef08c68b, fin_cd26f905da3a4af5b0a3065ac9aded95, fin_db7b96f6a40444d58601ed2191d38142"
+ekonomi pencuci piring,Ekonomi Pencuci Piring,2,pcs,"7100.0, 14200.0",7100.0,14200.0,True,"fin_c1506ecf4e89437dbecd431137e2b4e3, j571r3dmtnjx9ran399gkpmj0184eyf7"
+ekonomi pp nanas 630,EKONOMI PP NANAS 630,2,pcs,7100.0,7100.0,7100.0,False,fin_9795304599854a3daf49be7e553a89d6
+ekonomi pp sereh 650,EKONOMI PP SEREH 650,1,pcs,7100.0,7100.0,7100.0,False,fin_ffae3c26e4d74fe3a602a934faba6a81
+elmer african black repack,Elmer African Black 500 GR Repack,1,,110200.0,110200.0,110200.0,False,fin_e44fb3a9d458464c8bf09725c4ee43bd
+elmer african red,Elmer African Red,1,pcs,132800.0,132800.0,132800.0,False,fin_75588a7996d84d53a633e816acbb92cd
+elpiji,elpiji,1,pcs,20000.0,20000.0,20000.0,False,fin_3bba1b335913498bb5fa3bf3c8d9339f
+ember ice baccat 36t,Ember Ice Baccat 36t,1,pcs,97500.0,97500.0,97500.0,False,fin_a700f7856b6540a69355686c2fcc4f5e
+es batu,Es Batu,39,"Bal, Ball, Kg, Kilo, gram, kg, pack","30.0, 1000.0, 1250.0, 1500.0, 2500.0, 15000.0, 25000.0",30.0,25000.0,True,"0ef66a0f-4e5c-4e83-a6cb-1912841df910, 6d90e362-91f6-468c-a721-be7e8a71dc8b, 8f607ef6-d1d4-4ebb-97ea-f05b21e7058d, a11799c9-e6ce-4e36-81ca-6ecdfebbfbf4, f5785819-28c7-4066-b80b-c654bc4cd907, fb45fb3e-d450-4287-8dfc-7086b8b4627b, fe40bca5-deff-4fd7-8f56-9bcba703d5cc, fin_0767ad9bd39145509bd2464d679860a7, fin_0a31d1ad20d246baa1dac12d3525e5bc, fin_0eaa69cef7a645fc9da08082cd28b59d, fin_16cdc9ca2d6d484bb9bac0194ab6336e, fin_20866cc2d7df4da4a7ac722ba9d246be, fin_23a1d211b6484d328dd42e4fea89e49d, fin_2e4a29d3759c4049846d16a5, fin_33655bae9a4c4dcbb116da577732ee58, fin_35a1631f7ce44b2f9e5eb2dbb72d1a6f, fin_3cead28913424aa98970e182, fin_44fd784472f14caaa75792927abcdb76, fin_49d04a4942004937a58761020cf7e4e0, fin_503fbc1000a1406da6eb3b0019fb0897, fin_51bb27dfbb484baea3b1a95029e3e015, fin_5d97bac4abca4ccdb67a9573ee6f5f9d, fin_5da5557abab64dc08446963f243621e8, fin_6376b3343b0f455ea7ba6fb9114e75ba, fin_678c141703f645b2be3054fae49604cf, fin_69cac33203cf4055a03594f62b215288, fin_920825ea382241d399e4593667ba2b81, fin_96fa230c838e4c23926a5078db38a8e2, fin_98d9bd80aee846019cf2be8967b910eb, fin_9bfbca23185e45979f23f15259ce8308, fin_a9ae8c12acd94d358fc290a465901446, fin_ae369b71d7094f1f9256760e5e182168, fin_c0e1623663b04c119a77147a094b8359, fin_c0f815bd66af4d18baa33c0225d12152, fin_c8a6aaaec08d42b4a5cdcab865242deb, fin_cc0ef352607d4e75a1d2aa013871683a, fin_d7840d3c9cf1458083a7592a39dfb089, fin_e2966beabc584ee9a15f550aafd845cf, j573z75dcf1vfzhj4kjt46tevx8562gy"
+ff coconut,"FF Coconut, Ff coconut",4,"ctn, karton","220000.0, 223000.0, 446000.0",220000.0,446000.0,True,"fin_0ef240d774b142bfb25f649c4893f19b, fin_2c2ae7552b314f3882cb63d30e139cc5, fin_4a9a712dd1ad4c4983d4003bae3ae3ea, fin_6cd650e9dcac48c9b25616ccf88d54d7"
+ff coconut uht,"FF COCONUT UHT, FF COCONUT UHT 946ML",2,pcs,20375.0,20375.0,20375.0,False,"fin_80dfd8e3d4574060933597cd54c34eb2, fin_d37941893b51423e86c29d63a4b2f1a6"
+filei paha,Filei Paha,1,kg,51000.0,51000.0,51000.0,False,fin_1a83923765124847b0331988062d9fe5
+filet paha,Filet Paha,1,kg,48000.0,48000.0,48000.0,False,fin_06eb54e5a186481e8beb9cb332b959ae
+fillet dada ayam giling,Fillet Dada Ayam Giling,1,pack,15600.0,15600.0,15600.0,False,fin_75d2453acea24ae588b8d761319b802f
+fillet paha,"FILLET PAHA, Fillet Paha",8,pcs,"45000.0, 47500.0, 48500.0",45000.0,48500.0,True,"fin_062375530b38405ab0e680fbf3819654, fin_713e7fa7505a4c3f86ea1a7439904ead, fin_8fbbd480b3624b50b87597bf36a1f273, fin_c8666a7c229e4d83a63c9d438255fd47, fin_c9fa0aabc7e4427fa0f2220c15967f2e, fin_d7c667d1e7154545bd1ebecd60586021, fin_f644d7988fa9466d961a9cba1d4b97a2, fin_f753f98d15814c9b9ff532ba4aa8b94e"
+fillet paha bawah,Fillet Paha Bawah,1,kg,47000.0,47000.0,47000.0,False,fin_787d91a5f26d41b68326505b2b3d276a
+fillet paha blp atas,Fillet Paha (BLP ATAS),1,kg,46000.0,46000.0,46000.0,False,fin_787d91a5f26d41b68326505b2b3d276a
+filma margarine,Filma Margarine,1,pcs,5950.0,5950.0,5950.0,False,j57armyjy4zpq9jnx7mvw45ddd84f583
+flores bajawa fw,flores bajawa fw,1,,285000.0,285000.0,285000.0,False,fin_18e75e6d835d4304b8dbe11bbc122061
+fm,FM,1,karton,255000.0,255000.0,255000.0,False,fin_be4674775f1a4c6ba3132429d9049020
+fm 6f,FM 6F,2,karton,250000.0,250000.0,250000.0,False,"fin_47f9b830bc16427283c0aae04dfa7afb, fin_d9905afb412346a5acbb79a46049673e"
+fm bf,FM BF,1,,22500.0,22500.0,22500.0,False,fin_6a25475ab8d34540aa0847595e0944f2
+fm d,"FM D, Fm D, Fm d, fm D.",7,"karton, pcs","21000.0, 235000.0, 239000.0",21000.0,239000.0,True,"fin_15a8b24f95ce4a60bbb8559e12eba098, fin_261dd28c3e3145648ec759b34ff7f57e, fin_32dae1758f4c41e2a4ae41ac0f161eab, fin_a7b3ae8bfeab4f758e5940b256cae6d3, fin_c5dc253ae06646f09b36d4d7af12fba4, fin_cd53c1ce17b64da687837c0f05f4ef29, fin_d8ee020453e3471b9372818a7a09d5b6"
+fm ef,Fm Ef,3,"karton, pcs","22500.0, 250000.0",22500.0,250000.0,True,"fin_6f13adc4b14a41eb837d5be979685c13, fin_7d8a41e1dd7d402b8e6530917f9d9c40, fin_9059a51473d84a6280fddb8d080785d1"
+fm gf,"FM GF, FM gf, Fm gf",4,"ctn, karton","22500.0, 250000.0, 255000.0",22500.0,255000.0,True,"fin_0ef240d774b142bfb25f649c4893f19b, fin_3af4e3f675c4467b8e16a167b5b76548, fin_7f5e565577174382a5c684100a3e24a6, fin_eed723016a454a80a6f8bedb9ebcf1d5"
+fm gp,Fm Gp,1,,255000.0,255000.0,255000.0,False,fin_b65b433b3b8249a89696d41dedc4aaff
+fn d,Fn D,1,pcs,21000.0,21000.0,21000.0,False,fin_77222296bbaf444ea1119beed9834a06
+fn gf,"Fn GF, Fn Gf, Fn gf",4,"karton, l, pcs","22500.0, 25520.0, 255000.0",22500.0,255000.0,True,"fin_4ff32903d26e4fd4aca33931700c72bf, fin_903b1bef8776465bbec651e540962df0, fin_abc044e4df5b42219f0fc4316127f1d8, fin_f1241eaca6134b7fa88d03522def0a8e"
+fn gr,Fn gr,1,karton,255000.0,255000.0,255000.0,False,fin_a5d47d33bb9940baa9e915cd8c838270
+formula sgconfident3s,FORMULA SGCONFIDENT3S,1,,12950.0,12950.0,12950.0,False,fin_479c0878dfcf4071a637110164e544ed
+french fries shoestring,"French Fries Shoestring 2,5 Kg",1,pack,79000.0,79000.0,79000.0,False,j577ttmdzxc6aa3p2n6p61kp9584nm8c
+freshmilk greendfields,Freshmilk Greendfields,1,pcs,22500.0,22500.0,22500.0,False,fin_23c952dd540d417e8b608b2eee4fb38b
+freshmilk greenfield,Freshmilk Greenfield,1,pcs,22500.0,22500.0,22500.0,False,j57av0x97rbcjbc4m6j0s3bfmn85063t
+frisianflag coconut delight,Frisianflag Coconut Delight,6,"karton, pcs","18066.67, 19500.0, 220000.0, 223000.0",18066.666666666668,223000.0,True,"fin_0bc36ac7dc0e42258867790ef177a212, fin_903ddb5cb6244280a3b2d059597ed4eb, fin_c1e2e5bd6db148a19623561582b59cc0, j576hhyvft4xc1ha6kcgv7tafx8566yd, j57adfr0z0dg0h4zvfdmbfsetn84f3jr, j57av0x97rbcjbc4m6j0s3bfmn85063t"
+frn greenfield,Frn Greenfield,1,pcs,22500.0,22500.0,22500.0,False,fin_1f3b8e8e3b5d40afb37f335ab6abe242
+front dtf logo,Front DTF Logo,1,pcs,40000.0,40000.0,40000.0,False,fin_8b1c63522826432797b4e6bc7d59ca76
+garam dolpin besar,Garam Dolpin Besar,1,pcs,8400.0,8400.0,8400.0,False,fin_75588a7996d84d53a633e816acbb92cd
+gas,"Gas, Gas 3 Kg, Gas 3Kg, gas",8,"pcs, tabung","18000.0, 20000.0, 30000.0",18000.0,30000.0,True,"90ea76f6-015b-4113-87aa-877203f83959, fin_23d9d95660a8412cbe268eec4018b112, fin_25911855d4a84564bfbb42dd0a2aeca6, fin_572bb73daae645c08e6d9b1d45d7ecf1, fin_6da4e21849ae45989cb7e7c38adec318, fin_773ea7586c87489c8159316a8668a4c1, fin_8b71064812f140e1a59ca44f6565b9b2, j576jrr09jwb91bhx4j92qh9x584fzq6"
+gas elpiji,gas elpiji,3,pcs,20000.0,20000.0,20000.0,False,"fin_2320b60f35b8413088be709098483f67, fin_886e3f3ea6c547999986c6d6864a8a6c, fin_f04ef733e41e47279b4d469ff4488edf"
+gas isi,GAS ISI 3KG,1,,20000.0,20000.0,20000.0,False,fin_fa9976c797454599866e1ae9910f5080
+gentle gen liq paris,GENTLE GEN LIQ PARIS,1,pcs,10500.0,10500.0,10500.0,False,fin_9f23b762eb2a494baa48265207b541d3
+gg pgarden sch6x80ml,GG PGARDEN SCH6X80ML,1,,11900.0,11900.0,11900.0,False,fin_fb2d7ce70bca4c4c8e54577ec7af1778
+gilingan mie vicenza,Gilingan mie Vicenza,1,bh,332000.0,332000.0,332000.0,False,fin_f3c6ac0e9b3544a19e5ba496e72bf03f
+gold farm mix veg500,GOLD'FARM MIX VEG500,3,pcs,34950.0,34950.0,34950.0,False,"fin_018b365e186a436ca54ca3b5192e79be, fin_0aad7d5028ca4636b655fd4da2d20c99, fin_6fbd5ca62be1400f82a9e06b76b3a054"
+gold label,"Gold Label, Gold label, gold label",11,pcs,"57000.0, 57500.0, 115000.0",57000.0,115000.0,True,"fin_04f2684f42a04c1991a94173927f55ea, fin_2c2ae7552b314f3882cb63d30e139cc5, fin_3af4e3f675c4467b8e16a167b5b76548, fin_4a9a712dd1ad4c4983d4003bae3ae3ea, fin_6cd650e9dcac48c9b25616ccf88d54d7, fin_7cfbf25a8c1e4f53ac74d9999e6fe31c, fin_9059a51473d84a6280fddb8d080785d1, fin_b26d3dfac80e40008261e97e1c8c9571, fin_c5dc253ae06646f09b36d4d7af12fba4, fin_cd53c1ce17b64da687837c0f05f4ef29, fin_eed723016a454a80a6f8bedb9ebcf1d5"
+golden farm mix vegetable,Golden Farm Mix Vegetable,1,pcs,49900.0,49900.0,49900.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+golden farm mixed ve,GOLDEN FARM MIXED VE,1,pcs,55000.0,55000.0,55000.0,False,fin_9f23b762eb2a494baa48265207b541d3
+golden farm mixed vegetables,GOLDEN FARM MIXED VEGETABLES,2,pcs,"33000.0, 60000.0",33000.0,60000.0,True,"fin_44e422f6ab0c419da2a7def12d0e266c, fin_6c308dfdc8c74a8aa0129453f0c5c240"
+goldlabel,"Goldlabel, goldlabel",5,pcs,"57000.0, 57500.0, 115000.0",57000.0,115000.0,True,"fin_32dae1758f4c41e2a4ae41ac0f161eab, fin_36051726140b4d77ab2fe2dd7b2f6348, fin_b6aee424f2d8411ab0d1be7e1580c8e9, fin_cfae9991083346d3842999ea8a04bb65, fin_f1241eaca6134b7fa88d03522def0a8e"
+greenfields fresh milk,Greenfields Fresh Milk 1 L,1,,23700.0,23700.0,23700.0,False,fin_e44fb3a9d458464c8bf09725c4ee43bd
+guarose b,Guarose B,1,pcs,57000.0,57000.0,57000.0,False,fin_36051726140b4d77ab2fe2dd7b2f6348
+gula aren,"Gula Aren, Gula aren",13,"bks, pcs","11200.0, 13000.0, 28000.0, 29000.0, 30000.0, 31500.0, 32000.0, 32500.0, 33500.0, 63000.0, 64000.0, 68000.0, 74000.0",11200.0,74000.0,True,"fin_13951db02e4a4a46a8e67dbc20c0b3f1, fin_34c0125351914541bec23e7a244e7e27, fin_5d863d4da0f449718c3974f5abb99610, fin_624a0b2840fa4dcc82a4337e7ebca173, fin_6793cbbe2e7f4ab99ee6a218b35bd69a, fin_6d6797da839742849f107a7a8d7e00ca, fin_aac51739e49c4ccfa1cce78286b5b258, fin_b0f830a7f1b2484bbcfdbd2e46520d35, fin_cc98f438c8f3475aa209142ed2a81102, fin_d863b13f37be48668585cca0013868eb, fin_d9883252503a4805bc18eaf0143441d2, fin_db3a28eb011d41d1bd14da6eb79ed891, fin_f07705800dcf4a33a91f82dfef85a36c"
+gula gkp los,Gula GKP Los,1,,18500.0,18500.0,18500.0,False,fin_56e495e5f56e4abfaa27144c7140e81c
+gula kiloan,Gula kiloan,1,kg,18000.0,18000.0,18000.0,False,fin_7f5e565577174382a5c684100a3e24a6
+gula pasir putih,Gula Pasir Putih,1,kg,19000.0,19000.0,19000.0,False,j57av0x97rbcjbc4m6j0s3bfmn85063t
+gula vit,"Gula Vit, Gula vit",2,"kg, pcs","10800.0, 18000.0",10800.0,18000.0,True,"fin_15a8b24f95ce4a60bbb8559e12eba098, fin_abc044e4df5b42219f0fc4316127f1d8"
+h40702 rp 29000 x 1 0,H40702 RP 29000 X 1.0,1,pcs,6400.0,6400.0,6400.0,False,fin_0245d9b092ed4e3ab68b46da5e81c093
+happy egg tlromega10,HAPPY EGG TLROMEGA10,2,pcs,32950.0,32950.0,32950.0,False,fin_2349a479212b47139b8d7da1512e7388
+happyegg telor omega,HappyEgg Telor Omega,1,pack,29950.0,29950.0,29950.0,False,j57btqd6c419t2mhq73x4qah1d84nqsx
+hi cook tabung gas mini portabel,Hi-Cook Tabung Gas Mini Portabel,1,pcs,32600.0,32600.0,32600.0,False,fin_7d44b624bda04e10afb004801ab16e8f
+hod,Hod,1,pcs,7000.0,7000.0,7000.0,False,fin_f1241eaca6134b7fa88d03522def0a8e
+hogo rp 39950,HOGO RP 39950,1,pcs,11000.0,11000.0,11000.0,False,fin_2a4feb419df0431e876c0d6c3cd0272d
+hot,Hot,4,pcs,"7000.0, 21000.0",7000.0,21000.0,True,"fin_0bc36ac7dc0e42258867790ef177a212, fin_9afe38c5d6b945caa074bf97fc3d1f06, fin_b1788580265f4f52809c0e12b5c1d043, fin_d8ee020453e3471b9372818a7a09d5b6"
+hot sacht,Hot Sacht,2,pcs,7000.0,7000.0,7000.0,False,"fin_abc044e4df5b42219f0fc4316127f1d8, fin_cfae9991083346d3842999ea8a04bb65"
+hot sct,Hot sct,1,pcs,7000.0,7000.0,7000.0,False,fin_7f5e565577174382a5c684100a3e24a6
+hp 0812 2287,Hp.0812 2287,2,pcs,5454.0,5454.0,5454.0,False,"fin_694e01bb10754642bd200fa65e90d0e1, fin_eb31551ffc124a92b8bbd9eb4cc911ef"
+ht0470 rp 22800,HT0470 RP 22800,1,pcs,6400.0,6400.0,6400.0,False,fin_2a4feb419df0431e876c0d6c3cd0272d
+idaho shoestring,"IDAHO SHOESTRING, IDAHO SHOESTRING 2KG, Idaho Shoestring",6,"kg, pcs","32500.0, 65000.0",32500.0,65000.0,True,"fin_22d5a4e7d5a642aba4b494afc19429e4, fin_45abfa2a42ab4278894059220155cff5, fin_83e913d6e23a4418a73393ef3feddeee, fin_c8e702ed581841b9871cf08911777606, j57ch52s43r1yx5wfv6f5sh421851t91, j57ctfb45ha12dpbrh1241j53n84w3cj"
+idola 15,Idola 15,2,pcs,"14000.0, 16000.0",14000.0,16000.0,True,"fin_9140a42cc04f464f99d2afa76b0d2656, fin_9afe38c5d6b945caa074bf97fc3d1f06"
+idola 1s,Idola 1s,1,pcs,32000.0,32000.0,32000.0,False,fin_eb0dd995b0ac488d9595996da9318aeb
+idola uk 15,Idola Uk. 15,1,pcs,14000.0,14000.0,14000.0,False,fin_7c4302f725854784b179c8d318956605
+ikan panda,Ikan Panda,1,pcs,83300.0,83300.0,83300.0,False,fin_36051726140b4d77ab2fe2dd7b2f6348
+ipak max lemon,Ipak Max Lemon,1,pcs,44500.0,44500.0,44500.0,False,fin_eb0dd995b0ac488d9595996da9318aeb
+item 610502266,ITEM # 610502266,1,pcs,500.0,500.0,500.0,False,fin_2a4feb419df0431e876c0d6c3cd0272d
+j,J.,1,pcs,2500.0,2500.0,2500.0,False,fin_b6bde5f74cc14a1b92ef69ac85bbeae4
+j emo,J. Emo,2,pcs,28000.0,28000.0,28000.0,False,"fin_b81490fffe744b75859bb2292f992b76, fin_db7b96f6a40444d58601ed2191d38142"
+j jemo,J.Jemo,2,pcs,28000.0,28000.0,28000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_ca5e73f5421e4806acacff5fef08c68b"
+j kemangi,J. kemangi,1,pcs,2000.0,2000.0,2000.0,False,fin_563af3ced4f14f4a8a0aed5eb7b74a33
+j lemo,"J. Lemo, J. lemo",2,pcs,28000.0,28000.0,28000.0,False,"fin_1a66dc897bd541e1a88ce2a62ce3ad68, fin_2f242f44c36f40d2b59c2401fb05a74e"
+j lemon,J. Lemon,1,pcs,2800.0,2800.0,2800.0,False,fin_13951db02e4a4a46a8e67dbc20c0b3f1
+j limo,"J. limo, j. limo",2,"kg, pcs","26000.0, 28000.0",26000.0,28000.0,True,"fin_6648175af1ff4671b83bbe064d520a7f, fin_6a55e4a5b1df4aad9db0d50fed3b446a"
+j nipis,J. nipis,1,kg,24000.0,24000.0,24000.0,False,fin_5d863d4da0f449718c3974f5abb99610
+j temo v,J. Temo. v,2,kg,28000.0,28000.0,28000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+jempol kltpgst gr615,JEMPOL KLTPGST GR615,1,,11150.0,11150.0,11150.0,False,fin_80dfd8e3d4574060933597cd54c34eb2
+jeruk limau,Jeruk limau,1,,28000.0,28000.0,28000.0,False,fin_db3a28eb011d41d1bd14da6eb79ed891
+jeruk limo,Jeruk Limo,1,kg,28000.0,28000.0,28000.0,False,fin_fad475c1e8b04a0193bd21aec3139351
+jimay v,Jimay - v,2,kg,48000.0,48000.0,48000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+jj apple,JJ Apple,1,pcs,29800.0,29800.0,29800.0,False,fin_0ef240d774b142bfb25f649c4893f19b
+jmimay,Jmimay,4,pcs,48000.0,48000.0,48000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_b81490fffe744b75859bb2292f992b76, fin_ca5e73f5421e4806acacff5fef08c68b, fin_db7b96f6a40444d58601ed2191d38142"
+jolly besar,Jolly Besar,1,pak,31000.0,31000.0,31000.0,False,fin_23c952dd540d417e8b608b2eee4fb38b
+jolly pop up tissue 160s,Jolly Pop Up Tissue 160s,1,pak,31000.0,31000.0,31000.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+juho,Juho,3,pcs,39000.0,39000.0,39000.0,False,"fin_9afe38c5d6b945caa074bf97fc3d1f06, fin_b1788580265f4f52809c0e12b5c1d043, fin_d8ee020453e3471b9372818a7a09d5b6"
+jungle apel,"Jungle Apel, Jungle apel",2,pcs,"29000.0, 29800.0",29000.0,29800.0,True,"fin_2c2ae7552b314f3882cb63d30e139cc5, fin_cd53c1ce17b64da687837c0f05f4ef29"
+jungle apie,Jungle / Apie,1,pcs,29800.0,29800.0,29800.0,False,fin_b6aee424f2d8411ab0d1be7e1580c8e9
+jungle apple,Jungle Apple,1,pcs,29800.0,29800.0,29800.0,False,fin_903ddb5cb6244280a3b2d059597ed4eb
+jungle j aple,"Jungle J. Aple, Jungle-J Aple",2,pcs,29800.0,29800.0,29800.0,False,"fin_3af4e3f675c4467b8e16a167b5b76548, fin_a5d47d33bb9940baa9e915cd8c838270"
+jungle juice apple,Jungle Juice Apple,1,bottle,29800.0,29800.0,29800.0,False,j577ttmdzxc6aa3p2n6p61kp9584nm8c
+jungley aple,Jungley Aple,1,pcs,29800.0,29800.0,29800.0,False,fin_cfae9991083346d3842999ea8a04bb65
+k orange,K. orange,1,pcs,65000.0,65000.0,65000.0,False,fin_b6bde5f74cc14a1b92ef69ac85bbeae4
+kantong plastik besar u35,KANTONG PLASTIK BESAR U35,2,pcs,500.0,500.0,500.0,False,"fin_44e422f6ab0c419da2a7def12d0e266c, fin_c8e702ed581841b9871cf08911777606"
+kantong plastik sedang u24,KANTONG PLASTIK SEDANG U24,8,pcs,,,,False,"fin_09b8996e16824347b3430cff73f2f9f6, fin_12ea489e3ea247c39e8364e96402b7c7, fin_19bf63f7f76d47ba9c59851a370577c7, fin_2ee28d042dff4bfeaf6777d735dea271, fin_6c308dfdc8c74a8aa0129453f0c5c240, fin_b1306f3beeeb4c3dbca2e52b4cfe0ebe, fin_b7f7ee3372d74345b28d8788214b4649, fin_be8fcfd6e50a4010ad505975076277ce"
+kaos,Kaos,1,pcs,39000.0,39000.0,39000.0,False,fin_8b1c63522826432797b4e6bc7d59ca76
+kartu nama 1 1 sisi tai,KARTU NAMA 1 1 SISI TAI,1,box,30000.0,30000.0,30000.0,False,fin_7bec2c1405ac4b278855cb48ecda436c
+kayumanisbtg50gr,KAYUMANISBTG50GR,1,pcs,7900.0,7900.0,7900.0,False,fin_bb0761677b1e47e2be813ad697fe2200
+kecap anggu manis,Kecap Anggu Manis,1,pcs,20800.0,20800.0,20800.0,False,fin_abc044e4df5b42219f0fc4316127f1d8
+kecap anggur,"Kecap Anggur, Kecap anggur",5,pcs,"20800.0, 62400.0",20800.0,62400.0,True,"fin_090990053cb44a0c879d2e0c1b4fbc6f, fin_2c455f8fa40940248bee2a7aafc516d1, fin_3af4e3f675c4467b8e16a167b5b76548, fin_47f9b830bc16427283c0aae04dfa7afb, fin_d9905afb412346a5acbb79a46049673e"
+kecap anggur manis,"Kecap Anggur Manis, Kecap anggur manis, kecap anggur manis",6,pcs,20800.0,20800.0,20800.0,False,"fin_534791307e0b4b54a2745975278ecfc3, fin_7cfbf25a8c1e4f53ac74d9999e6fe31c, fin_9afe38c5d6b945caa074bf97fc3d1f06, fin_b26d3dfac80e40008261e97e1c8c9571, fin_c5dc253ae06646f09b36d4d7af12fba4, fin_f1241eaca6134b7fa88d03522def0a8e"
+kecap asin abc,"Kecap Asin ABC, Kecap Asin ABC 620ML, kecap asin abc",5,"bottle, pcs","17800.0, 18500.0",17800.0,18500.0,True,"fin_9afe38c5d6b945caa074bf97fc3d1f06, fin_b1788580265f4f52809c0e12b5c1d043, fin_c5dc253ae06646f09b36d4d7af12fba4, fin_d8ee020453e3471b9372818a7a09d5b6, j575svjz9s6faapfqnabmc94fd84mhdc"
+kecap asin drak soy,Kecap Asin Drak soy,1,pcs,43000.0,43000.0,43000.0,False,fin_534791307e0b4b54a2745975278ecfc3
+kecap bango,Kecap Bango,1,pcs,23500.0,23500.0,23500.0,False,fin_3af4e3f675c4467b8e16a167b5b76548
+kecap ikan,Kecap Ikan,1,bottle,30400.0,30400.0,30400.0,False,j575pkg3ajnjpqw7d1s5reb7jh84f724
+kecap inggis,Kecap Inggis,1,pcs,45000.0,45000.0,45000.0,False,fin_b1788580265f4f52809c0e12b5c1d043
+kecap manis,Kecap Manis,2,pcs,23500.0,23500.0,23500.0,False,"fin_b1788580265f4f52809c0e12b5c1d043, fin_b6aee424f2d8411ab0d1be7e1580c8e9"
+kecap manis anggur,Kecap manis anggur,1,pcs,20800.0,20800.0,20800.0,False,fin_93ffd31161414943b0e411ed357a080e
+kemangi,"Kemangi, kemangi",23,"ikat, pcs","1500.0, 1666.67, 1800.0, 2000.0, 2400.0, 10000.0, 15000.0, 52000.0",1500.0,52000.0,True,"fin_010674d3766a45b7a00570bd0b4c5f02, fin_11cef6e6e16841828a50bae8daec3c7c, fin_1a66dc897bd541e1a88ce2a62ce3ad68, fin_34c0125351914541bec23e7a244e7e27, fin_42a18cf377ad4e71b1d506b1cced1271, fin_5d863d4da0f449718c3974f5abb99610, fin_6033c24e9e6147edaf8dd2229b162aea, fin_621659dfbf204075b77002836e0f7c03, fin_6648175af1ff4671b83bbe064d520a7f, fin_6a55e4a5b1df4aad9db0d50fed3b446a, fin_6d6797da839742849f107a7a8d7e00ca, fin_7cb80bcd303741779cae7c55dbe8b08a, fin_869d390ce15148efabeba4c4915317a6, fin_a930816eae0b4500ba9bf4fac84bc9e8, fin_aac51739e49c4ccfa1cce78286b5b258, fin_b0f830a7f1b2484bbcfdbd2e46520d35, fin_b2c08b5f8c4c4b0fbbdd61469a91e343, fin_b81490fffe744b75859bb2292f992b76, fin_cae65f7801cd4d59a2af025438d60286, fin_cc98f438c8f3475aa209142ed2a81102, fin_db3a28eb011d41d1bd14da6eb79ed891, fin_db7b96f6a40444d58601ed2191d38142, fin_f07705800dcf4a33a91f82dfef85a36c"
+kemangi instant,Kemangi Instant,2,pcs,"5000.0, 5500.0",5000.0,5500.0,True,"fin_699c3756837c47ce9d24e44366fcf565, fin_cafdc192249f426d941f49d12189e22c"
+kemazi,Kemazi,2,pcs,2000.0,2000.0,2000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_ca5e73f5421e4806acacff5fef08c68b"
+kemazi v,Kemazi. v,2,pcs,2000.0,2000.0,2000.0,False,"fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_cd26f905da3a4af5b0a3065ac9aded95"
+kemiri,Kemiri,1,pcs,6600.0,6600.0,6600.0,False,fin_13951db02e4a4a46a8e67dbc20c0b3f1
+kentang,"Kentang, kentang",10,pcs,79000.0,79000.0,79000.0,False,"fin_32dae1758f4c41e2a4ae41ac0f161eab, fin_4a9a712dd1ad4c4983d4003bae3ae3ea, fin_534791307e0b4b54a2745975278ecfc3, fin_5619cb2263a140b79232b57c1abded59, fin_6f13adc4b14a41eb837d5be979685c13, fin_7f5e565577174382a5c684100a3e24a6, fin_9059a51473d84a6280fddb8d080785d1, fin_9140a42cc04f464f99d2afa76b0d2656, fin_c5dc253ae06646f09b36d4d7af12fba4, fin_d8ee020453e3471b9372818a7a09d5b6"
+kentang 2 5,Kentang 2.5,2,pcs,79000.0,79000.0,79000.0,False,"fin_2c455f8fa40940248bee2a7aafc516d1, fin_93ffd31161414943b0e411ed357a080e"
+kentang shoestring,Kentang Shoestring,9,pcs,"65000.0, 79000.0",65000.0,79000.0,True,"fin_0ceb63782f0e4abb99096091043b8ce4, fin_10a615ad201c4f30ba65f7b1ef88b696, fin_2097b39037834a0fa497b66ef0a0aa7d, fin_36051726140b4d77ab2fe2dd7b2f6348, fin_71fb6198344948479d76aa051f7d9b10, fin_926672b5fed94f53a7d7b127399e75d6, fin_9de3c24e6a8840519261962bf51e8127, fin_ac134bc4769f4bb4a9c58fd45efc21ae, fin_fcb6262b4d1d4f1fb78824673fe4396d"
+keranjang sampah,Keranjang Sampah,1,pcs,50000.0,50000.0,50000.0,False,fin_e2c6fd7756de4b7da4bdc77d624e5ac4
+kerinci robusta,kerinci robusta,1,,160000.0,160000.0,160000.0,False,fin_18e75e6d835d4304b8dbe11bbc122061
+kerupuk orange,kerupuk orange,1,kg,18000.0,18000.0,18000.0,False,fin_a4c6da6374f149a5a63f6729ccb474b4
+kev paha,Kev Paha,1,kg,51000.0,51000.0,51000.0,False,fin_0d1b708a38c04947b2211d6b899204b9
+kikil putih,kikil putih,2,kg,18000.0,18000.0,18000.0,False,"fin_0c9f48e7a0544e8eb1bafe4b016bc988, fin_9289b3ba14b14cc6a6f7bbc7ef1609e9"
+klem kayu 1 1 2,Klem kayu 1 1/2,1,bh,5000.0,5000.0,5000.0,False,fin_aabc86e6ec29427fbe61f2bb280ca296
+klep banjir 1,"Klep banjir 1""",1,pcs,20000.0,20000.0,20000.0,False,fin_adb2955ecc254c4fa2fa2c4be0d285fa
+koepedz vanili 25,KOEPEDZ VANILI 25,1,pcs,7650.0,7650.0,7650.0,False,fin_0245d9b092ed4e3ab68b46da5e81c093
+koepoe garlic powder,Koepoe Garlic Powder,1,pcs,19200.0,19200.0,19200.0,False,j57213tfs2aqmmqs804yt8p7bn84e4qv
+koepoe2 p vanili 25,KOEPOE2 P VANILI 25,4,pcs,"7650.0, 8300.0",7650.0,8300.0,True,"fin_479c0878dfcf4071a637110164e544ed, fin_9993e91d96e349d9a163ee1f7476fec7, fin_e775931577aa433681205b09dcede52b"
+kresek 10 gelas putih,Kresek 10 Gelas Putih,1,pak,4600.0,4600.0,4600.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+kresek asia 35,KRESEK ASIA 35,1,pcs,1000.0,1000.0,1000.0,False,fin_9f23b762eb2a494baa48265207b541d3
+kresek h028 0 25,KRESEK H028 0.25,1,pcs,300.0,300.0,300.0,False,fin_e775931577aa433681205b09dcede52b
+kresek hd 15 polos,KRESEK HD 15 POLOS,1,pcs,100.0,100.0,100.0,False,fin_704e2a2b589c4e9693e6de4c5f824ebc
+kresek hd 22 polos,KRESEK HD 22 POLOS,8,pcs,300.0,300.0,300.0,False,"fin_06678b9b79d4449fbfc5667557c7d1bd, fin_2349a479212b47139b8d7da1512e7388, fin_3b4823eee21842c99245743acf41c286, fin_3dd38038e02044afae7c4cb1f9307d22, fin_49f54407eac04fecab27c995993876f5, fin_7915b9d545bc423893b853401cc6c58e, fin_986af6fb55fd4f8192e5303459fd71a9, fin_9993e91d96e349d9a163ee1f7476fec7"
+kresek hd28,KRESEK HD28,1,,300.0,300.0,300.0,False,fin_1306993a67b84d2fa4e6430d07e695ad
+kresek hd28 0 25,"KRESEK HD28 0.25, Kresek HD28 0.25",20,pcs,300.0,300.0,300.0,False,"fin_018b365e186a436ca54ca3b5192e79be, fin_0aad7d5028ca4636b655fd4da2d20c99, fin_1fb4da28ffd34e32b748861932c15f9f, fin_2985c10b3eeb4487bcaa1348a1336f61, fin_3449bb0c2238465382be075383812316, fin_356a4a2d525e4fea839bc0c083ab4622, fin_479c0878dfcf4071a637110164e544ed, fin_4e24104520944c55b0df378cd421613b, fin_4fa7fef60b904e9e91ea107ac01e9813, fin_5a23f17506b94d37b6993b3a48af1112, fin_5b4ce1dfa99644a3891c4d899cf5dd2c, fin_64a3a961fcd8499d9cc1c0cc25efb957, fin_668c981894294de6bf811135bb6cc79b, fin_7cc7f818293147e487efc870a487f8c1, fin_9795304599854a3daf49be7e553a89d6, fin_c1c650b5fc414d0c943655aeec9bcefd, fin_d37941893b51423e86c29d63a4b2f1a6, fin_d62832aa10834287ab7bb41e46adf427, fin_fb7d366b4a6347a4a1e11e948666f8f4, fin_ffae3c26e4d74fe3a602a934faba6a81"
+kresek party,Kresek Party,1,pcs,13000.0,13000.0,13000.0,False,fin_5769a50709414821b9c858bfe74db312
+kresek party uk 10 jgelapak 100,KRESEK PARTY UK 10 (JGELAPAK@100,2,pcs,13000.0,13000.0,13000.0,False,"fin_6480b9c72d3a4ca4b7da6cab25e7115d, fin_b6827e3fbee04336ae9614c80908fce5"
+kresek piala 1 cup,Kresek Piala 1 Cup,1,pack,5500.0,5500.0,5500.0,False,j57b4ngt6gtstn48amak5k5hnx84wj87
+kresek piala 2 gelas,Kresek Piala 2 Gelas,1,pak,4600.0,4600.0,4600.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+kresek piala putih 24,Kresek Piala Putih 24,1,pak,6700.0,6700.0,6700.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+kresek piala putih uk 10,KRESEK PIALA PUTIH UK 10,1,pak,5800.0,5800.0,5800.0,False,fin_b41ca754036a4d3880690099b1d863c9
+kresek piala uk 28 putih,Kresek Piala Uk 28 Putih,1,pack,26000.0,26000.0,26000.0,False,j57b4ngt6gtstn48amak5k5hnx84wj87
+kresek semi jmbcetak,KRESEK SEMI JMBCETAK,17,pcs,"250.0, 500.0",250.0,500.0,True,"fin_064989e1a9d446e090453f1b392fa69d, fin_09524d571d9041f8a9e9ac380322d23c, fin_111c32d5df49494a91c99795e0351f41, fin_137b0762030b4877a32337467fef8ba4, fin_5569a7eab34c436fb0e83f7ace47fde2, fin_5b35a6a38b68430a91322b59be7c9fa9, fin_6fbd5ca62be1400f82a9e06b76b3a054, fin_72160362ec5a4bcf98008b8bfab69b43, fin_785044c721cc45e3894119cc4bae8eb6, fin_80dfd8e3d4574060933597cd54c34eb2, fin_ae0250e67eca4a06a5fd5508a34b5f7e, fin_bb0761677b1e47e2be813ad697fe2200, fin_c1506ecf4e89437dbecd431137e2b4e3, fin_ce644238d4fb46f9b2a07517b0e7f5bc, fin_d37941893b51423e86c29d63a4b2f1a6, fin_db08d770647c41c981e05de3e523ac00, fin_fb2d7ce70bca4c4c8e54577ec7af1778"
+kresek semi jmbpolos,KRESEK SEMI JMBPOLOS,1,pcs,500.0,500.0,500.0,False,fin_0245d9b092ed4e3ab68b46da5e81c093
+kresek semi jmceta1x,KRESEK SEMI JMCETA1X,1,pcs,500.0,500.0,500.0,False,fin_2a4feb419df0431e876c0d6c3cd0272d
+kuas,Kuas,1,Pcs,10000.0,10000.0,10000.0,False,j570y0beerwvwrz22tevyntg8x84m29e
+kuas 4 pk,Kuas 4 pk,1,pcs,20000.0,20000.0,20000.0,False,fin_0ef0126cb4664f77bb6b1d77e69c9c02
+kulit pangsit,Kulit Pangsit,1,pack,5000.0,5000.0,5000.0,False,j577fq3188vn7atfy0z1x0xppx850dar
+kulit pangsit cap jempol,Kulit Pangsit (Cap Jempol),1,pcs,10000.0,10000.0,10000.0,False,fin_1959ca8600cb418c90e2a9664442f464
+kulit pangsit kcl,KULIT PANGSIT KCL,2,,3500.0,3500.0,3500.0,False,"fin_41547646219d443e92aba1b55c77880c, fin_60b7b177c9fc4d34a86909b40b2b8354"
+kunci mas pouch,KUNCI MAS POUCH 2L,1,,43950.0,43950.0,43950.0,False,fin_5569a7eab34c436fb0e83f7ace47fde2
+lada bubuk,Lada Bubuk,2,pcs,"39000.0, 44000.0",39000.0,44000.0,True,"fin_9afe38c5d6b945caa074bf97fc3d1f06, fin_d8ee020453e3471b9372818a7a09d5b6"
+lada htm bbk35gr,LADA HTM BBK35GR,1,pcs,9300.0,9300.0,9300.0,False,fin_db08d770647c41c981e05de3e523ac00
+ladaku ground w100,LADAKU GROUND W100,1,,44250.0,44250.0,44250.0,False,fin_9993e91d96e349d9a163ee1f7476fec7
+lahangtua palmsuiker biru,Lahangtua Palmsuiker Biru,1,pcs,31900.0,31900.0,31900.0,False,fin_75588a7996d84d53a633e816acbb92cd
+lambriz,Lambriz,1,pcs,15000.0,15000.0,15000.0,False,fin_f41d1b358c454540923edb7f3ffaf2ff
+lampu sorot,Lampu Sorot,1,Pcs,14919.0,14919.0,14919.0,False,j5741xpawd8e6v78f3qhapfnp584mqmk
+le mineral,"LE-Mineral, Le Mineral, Le mineral",5,"Dus, pack, pcs","1750.0, 22000.0, 40000.0, 42000.0",1750.0,42000.0,True,"fin_0387e81347604114949ac5a3b6f185f2, fin_0cd1df452e6749f9a8624e03, fin_17eb2e993b7a4c548a18de843c14dcb7, fin_187608e7fcb340078fd205e2808c2703, j57ana2r61eqxt71na0c2evrt9856w4x"
+le minerale,Le Minerale,1,pcs,22000.0,22000.0,22000.0,False,fin_8827db46198744a38d7e5838119662ec
+led meval 5w,LED meval 5w,1,pcs,40000.0,40000.0,40000.0,False,fin_cada19079f5b43ab8616adb99c70e6b2
+lemon tea,Lemon tea,1,pak,44500.0,44500.0,44500.0,False,fin_090990053cb44a0c879d2e0c1b4fbc6f
+lemon tea max tea,Lemon Tea Max Tea,1,pak,44500.0,44500.0,44500.0,False,fin_23c952dd540d417e8b608b2eee4fb38b
+lid papercup double wall 8oz putih,LID PAPERCUP DOUBLE WALL 8OZ Putih,1,pcs,28000.0,28000.0,28000.0,False,fin_26f1d4dcd2c940fdbf2a8f3896f88e7e
+lifebuoy pencuci piring,Lifebuoy Pencuci Piring,3,pcs,"7400.0, 8900.0",7400.0,8900.0,True,"fin_356a4a2d525e4fea839bc0c083ab4622, fin_3dd38038e02044afae7c4cb1f9307d22, j576yvq15079g4m15vgd5y8gmd84wa7n"
+lifebuoy pp lime 660,LIFEBUOY PP LIME 660,3,,"8900.0, 17800.0",8900.0,17800.0,True,"fin_064989e1a9d446e090453f1b392fa69d, fin_479c0878dfcf4071a637110164e544ed"
+listrik,Listrik,2,pcs,53000.0,53000.0,53000.0,False,"fin_7effa429c342477ba44049e27f134a2d, fin_93abc1735b654dbaa00da5efa81927d6"
+listrik opik,Listrik opik,1,pcs,20000.0,20000.0,20000.0,False,fin_88974fb76043455e83bb966b266cbe87
+lkk panda oystr,LKK PANDA OYSTR 770G,3,,62450.0,62450.0,62450.0,False,"fin_5569a7eab34c436fb0e83f7ace47fde2, fin_fb7d366b4a6347a4a1e11e948666f8f4"
+mahsuri saus tiram,"Mahsuri Saus Tiram, Mahsuri Saus Tiram 510gr",5,"bottle, pcs","18100.0, 25800.0",18100.0,25800.0,True,"fin_005f139d3e3142f3b3db413234b7bd30, fin_645558f2f55e44a7adbf003d8a8bfcf7, fin_ad94afc39e7d4d92b10078d2b4125b7c, j5748ypapn9h1tdpe7exzv1tn184fc27"
+maizenaku,MAIZENAKU,1,pcs,13650.0,13650.0,13650.0,False,fin_e775931577aa433681205b09dcede52b
+mamalm pp charc 690,MAMALM PP CHARC 690,2,pcs,9400.0,9400.0,9400.0,False,fin_64f43465d89344fcae5be625b6507916
+mamalmn pp lemon 610,MAMALMN PP LEMON 610,3,pcs,8300.0,8300.0,8300.0,False,"fin_49f54407eac04fecab27c995993876f5, fin_bb0761677b1e47e2be813ad697fe2200"
+mang andri,Mang Andri,1,Kali,16000.0,16000.0,16000.0,False,j57f04dyzz7n225pzkv7043qc5850s8m
+mang andri rokok,Mang Andri Rokok,1,Kali,10000.0,10000.0,10000.0,False,j57a8qxwmyjjz0963k31fwhnnd84m9b2
+mangandri,Mangandri,2,Bungkus,20000.0,20000.0,20000.0,False,"fin_05505566e6e1430cb7179cf980a71d8e, fin_9c0c117ea3f7470191b25370e4491014"
+margarine filma,Margarine (Filma),6,pcs,"6150.0, 14000.0, 44750.0",6150.0,44750.0,True,"fin_0aad7d5028ca4636b655fd4da2d20c99, fin_2a4feb419df0431e876c0d6c3cd0272d, fin_356a4a2d525e4fea839bc0c083ab4622, fin_64a3a961fcd8499d9cc1c0cc25efb957, fin_668c981894294de6bf811135bb6cc79b, fin_d62832aa10834287ab7bb41e46adf427"
+margarine salted,Margarine Salted,1,pcs,5900.0,5900.0,5900.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+matcha powder,Matcha Powder,1,pcs,8500.0,8500.0,8500.0,False,fin_a5ea6b9ce8d6409097ab060cd35945e7
+matcha powder premium halal flavorl,Matcha Powder Premium Halal Flavorl...,1,pcs,220000.0,220000.0,220000.0,False,fin_1a3457722bd84dcfb2f86d6c92a57a1c
+max lemon,"Max Lemon, Max lemon",4,pak,44500.0,44500.0,44500.0,False,"fin_04f2684f42a04c1991a94173927f55ea, fin_4ff32903d26e4fd4aca33931700c72bf, fin_534791307e0b4b54a2745975278ecfc3, fin_a0959bb4f18245678f5e54551d5d3783"
+max lemon tea,Max Lemon tea,1,pak,44500.0,44500.0,44500.0,False,fin_8457c99308a94aef9d1695a382316134
+max tea lemon,Max Tea Lemon,3,pcs,"1460.0, 1500.0",1460.0,1500.0,True,"j577tr9194premtb9vpx6ye9v984wg86, j57b63fpw6keq5y645z539bmtd857ry6, j57ds920b6jgaxr5msagdtkzp584fm5p"
+max tea peach,Max Tea Peach,3,pcs,1520.0,1520.0,1520.0,False,"j576hhyvft4xc1ha6kcgv7tafx8566yd, j577tr9194premtb9vpx6ye9v984wg86, j57dwmcb0tn6xy74wdnvy6c5md84ey1d"
+maxtea peach bd10,MAXTEA PEACH BD10,1,pcs,15800.0,15800.0,15800.0,False,fin_9f23b762eb2a494baa48265207b541d3
+mayones,Mayones,1,kg,30500.0,30500.0,30500.0,False,fin_4a9a712dd1ad4c4983d4003bae3ae3ea
+melati sendok set hitam,Melati Sendok Set Hitam,1,pak,12300.0,12300.0,12300.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+mie,Mie,1,pcs,30.0,30.0,30.0,False,fin_4d19a5c7fc2f46c58445ba477bafc592
+minyak,Minyak,1,l,21500.0,21500.0,21500.0,False,fin_23c952dd540d417e8b608b2eee4fb38b
+minyak ikan,Minyak Ikan,1,pcs,39000.0,39000.0,39000.0,False,fin_7c4302f725854784b179c8d318956605
+minyak kita,Minyak Kita,1,pcs,40000.0,40000.0,40000.0,False,fin_b6bde5f74cc14a1b92ef69ac85bbeae4
+minyak rizki,Minyak Rizki,2,bottle,"19750.0, 19950.0",19750.0,19950.0,True,"j576yvq15079g4m15vgd5y8gmd84wa7n, j57btqd6c419t2mhq73x4qah1d84nqsx"
+minyak sunco,Minyak Sunco,1,liter,24000.0,24000.0,24000.0,False,j576hhyvft4xc1ha6kcgv7tafx8566yd
+minyak tropical,Minyak Tropical 1L,1,bottle,23400.0,23400.0,23400.0,False,j57fqag7gcngterknw1811vmk984fwa9
+minyak wijen,Minyak wijen,2,pcs,41000.0,41000.0,41000.0,False,"fin_6cd650e9dcac48c9b25616ccf88d54d7, fin_b1788580265f4f52809c0e12b5c1d043"
+minyak wijen b,Minyak Wijen B,1,pcs,41000.0,41000.0,41000.0,False,fin_7c4302f725854784b179c8d318956605
+moyenes,Moyenes,1,pcs,29300.0,29300.0,29300.0,False,fin_903b1bef8776465bbec651e540962df0
+mrgarinsal t200,MRGARINSAL T200,1,pcs,7100.0,7100.0,7100.0,False,fin_018b365e186a436ca54ca3b5192e79be
+mrgarinsalt200,MRGARINSALT200,4,pcs,7100.0,7100.0,7100.0,False,"fin_3449bb0c2238465382be075383812316, fin_869ddd956e3245189c121b1732f30f60, fin_9795304599854a3daf49be7e553a89d6, fin_ffae3c26e4d74fe3a602a934faba6a81"
+multi mp08,MULTI MP08,1,pcs,51900.0,51900.0,51900.0,False,fin_9795304599854a3daf49be7e553a89d6
+multi tisu,Multi Tisu,2,pack,"2000.0, 30850.0",2000.0,30850.0,True,"fin_b552bdccf6f44526a8ebd7a78a438f05, j57btqd6c419t2mhq73x4qah1d84nqsx"
+nasi goreng sauce,Nasi Goreng Sauce,1,pcs,20000.0,20000.0,20000.0,False,fin_fc91ec3c312c48e6b8c144ed788e3f85
+nasi putih,Nasi putih,1,,11000.0,11000.0,11000.0,False,fin_dac05a6536b94fff8ad99e7b55c39c0a
+new states apparel premium cotton t shirt 7200 white size l,New States Apparel Premium Cotton T-shirt 7200 White Size L,1,pcs,39000.0,39000.0,39000.0,False,fin_691dfe82f5ef4b6890424e8fa31be57d
+new states apparel premium cotton t shirt 7200 white size m,New States Apparel Premium Cotton T-shirt 7200 White Size M,1,pcs,39000.0,39000.0,39000.0,False,fin_691dfe82f5ef4b6890424e8fa31be57d
+ngohiong 250,NGOHIONG 250,1,,10000.0,10000.0,10000.0,False,fin_3ba25af2819845e8b6d3ac2f09c9f6e2
+ongkir,Ongkir,22,"gram, pcs","4500.0, 5000.0, 5375.0, 5500.0, 6000.0, 8000.0, 10000.0",4500.0,10000.0,True,"fin_00ae34e5c5cf40dca54ac8b5888222e7, fin_09dc9627b6da4286911b616635bcfc6e, fin_1736433d897f4702850a42de6f755f9d, fin_2531db5f7de0443a979c05ef811f709b, fin_27648ef6b1094e19b12cde86b13e30af, fin_2fb26d898c8a441e8b48ca7472368a9c, fin_52a99035de0248809ee6c60aa7326b98, fin_588983c1986a42e38098a52486dae70c, fin_5904c0438bd14630a2118f99995a0230, fin_5f3c1ef3cd6b4903b1e9b52763a3a81b, fin_6c23d98ea0a243ca988e847f7114ecdf, fin_6c8100c9991246ed91d1bf9b215c1844, fin_74f0f1a827ca46dd834203a2a296d43d, fin_7d469e810a6a42eeb58b8845ac5fb309, fin_82b26e6affab495ba0eb38edcb054edc, fin_939a5bd8fa0a454a94cd92f4fad8c0ca, fin_cf09739107f442ae913c126bffadf5a2, fin_d07b430802eb496fa509d94912626b8a, fin_dd891f07cccd4d9891ef5f43a2695be3, fin_ded1db5362b546f8a6b71686c0f854f6, fin_f026899b898d4db1a0256c67664ce3e7, fin_f4f8696c1127428e8a32025c9de770b5"
+ongkos becak,Ongkos becak,1,pcs,10000.0,10000.0,10000.0,False,fin_e4e2c056b7f647fcaec635d30abfe51d
+ongkos kirim,Ongkos Kirim,2,Kali,"10000.0, 15000.0",10000.0,15000.0,True,"j570x28ardk3cvvtbd1w69ty4584gsss, j57ey314m0jv1r9pj5ke9s9e7184gj43"
+ongkos maxim,Ongkos Maxim,1,Kali,6000.0,6000.0,6000.0,False,j57c2xmt1cvbk645431khtexb984n70b
+ongkos pasang,Ongkos Pasang,1,,,,,False,fin_9b4cb2be67754c7b844ed52550019301
+orchid btr unsalt200,ORCHID BTR UNSALT200,8,pcs,"52950.0, 58250.0",52950.0,58250.0,True,"fin_72160362ec5a4bcf98008b8bfab69b43, fin_95f2889be29a403c926f685beb8ed26b, fin_a5f139dbe9824991a786a0056b19654f, fin_af8a4bd659f54c76b5dfec9149b780a2, fin_ce644238d4fb46f9b2a07517b0e7f5bc, fin_fb2d7ce70bca4c4c8e54577ec7af1778"
+oregano,OREGANO,2,pcs,"9150.0, 11500.0",9150.0,11500.0,True,"fin_ae0250e67eca4a06a5fd5508a34b5f7e, fin_db08d770647c41c981e05de3e523ac00"
+paha filet,Paha Filet,3,kg,46000.0,46000.0,46000.0,False,"j579mvm7gahcfk3hkm4vgj7d5x851y4m, j57b8a64txby2skjb4x6v5kjqn84nh8v, j57cp778rntvp18gjwz5w0790d84evpy"
+paha fillet,paha fillet,1,kg,37000.0,37000.0,37000.0,False,fin_70afeb36dc6648a884b5c4ff5e8a1c39
+paku 10,Paku 10,1,Gr,20.0,20.0,20.0,False,j570x28ardk3cvvtbd1w69ty4584gsss
+paku 7,Paku 7,1,Gr,20.0,20.0,20.0,False,j570x28ardk3cvvtbd1w69ty4584gsss
+paku beton,Paku Beton,1,Pcs,1500.0,1500.0,1500.0,False,j570x28ardk3cvvtbd1w69ty4584gsss
+paku beton 10,Paku beton 10,1,bh,1500.0,1500.0,1500.0,False,fin_aabc86e6ec29427fbe61f2bb280ca296
+paku beton 10cm,Paku beton 10cm,1,bh,1500.0,1500.0,1500.0,False,fin_719fb388fa154d47b0864e1f717ce650
+paku triplek,Paku Triplek,1,Gr,30.0,30.0,30.0,False,j570x28ardk3cvvtbd1w69ty4584gsss
+palmsuiker palm sugar,Palmsuiker Palm Sugar,1,pcs,23360.0,23360.0,23360.0,False,fin_f1f923448cfd41c09763a9766585d25c
+pangsit,"Pangsit, pangsit",5,pcs,6000.0,6000.0,6000.0,False,"fin_563af3ced4f14f4a8a0aed5eb7b74a33, fin_6033c24e9e6147edaf8dd2229b162aea, fin_d9883252503a4805bc18eaf0143441d2, fin_f07705800dcf4a33a91f82dfef85a36c, fin_fad475c1e8b04a0193bd21aec3139351"
+pangsit besar,pangsit Besar,2,pcs,6000.0,6000.0,6000.0,False,"fin_624a0b2840fa4dcc82a4337e7ebca173, fin_6d6797da839742849f107a7a8d7e00ca"
+panir mix,Panir Mix,1,kg,19500.0,19500.0,19500.0,False,fin_cfae9991083346d3842999ea8a04bb65
+panir mld,Panir Mld,1,kg,19500.0,19500.0,19500.0,False,fin_abc044e4df5b42219f0fc4316127f1d8
+paper 10 5x11 3 cm brown dragon,"Paper 10,5x11+3 CM Brown Dragon",1,pak,14100.0,14100.0,14100.0,False,fin_2d72fd5a61ea4b00bfcb2f17a3854f12
+paper cup 4 oz,Paper Cup 4 oz,1,pcs,13500.0,13500.0,13500.0,False,fin_2c2ae7552b314f3882cb63d30e139cc5
+paperbowl,Paperbowl 650ml,2,toros,"13000.0, 13400.0",13000.0,13400.0,True,"j579s80mkcn3gvs72py801jss984xph6, j57e7sjh2rw1djn24jvjnydq4184edev"
+paprika powder kg,PAPRIKA POWDER/KG,1,kg,200000.0,200000.0,200000.0,False,fin_6aeedfb18ac54bff90a09a7c4af74710
+parkir,Parkir,5,"Kali, kali","1000.0, 2000.0, 3000.0",1000.0,3000.0,True,"j5708swh927ckd9dpdz2hbkv89857gsp, j577ncxagn76qpby8558dfgqfx84ehtv, j579xdnhnwshtveavnwhtag4gs84npxx, j579ydmp3g0av96g1m0z3xd6mh84wrwh, j57abrestkxgh5wenzrpgkgxan8579fc"
+parkir toko merpati,Parkir Toko Merpati,1,kali,1000.0,1000.0,1000.0,False,j573d4npw3vg4yde0w2mm3xz5d84egza
+parkir yogya mb,Parkir Yogya MB,1,kali,2000.0,2000.0,2000.0,False,j57dgrpvaw52dayzha4ck94can84fz5a
+patty hamburg,Patty Hamburg,2,gram,5000.0,5000.0,5000.0,False,"fin_62824d3dbceb4a07b6be30fd2ce8fe1a, fin_70ba77131dc64273a2bf143fb1ec2cd9"
+peach tea max tea,Peach Tea Max Tea,1,bh,4000.0,4000.0,4000.0,False,fin_c168a6bcc5484824a52d346860a56aaa
+pel,pel,2,zak,45000.0,45000.0,45000.0,False,"fin_88056d6c67624754b1052ab0889b05ac, fin_a935ca8821134d67a9cab340dd9ac52e"
+pelastik piala,Pelastik Piala,2,"Buah, pcs",9800.0,9800.0,9800.0,False,"fin_21200aab4d634bc3b1dafc314ca2a936, fin_e60ce4bb4f9342698c9a7e299488c14c"
+peler paha,Peler Paha,1,,45000.0,45000.0,45000.0,False,fin_3c0a769c997e487c950189a5e4ec0af2
+per pan,Per Pan,1,,,,,False,fin_0caee204df9a41babf4321ac59d53cfd
+ph fac tissue 10003,PH FAC TISSUE 10003,1,pcs,36200.0,36200.0,36200.0,False,fin_2a4feb419df0431e876c0d6c3cd0272d
+ph fac tissue 1000s,PH FAC TISSUE 1000S,19,pcs,36200.0,36200.0,36200.0,False,"fin_0245d9b092ed4e3ab68b46da5e81c093, fin_064989e1a9d446e090453f1b392fa69d, fin_09524d571d9041f8a9e9ac380322d23c, fin_0aad7d5028ca4636b655fd4da2d20c99, fin_111c32d5df49494a91c99795e0351f41, fin_137b0762030b4877a32337467fef8ba4, fin_3dd38038e02044afae7c4cb1f9307d22, fin_4cee5a2c52b74897b9561e319b9decc1, fin_5b35a6a38b68430a91322b59be7c9fa9, fin_668c981894294de6bf811135bb6cc79b, fin_6fbd5ca62be1400f82a9e06b76b3a054, fin_72160362ec5a4bcf98008b8bfab69b43, fin_785044c721cc45e3894119cc4bae8eb6, fin_bb0761677b1e47e2be813ad697fe2200, fin_c1506ecf4e89437dbecd431137e2b4e3, fin_ce644238d4fb46f9b2a07517b0e7f5bc, fin_db08d770647c41c981e05de3e523ac00, fin_e775931577aa433681205b09dcede52b, fin_fb2d7ce70bca4c4c8e54577ec7af1778"
+ph gula lokal,PH GULA LOKAL 1KG,1,,17500.0,17500.0,17500.0,False,fin_fb7d366b4a6347a4a1e11e948666f8f4
+ph krpk udg kcg,"PH KRPK UDG KCG, PH Krpk UDG KCG 250G",2,pcs,"3180.0, 7950.0",3180.0,7950.0,True,"fin_1fb4da28ffd34e32b748861932c15f9f, fin_7cc7f818293147e487efc870a487f8c1"
+piala 1 cup,Piala 1 cup,1,,5800.0,5800.0,5800.0,False,fin_6a25475ab8d34540aa0847595e0944f2
+piala 2 cup,Piala 2 cup,1,,5800.0,5800.0,5800.0,False,fin_6a25475ab8d34540aa0847595e0944f2
+piala 28,Piala 28,2,pcs,"19500.0, 54000.0",19500.0,54000.0,True,"fin_0bc36ac7dc0e42258867790ef177a212, fin_7f5e565577174382a5c684100a3e24a6"
+plastik opp seal 8x15,Plastik OPP Seal 8x15,1,pak,9000.0,9000.0,9000.0,False,fin_ad94afc39e7d4d92b10078d2b4125b7c
+plastik tomat 15x35,Plastik Tomat 15x35,1,pcs,12500.0,12500.0,12500.0,False,fin_645558f2f55e44a7adbf003d8a8bfcf7
+pm 6f,PM 6F,1,,22500.0,22500.0,22500.0,False,fin_0427ebc97b79452eb9571907fac8ea55
+polaris sodawtr330ml,POLARIS SODAWTR330ML,2,pcs,6050.0,6050.0,6050.0,False,"fin_869ddd956e3245189c121b1732f30f60, fin_9795304599854a3daf49be7e553a89d6"
+poto piller,poto piller,1,kg,39000.0,39000.0,39000.0,False,fin_c65cab24fe9d471aabaac69a6104e0ea
+prm soklin fl ref 1,PRM/SOKLIN FL REF 1.,1,pcs,20200.0,20200.0,20200.0,False,fin_9f23b762eb2a494baa48265207b541d3
+proteksi kerusakan,Proteksi Kerusakan +,1,pcs,1700.0,1700.0,1700.0,False,fin_1035b3136ece43699dd2163ae2208e0e
+pungsit,Pungsit,1,,6000.0,6000.0,6000.0,False,fin_010674d3766a45b7a00570bd0b4c5f02
+raja gula,Raja Gula,1,pcs,17900.0,17900.0,17900.0,False,fin_75588a7996d84d53a633e816acbb92cd
+raso,Raso,1,pcs,6500.0,6500.0,6500.0,False,fin_1959ca8600cb418c90e2a9664442f464
+refill ae biru,Refill Ae Biru,1,pcs,15000.0,15000.0,15000.0,False,fin_0ef0126cb4664f77bb6b1d77e69c9c02
+reg win tas w 900 m,Reg Win tas w 900 m,1,pcs,150000.0,150000.0,150000.0,False,fin_a1b54df7fdc94618a75fac7789b9b298
+rei,Rei,1,pcs,51000.0,51000.0,51000.0,False,fin_05aa4476a7d240718788c1c5509ae41d
+resek hd28 0 25,RESEK HD28 0.25,1,pcs,300.0,300.0,300.0,False,fin_64f43465d89344fcae5be625b6507916
+rich gold,"Rich Gold, Rich gold",6,pcs,"45000.0, 57000.0, 57500.0",45000.0,57500.0,True,"fin_47f9b830bc16427283c0aae04dfa7afb, fin_56e495e5f56e4abfaa27144c7140e81c, fin_7f5e565577174382a5c684100a3e24a6, fin_8457c99308a94aef9d1695a382316134, fin_b65b433b3b8249a89696d41dedc4aaff, fin_d9905afb412346a5acbb79a46049673e"
+richgold,Richgold,1,pcs,57500.0,57500.0,57500.0,False,fin_93ffd31161414943b0e411ed357a080e
+richgold label,Richgold Label,4,pcs,"57000.0, 59500.0",57000.0,59500.0,True,"j5708swh927ckd9dpdz2hbkv89857gsp, j577ttmdzxc6aa3p2n6p61kp9584nm8c, j579m552bhbgvjdqyskj498fdx84ea0p, j57av0x97rbcjbc4m6j0s3bfmn85063t"
+robot batok robot rt k4,ROBOT BATOK ROBOT RT K4,1,pcs,15000.0,15000.0,15000.0,False,fin_2ab546f040fa4e2b9511c85610d857d7
+robusta argopuro fine,Robusta argopuro fine,1,pcs,160000.0,160000.0,160000.0,False,fin_d12c4d8043bf4eaa98d5626a6f01d759
+robusta beans,Robusta Beans,4,pcs,150000.0,150000.0,150000.0,False,"fin_3521c3884bb24942813c809cc1fc1747, fin_412145c95684487f8c96dd01c3052ec2, fin_80da598892684a04a93530aa56ea87a0, fin_f519e8f633924ee18dbd12eb86e5df80"
+roko mang andre,Roko Mang Andre,7,pcs,20000.0,20000.0,20000.0,False,"fin_0ed762f56d9a4579872922d5a0e4b274, fin_169437c92958407291bcaa25c7265239, fin_5b88289dc78b4d05a1aad71a67e5b289, fin_87cf62259e374f699d156a619f89c7a3, fin_a845cd0df65f433c8787f47e347d1e44, fin_af0ae036f9964e33816526b270b32f40, fin_eb0c1bc77ee44a578874cc59e891cb5b"
+rokok mang andri,"Rokok mang andri, rokok mang andri",2,pcs,20000.0,20000.0,20000.0,False,"fin_8d8f378687aa4b63a4bf25c6b34b6b43, fin_ac808850ca9c43598d3f2f0419dbcbb8"
+rokok marlboro andri,Rokok Marlboro Andri,1,pcs,20000.0,20000.0,20000.0,False,fin_25b5b79a8a6f4c7eac58510d902b95c2
+roll cat kcl,Roll cat kcl,1,bh,10000.0,10000.0,10000.0,False,fin_58ddd1ce9d4d4736af96da8c518b5462
+rose brand,ROSE BRAND,7,pcs,"41950.0, 43950.0, 87700.0",41950.0,87700.0,True,"fin_111c32d5df49494a91c99795e0351f41, fin_137b0762030b4877a32337467fef8ba4, fin_5b35a6a38b68430a91322b59be7c9fa9, fin_95f2889be29a403c926f685beb8ed26b, fin_c1506ecf4e89437dbecd431137e2b4e3, fin_d37941893b51423e86c29d63a4b2f1a6, fin_ffae3c26e4d74fe3a602a934faba6a81"
+rose brand 2j,ROSE BRAND 2J,1,pcs,13950.0,13950.0,13950.0,False,fin_2a4feb419df0431e876c0d6c3cd0272d
+rose brand pouch,ROSE BRAND POUCH 2L,1,,43950.0,43950.0,43950.0,False,fin_80dfd8e3d4574060933597cd54c34eb2
+roti tawar gandum,"Roti  Tawar  Gandum, Roti Tawar Gandum",4,"Bungkus, pack, pcs","2000.0, 16500.0",2000.0,16500.0,True,"fin_1b8124e380994a2892a8a68adfac3000, fin_d8b9e82ddc7b430a93be744382125a64, j575vy3ywv2sb0kf1tqmpnn9q184mf27, j576hh7gd4t6v8eehkp824enzd84xv6t"
+rumput gajah,Rumput Gajah,1,,,,,False,fin_9b4cb2be67754c7b844ed52550019301
+salada,Salada,3,pcs,"4500.0, 4571.43, 38000.0",4500.0,38000.0,True,"fin_11cef6e6e16841828a50bae8daec3c7c, fin_6033c24e9e6147edaf8dd2229b162aea, fin_a930816eae0b4500ba9bf4fac84bc9e8"
+saladah,Saladah,1,pcs,3000.0,3000.0,3000.0,False,fin_5191b256a74b4801b416f653cd4eed58
+sampah,Sampah,13,"Karung, pcs","5000.0, 10000.0, 12000.0, 25000.0",5000.0,25000.0,True,"0718323b-ffa7-4407-84e1-bb2b5b51d17d, 3222e231-a021-44ba-b8e9-fe10439938bb, fin_011d90597b474ccd98a13b9bac1002f9, fin_04bd060a09c64d74bc3f00da8ebd88c3, fin_13d3375cb2d24cf2a4b28c84b48597e7, fin_1b290aca34c444c4a9a24d5e6449e166, fin_282113e667f8459eb22a3c6f2a4e1de2, fin_2c801991269049988807cdf4c32fc398, fin_49d81382e1bb4096a0fb56655d152f20, fin_654824b8d8a14579ab5010e6b041486e, fin_6df24684c23e4264bd3001e09a1915f6, fin_c07bf527c6684fa4874163f56283702a, fin_e587fddfa6d7444f9f5da4cf1105a2f0"
+sania pouch 2 lt,Sania Pouch 2 LT,1,,50000.0,50000.0,50000.0,False,fin_7cc7f818293147e487efc870a487f8c1
+sapi cincang,Sapi Cincang 200gr,1,pack,30000.0,30000.0,30000.0,False,j578fjc61de4mhyhzm8e46gv5s84esrt
+saus inggris,Saus Inggris 620ML,1,bottle,46000.0,46000.0,46000.0,False,j575svjz9s6faapfqnabmc94fd84mhdc
+saus tiram mahsuri,Saus Tiram (Mahsuri),6,pcs,"8000.0, 25800.0, 116000.0",8000.0,116000.0,True,"fin_12f52354a99e464dbeb6d7f2379cb98f, fin_138c1ea6b00441938d556efcf4c9552e, fin_15aa7da223db4cb5a9d3d95d5a420ce4, fin_2d72fd5a61ea4b00bfcb2f17a3854f12, fin_4ff32903d26e4fd4aca33931700c72bf, fin_a5d47d33bb9940baa9e915cd8c838270"
+saus tiram panda botol,Saus tiram Panda Botol,1,,50500.0,50500.0,50500.0,False,fin_b0e09cbfeaec4f0bafff28777e758603
+sb,SB,1,pcs,43000.0,43000.0,43000.0,False,fin_b6bde5f74cc14a1b92ef69ac85bbeae4
+sb midi reg l,SB MIDI REG L,2,,500.0,500.0,500.0,False,"fin_25731aeff6da4bd49ee1dad248082ee6, fin_a3a781bfad724aff99b84d0d9537219f"
+schweppes sdwater250,SCHWEPPES SDWATER250,1,pcs,6100.0,6100.0,6100.0,False,fin_5b35a6a38b68430a91322b59be7c9fa9
+schweppes soda,Schweppes Soda,13,"kaleng, pcs","6100.0, 12200.0, 14166.67, 18300.0",6100.0,18300.0,True,"fin_1fb4da28ffd34e32b748861932c15f9f, fin_2a4feb419df0431e876c0d6c3cd0272d, fin_3dd38038e02044afae7c4cb1f9307d22, fin_4cee5a2c52b74897b9561e319b9decc1, fin_5a23f17506b94d37b6993b3a48af1112, fin_704e2a2b589c4e9693e6de4c5f824ebc, fin_986af6fb55fd4f8192e5303459fd71a9, fin_ae0250e67eca4a06a5fd5508a34b5f7e, fin_bb0761677b1e47e2be813ad697fe2200, fin_c1506ecf4e89437dbecd431137e2b4e3, fin_c1c650b5fc414d0c943655aeec9bcefd, j5731wgv6gv53zmymq82sm7aj184fxar"
+schweppes sowater250,SCHWEPPES SOWATER250,2,pcs,6100.0,6100.0,6100.0,False,"fin_80dfd8e3d4574060933597cd54c34eb2, fin_db08d770647c41c981e05de3e523ac00"
+sealtape,Sealtape,1,pcs,5000.0,5000.0,5000.0,False,fin_adb2955ecc254c4fa2fa2c4be0d285fa
+sedotan steril tekuk hitam,Sedotan Steril Tekuk Hitam,1,pack,20000.0,20000.0,20000.0,False,j57av0x97rbcjbc4m6j0s3bfmn85063t
+selada,"Selada, selada",10,"gram, ikat, kg, pcs","30.0, 2800.0, 3428.57, 3750.0, 4200.0, 5000.0, 5428.57, 5714.29, 7450.0, 24000.0",30.0,24000.0,True,"fin_42a18cf377ad4e71b1d506b1cced1271, fin_7cb80bcd303741779cae7c55dbe8b08a, fin_869d390ce15148efabeba4c4915317a6, fin_b2c08b5f8c4c4b0fbbdd61469a91e343, fin_bf1c3168feac4c579341d9b6a8b00579, fin_cae65f7801cd4d59a2af025438d60286, fin_db3a28eb011d41d1bd14da6eb79ed891, fin_fad475c1e8b04a0193bd21aec3139351, j5729mgqpcbs43sfwbmnm65gwh84nw9q, j57ezsp9p6bexw32460yf1cpa984f4d0"
+selada ibu teti pasar,Selada (Ibu Teti Pasar),7,pcs,"3800.0, 4600.0, 4800.0, 4857.14, 6000.0, 6571.43, 20000.0",3800.0,20000.0,True,"fin_3644c9f032814d1db89c88724280eee6, fin_3705b868a8914e3faed730f99847102e, fin_5d863d4da0f449718c3974f5abb99610, fin_6d6797da839742849f107a7a8d7e00ca, fin_b0f830a7f1b2484bbcfdbd2e46520d35, fin_cc98f438c8f3475aa209142ed2a81102, fin_f07705800dcf4a33a91f82dfef85a36c"
+sendok garpu,Sendok Garpu,2,pack,4500.0,4500.0,4500.0,False,"j577ttmdzxc6aa3p2n6p61kp9584nm8c, j57av0x97rbcjbc4m6j0s3bfmn85063t"
+sendok garpu bening,Sendok garpu Bening,1,pcs,4500.0,4500.0,4500.0,False,fin_cfae9991083346d3842999ea8a04bb65
+sendok makan bening trifi pak 25,SENDOK MAKAN BENING TRIFI PAK@25,1,pcs,4300.0,4300.0,4300.0,False,fin_b41ca754036a4d3880690099b1d863c9
+sendok makan suapi,Sendok Makan Suapi,1,pcs,21500.0,21500.0,21500.0,False,fin_5769a50709414821b9c858bfe74db312
+sendok makan suapi beningpak 100,SENDOK MAKAN SUAPI BENINGPAK@100,2,pcs,21500.0,21500.0,21500.0,False,"fin_6480b9c72d3a4ca4b7da6cab25e7115d, fin_b6827e3fbee04336ae9614c80908fce5"
+sg tlr omg 10s,SG TLR OMG 10S,2,,33900.0,33900.0,33900.0,False,"fin_25731aeff6da4bd49ee1dad248082ee6, fin_a3a781bfad724aff99b84d0d9537219f"
+sh0521 rp 28950,SH0521 RP 28950,1,pcs,1400.0,1400.0,1400.0,False,fin_4e24104520944c55b0df378cd421613b
+shamu lampu bohlam led 9 watt,Shamu Lampu Bohlam LED 9 Watt,1,pcs,18500.0,18500.0,18500.0,False,fin_7d44b624bda04e10afb004801ab16e8f
+shoestring,Shoestring,2,pcs,79000.0,79000.0,79000.0,False,"fin_47f9b830bc16427283c0aae04dfa7afb, fin_d9905afb412346a5acbb79a46049673e"
+shoyo rp 6150,SHOYO RP 6150,1,pcs,1900.0,1900.0,1900.0,False,fin_2a4feb419df0431e876c0d6c3cd0272d
+sialaduh,Sialaduh,1,,36000.0,36000.0,36000.0,False,fin_cf9f0d4f2800463eb38112b1b2509081
+siladuhr,Siladuhr.,1,,,,,False,fin_c775522318794bfeb211c0aad821fbfc
+simas,Simas,10,pcs,12500.0,12500.0,12500.0,False,"fin_090990053cb44a0c879d2e0c1b4fbc6f, fin_47f9b830bc16427283c0aae04dfa7afb, fin_4a9a712dd1ad4c4983d4003bae3ae3ea, fin_6f13adc4b14a41eb837d5be979685c13, fin_7cfbf25a8c1e4f53ac74d9999e6fe31c, fin_abc044e4df5b42219f0fc4316127f1d8, fin_b26d3dfac80e40008261e97e1c8c9571, fin_cd53c1ce17b64da687837c0f05f4ef29, fin_d8ee020453e3471b9372818a7a09d5b6, fin_d9905afb412346a5acbb79a46049673e"
+sinar,Sinar,1,pcs,12500.0,12500.0,12500.0,False,fin_a0959bb4f18245678f5e54551d5d3783
+sinas,Sinas,1,pcs,12500.0,12500.0,12500.0,False,fin_534791307e0b4b54a2745975278ecfc3
+sirup lemon,Sirup Lemon,1,pcs,34000.0,34000.0,34000.0,False,fin_2c2ae7552b314f3882cb63d30e139cc5
+skm carnation,SKM Carnation 488gr,2,kaleng,"14500.0, 14600.0",14500.0,14600.0,True,"j5780w734q0fbmvwgpypnbktsh84e4p4, j57av0x97rbcjbc4m6j0s3bfmn85063t"
+smas,Smas,1,pcs,25000.0,25000.0,25000.0,False,fin_903ddb5cb6244280a3b2d059597ed4eb
+snw kecap ing,SNW KECAP ING 600ML,2,,81750.0,81750.0,81750.0,False,fin_fb7d366b4a6347a4a1e11e948666f8f4
+so klin pl apl r770,SO KLIN PL APL R770,2,pcs,10800.0,10800.0,10800.0,False,"fin_356a4a2d525e4fea839bc0c083ab4622, fin_9795304599854a3daf49be7e553a89d6"
+so klin pl cit r700,SO KLIN PL CIT R700,1,pcs,9900.0,9900.0,9900.0,False,fin_95f2889be29a403c926f685beb8ed26b
+so klin pl euc,SO KLIN PL EUC,1,pcs,18900.0,18900.0,18900.0,False,fin_ae0250e67eca4a06a5fd5508a34b5f7e
+so klin pl euc r700,SO KLIN PL EUC R700,1,pcs,9900.0,9900.0,9900.0,False,fin_64f43465d89344fcae5be625b6507916
+soket 1,"Soket 1""",1,pcs,6500.0,6500.0,6500.0,False,fin_adb2955ecc254c4fa2fa2c4be0d285fa
+soklin lantai,Soklin Lantai,1,pcs,6900.0,6900.0,6900.0,False,j578m8s78ftya7xd73tp7vxfzd84eq1r
+sosis salam,Sosis Salam,1,pack,26000.0,26000.0,26000.0,False,j57afzvat0tw71hw6xap6z7sj184e14p
+sosis sapi,SOSIS SAPI,1,pcs,70500.0,70500.0,70500.0,False,fin_22d5a4e7d5a642aba4b494afc19429e4
+sprite pet,"SPRITE PET, SPRITE PET 1000ML",5,pcs,10900.0,10900.0,10900.0,False,"fin_137b0762030b4877a32337467fef8ba4, fin_80dfd8e3d4574060933597cd54c34eb2, fin_bb0761677b1e47e2be813ad697fe2200, fin_c1506ecf4e89437dbecd431137e2b4e3, fin_c1c650b5fc414d0c943655aeec9bcefd"
+sprite pet 1 5 lt,SPRITE PET 1.5 LT,1,,15650.0,15650.0,15650.0,False,fin_064989e1a9d446e090453f1b392fa69d
+sprok bening,sprok Bening,1,pcs,4500.0,4500.0,4500.0,False,fin_5619cb2263a140b79232b57c1abded59
+sproo argopuro fine,Sproo Argopuro fine,1,pcs,150000.0,150000.0,150000.0,False,fin_a41c8bbcb99d46048fcd3b21a3a259a1
+sproo so flores bajwa fw,Sproo So flores bajwa fw,1,pcs,275000.0,275000.0,275000.0,False,fin_3521c3884bb24942813c809cc1fc1747
+sq lemon,"Sq Lemon, Sq lemon, Sq. lemon",8,pcs,"30000.0, 34000.0",30000.0,34000.0,True,"fin_04f2684f42a04c1991a94173927f55ea, fin_4ff32903d26e4fd4aca33931700c72bf, fin_5619cb2263a140b79232b57c1abded59, fin_6cd650e9dcac48c9b25616ccf88d54d7, fin_7c4302f725854784b179c8d318956605, fin_8457c99308a94aef9d1695a382316134, fin_9140a42cc04f464f99d2afa76b0d2656, fin_a0959bb4f18245678f5e54551d5d3783"
+starindo gelas 12 oz,Starindo Gelas 12 Oz,2,pak,26200.0,26200.0,26200.0,False,"fin_3d7606ee4251436da99d8775493d7d58, fin_ad0f1cf8f4f24bb8b1a2e349e2ad5fe8"
+starindo tutup gelas strawless,Starindo Tutup Gelas Strawless,2,pak,13100.0,13100.0,13100.0,False,"fin_3d7606ee4251436da99d8775493d7d58, fin_ad0f1cf8f4f24bb8b1a2e349e2ad5fe8"
+stella ae sakura 350,STELLA AE SAKURA 350,1,,31950.0,31950.0,31950.0,False,fin_5569a7eab34c436fb0e83f7ace47fde2
+sunquick lemon,Sunquick Lemon,4,pcs,"33600.0, 38900.0",33600.0,38900.0,True,"fin_0aad7d5028ca4636b655fd4da2d20c99, fin_4cee5a2c52b74897b9561e319b9decc1, fin_6fbd5ca62be1400f82a9e06b76b3a054, fin_ad94afc39e7d4d92b10078d2b4125b7c"
+sunquick lmns o300ml,SUNQUICK LMNS/O300ML,1,,38900.0,38900.0,38900.0,False,fin_80dfd8e3d4574060933597cd54c34eb2
+surawung,SURAWUNG,1,,2000.0,2000.0,2000.0,False,fin_187a44827f8e44e2881120ddcfd4a757
+susu kental manis,Susu Kental Manis,1,Pcs,5500.0,5500.0,5500.0,False,999eb90b-762d-4ec6-8139-3b47024ea693
+tanah,Tanah,1,,,,,False,fin_9b4cb2be67754c7b844ed52550019301
+tangit,Tangit,1,pcs,11000.0,11000.0,11000.0,False,fin_adb2955ecc254c4fa2fa2c4be0d285fa
+tapioka garpu 1 merah repack,Tapioka Garpu 1 Merah 1 KG Repack,1,,10000.0,10000.0,10000.0,False,fin_e44fb3a9d458464c8bf09725c4ee43bd
+teh,Teh,1,pcs,20.0,20.0,20.0,False,fin_4d19a5c7fc2f46c58445ba477bafc592
+telor,Telor,2,pcs,1930.0,1930.0,1930.0,False,"fin_033aa8ddd6eb4b229c58ecbca81b1f48, fin_a5013893cb704a47a164d34373d6cc15"
+telor omega,"Telor Omega, Telor omega, telor OMEGA, telor Omega, telor omega",8,"butir, pcs","1860.0, 1890.0, 1930.0, 1933.33, 1940.0, 2000.0, 3183.33, 3233.33",1860.0,3233.3333333333335,True,"fin_003592c769864af380d2b3d722486b28, fin_04ec8634adbd4be4ac35c54a4ed9ee44, fin_65f3d3ac80f5436e9abcc885f93c9fdf, fin_6961499532f74354aef5a41cf9ba5a27, fin_7546f6389a694247ba1cff1520b31420, fin_76234ab037ec45d08fe97c59b5988310, fin_aa57320e3a0545a1a8197f9b6dab0884, fin_d724b9837471410a8b69bc44a5607246"
+telor omega 30 butir,Telor Omega 30 butir,1,pcs,57900.0,57900.0,57900.0,False,fin_1d4c80f8ff6348e698716c56dfee9a12
+telor omega happy egg,Telor Omega (Happy Egg),2,"butir, pcs",5000.0,5000.0,5000.0,False,"fin_218b2d18c916405d87851b1708994636, fin_2f008c39228746d1a53f15c5efb79af8"
+telur ayam,Telur Ayam,4,"gram, kg, pcs","27.3, 28.35, 5500.0, 21686.0",27.29903147699758,21686.0,True,"fin_0245d9b092ed4e3ab68b46da5e81c093, fin_9bea4792eb344f90b1a51778f1f492ca, j576yvq15079g4m15vgd5y8gmd84wa7n, j57btqd6c419t2mhq73x4qah1d84nqsx"
+telur aym negeri tbg,TELUR AYM NEGERI TBG,9,"kg, pcs","25599.4, 25599.41, 25599.8, 25600.0, 25850.0, 25949.81",25599.397590361445,25949.81412639405,True,"fin_64f43465d89344fcae5be625b6507916, fin_72160362ec5a4bcf98008b8bfab69b43, fin_9993e91d96e349d9a163ee1f7476fec7, fin_ce644238d4fb46f9b2a07517b0e7f5bc, fin_d37941893b51423e86c29d63a4b2f1a6, fin_d62832aa10834287ab7bb41e46adf427"
+telur omega,Telur OMEGA,1,pcs,1910.0,1910.0,1910.0,False,fin_3ea1f378056f477fa3253f5cb31b820a
+tempe,Tempe,2,pcs,8000.0,8000.0,8000.0,False,"fin_b81490fffe744b75859bb2292f992b76, fin_db7b96f6a40444d58601ed2191d38142"
+tepung jagung,Tepung Jagung,2,pcs,13650.0,13650.0,13650.0,False,"fin_1fb4da28ffd34e32b748861932c15f9f, fin_c1c650b5fc414d0c943655aeec9bcefd"
+terigu kompas,Terigu Kompas 1 KG,1,,93900.0,93900.0,93900.0,False,fin_51d301a036f7496a9bbd8d48030d5731
+terigu kompas kemas,Terigu Kompas Kemas,1,,11000.0,11000.0,11000.0,False,fin_56e495e5f56e4abfaa27144c7140e81c
+thermal silver,"Thermal Silver, Thermal silver",5,pak,27000.0,27000.0,27000.0,False,"fin_04f2684f42a04c1991a94173927f55ea, fin_8457c99308a94aef9d1695a382316134, fin_a5d47d33bb9940baa9e915cd8c838270, fin_abc044e4df5b42219f0fc4316127f1d8, fin_d8ee020453e3471b9372818a7a09d5b6"
+thyme,THYME,2,pcs,11500.0,11500.0,11500.0,False,fin_49f54407eac04fecab27c995993876f5
+timun,"TIMUN, Timun, timun",19,"kg, pcs","10.0, 1200.0, 4000.0, 5000.0, 5500.0, 7000.0, 10000.0, 12000.0, 14000.0, 15000.0, 17000.0",10.0,17000.0,True,"fin_010674d3766a45b7a00570bd0b4c5f02, fin_11cef6e6e16841828a50bae8daec3c7c, fin_13951db02e4a4a46a8e67dbc20c0b3f1, fin_187a44827f8e44e2881120ddcfd4a757, fin_3644c9f032814d1db89c88724280eee6, fin_3705b868a8914e3faed730f99847102e, fin_41547646219d443e92aba1b55c77880c, fin_48168fcf0a02443d8f18bf0e31d62cf2, fin_5191b256a74b4801b416f653cd4eed58, fin_6033c24e9e6147edaf8dd2229b162aea, fin_60b7b177c9fc4d34a86909b40b2b8354, fin_aac51739e49c4ccfa1cce78286b5b258, fin_b2c08b5f8c4c4b0fbbdd61469a91e343, fin_bf1c3168feac4c579341d9b6a8b00579, fin_cae65f7801cd4d59a2af025438d60286, fin_d863b13f37be48668585cca0013868eb, fin_db3a28eb011d41d1bd14da6eb79ed891, fin_dd3233e9282c42cbacc9817813650272, j5729mgqpcbs43sfwbmnm65gwh84nw9q"
+tiner,Tiner,1,Botol,6000.0,6000.0,6000.0,False,j570y0beerwvwrz22tevyntg8x84m29e
+tiram,Tiram,4,pcs,116000.0,116000.0,116000.0,False,"fin_23c952dd540d417e8b608b2eee4fb38b, fin_7d8a41e1dd7d402b8e6530917f9d9c40, fin_9140a42cc04f464f99d2afa76b0d2656, fin_c1e2e5bd6db148a19623561582b59cc0"
+tiram panda,Tiram panda,1,pcs,50500.0,50500.0,50500.0,False,fin_a0959bb4f18245678f5e54551d5d3783
+tm gf,Tm gf,1,,22500.0,22500.0,22500.0,False,fin_b0e09cbfeaec4f0bafff28777e758603
+tmn u,"Tmn- u, Tmn-u",4,pcs,8000.0,8000.0,8000.0,False,"fin_64be442f8892494a9f4c9f9790ead9b1, fin_68ed2eb0c8624cf691dc2670e3c0d251, fin_ca5e73f5421e4806acacff5fef08c68b, fin_cd26f905da3a4af5b0a3065ac9aded95"
+tofico green apl,Tofico Green Apl,1,pcs,108000.0,108000.0,108000.0,False,fin_3af4e3f675c4467b8e16a167b5b76548
+tofico green aple,Tofico green Aple,1,pcs,108000.0,108000.0,108000.0,False,fin_cfae9991083346d3842999ea8a04bb65
+tofico green apple,Tofico green Apple,1,pcs,115000.0,115000.0,115000.0,False,fin_4ff32903d26e4fd4aca33931700c72bf
+tofico sirup peach,Tofico Sirup Peach,1,bottle,115000.0,115000.0,115000.0,False,j57b4ngt6gtstn48amak5k5hnx84wj87
+tomat 12 x 25,Tomat 12 x 25,1,pcs,13000.0,13000.0,13000.0,False,fin_15a8b24f95ce4a60bbb8559e12eba098
+tong cai clj,TONG CAI CLJ,1,pcs,8000.0,8000.0,8000.0,False,fin_1130949672a74fc48e831228e826c502
+tong cai clo,TONG CAI CLO 250G,1,,7500.0,7500.0,7500.0,False,fin_3ba25af2819845e8b6d3ac2f09c9f6e2
+tong cai glj,TONG CAI GLJ,1,pcs,7500.0,7500.0,7500.0,False,fin_bf4545b5d4cb4833ba0c3d6cbd1007c0
+tongcai,Tongcai,1,gram,30.0,30.0,30.0,False,j57659d5911dq77qaxb90kk2r584xkyj
+topico green apple,Topico green apple,1,pcs,112000.0,112000.0,112000.0,False,fin_eb0dd995b0ac488d9595996da9318aeb
+transfer ke dnid endxxx perxxxx dana 085220884682,Transfer ke Dnid Endxxx Perxxxx DANA 085220884682,1,pcs,600000.0,600000.0,600000.0,False,fin_e264949a433042609fb950899ac2f13a
+trashbag 90,Trashbag 90,2,pcs,"21000.0, 26000.0",21000.0,26000.0,True,"fin_04f2684f42a04c1991a94173927f55ea, fin_261dd28c3e3145648ec759b34ff7f57e"
+trashbag go,Trashbag go,2,pcs,"22500.0, 26000.0",22500.0,26000.0,True,"fin_903b1bef8776465bbec651e540962df0, fin_b6aee424f2d8411ab0d1be7e1580c8e9"
+triplek,Triplek,1,pcs,45000.0,45000.0,45000.0,False,fin_9d0ba5ceebb94362932e469764d8e313
+triplek 3 1 2,Triplek 3 1/2,1,lbr,47500.0,47500.0,47500.0,False,fin_aabc86e6ec29427fbe61f2bb280ca296
+triplek 3 mm,Triplek 3 mm,1,lbr,47500.0,47500.0,47500.0,False,fin_719fb388fa154d47b0864e1f717ce650
+triplek 3m m,Triplek 3m/m,1,Lembar,45000.0,45000.0,45000.0,False,j570x28ardk3cvvtbd1w69ty4584gsss
+ttl grnltomshroom400,TTL GRNLTOMSHROOM400,1,pcs,58150.0,58150.0,58150.0,False,fin_3449bb0c2238465382be075383812316
+tutup bowl,"Tutup Bowl, Tutup bowl",3,pcs,"4800.0, 8900.0",4800.0,8900.0,True,"fin_090990053cb44a0c879d2e0c1b4fbc6f, fin_8457c99308a94aef9d1695a382316134, fin_903ddb5cb6244280a3b2d059597ed4eb"
+tutup bowl 500,"Tutup Bowl 500, Tutup bowl 500",3,pcs,8900.0,8900.0,8900.0,False,"fin_6f13adc4b14a41eb837d5be979685c13, fin_7cfbf25a8c1e4f53ac74d9999e6fe31c, fin_b26d3dfac80e40008261e97e1c8c9571"
+tutup cup,Tutup Cup,2,"pack, toros","18500.0, 20500.0",18500.0,20500.0,True,"j577ttmdzxc6aa3p2n6p61kp9584nm8c, j57av0x97rbcjbc4m6j0s3bfmn85063t"
+tutup paperbowl,Tutup Paperbowl 650ml,1,pack,9200.0,9200.0,9200.0,False,j57d6p9fwm0peb4v1rbz9vsa4h84eerd
+tutup pet,Tutup PET,1,pcs,18500.0,18500.0,18500.0,False,fin_18d2cbc891ff4766ba2b3161518d638f
+ub1,UB1,1,pcs,5099.33,5099.333333333333,5099.333333333333,False,fin_724c4a9a4dbb47a190c13ee9031ccaef
+ubi,"UBI, Ubi, ubi",12,"kg, pcs","2652.0, 3959.33, 3961.33, 3978.0, 4133.33, 4255.33, 4480.67, 4567.33, 4804.0, 4900.0, 5316.67, 26695.0",2652.0,26695.0,True,"fin_0ab457652d9f48c88ff12300c9acf111, fin_36b62dbfa9e3484e9678198314bfc012, fin_5d47c4939e454f0aa0d863bfa50bf739, fin_8f130e891f104779b5d5c297e4508c9e, fin_9bcbee7217bf45248575de0477172b44, fin_bb73cc93d05546cf9d9aa16f67877a34, fin_e256f885c4044c65bdd8b0375b874587, fin_e61888e55d0d4633b7278b328b9fac31, fin_eaa7f314ac3549e486ee991511b853e0, fin_ecb3b8ca31ce4baba74a42398f6d94f3, fin_f496eb2e5ce14d1f977d9f19f0f9a9c1, fin_f8f4dff923dd466a9db80d4a8e4c8f10"
+ubi brulee,ubi brulee,1,pcs,2912.0,2912.0,2912.0,False,fin_e5ead370ffc645cf8d4b4c0286520791
+ubi cilembu,"Ubi Cilembu, ubi cilembu",18,"kg, pcs","1300.0, 2250.0, 5000.0, 5500.0, 10500.0, 25000.0, 26000.0, 27000.0, 50000.0",1300.0,50000.0,True,"fin_0e49d98ca52042c9a59a25c600d34da0, fin_1688f51a4b124584b02fbe4cd8ce336d, fin_24a24f2f51b3439d9e08518cacd50375, fin_27bc20a56e524876ad1b3a5fd68980cf, fin_2fb287d6eba64667a30b5ff005533db9, fin_309f871129054b8487229f75dc1973e8, fin_3a111fd9975a4ac1beadd2a5786d14f1, fin_5a74a5b740014efa8948484b4c40eff3, fin_73faf5a3da6f46a39d155c5d95cf8745, fin_85d2ecbb1c1c477988e4d3748bc2e663, fin_91c3de708d054ac2a0012aaaeaebb210, fin_96f0bf8f93d8418094254defeab74acf, fin_b60f57d5110249449c706b51f393aeeb, fin_be54d71221e54f95be96dc1434a5d2e1, fin_e2b8c5107bbc40fe93be856a3cb2ca8c, fin_edd1693db58942e7acc628923375d3ce, j571y45qadbfv9kf2eaembrgp985798q, j57938xwnzg18c3vyd4m3vy1e584jn5z"
+usuk 2,Usuk 2,1,pcs,16000.0,16000.0,16000.0,False,fin_f41d1b358c454540923edb7f3ffaf2ff
+usuk 2 5,"Usuk 2,5",2,pcs,20000.0,20000.0,20000.0,False,"fin_2fb26d898c8a441e8b48ca7472368a9c, fin_f41d1b358c454540923edb7f3ffaf2ff"
+usuk 2 5 meter,"Usuk 2,5 Meter",1,Pcs,19000.0,19000.0,19000.0,False,j57ey314m0jv1r9pj5ke9s9e7184gj43
+usuk 2 meter,Usuk 2 Meter,1,Pcs,15000.0,15000.0,15000.0,False,j57ey314m0jv1r9pj5ke9s9e7184gj43
+usuk 2m,Usuk 2m,1,pcs,16000.0,16000.0,16000.0,False,fin_2fb26d898c8a441e8b48ca7472368a9c
+van houten chocolate button dark,Van Houten Chocolate Button Dark,1,pcs,86600.0,86600.0,86600.0,False,fin_75588a7996d84d53a633e816acbb92cd
+vipco,VIPCO,2,pcs,41950.0,41950.0,41950.0,False,"fin_bb0761677b1e47e2be813ad697fe2200, fin_db08d770647c41c981e05de3e523ac00"
+wincheez gold,Wincheez Gold,1,pcs,95100.0,95100.0,95100.0,False,fin_75588a7996d84d53a633e816acbb92cd
+wings pors biru 700,WINGS PORS BIRU 700,1,pcs,4000.0,4000.0,4000.0,False,fin_ae0250e67eca4a06a5fd5508a34b5f7e
+wipol krbl srh r720,WIPOL KRBL SRH R720,1,pcs,13300.0,13300.0,13300.0,False,fin_356a4a2d525e4fea839bc0c083ab4622
+wrap cling,Wrap cling,1,pcs,16500.0,16500.0,16500.0,False,fin_be4674775f1a4c6ba3132429d9049020
+wrap kecil,Wrap kecil,1,pcs,16500.0,16500.0,16500.0,False,fin_7f5e565577174382a5c684100a3e24a6
+wrapping k,Wrapping K,1,pcs,16500.0,16500.0,16500.0,False,fin_9140a42cc04f464f99d2afa76b0d2656
+x,X,2,pcs,"6212.5, 25196.85",6212.5,25196.85,True,fin_a36c0fa9fdf748d49e3b7e7d6dce6ce4
+yb tawar gandum,"YB TAWAR GANDUM, YB Tawar Gandum",25,pcs,16500.0,16500.0,16500.0,False,"fin_06678b9b79d4449fbfc5667557c7d1bd, fin_07f7cf84f69d4afe880ba61a938d82d8, fin_11e6ca2ae21c485197dc83cf35913b5b, fin_1cdde4cf3edc4cba91364bc330464637, fin_1f8809ab0de54b848d8daecd2b6434ae, fin_26b2364e835441ff8de603469a7831c3, fin_2985c10b3eeb4487bcaa1348a1336f61, fin_3b4823eee21842c99245743acf41c286, fin_425faacadec14316af57d815408dacf9, fin_4a40e637b4824e8db83360edde7661d9, fin_5b4ce1dfa99644a3891c4d899cf5dd2c, fin_683842eec0ab477a90280c02fa17f42a, fin_6f688dd4bf6047dbb2188c45aee5d5fd, fin_718b3727e961488186823e86cacadf3d, fin_76ef4c5af4cc444bb947e40e0269b536, fin_7915b9d545bc423893b853401cc6c58e, fin_8257b60b9d1e44349d09689d33b6c513, fin_8361383f380142b084260961d89503eb, fin_8494d40383354a82897a29772a54bcac, fin_9075977656b54b938e15292e582269db, fin_95c7fe50063c4e77bd6a69b4321e4417, fin_9c71a636f5b146a9a0a3b12d64a64a75, fin_cea98625d2a04debba2d737da7d2709e, fin_d46dea98cfa44b2491a2c6ea1247b9ca, fin_edfcac4840d24acf90281e20845e1d25"
+yoa basil leaves,Yoa Basil Leaves,1,pcs,10900.0,10900.0,10900.0,False,j572rpjypbxtdnmvhtbw2jec2d84eb0x
+yoa bwg pth bbk,YOA BWG PTH BBK 40GR,2,,5350.0,5350.0,5350.0,False,fin_479c0878dfcf4071a637110164e544ed
+yoa kamper pdcb 5s,YOA KAMPER PDCB 5S,1,,20100.0,20100.0,20100.0,False,fin_5569a7eab34c436fb0e83f7ace47fde2
+yoa lada htm bbk35gr,YOA LADA HTM BBK35GR,2,,8850.0,8850.0,8850.0,False,fin_9993e91d96e349d9a163ee1f7476fec7
+yoa smart celotape,YOA SMART CELOTAPE,2,,5250.0,5250.0,5250.0,False,fin_479c0878dfcf4071a637110164e544ed
+yor kayumanisbbk40gr,YOR KAYUMANISBBK40GR,1,,4900.0,4900.0,4900.0,False,fin_80dfd8e3d4574060933597cd54c34eb2
+yor kayumanisbtg50gr,YOR KAYUMANISBTG50GR,1,,7500.0,7500.0,7500.0,False,fin_80dfd8e3d4574060933597cd54c34eb2
+you c1000,You c1000,1,pcs,3666.67,3666.6666666666665,3666.6666666666665,False,fin_7387cc8335e841c3a9bff8a2d682b7d4
+you c1000 apple 140,YOU C1000 APPLE 140,3,pcs,7500.0,7500.0,7500.0,False,"fin_064989e1a9d446e090453f1b392fa69d, fin_80dfd8e3d4574060933597cd54c34eb2, fin_db08d770647c41c981e05de3e523ac00"

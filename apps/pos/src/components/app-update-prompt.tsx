@@ -19,6 +19,8 @@ import {
 
 const REMIND_AFTER_MS = 15 * 60 * 1000;
 const NEXT_REMINDER_KEY = "__app_update_next_reminder_at__";
+const RELEASE_COMMIT = "7feae747";
+const RELEASE_MESSAGE = "fix(customer): preserve username on Mayar receipt redirect";
 
 const PROGRESS_MESSAGES: { threshold: number; text: string }[] = [
 	{ threshold: 0, text: "Menghubungi server..." },
@@ -98,7 +100,7 @@ export function AppUpdatePrompt() {
 		};
 	}, []);
 
-	// Reset progress & state when dialog closes (user clicked "Nanti Saja" or dismissed)
+	// Reset progress & state when dialog closes (user clicked "Nanti saja" or dismissed)
 	useEffect(() => {
 		if (!open) {
 			setProgress(0);
@@ -172,59 +174,63 @@ export function AppUpdatePrompt() {
 
 	return (
 		<Dialog open={open}>
-			<DialogContent className="max-w-sm overflow-hidden p-0" showCloseButton={!isUpdating}>
-				<div className="bg-card p-6">
-					<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-						{isUpdating ? (
-							<RefreshCw className="h-5 w-5 animate-spin" />
-						) : (
-							<Sparkles className="h-5 w-5" />
+			<DialogContent
+				className="max-w-[calc(100%-2rem)] overflow-hidden rounded-[28px] border-0 p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)] sm:max-w-md"
+				showCloseButton={!isUpdating}
+			>
+				<div className="bg-card p-6 sm:p-7">
+					<div className="mb-5 flex items-start justify-between gap-4">
+						<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+							{isUpdating ? (
+								<RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+							) : (
+								<Sparkles className="h-5 w-5" aria-hidden="true" />
+							)}
+						</div>
+						{!isUpdating && (
+							<span className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
+								Pembaruan tersedia
+							</span>
 						)}
 					</div>
 
-					<DialogHeader>
-						<DialogTitle className="text-base font-bold">
-							{isUpdating ? "Sedang memperbarui..." : "Update aplikasi tersedia"}
+					<DialogHeader className="space-y-2 text-left">
+						<DialogTitle className="text-xl font-bold tracking-tight">
+							{isUpdating ? "Sedang memperbarui..." : "Aplikasi siap diperbarui"}
 						</DialogTitle>
-						<DialogDescription className="text-sm/relaxed">
+						<DialogDescription className="text-sm leading-relaxed text-muted-foreground">
 							{isUpdating
-								? "Mohon tunggu sebentar, aplikasi sedang diperbarui ke versi terbaru."
-								: (
-									<>
-										Ada versi baru Djiwa Tentram POS. Klik <strong>Update Sekarang</strong> agar
-										aplikasi melakukan hard refresh otomatis dan memakai bundle terbaru.
-									</>
-								)}
+								? "Mohon tunggu sebentar. Kami sedang menyiapkan pengalaman terbaru untuk Anda."
+								: "Versi terbaru sudah tersedia. Perbarui sekarang agar aplikasi tetap aman, cepat, dan mendapatkan perbaikan terbaru."}
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="mt-4 rounded-xl border bg-background/80 p-3 text-xs text-muted-foreground">
-						<div className="flex justify-between gap-3">
-							<span>Versi saat ini</span>
-							<span className="font-semibold text-foreground">{updateInfo.currentVersion}</span>
-						</div>
-						<div className="mt-1 flex justify-between gap-3">
-							<span>Versi terbaru</span>
-							<span className="font-semibold text-foreground">{updateInfo.latestVersion}</span>
-						</div>
-						<div className="mt-1 flex justify-between gap-3">
-							<span>Tanggal build</span>
-							<span className="font-semibold text-foreground">{updateInfo.buildDate || "-"}</span>
+					<div className="mt-5 rounded-2xl border border-border/70 bg-background/70 p-4" aria-label="Detail pembaruan">
+						<div className="space-y-3 text-sm">
+							<div className="flex items-start justify-between gap-4">
+								<span className="text-muted-foreground">Versi app :</span>
+								<span className="font-semibold tabular-nums text-foreground">{updateInfo.latestVersion || "0.2.510"}</span>
+							</div>
+							<div className="flex items-start justify-between gap-4">
+								<span className="text-muted-foreground">Commit :</span>
+								<span className="font-mono text-xs font-semibold text-foreground">{RELEASE_COMMIT}</span>
+							</div>
+							<div className="flex items-start justify-between gap-4">
+								<span className="text-muted-foreground">Message:</span>
+								<span className="max-w-[15rem] text-right font-medium leading-relaxed text-foreground">{RELEASE_MESSAGE}</span>
+							</div>
 						</div>
 					</div>
 
-					{/* Progress section — shown during update */}
 					{isUpdating && (
-						<div className="mt-4 space-y-2">
-							<div className="flex items-center justify-between text-[11px] text-muted-foreground">
-								<span>{progressText}</span>
-								<span className="font-mono font-semibold tabular-nums text-foreground">
-									{progress}%
-								</span>
+						<div className="mt-5 space-y-3" aria-live="polite" aria-label="Proses pembaruan">
+							<div className="flex items-center justify-between gap-3 text-xs">
+								<span className="text-muted-foreground">{progressText}</span>
+								<span className="font-mono font-semibold tabular-nums text-foreground">{progress}%</span>
 							</div>
-							<div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+							<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
 								<div
-									className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+									className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
 									style={{ width: `${progress}%` }}
 								/>
 							</div>
@@ -233,18 +239,17 @@ export function AppUpdatePrompt() {
 
 					{!isUpdating && (
 						<>
-							<DialogFooter className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-								<Button type="button" variant="outline" onClick={handleLater}>
-									Nanti Saja
+							<DialogFooter className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+								<Button type="button" variant="outline" className="h-11 rounded-xl" onClick={handleLater}>
+									Nanti saja
 								</Button>
-								<Button type="button" onClick={handleUpdateNow}>
-									<RefreshCw className="h-4 w-4" />
-									Update Sekarang
+								<Button type="button" className="h-11 rounded-xl shadow-sm" onClick={handleUpdateNow}>
+									<RefreshCw className="h-4 w-4" aria-hidden="true" />
+									Update sekarang
 								</Button>
 							</DialogFooter>
-
-							<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-								Jika memilih Nanti Saja, pengingat akan muncul lagi setiap 15 menit di halaman manapun.
+							<p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+								Anda bisa melanjutkan aktivitas dan memperbarui nanti. Pengingat muncul lagi setiap 15 menit.
 							</p>
 						</>
 					)}

@@ -4,6 +4,8 @@ Cek stok, restok, fuzzy match bahan baru, anti-duplikasi.
 """
 
 import logging
+import hashlib
+import json
 import httpx
 import re
 from datetime import datetime, timezone, timedelta
@@ -45,6 +47,19 @@ _PROTECTED_BRANDS = [
     "gold", "silver", "platinum", "black", "white", "red", "blue",
     "green", "yellow", "fresh", "milk", "cream", "cheese",
 ]
+
+_PROTEIN_GROUPS = {
+    "chicken": {"ayam", "chicken"},
+    "beef": {"sapi", "beef"},
+    "fish": {"ikan", "fish"},
+    "seafood": {"udang", "cumi", "kerang", "seafood"},
+}
+
+
+def _has_conflicting_protein(receipt_tokens: set[str], inventory_tokens: set[str]) -> bool:
+    receipt_groups = {group for group, words in _PROTEIN_GROUPS.items() if receipt_tokens & words}
+    inventory_groups = {group for group, words in _PROTEIN_GROUPS.items() if inventory_tokens & words}
+    return bool(receipt_groups and inventory_groups and receipt_groups.isdisjoint(inventory_groups))
 
 # ── Common brand prefixes to strip (brand name as prefix of product) ──
 # e.g. "Yoa Basil" -> brand "Yoa" diketahui, cari "Basil" di DB
@@ -277,6 +292,36 @@ class InventoryManager:
                 for r in result
             ]
 
+    async def get_approved_candidate_mappings(self) -> dict[str, dict]:
+        """Load explicit candidate approvals as receipt-name → inventory redirect.
+
+        Staging classifications are intentionally ignored until a reviewer marks
+        the candidate APPROVED. This prevents fuzzy suggestions from becoming
+        persistent aliases or duplicate inventory rows.
+        """
+        url = f"{self.supabase_url}/rest/v1/inventory_item_candidates"
+        params = {
+            "select": "normalized_name,proposed_inventory_source_id,proposed_canonical_name",
+            "match_status": "eq.APPROVED",
+            "proposed_inventory_source_id": "not.is.null",
+            "limit": "5000",
+        }
+        headers = {
+            "apikey": self.supabase_key,
+            "Authorization": f"Bearer {self.service_role_key}",
+            "Accept-Profile": "pos",
+        }
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url, params=params, headers=headers)
+            resp.raise_for_status()
+            rows = resp.json()
+        return {
+            str(row.get("normalized_name") or "").strip().casefold(): row
+            for row in rows
+            if str(row.get("normalized_name") or "").strip()
+            and row.get("proposed_inventory_source_id")
+        }
+
     async def fuzzy_match_item(
         self, receipt_name: str, inventory_list: list[dict] | None = None,
         item_price: float = 0.0, merchant: str = "",
@@ -339,6 +384,8 @@ class InventoryManager:
             inv_tokens = set(inv_clean.split())
 
             if not receipt_clean or not inv_clean:
+                continue
+            if _has_conflicting_protein(receipt_tokens, inv_tokens):
                 continue
 
             # ── Multi-strategy scoring ──────────────────────────────
@@ -421,13 +468,74 @@ class InventoryManager:
 
         return best, int(best_score)
 
+    async def _record_purchase_movement_if_ready(
+        self, inventory_id: str, add_qty: float, unit: str,
+        price: float = 0, source_reference_id: str = "", trace_id: str = "", ocr_item_id: str = "",
+    ) -> bool | None:
+        """Use the base-unit RPC only when purchase unit is unambiguous.
+
+        Returns True when the ledger handled the quantity, None when legacy
+        fallback is required, and raises on an indeterminate RPC failure.
+        """
+        if not source_reference_id:
+            return None
+        url = f"{self.supabase_url}/rest/v1/inventory"
+        headers = {
+            "apikey": self.supabase_key,
+            "Authorization": f"Bearer {self.service_role_key}",
+            "Accept-Profile": "pos",
+        }
+        params = {"select": "source_id,quantity,unit,base_unit,unit_status", "source_id": f"eq.{inventory_id}"}
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(url, params=params, headers=headers)
+            response.raise_for_status()
+            rows = response.json()
+        if not rows:
+            raise ValueError(f"Inventory item tidak ditemukan: {inventory_id}")
+        row = rows[0]
+        base_unit = normalize_unit(str(row.get("base_unit") or ""))
+        purchase_unit = normalize_unit(unit)
+        if row.get("unit_status") != "READY" or not base_unit or purchase_unit != base_unit:
+            return None
+
+        movement_id = "invtx_purchase_" + hashlib.sha256(
+            f"{source_reference_id}:{inventory_id}".encode("utf-8")
+        ).hexdigest()[:32]
+        rpc_url = f"{self.supabase_url}/rest/v1/rpc/record_inventory_movement"
+        payload = {
+            "p_source_id": movement_id,
+            "p_inventory_source_id": inventory_id,
+            "p_movement_type": "purchase",
+            "p_direction": "in",
+            "p_quantity_base": add_qty,
+            "p_unit_base": base_unit,
+            "p_source_type": "financial_transaction",
+            "p_source_reference_id": source_reference_id,
+            "p_cost_per_base_unit": price if price > 0 else None,
+            "p_notes": "Purchase receipt dual-write",
+            "p_raw": {
+                "source": "yumi-finance-agent",
+                "purchaseUnit": unit,
+                "traceId": trace_id,
+                "ocrItemId": ocr_item_id,
+            },
+        }
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.post(rpc_url, headers={**headers, "Content-Type": "application/json"}, json=payload)
+            response.raise_for_status()
+        return True
+
     async def restock_item(
         self, inventory_id: str, current_qty: float, add_qty: float,
-        unit: str = "", price: float = 0,
+        unit: str = "", price: float = 0, source_reference_id: str = "",
+        trace_id: str = "", ocr_item_id: str = "",
     ) -> bool:
         """Tambah stok item. Jika price > 0, update lastPurchasePrice juga."""
         new_qty = current_qty + add_qty
-        data = {"quantity": new_qty}
+        movement_handled = await self._record_purchase_movement_if_ready(
+            inventory_id, add_qty, unit, price, source_reference_id, trace_id, ocr_item_id
+        )
+        data = {} if movement_handled else {"quantity": new_qty}
         if unit:
             data["unit"] = unit
         if price > 0:
@@ -445,7 +553,11 @@ class InventoryManager:
         }
         return await self._post("pos_inventory", data)
 
-    async def log_purchase(self, ingredient_name: str, qty_added: float, unit: str, total_cost: float, merchant: str = "") -> bool:
+    async def log_purchase(
+        self, ingredient_name: str, qty_added: float, unit: str,
+        total_cost: float, merchant: str = "", inventory_id: str = "",
+        source_transaction_id: str = "", trace_id: str = "", ocr_item_id: str = "",
+    ) -> bool:
         """Catat purchase log."""
         data = {
             "ingredient_name": ingredient_name,
@@ -453,6 +565,12 @@ class InventoryManager:
             "unit": unit,
             "total_cost": total_cost,
             "merchant": merchant or "Yumi Finance",
+            "inventory_id": inventory_id or None,
+            "ocr_raw_text": json.dumps({
+                "sourceTransactionId": source_transaction_id,
+                "traceId": trace_id,
+                "ocrItemId": ocr_item_id,
+            }, ensure_ascii=False),
             "created_at": datetime.now(WIB).strftime("%Y-%m-%dT%H:%M:%S"),
         }
         result = await self._post("pos_purchase_logs", data)

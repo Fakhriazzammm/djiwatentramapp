@@ -11,35 +11,35 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AbsenKeluarMiniRouteImport } from './routes/absen-keluar-mini'
 import { Route as UsernameRouteImport } from './routes/$username'
+import { Route as AbsenKeluarMiniRouteImport } from './routes/absen-keluar-mini'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as UsernameIndexRouteImport } from './routes/$username/index'
-import { Route as UsernameSlipGajiRouteImport } from './routes/$username/slip-gaji'
-import { Route as UsernameRekapAbsensiRouteImport } from './routes/$username/rekap-absensi'
-import { Route as UsernameProfilRouteImport } from './routes/$username/profil'
-import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
-import { Route as UsernameLeaderboardRouteImport } from './routes/$username/leaderboard'
-import { Route as UsernameKontrakRouteImport } from './routes/$username/kontrak'
-import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
-import { Route as UsernameIzinRouteImport } from './routes/$username/izin'
-import { Route as UsernameBerandaRouteImport } from './routes/$username/beranda'
-import { Route as UsernameAbsensiRouteImport } from './routes/$username/absensi'
 import { Route as UsernameAbsenKeluarRouteImport } from './routes/$username/absen-keluar'
+import { Route as UsernameAbsensiRouteImport } from './routes/$username/absensi'
+import { Route as UsernameBerandaRouteImport } from './routes/$username/beranda'
+import { Route as UsernameIzinRouteImport } from './routes/$username/izin'
+import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
+import { Route as UsernameKontrakRouteImport } from './routes/$username/kontrak'
+import { Route as UsernameLeaderboardRouteImport } from './routes/$username/leaderboard'
+import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
+import { Route as UsernameProfilRouteImport } from './routes/$username/profil'
+import { Route as UsernameRekapAbsensiRouteImport } from './routes/$username/rekap-absensi'
+import { Route as UsernameSlipGajiRouteImport } from './routes/$username/slip-gaji'
 
 const IndexLazyRouteImport = createFileRoute('/')()
 
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
+const IndexLazyRoute = IndexLazyRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/register.lazy').then((d) => d.Route))
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+const UsernameRoute = UsernameRouteImport.update({
+  id: '/$username',
+  path: '/$username',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/login.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/$username.lazy').then((d) => d.Route))
 const AbsenKeluarMiniRoute = AbsenKeluarMiniRouteImport.update({
   id: '/absen-keluar-mini',
   path: '/absen-keluar-mini',
@@ -47,16 +47,16 @@ const AbsenKeluarMiniRoute = AbsenKeluarMiniRouteImport.update({
 } as any).lazy(() =>
   import('./routes/absen-keluar-mini.lazy').then((d) => d.Route),
 )
-const UsernameRoute = UsernameRouteImport.update({
-  id: '/$username',
-  path: '/$username',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/$username.lazy').then((d) => d.Route))
-const IndexLazyRoute = IndexLazyRouteImport.update({
-  id: '/',
-  path: '/',
+} as any).lazy(() => import('./routes/login.lazy').then((d) => d.Route))
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/register.lazy').then((d) => d.Route))
 const UsernameIndexRoute = UsernameIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -64,68 +64,12 @@ const UsernameIndexRoute = UsernameIndexRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/index.lazy').then((d) => d.Route),
 )
-const UsernameSlipGajiRoute = UsernameSlipGajiRouteImport.update({
-  id: '/slip-gaji',
-  path: '/slip-gaji',
+const UsernameAbsenKeluarRoute = UsernameAbsenKeluarRouteImport.update({
+  id: '/absen-keluar',
+  path: '/absen-keluar',
   getParentRoute: () => UsernameRoute,
 } as any).lazy(() =>
-  import('./routes/$username/slip-gaji.lazy').then((d) => d.Route),
-)
-const UsernameRekapAbsensiRoute = UsernameRekapAbsensiRouteImport.update({
-  id: '/rekap-absensi',
-  path: '/rekap-absensi',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/rekap-absensi.lazy').then((d) => d.Route),
-)
-const UsernameProfilRoute = UsernameProfilRouteImport.update({
-  id: '/profil',
-  path: '/profil',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/profil.lazy').then((d) => d.Route),
-)
-const UsernameNotifikasiRoute = UsernameNotifikasiRouteImport.update({
-  id: '/notifikasi',
-  path: '/notifikasi',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/notifikasi.lazy').then((d) => d.Route),
-)
-const UsernameLeaderboardRoute = UsernameLeaderboardRouteImport.update({
-  id: '/leaderboard',
-  path: '/leaderboard',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/leaderboard.lazy').then((d) => d.Route),
-)
-const UsernameKontrakRoute = UsernameKontrakRouteImport.update({
-  id: '/kontrak',
-  path: '/kontrak',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/kontrak.lazy').then((d) => d.Route),
-)
-const UsernameJadwalRoute = UsernameJadwalRouteImport.update({
-  id: '/jadwal',
-  path: '/jadwal',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/jadwal.lazy').then((d) => d.Route),
-)
-const UsernameIzinRoute = UsernameIzinRouteImport.update({
-  id: '/izin',
-  path: '/izin',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/izin.lazy').then((d) => d.Route),
-)
-const UsernameBerandaRoute = UsernameBerandaRouteImport.update({
-  id: '/beranda',
-  path: '/beranda',
-  getParentRoute: () => UsernameRoute,
-} as any).lazy(() =>
-  import('./routes/$username/beranda.lazy').then((d) => d.Route),
+  import('./routes/$username/absen-keluar.lazy').then((d) => d.Route),
 )
 const UsernameAbsensiRoute = UsernameAbsensiRouteImport.update({
   id: '/absensi',
@@ -134,12 +78,68 @@ const UsernameAbsensiRoute = UsernameAbsensiRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/absensi.lazy').then((d) => d.Route),
 )
-const UsernameAbsenKeluarRoute = UsernameAbsenKeluarRouteImport.update({
-  id: '/absen-keluar',
-  path: '/absen-keluar',
+const UsernameBerandaRoute = UsernameBerandaRouteImport.update({
+  id: '/beranda',
+  path: '/beranda',
   getParentRoute: () => UsernameRoute,
 } as any).lazy(() =>
-  import('./routes/$username/absen-keluar.lazy').then((d) => d.Route),
+  import('./routes/$username/beranda.lazy').then((d) => d.Route),
+)
+const UsernameIzinRoute = UsernameIzinRouteImport.update({
+  id: '/izin',
+  path: '/izin',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/izin.lazy').then((d) => d.Route),
+)
+const UsernameJadwalRoute = UsernameJadwalRouteImport.update({
+  id: '/jadwal',
+  path: '/jadwal',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/jadwal.lazy').then((d) => d.Route),
+)
+const UsernameKontrakRoute = UsernameKontrakRouteImport.update({
+  id: '/kontrak',
+  path: '/kontrak',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/kontrak.lazy').then((d) => d.Route),
+)
+const UsernameLeaderboardRoute = UsernameLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/leaderboard.lazy').then((d) => d.Route),
+)
+const UsernameNotifikasiRoute = UsernameNotifikasiRouteImport.update({
+  id: '/notifikasi',
+  path: '/notifikasi',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/notifikasi.lazy').then((d) => d.Route),
+)
+const UsernameProfilRoute = UsernameProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/profil.lazy').then((d) => d.Route),
+)
+const UsernameRekapAbsensiRoute = UsernameRekapAbsensiRouteImport.update({
+  id: '/rekap-absensi',
+  path: '/rekap-absensi',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/rekap-absensi.lazy').then((d) => d.Route),
+)
+const UsernameSlipGajiRoute = UsernameSlipGajiRouteImport.update({
+  id: '/slip-gaji',
+  path: '/slip-gaji',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/slip-gaji.lazy').then((d) => d.Route),
 )
 
 export interface FileRoutesByFullPath {
@@ -268,25 +268,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/absen-keluar-mini': {
-      id: '/absen-keluar-mini'
-      path: '/absen-keluar-mini'
-      fullPath: '/absen-keluar-mini'
-      preLoaderRoute: typeof AbsenKeluarMiniRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$username': {
@@ -296,11 +282,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexLazyRouteImport
+    '/absen-keluar-mini': {
+      id: '/absen-keluar-mini'
+      path: '/absen-keluar-mini'
+      fullPath: '/absen-keluar-mini'
+      preLoaderRoute: typeof AbsenKeluarMiniRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$username/': {
@@ -310,67 +310,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameIndexRouteImport
       parentRoute: typeof UsernameRoute
     }
-    '/$username/slip-gaji': {
-      id: '/$username/slip-gaji'
-      path: '/slip-gaji'
-      fullPath: '/$username/slip-gaji'
-      preLoaderRoute: typeof UsernameSlipGajiRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/rekap-absensi': {
-      id: '/$username/rekap-absensi'
-      path: '/rekap-absensi'
-      fullPath: '/$username/rekap-absensi'
-      preLoaderRoute: typeof UsernameRekapAbsensiRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/profil': {
-      id: '/$username/profil'
-      path: '/profil'
-      fullPath: '/$username/profil'
-      preLoaderRoute: typeof UsernameProfilRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/notifikasi': {
-      id: '/$username/notifikasi'
-      path: '/notifikasi'
-      fullPath: '/$username/notifikasi'
-      preLoaderRoute: typeof UsernameNotifikasiRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/leaderboard': {
-      id: '/$username/leaderboard'
-      path: '/leaderboard'
-      fullPath: '/$username/leaderboard'
-      preLoaderRoute: typeof UsernameLeaderboardRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/kontrak': {
-      id: '/$username/kontrak'
-      path: '/kontrak'
-      fullPath: '/$username/kontrak'
-      preLoaderRoute: typeof UsernameKontrakRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/jadwal': {
-      id: '/$username/jadwal'
-      path: '/jadwal'
-      fullPath: '/$username/jadwal'
-      preLoaderRoute: typeof UsernameJadwalRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/izin': {
-      id: '/$username/izin'
-      path: '/izin'
-      fullPath: '/$username/izin'
-      preLoaderRoute: typeof UsernameIzinRouteImport
-      parentRoute: typeof UsernameRoute
-    }
-    '/$username/beranda': {
-      id: '/$username/beranda'
-      path: '/beranda'
-      fullPath: '/$username/beranda'
-      preLoaderRoute: typeof UsernameBerandaRouteImport
+    '/$username/absen-keluar': {
+      id: '/$username/absen-keluar'
+      path: '/absen-keluar'
+      fullPath: '/$username/absen-keluar'
+      preLoaderRoute: typeof UsernameAbsenKeluarRouteImport
       parentRoute: typeof UsernameRoute
     }
     '/$username/absensi': {
@@ -380,11 +324,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameAbsensiRouteImport
       parentRoute: typeof UsernameRoute
     }
-    '/$username/absen-keluar': {
-      id: '/$username/absen-keluar'
-      path: '/absen-keluar'
-      fullPath: '/$username/absen-keluar'
-      preLoaderRoute: typeof UsernameAbsenKeluarRouteImport
+    '/$username/beranda': {
+      id: '/$username/beranda'
+      path: '/beranda'
+      fullPath: '/$username/beranda'
+      preLoaderRoute: typeof UsernameBerandaRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/izin': {
+      id: '/$username/izin'
+      path: '/izin'
+      fullPath: '/$username/izin'
+      preLoaderRoute: typeof UsernameIzinRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/jadwal': {
+      id: '/$username/jadwal'
+      path: '/jadwal'
+      fullPath: '/$username/jadwal'
+      preLoaderRoute: typeof UsernameJadwalRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/kontrak': {
+      id: '/$username/kontrak'
+      path: '/kontrak'
+      fullPath: '/$username/kontrak'
+      preLoaderRoute: typeof UsernameKontrakRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/leaderboard': {
+      id: '/$username/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/$username/leaderboard'
+      preLoaderRoute: typeof UsernameLeaderboardRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/notifikasi': {
+      id: '/$username/notifikasi'
+      path: '/notifikasi'
+      fullPath: '/$username/notifikasi'
+      preLoaderRoute: typeof UsernameNotifikasiRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/profil': {
+      id: '/$username/profil'
+      path: '/profil'
+      fullPath: '/$username/profil'
+      preLoaderRoute: typeof UsernameProfilRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/rekap-absensi': {
+      id: '/$username/rekap-absensi'
+      path: '/rekap-absensi'
+      fullPath: '/$username/rekap-absensi'
+      preLoaderRoute: typeof UsernameRekapAbsensiRouteImport
+      parentRoute: typeof UsernameRoute
+    }
+    '/$username/slip-gaji': {
+      id: '/$username/slip-gaji'
+      path: '/slip-gaji'
+      fullPath: '/$username/slip-gaji'
+      preLoaderRoute: typeof UsernameSlipGajiRouteImport
       parentRoute: typeof UsernameRoute
     }
   }

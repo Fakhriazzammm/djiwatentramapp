@@ -41,6 +41,16 @@ function normalizeGuestPhone(value: string) {
 	return value.replace(/[^\d+]/g, "");
 }
 
+function normalizeUsername(value: unknown) {
+	return toTrimmedString(value).toLowerCase();
+}
+
+function assertUsername(value: string) {
+	if (!/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/.test(value)) {
+		throw new Error("Username 3–32 karakter: huruf kecil, angka, dan tanda hubung");
+	}
+}
+
 async function guestSourceId(email: string, phone: string) {
 	const identity = `${email.toLowerCase()}|${normalizeGuestPhone(phone)}`;
 	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity));
@@ -58,7 +68,7 @@ async function findOwnedCustomer(sourceId: string, email: string) {
 	const { data, error } = await supabaseAdmin
 		.schema("pos")
 		.from("customers")
-		.select("source_id, email, name, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
+		.select("source_id, email, name, username, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
 		.eq("source_id", sourceId)
 		.maybeSingle();
 
@@ -217,6 +227,7 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	const sourceId = toTrimmedString(payload.sourceId);
 	const email = toTrimmedString(payload.email);
 	const name = toTrimmedString(payload.name);
+	const username = normalizeUsername(payload.username);
 	const phone = toTrimmedString(payload.phone);
 	const customerDescription = toTrimmedString(payload.customerDescription).slice(0, 160);
 	const nickname = toTrimmedString(payload.nickname);
@@ -229,7 +240,8 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	const marketingConsent = typeof payload.marketingConsent === "boolean" ? payload.marketingConsent : undefined;
 
 	if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
-	if (!name && !phone && !customerDescription && !nickname && !birthDate && !gender && !address && !city && !province && !postalCode && marketingConsent === undefined) throw new Error("Tidak ada field yang diubah");
+	if (!name && !username && !phone && !customerDescription && !nickname && !birthDate && !gender && !address && !city && !province && !postalCode && marketingConsent === undefined) throw new Error("Tidak ada field yang diubah");
+	if (username) assertUsername(username);
 
 	const { customer, error: ownershipError } = await findOwnedCustomer(sourceId, email);
 	if (ownershipError || !customer) {
@@ -240,6 +252,12 @@ async function handleUpdateProfile(payload: JsonRecord) {
 		updated_at: new Date().toISOString(),
 	};
 	if (name) updates.name = name;
+	if (username) {
+		const { data: conflict, error: conflictError } = await supabaseAdmin.schema("pos").from("customers").select("source_id").ilike("username", username).neq("source_id", sourceId).maybeSingle();
+		if (conflictError) throw conflictError;
+		if (conflict) throw new Error("Username sudah digunakan customer lain");
+		updates.username = username;
+	}
 	if (phone) updates.phone = phone;
 	if (customerDescription) updates.customer_description = customerDescription;
 	if (nickname) updates.nickname = nickname;
@@ -259,7 +277,7 @@ async function handleUpdateProfile(payload: JsonRecord) {
 		.from("customers")
 		.update(updates)
 		.eq("source_id", sourceId)
-		.select("source_id, name, email, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
+		.select("source_id, name, username, email, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
 		.maybeSingle();
 
 	if (error) throw error;

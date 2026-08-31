@@ -17,13 +17,18 @@ export function CustomerHomeHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 py-2.5 backdrop-blur-xl">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <img alt={storeName} className="h-8 w-8 rounded-xl object-contain" src={logoUrl || "/logo-djiwa.png"} />
-          <div className="min-w-0"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary">{eyebrow}</p><p className="truncate text-xs font-black tracking-tight">{title}</p></div>
+    <header className="sticky top-0 z-30 border-b border-black/[0.04] bg-background/90 px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]">
+            <img alt={storeName} className="h-full w-full rounded-full object-contain" src={logoUrl || "/logo-djiwa.png"} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
+            <p className="truncate font-display text-[17px] font-black leading-tight tracking-[-0.02em] text-foreground">{title}</p>
+          </div>
         </div>
-        {action}
+        {action ? <div className="flex min-h-11 shrink-0 items-center">{action}</div> : <span className="h-11 w-11" aria-hidden="true" />}
       </div>
     </header>
   );

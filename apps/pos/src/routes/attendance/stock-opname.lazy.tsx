@@ -5,7 +5,6 @@ import { ArrowLeft, Loader2, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StockOpnamePanel, type OpnameItem, type OpnameRole } from "@/components/attendance/stock-opname-panel";
 import { useOpnameRunner } from "@/hooks/use-opname-runner";
-import { useHybridClockOut } from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/attendance/stock-opname")({
   component: StockOpnamePage,
@@ -14,7 +13,6 @@ export const Route = createLazyFileRoute("/attendance/stock-opname")({
 function StockOpnamePage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/attendance/stock-opname" });
-  const clockOut = useHybridClockOut();
   const { checkAndLoad, submitOpname, loading } = useOpnameRunner();
 
   const [items, setItems] = useState<OpnameItem[]>([]);
@@ -22,7 +20,6 @@ function StockOpnamePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const role = (search.role || "bar") as OpnameRole;
 
-  // Read sensitive clock-out payload from sessionStorage instead of URL
   const clockoutPayload = useMemo(() => {
     try {
       const raw = sessionStorage.getItem("__clockout_payload__");
@@ -53,14 +50,16 @@ function StockOpnamePage() {
   const handleUpdateItem = useCallback((index: number, qty: number) => {
     setItems((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], qtyAfter: Math.max(0, qty) };
+      const item = next[index];
+      const factor = item.conversionFactor || 1;
+      next[index] = { ...item, qtyAfter: Math.max(0, qty), operationalQtyAfter: Math.max(0, qty / factor) };
       return next;
     });
   }, []);
 
   const handleMarkAllSame = useCallback(() => {
     setItems((prev) =>
-      prev.map((item) => ({ ...item, qtyAfter: item.qtyBefore }))
+      prev.map((item) => ({ ...item, qtyAfter: item.qtyBefore, operationalQtyAfter: item.operationalQtyBefore ?? item.qtyBefore }))
     );
   }, []);
 
@@ -81,16 +80,13 @@ function StockOpnamePage() {
           isLastPerson: true,
         },
         search.userName || "Staff",
+        search.userId || "",
+        {
+          pinCode: clockoutPayload?.pinCode ?? undefined,
+          faceDescriptor: clockoutPayload?.faceDescriptor ?? undefined,
+          location: clockoutPayload?.location ?? undefined,
+        },
       );
-
-      // 2. Clock out
-      await clockOut({
-        userId: search.userId,
-        faceDescriptor: clockoutPayload?.faceDescriptor ?? undefined,
-        pinCode: clockoutPayload?.pinCode ?? undefined,
-        location: clockoutPayload?.location ?? undefined,
-        notes: `Stock opname ${role} selesai`,
-      });
 
       toast.success("Stock opname tersimpan & Absen Keluar berhasil!");
       navigate({ to: "/menu" });
@@ -99,7 +95,7 @@ function StockOpnamePage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, items, submitOpname, clockOut, navigate, search]);
+  }, [isSubmitting, items, submitOpname, navigate, search, role]);
 
   if (isInitializing) {
     return (

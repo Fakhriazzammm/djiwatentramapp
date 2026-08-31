@@ -1,0 +1,65 @@
+[
+  {
+    "normalized_name": "b daun",
+    "mentions": 13,
+    "sources": [],
+    "status": "REVIEW"
+  },
+  {
+    "normalized_name": "gula aren",
+    "mentions": 13,
+    "sources": [
+      {
+        "title": "Gulare Gula Aren Cair Premium 1,3kg (isi 12) - KARTON - Shopee Indonesia",
+        "url": "https://shopee.co.id/Gulare-Gula-Aren-Cair-Premium-1-3kg-(isi-12"
+      },
+      {
+        "title": "Jual GULA AREN SACHET ISI 20 | Shopee Indonesia",
+        "url": "https://shopee.co.id/GULA-AREN-SACHET-ISI-20-i.32607498.4567745081"
+      },
+      {
+        "title": "Beranda - Dainichi Sugar",
+        "url": "https://dainichigulaarenindonesia.com/"
+      }
+    ],
+    "status": "FOUND"
+  },
+  {
+    "normalized_name": "sampah",
+    "mentions": 13,
+    "sources": [
+      {
+        "title": "Sampah Saset, Masalah Besar Indonesia dalam Kemasan Kecil. Adakah ...",
+        "url": "https://www.abc.net.au/indonesian/2024-05-26/sampah-saset-masalah-besar-indonesia-dalam-kemasan-kecil/103884786"
+      },
+      {
+        "title": "Jual Ukuran Plastik Sampah Terbaik - Harga Murah Agustus ... - Tokopedia",
+        "url": "https://www.tokopedia.com/find/ukuran-plastik-sampah"
+      },
+      {
+        "title": "Jual Polybag Sampah Terbaik - Harga Murah Agustus 2026 ... - Tokopedia",
+        "url": "https://www.tokopedia.com/find/polybag-sampah"
+      }
+    ],
+    "status": "FOUND"
+  },
+  {
+    "normalized_name": "schweppes soda",
+    "mentions": 13,
+    "sources": [
+      {
+        "title": "Schweppes SODA WATER Kaleng CAN 250 ml - ( HARGA 1 DUS isi 24 )",
+        "url": "https://www.lazada.co.id/products/schweppes-soda-water-kaleng-can-250-ml-harga-1-dus-isi-24-i8329306727.html"
+      },
+      {
+        "title": "Schweppes Soda Water Can 330ml x 3 Kaleng | Lazada Indonesia",
+        "url": "https://www.lazada.co.id/products/schweppes-soda-water-can-330ml-x-3-kaleng-i8709902642.html"
+      },
+      {
+        "title": "Schweppes Soda Water Can Kaleng 250 ML 1 Dus isi 24 Kaleng",
+        "url": "https://shopee.co.id/Schweppes-Soda-Water-Can-Kaleng-250-ML-1-Dus-isi-24-Kaleng-i.1243911665.27283808297"
+      }
+    ],
+    "status": "FOUND"
+  }
+]

@@ -1245,9 +1245,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						const mayarCustomerName = customerInfo.name.trim();
 						const mayarCustomerEmail = customerInfo.email?.trim() || "";
 						const mayarCustomerPhone = customerInfo.phone?.trim() || "";
-						if (!mayarCustomerName) throw new Error("Nama customer wajib diisi sebelum pembayaran Mayar");
-						if (!mayarCustomerEmail) throw new Error("Email customer wajib diisi sebelum pembayaran Mayar");
-						if (!mayarCustomerPhone) throw new Error("Nomor WhatsApp customer wajib diisi sebelum pembayaran Mayar");
+						if (!mayarCustomerName) throw new Error("Nama customer wajib diisi sebelum pembayaran");
+						if (!mayarCustomerEmail) throw new Error("Email customer wajib diisi sebelum pembayaran");
+						if (!mayarCustomerPhone) throw new Error("Nomor WhatsApp customer wajib diisi sebelum pembayaran");
 					}
 
 					const shouldOpenBill = Boolean(orderData?.isOpenBill || useMayarGateway);

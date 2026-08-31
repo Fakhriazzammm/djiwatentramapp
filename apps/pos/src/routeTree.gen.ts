@@ -11,66 +11,66 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as MenuRouteImport } from './routes/menu'
-import { Route as HomeRouteImport } from './routes/home'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as BookingRouteImport } from './routes/booking'
-import { Route as AttendanceRouteImport } from './routes/attendance'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as AttendanceRouteImport } from './routes/attendance'
+import { Route as BookingRouteImport } from './routes/booking'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as MenuRouteImport } from './routes/menu'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as KasirLoginRouteImport } from './routes/kasir/login'
-import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
-import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$username'
-import { Route as HomeSectionRouteImport } from './routes/home.$section'
-import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
-import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
-import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
-import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
-import { Route as AdminProductsRouteImport } from './routes/admin/products'
-import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
-import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
-import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
-import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
-import { Route as AdminLoginRouteImport } from './routes/admin.login'
-import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
-import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
-import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
-import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
-import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
-import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
-import { Route as AdminBookingRouteImport } from './routes/admin/booking'
-import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
+import { Route as AdminBarRouteImport } from './routes/admin/bar'
+import { Route as AdminBookingRouteImport } from './routes/admin/booking'
+import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
+import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
+import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
-import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
-import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
+import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
+import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
+import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
+import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
+import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
+import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
+import { Route as AdminProductsRouteImport } from './routes/admin/products'
+import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
+import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
+import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
+import { Route as HomeSectionRouteImport } from './routes/home.$section'
+import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$username'
+import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
+import { Route as KasirLoginRouteImport } from './routes/kasir/login'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
-import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai.$registrationNumber'
-import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe/view'
-import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
-import { Route as AdminRecipeBaseRouteImport } from './routes/admin/recipe/base'
-import { Route as AdminOperationalTeamRekrutmenRouteImport } from './routes/admin/operational-team/rekrutmen'
-import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
-import { Route as AdminOperationalTeamPayrollRouteImport } from './routes/admin/operational-team/payroll'
-import { Route as AdminOperationalTeamKaryawanRouteImport } from './routes/admin/operational-team/karyawan'
-import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/admin/operational-team/attendance'
+import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
+import { Route as AdminFinanceExpensesRouteRouteImport } from './routes/admin/finance/expenses/route'
+import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
-import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
-import { Route as AdminFinanceExpensesRouteRouteImport } from './routes/admin/finance/expenses/route'
-import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
-import { Route as AdminOperationalTeamPayrollIndexRouteImport } from './routes/admin/operational-team/payroll/index'
+import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
+import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/admin/operational-team/attendance'
+import { Route as AdminOperationalTeamKaryawanRouteImport } from './routes/admin/operational-team/karyawan'
+import { Route as AdminOperationalTeamPayrollRouteImport } from './routes/admin/operational-team/payroll'
+import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
+import { Route as AdminOperationalTeamRekrutmenRouteImport } from './routes/admin/operational-team/rekrutmen'
+import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
+import { Route as AdminRecipeBaseRouteImport } from './routes/admin/recipe/base'
+import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
+import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe/view'
+import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai.$registrationNumber'
 import { Route as AdminOperationalTeamAttendanceIndexRouteImport } from './routes/admin/operational-team/attendance.index'
-import { Route as AdminOperationalTeamRegisterRiwayatRouteImport } from './routes/admin/operational-team/register/riwayat'
-import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
-import { Route as AdminOperationalTeamPayrollSlipRouteImport } from './routes/admin/operational-team/payroll/slip'
-import { Route as AdminOperationalTeamKaryawanDataRouteImport } from './routes/admin/operational-team/karyawan/data'
-import { Route as AdminOperationalTeamAttendancePengaturanRouteImport } from './routes/admin/operational-team/attendance/pengaturan'
 import { Route as AdminOperationalTeamAttendanceJadwalRouteImport } from './routes/admin/operational-team/attendance/jadwal'
+import { Route as AdminOperationalTeamAttendancePengaturanRouteImport } from './routes/admin/operational-team/attendance/pengaturan'
+import { Route as AdminOperationalTeamKaryawanDataRouteImport } from './routes/admin/operational-team/karyawan/data'
+import { Route as AdminOperationalTeamPayrollIndexRouteImport } from './routes/admin/operational-team/payroll/index'
+import { Route as AdminOperationalTeamPayrollSlipRouteImport } from './routes/admin/operational-team/payroll/slip'
 import { Route as AdminOperationalTeamRegisterContractRouteRouteImport } from './routes/admin/operational-team/register/contract/route'
+import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
+import { Route as AdminOperationalTeamRegisterRiwayatRouteImport } from './routes/admin/operational-team/register/riwayat'
 import { Route as AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport } from './routes/admin/operational-team/register.application.$registrationNumber'
 import { Route as AdminOperationalTeamRegisterContractTemplateIdPreviewRouteImport } from './routes/admin/operational-team/register/contract/$templateId/preview'
 
@@ -82,176 +82,77 @@ const AdminOperationalTeamRegisterContractEditTemplateIdLazyRouteImport =
     '/admin/operational-team/register/contract/edit/$templateId',
   )()
 
-const LaporanLazyRoute = LaporanLazyRouteImport.update({
-  id: '/laporan',
-  path: '/laporan',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/laporan.lazy').then((d) => d.Route))
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/register.lazy').then((d) => d.Route))
-const MenuRoute = MenuRouteImport.update({
-  id: '/menu',
-  path: '/menu',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
-const HomeRoute = HomeRouteImport.update({
-  id: '/home',
-  path: '/home',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/dashboard.lazy').then((d) => d.Route))
-const BookingRoute = BookingRouteImport.update({
-  id: '/booking',
-  path: '/booking',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/booking.lazy').then((d) => d.Route))
-const AttendanceRoute = AttendanceRouteImport.update({
-  id: '/attendance',
-  path: '/attendance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
-const AttendanceIndexRoute = AttendanceIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AttendanceRoute,
-} as any).lazy(() =>
-  import('./routes/attendance.index.lazy').then((d) => d.Route),
-)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttendanceRoute = AttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingRoute = BookingRouteImport.update({
+  id: '/booking',
+  path: '/booking',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/booking.lazy').then((d) => d.Route))
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/dashboard.lazy').then((d) => d.Route))
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LaporanLazyRoute = LaporanLazyRouteImport.update({
+  id: '/laporan',
+  path: '/laporan',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/laporan.lazy').then((d) => d.Route))
+const MenuRoute = MenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/register.lazy').then((d) => d.Route))
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
-const KasirLoginRoute = KasirLoginRouteImport.update({
-  id: '/kasir/login',
-  path: '/kasir/login',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/kasir/login.lazy').then((d) => d.Route))
-const KaryawanLoginRoute = KaryawanLoginRouteImport.update({
-  id: '/karyawan/login',
-  path: '/karyawan/login',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() =>
-  import('./routes/karyawan/login.lazy').then((d) => d.Route),
-)
-const KaryawanUsernameRoute = KaryawanUsernameRouteImport.update({
-  id: '/karyawan/$username',
-  path: '/karyawan/$username',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() =>
-  import('./routes/karyawan.$username.lazy').then((d) => d.Route),
-)
-const HomeSectionRoute = HomeSectionRouteImport.update({
-  id: '/$section',
-  path: '/$section',
-  getParentRoute: () => HomeRoute,
-} as any)
-const AttendanceStockOpnameRoute = AttendanceStockOpnameRouteImport.update({
-  id: '/stock-opname',
-  path: '/stock-opname',
-  getParentRoute: () => AttendanceRoute,
-} as any).lazy(() =>
-  import('./routes/attendance/stock-opname.lazy').then((d) => d.Route),
-)
-const AdminStockOverviewRoute = AdminStockOverviewRouteImport.update({
-  id: '/stock-overview',
-  path: '/stock-overview',
+const AdminAiChatRoute = AdminAiChatRouteImport.update({
+  id: '/ai-chat',
+  path: '/ai-chat',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/ai-chat.lazy').then((d) => d.Route))
+const AdminBarRoute = AdminBarRouteImport.update({
+  id: '/bar',
+  path: '/bar',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/bar.lazy').then((d) => d.Route))
+const AdminBookingRoute = AdminBookingRouteImport.update({
+  id: '/booking',
+  path: '/booking',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/booking.lazy').then((d) => d.Route))
+const AdminCustomerServiceRoute = AdminCustomerServiceRouteImport.update({
+  id: '/customer-service',
+  path: '/customer-service',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
-  import('./routes/admin/stock-overview.lazy').then((d) => d.Route),
-)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/settings.lazy').then((d) => d.Route),
-)
-const AdminRecipeRoute = AdminRecipeRouteImport.update({
-  id: '/recipe',
-  path: '/recipe',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminProductsRoute = AdminProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/products.lazy').then((d) => d.Route),
-)
-const AdminOrdersRoute = AdminOrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() => import('./routes/admin/orders.lazy').then((d) => d.Route))
-const AdminOperationalTeamRoute = AdminOperationalTeamRouteImport.update({
-  id: '/operational-team',
-  path: '/operational-team',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/operational-team.lazy').then((d) => d.Route),
-)
-const AdminOnboardingRoute = AdminOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/onboarding.lazy').then((d) => d.Route),
-)
-const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
-  id: '/minigames',
-  path: '/minigames',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/minigames.lazy').then((d) => d.Route),
-)
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() => import('./routes/admin.login.lazy').then((d) => d.Route))
-const AdminKitchenRoute = AdminKitchenRouteImport.update({
-  id: '/kitchen',
-  path: '/kitchen',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() => import('./routes/admin/kitchen.lazy').then((d) => d.Route))
-const AdminInventoryRoute = AdminInventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/inventory.lazy').then((d) => d.Route),
-)
-const AdminForecastingRoute = AdminForecastingRouteImport.update({
-  id: '/forecasting',
-  path: '/forecasting',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/forecasting.lazy').then((d) => d.Route),
-)
-const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
-  id: '/discounts',
-  path: '/discounts',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/discounts.lazy').then((d) => d.Route),
+  import('./routes/admin/customer-service.lazy').then((d) => d.Route),
 )
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
   id: '/customers',
@@ -260,130 +161,155 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/customers.lazy').then((d) => d.Route),
 )
-const AdminCustomerServiceRoute = AdminCustomerServiceRouteImport.update({
-  id: '/customer-service',
-  path: '/customer-service',
+const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
+  id: '/discounts',
+  path: '/discounts',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
-  import('./routes/admin/customer-service.lazy').then((d) => d.Route),
+  import('./routes/admin/discounts.lazy').then((d) => d.Route),
 )
-const AdminBookingRoute = AdminBookingRouteImport.update({
-  id: '/booking',
-  path: '/booking',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() => import('./routes/admin/booking.lazy').then((d) => d.Route))
-const AdminBarRoute = AdminBarRouteImport.update({
-  id: '/bar',
-  path: '/bar',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() => import('./routes/admin/bar.lazy').then((d) => d.Route))
-const AdminAiChatRoute = AdminAiChatRouteImport.update({
-  id: '/ai-chat',
-  path: '/ai-chat',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() => import('./routes/admin/ai-chat.lazy').then((d) => d.Route))
 const AdminFinanceRouteRoute = AdminFinanceRouteRouteImport.update({
   id: '/finance',
   path: '/finance',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminRecipeIndexRoute = AdminRecipeIndexRouteImport.update({
+const AdminForecastingRoute = AdminForecastingRouteImport.update({
+  id: '/forecasting',
+  path: '/forecasting',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/forecasting.lazy').then((d) => d.Route),
+)
+const AdminInventoryRoute = AdminInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/inventory.lazy').then((d) => d.Route),
+)
+const AdminKitchenRoute = AdminKitchenRouteImport.update({
+  id: '/kitchen',
+  path: '/kitchen',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/kitchen.lazy').then((d) => d.Route))
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin.login.lazy').then((d) => d.Route))
+const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
+  id: '/minigames',
+  path: '/minigames',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/minigames.lazy').then((d) => d.Route),
+)
+const AdminOnboardingRoute = AdminOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/onboarding.lazy').then((d) => d.Route),
+)
+const AdminOperationalTeamRoute = AdminOperationalTeamRouteImport.update({
+  id: '/operational-team',
+  path: '/operational-team',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/operational-team.lazy').then((d) => d.Route),
+)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/orders.lazy').then((d) => d.Route))
+const AdminProductsRoute = AdminProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/products.lazy').then((d) => d.Route),
+)
+const AdminRecipeRoute = AdminRecipeRouteImport.update({
+  id: '/recipe',
+  path: '/recipe',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/settings.lazy').then((d) => d.Route),
+)
+const AdminStockOverviewRoute = AdminStockOverviewRouteImport.update({
+  id: '/stock-overview',
+  path: '/stock-overview',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/stock-overview.lazy').then((d) => d.Route),
+)
+const AttendanceIndexRoute = AttendanceIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AdminRecipeRoute,
+  getParentRoute: () => AttendanceRoute,
+} as any).lazy(() =>
+  import('./routes/attendance.index.lazy').then((d) => d.Route),
+)
+const AttendanceStockOpnameRoute = AttendanceStockOpnameRouteImport.update({
+  id: '/stock-opname',
+  path: '/stock-opname',
+  getParentRoute: () => AttendanceRoute,
+} as any).lazy(() =>
+  import('./routes/attendance/stock-opname.lazy').then((d) => d.Route),
+)
+const HomeSectionRoute = HomeSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => HomeRoute,
 } as any)
-const AdminOperationalTeamIndexRoute =
-  AdminOperationalTeamIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AdminOperationalTeamRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/index.lazy').then((d) => d.Route),
-  )
+const KaryawanUsernameRoute = KaryawanUsernameRouteImport.update({
+  id: '/karyawan/$username',
+  path: '/karyawan/$username',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/karyawan.$username.lazy').then((d) => d.Route),
+)
+const KaryawanLoginRoute = KaryawanLoginRouteImport.update({
+  id: '/karyawan/login',
+  path: '/karyawan/login',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/karyawan/login.lazy').then((d) => d.Route),
+)
+const KasirLoginRoute = KasirLoginRouteImport.update({
+  id: '/kasir/login',
+  path: '/kasir/login',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/kasir/login.lazy').then((d) => d.Route))
 const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminFinanceRouteRoute,
 } as any)
-const RegisterSelesaiRegistrationNumberRoute =
-  RegisterSelesaiRegistrationNumberRouteImport.update({
-    id: '/selesai/$registrationNumber',
-    path: '/selesai/$registrationNumber',
-    getParentRoute: () => RegisterRoute,
-  } as any).lazy(() =>
-    import('./routes/register.selesai.$registrationNumber.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const AdminRecipeViewRoute = AdminRecipeViewRouteImport.update({
-  id: '/view',
-  path: '/view',
-  getParentRoute: () => AdminRecipeRoute,
-} as any).lazy(() =>
-  import('./routes/admin/recipe/view.lazy').then((d) => d.Route),
-)
-const AdminRecipeHppRoute = AdminRecipeHppRouteImport.update({
-  id: '/hpp',
-  path: '/hpp',
-  getParentRoute: () => AdminRecipeRoute,
-} as any).lazy(() =>
-  import('./routes/admin/recipe/hpp.lazy').then((d) => d.Route),
-)
-const AdminRecipeBaseRoute = AdminRecipeBaseRouteImport.update({
-  id: '/base',
-  path: '/base',
-  getParentRoute: () => AdminRecipeRoute,
-} as any).lazy(() =>
-  import('./routes/admin/recipe/base.lazy').then((d) => d.Route),
-)
-const AdminOperationalTeamRekrutmenRoute =
-  AdminOperationalTeamRekrutmenRouteImport.update({
-    id: '/rekrutmen',
-    path: '/rekrutmen',
-    getParentRoute: () => AdminOperationalTeamRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/rekrutmen.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const AdminOperationalTeamRegisterRoute =
-  AdminOperationalTeamRegisterRouteImport.update({
-    id: '/register',
-    path: '/register',
-    getParentRoute: () => AdminOperationalTeamRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/register.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const AdminOperationalTeamPayrollRoute =
-  AdminOperationalTeamPayrollRouteImport.update({
-    id: '/payroll',
-    path: '/payroll',
-    getParentRoute: () => AdminOperationalTeamRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/payroll.lazy').then((d) => d.Route),
-  )
-const AdminOperationalTeamKaryawanRoute =
-  AdminOperationalTeamKaryawanRouteImport.update({
-    id: '/karyawan',
-    path: '/karyawan',
-    getParentRoute: () => AdminOperationalTeamRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/karyawan.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const AdminOperationalTeamAttendanceRoute =
-  AdminOperationalTeamAttendanceRouteImport.update({
-    id: '/attendance',
-    path: '/attendance',
-    getParentRoute: () => AdminOperationalTeamRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/attendance.lazy').then(
-      (d) => d.Route,
-    ),
-  )
+const AdminFinanceAccountingRouteRoute =
+  AdminFinanceAccountingRouteRouteImport.update({
+    id: '/accounting',
+    path: '/accounting',
+    getParentRoute: () => AdminFinanceRouteRoute,
+  } as any)
+const AdminFinanceExpensesRouteRoute =
+  AdminFinanceExpensesRouteRouteImport.update({
+    id: '/expenses',
+    path: '/expenses',
+    getParentRoute: () => AdminFinanceRouteRoute,
+  } as any)
+const AdminFinanceReportsRouteRoute =
+  AdminFinanceReportsRouteRouteImport.update({
+    id: '/reports',
+    path: '/reports',
+    getParentRoute: () => AdminFinanceRouteRoute,
+  } as any)
 const AdminFinanceShiftReportsRoute =
   AdminFinanceShiftReportsRouteImport.update({
     id: '/shift-reports',
@@ -396,31 +322,95 @@ const AdminFinanceTransactionsRouteRoute =
     path: '/transactions',
     getParentRoute: () => AdminFinanceRouteRoute,
   } as any)
-const AdminFinanceReportsRouteRoute =
-  AdminFinanceReportsRouteRouteImport.update({
-    id: '/reports',
-    path: '/reports',
-    getParentRoute: () => AdminFinanceRouteRoute,
-  } as any)
-const AdminFinanceExpensesRouteRoute =
-  AdminFinanceExpensesRouteRouteImport.update({
-    id: '/expenses',
-    path: '/expenses',
-    getParentRoute: () => AdminFinanceRouteRoute,
-  } as any)
-const AdminFinanceAccountingRouteRoute =
-  AdminFinanceAccountingRouteRouteImport.update({
-    id: '/accounting',
-    path: '/accounting',
-    getParentRoute: () => AdminFinanceRouteRoute,
-  } as any)
-const AdminOperationalTeamPayrollIndexRoute =
-  AdminOperationalTeamPayrollIndexRouteImport.update({
+const AdminOperationalTeamIndexRoute =
+  AdminOperationalTeamIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AdminOperationalTeamPayrollRoute,
+    getParentRoute: () => AdminOperationalTeamRoute,
   } as any).lazy(() =>
-    import('./routes/admin/operational-team/payroll/index.lazy').then(
+    import('./routes/admin/operational-team/index.lazy').then((d) => d.Route),
+  )
+const AdminOperationalTeamAttendanceRoute =
+  AdminOperationalTeamAttendanceRouteImport.update({
+    id: '/attendance',
+    path: '/attendance',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/attendance.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamKaryawanRoute =
+  AdminOperationalTeamKaryawanRouteImport.update({
+    id: '/karyawan',
+    path: '/karyawan',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/karyawan.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamPayrollRoute =
+  AdminOperationalTeamPayrollRouteImport.update({
+    id: '/payroll',
+    path: '/payroll',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/payroll.lazy').then((d) => d.Route),
+  )
+const AdminOperationalTeamRegisterRoute =
+  AdminOperationalTeamRegisterRouteImport.update({
+    id: '/register',
+    path: '/register',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/register.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamRekrutmenRoute =
+  AdminOperationalTeamRekrutmenRouteImport.update({
+    id: '/rekrutmen',
+    path: '/rekrutmen',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/rekrutmen.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminRecipeIndexRoute = AdminRecipeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRecipeRoute,
+} as any)
+const AdminRecipeBaseRoute = AdminRecipeBaseRouteImport.update({
+  id: '/base',
+  path: '/base',
+  getParentRoute: () => AdminRecipeRoute,
+} as any).lazy(() =>
+  import('./routes/admin/recipe/base.lazy').then((d) => d.Route),
+)
+const AdminRecipeHppRoute = AdminRecipeHppRouteImport.update({
+  id: '/hpp',
+  path: '/hpp',
+  getParentRoute: () => AdminRecipeRoute,
+} as any).lazy(() =>
+  import('./routes/admin/recipe/hpp.lazy').then((d) => d.Route),
+)
+const AdminRecipeViewRoute = AdminRecipeViewRouteImport.update({
+  id: '/view',
+  path: '/view',
+  getParentRoute: () => AdminRecipeRoute,
+} as any).lazy(() =>
+  import('./routes/admin/recipe/view.lazy').then((d) => d.Route),
+)
+const RegisterSelesaiRegistrationNumberRoute =
+  RegisterSelesaiRegistrationNumberRouteImport.update({
+    id: '/selesai/$registrationNumber',
+    path: '/selesai/$registrationNumber',
+    getParentRoute: () => RegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/register.selesai.$registrationNumber.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -434,43 +424,13 @@ const AdminOperationalTeamAttendanceIndexRoute =
       (d) => d.Route,
     ),
   )
-const AdminOperationalTeamRegisterRiwayatRoute =
-  AdminOperationalTeamRegisterRiwayatRouteImport.update({
-    id: '/riwayat',
-    path: '/riwayat',
-    getParentRoute: () => AdminOperationalTeamRegisterRoute,
+const AdminOperationalTeamAttendanceJadwalRoute =
+  AdminOperationalTeamAttendanceJadwalRouteImport.update({
+    id: '/jadwal',
+    path: '/jadwal',
+    getParentRoute: () => AdminOperationalTeamAttendanceRoute,
   } as any).lazy(() =>
-    import('./routes/admin/operational-team/register/riwayat.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const AdminOperationalTeamRegisterOnboardingRoute =
-  AdminOperationalTeamRegisterOnboardingRouteImport.update({
-    id: '/onboarding',
-    path: '/onboarding',
-    getParentRoute: () => AdminOperationalTeamRegisterRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/register/onboarding.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const AdminOperationalTeamPayrollSlipRoute =
-  AdminOperationalTeamPayrollSlipRouteImport.update({
-    id: '/slip',
-    path: '/slip',
-    getParentRoute: () => AdminOperationalTeamPayrollRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/payroll/slip.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const AdminOperationalTeamKaryawanDataRoute =
-  AdminOperationalTeamKaryawanDataRouteImport.update({
-    id: '/data',
-    path: '/data',
-    getParentRoute: () => AdminOperationalTeamKaryawanRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/karyawan/data.lazy').then(
+    import('./routes/admin/operational-team/attendance/jadwal.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -484,13 +444,33 @@ const AdminOperationalTeamAttendancePengaturanRoute =
       (d) => d.Route,
     ),
   )
-const AdminOperationalTeamAttendanceJadwalRoute =
-  AdminOperationalTeamAttendanceJadwalRouteImport.update({
-    id: '/jadwal',
-    path: '/jadwal',
-    getParentRoute: () => AdminOperationalTeamAttendanceRoute,
+const AdminOperationalTeamKaryawanDataRoute =
+  AdminOperationalTeamKaryawanDataRouteImport.update({
+    id: '/data',
+    path: '/data',
+    getParentRoute: () => AdminOperationalTeamKaryawanRoute,
   } as any).lazy(() =>
-    import('./routes/admin/operational-team/attendance/jadwal.lazy').then(
+    import('./routes/admin/operational-team/karyawan/data.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamPayrollIndexRoute =
+  AdminOperationalTeamPayrollIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminOperationalTeamPayrollRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/payroll/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamPayrollSlipRoute =
+  AdminOperationalTeamPayrollSlipRouteImport.update({
+    id: '/slip',
+    path: '/slip',
+    getParentRoute: () => AdminOperationalTeamPayrollRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/payroll/slip.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -500,13 +480,23 @@ const AdminOperationalTeamRegisterContractRouteRoute =
     path: '/contract',
     getParentRoute: () => AdminOperationalTeamRegisterRoute,
   } as any)
-const AdminOperationalTeamRegisterContractIndexLazyRoute =
-  AdminOperationalTeamRegisterContractIndexLazyRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AdminOperationalTeamRegisterContractRouteRoute,
+const AdminOperationalTeamRegisterOnboardingRoute =
+  AdminOperationalTeamRegisterOnboardingRouteImport.update({
+    id: '/onboarding',
+    path: '/onboarding',
+    getParentRoute: () => AdminOperationalTeamRegisterRoute,
   } as any).lazy(() =>
-    import('./routes/admin/operational-team/register/contract/index.lazy').then(
+    import('./routes/admin/operational-team/register/onboarding.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamRegisterRiwayatRoute =
+  AdminOperationalTeamRegisterRiwayatRouteImport.update({
+    id: '/riwayat',
+    path: '/riwayat',
+    getParentRoute: () => AdminOperationalTeamRegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/register/riwayat.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -520,13 +510,13 @@ const AdminOperationalTeamRegisterApplicationRegistrationNumberRoute =
       (d) => d.Route,
     ),
   )
-const AdminOperationalTeamRegisterContractEditTemplateIdLazyRoute =
-  AdminOperationalTeamRegisterContractEditTemplateIdLazyRouteImport.update({
-    id: '/edit/$templateId',
-    path: '/edit/$templateId',
+const AdminOperationalTeamRegisterContractIndexLazyRoute =
+  AdminOperationalTeamRegisterContractIndexLazyRouteImport.update({
+    id: '/',
+    path: '/',
     getParentRoute: () => AdminOperationalTeamRegisterContractRouteRoute,
   } as any).lazy(() =>
-    import('./routes/admin/operational-team/register/contract/edit.$templateId.lazy').then(
+    import('./routes/admin/operational-team/register/contract/index.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -537,6 +527,16 @@ const AdminOperationalTeamRegisterContractTemplateIdPreviewRoute =
     getParentRoute: () => AdminOperationalTeamRegisterContractRouteRoute,
   } as any).lazy(() =>
     import('./routes/admin/operational-team/register/contract/$templateId/preview.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamRegisterContractEditTemplateIdLazyRoute =
+  AdminOperationalTeamRegisterContractEditTemplateIdLazyRouteImport.update({
+    id: '/edit/$templateId',
+    path: '/edit/$templateId',
+    getParentRoute: () => AdminOperationalTeamRegisterContractRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/register/contract/edit.$templateId.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -948,53 +948,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/laporan': {
-      id: '/laporan'
-      path: '/laporan'
-      fullPath: '/laporan'
-      preLoaderRoute: typeof LaporanLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/menu': {
-      id: '/menu'
-      path: '/menu'
-      fullPath: '/menu'
-      preLoaderRoute: typeof MenuRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/home': {
-      id: '/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof HomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/booking': {
-      id: '/booking'
-      path: '/booking'
-      fullPath: '/booking'
-      preLoaderRoute: typeof BookingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/attendance': {
-      id: '/attendance'
-      path: '/attendance'
-      fullPath: '/attendance'
-      preLoaderRoute: typeof AttendanceRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -1004,179 +962,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/attendance': {
+      id: '/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/attendance/': {
-      id: '/attendance/'
-      path: '/'
-      fullPath: '/attendance/'
-      preLoaderRoute: typeof AttendanceIndexRouteImport
-      parentRoute: typeof AttendanceRoute
+    '/booking': {
+      id: '/booking'
+      path: '/booking'
+      fullPath: '/booking'
+      preLoaderRoute: typeof BookingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/laporan': {
+      id: '/laporan'
+      path: '/laporan'
+      fullPath: '/laporan'
+      preLoaderRoute: typeof LaporanLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/menu': {
+      id: '/menu'
+      path: '/menu'
+      fullPath: '/menu'
+      preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/kasir/login': {
-      id: '/kasir/login'
-      path: '/kasir/login'
-      fullPath: '/kasir/login'
-      preLoaderRoute: typeof KasirLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/karyawan/login': {
-      id: '/karyawan/login'
-      path: '/karyawan/login'
-      fullPath: '/karyawan/login'
-      preLoaderRoute: typeof KaryawanLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/karyawan/$username': {
-      id: '/karyawan/$username'
-      path: '/karyawan/$username'
-      fullPath: '/karyawan/$username'
-      preLoaderRoute: typeof KaryawanUsernameRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/home/$section': {
-      id: '/home/$section'
-      path: '/$section'
-      fullPath: '/home/$section'
-      preLoaderRoute: typeof HomeSectionRouteImport
-      parentRoute: typeof HomeRoute
-    }
-    '/attendance/stock-opname': {
-      id: '/attendance/stock-opname'
-      path: '/stock-opname'
-      fullPath: '/attendance/stock-opname'
-      preLoaderRoute: typeof AttendanceStockOpnameRouteImport
-      parentRoute: typeof AttendanceRoute
-    }
-    '/admin/stock-overview': {
-      id: '/admin/stock-overview'
-      path: '/stock-overview'
-      fullPath: '/admin/stock-overview'
-      preLoaderRoute: typeof AdminStockOverviewRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/recipe': {
-      id: '/admin/recipe'
-      path: '/recipe'
-      fullPath: '/admin/recipe'
-      preLoaderRoute: typeof AdminRecipeRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/products': {
-      id: '/admin/products'
-      path: '/products'
-      fullPath: '/admin/products'
-      preLoaderRoute: typeof AdminProductsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/orders': {
-      id: '/admin/orders'
-      path: '/orders'
-      fullPath: '/admin/orders'
-      preLoaderRoute: typeof AdminOrdersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/operational-team': {
-      id: '/admin/operational-team'
-      path: '/operational-team'
-      fullPath: '/admin/operational-team'
-      preLoaderRoute: typeof AdminOperationalTeamRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/onboarding': {
-      id: '/admin/onboarding'
-      path: '/onboarding'
-      fullPath: '/admin/onboarding'
-      preLoaderRoute: typeof AdminOnboardingRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/minigames': {
-      id: '/admin/minigames'
-      path: '/minigames'
-      fullPath: '/admin/minigames'
-      preLoaderRoute: typeof AdminMinigamesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/login': {
-      id: '/admin/login'
-      path: '/login'
-      fullPath: '/admin/login'
-      preLoaderRoute: typeof AdminLoginRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/kitchen': {
-      id: '/admin/kitchen'
-      path: '/kitchen'
-      fullPath: '/admin/kitchen'
-      preLoaderRoute: typeof AdminKitchenRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/inventory': {
-      id: '/admin/inventory'
-      path: '/inventory'
-      fullPath: '/admin/inventory'
-      preLoaderRoute: typeof AdminInventoryRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/forecasting': {
-      id: '/admin/forecasting'
-      path: '/forecasting'
-      fullPath: '/admin/forecasting'
-      preLoaderRoute: typeof AdminForecastingRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/discounts': {
-      id: '/admin/discounts'
-      path: '/discounts'
-      fullPath: '/admin/discounts'
-      preLoaderRoute: typeof AdminDiscountsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/customers': {
-      id: '/admin/customers'
-      path: '/customers'
-      fullPath: '/admin/customers'
-      preLoaderRoute: typeof AdminCustomersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/customer-service': {
-      id: '/admin/customer-service'
-      path: '/customer-service'
-      fullPath: '/admin/customer-service'
-      preLoaderRoute: typeof AdminCustomerServiceRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/booking': {
-      id: '/admin/booking'
-      path: '/booking'
-      fullPath: '/admin/booking'
-      preLoaderRoute: typeof AdminBookingRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/bar': {
-      id: '/admin/bar'
-      path: '/bar'
-      fullPath: '/admin/bar'
-      preLoaderRoute: typeof AdminBarRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/ai-chat': {
@@ -1186,6 +1025,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAiChatRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/bar': {
+      id: '/admin/bar'
+      path: '/bar'
+      fullPath: '/admin/bar'
+      preLoaderRoute: typeof AdminBarRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/booking': {
+      id: '/admin/booking'
+      path: '/booking'
+      fullPath: '/admin/booking'
+      preLoaderRoute: typeof AdminBookingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/customer-service': {
+      id: '/admin/customer-service'
+      path: '/customer-service'
+      fullPath: '/admin/customer-service'
+      preLoaderRoute: typeof AdminCustomerServiceRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/discounts': {
+      id: '/admin/discounts'
+      path: '/discounts'
+      fullPath: '/admin/discounts'
+      preLoaderRoute: typeof AdminDiscountsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/finance': {
       id: '/admin/finance'
       path: '/finance'
@@ -1193,19 +1067,131 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/recipe/': {
-      id: '/admin/recipe/'
-      path: '/'
-      fullPath: '/admin/recipe/'
-      preLoaderRoute: typeof AdminRecipeIndexRouteImport
-      parentRoute: typeof AdminRecipeRoute
+    '/admin/forecasting': {
+      id: '/admin/forecasting'
+      path: '/forecasting'
+      fullPath: '/admin/forecasting'
+      preLoaderRoute: typeof AdminForecastingRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/admin/operational-team/': {
-      id: '/admin/operational-team/'
+    '/admin/inventory': {
+      id: '/admin/inventory'
+      path: '/inventory'
+      fullPath: '/admin/inventory'
+      preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kitchen': {
+      id: '/admin/kitchen'
+      path: '/kitchen'
+      fullPath: '/admin/kitchen'
+      preLoaderRoute: typeof AdminKitchenRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/minigames': {
+      id: '/admin/minigames'
+      path: '/minigames'
+      fullPath: '/admin/minigames'
+      preLoaderRoute: typeof AdminMinigamesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/onboarding': {
+      id: '/admin/onboarding'
+      path: '/onboarding'
+      fullPath: '/admin/onboarding'
+      preLoaderRoute: typeof AdminOnboardingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/operational-team': {
+      id: '/admin/operational-team'
+      path: '/operational-team'
+      fullPath: '/admin/operational-team'
+      preLoaderRoute: typeof AdminOperationalTeamRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/products': {
+      id: '/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/recipe': {
+      id: '/admin/recipe'
+      path: '/recipe'
+      fullPath: '/admin/recipe'
+      preLoaderRoute: typeof AdminRecipeRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/stock-overview': {
+      id: '/admin/stock-overview'
+      path: '/stock-overview'
+      fullPath: '/admin/stock-overview'
+      preLoaderRoute: typeof AdminStockOverviewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/attendance/': {
+      id: '/attendance/'
       path: '/'
-      fullPath: '/admin/operational-team/'
-      preLoaderRoute: typeof AdminOperationalTeamIndexRouteImport
-      parentRoute: typeof AdminOperationalTeamRoute
+      fullPath: '/attendance/'
+      preLoaderRoute: typeof AttendanceIndexRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
+    '/attendance/stock-opname': {
+      id: '/attendance/stock-opname'
+      path: '/stock-opname'
+      fullPath: '/attendance/stock-opname'
+      preLoaderRoute: typeof AttendanceStockOpnameRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
+    '/home/$section': {
+      id: '/home/$section'
+      path: '/$section'
+      fullPath: '/home/$section'
+      preLoaderRoute: typeof HomeSectionRouteImport
+      parentRoute: typeof HomeRoute
+    }
+    '/karyawan/$username': {
+      id: '/karyawan/$username'
+      path: '/karyawan/$username'
+      fullPath: '/karyawan/$username'
+      preLoaderRoute: typeof KaryawanUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/karyawan/login': {
+      id: '/karyawan/login'
+      path: '/karyawan/login'
+      fullPath: '/karyawan/login'
+      preLoaderRoute: typeof KaryawanLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kasir/login': {
+      id: '/kasir/login'
+      path: '/kasir/login'
+      fullPath: '/kasir/login'
+      preLoaderRoute: typeof KasirLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/finance/': {
       id: '/admin/finance/'
@@ -1214,68 +1200,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceIndexRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
-    '/register/selesai/$registrationNumber': {
-      id: '/register/selesai/$registrationNumber'
-      path: '/selesai/$registrationNumber'
-      fullPath: '/register/selesai/$registrationNumber'
-      preLoaderRoute: typeof RegisterSelesaiRegistrationNumberRouteImport
-      parentRoute: typeof RegisterRoute
+    '/admin/finance/accounting': {
+      id: '/admin/finance/accounting'
+      path: '/accounting'
+      fullPath: '/admin/finance/accounting'
+      preLoaderRoute: typeof AdminFinanceAccountingRouteRouteImport
+      parentRoute: typeof AdminFinanceRouteRoute
     }
-    '/admin/recipe/view': {
-      id: '/admin/recipe/view'
-      path: '/view'
-      fullPath: '/admin/recipe/view'
-      preLoaderRoute: typeof AdminRecipeViewRouteImport
-      parentRoute: typeof AdminRecipeRoute
+    '/admin/finance/expenses': {
+      id: '/admin/finance/expenses'
+      path: '/expenses'
+      fullPath: '/admin/finance/expenses'
+      preLoaderRoute: typeof AdminFinanceExpensesRouteRouteImport
+      parentRoute: typeof AdminFinanceRouteRoute
     }
-    '/admin/recipe/hpp': {
-      id: '/admin/recipe/hpp'
-      path: '/hpp'
-      fullPath: '/admin/recipe/hpp'
-      preLoaderRoute: typeof AdminRecipeHppRouteImport
-      parentRoute: typeof AdminRecipeRoute
-    }
-    '/admin/recipe/base': {
-      id: '/admin/recipe/base'
-      path: '/base'
-      fullPath: '/admin/recipe/base'
-      preLoaderRoute: typeof AdminRecipeBaseRouteImport
-      parentRoute: typeof AdminRecipeRoute
-    }
-    '/admin/operational-team/rekrutmen': {
-      id: '/admin/operational-team/rekrutmen'
-      path: '/rekrutmen'
-      fullPath: '/admin/operational-team/rekrutmen'
-      preLoaderRoute: typeof AdminOperationalTeamRekrutmenRouteImport
-      parentRoute: typeof AdminOperationalTeamRoute
-    }
-    '/admin/operational-team/register': {
-      id: '/admin/operational-team/register'
-      path: '/register'
-      fullPath: '/admin/operational-team/register'
-      preLoaderRoute: typeof AdminOperationalTeamRegisterRouteImport
-      parentRoute: typeof AdminOperationalTeamRoute
-    }
-    '/admin/operational-team/payroll': {
-      id: '/admin/operational-team/payroll'
-      path: '/payroll'
-      fullPath: '/admin/operational-team/payroll'
-      preLoaderRoute: typeof AdminOperationalTeamPayrollRouteImport
-      parentRoute: typeof AdminOperationalTeamRoute
-    }
-    '/admin/operational-team/karyawan': {
-      id: '/admin/operational-team/karyawan'
-      path: '/karyawan'
-      fullPath: '/admin/operational-team/karyawan'
-      preLoaderRoute: typeof AdminOperationalTeamKaryawanRouteImport
-      parentRoute: typeof AdminOperationalTeamRoute
-    }
-    '/admin/operational-team/attendance': {
-      id: '/admin/operational-team/attendance'
-      path: '/attendance'
-      fullPath: '/admin/operational-team/attendance'
-      preLoaderRoute: typeof AdminOperationalTeamAttendanceRouteImport
-      parentRoute: typeof AdminOperationalTeamRoute
+    '/admin/finance/reports': {
+      id: '/admin/finance/reports'
+      path: '/reports'
+      fullPath: '/admin/finance/reports'
+      preLoaderRoute: typeof AdminFinanceReportsRouteRouteImport
+      parentRoute: typeof AdminFinanceRouteRoute
     }
     '/admin/finance/shift-reports': {
       id: '/admin/finance/shift-reports'
@@ -1291,74 +1235,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceTransactionsRouteRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
-    '/admin/finance/reports': {
-      id: '/admin/finance/reports'
-      path: '/reports'
-      fullPath: '/admin/finance/reports'
-      preLoaderRoute: typeof AdminFinanceReportsRouteRouteImport
-      parentRoute: typeof AdminFinanceRouteRoute
-    }
-    '/admin/finance/expenses': {
-      id: '/admin/finance/expenses'
-      path: '/expenses'
-      fullPath: '/admin/finance/expenses'
-      preLoaderRoute: typeof AdminFinanceExpensesRouteRouteImport
-      parentRoute: typeof AdminFinanceRouteRoute
-    }
-    '/admin/finance/accounting': {
-      id: '/admin/finance/accounting'
-      path: '/accounting'
-      fullPath: '/admin/finance/accounting'
-      preLoaderRoute: typeof AdminFinanceAccountingRouteRouteImport
-      parentRoute: typeof AdminFinanceRouteRoute
-    }
-    '/admin/operational-team/payroll/': {
-      id: '/admin/operational-team/payroll/'
+    '/admin/operational-team/': {
+      id: '/admin/operational-team/'
       path: '/'
-      fullPath: '/admin/operational-team/payroll/'
-      preLoaderRoute: typeof AdminOperationalTeamPayrollIndexRouteImport
-      parentRoute: typeof AdminOperationalTeamPayrollRoute
+      fullPath: '/admin/operational-team/'
+      preLoaderRoute: typeof AdminOperationalTeamIndexRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
+    '/admin/operational-team/attendance': {
+      id: '/admin/operational-team/attendance'
+      path: '/attendance'
+      fullPath: '/admin/operational-team/attendance'
+      preLoaderRoute: typeof AdminOperationalTeamAttendanceRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
+    '/admin/operational-team/karyawan': {
+      id: '/admin/operational-team/karyawan'
+      path: '/karyawan'
+      fullPath: '/admin/operational-team/karyawan'
+      preLoaderRoute: typeof AdminOperationalTeamKaryawanRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
+    '/admin/operational-team/payroll': {
+      id: '/admin/operational-team/payroll'
+      path: '/payroll'
+      fullPath: '/admin/operational-team/payroll'
+      preLoaderRoute: typeof AdminOperationalTeamPayrollRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
+    '/admin/operational-team/register': {
+      id: '/admin/operational-team/register'
+      path: '/register'
+      fullPath: '/admin/operational-team/register'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
+    '/admin/operational-team/rekrutmen': {
+      id: '/admin/operational-team/rekrutmen'
+      path: '/rekrutmen'
+      fullPath: '/admin/operational-team/rekrutmen'
+      preLoaderRoute: typeof AdminOperationalTeamRekrutmenRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
+    '/admin/recipe/': {
+      id: '/admin/recipe/'
+      path: '/'
+      fullPath: '/admin/recipe/'
+      preLoaderRoute: typeof AdminRecipeIndexRouteImport
+      parentRoute: typeof AdminRecipeRoute
+    }
+    '/admin/recipe/base': {
+      id: '/admin/recipe/base'
+      path: '/base'
+      fullPath: '/admin/recipe/base'
+      preLoaderRoute: typeof AdminRecipeBaseRouteImport
+      parentRoute: typeof AdminRecipeRoute
+    }
+    '/admin/recipe/hpp': {
+      id: '/admin/recipe/hpp'
+      path: '/hpp'
+      fullPath: '/admin/recipe/hpp'
+      preLoaderRoute: typeof AdminRecipeHppRouteImport
+      parentRoute: typeof AdminRecipeRoute
+    }
+    '/admin/recipe/view': {
+      id: '/admin/recipe/view'
+      path: '/view'
+      fullPath: '/admin/recipe/view'
+      preLoaderRoute: typeof AdminRecipeViewRouteImport
+      parentRoute: typeof AdminRecipeRoute
+    }
+    '/register/selesai/$registrationNumber': {
+      id: '/register/selesai/$registrationNumber'
+      path: '/selesai/$registrationNumber'
+      fullPath: '/register/selesai/$registrationNumber'
+      preLoaderRoute: typeof RegisterSelesaiRegistrationNumberRouteImport
+      parentRoute: typeof RegisterRoute
     }
     '/admin/operational-team/attendance/': {
       id: '/admin/operational-team/attendance/'
       path: '/'
       fullPath: '/admin/operational-team/attendance/'
       preLoaderRoute: typeof AdminOperationalTeamAttendanceIndexRouteImport
-      parentRoute: typeof AdminOperationalTeamAttendanceRoute
-    }
-    '/admin/operational-team/register/riwayat': {
-      id: '/admin/operational-team/register/riwayat'
-      path: '/riwayat'
-      fullPath: '/admin/operational-team/register/riwayat'
-      preLoaderRoute: typeof AdminOperationalTeamRegisterRiwayatRouteImport
-      parentRoute: typeof AdminOperationalTeamRegisterRoute
-    }
-    '/admin/operational-team/register/onboarding': {
-      id: '/admin/operational-team/register/onboarding'
-      path: '/onboarding'
-      fullPath: '/admin/operational-team/register/onboarding'
-      preLoaderRoute: typeof AdminOperationalTeamRegisterOnboardingRouteImport
-      parentRoute: typeof AdminOperationalTeamRegisterRoute
-    }
-    '/admin/operational-team/payroll/slip': {
-      id: '/admin/operational-team/payroll/slip'
-      path: '/slip'
-      fullPath: '/admin/operational-team/payroll/slip'
-      preLoaderRoute: typeof AdminOperationalTeamPayrollSlipRouteImport
-      parentRoute: typeof AdminOperationalTeamPayrollRoute
-    }
-    '/admin/operational-team/karyawan/data': {
-      id: '/admin/operational-team/karyawan/data'
-      path: '/data'
-      fullPath: '/admin/operational-team/karyawan/data'
-      preLoaderRoute: typeof AdminOperationalTeamKaryawanDataRouteImport
-      parentRoute: typeof AdminOperationalTeamKaryawanRoute
-    }
-    '/admin/operational-team/attendance/pengaturan': {
-      id: '/admin/operational-team/attendance/pengaturan'
-      path: '/pengaturan'
-      fullPath: '/admin/operational-team/attendance/pengaturan'
-      preLoaderRoute: typeof AdminOperationalTeamAttendancePengaturanRouteImport
       parentRoute: typeof AdminOperationalTeamAttendanceRoute
     }
     '/admin/operational-team/attendance/jadwal': {
@@ -1368,11 +1326,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamAttendanceJadwalRouteImport
       parentRoute: typeof AdminOperationalTeamAttendanceRoute
     }
+    '/admin/operational-team/attendance/pengaturan': {
+      id: '/admin/operational-team/attendance/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/admin/operational-team/attendance/pengaturan'
+      preLoaderRoute: typeof AdminOperationalTeamAttendancePengaturanRouteImport
+      parentRoute: typeof AdminOperationalTeamAttendanceRoute
+    }
+    '/admin/operational-team/karyawan/data': {
+      id: '/admin/operational-team/karyawan/data'
+      path: '/data'
+      fullPath: '/admin/operational-team/karyawan/data'
+      preLoaderRoute: typeof AdminOperationalTeamKaryawanDataRouteImport
+      parentRoute: typeof AdminOperationalTeamKaryawanRoute
+    }
+    '/admin/operational-team/payroll/': {
+      id: '/admin/operational-team/payroll/'
+      path: '/'
+      fullPath: '/admin/operational-team/payroll/'
+      preLoaderRoute: typeof AdminOperationalTeamPayrollIndexRouteImport
+      parentRoute: typeof AdminOperationalTeamPayrollRoute
+    }
+    '/admin/operational-team/payroll/slip': {
+      id: '/admin/operational-team/payroll/slip'
+      path: '/slip'
+      fullPath: '/admin/operational-team/payroll/slip'
+      preLoaderRoute: typeof AdminOperationalTeamPayrollSlipRouteImport
+      parentRoute: typeof AdminOperationalTeamPayrollRoute
+    }
     '/admin/operational-team/register/contract': {
       id: '/admin/operational-team/register/contract'
       path: '/contract'
       fullPath: '/admin/operational-team/register/contract'
       preLoaderRoute: typeof AdminOperationalTeamRegisterContractRouteRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    }
+    '/admin/operational-team/register/onboarding': {
+      id: '/admin/operational-team/register/onboarding'
+      path: '/onboarding'
+      fullPath: '/admin/operational-team/register/onboarding'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterOnboardingRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    }
+    '/admin/operational-team/register/riwayat': {
+      id: '/admin/operational-team/register/riwayat'
+      path: '/riwayat'
+      fullPath: '/admin/operational-team/register/riwayat'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterRiwayatRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    }
+    '/admin/operational-team/register/application/$registrationNumber': {
+      id: '/admin/operational-team/register/application/$registrationNumber'
+      path: '/application/$registrationNumber'
+      fullPath: '/admin/operational-team/register/application/$registrationNumber'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport
       parentRoute: typeof AdminOperationalTeamRegisterRoute
     }
     '/admin/operational-team/register/contract/': {
@@ -1382,25 +1389,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamRegisterContractIndexLazyRouteImport
       parentRoute: typeof AdminOperationalTeamRegisterContractRouteRoute
     }
-    '/admin/operational-team/register/application/$registrationNumber': {
-      id: '/admin/operational-team/register/application/$registrationNumber'
-      path: '/application/$registrationNumber'
-      fullPath: '/admin/operational-team/register/application/$registrationNumber'
-      preLoaderRoute: typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport
-      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    '/admin/operational-team/register/contract/$templateId/preview': {
+      id: '/admin/operational-team/register/contract/$templateId/preview'
+      path: '/$templateId/preview'
+      fullPath: '/admin/operational-team/register/contract/$templateId/preview'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterContractTemplateIdPreviewRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterContractRouteRoute
     }
     '/admin/operational-team/register/contract/edit/$templateId': {
       id: '/admin/operational-team/register/contract/edit/$templateId'
       path: '/edit/$templateId'
       fullPath: '/admin/operational-team/register/contract/edit/$templateId'
       preLoaderRoute: typeof AdminOperationalTeamRegisterContractEditTemplateIdLazyRouteImport
-      parentRoute: typeof AdminOperationalTeamRegisterContractRouteRoute
-    }
-    '/admin/operational-team/register/contract/$templateId/preview': {
-      id: '/admin/operational-team/register/contract/$templateId/preview'
-      path: '/$templateId/preview'
-      fullPath: '/admin/operational-team/register/contract/$templateId/preview'
-      preLoaderRoute: typeof AdminOperationalTeamRegisterContractTemplateIdPreviewRouteImport
       parentRoute: typeof AdminOperationalTeamRegisterContractRouteRoute
     }
   }

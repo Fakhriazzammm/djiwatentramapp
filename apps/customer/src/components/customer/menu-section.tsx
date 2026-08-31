@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice, getActiveHappyHourBanner } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
@@ -83,37 +84,20 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 	return (
 		<div className="space-y-3 px-3 py-3">
-			<div data-banner-variant={bannerVariant} className={cn("rounded-[24px] border px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]", bannerClassName)} style={bannerVariant === "default" ? { backgroundColor: props.themeColor } : undefined}>
-				<div className="flex items-start justify-between gap-3">
+			<div data-banner-variant={bannerVariant} className={cn("overflow-hidden rounded-[24px] border border-black/[0.04] bg-card shadow-[0_8px_28px_rgba(15,23,42,0.06)]", bannerVariant !== "default" ? "text-white" : "text-foreground")} style={bannerVariant === "default" ? undefined : bannerVariant === "siang" ? { backgroundColor: "#b45309" } : { backgroundColor: "#312e81" }}>
+				<div className="flex items-center justify-between gap-3 px-4 py-3.5">
 					<div className="min-w-0">
-						{happyHourBanner ? (
-							<>
-								<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">Happy Hour {happyHourBanner.session}</p>
-								<h2 className="mt-1 font-display text-xl font-black leading-tight">{happyHourBanner.priceLabel}</h2>
-								<p className="mt-1 text-xs text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB.</p>
-							</>
-						) : (
-							<>
-								<h2 className="font-display text-xl font-black leading-none">Pilih menu</h2>
-							</>
-						)}
+						<p className={cn("text-[10px] font-black uppercase tracking-[0.18em]", bannerVariant === "default" ? "text-primary" : "text-white/70")}>{happyHourBanner ? `Happy Hour ${happyHourBanner.session}` : "Pesanan kamu"}</p>
+						<h2 className="mt-1 font-display text-[21px] font-black leading-tight tracking-[-0.03em]">{happyHourBanner ? happyHourBanner.priceLabel : "Pilih menu"}</h2>
+						{happyHourBanner ? <p className="mt-1 text-[11px] font-medium text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p> : <p className="mt-1 text-xs text-muted-foreground">Tambahkan menu favoritmu ke pesanan.</p>}
 					</div>
-					<div className="shrink-0 rounded-[14px] bg-white/12 px-3 py-2 text-right backdrop-blur">
-						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">Orang</p>
-						<p className="mt-0.5 text-base font-black leading-none">{props.partySize}</p>
-					</div>
+					<div className={cn("shrink-0 rounded-2xl px-3 py-2 text-right", bannerVariant === "default" ? "bg-primary/10" : "bg-white/12")}><p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", bannerVariant === "default" ? "text-primary/70" : "text-white/60")}>Orang</p><p className={cn("mt-0.5 text-lg font-black leading-none", bannerVariant === "default" ? "text-primary" : "text-white")}>{props.partySize}</p></div>
 				</div>
-				<div className="mt-3 flex items-center justify-between gap-2 border-t border-white/15 pt-2.5 text-[11px]">
-					<div className="min-w-0">
-						<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">Meja</p>
-						<p className="truncate font-bold">{props.tableNumber.trim() ? props.tableNumber.trim() : "Belum dipilih"}</p>
-					</div>
-					<div className="shrink-0 text-right">
-						<p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">Pesanan</p>
-						<p className="font-bold">{props.totalItems} item · {currency(props.total)}</p>
-					</div>
+				<div className={cn("grid grid-cols-2 gap-3 border-t px-4 py-3", bannerVariant === "default" ? "border-border/70" : "border-white/15")}>
+					<div className="min-w-0"><p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", bannerVariant === "default" ? "text-muted-foreground" : "text-white/60")}>Meja</p><p className={cn("mt-1 truncate text-sm font-black", bannerVariant === "default" ? "text-foreground" : "text-white")}>{props.tableNumber.trim() ? props.tableNumber.trim() : "Belum dipilih"}</p></div>
+					<div className="min-w-0 text-right"><p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", bannerVariant === "default" ? "text-muted-foreground" : "text-white/60")}>Pesanan</p><p className={cn("mt-1 truncate text-sm font-black", bannerVariant === "default" ? "text-foreground" : "text-white")}>{props.totalItems} item <span className={cn("font-semibold", bannerVariant === "default" ? "text-muted-foreground" : "text-white/70")}>· {currency(props.total)}</span></p></div>
 				</div>
-				{props.freeRefillCharge > 0 ? <div className="mt-2 text-[10px] font-semibold text-white/75">Free refill · {currency(props.freeRefillCharge)}</div> : null}
+				{props.freeRefillCharge > 0 ? <div className={cn("mx-4 mb-3 rounded-xl px-3 py-2 text-[11px] font-bold", bannerVariant === "default" ? "bg-emerald-50 text-emerald-700" : "bg-white/12 text-white/85")}>Free refill · {currency(props.freeRefillCharge)}</div> : null}
 			</div>
 
 			<div className="grid grid-cols-2 gap-2 rounded-[18px] border border-border bg-card p-1.5 shadow-sm" role="tablist" aria-label="Mode pemilihan menu">
@@ -214,7 +198,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							<PackageSearch aria-hidden="true" className="h-7 w-7" strokeWidth={2} />
 							<p className="mt-3 font-display text-sm font-bold">Menu gagal dimuat</p>
 							<p className="mt-1 text-xs text-red-700/80">Periksa koneksi lalu coba lagi.</p>
-							<button type="button" onClick={props.onRetryMenu} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-[14px] bg-red-700 px-4 py-2.5 text-xs font-black text-white"><RefreshCw className="h-3.5 w-3.5" />Coba lagi</button>
+							<button type="button" onClick={props.onRetryMenu} disabled={props.isMenuLoading} aria-busy={props.isMenuLoading} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-[14px] bg-red-700 px-4 py-2.5 text-xs font-black text-white disabled:pointer-events-none disabled:opacity-60"><motion.span aria-hidden="true" animate={props.isMenuLoading ? { rotate: 360 } : { rotate: 0 }} transition={props.isMenuLoading ? { duration: 0.8, repeat: Infinity, ease: "linear" } : { duration: 0.2 }}><RefreshCw className="h-3.5 w-3.5" /></motion.span>{props.isMenuLoading ? "Memuat menu..." : "Coba lagi"}</button>
 						</div>
 					) : props.isMenuLoading ? (
 						<div className="grid grid-cols-2 gap-2.5">

@@ -77,7 +77,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 					{props.paymentChoice === "mayar" && !props.isAuthenticated ? (
 						<div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
 							<p className="text-[10px] font-black uppercase tracking-[0.12em] text-primary">Data untuk pembayaran QRIS</p>
-							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Email dan nomor WhatsApp diperlukan untuk membuat invoice Mayar.</p>
+							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Email dan nomor WhatsApp diperlukan untuk menyiapkan pembayaran QRIS.</p>
 							<div className="mt-2 space-y-2">
 								<div className="space-y-0.5">
 									<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Email <span className="text-destructive">*</span></label>

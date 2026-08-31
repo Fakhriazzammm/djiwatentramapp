@@ -30,6 +30,8 @@ export interface TaxCalculationInput {
   discount?: number;
   /** Explicit alias for discountAmount, useful when the source is a voucher. */
   voucherDiscountAmount?: number;
+  /** Explicit policy switch; false disables tax regardless of configured rate. */
+  taxEnabled?: boolean;
   taxRate: number;
   serviceChargeRate: number;
   source?: TaxSource;
@@ -157,7 +159,7 @@ export function calculateOrderTax(input: TaxCalculationInput): TaxCalculation {
   const subtotalAfterDiscount = Math.max(0, productSubtotal - voucherDiscount);
   const channel = resolvePaymentChannel(input);
   const isTaxExempt = isCashierExempt(channel);
-  const effectiveTaxRate = isTaxExempt ? 0 : input.taxRate;
+  const effectiveTaxRate = input.taxEnabled === false || isTaxExempt ? 0 : input.taxRate;
   const effectiveServiceRate = isTaxExempt ? 0 : input.serviceChargeRate;
 
   // Service charge is deliberately excluded from the tax base by policy.

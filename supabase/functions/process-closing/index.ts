@@ -51,6 +51,95 @@ function signaturesEqual(left: string, right: string): boolean {
   return difference === 0;
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function euclideanDistance(left: number[], right: number[]): number {
+  if (left.length !== right.length || left.length === 0) return Infinity;
+  let sum = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const diff = left[index] - right[index];
+    sum += diff * diff;
+  }
+  return Math.sqrt(sum);
+}
+
+async function verifyPosClosingIdentity(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  pinCode?: string,
+  faceDescriptor?: number[],
+): Promise<void> {
+  const pin = String(pinCode ?? "").trim();
+  const face = Array.isArray(faceDescriptor) ? faceDescriptor : [];
+  if (!pin && face.length === 0) {
+    throw new Error("Verifikasi identitas diperlukan: PIN atau wajah");
+  }
+  const { data: user, error } = await supabase
+    .from("yumi_users")
+    .select("source_id,is_active,home_pin_fingerprint,raw")
+    .eq("source_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!user || user.is_active === false) {
+    throw new Error("Pengguna tidak ditemukan atau tidak aktif");
+  }
+  let pinVerified = false;
+  if (pin) {
+    const fingerprint = await sha256Hex(pin);
+    pinVerified = Boolean(user.home_pin_fingerprint && fingerprint === user.home_pin_fingerprint);
+  }
+  let faceVerified = false;
+  if (face.length > 0) {
+    const raw = (user.raw ?? {}) as Record<string, unknown>;
+    const stored = Array.isArray(raw.faceDescriptor)
+      ? raw.faceDescriptor.filter((value): value is number => typeof value === "number")
+      : [];
+    faceVerified = euclideanDistance(face, stored) <= 0.6;
+  }
+  if (!pinVerified && !faceVerified) {
+    throw new Error("Verifikasi identitas gagal: PIN atau wajah tidak cocok");
+  }
+}
+
+async function validatePosClosingGeofence(
+  supabase: ReturnType<typeof createClient>,
+  location?: { lat: number; lng: number } | null,
+): Promise<void> {
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+    throw new Error("Lokasi tidak tersedia — aktifkan GPS dan coba lagi");
+  }
+  const { data, error } = await supabase
+    .schema("pos")
+    .from("site_settings")
+    .select("raw")
+    .limit(1)
+    .maybeSingle();
+  if (error || !data?.raw) return;
+  const raw = data.raw as Record<string, unknown>;
+  const storeLat = Number(raw.attendanceLat);
+  const storeLng = Number(raw.attendanceLng);
+  const radius = Number(raw.attendanceRadius) || 50;
+  if (!Number.isFinite(storeLat) || !Number.isFinite(storeLng)) return;
+  const earthRadius = 6371e3;
+  const phi1 = (location.lat * Math.PI) / 180;
+  const phi2 = (storeLat * Math.PI) / 180;
+  const dPhi = ((storeLat - location.lat) * Math.PI) / 180;
+  const dLambda = ((storeLng - location.lng) * Math.PI) / 180;
+  const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+  const distance = earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  if (distance > radius) {
+    throw new Error(`Anda berada di luar radius kafe (${Math.round(distance)}m dari ${radius}m yang diizinkan)`);
+  }
+}
+
 function formatStockRemaining(qty: number, unit: string): string {
   const normalized = unit.toLowerCase().trim();
   if (qty <= 0) return "HABIS";
@@ -173,6 +262,7 @@ async function buildStockOpnameReport(
 
 async function notifyCheckoutToReportGroup(params: {
   supabase: ReturnType<typeof createClient>;
+  userId: string;
   userName: string;
   roleName: string;
   shiftName: string;
@@ -181,14 +271,14 @@ async function notifyCheckoutToReportGroup(params: {
   items: OpnameItem[];
   kebersihan: KebersihanArea[];
   isLastPerson: boolean;
-}): Promise<void> {
+}): Promise<{ sent: boolean; messageId?: number; personalSent: boolean; personalMessageId?: number }> {
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
   const chatId = Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "";
   if (!botToken || !chatId) {
     console.warn(
       "[process-closing] Telegram notification skipped: missing bot token or report chat id",
     );
-    return;
+    return { sent: false, personalSent: false };
   }
 
   const wib = new Date(params.timestamp + 7 * 60 * 60 * 1000);
@@ -248,11 +338,13 @@ async function notifyCheckoutToReportGroup(params: {
         signal: controller.signal,
       },
     );
-    if (!response.ok) {
+    const responseBody = (await response.json().catch(() => ({}))) as Record<string, any>;
+    const primaryMessageId = responseBody?.result?.message_id;
+    if (!response.ok || responseBody?.ok !== true || !primaryMessageId) {
       console.error(
-        `[process-closing] Telegram notification failed (${response.status}): ${await response.text()}`,
+        `[process-closing] Telegram notification failed (${response.status}): ${JSON.stringify(responseBody)}`,
       );
-      return;
+      return { sent: false, personalSent: false };
     }
 
     if (params.isLastPerson && (params.roleName || "").trim()) {
@@ -309,11 +401,56 @@ async function notifyCheckoutToReportGroup(params: {
       }
     }
 
+    let personalSent = false;
+    let personalMessageId: number | undefined;
+    try {
+      const { data: link } = await params.supabase
+        .from("employee_telegram_links")
+        .select("telegram_user_id")
+        .eq("employee_user_id", params.userId)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+      const personalChatId = link?.telegram_user_id;
+      if (personalChatId) {
+        const personalText = [
+          `✅ Absen Keluar Berhasil — ${date} ${time}`,
+          `👤 ${params.userName}${params.roleName ? ` • ${params.roleName}` : ""}`,
+          `🕐 ${time} WIB`,
+          `${params.shiftName ? `📌 ${params.shiftName}` : "📌 Tanpa shift"}`,
+          "",
+          "📊 Closing tersimpan di sistem.",
+          `📣 Report group: terkirim (#${primaryMessageId})`,
+          "",
+          "Terima kasih, selamat beristirahat! 🙌",
+        ].join("\n");
+        const personalResponse = await fetch(
+          `https://api.telegram.org/bot${botToken}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: personalChatId, text: personalText }),
+            signal: controller.signal,
+          },
+        );
+        const personalBody = (await personalResponse.json().catch(() => ({}))) as Record<string, any>;
+        personalMessageId = personalBody?.result?.message_id;
+        personalSent = personalResponse.ok && personalBody?.ok === true && Boolean(personalMessageId);
+        if (!personalSent) console.error("[process-closing] Personal checkout DM failed", JSON.stringify(personalBody));
+      } else {
+        console.warn(`[process-closing] No active Telegram link for employee ${params.userId}`);
+      }
+    } catch (error) {
+      console.error("[process-closing] Personal checkout DM error:", error);
+    }
+
     console.log(
-      `[process-closing] Checkout notification sent to report group for ${params.userName}`,
+      `[process-closing] Checkout notification verified: group=${chatId} message_id=${primaryMessageId} user=${params.userName}`,
     );
+    return { sent: true, messageId: primaryMessageId, personalSent, personalMessageId };
   } catch (error) {
     console.error("[process-closing] Telegram notification error:", error);
+    return { sent: false, personalSent: false };
   } finally {
     clearTimeout(timeout);
   }
@@ -333,6 +470,11 @@ function makeSourceId(prefix: string): string {
   let rnd = "";
   for (let i = 0; i < 24; i++) rnd += hex[Math.floor(Math.random() * 16)];
   return `${prefix}_${rnd}`;
+}
+
+function makeOpnameMovementSourceId(opnameSourceId: string, inventoryId: string): string {
+  // A retry of the same finalization must address the same movement row.
+  return `invtx_opname_${opnameSourceId}_${inventoryId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 interface KebersihanArea {
@@ -434,6 +576,9 @@ Deno.serve(async (req: Request) => {
       linkUid = "",
       linkTimestamp = "",
       linkSignature = "",
+      pinCode = "",
+      faceDescriptor = [],
+      location = null,
     } = payload as {
       userId: string;
       userName: string;
@@ -446,6 +591,9 @@ Deno.serve(async (req: Request) => {
       linkUid?: string;
       linkTimestamp?: string | number;
       linkSignature?: string;
+      pinCode?: string;
+      faceDescriptor?: number[];
+      location?: { lat: number; lng: number } | null;
     };
 
     if (source === "telegram_mini_app") {
@@ -508,6 +656,15 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    if (source === "pos_web") {
+      try {
+        await verifyPosClosingIdentity(supabase, userId, pinCode, faceDescriptor);
+        await validatePosClosingGeofence(supabase, location);
+      } catch (error) {
+        return fail("IDENTITY_INVALID", String(error), 403);
+      }
+    }
 
     const now = Date.now();
     const needsOpname = role === "bar" || role === "kitchen";
@@ -796,39 +953,60 @@ Deno.serve(async (req: Request) => {
       // ── Step 4: Apply final opname if last person ───────────
       if (needsOpname && isLastPerson && changedItems.length > 0) {
         for (const item of changedItems) {
-          const qtyDiff = item.qtyAfter - item.qtyBefore;
-          const txSourceId = makeSourceId("invtx");
-
-          const { error: txError } = await supabase
-            .schema("pos")
-            .from("inventory_transactions")
-            .insert({
-              source_id: txSourceId,
-              inventory_source_id: item.inventoryId,
-              quantity: qtyDiff,
-              tx_type: "stock_opname_final",
-              remaining_quantity: item.qtyAfter,
-              tx_timestamp: now,
-              notes: `[FINAL] Shift closing opname by ${userName}: ${item.qtyBefore} → ${item.qtyAfter}`,
-              creation_time: now,
-              raw: {
-                userId,
-                staffName: userName,
-                qtyBefore: item.qtyBefore,
-                qtyAfter: item.qtyAfter,
-                type: "final",
-              },
-            });
-
-          if (txError) throw txError;
-
-          const { error: invError } = await supabase
+          const txSourceId = makeOpnameMovementSourceId(opnameSourceId, item.inventoryId);
+          const { data: inventoryRow, error: inventoryReadError } = await supabase
             .schema("pos")
             .from("inventory")
-            .update({ quantity: item.qtyAfter })
-            .eq("source_id", item.inventoryId);
+            .select("quantity,base_unit,unit_status")
+            .eq("source_id", item.inventoryId)
+            .maybeSingle();
+          if (inventoryReadError) throw inventoryReadError;
 
-          if (invError) throw invError;
+          const baseUnit = String(inventoryRow?.base_unit ?? "").trim();
+          const isReady = inventoryRow?.unit_status === "READY" && baseUnit;
+          if (isReady) {
+            const { error: movementError } = await supabase.schema("pos").rpc(
+              "record_inventory_movement",
+              {
+                p_source_id: txSourceId,
+                p_inventory_source_id: item.inventoryId,
+                p_movement_type: "stock_opname",
+                p_direction: "set",
+                p_quantity_base: item.qtyAfter,
+                p_unit_base: baseUnit,
+                p_source_type: "stock_opname",
+                p_source_reference_id: opnameSourceId,
+                p_actor_id: userId,
+                p_notes: `[FINAL] ${userName}: ${item.qtyBefore} → ${item.qtyAfter} ${baseUnit}`,
+                p_raw: { userId, staffName: userName, qtyBefore: item.qtyBefore, qtyAfter: item.qtyAfter, source: "process-closing" },
+              },
+            );
+            if (movementError) throw movementError;
+          } else {
+            // Legacy fallback: preserve current operations until item classification is READY.
+            const qtyDiff = item.qtyAfter - item.qtyBefore;
+            const { error: txError } = await supabase
+              .schema("pos")
+              .from("inventory_transactions")
+              .insert({
+                source_id: txSourceId,
+                inventory_source_id: item.inventoryId,
+                quantity: qtyDiff,
+                tx_type: "stock_opname_final",
+                remaining_quantity: item.qtyAfter,
+                tx_timestamp: now,
+                notes: `[FINAL][LEGACY] Shift closing opname by ${userName}: ${item.qtyBefore} → ${item.qtyAfter}`,
+                creation_time: now,
+                raw: { userId, staffName: userName, qtyBefore: item.qtyBefore, qtyAfter: item.qtyAfter, type: "final", baseUnit: baseUnit || item.unit },
+              });
+            if (txError) throw txError;
+            const { error: invError } = await supabase
+              .schema("pos")
+              .from("inventory")
+              .update({ quantity: item.qtyAfter })
+              .eq("source_id", item.inventoryId);
+            if (invError) throw invError;
+          }
         }
       }
 
@@ -889,9 +1067,29 @@ Deno.serve(async (req: Request) => {
 
       if (checkoutError) throw checkoutError;
 
-      // Notifikasi non-fatal: checkout tetap sukses walaupun Telegram sedang gagal.
-      await notifyCheckoutToReportGroup({
+      // Verify the canonical attendance read model before continuing.
+      const { data: persistedCheckout, error: persistedCheckoutError } = await supabase
+        .from("pos_attendance_logs")
+        .select("userId,type,timestamp,shiftName")
+        .eq("userId", userId)
+        .eq("type", "check_out")
+        .gte("timestamp", now - 120_000)
+        .lte("timestamp", now + 120_000)
+        .order("timestamp", { ascending: false })
+        .limit(1);
+      if (persistedCheckoutError || !persistedCheckout?.length) {
+        console.error("[process-closing] Checkout write could not be verified", persistedCheckoutError);
+        return jsonResponse({
+          success: false,
+          error: { code: "ATTENDANCE_WRITE_UNVERIFIED", message: "Absen keluar belum dapat diverifikasi tersimpan. Silakan coba lagi." },
+          attendanceSaved: false,
+          reportNotified: false,
+        }, 503);
+      }
+
+      const notification = await notifyCheckoutToReportGroup({
         supabase,
+        userId,
         userName,
         roleName,
         shiftName,
@@ -902,11 +1100,25 @@ Deno.serve(async (req: Request) => {
         isLastPerson,
       });
 
+      if (!notification.sent) {
+        return jsonResponse({
+          success: false,
+          error: { code: "REPORT_NOTIFICATION_FAILED", message: "Absen keluar tersimpan, tetapi notifikasi grup report belum terkirim." },
+          attendanceSaved: true,
+          reportNotified: false,
+        }, 502);
+      }
+
       return jsonResponse({
         success: true,
         isLastPerson,
         staffName: userName,
         shiftName,
+        attendanceSaved: true,
+        reportNotified: true,
+        reportMessageId: notification.messageId,
+        personalNotified: notification.personalSent,
+        personalMessageId: notification.personalMessageId,
       });
     } finally {
       // ── Release lock ─────────────────────────────────────────

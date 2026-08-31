@@ -1,0 +1,90 @@
+[
+  {
+    "normalized_name": "timun",
+    "mentions": 19,
+    "sources": [
+      {
+        "title": "timun 1 kg dan 2 kg ukuran tanggung isi 4 sampai 5 perkg",
+        "url": "https://shop-id.tokopedia.com/pdp/1735391389069445097"
+      },
+      {
+        "title": "Jual Timun 1 kg - Jakarta Utara - Aneka Sayuran Segar | Tokopedia",
+        "url": "https://www.tokopedia.com/sayuransegarjkt/timun-1-kg"
+      },
+      {
+        "title": "Jual Timun Segar 1 Kg Murah & Terbaik - Tokopedia",
+        "url": "https://www.tokopedia.com/find/timun-segar-1-kg"
+      }
+    ],
+    "status": "FOUND"
+  },
+  {
+    "normalized_name": "ubi cilembu",
+    "mentions": 18,
+    "sources": [
+      {
+        "title": "Jual Ubi Cilembu Asli Madu 1Kg Murah & Terbaik - Tokopedia",
+        "url": "https://www.tokopedia.com/find/ubi-cilembu-asli-madu-1kg"
+      },
+      {
+        "title": "Ubi Cilembu Ubi Asli Sumedang, Madu | Shopee Indonesia",
+        "url": "https://shopee.co.id/list/Ubi/Cilembu Ubi"
+      },
+      {
+        "title": "Jual Ubi Cilembu Isi 12 Murah & Terbaik - Harga Terbaru Juli 2026",
+        "url": "https://www.tokopedia.com/find/ubi-cilembu-isi-12"
+      }
+    ],
+    "status": "FOUND"
+  },
+  {
+    "normalized_name": "bernardi horeca sosis sapi",
+    "mentions": 17,
+    "sources": [
+      {
+        "title": "Bernardi Horeca Sosis Sapi Besar (Big Beef Sausages) 900gr Isi 11pcs",
+        "url": "https://www.lazada.co.id/products/bernardi-horeca-sosis-sapi-besar-big-beef-sausages-900gr-isi-11pcs-i7707892564.html"
+      },
+      {
+        "title": "Bernardi Horeca Sosis Sapi 1kg Premium - Shopee Indonesia",
+        "url": "https://shopee.co.id/Bernardi-Horeca-Sosis-Sapi-1kg-Premium-i.256417102.3475472886"
+      },
+      {
+        "title": "Jual Bernardi Horeca Sosis Sapi | Shopee Indonesia",
+        "url": "https://shopee.co.id/Bernardi-Horeca-Sosis-Sapi-i.92374986.21337857011"
+      }
+    ],
+    "status": "FOUND"
+  },
+  {
+    "normalized_name": "kresek semi jmbcetak",
+    "mentions": 17,
+    "sources": [],
+    "status": "REVIEW"
+  },
+  {
+    "normalized_name": "air mineral",
+    "mentions": 16,
+    "sources": [
+      {
+        "title": "Air Mineral Pilihan Terlengkap & Produk Terbaru | Tokopedia",
+        "url": "https://www.tokopedia.com/p/makanan-minuman/minuman/air-mineral"
+      },
+      {
+        "title": "Merek Air Mineral Terbaik: Pilih yang Segar dan Sehat - Halodoc",
+        "url": "https://www.halodoc.com/artikel/merek-air-mineral-terbaik-pilih-yang-segar-dan-sehat"
+      },
+      {
+        "title": "Sui Air Mineral Botol 600ml 1 Dus / Karton isi 24Pcs - Shopee Indonesia",
+        "url": "https://shopee.co.id/Sui-Air-Mineral-Botol-600ml-1-Dus-Karton-isi-24Pcs-i.616692282.25120471505"
+      }
+    ],
+    "status": "FOUND"
+  },
+  {
+    "normalized_name": "beras dt",
+    "mentions": 16,
+    "sources": [],
+    "status": "REVIEW"
+  }
+]

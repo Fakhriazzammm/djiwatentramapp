@@ -429,6 +429,13 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
   const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">(role === null ? "kebersihan" : "opname");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
+  const [submitResult, setSubmitResult] = useState<{
+    attendanceSaved?: boolean;
+    reportNotified?: boolean;
+    reportMessageId?: number;
+    personalNotified?: boolean;
+    personalMessageId?: number;
+  } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
   const submitInFlightRef = useRef(false);
@@ -499,11 +506,15 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
     submitInFlightRef.current = true;
     setSubmitError(null);
     setSubmitNotice(closeScheduleNotice);
-    if (closeScheduleNotice) return;
+    if (closeScheduleNotice) {
+      submitInFlightRef.current = false;
+      return;
+    }
     const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
     const uncheckedAreas = areasKebersihan.filter((area) => area.status === "belum_dicek");
     if (uncheckedAreas.length > 0) {
       setSubmitError(`Pilih status kebersihan untuk: ${uncheckedAreas.map((area) => area.label).join(", ")}.`);
+      submitInFlightRef.current = false;
       return;
     }
 
@@ -541,6 +552,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
         linkSignature,
       });
 
+      setSubmitResult(result);
       setSubmitDone(true);
 
       // Close Mini App after 1.5s delay
@@ -647,6 +659,11 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
             </div>
             <p className="font-bold text-sm text-emerald-800">Absen Keluar Berhasil!</p>
             <p className="text-xs text-emerald-600 mt-0.5">Laporan closing tersimpan.</p>
+            <div className="mt-3 space-y-1 text-left text-[11px]">
+              <p>{submitResult?.attendanceSaved ? "✅ Attendance tersimpan" : "⚠️ Attendance belum terverifikasi"}</p>
+              <p>{submitResult?.reportNotified ? `✅ Report group terkirim${submitResult.reportMessageId ? ` (#${submitResult.reportMessageId})` : ""}` : "⚠️ Report group belum terverifikasi"}</p>
+              <p>{submitResult?.personalNotified ? `✅ DM pribadi terkirim${submitResult.personalMessageId ? ` (#${submitResult.personalMessageId})` : ""}` : "⚠️ DM pribadi belum terkirim"}</p>
+            </div>
             <p className="text-[10px] text-emerald-500 mt-1">Menutup otomatis...</p>
           </motion.div>
         )}

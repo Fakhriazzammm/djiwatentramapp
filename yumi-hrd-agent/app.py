@@ -252,6 +252,20 @@ async def _insert_attendance(employee_user_id: str, att_type: str, notes: str = 
             if r.status_code >= 400:
                 logger.error("_insert_attendance rejected (%s): %s", r.status_code, r.text[:1000])
             r.raise_for_status()
+        # Read-after-write verification: HTTP 2xx alone is not sufficient.
+        verify_from = now - 120000
+        verify_to = now + 120000
+        rows = await _fetch(
+            "pos_attendance_logs",
+            f"select=userId,type,timestamp,shiftName"
+            f"&userId=eq.{employee_user_id}&type=eq.{att_type}"
+            f"&timestamp=gte.{verify_from}&timestamp=lte.{verify_to}"
+            f"&order=timestamp.desc&limit=1",
+        )
+        if not rows:
+            logger.error("Attendance write returned 2xx but read-after-write found no row for %s", employee_user_id)
+            return False
+        logger.info("Attendance write verified in DB: user=%s type=%s timestamp=%s", employee_user_id, att_type, rows[0].get("timestamp"))
         return True
     except Exception as e:
         logger.error("_insert_attendance via edge function failed: %s", e)
@@ -259,7 +273,7 @@ async def _insert_attendance(employee_user_id: str, att_type: str, notes: str = 
 
 
 async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
-                                   shift_name: str = "", notes: str = "") -> None:
+                                   shift_name: str = "", notes: str = "") -> bool:
     """Broadcast an attendance event to the [Report] Djiwa Tentram group.
 
     Format (matches the HR report style):
@@ -273,7 +287,8 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
     Includes photo (if any) + late penalty calculation.
     """
     if not REPORT_CHAT_ID:
-        return
+        logger.error("Attendance report notification skipped: REPORT_CHAT_ID is empty")
+        return False
 
     emp_name = emp.get("employee_name", "Karyawan")
     emp_id = emp.get("employee_user_id", "")
@@ -401,13 +416,18 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
         from telegram import Bot as _Bot
         bot = _Bot(token=BOT_TOKEN)
         if photo_bytes:
-            await bot.send_photo(chat_id=REPORT_CHAT_ID, photo=photo_bytes,
-                                 caption=msg, parse_mode="Markdown")
+            sent = await bot.send_photo(chat_id=REPORT_CHAT_ID, photo=photo_bytes,
+                                        caption=msg, parse_mode="Markdown")
         else:
-            await bot.send_message(chat_id=REPORT_CHAT_ID, text=msg, parse_mode="Markdown")
-        logger.info("Attendance broadcast sent to group %s for %s", REPORT_CHAT_ID, emp_name)
+            sent = await bot.send_message(chat_id=REPORT_CHAT_ID, text=msg, parse_mode="Markdown")
+        if not sent or not getattr(sent, "message_id", None):
+            logger.error("Attendance broadcast returned no message_id for group %s", REPORT_CHAT_ID)
+            return False
+        logger.info("Attendance broadcast verified: group=%s message_id=%s employee=%s", REPORT_CHAT_ID, sent.message_id, emp_name)
+        return True
     except Exception as e:
-        logger.error("attendance group notify failed: %s", e)
+        logger.exception("attendance group notify failed: %s", e)
+        return False
 
 
 async def _find_shift_at_time(timestamp_ms: int) -> dict:
@@ -508,7 +528,9 @@ def _location_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [[KeyboardButton("📍 Kirim Lokasi", request_location=True)]],
         resize_keyboard=True,
-        one_time_keyboard=True,
+        one_time_keyboard=False,
+        is_persistent=True,
+        input_field_placeholder="Tekan 📍 Kirim Lokasi",
     )
 
 async def cmd_employee_app(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1330,12 +1352,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     emp_id = emp["employee_user_id"]
     emp_name = emp["employee_name"]
 
+    # Acknowledge immediately so Telegram users never see a silent upload.
+    await update.message.reply_text(
+        "📸 Foto diterima. Sedang menyimpan foto dan memproses absensi…"
+    )
     _clear_state(tg_id)
 
     # Download photo
     photo_file = await update.message.photo[-1].get_file()
     photo_bytes_io = io.BytesIO()
-    await photo_file.download_to_memory(photo_bytes_io)
+    await asyncio.wait_for(photo_file.download_to_memory(photo_bytes_io), timeout=30)
     photo_bytes = photo_bytes_io.getvalue()
 
     # Upload to storage
@@ -1365,8 +1391,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_main_keyboard())
         return
 
-    # Broadcast to report group (intent is "check_in" here)
-    await _notify_attendance_group(emp, intent, now, shift_name, notes)
+    # Broadcast to report group and expose delivery status to the employee.
+    report_notified = await _notify_attendance_group(emp, intent, now, shift_name, notes)
 
     date_str = now.strftime("%d/%m")
     time_str = now.strftime("%H:%M")
@@ -1379,7 +1405,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🕐 {time_str} WIB\n"
             f"{f'📌 {shift_name}' if shift_name else ''}\n"
             f"{loc_line}\n"
-            f"{'📸 Foto tersimpan ✅' if photo_url else ''}\n\n"
+            f"{'📸 Foto tersimpan ✅' if photo_url else '⚠️ Foto tidak tersimpan'}\n"
+            f"{'📣 Notifikasi grup report terkirim ✅' if report_notified else '⚠️ Notifikasi grup report gagal — admin perlu cek'}\n\n"
             f"Jangan lupa 📤 Absen Keluar nanti.",
             parse_mode="Markdown",
             reply_markup=_main_keyboard())
@@ -1388,6 +1415,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ *Absen Keluar — {date_str} {time_str}*\n\n"
             f"👤 *{emp_name}*\n"
             f"🕐 {time_str} WIB\n\n"
+            f"📣 {'Notifikasi grup report terkirim ✅' if report_notified else 'Notifikasi grup report gagal — admin perlu cek'}\n\n"
             f"Shift selesai! Selamat istirahat 🎉",
             parse_mode="Markdown",
             reply_markup=_main_keyboard())
@@ -1745,6 +1773,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id if update.effective_user else 0
     text = (update.message.text or "").strip()
 
+    state = _get_state(tg_id)
+    if state and state.get("state") == "awaiting_location" and (
+        text.casefold() in {"kirim lokasi", "📍 kirim lokasi", "/lokasi"}
+    ):
+        await update.message.reply_text(
+            "📍 Silakan tekan tombol *📍 Kirim Lokasi* di bawah.\n"
+            "Jika tombol belum terlihat, buka panel keyboard Telegram lalu tekan ulang.",
+            parse_mode="Markdown",
+            reply_markup=_location_keyboard(),
+        )
+        return
+
     # ── Handle /batal ──
     if text.lower() in ("/batal", "/cancel", "batal"):
         state = _get_state(tg_id)
@@ -1897,6 +1937,20 @@ async def post_init(app):
     # Start background shift-end reminder loop
     asyncio.create_task(_shift_end_reminder_loop(app))
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    """Never swallow handler failures; make the failure visible to the user."""
+    logger.exception("Unhandled Telegram update error", exc_info=context.error)
+    message = getattr(update, "effective_message", None)
+    if message:
+        try:
+            await message.reply_text(
+                "⚠️ Proses absensi gagal diproses. Silakan kirim foto sekali lagi "
+                "atau ketik /start untuk mengulang."
+            )
+        except Exception:
+            logger.exception("Failed sending visible attendance error")
+
+
 def main():
     req = HTTPXRequest(read_timeout=10.0, write_timeout=10.0, connect_timeout=10.0, pool_timeout=5.0)
     app = Application.builder().token(BOT_TOKEN).request(req).post_init(post_init).build()
@@ -1907,11 +1961,12 @@ def main():
     app.add_handler(MessageHandler(filters.LOCATION, handle_location))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_error_handler(error_handler)
     logger.info("Yumi HRD Agent starting...")
     # Explicitly reset Telegram allowed_updates after channel-only probes;
     # otherwise Telegram can keep delivering only channel_post and silently
     # drop normal DM messages/buttons.
-    app.run_polling(timeout=1, drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+    app.run_polling(timeout=1, drop_pending_updates=False, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()

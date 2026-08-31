@@ -17,9 +17,12 @@ export function formatPaymentLabel(
   const receiptKind = normalize(input.paymentReceiptKind);
   const includeAppPrefix = options.includeAppPrefix ?? source === "customer_self_service";
   const isDjiwaApp = source === "customer_self_service";
+  const isMieYamin = source === "ordermieyamin_b2b";
 
   let methodLabel: string;
-  if (method === "cash" || method === "tunai" || receiptKind === "cashier_pending" || receiptKind === "cashier") {
+  if (isMieYamin && ["djiwaapp", "qris", "qris_mayar", "mayar"].includes(method)) {
+    methodLabel = "QRIS";
+  } else if (method === "cash" || method === "tunai" || receiptKind === "cashier_pending" || receiptKind === "cashier") {
     methodLabel = "Bayar Tunai di Kasir";
   } else if (method === "wallet" || method === "djiwa_pay") {
     methodLabel = "Djiwa Pay";

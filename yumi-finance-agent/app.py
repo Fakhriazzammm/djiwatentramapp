@@ -556,6 +556,7 @@ async def _handle_new_ingredient(update: Update, context: ContextTypes.DEFAULT_T
 
 # Pending receipt confirmations (terpisah dari _pending_actions ingredient)
 _receipt_pending: dict[str, dict] = {}
+_approved_candidate_map: dict[str, dict] = {}
 
 # ── Bulk OCR: album multi-foto ──────────────────────────────────────
 _album_buffer: dict[str, dict] = {}
@@ -585,6 +586,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     msg = await update.message.reply_text("🔍 Memproses struk...")
+    scan_id = f"scan_{update.effective_chat.id}_{update.message.message_id}"
 
     try:
         # Compress image
@@ -648,6 +650,9 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Normalize OCR item names/units/net weight (applies to both vision_json and fallbacks)
         items = _normalize_ocr_items(items)
+        for item_index, item in enumerate(items, 1):
+            item["ocr_item_id"] = f"{scan_id}_item_{item_index:02d}"
+            item["ocr_source_position"] = item_index
 
         # Hitung total dari items (fallback)
         items_total = 0.0
@@ -756,6 +761,8 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         _receipt_pending[ref_id] = {
             "merchant": merchant,
+            "scan_id": scan_id,
+            "vision_attempt_id": f"{scan_id}_vision_01",
             "date": receipt_date,
             "time": receipt_time,
             "items": items,
@@ -1581,6 +1588,8 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
         receipt_date_str=receipt.get("date", ""),
         metadata={
             "source": "yumi_finance_agent",
+            "traceId": receipt.get("scan_id", ""),
+            "visionAttemptId": receipt.get("vision_attempt_id", ""),
             "ocr": is_ocr,
             "receipt_number": receipt.get("receipt_number", ""),
             "receipt_date": receipt.get("date", ""),
@@ -1589,6 +1598,8 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             "item_count": len(items),
             "scanItems": [
                 {
+                    "ocrItemId": it.get("ocr_item_id", ""),
+                    "ocrSourcePosition": it.get("ocr_source_position"),
                     "name": it.get("name", ""),
                     "rawName": it.get("raw_name", ""),
                     "aliasResolvedFrom": it.get("alias_resolved_from", ""),
@@ -1631,6 +1642,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                 ))
 
     # ── Accounting dual-write ────────────────────────────────────
+    source_id = tx_result.get("sourceId", "")
     if tx_result.get("success") and items and tx_type in ("income", "expense"):
         source_id = tx_result.get("sourceId", "")
         asyncio.ensure_future(_write_accounting_entries(
@@ -1655,6 +1667,8 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     lines.append(f"📁 Kategori: {get_category_label(category)}")
     if tx_result.get("success"):
         lines.append(f"✅ Berhasil disimpan")
+        lines.append(f"🔎 Trace ID: {receipt.get('scan_id', '-')}")
+        lines.append(f"🧾 Finance ID: {source_id or '-'}")
         # Accounting badge jika ada entries
         if items:
             lines.append(f"📊 Entri akuntansi dibuat")
@@ -1676,20 +1690,39 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             item_price = float(item.get("price") or 0)
             unit = item.get("unit", "").strip() or _extract_unit(item_name) or "pcs"
 
-            matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
+            approved = _approved_candidate_map.get(item_name.casefold())
+            matched = None
+            score = 0
+            if approved:
+                approved_id = approved.get("proposed_inventory_source_id")
+                matched = next((inv for inv in inventory_list if inv.get("_id") == approved_id), None)
+                score = 100 if matched else 0
+            else:
+                matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
             if matched and score >= MIN_SCORE_AUTO:
                 inv_name = matched["ingredientName"]
                 inv_qty = float(matched.get("quantity", 0))
                 try:
-                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit, price=item_price)
-                    await inventory.log_purchase(inv_name, item_qty, unit, item_price * item_qty, merchant)
+                    await inventory.restock_item(
+                        matched["_id"], inv_qty, item_qty, unit,
+                        price=item_price,
+                        source_reference_id=source_id,
+                        trace_id=receipt.get("scan_id", ""),
+                        ocr_item_id=item.get("ocr_item_id", ""),
+                    )
+                    await inventory.log_purchase(
+                        inv_name, item_qty, unit, item_price * item_qty, merchant,
+                        inventory_id=matched["_id"],
+                        source_transaction_id=source_id,
+                        trace_id=receipt.get("scan_id", ""),
+                        ocr_item_id=item.get("ocr_item_id", ""),
+                    )
                     restok_lines.append(f"  ✅ {inv_name} +{item_qty:.0f} {unit}")
                 except Exception as e:
                     restok_lines.append(f"  ⚠️ {item_name}: {e}")
             elif matched and score >= MIN_SCORE_SUGGEST:
                 restok_lines.append(f"  🤔 {item_name} ≈ {matched['ingredientName']}? ({score}%)")
-                # Auto-learn alias: user confirm → simpan OCR name sbg alias
-                asyncio.ensure_future(inventory.add_alias(matched["_id"], item_name))
+                # Do not persist fuzzy suggestions automatically. Alias changes require explicit approval workflow.
             else:
                 restok_lines.append(f"  🆕 {item_name} — belum di database")
 
@@ -1886,20 +1919,27 @@ async def _manual_restock(result):
             item_price = float(item.get("price") or 0)
             unit = item.get("unit", "").strip() or _extract_unit(item_name) or "pcs"
 
-            matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
+            approved = _approved_candidate_map.get(item_name.casefold())
+            matched = None
+            score = 0
+            if approved:
+                approved_id = approved.get("proposed_inventory_source_id")
+                matched = next((inv for inv in inventory_list if inv.get("_id") == approved_id), None)
+                score = 100 if matched else 0
+            else:
+                matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
             if matched and score >= MIN_SCORE_AUTO:
                 inv_name = matched["ingredientName"]
                 inv_qty = float(matched.get("quantity", 0))
                 try:
-                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit, price=item_price)
+                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit, price=item_price, source_reference_id=locals().get("source_id", ""))
                     await inventory.log_purchase(inv_name, item_qty, unit, item_price * item_qty, merchant)
                     restok_lines.append(f"  ✅ {inv_name} +{item_qty:.0f} {unit}")
                 except Exception as e:
                     restok_lines.append(f"  ⚠️ {item_name}: {e}")
             elif matched and score >= MIN_SCORE_SUGGEST:
                 restok_lines.append(f"  🤔 {item_name} ≈ {matched['ingredientName']}? ({score}%)")
-                # Auto-learn alias: user confirm → simpan OCR name sbg alias
-                asyncio.ensure_future(inventory.add_alias(matched["_id"], item_name))
+                # Do not persist fuzzy suggestions automatically. Alias changes require explicit approval workflow.
             else:
                 restok_lines.append(f"  🆕 {item_name} — belum di database")
 
@@ -4340,6 +4380,17 @@ async def _load_inventory_aliases():
         logger.warning("Failed to load inventory aliases (non-fatal): %s", e)
 
 
+async def _load_approved_candidate_mappings():
+    """Load explicit backend approvals for deterministic receipt restock redirects."""
+    global _approved_candidate_map
+    try:
+        _approved_candidate_map = await inventory.get_approved_candidate_mappings()
+        logger.info("Loaded %d approved inventory candidate mappings", len(_approved_candidate_map))
+    except Exception as e:
+        logger.warning("Failed to load approved candidate mappings (non-fatal): %s", e)
+        _approved_candidate_map = {}
+
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN belum di-set")
@@ -4360,6 +4411,12 @@ def main():
         _asyncio.ensure_future(_load_inventory_aliases())
     except Exception as e:
         logger.warning("Alias load failed (non-fatal): %s", e)
+
+    # ── Load approved candidate mappings ──────────────────────────
+    try:
+        _asyncio.ensure_future(_load_approved_candidate_mappings())
+    except Exception as e:
+        logger.warning("Approved candidate mapping load failed (non-fatal): %s", e)
 
     # ── Load DB categories resolver ──────────────────────────────
     try:

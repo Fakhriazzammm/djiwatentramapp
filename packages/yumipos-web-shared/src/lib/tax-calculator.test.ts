@@ -37,6 +37,23 @@ describe("validateTaxRate", () => {
 });
 
 describe("calculateOrderTax", () => {
+	 it("disables tax when the explicit policy switch is off", () => {
+		const result = calculateOrderTax({
+			items: [{ price: 100_000, quantity: 1 }],
+			taxEnabled: false,
+			taxRate: 11,
+			serviceChargeRate: 5,
+			source: "customer_self_service",
+			paymentChoice: "mayar",
+		});
+
+		expect(result.taxRate).toBe(0);
+		expect(result.taxAmount).toBe(0);
+		expect(result.serviceChargeAmount).toBe(5_000);
+		expect(result.rawTotal).toBe(105_000);
+		expect(result.finalTotal).toBe(105_000);
+	});
+
   it("uses subtotal after discount as tax base and excludes service charge", () => {
     const result = calculateOrderTax({
       items: [

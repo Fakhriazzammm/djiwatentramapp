@@ -806,11 +806,16 @@ export class BluetoothPrinterService {
 			const rawTotalAmount = order.rawTotalAmount ?? order.receiptMeta?.rawTotalAmount;
 			const roundingAdjustment =
 				order.roundingAdjustment ?? order.receiptMeta?.roundingAdjustment;
-			printKeyValue("DASAR PBJT", formatReceiptAmount(taxBaseAmount ?? 0));
-			const effectiveTaxRate = taxRateSnapshot ?? 10;
-			printKeyValue(`PBJT/PAJAK RESTORAN (${effectiveTaxRate}%)`, formatReceiptAmount(order.taxAmount ?? 0));
+			const hasTax = Number(order.taxAmount ?? 0) > 0 || Number(taxRateSnapshot ?? 0) > 0;
+			if (hasTax) {
+				printKeyValue("DASAR PBJT", formatReceiptAmount(taxBaseAmount ?? 0));
+				const effectiveTaxRate = taxRateSnapshot ?? 0;
+				printKeyValue(`PBJT/PAJAK RESTORAN (${effectiveTaxRate}%)`, formatReceiptAmount(order.taxAmount ?? 0));
+				printWrappedLines("PBJT makanan dan minuman Kota Tasikmalaya; service charge bukan pajak daerah.", RECEIPT_LINE_WIDTH);
+			} else {
+				printWrappedLines("Harga menu sudah termasuk PBJT atas makanan dan/atau minuman sesuai ketentuan yang berlaku di Kota Tasikmalaya.", RECEIPT_LINE_WIDTH);
+			}
 			printKeyValue("SERVICE CHARGE", formatReceiptAmount(order.serviceChargeAmount ?? 0));
-			printWrappedLines("PBJT makanan dan minuman Kota Tasikmalaya 10%; service charge bukan pajak daerah.", RECEIPT_LINE_WIDTH);
 			if (roundingAdjustment != null || rawTotalAmount != null) {
 				if (rawTotalAmount != null) {
 					printKeyValue("SEBELUM PEMBULATAN", formatReceiptAmount(rawTotalAmount));

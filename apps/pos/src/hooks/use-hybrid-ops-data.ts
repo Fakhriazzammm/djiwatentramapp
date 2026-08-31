@@ -14,7 +14,7 @@ function resolveMayarConfig() {
 	// Mayar is intentionally server-side only; Admin/POS never receive the API key.
 	return {
 		configured: false,
-		missing: ["SERVER_SIDE_MAYAR_PROXY"],
+		missing: ["SERVER_SIDE_PAYMENT_PROXY"],
 		baseUrl: "",
 	};
 }

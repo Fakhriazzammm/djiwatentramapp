@@ -2,6 +2,7 @@ import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/rea
 import { useYumiAuth, YumiAuthProvider, useDemoMode } from "@yumipos/web-shared";
 import { Component, type ReactNode, useEffect } from "react";
 import { preloadFaceModels } from "@/components/auth/FaceRecognition";
+import { OwnerFooter } from "@yumipos/web-shared";
 
 // ── Error Boundary ──
 class RootErrorBoundary extends Component<
@@ -93,7 +94,7 @@ function RootContent() {
   const isDemoViewer = role?.name === "CLIENT_VIEWER";
   useDemoMode(isDemoViewer);
 
-  return <Outlet />;
+  return <><Outlet /><OwnerFooter /></>;
 }
 
 export const Route = createRootRoute({

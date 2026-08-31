@@ -9,23 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DaftarRouteImport } from './routes/daftar'
-import { Route as UsernameRouteRouteImport } from './routes/$username/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UsernameRiwayatRouteImport } from './routes/$username/riwayat'
-import { Route as UsernamePromoRouteImport } from './routes/$username/promo'
-import { Route as UsernameProfileRouteImport } from './routes/$username/profile'
-import { Route as UsernamePoinRouteImport } from './routes/$username/poin'
-import { Route as UsernameOrderRouteImport } from './routes/$username/order'
-import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
-import { Route as UsernameMinigamesRouteImport } from './routes/$username/minigames'
+import { Route as UsernameRouteRouteImport } from './routes/$username/route'
+import { Route as DaftarRouteImport } from './routes/daftar'
 import { Route as UsernameFavoritRouteImport } from './routes/$username/favorit'
+import { Route as UsernameMinigamesRouteImport } from './routes/$username/minigames'
+import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
+import { Route as UsernameOrderRouteImport } from './routes/$username/order'
+import { Route as UsernamePoinRouteImport } from './routes/$username/poin'
+import { Route as UsernameProfileRouteImport } from './routes/$username/profile'
+import { Route as UsernamePromoRouteImport } from './routes/$username/promo'
+import { Route as UsernameRiwayatRouteImport } from './routes/$username/riwayat'
 
-const DaftarRoute = DaftarRouteImport.update({
-  id: '/daftar',
-  path: '/daftar',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/daftar.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 const UsernameRouteRoute = UsernameRouteRouteImport.update({
   id: '/$username',
   path: '/$username',
@@ -33,52 +33,17 @@ const UsernameRouteRoute = UsernameRouteRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/route.lazy').then((d) => d.Route),
 )
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DaftarRoute = DaftarRouteImport.update({
+  id: '/daftar',
+  path: '/daftar',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
-const UsernameRiwayatRoute = UsernameRiwayatRouteImport.update({
-  id: '/riwayat',
-  path: '/riwayat',
+} as any).lazy(() => import('./routes/daftar.lazy').then((d) => d.Route))
+const UsernameFavoritRoute = UsernameFavoritRouteImport.update({
+  id: '/favorit',
+  path: '/favorit',
   getParentRoute: () => UsernameRouteRoute,
 } as any).lazy(() =>
-  import('./routes/$username/riwayat.lazy').then((d) => d.Route),
-)
-const UsernamePromoRoute = UsernamePromoRouteImport.update({
-  id: '/promo',
-  path: '/promo',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/promo.lazy').then((d) => d.Route),
-)
-const UsernameProfileRoute = UsernameProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/profile.lazy').then((d) => d.Route),
-)
-const UsernamePoinRoute = UsernamePoinRouteImport.update({
-  id: '/poin',
-  path: '/poin',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/poin.lazy').then((d) => d.Route),
-)
-const UsernameOrderRoute = UsernameOrderRouteImport.update({
-  id: '/order',
-  path: '/order',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/order.lazy').then((d) => d.Route),
-)
-const UsernameNotifikasiRoute = UsernameNotifikasiRouteImport.update({
-  id: '/notifikasi',
-  path: '/notifikasi',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/notifikasi.lazy').then((d) => d.Route),
+  import('./routes/$username/favorit.lazy').then((d) => d.Route),
 )
 const UsernameMinigamesRoute = UsernameMinigamesRouteImport.update({
   id: '/minigames',
@@ -87,12 +52,47 @@ const UsernameMinigamesRoute = UsernameMinigamesRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/minigames.lazy').then((d) => d.Route),
 )
-const UsernameFavoritRoute = UsernameFavoritRouteImport.update({
-  id: '/favorit',
-  path: '/favorit',
+const UsernameNotifikasiRoute = UsernameNotifikasiRouteImport.update({
+  id: '/notifikasi',
+  path: '/notifikasi',
   getParentRoute: () => UsernameRouteRoute,
 } as any).lazy(() =>
-  import('./routes/$username/favorit.lazy').then((d) => d.Route),
+  import('./routes/$username/notifikasi.lazy').then((d) => d.Route),
+)
+const UsernameOrderRoute = UsernameOrderRouteImport.update({
+  id: '/order',
+  path: '/order',
+  getParentRoute: () => UsernameRouteRoute,
+} as any).lazy(() =>
+  import('./routes/$username/order.lazy').then((d) => d.Route),
+)
+const UsernamePoinRoute = UsernamePoinRouteImport.update({
+  id: '/poin',
+  path: '/poin',
+  getParentRoute: () => UsernameRouteRoute,
+} as any).lazy(() =>
+  import('./routes/$username/poin.lazy').then((d) => d.Route),
+)
+const UsernameProfileRoute = UsernameProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => UsernameRouteRoute,
+} as any).lazy(() =>
+  import('./routes/$username/profile.lazy').then((d) => d.Route),
+)
+const UsernamePromoRoute = UsernamePromoRouteImport.update({
+  id: '/promo',
+  path: '/promo',
+  getParentRoute: () => UsernameRouteRoute,
+} as any).lazy(() =>
+  import('./routes/$username/promo.lazy').then((d) => d.Route),
+)
+const UsernameRiwayatRoute = UsernameRiwayatRouteImport.update({
+  id: '/riwayat',
+  path: '/riwayat',
+  getParentRoute: () => UsernameRouteRoute,
+} as any).lazy(() =>
+  import('./routes/$username/riwayat.lazy').then((d) => d.Route),
 )
 
 export interface FileRoutesByFullPath {
@@ -185,11 +185,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/daftar': {
-      id: '/daftar'
-      path: '/daftar'
-      fullPath: '/daftar'
-      preLoaderRoute: typeof DaftarRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$username': {
@@ -199,53 +199,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/daftar': {
+      id: '/daftar'
+      path: '/daftar'
+      fullPath: '/daftar'
+      preLoaderRoute: typeof DaftarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$username/riwayat': {
-      id: '/$username/riwayat'
-      path: '/riwayat'
-      fullPath: '/$username/riwayat'
-      preLoaderRoute: typeof UsernameRiwayatRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/promo': {
-      id: '/$username/promo'
-      path: '/promo'
-      fullPath: '/$username/promo'
-      preLoaderRoute: typeof UsernamePromoRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/profile': {
-      id: '/$username/profile'
-      path: '/profile'
-      fullPath: '/$username/profile'
-      preLoaderRoute: typeof UsernameProfileRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/poin': {
-      id: '/$username/poin'
-      path: '/poin'
-      fullPath: '/$username/poin'
-      preLoaderRoute: typeof UsernamePoinRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/order': {
-      id: '/$username/order'
-      path: '/order'
-      fullPath: '/$username/order'
-      preLoaderRoute: typeof UsernameOrderRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/notifikasi': {
-      id: '/$username/notifikasi'
-      path: '/notifikasi'
-      fullPath: '/$username/notifikasi'
-      preLoaderRoute: typeof UsernameNotifikasiRouteImport
+    '/$username/favorit': {
+      id: '/$username/favorit'
+      path: '/favorit'
+      fullPath: '/$username/favorit'
+      preLoaderRoute: typeof UsernameFavoritRouteImport
       parentRoute: typeof UsernameRouteRoute
     }
     '/$username/minigames': {
@@ -255,11 +220,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameMinigamesRouteImport
       parentRoute: typeof UsernameRouteRoute
     }
-    '/$username/favorit': {
-      id: '/$username/favorit'
-      path: '/favorit'
-      fullPath: '/$username/favorit'
-      preLoaderRoute: typeof UsernameFavoritRouteImport
+    '/$username/notifikasi': {
+      id: '/$username/notifikasi'
+      path: '/notifikasi'
+      fullPath: '/$username/notifikasi'
+      preLoaderRoute: typeof UsernameNotifikasiRouteImport
+      parentRoute: typeof UsernameRouteRoute
+    }
+    '/$username/order': {
+      id: '/$username/order'
+      path: '/order'
+      fullPath: '/$username/order'
+      preLoaderRoute: typeof UsernameOrderRouteImport
+      parentRoute: typeof UsernameRouteRoute
+    }
+    '/$username/poin': {
+      id: '/$username/poin'
+      path: '/poin'
+      fullPath: '/$username/poin'
+      preLoaderRoute: typeof UsernamePoinRouteImport
+      parentRoute: typeof UsernameRouteRoute
+    }
+    '/$username/profile': {
+      id: '/$username/profile'
+      path: '/profile'
+      fullPath: '/$username/profile'
+      preLoaderRoute: typeof UsernameProfileRouteImport
+      parentRoute: typeof UsernameRouteRoute
+    }
+    '/$username/promo': {
+      id: '/$username/promo'
+      path: '/promo'
+      fullPath: '/$username/promo'
+      preLoaderRoute: typeof UsernamePromoRouteImport
+      parentRoute: typeof UsernameRouteRoute
+    }
+    '/$username/riwayat': {
+      id: '/$username/riwayat'
+      path: '/riwayat'
+      fullPath: '/$username/riwayat'
+      preLoaderRoute: typeof UsernameRiwayatRouteImport
       parentRoute: typeof UsernameRouteRoute
     }
   }

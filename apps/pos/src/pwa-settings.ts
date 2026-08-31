@@ -8,7 +8,7 @@ export const posPwaSettings = {
 	"theme_color": "#fefefe",
 	"background_color": "#0a0a0b",
 	"start_url": "/menu",
-	"orientation": "landscape",
+	"orientation": "portrait",
 	"icon192": "/pwa-192x192.png",
 	"icon512": "/pwa-512x512.png"
 };

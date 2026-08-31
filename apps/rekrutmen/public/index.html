@@ -90,7 +90,16 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #0a0a0b; outline-offset: 3px; box-shadow: 0 0 0 5px rgba(31,94,255,0.18); }
 ::selection { background: #1f5eff; color: white; }
 
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after, .animate-rise, .animate-pop-in, .skel.shimmer { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after, .animate-rise, .animate-pop-in, .skel.shimmer { animation: none !important; transition: none !important; }
+
+/* Standalone app update prompt */
+#appUpdateModal.show { opacity: 1; pointer-events: auto; }
+#appUpdateModal .update-card { transform: translateY(12px) scale(.98); transition: transform 320ms cubic-bezier(.32,.72,0,1); }
+#appUpdateModal.show .update-card { transform: translateY(0) scale(1); }
+#appUpdateModal .update-progress { width: 0; transition: width 320ms cubic-bezier(.32,.72,0,1); }
+#appUpdateModal.is-loading .update-progress { width: 72%; }
+#appUpdateModal.is-complete .update-progress { width: 100%; }
+@media (prefers-reduced-motion: reduce) { #appUpdateModal .update-card, #appUpdateModal .update-progress { transition: none; } }
 </style>
 </head>
 <body class="font-sans bg-white text-ink min-h-dvh">
@@ -394,12 +403,108 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   </div>
 </div>
 
+<!-- ═══ APP UPDATE MODAL (standalone iOS) ═══ -->
+<div class="fixed inset-0 z-[60] bg-black/35 backdrop-blur-[8px] flex items-center justify-center p-5 opacity-0 pointer-events-none transition-opacity duration-320 ease-spring" id="appUpdateModal" role="dialog" aria-modal="true" aria-labelledby="appUpdateTitle" aria-describedby="appUpdateDescription">
+  <div class="update-card bg-white rounded-card p-6 w-full max-w-[380px] shadow-ios-2">
+    <div class="flex items-start gap-3.5">
+      <div class="size-11 rounded-ctl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0" aria-hidden="true">
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/><path d="M5 17h14"/></svg>
+      </div>
+      <div class="min-w-0">
+        <h2 class="font-display text-[18px] font-extrabold tracking-[-0.02em]" id="appUpdateTitle">Pembaruan tersedia</h2>
+        <p class="mt-1.5 text-[13px] text-ink-2 leading-[1.55]" id="appUpdateDescription">Versi terbaru sudah siap. Update agar pengalaman kamu tetap lancar.</p>
+      </div>
+    </div>
+    <dl class="grid gap-2.5 mt-5 p-3.5 rounded-[16px] bg-surface border border-border-ios text-[12px]">
+      <div class="flex items-start justify-between gap-4"><dt class="text-ink-2">Versi app :</dt><dd class="font-extrabold text-ink text-right">0.2.510</dd></div>
+      <div class="flex items-start justify-between gap-4"><dt class="text-ink-2">Commit :</dt><dd class="font-mono font-extrabold text-ink text-right">7feae747</dd></div>
+      <div class="grid gap-1"><dt class="text-ink-2">Message:</dt><dd class="font-semibold text-ink leading-[1.45]">fix(customer): preserve username on Mayar receipt redirect</dd></div>
+    </dl>
+    <div class="hidden mt-4" id="appUpdateStatus" aria-live="polite">
+      <div class="flex items-center justify-between gap-3 text-[12px] font-semibold text-ink-2"><span id="appUpdateStatusText">Menyiapkan pembaruan…</span><span id="appUpdateStatusPercent">0%</span></div>
+      <div class="h-1.5 mt-2 rounded-full bg-surface-2 overflow-hidden"><div class="update-progress h-full rounded-full bg-accent" id="appUpdateProgress"></div></div>
+    </div>
+    <p class="hidden mt-3 text-[12px] text-danger leading-[1.45]" id="appUpdateError" role="alert">Pembaruan belum bisa dimulai. Coba lagi.</p>
+    <div class="flex gap-3 mt-6">
+      <button type="button" id="appUpdateLater" class="flex-1 min-h-[46px] rounded-ctl border-2 border-border-ios bg-white text-ink font-display font-extrabold text-[13px] motion-safe">Nanti saja</button>
+      <button type="button" id="appUpdateNow" class="flex-1 min-h-[46px] rounded-ctl bg-accent text-white font-display font-extrabold text-[13px] motion-safe">Update sekarang</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ TOAST ═══ -->
 <div class="toast" id="toast"></div>
 
 <!-- ═══ JOB DATA + LOGIC ═══ -->
 <script>
-// ── Icons (Lucide, line-only 2px) ──
+// ── Standalone app update prompt ──
+const APP_UPDATE_VERSION = '0.2.510';
+const APP_UPDATE_SESSION_KEY = `rekrutmen:update:${APP_UPDATE_VERSION}`;
+
+function isStandaloneApp() {
+  return window.navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches || new URLSearchParams(window.location.search).has('updatePreview');
+}
+
+function closeAppUpdate() {
+  document.getElementById('appUpdateModal').classList.remove('show');
+}
+
+function deferAppUpdate() {
+  try { sessionStorage.setItem(APP_UPDATE_SESSION_KEY, 'deferred'); } catch (error) { console.warn('Update prompt state unavailable:', error.message); }
+  closeAppUpdate();
+}
+
+function startAppUpdate() {
+  const modal = document.getElementById('appUpdateModal');
+  const now = document.getElementById('appUpdateNow');
+  const later = document.getElementById('appUpdateLater');
+  const status = document.getElementById('appUpdateStatus');
+  const statusText = document.getElementById('appUpdateStatusText');
+  const percent = document.getElementById('appUpdateStatusPercent');
+  const errorText = document.getElementById('appUpdateError');
+  modal.classList.add('is-loading');
+  status.classList.remove('hidden');
+  errorText.classList.add('hidden');
+  now.disabled = true;
+  later.disabled = true;
+  now.setAttribute('aria-busy', 'true');
+  statusText.textContent = 'Menyiapkan pembaruan…';
+  percent.textContent = '72%';
+
+  try {
+    sessionStorage.setItem(APP_UPDATE_SESSION_KEY, 'updating');
+    window.setTimeout(() => {
+      modal.classList.remove('is-loading');
+      modal.classList.add('is-complete');
+      statusText.textContent = 'Membuka versi terbaru…';
+      percent.textContent = '100%';
+      window.location.reload();
+    }, 420);
+  } catch (error) {
+    console.warn('Update reload failed:', error.message);
+    modal.classList.remove('is-loading');
+    status.classList.add('hidden');
+    errorText.textContent = 'Pembaruan belum bisa dimulai. Tutup lalu buka kembali aplikasinya.';
+    errorText.classList.remove('hidden');
+    now.disabled = false;
+    later.disabled = false;
+    now.removeAttribute('aria-busy');
+  }
+}
+
+function initAppUpdatePrompt() {
+  if (!isStandaloneApp()) return;
+  let alreadyHandled = false;
+  try { alreadyHandled = sessionStorage.getItem(APP_UPDATE_SESSION_KEY) === 'deferred' || sessionStorage.getItem(APP_UPDATE_SESSION_KEY) === 'updating'; } catch (error) { console.warn('Update prompt state unavailable:', error.message); }
+  if (alreadyHandled) return;
+  const modal = document.getElementById('appUpdateModal');
+  document.getElementById('appUpdateLater').addEventListener('click', deferAppUpdate);
+  document.getElementById('appUpdateNow').addEventListener('click', startAppUpdate);
+  window.setTimeout(() => modal.classList.add('show'), 450);
+}
+
+// ── Job data + logic ──
+
 const ICONS = {
   briefcase: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
   coffee: '<svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h12Z"/><path d="M16 8h2a2 2 0 0 1 2 2v4a6 6 0 0 1-6 6"/></svg>',
@@ -728,6 +833,7 @@ function fileToDataURL(file) {
   });
 }
 
+initAppUpdatePrompt();
 loadJobs();
 </script>
 </body>

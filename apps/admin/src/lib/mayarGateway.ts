@@ -17,7 +17,7 @@ async function callProxy(body: Record<string, unknown>): Promise<MayarResult> {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || result?.success === false) {
-    throw new Error(result?.error?.message || result?.messages || "Gagal memproses pembayaran Mayar");
+    throw new Error(result?.error?.message || result?.messages || "Gagal memproses pembayaran");
   }
   return result;
 }

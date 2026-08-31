@@ -95,7 +95,7 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
     postalCode: (row.postal_code as string) ?? null,
     marketingConsent: row.marketing_consent === true,
     profileCompletedAt: (row.profile_completed_at as string) ?? null,
-    username: deriveUsername((row.email as string) ?? null, (row.name as string) ?? null),
+    username: String(row.username ?? deriveUsername((row.email as string) ?? null, (row.name as string) ?? null)),
     totalPoints: Number(row.total_points ?? 0),
     lifetimePoints: Number(row.lifetime_points ?? 0),
     totalOrders: Number(row.total_orders ?? 0),

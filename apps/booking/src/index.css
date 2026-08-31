@@ -147,7 +147,9 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .quantity-control b { min-width: 20px; text-align: center; }
 .add-button { min-height: 44px; width: 100%; border-radius: 12px; color: var(--booking-accent); background: var(--booking-accent-soft); font-weight: 700; }
 .sticky-action { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); display: flex; justify-content: flex-end; padding: 25px 0 10px; z-index: 2; background: linear-gradient(to bottom, transparent, var(--surface-muted) 28%); }
-.menu-flow .sticky-action { position: static; padding: 16px 0 4px; background: none; }
+.menu-flow.has-cart { padding-bottom: 104px; }
+.menu-flow .sticky-action { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); width: min(calc(100% - 36px), 976px); transform: translateX(-50%); padding: 12px 0; background: linear-gradient(to bottom, transparent, rgba(248,250,252,.96) 30%); pointer-events: none; z-index: 20; }
+.menu-flow .sticky-action .button { pointer-events: auto; box-shadow: 0 12px 28px rgba(26,93,198,.25); }
 .skip-link { display: block; margin: 10px auto; }
 .form-card, .review-card { padding: 22px; }
 .form-field { display: block; color: var(--ink); font-size: 13px; font-weight: 700; margin-bottom: 17px; }

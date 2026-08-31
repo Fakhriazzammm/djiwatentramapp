@@ -446,11 +446,11 @@ function DataKaryawanPage() {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
+					<Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
 						{isExporting === "csv" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
 						CSV
 					</Button>
-					<Button variant="outline" size="sm" className="h-7 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
+					<Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
 						{isExporting === "pdf" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
 						PDF
 					</Button>
@@ -485,9 +485,9 @@ function DataKaryawanPage() {
 				<div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
 					<div className="relative flex-1 max-w-xs">
 						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-						<Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cari nama, username, No HP..." className="h-8 rounded-xl pl-8 pr-8 text-[11px] font-medium" />
+						<Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Cari nama, username, No HP..." className="h-9 rounded-xl pl-8 pr-8 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" />
 						{searchQuery && (
-							<button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+							<button aria-label="Bersihkan pencarian" onClick={() => setSearchQuery("")} className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
 								<X className="h-3.5 w-3.5" />
 							</button>
 						)}
@@ -558,7 +558,7 @@ function DataKaryawanPage() {
 					<table id="karyawan-data-table" className="w-full border-collapse text-[11px]">
 						<thead className="sticky top-0 z-10">
 							<tr className="border-b bg-muted/40">
-								<th className="w-8 px-1 py-2.5 text-center">
+								<th className="w-8 px-1 py-2 text-center">
 									<input
 										type="checkbox"
 										className="h-3 w-3 rounded cursor-pointer"
@@ -566,22 +566,22 @@ function DataKaryawanPage() {
 										onChange={toggleSelectAll}
 									/>
 								</th>
-								<th className="w-8 px-1 py-2.5 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[10px] text-muted-foreground/40">#</span></th>
-								<th className="px-2.5 py-2.5 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
-								<th className="px-2.5 py-2.5 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
-								<th className="px-2.5 py-2.5 text-left min-w-[100px] hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
-								<th className="px-2.5 py-2.5 text-left whitespace-nowrap hidden md:table-cell">No Identitas</th>
-								<th className="px-2.5 py-2.5 text-left whitespace-nowrap hidden lg:table-cell">TTL</th>
-								<th className="px-2.5 py-2.5 text-left hidden lg:table-cell">Alamat</th>
-								<th className="px-2.5 py-2.5 text-left whitespace-nowrap hidden md:table-cell">Tgl Mulai</th>
-								<th className="px-2.5 py-2.5 text-left whitespace-nowrap min-w-[80px] hidden sm:table-cell">Status Kerja</th>
-								<th className="px-2.5 py-2.5 text-right hidden md:table-cell">Gaji</th>
-								<th className="px-2.5 py-2.5 text-left hidden xl:table-cell">Lokasi</th>
-								<th className="px-2.5 py-2.5 text-left hidden xl:table-cell">Kontak Darurat</th>
-								<th className="px-2.5 py-2.5 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
-								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">Wajah</th>
-								<th className="px-2.5 py-2.5 text-center hidden lg:table-cell">CV</th>
-								<th className="w-10 px-1 py-2.5 text-center"><X className="mx-auto h-3 w-3 text-muted-foreground/40" aria-hidden="true" /></th>
+								<th className="w-8 px-1 py-2 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[10px] text-muted-foreground/40">#</span></th>
+								<th className="px-2.5 py-2 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
+								<th className="px-2.5 py-2 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
+								<th className="px-2.5 py-2 text-left min-w-[100px] hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">No Identitas</th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden lg:table-cell">TTL</th>
+								<th className="px-2.5 py-2 text-left hidden lg:table-cell">Alamat</th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">Tgl Mulai</th>
+								<th className="px-2.5 py-2 text-left whitespace-nowrap min-w-[80px] hidden sm:table-cell">Status Kerja</th>
+								<th className="px-2.5 py-2 text-right hidden md:table-cell">Gaji</th>
+								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Lokasi</th>
+								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Kontak Darurat</th>
+								<th className="px-2.5 py-2 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
+								<th className="px-2.5 py-2 text-center hidden lg:table-cell">Wajah</th>
+								<th className="px-2.5 py-2 text-center hidden lg:table-cell">CV</th>
+								<th className="w-10 px-1 py-2 text-center"><X className="mx-auto h-3 w-3 text-muted-foreground/40" aria-hidden="true" /></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -593,7 +593,7 @@ function DataKaryawanPage() {
 								const isExpanded = expandedId === row._id;
 								return (
 									<React.Fragment key={row._id}>
-										<tr className={`border-b border-border/20 hover:bg-muted/10 transition-colors cursor-pointer ${isExpanded ? "bg-primary/[0.02]" : ""} ${selectedIds.has(row._id) ? "bg-primary/[0.03]" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
+										<tr className={`border-b border-border/20 hover:bg-muted/10 transition-colors cursor-pointer focus-within:bg-muted/10 ${isExpanded ? "bg-primary/[0.02]" : ""} ${selectedIds.has(row._id) ? "bg-primary/[0.03]" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
 											<td className="px-1 py-2 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(row._id); }}>
 												<input
 													type="checkbox"
@@ -645,7 +645,7 @@ function DataKaryawanPage() {
 											<td className="px-1 py-2 text-center">
 												<button
 													title="Hapus"
-													className="p-1 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+													className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
 													onClick={(e) => { e.stopPropagation(); handleSingleDelete(row); }}
 													disabled={deletingIds.has(row._id)}
 												>

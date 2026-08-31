@@ -353,6 +353,7 @@ export function SettingsPage({
 		autoPrint: true,
 		autoPrintKitchenReceipt: true,
 		allowOpenBillPrint: true,
+		taxEnabled: false,
 		taxRate: 0,
 		serviceChargeRate: 0,
 		currency: "IDR",
@@ -706,6 +707,7 @@ export function SettingsPage({
 				autoPrint: siteSettings.autoPrint ?? true,
 				autoPrintKitchenReceipt: siteSettings.autoPrintKitchenReceipt ?? true,
 				allowOpenBillPrint: siteSettings.allowOpenBillPrint ?? true,
+				taxEnabled: siteSettings.taxEnabled ?? siteSettings.tax_enabled ?? Number(siteSettings.taxRate ?? 0) > 0,
 				taxRate: siteSettings.taxRate ?? 0,
 				serviceChargeRate: siteSettings.serviceChargeRate ?? 0,
 				appName: siteSettings.appName ?? "Djiwa Tentram",
@@ -859,6 +861,7 @@ export function SettingsPage({
 				mayarTestMode: paymentSettings.mayarTestMode,
 				// Manual Payment
 				paymentMethodsManual: paymentSettings.manualMethods,
+				taxEnabled: settings.taxEnabled,
 				taxRate: settings.taxRate,
 				serviceChargeRate: settings.serviceChargeRate,
 				// Order Types
@@ -3271,6 +3274,23 @@ export function SettingsPage({
 								{/* Tax and Service Charge Fields */}
 								<div className="grid grid-cols-1 gap-6 md:grid-cols-2 pt-2 border-t border-border/50">
 									<div className="space-y-2">
+										<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3">
+											<div>
+												<label className="font-medium text-foreground text-sm" htmlFor="tax-enabled">Aktifkan Pajak</label>
+												<p className="text-[10px] text-muted-foreground">Pajak diterapkan pada order non-tunai baru</p>
+											</div>
+											<button
+												aria-checked={settings.taxEnabled}
+												aria-label="Aktifkan atau nonaktifkan pajak"
+												className={`relative h-6 w-11 rounded-full transition-all duration-300 ${settings.taxEnabled ? "bg-primary" : "bg-input"}`}
+												id="tax-enabled"
+												onClick={() => setSettings({ ...settings, taxEnabled: !settings.taxEnabled })}
+												role="switch"
+												type="button"
+											>
+												<span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.taxEnabled ? "right-1" : "left-1"}`} />
+											</button>
+										</div>
 										<label
 											className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
 											htmlFor="tax-rate"

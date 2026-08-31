@@ -143,6 +143,7 @@ export function SummaryCardLines({
 	paymentChoice,
 	serviceChargeAmount,
 	serviceChargeRate,
+	taxEnabled = false,
 	taxAmount,
 	taxRate,
 	total,
@@ -154,6 +155,7 @@ export function SummaryCardLines({
 	paymentChoice?: "cashier" | "wallet" | "mayar";
 	serviceChargeAmount: number;
 	serviceChargeRate: number;
+	taxEnabled?: boolean;
 	taxAmount: number;
 	taxRate: number;
 	total: number;
@@ -176,11 +178,11 @@ export function SummaryCardLines({
 				<Line label="Voucher Djiwa Pay (20%)" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
 			) : null}
 			<Line label={`Service Charge (${serviceChargeRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(serviceChargeAmount)} />
-			<Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(taxAmount)} />
-			<Line label="Dasar pajak" value={currency(taxBase)} />
-			<p className="text-[10px] leading-relaxed text-muted-foreground">
-				{isCashierFree ? "Pembayaran tunai di kasir: PBJT dan service charge Rp0 sesuai kebijakan operasional." : "PBJT makanan dan minuman Kota Tasikmalaya 10%. Service charge ditampilkan terpisah dan bukan pajak daerah."}
-			</p>
+			{taxEnabled ? <Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(taxAmount)} /> : null}
+			{taxEnabled ? <Line label="Dasar pajak" value={currency(taxBase)} /> : null}
+			{taxEnabled ? <p className="text-[10px] leading-relaxed text-muted-foreground">
+				{isCashierFree ? "Pembayaran tunai di kasir: PBJT dan service charge Rp0 sesuai kebijakan operasional." : `PBJT makanan dan minuman Kota Tasikmalaya ${taxRate}%. Service charge ditampilkan terpisah dan bukan pajak daerah.`}
+			</p> : <p className="text-[10px] leading-relaxed text-muted-foreground">Harga menu sudah termasuk Pajak Barang dan Jasa Tertentu (PBJT) atas makanan dan/atau minuman sesuai ketentuan yang berlaku di Kota Tasikmalaya.</p>}
 			{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}
 			<div className="flex items-center justify-between border-t border-border pt-2">
 				<span className="text-xs font-black uppercase tracking-[0.16em] text-foreground">Total</span>
@@ -197,6 +199,7 @@ export function ReceiptTotalsBreakdown({
 	taxBase,
 	taxAmount = 0,
 	taxRate = 10,
+	taxEnabled = true,
 	serviceChargeAmount = 0,
 	roundingAdjustment,
 	total,
@@ -205,6 +208,7 @@ export function ReceiptTotalsBreakdown({
 	taxBase: number;
 	taxAmount?: number;
 	taxRate?: number;
+	taxEnabled?: boolean;
 	serviceChargeAmount?: number;
 	roundingAdjustment: number;
 	total: number;
@@ -213,8 +217,9 @@ export function ReceiptTotalsBreakdown({
 		<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
 			<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Rincian pembulatan</p>
 			<div className="mt-1.5 space-y-1">
-				<Line label="Dasar pajak" value={currency(taxBase)} />
-				<Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={currency(taxAmount)} />
+				{taxEnabled ? <Line label="Dasar pajak" value={currency(taxBase)} /> : null}
+				{taxEnabled ? <Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={currency(taxAmount)} /> : null}
+				{!taxEnabled ? <p className="text-[10px] leading-relaxed text-muted-foreground">Harga menu sudah termasuk PBJT atas makanan dan/atau minuman sesuai ketentuan yang berlaku di Kota Tasikmalaya.</p> : null}
 				<Line label="Service charge" value={currency(serviceChargeAmount)} />
 				<Line label="Sebelum pembulatan" value={currency(rawTotal)} />
 				{roundingAdjustment !== 0 ? <Line label="Pembulatan" value={currency(roundingAdjustment)} className={roundingAdjustment > 0 ? "text-amber-700" : "text-emerald-700"} /> : null}

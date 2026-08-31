@@ -11,23 +11,11 @@ function useSupabaseValue<T>(
 }
 
 function resolveMayarConfig() {
-	const baseUrl =
-		(import.meta.env.VITE_MAYAR_BASE_URL as string | undefined) ||
-		(import.meta.env.VITE_MAYAR_API_BASE as string | undefined) ||
-		"https://api.mayar.id/hl/v2";
-	const apiKey = (import.meta.env.VITE_MAYAR_API_KEY as string | undefined) || "";
-	const hasSupabaseProxy = Boolean(
-		import.meta.env.VITE_SUPABASE_URL &&
-			import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-	);
-	const missing: string[] = [];
-	if (!baseUrl) missing.push("MAYAR_BASE_URL");
-	if (!apiKey && !hasSupabaseProxy) missing.push("MAYAR_API_KEY");
-
+	// Mayar is server-side only; frontend consumers use mayar-proxy.
 	return {
-		configured: missing.length === 0,
-		missing,
-		baseUrl,
+		configured: Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY),
+		missing: [],
+		baseUrl: "",
 	};
 }
 
