@@ -5,6 +5,7 @@ import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { BarcodeLines, ReceiptTotalsBreakdown } from "./shared-components";
+import { ReceiptActions } from "./split-bill-sheet";
 import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
 
 // Status lifecycle order — live tracker di struk
@@ -61,6 +62,13 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 		variant: item.variant,
 	}));
 	const orderItems = props.currentOrder?.items ?? cartSnapshotItems;
+	const exportItems = orderItems.map((item: any, index: number) => ({
+		id: `${item.productId ?? item.productName ?? "item"}-${item.variant ?? "default"}-${index}`,
+		name: String(item.productName ?? item.name ?? "Item"),
+		quantity: Number(item.quantity ?? 0),
+		unitPrice: Number(item.price ?? 0),
+		variant: item.variant ? String(item.variant) : undefined,
+	}));
 	const customerName = props.currentOrder?.customerName || "-";
 	const customerDescription = props.currentOrder?.customerDescription || "-";
 	const tableNumber = props.currentOrder?.tableNumber || "-";
@@ -134,6 +142,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					</div>
 					</ReceiptPrinterAnimation>
 			{/* ── Live status tracker ─────────────────────────── */}
+			<ReceiptActions items={exportItems} storeName={props.storeName} orderReference={orderReference} payment={paymentLabel} status={unifiedStatusLabel} total={Number(props.currentOrder?.totalAmount ?? props.total)} />
 				{currentStepLabel ? (
 					<div className="mt-3 rounded-3xl border border-border bg-card p-3.5 shadow-sm">
 						<div className="flex items-center justify-between">

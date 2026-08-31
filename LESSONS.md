@@ -6,6 +6,7 @@
 |---|--------|--------|
 | 1 | **Entry point React wajib me-render root** — TypeScript/Vite dapat tetap typecheck dan build walau file hanya mendefinisikan `App`. Pastikan setiap `main.tsx` memanggil `createRoot(document.getElementById("root")!).render(<App />)` dan verifikasi bundle memuat string UI, bukan hanya React runtime. | debug |
 | 2 | **Popup update wajib merender metadata dari version.json** — jangan hardcode commit/message di komponen. Bandingkan semantic version dan commit hash, lalu generate commit subject bersama `version.ts` dan `public/version.json` agar detail release tidak membeku pada pesan lama. | pwa/update/debug |
+| 3 | **Receipt export mobile harus dirasterisasi dari dokumen penuh, bukan screenshot viewport** — buat SVG/DOM export dengan ukuran logical tetap, render Canvas pada scale 2–3x, download PNG lossless, dan tunggu asset/font selesai agar file tidak blur atau terpotong. | customer/receipt/ui-ux |
 
 ## Supabase
 
