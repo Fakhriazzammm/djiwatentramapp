@@ -847,7 +847,7 @@ async def _load_active_orders(bot: Bot):
                     logger.info("[%s] Skipped stale auto-dibuat timer (age=%ds)", key, int(elapsed))
             elif row["status"] == "dibuat" and dibuat_at:
                 elapsed = (datetime.now(timezone.utc) - dibuat_at).total_seconds()
-                if elapsed <= 1800:
+                if elapsed <= 60:
                     remaining = max(0, 1800 - elapsed)
                     _active_orders[key]["auto_selesai_task"] = asyncio.create_task(_auto_selesai(key, int(remaining)))
                     logger.info("[%s] Restored: auto-selesai in %ds", key, int(remaining))
@@ -1666,9 +1666,9 @@ async def _seed_existing_order_notifications() -> bool:
         settled_rows = await _fetch(
             "pos_orders",
             "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source"
-            "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(paid,completed)"
-            f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}&limit=100",
+            f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}"
+            "&order=_creationTime.desc&limit=1000",
         )
         cashier_rows = await _fetch(
             "pos_orders",
@@ -2757,7 +2757,7 @@ async def _post_init(app):
 
     # Restore active orders from Supabase (persistent across restarts)
     await _load_active_orders(app.bot)
-    # Seed historical cashier settlements without sending replay notifications.
+    # Baseline all historical lookback rows before the first delivery poll.
     await _seed_existing_order_notifications()
 
     # First poll check (catch up with any orders since start)
