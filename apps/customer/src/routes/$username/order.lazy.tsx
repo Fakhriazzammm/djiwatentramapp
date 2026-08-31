@@ -135,6 +135,7 @@ function OrderPage() {
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
+	const [retryingPayment, setRetryingPayment] = useState(false);
 
 	const startNewOrder = () => {
 		checkoutRequestKeyRef.current = null;
@@ -889,6 +890,49 @@ function OrderPage() {
 		}
 	};
 
+	const retryPayment = async () => {
+		if (retryingPayment || !receipt?.orderId || !currentOrder) return;
+		const orderId = String(receipt.orderId);
+		const paymentMethod = String((currentOrder as any).paymentMethod ?? receipt.paymentChoice).toLowerCase();
+		if (currentOrder.status === "paid" || currentOrder.status === "completed") {
+			toast.info("Pesanan ini sudah lunas");
+			return;
+		}
+		setRetryingPayment(true);
+		try {
+			await updateOrderStatus({ id: receipt.orderId, status: "pending" });
+			if (paymentMethod.includes("wallet") || paymentMethod.includes("djiwa")) {
+				if (!customer?.sourceId || !customer.email) throw new Error("Masuk dan lengkapi profil untuk retry Djiwa Pay");
+				const key = `retry-wallet-${orderId}-${Date.now()}`;
+				const holdResponse = await invokeEdgeFunction<{ result?: { ok?: boolean; hold_id?: string; available_balance?: number } }>("customer-wallet", {
+					action: "hold",
+					sourceId: customer.sourceId,
+					email: customer.email,
+					orderId,
+					amount: Math.round(Number((currentOrder as any).totalAmount ?? 0)),
+					idempotencyKey: `${key}:hold`,
+				});
+				if (!holdResponse.result?.ok || !holdResponse.result.hold_id) throw new Error("Saldo Djiwa Pay tidak cukup atau pembayaran belum dapat diproses");
+				await invokeEdgeFunction("customer-wallet", { action: "settle-order", sourceId: customer.sourceId, email: customer.email, orderId, holdId: holdResponse.result.hold_id, idempotencyKey: key });
+				toast.success("Pembayaran Djiwa Pay berhasil diproses");
+			} else {
+				const redirectUrl = `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(orderId)}`;
+				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "" });
+				if (!invoice?.data?.id || !invoice.data.link) throw new Error(invoice?.messages || "Link pembayaran baru tidak tersedia");
+				await updateOrderPaymentGateway({ id: receipt.orderId, paymentGateway: { provider: "mayar", invoiceId: invoice.data.id, transactionId: invoice.data.transactionId, invoiceUrl: invoice.data.link, status: "created", retryOf: (currentOrder as any).gatewayInvoiceId ?? (currentOrder as any).gateway_invoice_id ?? null } });
+				setReceipt((value) => value ? { ...value, mode: "mayar_pending", paymentChoice: "mayar", invoiceId: invoice.data?.id, invoiceUrl: invoice.data?.link } : value);
+				window.location.assign(invoice.data.link);
+				return;
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Retry pembayaran gagal";
+			setCheckoutError(message);
+			toast.error(message);
+		} finally {
+			setRetryingPayment(false);
+		}
+	};
+
 	// ── Loading state ────────────────────────────────────────────
 
 	if (
@@ -1054,7 +1098,7 @@ function OrderPage() {
 					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
-					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
+					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}

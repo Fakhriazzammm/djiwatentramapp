@@ -1,4 +1,4 @@
-import { CheckCircle2, Wallet } from "lucide-react";
+import { CheckCircle2, Loader2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
@@ -31,6 +31,9 @@ export interface ReceiptSectionProps {
 	logoUrl: string;
 	onOpenService: () => void;
 	onOrderAgain: () => void;
+	onRetryPayment: () => Promise<void>;
+	retryPaymentLabel: string;
+	retryingPayment: boolean;
 	onHome: () => void;
 	receipt: ReceiptState;
 	storeName: string;
@@ -70,6 +73,8 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const unifiedStatusColor = orderStatus === "paid" ? "text-blue-600"
 		: orderStatus === "completed" ? "text-emerald-600"
 		: "text-amber-600";
+	const normalizedPaymentMethod = String(props.currentOrder?.paymentMethod ?? props.receipt.paymentChoice).toLowerCase();
+	const canRetryPayment = mode !== "paid" && (normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa") || normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar") || props.receipt.paymentChoice === "mayar");
 
 	const currentStepIndex = getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
@@ -156,6 +161,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 						<p className="mt-2.5 text-center text-[10px] text-muted-foreground/70">Pembaruan otomatis — pesananmu sedang {currentStepLabel.toLowerCase()}.</p>
 					</div>
 				) : null}
+			{canRetryPayment ? <button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-primary/30 bg-primary/10 px-3 py-2.5 text-xs font-black text-primary shadow-sm disabled:opacity-60" onClick={() => void props.onRetryPayment()} disabled={props.retryingPayment}>{props.retryingPayment ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses pembayaran...</> : props.retryPaymentLabel}</button> : null}
 			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div><button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/20 bg-primary/5 px-2.5 py-2.5 text-[10px] font-black text-primary shadow-sm" onClick={props.onHome}>Kembali ke Home</button>
 		</div>
 	);
