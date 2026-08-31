@@ -139,7 +139,7 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
   if (!orderId) throw new Error("orderId wajib diisi");
 
   const orders = await supabaseGet(
-    `orders?select=source_id,order_number,total_amount,status,source,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+    `orders?select=source_id,order_number,total_amount,subtotal_amount,discount_amount,tax_amount,service_charge_amount,status,source,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
   ) as Array<Record<string, unknown>>;
   const order = orders[0];
   if (!order) throw new Error("Order tidak ditemukan");
@@ -183,8 +183,14 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
     throw new Error("Total order tidak cocok dengan item database");
   }
   const adjustment = Math.round((orderTotal - itemTotal) * 100) / 100;
-  if (adjustment > 0) {
-    items.push({ description: "Pajak, biaya layanan, diskon, atau ongkir", quantity: 1, rate: adjustment });
+  if (adjustment < 0) {
+    const recordedDiscount = Math.max(0, Number(order.discount_amount || 0));
+    if (recordedDiscount + 0.01 < Math.abs(adjustment)) {
+      throw new Error("Total order tidak cocok dengan item database");
+    }
+    items.push({ description: "Diskon promo", quantity: 1, rate: adjustment });
+  } else if (adjustment > 0) {
+    items.push({ description: "Pajak, biaya layanan, atau ongkir", quantity: 1, rate: adjustment });
   }
 
   const requestedPaymentMethod = typeof payload.paymentMethod === "string"
