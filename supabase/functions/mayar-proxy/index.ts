@@ -162,7 +162,7 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
     : typeof existingGateway.link === "string" && existingGateway.link.trim()
       ? existingGateway.link.trim()
       : "";
-  if (existingLink && existingGateway.invoiceId) {
+  if (existingLink && existingGateway.invoiceId && payload.forceNew !== true) {
     return { statusCode: 200, messages: "success", data: { id: existingGateway.invoiceId, transactionId: existingGateway.transactionId, link: existingLink, reused: true } };
   }
 
