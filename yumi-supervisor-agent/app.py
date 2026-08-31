@@ -1653,35 +1653,60 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
         logger.warning("find_shift_at_time failed: %s", e)
     return {}
 
-async def _seed_existing_cashier_paid_updates() -> bool:
-    """Acknowledge historical cashier settlements without sending on startup.
+async def _seed_existing_order_notifications() -> bool:
+    """Baseline current lookback rows without sending historical notifications.
 
-    This is intentionally read-only: it prevents a restart from replaying the
-    bounded historical lookback as fresh payment updates.
+    The normal poll intentionally reads a seven-day recovery window. On startup,
+    all rows already inside that window are existing state, not new events.
     """
-    global _cashier_paid_update_nos, _cashier_paid_seed_ready
+    global _reported_order_nos, _cashier_paid_update_nos, _cashier_paid_seed_ready
     now_ms = int(_now_wib().timestamp() * 1000)
+    lower_bound = max(0, now_ms - 7 * 86_400_000)
     try:
-        rows = await _fetch(
+        settled_rows = await _fetch(
             "pos_orders",
             "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source"
-            "&source=eq.customer_self_service"
-            "&paymentReceiptKind=eq.cashier_pending"
+            "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(paid,completed)"
-            f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
-            f"&_creationTime=lte.{now_ms}&limit=100",
+            f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}&limit=100",
+        )
+        cashier_rows = await _fetch(
+            "pos_orders",
+            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source"
+            "&source=eq.customer_self_service&status=eq.pending"
+            "&paymentMethod=eq.cash&paymentReceiptKind=eq.cashier_pending"
+            f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}&limit=100",
         )
     except Exception as e:
         _cashier_paid_seed_ready = False
-        logger.warning("Existing cashier settlement seed skipped: %s", e)
+        logger.warning("Existing order baseline skipped: %s", e)
         return False
+
+    rows = [*settled_rows, *cashier_rows]
     existing = {_display_order_no(row) for row in rows if _display_order_no(row) != "-"}
-    new_ids = existing - _cashier_paid_update_nos
-    if new_ids:
-        _cashier_paid_update_nos.update(new_ids)
-        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
+    paid_cashier = {
+        _display_order_no(row)
+        for row in settled_rows
+        if _display_order_no(row) != "-"
+        and row.get("source") == "customer_self_service"
+        and row.get("paymentReceiptKind") == "cashier_pending"
+    }
+    new_reported = existing - _reported_order_nos
+    new_paid = paid_cashier - _cashier_paid_update_nos
+    if new_reported or new_paid:
+        _reported_order_nos.update(new_reported)
+        _cashier_paid_update_nos.update(new_paid)
+        _save_supervisor_cursor(
+            _last_order_check_ms,
+            _reported_order_nos,
+            _last_csr_check_ms,
+            _cashier_paid_update_nos,
+        )
     _cashier_paid_seed_ready = True
-    logger.info("Cashier settlement seed: acknowledged=%d new=%d", len(existing), len(new_ids))
+    logger.info(
+        "Existing order baseline: acknowledged=%d new_reported=%d new_paid=%d",
+        len(existing), len(new_reported), len(new_paid),
+    )
     return True
 
 
@@ -2733,7 +2758,7 @@ async def _post_init(app):
     # Restore active orders from Supabase (persistent across restarts)
     await _load_active_orders(app.bot)
     # Seed historical cashier settlements without sending replay notifications.
-    await _seed_existing_cashier_paid_updates()
+    await _seed_existing_order_notifications()
 
     # First poll check (catch up with any orders since start)
     await _reconcile_mayar_payments(force=True)
@@ -2751,7 +2776,7 @@ async def _post_init(app):
             await _reconcile_mayar_payments()
             await _check_new_booking_transactions(app)
             if not _cashier_paid_seed_ready:
-                await _seed_existing_cashier_paid_updates()
+                await _seed_existing_order_notifications()
             await _check_new_orders(app)
             await _check_new_csr(app)
             await _check_closed_shifts(app.bot)
