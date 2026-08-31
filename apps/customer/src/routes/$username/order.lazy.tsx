@@ -670,6 +670,7 @@ function OrderPage() {
 				items: cart.map((item) => ({
 					productId: item.productId,
 					productName: item.name,
+					categoryId: item.categoryId,
 					variant: item.variant,
 					quantity: item.quantity,
 					price: item.price,

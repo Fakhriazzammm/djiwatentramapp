@@ -119,6 +119,23 @@ function normalizePersonName(value?: string | null) {
 	return (value || "").trim().toLowerCase();
 }
 
+function resolveProductionTrack(
+	item: any,
+	products: any[] | undefined,
+	categories: any[] | undefined
+): "bar" | "kitchen" {
+	const product = products?.find((candidate) => String(candidate?._id ?? candidate?.id) === String(item?.productId));
+	const categoryId = item?.categoryId ?? item?.category ?? product?.categoryId;
+	const category = categories?.find((candidate) => String(candidate?._id ?? candidate?.id) === String(categoryId));
+	const rawTrack = item?.track ?? item?.categoryTrack ?? product?.track ?? category?.track;
+	const normalized = String(rawTrack ?? item?.category ?? category?.name ?? "").trim().toLowerCase();
+
+	if (normalized === "bar" || normalized.includes("barista") || normalized.includes("minum") || normalized.includes("drink") || normalized.includes("beverage")) {
+		return "bar";
+	}
+	return "kitchen";
+}
+
 function normalizeRoleBonusConfig(role: any): RoleBonusConfig | null {
 	const config = role?.bonusTargetConfig;
 	if (!config?.basis || !Array.isArray(config?.tiers)) return null;
@@ -1273,6 +1290,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				price: i.price,
 				originalPrice: i.originalPrice,
 				quantity: i.quantity,
+				track: resolveProductionTrack(i, allProducts ?? products, categories),
 			}));
 			
 			const subtotal = items.reduce(
@@ -1346,7 +1364,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			toast.error(`Gagal mencetak: ${message}. ${!bluetoothPrinter.isConnected() ? 'Pastikan printer Bluetooth sudah terhubung — klik "Hubungkan Printer".' : ""}`, { id: "printing" });
 			return false;
 		}
-	}, [allDiscounts, orders, siteSettings, shiftStatus]);
+	}, [allDiscounts, allProducts, categories, orders, products, siteSettings, shiftStatus]);
 
 	const handleAutoPrintSettledCustomerOrder = useCallback(async (orderId: string) => {
 		let storedIds: string[] = [];
@@ -1382,7 +1400,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			// Printing still proceeds; the in-memory guard protects this render.
 		}
 
-		const printed = await handlePrint(orderId as Id<"orders">, "paid");
+		const printed = await handlePrint(orderId as Id<"orders">, "kitchen");
 		if (!printed) {
 			autoPrintedCustomerOrderIdsRef.current.delete(orderId);
 			try {
@@ -1570,6 +1588,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						items: cartItems.map((i) => ({
 							productId: i.productId as Id<"products">,
 							productName: i.name,
+							categoryId: i.category,
 							variant: i.variant,
 							quantity: i.quantity,
 							price: i.price,
@@ -1656,9 +1675,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh();
 					setLastOrderId(orderId);
 
-					if (siteSettings?.autoPrint !== false) {
-						void handlePrint(orderId, "paid");
-					}
 					if (siteSettings?.autoPrintKitchenReceipt !== false) {
 						void handlePrint(orderId, "kitchen");
 					}
@@ -1689,7 +1705,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			mayarConfig?.configured,
 			promoDiscountAmount,
 			serviceChargeAmount,
-			siteSettings?.autoPrint,
 			siteSettings?.autoPrintKitchenReceipt,
 			siteSettings?.mayarEnabled,
 			siteSettings?.storeName,

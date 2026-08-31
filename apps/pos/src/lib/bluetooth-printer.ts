@@ -102,6 +102,7 @@ export interface OrderItem {
 	price: number;
 	originalPrice?: number;
 	quantity: number;
+	track?: "bar" | "kitchen";
 }
 
 export type ReceiptPrintMode = "open_bill" | "paid" | "kitchen";
@@ -184,6 +185,7 @@ export class BluetoothPrinterService {
 				settings: ReceiptSettings;
 		  }
 		| null = null;
+	private printQueue: Promise<void> = Promise.resolve();
 	private optionalServices = [
 		"18f0",
 		"18f1",
@@ -542,6 +544,12 @@ export class BluetoothPrinterService {
 	}
 
 	async print(order: ReceiptOrderPayload, settings: ReceiptSettings) {
+		const queuedPrint = this.printQueue.then(() => this.printReceipt(order, settings));
+		this.printQueue = queuedPrint.catch(() => undefined);
+		return queuedPrint;
+	}
+
+	private async printReceipt(order: ReceiptOrderPayload, settings: ReceiptSettings) {
 		console.log('🖨️ [BluetoothPrinter] print() dipanggil');
 		// Gunakan autoReconnectIfNeeded agar ter-dedup kalau caller sudah reconnect
 		if (!(this.isConnected() && this.characteristic)) {
@@ -637,8 +645,7 @@ export class BluetoothPrinterService {
 			printCenteredLines("OPEN BILL", RECEIPT_LINE_WIDTH);
 			printCenteredLines("BELUM LUNAS", RECEIPT_LINE_WIDTH);
 		} else if (mode === "kitchen") {
-			printCenteredLines("TIKET KITCHEN", RECEIPT_LINE_WIDTH);
-			printCenteredLines("PRODUK YANG HARUS DIBUAT", RECEIPT_LINE_WIDTH);
+			printCenteredLines("TIKET PRODUKSI", RECEIPT_LINE_WIDTH);
 		} else {
 			printCenteredLines(order.paymentStatusLabel || "LUNAS", RECEIPT_LINE_WIDTH);
 		}
@@ -660,10 +667,10 @@ export class BluetoothPrinterService {
 			printKeyValue("STRUK", `#${order.dailyReceiptNo}${receiptKindLabel}`);
 		}
 
-		if (order.cashierName && settings.receiptShowCashierName !== false) {
+		if (order.cashierName && settings.receiptShowCashierName !== false && mode !== "kitchen") {
 			printKeyValue("KASIR", order.cashierName.toUpperCase());
 		}
-		if (order.shiftName && settings.receiptShowCashierName !== false) {
+		if (order.shiftName && settings.receiptShowCashierName !== false && mode !== "kitchen") {
 			printKeyValue("SHIFT", order.shiftName.toUpperCase());
 		}
 
@@ -694,13 +701,20 @@ export class BluetoothPrinterService {
 		}
 
 		if (settings.receiptShowCustomerName && order.customerName) {
-			printKeyValue("PELANGGAN", order.customerName.toUpperCase());
+			printKeyValue(mode === "kitchen" ? "NAMA" : "PELANGGAN", order.customerName.toUpperCase());
 		}
 
 		if (order.customerDescription) {
-			printSeparator("-");
-			result.bold(true).line("CIRI CUSTOMER").bold(false);
-			printWrappedLines(order.customerDescription);
+			if (mode === "kitchen") {
+				const descriptionLines = wrapReceiptText(order.customerDescription, RECEIPT_LINE_WIDTH - 7);
+				const firstDescriptionLine = descriptionLines.shift();
+				if (firstDescriptionLine) printKeyValue("CIRI", firstDescriptionLine);
+				for (const line of descriptionLines) result.line(`      ${line}`);
+			} else {
+				printSeparator("-");
+				result.bold(true).line("CIRI CUSTOMER").bold(false);
+				printWrappedLines(order.customerDescription);
+			}
 		}
 
 		if (settings.receiptShowNotes && order.notes) {
@@ -723,23 +737,30 @@ export class BluetoothPrinterService {
 		printSeparator("-");
 
 		if (mode === "kitchen") {
-			result.bold(true).line("ITEM YANG DIBUAT").bold(false);
-			printSeparator("-");
+			const productionGroups: Array<{ title: "KITCHEN" | "BAR"; track: "kitchen" | "bar" }> = [
+				{ title: "KITCHEN", track: "kitchen" },
+				{ title: "BAR", track: "bar" },
+			];
 
-			for (const item of order.items) {
-				const itemLabel = `${item.quantity}x ${item.name.toUpperCase()}`;
-				for (const line of wrapReceiptText(itemLabel, RECEIPT_LINE_WIDTH)) {
-					result.bold(true).line(line).bold(false);
-				}
+			for (const group of productionGroups) {
+				const groupItems = order.items.filter((item) => (item.track ?? "kitchen") === group.track);
+				if (groupItems.length === 0) continue;
 
-				const variantText = normalizeReceiptText(item.variant);
-				if (variantText) {
-					for (const line of wrapReceiptText(variantText, RECEIPT_LINE_WIDTH - 3)) {
-						result.line(`- ${line}`);
+				result.bold(true).line(group.title).bold(false);
+				printSeparator("-");
+				for (const item of groupItems) {
+					const itemLabel = `${item.quantity}x ${item.name.toUpperCase()}`;
+					for (const line of wrapReceiptText(itemLabel, RECEIPT_LINE_WIDTH)) {
+						result.bold(true).line(line).bold(false);
+					}
+
+					const variantText = normalizeReceiptText(item.variant);
+					if (variantText) {
+						for (const line of wrapReceiptText(variantText, RECEIPT_LINE_WIDTH - 3)) {
+							result.line(`- ${line}`);
+						}
 					}
 				}
-
-				result.line(" ");
 			}
 		} else {
 			printKeyValue("ITEM", "TOTAL");
@@ -843,9 +864,10 @@ export class BluetoothPrinterService {
 		result.align("center");
 		printSeparator("-", "center");
 		result.bold(true);
-		printCenteredLines(footerText.toUpperCase(), RECEIPT_LINE_WIDTH);
 		if (mode === "kitchen") {
-			printCenteredLines("TANPA HARGA - UNTUK PRODUKSI", RECEIPT_LINE_WIDTH);
+			printCenteredLines("SEGERA DIPROSES", RECEIPT_LINE_WIDTH);
+		} else {
+			printCenteredLines(footerText.toUpperCase(), RECEIPT_LINE_WIDTH);
 		}
 		result.bold(false).line(" ").cut();
 
