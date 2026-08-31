@@ -296,16 +296,14 @@ export function CustomerOrderProgress({ step }: { step: "table" | "party" | "ref
 				</div>
 				<span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-black text-primary">Langkah {activeIndex + 1} dari {steps.length}</span>
 			</div>
-			<div className="mt-2.5 flex items-center" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={activeIndex + 1} aria-valuetext={`Langkah ${activeIndex + 1} dari ${steps.length}: ${activeStep.label}`}>
+			<div className="mt-2.5 flex items-start" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={activeIndex + 1} aria-valuetext={`Langkah ${activeIndex + 1} dari ${steps.length}: ${activeStep.label}`}>
 				{steps.map((item, index) => (
-					<div key={item.key} className="flex min-w-0 flex-1 items-center">
-						<div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-black transition-colors", index < activeIndex ? "border-primary bg-primary text-primary-foreground" : index === activeIndex ? "border-primary bg-background text-primary ring-4 ring-primary/10" : "border-muted-foreground/25 bg-background text-muted-foreground")}>{index < activeIndex ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : index + 1}</div>
-						{index < steps.length - 1 ? <div className={cn("mx-1 h-1 flex-1 rounded-full", index < activeIndex ? "bg-primary" : "bg-muted")} /> : null}
+					<div key={item.key} className="relative flex min-w-0 flex-1 flex-col items-center">
+						{index < steps.length - 1 ? <div className={cn("absolute left-1/2 right-[-50%] top-3.5 z-0 h-1 rounded-full", index < activeIndex ? "bg-primary" : "bg-muted")} aria-hidden="true" /> : null}
+						<div className={cn("relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 bg-card text-[10px] font-black transition-colors", index < activeIndex ? "border-primary bg-primary text-primary-foreground" : index === activeIndex ? "border-primary text-primary ring-4 ring-primary/10" : "border-muted-foreground/25 text-muted-foreground")}>{index < activeIndex ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : index + 1}</div>
+						<span className={cn("mt-1.5 w-full px-0.5 text-center text-[9px] font-semibold leading-tight text-muted-foreground", index === activeIndex && "font-black text-primary")}>{item.shortLabel}</span>
 					</div>
 				))}
-			</div>
-			<div className="mt-1.5 flex justify-between text-[10px] font-semibold text-muted-foreground" aria-hidden="true">
-				{steps.map((item, index) => <span key={item.key} className={cn("w-14 text-center first:text-left last:text-right", index === activeIndex && "font-black text-primary")}>{item.shortLabel}</span>)}
 			</div>
 		</div>
 	);
