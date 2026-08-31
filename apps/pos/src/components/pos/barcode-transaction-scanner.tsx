@@ -9,6 +9,7 @@ type ScannerProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onDetected: (value: string) => void;
+	transactionSuggestions?: Array<{ value: string; label: string; detail?: string }>;
 };
 
 function getDetector(): BarcodeDetectorLike | null {
@@ -19,7 +20,7 @@ function getDetector(): BarcodeDetectorLike | null {
 	return new Detector({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e"] });
 }
 
-export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: ScannerProps) {
+export function BarcodeTransactionScanner({ open, onOpenChange, onDetected, transactionSuggestions = [] }: ScannerProps) {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const streamRef = useRef<MediaStream | null>(null);
 	const zxingControlsRef = useRef<{ stop: () => void } | null>(null);
@@ -129,6 +130,10 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: Sc
 		onOpenChange(false);
 	};
 
+	const visibleSuggestions = manualCode.trim()
+		? transactionSuggestions.filter((item) => `${item.value} ${item.label} ${item.detail ?? ""}`.toLowerCase().includes(manualCode.trim().toLowerCase())).slice(0, 6)
+		: transactionSuggestions.slice(0, 6);
+
 	return (
 		<div className={open ? "fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" : "hidden"} role="dialog" aria-modal="true" aria-label="Scan barcode transaksi">
 			<div className="w-full max-w-md overflow-hidden rounded-t-3xl bg-background shadow-2xl sm:rounded-3xl">
@@ -142,7 +147,10 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected }: Sc
 				</div>
 				<div className="space-y-3 p-4">
 					{error ? <p className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">{error}</p> : <p className="flex items-center gap-2 text-[11px] text-muted-foreground"><Camera className="h-4 w-4" />Scan barcode order DjiwaApp untuk membuka detail transaksi.</p>}
-					<div className="flex gap-2"><div className="relative flex-1"><Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={manualCode} onChange={(event) => setManualCode(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submitManualCode(); }} placeholder="0037-310826 atau 37-310826" className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary" autoCapitalize="characters" /></div><button type="button" onClick={submitManualCode} disabled={!manualCode.trim()} className="h-11 rounded-xl bg-primary px-4 text-[11px] font-black text-primary-foreground disabled:opacity-50">Cari</button></div>
+					<div className="relative">
+						{visibleSuggestions.length > 0 ? <div className="absolute bottom-[calc(100%+0.5rem)] left-0 right-0 z-10 max-h-64 overflow-y-auto rounded-2xl border border-border bg-popover p-1 shadow-xl" role="listbox" aria-label="Transaksi ditemukan">{visibleSuggestions.map((item) => <button key={item.value} type="button" onClick={() => { onDetected(item.value); onOpenChange(false); }} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-primary/10" role="option"><span className="min-w-0"><span className="block truncate text-xs font-black text-primary">{item.value}</span><span className="block truncate text-[11px] font-semibold">{item.label}</span></span>{item.detail ? <span className="shrink-0 text-[10px] font-bold text-muted-foreground">{item.detail}</span> : null}</button>)}</div> : null}
+						<div className="flex gap-2"><div className="relative flex-1"><Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={manualCode} onChange={(event) => setManualCode(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submitManualCode(); }} placeholder="Cari urutan, tanggal, atau nama customer" className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary" autoCapitalize="characters" /></div><button type="button" onClick={submitManualCode} disabled={!manualCode.trim()} className="h-11 rounded-xl bg-primary px-4 text-[11px] font-black text-primary-foreground disabled:opacity-50">Cari</button></div>
+					</div>
 				</div>
 			</div>
 		</div>
