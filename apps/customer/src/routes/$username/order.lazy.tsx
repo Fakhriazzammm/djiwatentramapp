@@ -32,6 +32,7 @@ import {
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
 import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
+import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
@@ -647,7 +648,10 @@ function OrderPage() {
 		try {
 			const normalizedCustomerName = customerName.trim();
 			let guestCustomerSourceId: string | null = null;
-			if (!isAuthenticated) {
+			// Guest QRIS perlu disinkronkan agar identity dan contact dapat dipakai Mayar.
+			// Guest bayar tunai tidak boleh dipaksa mengisi email/WhatsApp; nama dan ciri
+			// customer tetap disimpan langsung pada pending order untuk kasir.
+			if (!isAuthenticated && paymentChoice === "mayar") {
 				const guestCapture = await invokeEdgeFunction<{ customerSourceId?: string }>("customer-sync", {
 					action: "captureGuest",
 					name: normalizedCustomerName,
@@ -695,7 +699,7 @@ function OrderPage() {
 				freeRefillSelected: Boolean(freeRefillOptIn),
 				dessertLater,
 				notes: normalizedNotes,
-				discountAmount: promoDiscount + djiwaPayDiscount,
+				discountAmount: getAdditionalOrderDiscount(promoDiscount, djiwaPayDiscount),
 				voucherId: djiwaPayDiscount > 0 ? "djiwa-pay-20" : null,
 				receiptMeta: {
 					happyHourApplied: cart.some((item) => {
