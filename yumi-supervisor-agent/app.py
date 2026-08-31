@@ -1538,6 +1538,10 @@ _last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_upd
 # Failed settlement edits must not hammer Telegram every 5 seconds.
 _settlement_retry_not_before: dict[str, int] = {}
 _cashier_paid_seed_ready = False
+# Rows at or before this boundary are recovery data, not new events. This
+# prevents the bounded customer lookback from replaying historical orders
+# after a restart or an order-number format migration.
+_startup_event_cutoff_ms = 0
 
 # Delivery dedupe is tracked independently for each destination. This is
 # important when Kitchen/Barista times out after the transaction message was
@@ -1646,7 +1650,7 @@ async def _seed_existing_order_notifications() -> bool:
     The normal poll intentionally reads a seven-day recovery window. On startup,
     all rows already inside that window are existing state, not new events.
     """
-    global _reported_order_nos, _cashier_paid_update_nos, _cashier_paid_seed_ready
+    global _reported_order_nos, _cashier_paid_update_nos, _cashier_paid_seed_ready, _startup_event_cutoff_ms
     now_ms = int(_now_wib().timestamp() * 1000)
     lower_bound = max(0, now_ms - 7 * 86_400_000)
     try:
@@ -1690,6 +1694,7 @@ async def _seed_existing_order_notifications() -> bool:
             _cashier_paid_update_nos,
         )
     _cashier_paid_seed_ready = True
+    _startup_event_cutoff_ms = now_ms
     logger.info(
         "Existing order baseline: acknowledged=%d new_reported=%d new_paid=%d",
         len(existing), len(new_reported), len(new_paid),
@@ -2091,7 +2096,7 @@ async def _check_new_booking_transactions(app):
 
 
 async def _check_new_orders(app):
-    global _last_order_check_ms, _reported_order_nos, _cashier_paid_update_nos
+    global _last_order_check_ms, _reported_order_nos, _cashier_paid_update_nos, _startup_event_cutoff_ms
     if not _cashier_paid_seed_ready:
         logger.warning("Order polling paused: cashier settlement seed is not ready")
         return
@@ -2172,6 +2177,8 @@ async def _check_new_orders(app):
         ts = int(float(row.get("_creationTime") or 0))
         if ts > max_creation_time:
             max_creation_time = ts
+        if ts <= _startup_event_cutoff_ms:
+            continue
         # Order cashier customer yang sudah dibayar mendapat satu notifikasi
         # pembaruan, bukan notifikasi order baru kedua.
         is_cashier_paid = (
