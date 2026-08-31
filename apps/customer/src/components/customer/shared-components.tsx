@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import JsBarcode from "jsbarcode";
 import { cn } from "@/lib/utils";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Check, Minus, Plus, Trash2 } from "lucide-react";
 import type { CartItem } from "./types";
 import { currency } from "./types";
 
@@ -277,22 +277,36 @@ export function BarcodeLines({ value }: { value: string }) {
 
 export function CustomerOrderProgress({ step }: { step: "table" | "party" | "refill" | "menu" | "checkout" | "payment" | "receipt" }) {
 	const steps = [
-		{ key: "table", label: "Step 1 · Pilih meja" },
-		{ key: "party", label: "Step 2 · Jumlah orang" },
-		{ key: "menu", label: "Step 3 · Menu" },
-		{ key: "checkout", label: "Step 4 · Checkout / Pembayaran" },
-		{ key: "receipt", label: "Step 5 · Selesai / Struk" },
+		{ key: "table", label: "Pilih meja", shortLabel: "Meja" },
+		{ key: "party", label: "Jumlah orang", shortLabel: "Orang" },
+		{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
+		{ key: "checkout", label: "Checkout / Pembayaran", shortLabel: "Checkout" },
+		{ key: "receipt", label: "Selesai / Struk", shortLabel: "Selesai" },
 	] as const;
-	const normalizedStep = step === "refill" ? "party" : step === "payment" ? "checkout" : step === "party" ? "party" : step;
-	const activeIndex = steps.findIndex((item) => item.key === normalizedStep);
+	const normalizedStep = step === "refill" ? "party" : step === "payment" ? "checkout" : step;
+	const activeIndex = Math.max(0, steps.findIndex((item) => item.key === normalizedStep));
+	const activeStep = steps[activeIndex];
+
 	return (
-		<div className="flex items-center gap-1.5 overflow-x-auto px-3 pb-1 pt-2" aria-label={`Progress order: ${steps[Math.max(0, activeIndex)]?.label ?? "Order"}`}>
-			{steps.map((item, index) => (
-				<div key={item.key} className="flex min-w-[120px] flex-none items-center gap-1.5">
-					<div className={cn("h-1.5 flex-1 rounded-full", index <= activeIndex ? "bg-primary" : "bg-muted")} />
-					<span className={cn("whitespace-nowrap text-[9px] font-bold", index === activeIndex ? "text-primary" : "text-muted-foreground")}>{item.label}</span>
+		<div className="mx-2 mt-2 rounded-2xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-sm" aria-label={`Progress order: Langkah ${activeIndex + 1} dari ${steps.length}, ${activeStep.label}`}>
+			<div className="flex items-center justify-between gap-3">
+				<div className="min-w-0">
+					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Progress pesanan</p>
+					<p className="mt-0.5 truncate text-xs font-black text-foreground">{activeStep.label}</p>
 				</div>
-			))}
+				<span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-black text-primary">Langkah {activeIndex + 1} dari {steps.length}</span>
+			</div>
+			<div className="mt-2.5 flex items-center" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={activeIndex + 1} aria-valuetext={`Langkah ${activeIndex + 1} dari ${steps.length}: ${activeStep.label}`}>
+				{steps.map((item, index) => (
+					<div key={item.key} className="flex min-w-0 flex-1 items-center">
+						<div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[10px] font-black transition-colors", index < activeIndex ? "border-primary bg-primary text-primary-foreground" : index === activeIndex ? "border-primary bg-background text-primary ring-4 ring-primary/10" : "border-muted-foreground/25 bg-background text-muted-foreground")}>{index < activeIndex ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : index + 1}</div>
+						{index < steps.length - 1 ? <div className={cn("mx-1 h-1 flex-1 rounded-full", index < activeIndex ? "bg-primary" : "bg-muted")} /> : null}
+					</div>
+				))}
+			</div>
+			<div className="mt-1.5 flex justify-between text-[10px] font-semibold text-muted-foreground" aria-hidden="true">
+				{steps.map((item, index) => <span key={item.key} className={cn("w-14 text-center first:text-left last:text-right", index === activeIndex && "font-black text-primary")}>{item.shortLabel}</span>)}
+			</div>
 		</div>
 	);
 }
