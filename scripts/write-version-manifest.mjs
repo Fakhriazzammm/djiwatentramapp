@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getBuildMetadata } from "./version-metadata.mjs";
@@ -13,6 +13,7 @@ const apps = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan", "apps/
 for (const app of apps) {
 	const outputPath = resolve(rootDir, app, "public/version.json");
 	try {
+		mkdirSync(dirname(outputPath), { recursive: true });
 		writeFileSync(
 			outputPath,
 			`${JSON.stringify(

@@ -9,7 +9,16 @@ export function setAppUpdateHandler(handler: UpdateHandler | undefined) {
   updateSW = handler;
 }
 
-export function notifyAppUpdateAvailable(info?: unknown) {
+export type AppUpdateInfo = {
+  currentVersion: string;
+  latestVersion: string;
+  currentCommit: string;
+  latestCommit: string;
+  latestMessage?: string;
+  buildDate?: string;
+};
+
+export function notifyAppUpdateAvailable(info?: AppUpdateInfo) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(APP_UPDATE_EVENT, { detail: info }));
 }
