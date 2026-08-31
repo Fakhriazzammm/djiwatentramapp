@@ -8,6 +8,7 @@ type PosOrderDetailSheetProps = {
   notification: PosNotification | null;
   loading?: boolean;
   onClose: () => void;
+  onMarkCashierPaid?: () => void | Promise<void>;
 };
 
 function formatCurrency(value: unknown) {
@@ -28,7 +29,8 @@ function getTableLabel(order: Record<string, any> | null, payload: Record<string
 }
 
 function getItems(order: Record<string, any> | null, payload: Record<string, any>) {
-  const items = Array.isArray(order?.items) && order.items.length > 0 ? order.items : payload.items;
+  const orderItems = order?.items;
+  const items = Array.isArray(orderItems) && orderItems.length > 0 ? orderItems : payload.items;
   return Array.isArray(items) ? items : [];
 }
 
@@ -54,7 +56,7 @@ function getStatusLabel(order: Record<string, any> | null, notification: PosNoti
   return "Menunggu Pembayaran";
 }
 
-export function PosOrderDetailSheet({ open, order, notification, loading = false, onClose }: PosOrderDetailSheetProps) {
+export function PosOrderDetailSheet({ open, order, notification, loading = false, onClose, onMarkCashierPaid }: PosOrderDetailSheetProps) {
   const payload = getPayload(notification);
   const items = getItems(order, payload);
   const orderNumber = order?.orderNumber ?? notification?.order_number ?? payload.orderNumber ?? "-";
@@ -102,7 +104,7 @@ export function PosOrderDetailSheet({ open, order, notification, loading = false
                 </div>
               </section>
 
-              <section className="mt-5 rounded-2xl border bg-muted/20 p-4"><div className="flex justify-between text-xs"><span className="text-muted-foreground">Subtotal</span><span className="font-bold">{formatCurrency(order?.subtotalAmount ?? order?.subtotal ?? total)}</span></div>{Number(order?.discountAmount ?? 0) > 0 ? <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Diskon</span><span className="font-bold text-rose-600">-{formatCurrency(order.discountAmount)}</span></div> : null}<div className="mt-3 flex justify-between border-t pt-3"><span className="font-black">Total</span><span className="text-lg font-black text-primary">{formatCurrency(total)}</span></div><p className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> Sumber: DjiwaApp</p></section>
+              <section className="mt-5 rounded-2xl border bg-muted/20 p-4"><div className="flex justify-between text-xs"><span className="text-muted-foreground">Subtotal</span><span className="font-bold">{formatCurrency(order?.subtotalAmount ?? order?.subtotal ?? total)}</span></div>{Number(order?.discountAmount ?? 0) > 0 ? <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Diskon</span><span className="font-bold text-rose-600">-{formatCurrency(order?.discountAmount)}</span></div> : null}<div className="mt-3 flex justify-between border-t pt-3"><span className="font-black">Total</span><span className="text-lg font-black text-primary">{formatCurrency(total)}</span></div><p className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> Sumber: DjiwaApp</p>{order && String(order.status).toLowerCase() === "pending" && String(order.paymentMethod ?? order.payment_method ?? "").toLowerCase() === "cash" && onMarkCashierPaid ? <button type="button" onClick={() => void onMarkCashierPaid()} className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 text-xs font-black text-white shadow-sm transition-colors hover:bg-emerald-700">Konfirmasi Bayar Tunai di Kasir</button> : null}</section>
             </>
           )}
         </div>

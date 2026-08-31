@@ -43,6 +43,7 @@ import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
 import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
 import { BarcodeTransactionScanner } from "@/components/pos/barcode-transaction-scanner";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import {
 	useHybridActiveDiscounts,
@@ -492,7 +493,9 @@ function MenuPage() {
 		cashierPaidInFlightRef.current.add(orderId);
 		try {
 			await updateOrder({ id: orderId, status: "paid", paymentMethod: "cash", paymentReceiptKind: "cashier" });
-			await removeNotification(notification.id);
+			if (!String(notification.id).startsWith("barcode:")) {
+				await removeNotification(notification.id);
+			}
 			setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
 			// Refresh orders + financial transactions so history, dashboard, and target progress update immediately.
 			triggerHybridRefresh();
@@ -1067,6 +1070,23 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const handleBarcodeDetected = useCallback(
 		(code: string) => {
 			const normalizedCode = code.trim().toLowerCase();
+			const order = (orders ?? []).find((candidate: any) => {
+				const displayNumber = getDisplayOrderNumber(candidate.orderNumber, {
+					sequence: candidate.dailyReceiptNo ?? candidate.daily_receipt_no,
+					createdAt: candidate.createdAt ?? candidate._creationTime,
+					source: candidate.source,
+					sourceApp: candidate.sourceApp,
+					businessUnit: candidate.businessUnit,
+					orderType: candidate.orderType,
+				});
+				return [displayNumber, candidate.orderNumber, candidate._id].some((value) => String(value ?? "").trim().toLowerCase() === normalizedCode);
+			});
+			if (order) {
+				setSelectedOrderId(String(order._id));
+				setSelectedOrderNotification({ id: `barcode:${order._id}`, notification_type: "order_cashier_pending", priority: "high", title: "Order dari Barcode", message: "Order ditemukan dari scanner POS", order_source_id: order._id, order_number: order.orderNumber, source: order.source, action_payload: { orderId: order._id, orderNumber: order.orderNumber, customerName: order.customerName, totalAmount: order.totalAmount, paymentMethod: order.paymentMethod }, created_at: new Date().toISOString(), isRead: false } as any);
+				toast.success(`Order ${getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo, createdAt: order.createdAt, source: order.source, orderType: order.orderType })} ditemukan`);
+				return;
+			}
 			const product = (allProducts ?? []).find((candidate: any) =>
 				[String(candidate.barcode ?? ""), String(candidate.sku ?? ""), String(candidate.productCode ?? ""), String(candidate.menuNumber ?? "")]
 					.some((value) => value.trim().toLowerCase() === normalizedCode)
@@ -2149,6 +2169,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				order={(orders ?? []).find((order: any) => String(order._id ?? "") === selectedOrderId || String(order.orderNumber ?? "") === String(selectedOrderNotification?.order_number ?? "")) ?? null}
 				notification={selectedOrderNotification}
 				onClose={() => { setSelectedOrderNotification(null); setSelectedOrderId(null); }}
+				onMarkCashierPaid={selectedOrderNotification ? () => handleMarkCashierPaid(selectedOrderNotification) : undefined}
 			/>
 
 				{/* Hidden MenuSidebar for control */}
