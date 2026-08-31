@@ -9,6 +9,7 @@ export type AppUpdateInfo = {
 	latestVersion: string;
 	currentCommit: string;
 	latestCommit: string;
+	latestMessage?: string;
 	buildDate?: string;
 };
 
@@ -37,6 +38,7 @@ export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 		latestVersion: info?.latestVersion || latestUpdateInfo?.latestVersion || APP_VERSION.semantic,
 		currentCommit: APP_VERSION.commitHash,
 		latestCommit: info?.latestCommit || latestUpdateInfo?.latestCommit || APP_VERSION.commitHash,
+		latestMessage: info?.latestMessage || latestUpdateInfo?.latestMessage,
 		buildDate: info?.buildDate || latestUpdateInfo?.buildDate,
 	};
 
@@ -77,6 +79,7 @@ export async function checkForAppUpdate() {
 			latestVersion: normalizeVersionValue(payload.version) || APP_VERSION.semantic,
 			currentCommit: APP_VERSION.commitHash,
 			latestCommit: normalizeVersionValue(payload.commitHash ?? payload.commit) || APP_VERSION.commitHash,
+			latestMessage: normalizeVersionValue(payload.message ?? payload.commitMessage) || undefined,
 			buildDate: normalizeVersionValue(payload.buildDate) || undefined,
 		};
 

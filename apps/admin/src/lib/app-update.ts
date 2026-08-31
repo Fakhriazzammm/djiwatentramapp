@@ -9,6 +9,7 @@ export type AppUpdateInfo = {
 	latestVersion: string;
 	currentCommit: string;
 	latestCommit: string;
+	latestMessage?: string;
 	buildDate?: string;
 };
 
@@ -20,12 +21,10 @@ function normalizeVersionValue(value: unknown) {
 }
 
 function isNewerBuild(payload: any) {
-	// Hanya trigger dialog saat VERSION NUMBER benar-benar berbeda.
-	// Commit hash berbeda dengan versi sama = rebuild tanpa konten baru
-	// → bukan update yang perlu ditampilkan ke user.
 	const latestVersion = normalizeVersionValue(payload?.version);
 	if (latestVersion && latestVersion !== APP_VERSION.semantic) return true;
-	return false;
+	const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
+	return Boolean(latestCommit && latestCommit !== APP_VERSION.commitHash);
 }
 
 export function getLatestUpdateInfo() {
@@ -38,6 +37,7 @@ export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 		latestVersion: info?.latestVersion || latestUpdateInfo?.latestVersion || APP_VERSION.semantic,
 		currentCommit: APP_VERSION.commitHash,
 		latestCommit: info?.latestCommit || latestUpdateInfo?.latestCommit || APP_VERSION.commitHash,
+		latestMessage: info?.latestMessage || latestUpdateInfo?.latestMessage,
 		buildDate: info?.buildDate || latestUpdateInfo?.buildDate,
 	};
 
@@ -57,14 +57,7 @@ export async function checkForAppUpdate() {
 	// Ini mencegah loop: user klik update → reload → bundle lama masih terload
 	// → polling deteksi version.json masih beda → popup lagi ♾️
 	const storedAppliedVersion = localStorage.getItem(APPLIED_VERSION_KEY);
-	if (storedAppliedVersion) {
-		const latestVersion = normalizeVersionValue(payload?.version);
-		if (latestVersion && latestVersion === storedAppliedVersion) {
-			return null;
-		}
-		// Applied version sudah obsolete, hapus
-		localStorage.removeItem(APPLIED_VERSION_KEY);
-	}
+	void storedAppliedVersion;
 
 	if (sessionStorage.getItem(INFLIGHT_KEY) === "1") {
 		sessionStorage.removeItem(INFLIGHT_KEY);
@@ -90,6 +83,7 @@ export async function checkForAppUpdate() {
 			latestVersion: normalizeVersionValue(payload.version) || APP_VERSION.semantic,
 			currentCommit: APP_VERSION.commitHash,
 			latestCommit: normalizeVersionValue(payload.commitHash ?? payload.commit) || APP_VERSION.commitHash,
+			latestMessage: normalizeVersionValue(payload.message ?? payload.commitMessage) || undefined,
 			buildDate: normalizeVersionValue(payload.buildDate) || undefined,
 		};
 

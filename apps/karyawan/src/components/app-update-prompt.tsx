@@ -19,8 +19,7 @@ import {
 
 const REMIND_AFTER_MS = 15 * 60 * 1000;
 const NEXT_REMINDER_KEY = "__app_update_next_reminder_at__";
-const RELEASE_COMMIT = "7feae747";
-const RELEASE_MESSAGE = "fix(customer): preserve username on Mayar receipt redirect";
+
 
 const PROGRESS_MESSAGES: { threshold: number; text: string }[] = [
 	{ threshold: 0, text: "Menghubungi server..." },
@@ -209,11 +208,11 @@ export function AppUpdatePrompt() {
 							</div>
 							<div className="flex items-start justify-between gap-4">
 								<span className="text-muted-foreground">Commit :</span>
-								<span className="font-mono text-xs font-semibold text-foreground">{RELEASE_COMMIT}</span>
+								<span className="font-mono text-xs font-semibold text-foreground">{updateInfo.latestCommit || "—"}</span>
 							</div>
 							<div className="flex items-start justify-between gap-4">
 								<span className="text-muted-foreground">Message:</span>
-								<span className="max-w-[15rem] text-right font-medium leading-relaxed text-foreground">{RELEASE_MESSAGE}</span>
+								<span className="max-w-[15rem] text-right font-medium leading-relaxed text-foreground">{updateInfo.latestMessage || "Pembaruan aplikasi"}</span>
 							</div>
 						</div>
 					</div>

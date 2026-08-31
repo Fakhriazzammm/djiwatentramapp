@@ -9,9 +9,9 @@ export function setAppUpdateHandler(handler: UpdateHandler | undefined) {
   updateSW = handler;
 }
 
-export function notifyAppUpdateAvailable() {
+export function notifyAppUpdateAvailable(info?: unknown) {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(APP_UPDATE_EVENT));
+  window.dispatchEvent(new CustomEvent(APP_UPDATE_EVENT, { detail: info }));
 }
 
 export async function checkForAppUpdate() {
@@ -19,12 +19,13 @@ export async function checkForAppUpdate() {
   try {
     const response = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
     if (!response.ok) return null;
-    const payload = await response.json() as { version?: string; commitHash?: string; commit?: string; buildDate?: string };
+    const payload = await response.json() as { version?: string; commitHash?: string; commit?: string; message?: string; commitMessage?: string; buildDate?: string };
     const latestVersion = payload.version?.trim() || "";
     const latestCommit = (payload.commitHash ?? payload.commit ?? "").trim();
     if ((!latestVersion || latestVersion === APP_VERSION.semantic) && (!latestCommit || latestCommit === APP_VERSION.commitHash)) return null;
-    notifyAppUpdateAvailable();
-    return { latestVersion, latestCommit, buildDate: payload.buildDate };
+    const info = { currentVersion: APP_VERSION.semantic, latestVersion, currentCommit: APP_VERSION.commitHash, latestCommit, latestMessage: (payload.message ?? payload.commitMessage)?.trim() || undefined, buildDate: payload.buildDate };
+    notifyAppUpdateAvailable(info);
+    return info;
   } catch {
     return null;
   }

@@ -22,6 +22,7 @@ export const APP_VERSION = {
 	semantic: "${metadata.version}",
 	// Git/deploy commit hash (short)
 	commitHash: "${metadata.commitHash}",
+	message: ${JSON.stringify(metadata.commitMessage)},
 	// Commit subject for the update prompt
 	commitMessage: ${JSON.stringify(metadata.commitMessage)},
 	// Build timestamp
@@ -47,7 +48,7 @@ export function getAppVersionInfo() {
 `;
 
 // Write to all apps that use version.ts (skip dirs that don't exist)
-const appDirs = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan", "apps/ordermieyamin"];
+const appDirs = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan", "apps/ordermieyamin", "apps/booking", "apps/linkbio"];
 for (const dir of appDirs) {
 	const targetPath = resolve(rootDir, `${dir}/src/lib/version.ts`);
 	try {
