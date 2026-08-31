@@ -836,23 +836,10 @@ async def _load_active_orders(bot: Bot):
                 "selesai_at": datetime.fromisoformat(row["selesai_at"].replace("Z", "+00:00")) if row.get("selesai_at") else None,
             }
 
-            # Restore auto timers
-            if row["status"] == "new" and created_at:
-                elapsed = (datetime.now(timezone.utc) - created_at).total_seconds()
-                if elapsed <= 20:
-                    remaining = max(0, 20 - elapsed)
-                    _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, int(remaining)))
-                    logger.info("[%s] Restored: auto-dibuat in %ds", key, int(remaining))
-                else:
-                    logger.info("[%s] Skipped stale auto-dibuat timer (age=%ds)", key, int(elapsed))
-            elif row["status"] == "dibuat" and dibuat_at:
-                elapsed = (datetime.now(timezone.utc) - dibuat_at).total_seconds()
-                if elapsed <= 60:
-                    remaining = max(0, 1800 - elapsed)
-                    _active_orders[key]["auto_selesai_task"] = asyncio.create_task(_auto_selesai(key, int(remaining)))
-                    logger.info("[%s] Restored: auto-selesai in %ds", key, int(remaining))
-                else:
-                    logger.info("[%s] Skipped stale auto-selesai timer (age=%ds)", key, int(elapsed))
+            # Do not restore timers from persisted rows. A status row can outlive
+            # the order event that created it; restoring it on startup replays
+            # historical messages and floods Telegram with editMessageText calls.
+            # New orders still create their timers in the live notification path.
             count += 1
         logger.info("Restored %d active orders from Supabase", count)
     except Exception as e:
