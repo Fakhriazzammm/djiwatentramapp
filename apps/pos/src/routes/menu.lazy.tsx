@@ -1070,6 +1070,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const handleBarcodeDetected = useCallback(
 		(code: string) => {
 			const normalizedCode = code.trim().toLowerCase();
+			const compactCode = normalizedCode.replace(/[^a-z0-9]/g, "");
+			const shortCodeMatch = compactCode.match(/(?:ordappd|ordapp|appd)?(\d{1,4})(\d{6})$/i);
+			const shortSequence = shortCodeMatch ? String(Number(shortCodeMatch[1])) : null;
+			const shortDate = shortCodeMatch?.[2] ?? null;
 			const order = (orders ?? []).find((candidate: any) => {
 				const displayNumber = getDisplayOrderNumber(candidate.orderNumber, {
 					sequence: candidate.dailyReceiptNo ?? candidate.daily_receipt_no,
@@ -1079,7 +1083,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					businessUnit: candidate.businessUnit,
 					orderType: candidate.orderType,
 				});
-				return [displayNumber, candidate.orderNumber, candidate._id].some((value) => String(value ?? "").trim().toLowerCase() === normalizedCode);
+				const displayMatch = String(displayNumber).match(/-(\d{4})-(\d{6})$/);
+				const candidateSequence = displayMatch?.[1] ? String(Number(displayMatch[1])) : null;
+				const candidateDate = displayMatch?.[2] ?? null;
+				const shortMatch = Boolean(shortSequence && shortDate && candidateSequence === shortSequence && candidateDate === shortDate);
+				return shortMatch || [displayNumber, candidate.orderNumber, candidate._id].some((value) => String(value ?? "").trim().toLowerCase() === normalizedCode);
 			});
 			if (order) {
 				setSelectedOrderId(String(order._id));
