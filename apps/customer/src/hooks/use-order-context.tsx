@@ -15,6 +15,15 @@ import type {
 	ReceiptState,
 } from "@/components/customer/types";
 import { getSessionId } from "@/components/customer/types";
+import {
+	clearLegacyCart,
+	clearPersistedCart,
+	getJakartaDateKey,
+	loadPersistedCart,
+	persistCart,
+	type CartOwnerKey,
+} from "@/lib/cart-storage";
+import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -114,47 +123,15 @@ export interface OrderContextType {
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 // ── Persistence ────────────────────────────────────────────────
-// Cart di-persist ke localStorage agar tidak hilang saat refresh
-// atau pindah halaman. Key div-version agar data lama tidak collide.
-const CART_STORAGE_KEY = "customer-ordering-cart-v2";
-const PREFILL_STORAGE_KEY = "customer-order-prefill-v1";
+// Cart disimpan per member/guest-session dan hanya berlaku untuk tanggal WIB aktif.
 
-function isValidCartItem(item: unknown): item is CartItem {
-	if (!item || typeof item !== "object") return false;
-	const entry = item as Record<string, unknown>;
-	return (
-		typeof entry.productId === "string" &&
-		typeof entry.name === "string" &&
-		typeof entry.price === "number" &&
-		typeof entry.quantity === "number" &&
-		entry.quantity > 0 &&
-		typeof entry.categoryId === "string"
-	);
-}
-
-function loadPersistedCart(): CartItem[] {
-	// 1) Prefill dari "Pesan lagi" (riwayat) — dikonsumsi sekali lalu dihapus
-	try {
-		const prefillRaw = window.localStorage.getItem(PREFILL_STORAGE_KEY);
-		if (prefillRaw) {
-			window.localStorage.removeItem(PREFILL_STORAGE_KEY);
-			const parsed = JSON.parse(prefillRaw);
-			if (Array.isArray(parsed)) {
-				const items = parsed.filter(isValidCartItem);
-				if (items.length > 0) return items;
-			}
-		}
-	} catch { /* ignore */ }
-
-	// 2) Cart tersimpan dari sesi sebelumnya
-	try {
-		const raw = window.localStorage.getItem(CART_STORAGE_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed.filter(isValidCartItem) : [];
-	} catch {
-		return [];
-	}
+function getCartOwnerKey(
+	isAuthenticated: boolean,
+	customerSourceId: string | undefined,
+	sessionId: string,
+): CartOwnerKey | null {
+	if (isAuthenticated) return customerSourceId ? `member:${customerSourceId}` : null;
+	return `guest:${sessionId}`;
 }
 
 // ── Provider ───────────────────────────────────────────────────
@@ -174,7 +151,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	const [codeFeedback, setCodeFeedback] = useState("");
 
 	// Cart
-	const [cart, setCart] = useState<CartItem[]>(() => loadPersistedCart());
+	const [cart, setCart] = useState<CartItem[]>([]);
 	const [cartOpen, setCartOpen] = useState(false);
 
 	// Service request
@@ -211,6 +188,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
 	// Session
 	const sessionRef = useRef(getSessionId(undefined));
+	const { isLoading: authLoading, isAuthenticated, customer } = useCustomerAuth();
+	const cartOwnerKey = getCartOwnerKey(isAuthenticated, customer?.sourceId, sessionRef.current);
+	const cartDateRef = useRef(getJakartaDateKey());
+	const hydratedOwnerRef = useRef<CartOwnerKey | null>(null);
+	const skipNextPersistRef = useRef(false);
 
 	// Bootstrap client (side-effect-free instantiation at provider mount)
 	createClient();
@@ -231,16 +213,38 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 		} catch { /* ignore parse errors */ }
 	}, []);
 
-	// Persist cart ke localStorage setiap kali berubah
+	// Hydrate hanya setelah auth selesai, lalu buang legacy cart global yang tidak punya owner/date.
 	useEffect(() => {
-		try {
-			if (cart.length > 0) {
-				window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-			} else {
-				window.localStorage.removeItem(CART_STORAGE_KEY);
-			}
-		} catch { /* ignore quota errors */ }
-	}, [cart]);
+		if (authLoading || !cartOwnerKey || hydratedOwnerRef.current === cartOwnerKey) return;
+		hydratedOwnerRef.current = cartOwnerKey;
+		cartDateRef.current = getJakartaDateKey();
+		clearLegacyCart();
+		skipNextPersistRef.current = true;
+		setCart(loadPersistedCart(cartOwnerKey));
+	}, [authLoading, cartOwnerKey]);
+
+	// Persist cart scoped ke identity aktif. Skip sekali setelah hydration agar state [] lama
+	// tidak menghapus payload tersimpan sebelum hasil load masuk ke render berikutnya.
+	useEffect(() => {
+		if (!cartOwnerKey || hydratedOwnerRef.current !== cartOwnerKey) return;
+		if (skipNextPersistRef.current) {
+			skipNextPersistRef.current = false;
+			return;
+		}
+		persistCart(cartOwnerKey, cart);
+	}, [cart, cartOwnerKey]);
+
+	// Jika aplikasi tetap terbuka melewati tengah malam WIB, cart harus expired.
+	useEffect(() => {
+		const interval = window.setInterval(() => {
+			const today = getJakartaDateKey();
+			if (today === cartDateRef.current) return;
+			cartDateRef.current = today;
+			if (cartOwnerKey) clearPersistedCart(cartOwnerKey);
+			setCart([]);
+		}, 60_000);
+		return () => window.clearInterval(interval);
+	}, [cartOwnerKey]);
 
 	// ── Helpers ──────────────────────────────────────────────
 

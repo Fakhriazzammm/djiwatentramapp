@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { useOrderContext } from "@/hooks/use-order-context";
 import { currency } from "@/components/customer/types";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { useCustomerOrderCount } from "@/hooks/use-customer-data";
@@ -20,6 +21,7 @@ function ProfilePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const { customer, logout, isLoading: authLoading, refreshCustomer } = useCustomerAuth();
+	const { setCart } = useOrderContext();
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 	const { orderCount } = useCustomerOrderCount();
 
@@ -286,6 +288,7 @@ function ProfilePage() {
 						type="button"
 						className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[15px] border border-destructive/15 bg-transparent px-3 py-2.5 text-xs font-bold text-destructive transition-all hover:bg-destructive/5 active:scale-[.98]"
 						onClick={() => {
+							setCart([]);
 							logout();
 							navigate({ to: "/$username", params: { username } });
 						}}

@@ -25,6 +25,7 @@ function DaftarPage() {
 		setGuestMarketingConsent,
 		tableNumber,
 		setTableNumber,
+		setCart,
 	} = useOrderContext();
 
 	const focusInvalidField = (fieldId: string, field: "name" | "email" | "phone" | "description", message: string) => {
@@ -73,6 +74,9 @@ function DaftarPage() {
 			.replace(/^-|-$/g, "");
 		const random = Math.floor(1000 + Math.random() * 9000);
 		const guestUsername = `${slug}-${random}`;
+
+		// Guest baru tidak boleh mewarisi draft cart guest sebelumnya pada device yang sama.
+		setCart([]);
 
 		localStorage.setItem(
 			"guest-data",

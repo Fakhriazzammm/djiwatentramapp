@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { LogIn, LogOut } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { useOrderContext } from "@/hooks/use-order-context";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
@@ -41,6 +42,7 @@ function MemberHomePage() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
+	const { setCart } = useOrderContext();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
@@ -228,7 +230,7 @@ function MemberHomePage() {
 						storeName={storeName}
 						eyebrow="Member"
 						title={displayName}
-						action={<button type="button" aria-label="Keluar" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-transform duration-[180ms] hover:bg-destructive/10 hover:text-destructive active:scale-[.97]" onClick={async () => { await logout(); navigate({ to: "/" }); }}><LogOut className="h-4 w-4" /></button>}
+						action={<button type="button" aria-label="Keluar" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-transform duration-[180ms] hover:bg-destructive/10 hover:text-destructive active:scale-[.97]" onClick={async () => { setCart([]); await logout(); navigate({ to: "/" }); }}><LogOut className="h-4 w-4" /></button>}
 					/>
 					<CustomerLiveShiftIndicator />
 					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
