@@ -1,10 +1,6 @@
 import { Camera, Flashlight, Keyboard, ScanLine, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-type BarcodeDetectorLike = {
-	detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>>;
-};
-
 type ScannerProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -12,19 +8,9 @@ type ScannerProps = {
 	transactionSuggestions?: Array<{ value: string; label: string; detail?: string }>;
 };
 
-function getDetector(): BarcodeDetectorLike | null {
-	const Detector = (globalThis as typeof globalThis & {
-		BarcodeDetector?: new (options?: { formats?: string[] }) => BarcodeDetectorLike;
-	}).BarcodeDetector;
-	if (!Detector) return null;
-	return new Detector({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e"] });
-}
-
 export function BarcodeTransactionScanner({ open, onOpenChange, onDetected, transactionSuggestions = [] }: ScannerProps) {
 	const videoRef = useRef<HTMLVideoElement>(null);
-	const streamRef = useRef<MediaStream | null>(null);
 	const zxingControlsRef = useRef<{ stop: () => void } | null>(null);
-	const frameRef = useRef<number | null>(null);
 	const detectedRef = useRef(false);
 	const [manualCode, setManualCode] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -38,12 +24,10 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected, tran
 		setManualCode("");
 
 		const stop = () => {
-			if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-			frameRef.current = null;
 			zxingControlsRef.current?.stop();
 			zxingControlsRef.current = null;
-			streamRef.current?.getTracks().forEach((track) => track.stop());
-			streamRef.current = null;
+			videoRef.current?.srcObject && (videoRef.current.srcObject as MediaStream).getTracks().forEach((track) => track.stop());
+			if (videoRef.current) videoRef.current.srcObject = null;
 		};
 
 		const start = async () => {
@@ -51,55 +35,21 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected, tran
 				setError("Kamera tidak tersedia. Masukkan kode barcode secara manual.");
 				return;
 			}
-			const nativeDetector = getDetector();
 			try {
-				if (!nativeDetector) {
-					const { BrowserMultiFormatReader } = await import("@zxing/browser");
-					if (!videoRef.current) return;
-					const reader = new BrowserMultiFormatReader();
-					zxingControlsRef.current = await reader.decodeFromConstraints(
-						{ video: { facingMode: { ideal: "environment" } }, audio: false },
-						videoRef.current,
-						(result) => {
-							const value = result?.getText()?.trim();
-							if (!value || detectedRef.current) return;
-							detectedRef.current = true;
-							onDetected(value);
-							onOpenChange(false);
-						},
-					);
-					return;
-				}
-				const stream = await navigator.mediaDevices.getUserMedia({
-					video: { facingMode: { ideal: "environment" } },
-					audio: false,
-				});
-				if (cancelled) {
-					stream.getTracks().forEach((track) => track.stop());
-					return;
-				}
-				streamRef.current = stream;
+				const { BrowserMultiFormatReader } = await import("@zxing/browser");
 				if (!videoRef.current) return;
-				videoRef.current.srcObject = stream;
-				await videoRef.current.play();
-				const detector = nativeDetector;
-				const scan = async () => {
-					if (cancelled || detectedRef.current || !videoRef.current || !detector) return;
-					try {
-						const results = await detector.detect(videoRef.current);
-						const value = results.find((item) => item.rawValue?.trim())?.rawValue?.trim();
-						if (value) {
-							detectedRef.current = true;
-							onDetected(value);
-							onOpenChange(false);
-							return;
-						}
-					} catch {
-						// Keep the camera active; manual input remains available.
-					}
-					frameRef.current = requestAnimationFrame(() => void scan());
-				};
-				void scan();
+				const reader = new BrowserMultiFormatReader();
+				zxingControlsRef.current = await reader.decodeFromConstraints(
+					{ video: { facingMode: { ideal: "environment" } }, audio: false },
+					videoRef.current,
+					(result) => {
+						const value = result?.getText()?.trim();
+						if (!value || detectedRef.current) return;
+						detectedRef.current = true;
+						onDetected(value);
+						onOpenChange(false);
+					},
+				);
 			} catch (scanError) {
 				setError(scanError instanceof DOMException && scanError.name === "NotAllowedError" ? "Akses kamera ditolak. Izinkan kamera atau masukkan kode manual." : "Kamera tidak dapat dibuka. Masukkan kode barcode secara manual.");
 			}
@@ -112,7 +62,7 @@ export function BarcodeTransactionScanner({ open, onOpenChange, onDetected, tran
 	}, [onDetected, onOpenChange, open]);
 
 	const toggleTorch = async () => {
-		const track = streamRef.current?.getVideoTracks()[0];
+		const track = videoRef.current?.srcObject instanceof MediaStream ? videoRef.current.srcObject.getVideoTracks()[0] : undefined;
 		const capabilities = track?.getCapabilities() as MediaTrackCapabilities & { torch?: boolean } | undefined;
 		if (!track || !capabilities?.torch) {
 			setError("Flash tidak tersedia di perangkat ini.");

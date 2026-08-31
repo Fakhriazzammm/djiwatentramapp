@@ -257,9 +257,9 @@ export function BarcodeLines({ value }: { value: string }) {
 		JsBarcode(svgRef.current, value.trim(), {
 			format: "CODE128",
 			displayValue: false,
-			margin: 0,
-			height: 74,
-			width: 1.6,
+			margin: 12,
+			height: 84,
+			width: 2,
 			background: "#ffffff",
 			lineColor: "#000000",
 		});
