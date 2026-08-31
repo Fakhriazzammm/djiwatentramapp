@@ -3,9 +3,11 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.126",
+	semantic: "0.2.133",
 	// Git/deploy commit hash (short)
-	commitHash: "e1c2051",
+	commitHash: "e06dac4",
+	// Commit subject for the update prompt
+	commitMessage: "fix(barcode): improve Code 128 camera scanning",
 	// Build timestamp
 	buildDate: "2026-08-31",
 	// Full version string for display
@@ -21,6 +23,7 @@ export function getAppVersionInfo() {
 	return {
 		version: APP_VERSION.semantic,
 		commit: APP_VERSION.commitHash,
+		message: APP_VERSION.commitMessage,
 		buildDate: APP_VERSION.buildDate,
 		fullVersion: APP_VERSION.getDisplayVersion(),
 	};

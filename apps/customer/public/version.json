@@ -1,6 +1,7 @@
 {
-  "version": "0.2.126",
-  "commitHash": "e1c2051",
+  "version": "0.2.133",
+  "commitHash": "e06dac4",
+  "message": "fix(barcode): improve Code 128 camera scanning",
   "buildDate": "2026-08-31",
-  "generatedAt": "2026-08-31T17:43:38.022Z"
+  "generatedAt": "2026-08-31T18:03:15.022Z"
 }
