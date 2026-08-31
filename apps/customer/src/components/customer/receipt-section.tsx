@@ -1,4 +1,4 @@
-import { CheckCircle2, QrCode, Wallet } from "lucide-react";
+import { CheckCircle2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
@@ -146,7 +146,6 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 						<p className="mt-2.5 text-center text-[10px] text-muted-foreground/70">Pembaruan otomatis — pesananmu sedang {currentStepLabel.toLowerCase()}.</p>
 					</div>
 				) : null}
-				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2 text-[10px] font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3 w-3" />Bayar via DjiwaApp</a> : null}
 			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div><button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/20 bg-primary/5 px-2.5 py-2.5 text-[10px] font-black text-primary shadow-sm" onClick={props.onHome}>Kembali ke Home</button>
 		</div>
 	);
