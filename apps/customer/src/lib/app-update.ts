@@ -9,6 +9,7 @@ export type AppUpdateInfo = {
 	latestVersion: string;
 	currentCommit: string;
 	latestCommit: string;
+	latestMessage?: string;
 	buildDate?: string;
 };
 
@@ -21,8 +22,9 @@ function normalizeVersionValue(value: unknown) {
 
 function isNewerBuild(payload: any) {
 	const latestVersion = normalizeVersionValue(payload?.version);
+	const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
 	if (latestVersion && latestVersion !== APP_VERSION.semantic) return true;
-	return false;
+	return Boolean(latestCommit && latestCommit !== APP_VERSION.commitHash);
 }
 
 export function getLatestUpdateInfo() {
@@ -35,6 +37,7 @@ export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 		latestVersion: info?.latestVersion || latestUpdateInfo?.latestVersion || APP_VERSION.semantic,
 		currentCommit: APP_VERSION.commitHash,
 		latestCommit: info?.latestCommit || latestUpdateInfo?.latestCommit || APP_VERSION.commitHash,
+		latestMessage: info?.latestMessage || latestUpdateInfo?.latestMessage,
 		buildDate: info?.buildDate || latestUpdateInfo?.buildDate,
 	};
 
@@ -45,7 +48,7 @@ export async function checkForAppUpdate() {
 	if (typeof window === "undefined" || APP_VERSION.isDev) return null;
 
 	const INFLIGHT_KEY = "__app_update_inflight__";
-	const APPLIED_VERSION_KEY = "__app_update_applied_version__";
+	const APPLIED_VERSION_KEY = "__app_update_applied_build__";
 
 	if (sessionStorage.getItem(INFLIGHT_KEY) === "1") {
 		sessionStorage.removeItem(INFLIGHT_KEY);
@@ -67,10 +70,12 @@ export async function checkForAppUpdate() {
 		// Skip jika versi di version.json sudah pernah diapply sebelumnya.
 		// Payload harus dibaca setelah fetch; membaca payload sebelum deklarasi
 		// akan mematikan polling update pada browser yang menyimpan flag ini.
-		const storedAppliedVersion = localStorage.getItem(APPLIED_VERSION_KEY);
+		const storedAppliedBuild = localStorage.getItem(APPLIED_VERSION_KEY);
 		const latestVersion = normalizeVersionValue(payload?.version);
-		if (storedAppliedVersion) {
-			if (latestVersion && latestVersion === storedAppliedVersion) return null;
+		const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
+		const latestBuildKey = `${latestVersion}:${latestCommit}`;
+		if (storedAppliedBuild) {
+			if (latestBuildKey === storedAppliedBuild) return null;
 			localStorage.removeItem(APPLIED_VERSION_KEY);
 		}
 		if (!isNewerBuild(payload)) return null;
@@ -79,7 +84,8 @@ export async function checkForAppUpdate() {
 			currentVersion: APP_VERSION.semantic,
 			latestVersion: normalizeVersionValue(payload.version) || APP_VERSION.semantic,
 			currentCommit: APP_VERSION.commitHash,
-			latestCommit: normalizeVersionValue(payload.commitHash ?? payload.commit) || APP_VERSION.commitHash,
+			latestCommit: latestCommit || APP_VERSION.commitHash,
+			latestMessage: normalizeVersionValue(payload.message || payload.commitMessage) || undefined,
 			buildDate: normalizeVersionValue(payload.buildDate) || undefined,
 		};
 
@@ -128,7 +134,7 @@ export async function applyAppUpdate() {
 	// Simpan versi yang sedang diapply — polling skip version.json yg sama
 	// setelah reload. Ini mencegah loop popup terus-terusan.
 	if (latestUpdateInfo?.latestVersion) {
-		localStorage.setItem("__app_update_applied_version__", latestUpdateInfo.latestVersion);
+		localStorage.setItem("__app_update_applied_build__", `${latestUpdateInfo.latestVersion}:${latestUpdateInfo.latestCommit}`);
 	}
 
 	try {

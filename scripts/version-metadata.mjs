@@ -86,6 +86,7 @@ export function getBuildMetadata(rootDir) {
 	const envCommitHash = getEnvCommitHash();
 	const gitCommitHash = normalizeCommit(runCommand(rootDir, "git rev-parse --short HEAD", ""));
 	const commitHash = envCommitHash || gitCommitHash || "local";
+	const commitMessage = runCommand(rootDir, "git log -1 --pretty=%s", "");
 	const buildDate = new Date().toISOString().split("T")[0];
 	const commitCount = runCommand(rootDir, "git rev-list --count HEAD", "0");
 	const buildCounter = readBuildCounter(rootDir);
@@ -99,6 +100,7 @@ export function getBuildMetadata(rootDir) {
 	return {
 		version,
 		commitHash,
+		commitMessage,
 		buildDate,
 		commitCount,
 		buildCounter,

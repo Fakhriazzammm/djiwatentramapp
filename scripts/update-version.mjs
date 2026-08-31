@@ -22,6 +22,8 @@ export const APP_VERSION = {
 	semantic: "${metadata.version}",
 	// Git/deploy commit hash (short)
 	commitHash: "${metadata.commitHash}",
+	// Commit subject for the update prompt
+	commitMessage: ${JSON.stringify(metadata.commitMessage)},
 	// Build timestamp
 	buildDate: "${metadata.buildDate}",
 	// Full version string for display
@@ -37,6 +39,7 @@ export function getAppVersionInfo() {
 	return {
 		version: APP_VERSION.semantic,
 		commit: APP_VERSION.commitHash,
+		message: APP_VERSION.commitMessage,
 		buildDate: APP_VERSION.buildDate,
 		fullVersion: APP_VERSION.getDisplayVersion(),
 	};

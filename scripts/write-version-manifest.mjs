@@ -19,6 +19,7 @@ for (const app of apps) {
 				{
 					version: metadata.version,
 					commitHash: metadata.commitHash,
+					message: metadata.commitMessage,
 					buildDate: metadata.buildDate,
 					generatedAt: metadata.generatedAt,
 				},
