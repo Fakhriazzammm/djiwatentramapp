@@ -917,7 +917,7 @@ function OrderPage() {
 				toast.success("Pembayaran Djiwa Pay berhasil diproses");
 			} else {
 				const redirectUrl = `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(orderId)}`;
-				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "" });
+				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "", forceNew: true });
 				if (!invoice?.data?.id || !invoice.data.link) throw new Error(invoice?.messages || "Link pembayaran baru tidak tersedia");
 				await updateOrderPaymentGateway({ id: receipt.orderId, paymentGateway: { provider: "mayar", invoiceId: invoice.data.id, transactionId: invoice.data.transactionId, invoiceUrl: invoice.data.link, status: "created", retryOf: (currentOrder as any).gatewayInvoiceId ?? (currentOrder as any).gateway_invoice_id ?? null } });
 				setReceipt((value) => value ? { ...value, mode: "mayar_pending", paymentChoice: "mayar", invoiceId: invoice.data?.id, invoiceUrl: invoice.data?.link } : value);
