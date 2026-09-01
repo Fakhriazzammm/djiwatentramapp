@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, Plus, Trash2, X } from "lucide-react";
+import { Download, Link2, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { SplitBillAssignment, SplitBillSourceItem } from "@/lib/split-bill-calculator";
 import { calculateSplitBill } from "@/lib/split-bill-calculator";
@@ -67,6 +67,9 @@ export function ReceiptActions({
 	payment,
 	status,
 	total,
+	onRetryPayment,
+	retryPaymentLabel = "Bayar ulang",
+	retryingPayment = false,
 }: {
 	items: SplitBillSourceItem[];
 	storeName: string;
@@ -74,6 +77,9 @@ export function ReceiptActions({
 	payment: string;
 	status: string;
 	total: number;
+	onRetryPayment?: () => Promise<void>;
+	retryPaymentLabel?: string;
+	retryingPayment?: boolean;
 }) {
 	const [splitOpen, setSplitOpen] = useState(false);
 	const [exporting, setExporting] = useState(false);
@@ -90,15 +96,21 @@ export function ReceiptActions({
 		} finally { setExporting(false); }
 	};
 	return <>
-		<div className="grid grid-cols-2 gap-2">
-			<button type="button" className="group flex min-h-[76px] items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-2.5 py-2 text-left shadow-sm transition-transform active:scale-[.98]" onClick={() => setSplitOpen(true)}>
-				<img src="/receipt-actions/split-bill-3d.png" alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-				<span className="min-w-0"><strong className="block text-xs font-black">Split Bill</strong><span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">Pisahkan item</span></span>
+		<div className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md border-t border-border/80 bg-background/95 px-2 pb-1.5 pt-1.5 shadow-[0_-8px_24px_rgba(15,23,42,0.10)] backdrop-blur-md">
+			<div className={onRetryPayment ? "grid grid-cols-3 gap-1.5" : "grid grid-cols-2 gap-2"}>
+			<button type="button" className="group flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/20 bg-primary/5 px-1.5 py-2 text-center shadow-sm transition-transform active:scale-[.98]" onClick={() => setSplitOpen(true)}>
+				<img src="/receipt-actions/split-bill-3d.png" alt="" className="h-9 w-9 shrink-0 rounded-xl object-cover" />
+				<span className="min-w-0"><strong className="block text-[11px] font-black leading-tight">Split Bill</strong><span className="mt-0.5 block text-[10px] leading-tight text-muted-foreground">Pisahkan item</span></span>
 			</button>
-			<button type="button" className="group flex min-h-[76px] items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-2.5 py-2 text-left shadow-sm transition-transform active:scale-[.98] disabled:opacity-60" onClick={() => void handleReceiptDownload()} disabled={exporting}>
-				<img src="/receipt-actions/payment-proof-3d.png" alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
-				<span className="min-w-0"><strong className="block text-xs font-black">Bagi Bukti Bayar</strong><span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">{exporting ? "Menyiapkan PNG..." : "Download struk"}</span></span>
+			<button type="button" className="group flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/20 bg-primary/5 px-1.5 py-2 text-center shadow-sm transition-transform active:scale-[.98] disabled:opacity-60" onClick={() => void handleReceiptDownload()} disabled={exporting}>
+				<img src="/receipt-actions/payment-proof-3d.png" alt="" className="h-9 w-9 shrink-0 rounded-xl object-cover" />
+				<span className="min-w-0"><strong className="block text-[11px] font-black leading-tight">Bagi Bukti Bayar</strong><span className="mt-0.5 block text-[10px] leading-tight text-muted-foreground">{exporting ? "Menyiapkan..." : "Download struk"}</span></span>
 			</button>
+			{onRetryPayment ? <button type="button" className="flex min-h-[68px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border border-primary/20 bg-primary/5 px-1.5 py-2 text-center text-primary shadow-sm transition-transform active:scale-[.98] disabled:opacity-60" onClick={() => void onRetryPayment()} disabled={retryingPayment}>
+				{retryingPayment ? <Loader2 className="h-9 w-9 animate-spin rounded-xl bg-primary/10 p-2" /> : <Link2 className="h-9 w-9 rounded-xl bg-primary/10 p-2" />}
+				<span className="min-w-0"><strong className="block text-[11px] font-black leading-tight">Buat link pembayaran baru</strong><span className="mt-0.5 block text-[10px] leading-tight text-muted-foreground">{retryingPayment ? "Memproses..." : retryPaymentLabel}</span></span>
+			</button> : null}
+			</div>
 		</div>
 		<SplitBillSheet open={splitOpen} items={items} storeName={storeName} orderReference={orderReference} total={total} onClose={() => setSplitOpen(false)} />
 	</>;
