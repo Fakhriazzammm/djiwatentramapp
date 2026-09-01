@@ -12,6 +12,7 @@
 | 6 | **Asset icon ImageGen wajib diverifikasi alpha channel** — checkerboard pada preview dapat ikut menjadi piksel RGB; cek mode/alpha dan sudut PNG sebelum release, lalu bersihkan background tanpa mengubah silhouette, safe margin, dan palet brand. | customer/assets/ui-ux |
 | 7 | **Receipt PNG harus memakai shared brand tokens** — Customer memakai primary biru `#1a5dc6`, surface putih/`#f7f9fc`, dan secondary `#d6e2f5`; jangan mengganti identitas receipt menjadi ivory/coral tanpa bukti dari theme atau logo. | customer/receipt/brand |
 | 8 | **Download PNG mobile wajib memakai anchor yang terpasang ke document.body** — `anchor.click()` pada anchor detached dapat diabaikan browser; append sebelum click dan remove setelah revoke object URL agar Bukti Bayar/Split Bill benar-benar memicu download. | customer/receipt/debug |
+| 9 | **Nama peserta Split Bill harus menjadi state live** — peserta default seperti `Saya`/`Teman 1` perlu input editable; saat rename, assignment harus dipindahkan ke nama baru dan exporter harus membaca state peserta terbaru agar nama di PNG sama dengan sheet. | customer/receipt/split-bill |
 
 ## Supabase
 
