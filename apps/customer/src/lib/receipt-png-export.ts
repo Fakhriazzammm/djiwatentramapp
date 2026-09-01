@@ -146,8 +146,10 @@ export async function downloadSvgAsPng(svg: string, filename: string, scale = 3)
 		const anchor = document.createElement("a");
 		anchor.href = downloadUrl;
 		anchor.download = filename;
+		anchor.style.display = "none";
+		document.body.appendChild(anchor);
 		anchor.click();
-		window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+		window.setTimeout(() => { anchor.remove(); URL.revokeObjectURL(downloadUrl); }, 1000);
 		return { width: canvas.width, height: canvas.height };
 	} finally {
 		URL.revokeObjectURL(url);
@@ -156,7 +158,8 @@ export async function downloadSvgAsPng(svg: string, filename: string, scale = 3)
 
 export async function captureReceiptElementAsPng(element: HTMLElement, filename: string, mutate?: (clone: HTMLElement) => void): Promise<{ width: number; height: number }> {
 	if (typeof document === "undefined") throw new Error("Export hanya tersedia di browser");
-	const { default: html2canvas } = await import("html2canvas");
+	const html2canvasModule = await import("html2canvas");
+	const html2canvas = (html2canvasModule.default ?? html2canvasModule) as typeof import("html2canvas").default;
 	await document.fonts?.ready;
 	const clone = element.cloneNode(true) as HTMLElement;
 	clone.removeAttribute("data-receipt-export-root");
@@ -170,7 +173,7 @@ export async function captureReceiptElementAsPng(element: HTMLElement, filename:
 	mutate?.(clone);
 	const host = document.createElement("div");
 	host.setAttribute("aria-hidden", "true");
-	host.style.cssText = "position:fixed;left:-100000px;top:0;z-index:-1;pointer-events:none;background:#fff;";
+	host.style.cssText = "position:fixed;left:0;top:0;z-index:-1;pointer-events:none;background:#fff;";
 	host.appendChild(clone);
 	document.body.appendChild(host);
 	try {
@@ -184,8 +187,10 @@ export async function captureReceiptElementAsPng(element: HTMLElement, filename:
 		const anchor = document.createElement("a");
 		anchor.href = downloadUrl;
 		anchor.download = filename;
+		anchor.style.display = "none";
+		document.body.appendChild(anchor);
 		anchor.click();
-		window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+		window.setTimeout(() => { anchor.remove(); URL.revokeObjectURL(downloadUrl); }, 1000);
 		return { width: canvas.width, height: canvas.height };
 	} finally {
 		host.remove();
