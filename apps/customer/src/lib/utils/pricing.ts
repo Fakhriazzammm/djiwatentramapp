@@ -117,11 +117,38 @@ function getPotentialPrice(
 
 export interface HappyHourBanner {
 	name: string;
-	session: "sarapan" | "siang" | "malam";
-	sessionLabel: "Sarapan Pagi" | "Makan Siang" | "Malam";
+	session: "sarapan" | "siang" | "malam" | "custom";
+	sessionLabel: string;
 	startTime: string;
 	endTime: string;
 	priceLabel: string;
+}
+
+function resolveHappyHourSession(discount: Doc<"discounts">) {
+	const name = String(discount.name ?? "").toLowerCase();
+	if (name.includes("sarapan") || name.includes("pagi") || name.includes("breakfast")) {
+		return { session: "sarapan" as const, sessionLabel: "Sarapan Pagi" };
+	}
+	if (name.includes("siang") || name.includes("lunch")) {
+		return { session: "siang" as const, sessionLabel: "Makan Siang" };
+	}
+	if (name.includes("malam") || name.includes("dinner")) {
+		return { session: "malam" as const, sessionLabel: "Makan Malam" };
+	}
+
+	const start = String(discount.startTime ?? "");
+	const end = String(discount.endTime ?? "");
+	if (start === "08:00" && end === "09:00") {
+		return { session: "sarapan" as const, sessionLabel: "Sarapan Pagi" };
+	}
+	if (start === "11:00" && end === "13:00") {
+		return { session: "siang" as const, sessionLabel: "Makan Siang" };
+	}
+	if (start === "18:00" && end === "20:00") {
+		return { session: "malam" as const, sessionLabel: "Makan Malam" };
+	}
+
+	return { session: "custom" as const, sessionLabel: discount.name || "Happy Hour" };
 }
 
 export function getActiveHappyHourBanner(
@@ -152,9 +179,7 @@ export function getActiveHappyHourBanner(
 
 	const discount = activeDiscounts.find(isWithinSchedule);
 	if (!discount || !discount.startTime || !discount.endTime) return null;
-	const [startHour] = discount.startTime.split(":").map(Number);
-	const session = startHour < 11 ? "sarapan" : startHour < 16 ? "siang" : "malam";
-	const sessionLabel = session === "sarapan" ? "Sarapan Pagi" : session === "siang" ? "Makan Siang" : "Malam";
+	const { session, sessionLabel } = resolveHappyHourSession(discount);
 	const isAllFlatPrice = discount.targetType === "ALL" && discount.type === "FLAT_PRICE";
 	const priceLabel = isAllFlatPrice && discount.value > 0
 		? `Semua menu hanya ${currency(discount.value)}`
