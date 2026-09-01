@@ -3,7 +3,7 @@ import { Download, Link2, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { SplitBillAssignment, SplitBillSourceItem } from "@/lib/split-bill-calculator";
 import { calculateSplitBill } from "@/lib/split-bill-calculator";
-import { captureReceiptElementAsPng, prepareReceiptExportWindow } from "@/lib/receipt-png-export";
+import { captureReceiptElementAsPng } from "@/lib/receipt-png-export";
 import { currency } from "./types";
 
 type Props = {
@@ -49,7 +49,6 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 	const handleDownload = async () => {
 		if (!result.isBalanced || exporting) return;
 		setExporting(true);
-		const fallbackWindow = prepareReceiptExportWindow();
 		try {
 			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
 			if (!receiptElement) throw new Error("Struk belum siap diunduh");
@@ -74,10 +73,9 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 				}
 				if (title) title.textContent = "Split Bill · Detail item";
 				itemSection.replaceChildren(title ?? document.createElement("p"), rows);
-			}, { fallbackWindow });
+			});
 			toast.success("Split bill berhasil diunduh sebagai PNG high-res");
 		} catch (error) {
-			if (fallbackWindow && !fallbackWindow.closed) fallbackWindow.close();
 			toast.error(error instanceof Error ? error.message : "Split bill gagal diunduh");
 		} finally { setExporting(false); }
 	};
@@ -86,7 +84,7 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 		<div className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-background shadow-2xl">
 			<div className="flex items-center justify-between border-b border-border px-4 py-3"><div><p className="text-[11px] font-black uppercase tracking-[0.16em] text-primary">Split Bill</p><h3 className="text-lg font-black">Pisahkan item</h3></div><button type="button" aria-label="Tutup Split Bill" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted" onClick={onClose}><X className="h-4 w-4" /></button></div>
 			<div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
-				<div className="flex gap-2 overflow-x-auto pb-1">{people.map((person, personIndex) => <div key={`${personIndex}-${person}`} className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-1.5 text-xs font-bold text-primary"><input aria-label={`Nama peserta ${personIndex + 1}`} className="w-24 bg-transparent px-1 py-1 text-xs font-bold text-primary outline-none placeholder:text-primary/60" value={person} placeholder={`Peserta ${personIndex + 1}`} onChange={(event) => updatePersonName(personIndex, event.target.value)} onBlur={() => commitPersonName(personIndex)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />{people.length > 1 ? <button type="button" aria-label={`Hapus ${person || `peserta ${personIndex + 1}`}`} onClick={() => { setPeople((current) => current.filter((_, index) => index !== personIndex)); setAssignments((current) => current.filter((entry) => entry.person !== person)); }}><Trash2 className="h-3 w-3" /></button> : null}</div>)}<button type="button" className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-primary/40 px-3 py-2 text-xs font-bold text-primary" onClick={addPerson}><Plus className="h-3 w-3" />Teman</button></div>
+				<div className="flex gap-2 overflow-x-auto pb-1">{people.map((person, personIndex) => <div key={`participant-${personIndex}`} className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-1.5 text-xs font-bold text-primary"><input aria-label={`Nama peserta ${personIndex + 1}`} className="w-24 bg-transparent px-1 py-1 text-xs font-bold text-primary outline-none placeholder:text-primary/60" value={person} placeholder={`Peserta ${personIndex + 1}`} onChange={(event) => updatePersonName(personIndex, event.target.value)} onBlur={() => commitPersonName(personIndex)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />{people.length > 1 ? <button type="button" aria-label={`Hapus ${person || `peserta ${personIndex + 1}`}`} onClick={() => { setPeople((current) => current.filter((_, index) => index !== personIndex)); setAssignments((current) => current.filter((entry) => entry.person !== person)); }}><Trash2 className="h-3 w-3" /></button> : null}</div>)}<button type="button" className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-primary/40 px-3 py-2 text-xs font-bold text-primary" onClick={addPerson}><Plus className="h-3 w-3" />Teman</button></div>
 				{items.map((item) => <div key={item.id} className="rounded-2xl border border-border bg-card p-3"><div className="flex items-start justify-between gap-2"><div><p className="text-sm font-black">{item.name}</p><p className="text-xs text-muted-foreground">{item.quantity}x · {currency(item.unitPrice)} / item</p></div><span className="text-xs font-black">{currency(item.quantity * item.unitPrice)}</span></div><div className="mt-2 grid grid-cols-2 gap-1.5">{people.map((person) => { const current = assignments.find((entry) => entry.itemId === item.id && entry.person === person)?.quantity ?? 0; return <label key={person} className="flex items-center justify-between rounded-xl bg-muted/60 px-2.5 py-2 text-xs font-bold"><span>{person}</span><input aria-label={`${item.name} untuk ${person}`} className="w-12 rounded-lg border border-border bg-background px-1.5 py-1 text-center" type="number" min={0} max={item.quantity} value={current} onChange={(event) => updateAssignment(item.id, person, Number(event.target.value))} /></label>; })}</div></div>)}
 				<div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 text-xs"><div className="flex justify-between"><span>Sudah dibagi</span><strong>{currency(result.assignedTotal)}</strong></div><div className="mt-1 flex justify-between"><span>Belum dibagi</span><strong>{currency(result.unassignedTotal)}</strong></div>{result.errors.map((error) => <p key={error} className="mt-2 font-bold text-destructive">{error}</p>)}</div>
 			</div>
@@ -125,14 +123,12 @@ export function ReceiptActions({
 	const handleReceiptDownload = async () => {
 		if (exporting) return;
 		setExporting(true);
-		const fallbackWindow = prepareReceiptExportWindow();
 		try {
 			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
 			if (!receiptElement) throw new Error("Struk belum siap diunduh");
-			await captureReceiptElementAsPng(receiptElement, `struk-${safeFilename}.png`, undefined, { fallbackWindow });
+			await captureReceiptElementAsPng(receiptElement, `struk-${safeFilename}.png`);
 			toast.success("Bukti bayar berhasil diunduh sebagai PNG high-res");
 		} catch (error) {
-			if (fallbackWindow && !fallbackWindow.closed) fallbackWindow.close();
 			toast.error(error instanceof Error ? error.message : "Bukti bayar gagal diunduh");
 		} finally { setExporting(false); }
 	};
