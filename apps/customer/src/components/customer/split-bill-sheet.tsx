@@ -3,7 +3,7 @@ import { Download, Link2, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { SplitBillAssignment, SplitBillSourceItem } from "@/lib/split-bill-calculator";
 import { calculateSplitBill } from "@/lib/split-bill-calculator";
-import { buildReceiptSvg, downloadSvgAsPng } from "@/lib/receipt-png-export";
+import { captureReceiptElementAsPng } from "@/lib/receipt-png-export";
 import { currency } from "./types";
 
 type Props = {
@@ -33,12 +33,29 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 		if (!result.isBalanced || exporting) return;
 		setExporting(true);
 		try {
-			const lines = result.people.flatMap((person) => [
-				{ label: person.name, value: person.items.map((item) => `${item.assignedQuantity}x ${item.name}`).join(", ") || "—" },
-				{ label: `Subtotal ${person.name}`, value: currency(person.subtotal) },
-			]);
-			if (result.unassigned.length) lines.push({ label: "Belum dibagi", value: result.unassigned.map((item) => `${item.assignedQuantity}x ${item.name}`).join(", ") });
-			await downloadSvgAsPng(buildReceiptSvg({ title: "Split Bill", storeName, orderReference, status: "Pembagian item", payment: "Tidak mengubah pembayaran", total: currency(total), lines, note: "Split bill ini hanya membagi item secara lokal dan tidak mengubah transaksi." }), `split-bill-${orderReference.replace(/[^a-zA-Z0-9-]/g, "-")}.png`, 3);
+			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
+			if (!receiptElement) throw new Error("Struk belum siap diunduh");
+			await captureReceiptElementAsPng(receiptElement, `split-bill-${orderReference.replace(/[^a-zA-Z0-9-]/g, "-")}.png`, (clone) => {
+				const itemSection = clone.querySelector<HTMLElement>("[data-receipt-section='items']");
+				if (!itemSection) return;
+				const title = itemSection.querySelector("p");
+				const rows = document.createElement("div");
+				rows.className = "mt-1.5 space-y-1";
+				for (const person of result.people) {
+					const personRow = document.createElement("div");
+					personRow.className = "flex items-start justify-between gap-2 text-[11px]";
+					const personItems = document.createElement("span");
+					personItems.className = "min-w-0 break-words text-foreground";
+					personItems.textContent = `${person.name}: ${person.items.map((item) => `${item.assignedQuantity}x ${item.name}`).join(", ") || "—"}`;
+					const personTotal = document.createElement("span");
+					personTotal.className = "shrink-0 font-semibold";
+					personTotal.textContent = currency(person.subtotal);
+					personRow.append(personItems, personTotal);
+					rows.appendChild(personRow);
+				}
+				if (title) title.textContent = "Split Bill · Detail item";
+				itemSection.replaceChildren(title ?? document.createElement("p"), rows);
+			});
 			toast.success("Split bill berhasil diunduh sebagai PNG high-res");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Split bill gagal diunduh");
@@ -89,7 +106,9 @@ export function ReceiptActions({
 		if (exporting) return;
 		setExporting(true);
 		try {
-			await downloadSvgAsPng(buildReceiptSvg({ title: "Bukti Pembayaran", storeName, orderReference, status, payment, total: currency(total), lines }), `struk-${safeFilename}.png`, 3);
+			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
+			if (!receiptElement) throw new Error("Struk belum siap diunduh");
+			await captureReceiptElementAsPng(receiptElement, `struk-${safeFilename}.png`);
 			toast.success("Bukti bayar berhasil diunduh sebagai PNG high-res");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Bukti bayar gagal diunduh");

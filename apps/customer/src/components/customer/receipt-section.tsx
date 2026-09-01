@@ -136,7 +136,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 							</div>
 						</div>
 					</div>
-					{orderItems.length > 0 ? <div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
+					{orderItems.length > 0 ? <div data-receipt-section="items" className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
 					<BarcodeLines value={orderReference} />
 					</div>
 					</div>

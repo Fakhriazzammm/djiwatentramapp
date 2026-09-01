@@ -153,3 +153,41 @@ export async function downloadSvgAsPng(svg: string, filename: string, scale = 3)
 		URL.revokeObjectURL(url);
 	}
 }
+
+export async function captureReceiptElementAsPng(element: HTMLElement, filename: string, mutate?: (clone: HTMLElement) => void): Promise<{ width: number; height: number }> {
+	if (typeof document === "undefined") throw new Error("Export hanya tersedia di browser");
+	const { default: html2canvas } = await import("html2canvas");
+	await document.fonts?.ready;
+	const clone = element.cloneNode(true) as HTMLElement;
+	clone.removeAttribute("data-receipt-export-root");
+	clone.style.transform = "none";
+	clone.style.minHeight = "0";
+	clone.style.height = "auto";
+	clone.style.width = `${Math.ceil(element.getBoundingClientRect().width)}px`;
+	clone.style.clipPath = "none";
+	clone.style.boxShadow = "none";
+	clone.style.margin = "0";
+	mutate?.(clone);
+	const host = document.createElement("div");
+	host.setAttribute("aria-hidden", "true");
+	host.style.cssText = "position:fixed;left:-100000px;top:0;z-index:-1;pointer-events:none;background:#fff;";
+	host.appendChild(clone);
+	document.body.appendChild(host);
+	try {
+		await Promise.all(Array.from(clone.querySelectorAll("img")).map(async (image) => {
+			if (image.complete) return;
+			await new Promise<void>((resolve) => { image.addEventListener("load", () => resolve(), { once: true }); image.addEventListener("error", () => resolve(), { once: true }); });
+		}));
+		const canvas = await html2canvas(clone, { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false, removeContainer: true });
+		const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG gagal dibuat")), "image/png"));
+		const downloadUrl = URL.createObjectURL(png);
+		const anchor = document.createElement("a");
+		anchor.href = downloadUrl;
+		anchor.download = filename;
+		anchor.click();
+		window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+		return { width: canvas.width, height: canvas.height };
+	} finally {
+		host.remove();
+	}
+}

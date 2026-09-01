@@ -84,6 +84,7 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
             ref={paperRef}
             animate={{ opacity: 1, transform: stage === "processing" && !reduceMotion ? "translateY(-92%)" : stage === "printing" && !reduceMotion ? paperFeedKeyframes : "translateY(0%)" }}
             className="relative min-h-[46rem] bg-white px-3 py-4 font-mono text-zinc-900 shadow-[0_8px_24px_rgba(9,9,11,0.16)]"
+            data-receipt-export-root="true"
             initial={false}
             transition={{ opacity: { duration: 0.18 }, transform: { duration: reduceMotion ? 0 : stage === "printing" ? 2.4 : 0.35, ease: stage === "printing" ? "linear" : [0.23, 1, 0.32, 1] } }}
             style={{ clipPath: receiptClipPath }}
