@@ -1,21 +1,6 @@
 export type ReceiptPngLine = { label: string; value: string };
 
-const escapeXml = (value: string) => value.replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&apos;" })[character] ?? character);
-
-const wrapText = (value: string, maxChars: number) => {
-	const words = value.split(/\s+/);
-	const lines: string[] = [];
-	let current = "";
-	for (const word of words) {
-		if (!current) current = word;
-		else if (`${current} ${word}`.length <= maxChars) current += ` ${word}`;
-		else { lines.push(current); current = word; }
-	}
-	if (current) lines.push(current);
-	return lines.length ? lines : ["—"];
-};
-
-export function buildReceiptSvg(options: {
+type ReceiptSvgOptions = {
 	title: string;
 	storeName: string;
 	orderReference: string;
@@ -24,31 +9,114 @@ export function buildReceiptSvg(options: {
 	total: string;
 	lines: ReceiptPngLine[];
 	note?: string;
-}) {
+};
+
+const escapeXml = (value: string) =>
+	value.replace(/[&<>\"']/g, (character) => ({
+		"&": "&amp;",
+		"<": "&lt;",
+		">": "&gt;",
+		'"': "&quot;",
+		"'": "&apos;",
+	})[character] ?? character);
+
+const wrapText = (value: string, maxChars: number) => {
+	const words = value.trim().split(/\s+/).filter(Boolean);
+	const lines: string[] = [];
+	let current = "";
+	for (const word of words) {
+		if (!current) current = word;
+		else if (`${current} ${word}`.length <= maxChars) current += ` ${word}`;
+		else {
+			lines.push(current);
+			current = word;
+		}
+	}
+	if (current) lines.push(current);
+	return lines.length ? lines : ["—"];
+};
+
+const renderTextLines = (lines: string[], x: number, y: number, className: string, lineHeight: number, anchor = "start") =>
+	lines.map((line, index) => `<text x="${x}" y="${y + index * lineHeight}" text-anchor="${anchor}" class="${className}">${escapeXml(line)}</text>`).join("");
+
+export function buildReceiptSvg(options: ReceiptSvgOptions) {
 	const width = 1080;
-	const padding = 72;
-	const lineHeight = 38;
-	const wrapped = options.lines.flatMap((line) => wrapText(`${line.label}: ${line.value}`, 54));
-	const noteLines = options.note ? wrapText(options.note, 58) : [];
-	const height = Math.max(980, 390 + (wrapped.length + noteLines.length) * lineHeight + 130);
-	const lineMarkup = wrapped.map((line, index) => `<text x="${padding}" y="${590 + index * lineHeight}" class="body">${escapeXml(line)}</text>`).join("");
-	const noteMarkup = noteLines.map((line, index) => `<text x="${padding}" y="${650 + wrapped.length * lineHeight + index * lineHeight}" class="muted">${escapeXml(line)}</text>`).join("");
+	const outer = 36;
+	const padding = 78;
+	const contentWidth = width - padding * 2;
+	const bodyLineHeight = 34;
+	const itemRows = options.lines.map((line) => ({
+		label: wrapText(line.label, 38),
+		value: wrapText(line.value, 30),
+	}));
+	const noteLines = options.note ? wrapText(options.note, 72) : [];
+	const itemHeight = itemRows.reduce((sum, row) => sum + Math.max(row.label.length, row.value.length) * bodyLineHeight + 28, 0);
+	const noteHeight = noteLines.length ? 74 + noteLines.length * 30 : 0;
+	const height = Math.max(1040, 930 + itemHeight + noteHeight);
+	const itemStartY = 690;
+	let itemCursorY = itemStartY;
+	const itemMarkup = itemRows.map((row) => {
+		const rowHeight = Math.max(row.label.length, row.value.length) * bodyLineHeight + 28;
+		const markup = [
+			`<line x1="${padding}" y1="${itemCursorY - 21}" x2="${width - padding}" y2="${itemCursorY - 21}" class="rule"/>`,
+			renderTextLines(row.label, padding, itemCursorY + 12, "body", bodyLineHeight),
+			renderTextLines(row.value, width - padding, itemCursorY + 12, "price", bodyLineHeight, "end"),
+		].join("");
+		itemCursorY += rowHeight;
+		return markup;
+	}).join("");
+	const noteY = itemCursorY + 16;
+	const noteMarkup = noteLines.length
+		? `<rect x="${padding}" y="${noteY}" width="${contentWidth}" height="${noteHeight - 16}" rx="22" class="noteBox"/><text x="${padding + 24}" y="${noteY + 34}" class="noteTitle">CATATAN</text>${renderTextLines(noteLines, padding + 24, noteY + 68, "note", 30)}`
+		: "";
+	const footerY = height - 82;
+	const statusIsOpen = /open|pending|belum|kasir/i.test(options.status);
+	const statusColor = statusIsOpen ? "#a16207" : "#39705b";
+	const statusFill = statusIsOpen ? "#fff4d6" : "#e5f4ec";
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-	<rect width="100%" height="100%" fill="#fffaf3"/>
-	<rect x="28" y="28" width="${width - 56}" height="${height - 56}" rx="38" fill="#ffffff" stroke="#eadfd2" stroke-width="3"/>
-	<style>.title{font:900 42px Arial,sans-serif;fill:#152238}.store{font:700 25px Arial,sans-serif;fill:#ef6f61}.body{font:600 25px Arial,sans-serif;fill:#263449}.muted{font:500 22px Arial,sans-serif;fill:#738096}.label{font:700 21px Arial,sans-serif;fill:#738096}.value{font:900 27px Arial,sans-serif;fill:#152238}.total{font:900 39px Arial,sans-serif;fill:#ef6f61}</style>
-	<text x="${padding}" y="105" class="store">${escapeXml(options.storeName)}</text>
-	<text x="${padding}" y="165" class="title">${escapeXml(options.title)}</text>
-	<text x="${padding}" y="230" class="label">NOMOR ORDER</text>
-	<text x="${padding}" y="275" class="value">${escapeXml(options.orderReference)}</text>
-	<line x1="${padding}" y1="320" x2="${width - padding}" y2="320" stroke="#eadfd2" stroke-width="3"/>
-	<text x="${padding}" y="375" class="label">STATUS</text><text x="${padding}" y="415" class="value">${escapeXml(options.status)}</text>
-	<text x="${width / 2}" y="375" class="label">PEMBAYARAN</text><text x="${width / 2}" y="415" class="value">${escapeXml(options.payment)}</text>
-	<rect x="${padding}" y="455" width="${width - padding * 2}" height="84" rx="20" fill="#fff0ec"/>
-	<text x="${padding + 24}" y="508" class="total">${escapeXml(options.total)}</text>
-	${lineMarkup}${noteMarkup}
-	<line x1="${padding}" y1="${height - 120}" x2="${width - padding}" y2="${height - 120}" stroke="#eadfd2" stroke-width="3"/>
-	<text x="${padding}" y="${height - 72}" class="muted">Djiwa Tentram • Bukti digital</text>
+	<rect width="100%" height="100%" fill="#f7efe5"/>
+	<rect x="${outer}" y="${outer}" width="${width - outer * 2}" height="${height - outer * 2}" rx="42" fill="#fffdf9" stroke="#ead8c8" stroke-width="3"/>
+	<path d="M${outer + 2} 150V78Q${outer + 2} ${outer + 2} ${outer + 78} ${outer + 2}H${width - outer - 78}Q${width - outer - 2} ${outer + 2} ${width - outer - 2} 78V150Z" fill="#ef786b"/>
+	<style>
+		.brand{font:800 22px Arial,sans-serif;letter-spacing:4px;fill:#fff8f0}
+		.store{font:700 25px Arial,sans-serif;fill:#fff8f0}
+		.title{font:800 42px Arial,sans-serif;fill:#243447}
+		.kicker{font:700 18px Arial,sans-serif;letter-spacing:3px;fill:#8a98a8}
+		.order{font:800 29px Arial,sans-serif;letter-spacing:2px;fill:#243447}
+		.metaLabel{font:700 17px Arial,sans-serif;letter-spacing:2px;fill:#8a98a8}
+		.metaValue{font:700 24px Arial,sans-serif;fill:#243447}
+		.totalLabel{font:700 18px Arial,sans-serif;letter-spacing:2px;fill:#a85b50}
+		.total{font:900 52px Arial,sans-serif;fill:#d95f54}
+		.section{font:800 18px Arial,sans-serif;letter-spacing:3px;fill:#243447}
+		.body{font:500 25px Arial,sans-serif;fill:#39495b}
+		.price{font:800 25px Arial,sans-serif;fill:#243447}
+		.noteTitle{font:800 16px Arial,sans-serif;letter-spacing:2px;fill:#39705b}
+		.note{font:500 21px Arial,sans-serif;fill:#426451}
+		.footer{font:500 19px Arial,sans-serif;fill:#8a98a8}
+		.rule{stroke:#eadfd4;stroke-width:2}
+		.noteBox{fill:#edf7ef;stroke:#cfe6d5;stroke-width:2}
+	</style>
+	<text x="${padding}" y="92" class="brand">DJIWA TENTRAM</text>
+	<text x="${padding}" y="130" class="store">${escapeXml(options.storeName)}</text>
+	<text x="${padding}" y="222" class="title">${escapeXml(options.title)}</text>
+	<text x="${padding}" y="270" class="kicker">NOMOR ORDER</text>
+	<text x="${padding}" y="316" class="order">${escapeXml(options.orderReference)}</text>
+	<line x1="${padding}" y1="360" x2="${width - padding}" y2="360" class="rule"/>
+	<text x="${padding}" y="415" class="metaLabel">STATUS PESANAN</text>
+	<rect x="${padding}" y="438" width="300" height="48" rx="24" fill="${statusFill}"/>
+	<circle cx="${padding + 27}" cy="462" r="8" fill="${statusColor}"/>
+	<text x="${padding + 50}" y="470" class="metaValue" style="fill:${statusColor}">${escapeXml(options.status)}</text>
+	<text x="${padding + 360}" y="415" class="metaLabel">PEMBAYARAN</text>
+	<text x="${padding + 360}" y="470" class="metaValue">${escapeXml(options.payment)}</text>
+	<rect x="${padding}" y="530" width="${contentWidth}" height="108" rx="26" fill="#fff0eb" stroke="#f8d4cc" stroke-width="2"/>
+	<text x="${padding + 28}" y="570" class="totalLabel">TOTAL PEMBAYARAN</text>
+	<text x="${width - padding - 28}" y="603" text-anchor="end" class="total">${escapeXml(options.total)}</text>
+	<text x="${padding}" y="${itemStartY - 52}" class="section">RINCIAN PESANAN</text>
+	${itemMarkup}
+	${noteMarkup}
+	<line x1="${padding}" y1="${footerY - 22}" x2="${width - padding}" y2="${footerY - 22}" class="rule"/>
+	<text x="${padding}" y="${footerY + 18}" class="footer">Djiwa Tentram • Bukti digital</text>
+	<text x="${width - padding}" y="${footerY + 18}" text-anchor="end" class="footer">Terima kasih</text>
 	</svg>`;
 }
 
