@@ -19,6 +19,7 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 	const [people, setPeople] = useState<string[]>(["Saya"]);
 	const [assignments, setAssignments] = useState<SplitBillAssignment[]>([]);
 	const [exporting, setExporting] = useState(false);
+	const [exportMessage, setExportMessage] = useState<string | null>(null);
 	const result = useMemo(() => calculateSplitBill(items, assignments), [items, assignments]);
 	if (!open) return null;
 
@@ -49,6 +50,7 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 	const handleDownload = async () => {
 		if (!result.isBalanced || exporting) return;
 		setExporting(true);
+		setExportMessage("Menyiapkan PNG Split Bill…");
 		try {
 			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
 			if (!receiptElement) throw new Error("Struk belum siap diunduh");
@@ -75,8 +77,11 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 				itemSection.replaceChildren(title ?? document.createElement("p"), rows);
 			});
 			toast.success("Split bill berhasil diunduh sebagai PNG high-res");
+			setExportMessage("PNG Split Bill siap disimpan");
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Split bill gagal diunduh");
+			const message = error instanceof Error ? error.message : "Split bill gagal diunduh";
+			setExportMessage(`Gagal: ${message}`);
+			toast.error(message);
 		} finally { setExporting(false); }
 	};
 
@@ -88,7 +93,7 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 				{items.map((item) => <div key={item.id} className="rounded-2xl border border-border bg-card p-3"><div className="flex items-start justify-between gap-2"><div><p className="text-sm font-black">{item.name}</p><p className="text-xs text-muted-foreground">{item.quantity}x · {currency(item.unitPrice)} / item</p></div><span className="text-xs font-black">{currency(item.quantity * item.unitPrice)}</span></div><div className="mt-2 grid grid-cols-2 gap-1.5">{people.map((person) => { const current = assignments.find((entry) => entry.itemId === item.id && entry.person === person)?.quantity ?? 0; return <label key={person} className="flex items-center justify-between rounded-xl bg-muted/60 px-2.5 py-2 text-xs font-bold"><span>{person}</span><input aria-label={`${item.name} untuk ${person}`} className="w-12 rounded-lg border border-border bg-background px-1.5 py-1 text-center" type="number" min={0} max={item.quantity} value={current} onChange={(event) => updateAssignment(item.id, person, Number(event.target.value))} /></label>; })}</div></div>)}
 				<div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 text-xs"><div className="flex justify-between"><span>Sudah dibagi</span><strong>{currency(result.assignedTotal)}</strong></div><div className="mt-1 flex justify-between"><span>Belum dibagi</span><strong>{currency(result.unassignedTotal)}</strong></div>{result.errors.map((error) => <p key={error} className="mt-2 font-bold text-destructive">{error}</p>)}</div>
 			</div>
-			<div className="border-t border-border px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3"><button type="button" disabled={!result.isBalanced || exporting} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-sm font-black text-primary-foreground disabled:opacity-50" onClick={() => void handleDownload()}><Download className="h-4 w-4" />{exporting ? "Menyiapkan PNG..." : "Download Split Bill PNG"}</button></div>
+			<div className="border-t border-border px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3"><button type="button" disabled={!result.isBalanced || exporting} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-sm font-black text-primary-foreground disabled:opacity-50" onClick={() => void handleDownload()}><Download className="h-4 w-4" />{exporting ? "Menyiapkan PNG…" : "Download Split Bill PNG"}</button>{exportMessage ? <p aria-live="polite" className="mt-2 text-center text-[11px] font-semibold text-muted-foreground">{exportMessage}</p> : null}</div>
 		</div>
 	</div>;
 }
@@ -118,18 +123,23 @@ export function ReceiptActions({
 }) {
 	const [splitOpen, setSplitOpen] = useState(false);
 	const [exporting, setExporting] = useState(false);
+	const [exportMessage, setExportMessage] = useState<string | null>(null);
 	const safeFilename = orderReference.replace(/[^a-zA-Z0-9-]/g, "-");
 	const lines: ReceiptActionLine[] = items.map((item) => ({ label: `${item.quantity}x ${item.name}${item.variant ? ` (${item.variant})` : ""}`, value: currency(item.quantity * item.unitPrice) }));
 	const handleReceiptDownload = async () => {
 		if (exporting) return;
 		setExporting(true);
+		setExportMessage("Menyiapkan bukti bayar PNG…");
 		try {
 			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
 			if (!receiptElement) throw new Error("Struk belum siap diunduh");
 			await captureReceiptElementAsPng(receiptElement, `struk-${safeFilename}.png`);
 			toast.success("Bukti bayar berhasil diunduh sebagai PNG high-res");
+			setExportMessage("Bukti bayar PNG siap disimpan");
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Bukti bayar gagal diunduh");
+			const message = error instanceof Error ? error.message : "Bukti bayar gagal diunduh";
+			setExportMessage(`Gagal: ${message}`);
+			toast.error(message);
 		} finally { setExporting(false); }
 	};
 	return <>
@@ -141,13 +151,14 @@ export function ReceiptActions({
 				</button>
 				<button type="button" aria-label="Bagi Bukti Bayar — download struk" className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-primary/20 bg-primary/5 px-1.5 text-[10px] font-black text-primary shadow-sm transition-transform active:scale-[.98] disabled:opacity-60" onClick={() => void handleReceiptDownload()} disabled={exporting}>
 					<img src="/receipt-actions/payment-proof-3d.png" alt="" className="h-6 w-6 shrink-0 rounded-lg object-cover" />
-					<span className="truncate">Bukti Bayar</span>
+					<span className="truncate">{exporting ? "Menyiapkan PNG…" : "Bukti Bayar"}</span>
 				</button>
 				{onRetryPayment ? <button type="button" aria-label="Buat link pembayaran baru" className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-primary/20 bg-primary/5 px-1.5 text-[10px] font-black text-primary shadow-sm transition-transform active:scale-[.98] disabled:opacity-60" onClick={() => void onRetryPayment()} disabled={retryingPayment}>
 					{retryingPayment ? <Loader2 className="h-6 w-6 shrink-0 animate-spin rounded-lg bg-primary/10 p-1" /> : <Link2 className="h-6 w-6 shrink-0 rounded-lg bg-primary/10 p-1" />}
 					<span className="truncate">Link Pembayaran</span>
 				</button> : null}
 			</div>
+			{exportMessage ? <p aria-live="polite" className="px-2 pt-1 text-center text-[10px] font-semibold text-muted-foreground">{exportMessage}</p> : null}
 		</div>
 		<SplitBillSheet open={splitOpen} items={items} storeName={storeName} orderReference={orderReference} total={total} onClose={() => setSplitOpen(false)} />
 	</>;
