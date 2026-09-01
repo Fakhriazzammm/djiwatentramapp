@@ -120,20 +120,16 @@ export function buildReceiptSvg(options: ReceiptSvgOptions) {
 	</svg>`;
 }
 
-type ReceiptExportOptions = {
-	fallbackWindow?: Window | null;
-};
+const isEmbeddedMobileBrowser = () => /Telegram|iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-const isIosBrowser = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-export const prepareReceiptExportWindow = () => isIosBrowser() ? window.open("about:blank", "_blank") : null;
-
-const triggerPngDownload = (png: Blob, filename: string, fallbackWindow?: Window | null) => {
+const triggerPngDownload = (png: Blob, filename: string) => {
 	const downloadUrl = URL.createObjectURL(png);
-	if (fallbackWindow && !fallbackWindow.closed) {
-		fallbackWindow.location.href = downloadUrl;
-		window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
-		return;
+	if (isEmbeddedMobileBrowser()) {
+		const opened = window.open(downloadUrl, "_blank", "noopener,noreferrer");
+		if (opened) {
+			window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+			return;
+		}
 	}
 	const anchor = document.createElement("a");
 	anchor.href = downloadUrl;
@@ -173,7 +169,7 @@ export async function downloadSvgAsPng(svg: string, filename: string, scale = 3)
 	}
 }
 
-export async function captureReceiptElementAsPng(element: HTMLElement, filename: string, mutate?: (clone: HTMLElement) => void, options?: ReceiptExportOptions): Promise<{ width: number; height: number }> {
+export async function captureReceiptElementAsPng(element: HTMLElement, filename: string, mutate?: (clone: HTMLElement) => void): Promise<{ width: number; height: number }> {
 	if (typeof document === "undefined") throw new Error("Export hanya tersedia di browser");
 	const html2canvasModule = await import("html2canvas");
 	const html2canvas = (html2canvasModule.default ?? html2canvasModule) as typeof import("html2canvas").default;
@@ -205,7 +201,7 @@ export async function captureReceiptElementAsPng(element: HTMLElement, filename:
 		}));
 		const canvas = await html2canvas(clone, { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false, removeContainer: true });
 		const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG gagal dibuat")), "image/png"));
-		triggerPngDownload(png, filename, options?.fallbackWindow);
+		triggerPngDownload(png, filename);
 		return { width: canvas.width, height: canvas.height };
 	} finally {
 		host.remove();
