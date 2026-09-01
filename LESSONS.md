@@ -9,6 +9,7 @@
 | 3 | **Receipt export mobile harus dirasterisasi dari dokumen penuh, bukan screenshot viewport** — buat SVG/DOM export dengan ukuran logical tetap, render Canvas pada scale 2–3x, download PNG lossless, dan tunggu asset/font selesai agar file tidak blur atau terpotong. | customer/receipt/ui-ux |
 | 4 | **Label Happy Hour harus mengikuti konfigurasi Admin** — gunakan nama promo dan jadwal yang disimpan di Admin sebagai sumber kebenaran. Jadwal canonical saat ini: `08:00–09:00` Sarapan Pagi, `11:00–13:00` Makan Siang, dan konfigurasi malam (POS saat ini `18:00–20:00`) Makan Malam; jangan membuat batas sesi baru di Customer. | customer/promo/ui-ux |
 | 5 | **Action receipt harus fixed di atas bottom navigation** — action Split Bill, bukti bayar, dan retry payment tidak boleh menjadi bagian dari alur scroll struk; beri ruang bawah pada konten agar tidak tertutup dan tetap pertahankan CTA retry hanya untuk payment yang belum settled. | customer/receipt/ui-ux |
+| 6 | **Asset icon ImageGen wajib diverifikasi alpha channel** — checkerboard pada preview dapat ikut menjadi piksel RGB; cek mode/alpha dan sudut PNG sebelum release, lalu bersihkan background tanpa mengubah silhouette, safe margin, dan palet brand. | customer/assets/ui-ux |
 
 ## Supabase
 
