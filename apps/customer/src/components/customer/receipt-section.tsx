@@ -36,6 +36,7 @@ export interface ReceiptSectionProps {
 	retryPaymentLabel: string;
 	retryingPayment: boolean;
 	onHome: () => void;
+	actionsHidden?: boolean;
 	receipt: ReceiptState;
 	storeName: string;
 	total: number;
@@ -142,7 +143,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					</div>
 					</ReceiptPrinterAnimation>
 			{/* ── Live status tracker ─────────────────────────── */}
-			<ReceiptActions items={exportItems} storeName={props.storeName} orderReference={orderReference} payment={paymentLabel} status={unifiedStatusLabel} total={Number(props.currentOrder?.totalAmount ?? props.total)} onRetryPayment={canRetryPayment ? props.onRetryPayment : undefined} retryPaymentLabel="Buat link pembayaran baru" retryingPayment={props.retryingPayment} />
+			{!props.actionsHidden ? <ReceiptActions items={exportItems} storeName={props.storeName} orderReference={orderReference} payment={paymentLabel} status={unifiedStatusLabel} total={Number(props.currentOrder?.totalAmount ?? props.total)} onRetryPayment={canRetryPayment ? props.onRetryPayment : undefined} retryPaymentLabel="Buat link pembayaran baru" retryingPayment={props.retryingPayment} /> : null}
 				{currentStepLabel ? (
 					<div className="mt-3 rounded-3xl border border-border bg-card p-3.5 shadow-sm">
 						<div className="flex items-center justify-between">

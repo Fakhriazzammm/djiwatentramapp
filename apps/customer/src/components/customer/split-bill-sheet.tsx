@@ -3,7 +3,7 @@ import { Download, Link2, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { SplitBillAssignment, SplitBillSourceItem } from "@/lib/split-bill-calculator";
 import { calculateSplitBill } from "@/lib/split-bill-calculator";
-import { captureReceiptElementAsPng } from "@/lib/receipt-png-export";
+import { captureReceiptElementAsPng, prepareReceiptExportWindow } from "@/lib/receipt-png-export";
 import { currency } from "./types";
 
 type Props = {
@@ -32,6 +32,7 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 	const handleDownload = async () => {
 		if (!result.isBalanced || exporting) return;
 		setExporting(true);
+		const fallbackWindow = prepareReceiptExportWindow();
 		try {
 			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
 			if (!receiptElement) throw new Error("Struk belum siap diunduh");
@@ -55,9 +56,10 @@ export function SplitBillSheet({ open, items, storeName, orderReference, total, 
 				}
 				if (title) title.textContent = "Split Bill · Detail item";
 				itemSection.replaceChildren(title ?? document.createElement("p"), rows);
-			});
+			}, { fallbackWindow });
 			toast.success("Split bill berhasil diunduh sebagai PNG high-res");
 		} catch (error) {
+			if (fallbackWindow && !fallbackWindow.closed) fallbackWindow.close();
 			toast.error(error instanceof Error ? error.message : "Split bill gagal diunduh");
 		} finally { setExporting(false); }
 	};
@@ -105,12 +107,14 @@ export function ReceiptActions({
 	const handleReceiptDownload = async () => {
 		if (exporting) return;
 		setExporting(true);
+		const fallbackWindow = prepareReceiptExportWindow();
 		try {
 			const receiptElement = document.querySelector<HTMLElement>("[data-receipt-export-root='true']");
 			if (!receiptElement) throw new Error("Struk belum siap diunduh");
-			await captureReceiptElementAsPng(receiptElement, `struk-${safeFilename}.png`);
+			await captureReceiptElementAsPng(receiptElement, `struk-${safeFilename}.png`, undefined, { fallbackWindow });
 			toast.success("Bukti bayar berhasil diunduh sebagai PNG high-res");
 		} catch (error) {
+			if (fallbackWindow && !fallbackWindow.closed) fallbackWindow.close();
 			toast.error(error instanceof Error ? error.message : "Bukti bayar gagal diunduh");
 		} finally { setExporting(false); }
 	};

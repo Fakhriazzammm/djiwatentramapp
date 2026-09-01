@@ -120,6 +120,30 @@ export function buildReceiptSvg(options: ReceiptSvgOptions) {
 	</svg>`;
 }
 
+type ReceiptExportOptions = {
+	fallbackWindow?: Window | null;
+};
+
+const isIosBrowser = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+export const prepareReceiptExportWindow = () => isIosBrowser() ? window.open("about:blank", "_blank") : null;
+
+const triggerPngDownload = (png: Blob, filename: string, fallbackWindow?: Window | null) => {
+	const downloadUrl = URL.createObjectURL(png);
+	if (fallbackWindow && !fallbackWindow.closed) {
+		fallbackWindow.location.href = downloadUrl;
+		window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+		return;
+	}
+	const anchor = document.createElement("a");
+	anchor.href = downloadUrl;
+	anchor.download = filename;
+	anchor.style.display = "none";
+	document.body.appendChild(anchor);
+	anchor.click();
+	window.setTimeout(() => { anchor.remove(); URL.revokeObjectURL(downloadUrl); }, 1000);
+};
+
 export async function downloadSvgAsPng(svg: string, filename: string, scale = 3): Promise<{ width: number; height: number }> {
 	if (typeof window === "undefined") throw new Error("Export hanya tersedia di browser");
 	const match = svg.match(/width="(\d+)" height="(\d+)"/);
@@ -142,21 +166,14 @@ export async function downloadSvgAsPng(svg: string, filename: string, scale = 3)
 		context.imageSmoothingQuality = "high";
 		context.drawImage(image, 0, 0, sourceWidth, sourceHeight);
 		const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG gagal dibuat")), "image/png"));
-		const downloadUrl = URL.createObjectURL(png);
-		const anchor = document.createElement("a");
-		anchor.href = downloadUrl;
-		anchor.download = filename;
-		anchor.style.display = "none";
-		document.body.appendChild(anchor);
-		anchor.click();
-		window.setTimeout(() => { anchor.remove(); URL.revokeObjectURL(downloadUrl); }, 1000);
+		triggerPngDownload(png, filename);
 		return { width: canvas.width, height: canvas.height };
 	} finally {
 		URL.revokeObjectURL(url);
 	}
 }
 
-export async function captureReceiptElementAsPng(element: HTMLElement, filename: string, mutate?: (clone: HTMLElement) => void): Promise<{ width: number; height: number }> {
+export async function captureReceiptElementAsPng(element: HTMLElement, filename: string, mutate?: (clone: HTMLElement) => void, options?: ReceiptExportOptions): Promise<{ width: number; height: number }> {
 	if (typeof document === "undefined") throw new Error("Export hanya tersedia di browser");
 	const html2canvasModule = await import("html2canvas");
 	const html2canvas = (html2canvasModule.default ?? html2canvasModule) as typeof import("html2canvas").default;
@@ -179,18 +196,16 @@ export async function captureReceiptElementAsPng(element: HTMLElement, filename:
 	try {
 		await Promise.all(Array.from(clone.querySelectorAll("img")).map(async (image) => {
 			if (image.complete) return;
-			await new Promise<void>((resolve) => { image.addEventListener("load", () => resolve(), { once: true }); image.addEventListener("error", () => resolve(), { once: true }); });
+			await new Promise<void>((resolve) => {
+				const done = () => { window.clearTimeout(timeout); resolve(); };
+				const timeout = window.setTimeout(done, 3000);
+				image.addEventListener("load", done, { once: true });
+				image.addEventListener("error", done, { once: true });
+			});
 		}));
 		const canvas = await html2canvas(clone, { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false, removeContainer: true });
 		const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG gagal dibuat")), "image/png"));
-		const downloadUrl = URL.createObjectURL(png);
-		const anchor = document.createElement("a");
-		anchor.href = downloadUrl;
-		anchor.download = filename;
-		anchor.style.display = "none";
-		document.body.appendChild(anchor);
-		anchor.click();
-		window.setTimeout(() => { anchor.remove(); URL.revokeObjectURL(downloadUrl); }, 1000);
+		triggerPngDownload(png, filename, options?.fallbackWindow);
 		return { width: canvas.width, height: canvas.height };
 	} finally {
 		host.remove();
