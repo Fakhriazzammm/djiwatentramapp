@@ -74,27 +74,27 @@ export function buildReceiptSvg(options: ReceiptSvgOptions) {
 	const statusColor = statusIsOpen ? "#a16207" : "#39705b";
 	const statusFill = statusIsOpen ? "#fff4d6" : "#e5f4ec";
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-	<rect width="100%" height="100%" fill="#f7efe5"/>
-	<rect x="${outer}" y="${outer}" width="${width - outer * 2}" height="${height - outer * 2}" rx="42" fill="#fffdf9" stroke="#ead8c8" stroke-width="3"/>
-	<path d="M${outer + 2} 150V78Q${outer + 2} ${outer + 2} ${outer + 78} ${outer + 2}H${width - outer - 78}Q${width - outer - 2} ${outer + 2} ${width - outer - 2} 78V150Z" fill="#ef786b"/>
+	<rect width="100%" height="100%" fill="#f7f9fc"/>
+	<rect x="${outer}" y="${outer}" width="${width - outer * 2}" height="${height - outer * 2}" rx="42" fill="#ffffff" stroke="#e4e7eb" stroke-width="3"/>
+	<path d="M${outer + 2} 150V78Q${outer + 2} ${outer + 2} ${outer + 78} ${outer + 2}H${width - outer - 78}Q${width - outer - 2} ${outer + 2} ${width - outer - 2} 78V150Z" fill="#1a5dc6"/>
 	<style>
-		.brand{font:800 22px Arial,sans-serif;letter-spacing:4px;fill:#fff8f0}
-		.store{font:700 25px Arial,sans-serif;fill:#fff8f0}
-		.title{font:800 42px Arial,sans-serif;fill:#243447}
-		.kicker{font:700 18px Arial,sans-serif;letter-spacing:3px;fill:#8a98a8}
-		.order{font:800 29px Arial,sans-serif;letter-spacing:2px;fill:#243447}
-		.metaLabel{font:700 17px Arial,sans-serif;letter-spacing:2px;fill:#8a98a8}
-		.metaValue{font:700 24px Arial,sans-serif;fill:#243447}
-		.totalLabel{font:700 18px Arial,sans-serif;letter-spacing:2px;fill:#a85b50}
-		.total{font:900 52px Arial,sans-serif;fill:#d95f54}
-		.section{font:800 18px Arial,sans-serif;letter-spacing:3px;fill:#243447}
-		.body{font:500 25px Arial,sans-serif;fill:#39495b}
-		.price{font:800 25px Arial,sans-serif;fill:#243447}
-		.noteTitle{font:800 16px Arial,sans-serif;letter-spacing:2px;fill:#39705b}
-		.note{font:500 21px Arial,sans-serif;fill:#426451}
-		.footer{font:500 19px Arial,sans-serif;fill:#8a98a8}
-		.rule{stroke:#eadfd4;stroke-width:2}
-		.noteBox{fill:#edf7ef;stroke:#cfe6d5;stroke-width:2}
+		.brand{font:800 22px Arial,sans-serif;letter-spacing:4px;fill:#ffffff}
+		.store{font:700 25px Arial,sans-serif;fill:#ffffff}
+		.title{font:800 42px Arial,sans-serif;fill:#1a2332}
+		.kicker{font:700 18px Arial,sans-serif;letter-spacing:3px;fill:#7c8290}
+		.order{font:800 29px Arial,sans-serif;letter-spacing:2px;fill:#1a2332}
+		.metaLabel{font:700 17px Arial,sans-serif;letter-spacing:2px;fill:#7c8290}
+		.metaValue{font:700 24px Arial,sans-serif;fill:#1a2332}
+		.totalLabel{font:700 18px Arial,sans-serif;letter-spacing:2px;fill:#1a5dc6}
+		.total{font:900 52px Arial,sans-serif;fill:#1a5dc6}
+		.section{font:800 18px Arial,sans-serif;letter-spacing:3px;fill:#1a5dc6}
+		.body{font:500 25px Arial,sans-serif;fill:#334155}
+		.price{font:800 25px Arial,sans-serif;fill:#1a2332}
+		.noteTitle{font:800 16px Arial,sans-serif;letter-spacing:2px;fill:#0d2d54}
+		.note{font:500 21px Arial,sans-serif;fill:#334155}
+		.footer{font:500 19px Arial,sans-serif;fill:#7c8290}
+		.rule{stroke:#e4e7eb;stroke-width:2}
+		.noteBox{fill:#eef5fd;stroke:#d6e2f5;stroke-width:2}
 	</style>
 	<text x="${padding}" y="92" class="brand">DJIWA TENTRAM</text>
 	<text x="${padding}" y="130" class="store">${escapeXml(options.storeName)}</text>
@@ -108,7 +108,7 @@ export function buildReceiptSvg(options: ReceiptSvgOptions) {
 	<text x="${padding + 50}" y="470" class="metaValue" style="fill:${statusColor}">${escapeXml(options.status)}</text>
 	<text x="${padding + 360}" y="415" class="metaLabel">PEMBAYARAN</text>
 	<text x="${padding + 360}" y="470" class="metaValue">${escapeXml(options.payment)}</text>
-	<rect x="${padding}" y="530" width="${contentWidth}" height="108" rx="26" fill="#fff0eb" stroke="#f8d4cc" stroke-width="2"/>
+	<rect x="${padding}" y="530" width="${contentWidth}" height="108" rx="26" fill="#eef5fd" stroke="#d6e2f5" stroke-width="2"/>
 	<text x="${padding + 28}" y="570" class="totalLabel">TOTAL PEMBAYARAN</text>
 	<text x="${width - padding - 28}" y="603" text-anchor="end" class="total">${escapeXml(options.total)}</text>
 	<text x="${padding}" y="${itemStartY - 52}" class="section">RINCIAN PESANAN</text>
