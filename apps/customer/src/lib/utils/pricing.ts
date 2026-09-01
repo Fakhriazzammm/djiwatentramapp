@@ -117,7 +117,8 @@ function getPotentialPrice(
 
 export interface HappyHourBanner {
 	name: string;
-	session: "siang" | "malam";
+	session: "sarapan" | "siang" | "malam";
+	sessionLabel: "Sarapan Pagi" | "Makan Siang" | "Malam";
 	startTime: string;
 	endTime: string;
 	priceLabel: string;
@@ -152,7 +153,8 @@ export function getActiveHappyHourBanner(
 	const discount = activeDiscounts.find(isWithinSchedule);
 	if (!discount || !discount.startTime || !discount.endTime) return null;
 	const [startHour] = discount.startTime.split(":").map(Number);
-	const session = /malam|dinner/i.test(discount.name || "") || startHour >= 16 ? "malam" : "siang";
+	const session = startHour < 11 ? "sarapan" : startHour < 16 ? "siang" : "malam";
+	const sessionLabel = session === "sarapan" ? "Sarapan Pagi" : session === "siang" ? "Makan Siang" : "Malam";
 	const isAllFlatPrice = discount.targetType === "ALL" && discount.type === "FLAT_PRICE";
 	const priceLabel = isAllFlatPrice && discount.value > 0
 		? `Semua menu hanya ${currency(discount.value)}`
@@ -161,6 +163,7 @@ export function getActiveHappyHourBanner(
 	return {
 		name: discount.name || `Happy Hour ${session}`,
 		session,
+		sessionLabel,
 		startTime: discount.startTime,
 		endTime: discount.endTime,
 		priceLabel,

@@ -75,19 +75,21 @@ export interface MenuSectionProps {
 export function renderMenuSection(props: MenuSectionProps) {
 	const happyHourBanner = getActiveHappyHourBanner(props.discounts);
 	const bannerVariant = happyHourBanner?.session ?? "default";
-	const bannerClassName = bannerVariant === "siang"
-		? "border-amber-200/20 bg-[#b45309]"
-		: bannerVariant === "malam"
-			? "border-indigo-200/20 bg-[#312e81]"
-			: "border-white/10";
+	const bannerClassName = bannerVariant === "sarapan"
+		? "border-orange-200/20 bg-[#c2410c]"
+		: bannerVariant === "siang"
+			? "border-amber-200/20 bg-[#b45309]"
+			: bannerVariant === "malam"
+				? "border-indigo-200/20 bg-[#312e81]"
+				: "border-black/[0.04] bg-card";
 	const isCodeFeedbackError = /belum unik|tidak|gagal|error/i.test(props.codeFeedback);
 
 	return (
 		<div className="space-y-3 px-3 py-3">
-			<div data-banner-variant={bannerVariant} className={cn("overflow-hidden rounded-[24px] border border-black/[0.04] bg-card shadow-[0_8px_28px_rgba(15,23,42,0.06)]", bannerVariant !== "default" ? "text-white" : "text-foreground")} style={bannerVariant === "default" ? undefined : bannerVariant === "siang" ? { backgroundColor: "#b45309" } : { backgroundColor: "#312e81" }}>
+			<div data-banner-variant={bannerVariant} className={cn("overflow-hidden rounded-[24px] border shadow-[0_8px_28px_rgba(15,23,42,0.06)]", bannerClassName, bannerVariant !== "default" ? "text-white" : "text-foreground")}>
 				<div className="flex items-center justify-between gap-3 px-4 py-3.5">
 					<div className="min-w-0">
-						<p className={cn("text-[10px] font-black uppercase tracking-[0.18em]", bannerVariant === "default" ? "text-primary" : "text-white/70")}>{happyHourBanner ? `Happy Hour ${happyHourBanner.session}` : "Step 3 · Pilih menu"}</p>
+						<p className={cn("text-[10px] font-black uppercase tracking-[0.18em]", bannerVariant === "default" ? "text-primary" : "text-white/70")}>{happyHourBanner ? `Happy Hour ${happyHourBanner.sessionLabel}` : "Step 3 · Pilih menu"}</p>
 						<h2 className="mt-1 font-display text-[21px] font-black leading-tight tracking-[-0.03em]">{happyHourBanner ? happyHourBanner.priceLabel : "Pilih menu"}</h2>
 						{happyHourBanner ? <p className="mt-1 text-[11px] font-medium text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p> : <p className="mt-1 text-xs text-muted-foreground">Tambahkan menu favoritmu ke pesanan.</p>}
 					</div>
