@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.208",
+	semantic: "0.2.209",
 	// Git/deploy commit hash (short)
-	commitHash: "264dda2",
-	message: "feat(admin): export KOL data",
+	commitHash: "daa5069",
+	message: "feat(marketplace): add merchandise storefront and order numbering",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): export KOL data",
+	commitMessage: "feat(marketplace): add merchandise storefront and order numbering",
 	// Build timestamp
 	buildDate: "2026-09-02",
 	// Full version string for display
