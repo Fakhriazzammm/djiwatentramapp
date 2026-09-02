@@ -10,7 +10,7 @@ app.use(
   "/api/auth/*",
   cors({
     origin: ["https://djiwatentram.yumme.id", "https://merchandise.yumme.id", "http://localhost:5173"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Visitor-Id", "X-Request-Id"],
     allowMethods: ["POST", "GET", "OPTIONS"],
     credentials: true,
   }),
