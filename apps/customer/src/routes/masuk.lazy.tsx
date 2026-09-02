@@ -22,7 +22,11 @@ function GoogleMark() {
 }
 
 function getSafeMerchandiseReturnUrl() {
-  const raw = new URLSearchParams(window.location.search).get("returnTo");
+  const search = new URLSearchParams(window.location.search);
+  // returnTo hanya boleh dipakai untuk handoff yang dibuat Merchandise.
+  // Login/register normal Customer harus selalu berakhir di /<slugusername>.
+  if (search.get("sso") !== "1") return null;
+  const raw = search.get("returnTo");
   if (!raw) return null;
   try {
     const url = new URL(raw);
