@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Clock, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { Clock, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
@@ -172,24 +172,7 @@ function BrandCustomerIndex() {
 									Mulai pesan
 								</button>
 
-								<a
-									href="https://booking.yumme.id/"
-									aria-label="Booking Acara & Kolaborasi"
-									className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary transition-all duration-[180ms] hover:bg-primary/10 active:scale-[.97]"
-								>
-									<CalendarDays className="h-3.5 w-3.5" />
-									Booking Acara & Kolaborasi
-								</a>
-
 							</div>
-
-							<a
-								href="https://merchandise.yumme.id/"
-								aria-label="Jelajahi Merchandise Djiwa Tentram"
-								className="block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]"
-							>
-								<img src="/merchandise-promo-banner.png" alt="Bawa Rasa Tentram ke Setiap Hari — Jelajahi Merchandise" className="block h-auto w-full" loading="lazy" />
-							</a>
 
 							{/* ── Kolom kanan: preview menu + info ─── */}
 							<div className="flex w-full flex-col gap-3">
