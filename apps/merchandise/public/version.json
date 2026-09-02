@@ -1,7 +1,7 @@
 {
-  "version": "0.2.209",
-  "commitHash": "0eca5d2",
-  "message": "refactor: rename marketplace app to merchandise",
+  "version": "0.2.211",
+  "commitHash": "c51bce4",
+  "message": "fix(customer): make special characteristics optional",
   "buildDate": "2026-09-02",
-  "generatedAt": "2026-09-02T11:03:16.000Z"
+  "generatedAt": "2026-09-02T11:41:46.034Z"
 }

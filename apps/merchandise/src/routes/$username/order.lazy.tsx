@@ -152,7 +152,7 @@ function OrderPage() {
 		setDessertLater(false);
 		setNotes("");
 		setTableNumber("");
-		setStep("table");
+		setStep("menu");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
@@ -372,10 +372,10 @@ function OrderPage() {
 
 	// Sync: URL query param → context state (on mount / URL change)
 	useEffect(() => {
-		if (search.step && search.step !== step) {
-			setStep(search.step as OrderStep);
-		}
-	}, [search.step]);
+		if (!search.step) return;
+		const requestedStep = search.step === "table" || search.step === "party" ? "menu" : search.step;
+		if (requestedStep !== step) setStep(requestedStep as OrderStep);
+	}, [search.step, setStep, step]);
 
 	// Sync: context state → URL (when step changes)
 	useEffect(() => {
@@ -396,11 +396,6 @@ function OrderPage() {
 		}
 	}, [search.table]);
 
-	useEffect(() => {
-		if ((step === "menu" || step === "checkout") && !tableNumber.trim()) {
-			setStep("table");
-		}
-	}, [step, tableNumber]);
 
 	// ── Side effects ────────────────────────────────────────────
 
@@ -617,10 +612,6 @@ function OrderPage() {
 			toast.error("Pilih minimal satu produk");
 			return;
 		}
-		if (config.requireTableNumber && !tableNumber.trim()) {
-			rejectCheckout("Nomor meja wajib diisi sebelum checkout", "Nomor meja");
-			return;
-		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
 			if (!customerName.trim()) {
 				rejectCheckout("Nama customer wajib diisi", "Nama customer");
@@ -634,16 +625,6 @@ function OrderPage() {
 				rejectCheckout("Isi nomor WhatsApp yang valid", "Nomor WhatsApp untuk pembayaran QRIS");
 				return;
 			}
-		}
-		if (!tableNumber.trim()) {
-			rejectCheckout("Pilih nomor meja terlebih dahulu", "Nomor meja");
-			setStep("table");
-			return;
-		}
-		if (!Number.isInteger(partySize) || partySize < 1) {
-			rejectCheckout("Pilih jumlah orang terlebih dahulu", "Jumlah orang");
-			setStep("party");
-			return;
 		}
 		if (paymentChoice === "mayar") {
 			if (isAuthenticated && missingContactFields.length > 0) {
@@ -719,7 +700,6 @@ function OrderPage() {
 				orderType: "dine_in" as const,
 				source: "customer_self_service" as const,
 				brandSlug,
-				guestCount: partySize,
 				freeRefillSelected: Boolean(freeRefillOptIn),
 				dessertLater,
 				notes: normalizedNotes,
@@ -964,21 +944,21 @@ function OrderPage() {
 	// ── Render ───────────────────────────────────────────────────
 
 	const handleOrderHeaderBack = () => {
-		if (step === "table") navigate({ to: "/$username", params: { username } });
-		if (step === "party") setStep("table");
-		if (step === "refill") setStep(config.enablePartySizeSelection ? "party" : "party");
-		if (step === "menu") setStep(config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : config.enablePartySizeSelection ? "party" : "party");
+		if (step === "menu" || step === "table" || step === "party" || step === "refill") {
+			navigate({ to: "/$username", params: { username } });
+			return;
+		}
 		if (step === "checkout") setStep("menu");
 	};
 
 	return (
-		<div className="app-page min-h-app">
+		<div className="app-page merchandise-app min-h-app">
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				{/* ── Sticky header ──────────────────────────────── */}
 				<CustomerHeader
 					eyebrow={step.toUpperCase()}
 					title={storeName}
-					subtitle="Djiwa Tentram Cafe & Resto"
+					subtitle="Merchandise Store"
 					onBack={handleOrderHeaderBack}
 					leading={<ArrowLeft className="h-4 w-4" />}
 					right={<span className="inline-flex min-h-9 items-center rounded-full bg-primary/10 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-primary">{totalItems} item</span>}
@@ -993,7 +973,7 @@ function OrderPage() {
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
-					<CustomerOrderProgress step={step === "payment" ? "checkout" : step} />
+					<CustomerOrderProgress step={step} />
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -1019,60 +999,6 @@ function OrderPage() {
 						needsEmailConfirm={registrationNeedsEmailConfirm}
 						error={authError}
 					/>
-
-					{/* ── Step 1: table selection ───────────────────── */}
-					{step === "table" ? (
-						<section className="space-y-2 px-2 py-2">
-							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-								<div className="flex items-center gap-2.5">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div>
-								</div>
-								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
-								<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
-								<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
-								<button type="button" disabled={!tableNumber.trim()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("party")}>Lanjut ke jumlah orang <ChevronRight className="h-4 w-4" /></button>
-							</div>
-						</section>
-					) : null}
-
-					{/* ── Step 2: party size ───────────────────────── */}
-					{step === "party" ? (
-						<section className="space-y-2 px-2 py-2">
-							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-								<div className="flex items-center gap-2.5">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Djiwa3DIcon name="party-size" size="micro" alt="" className="h-6 w-6 object-contain" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
-								</div>
-								<div className="mt-2.5 grid grid-cols-3 gap-1.5">
-									{[1,2,3,4,5,6,7,8].map((value) => (
-										<button key={value} type="button" className={cn("rounded-xl border px-2 py-2 text-sm font-black transition-all", partySize===value ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background")} onClick={() => setPartySize(value)}>
-											{value}
-										</button>
-									))}
-									<button key={9} type="button" className={cn("rounded-xl border px-2 py-2 text-sm font-black transition-all", partySize >= 9 ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background")} onClick={() => setPartySize(partySize >= 9 ? partySize : 9)}>
-										{partySize >= 9 ? partySize : "9+"}
-									</button>
-									{partySize >= 9 ? (
-										<div className="col-span-3">
-											<input type="number" min={9} max={999} value={partySize}
-												onChange={(e) => setPartySize(Math.max(1, Number(e.target.value) || 1))}
-												className="w-full rounded-xl border border-border bg-background px-3 py-2 text-center text-lg font-black outline-none" />
-										</div>
-									) : null}
-								</div>
-								<button type="button" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => {
-									if (config.enableFreeRefillPrompt && activeFreeRefillPromo) {
-										setStep("refill");
-										return;
-									}
-									setStep("menu");
-								}}>
-									Lanjut dengan {partySize} orang <ChevronRight className="h-4 w-4" />
-								</button>
-							</div>
-						</section>
-					) : null}
 
 					{/* ── Refill section ──────────────────────────── */}
 					{step === "refill" ? (
@@ -1107,12 +1033,11 @@ function OrderPage() {
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
-				{step !== "table" && step !== "party" && step !== "refill" && step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
+				{step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep("menu")} />
 							<BottomButton label="Keranjang" icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
-							<BottomButton label="Staff" icon={<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setServiceOpen(true)} />
 							<BottomButton label={receipt ? "Struk" : "Checkout"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : "checkout")} primary disabled={!receipt && !cart.length} />
 						</div>
 					</div>

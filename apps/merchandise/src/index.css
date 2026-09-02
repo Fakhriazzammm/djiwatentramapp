@@ -3,3 +3,40 @@
 @import "tailwindcss";
 @import "./lib/tw-animate.css";
 @import "@yumipos/web-shared/theme.css";
+
+/* Merchandise storefront boundary: intentionally scoped to this app only. */
+.merchandise-app {
+  --background: #fbfaf7;
+  --foreground: #251d17;
+  --card: #fffdf9;
+  --card-foreground: #251d17;
+  --primary: #8a5a2b;
+  --primary-foreground: #fffaf2;
+  --secondary: #f0e2d0;
+  --secondary-foreground: #55361f;
+  --accent: #c9944d;
+  --accent-foreground: #251d17;
+  --muted: #f3ede6;
+  --muted-foreground: #786d63;
+  --border: #e8ddd2;
+  --input: #f3ede6;
+  --ring: #b77834;
+  --surface-page: #fbfaf7;
+  --surface-card: #fffdf9;
+}
+
+.merchandise-app .app-shell {
+  background: var(--background);
+}
+
+.merchandise-app .app-card,
+.merchandise-app [class*="rounded-3xl"][class*="bg-card"],
+.merchandise-app [class*="rounded-[22px]"][class*="bg-card"] {
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+  box-shadow: 0 12px 30px rgba(91, 57, 27, 0.07);
+}
+
+.merchandise-app .app-bottom-bar .app-card {
+  background: rgba(255, 253, 249, 0.94);
+  border: 1px solid rgba(138, 90, 43, 0.18);
+}

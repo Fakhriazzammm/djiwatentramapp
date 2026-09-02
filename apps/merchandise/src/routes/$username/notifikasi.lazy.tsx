@@ -95,7 +95,7 @@ function NotifikasiPage() {
 	}, [memberGreeting, orders, lastSeen]);
 
 	return (
-		<div className="app-page min-h-app">
+		<div className="app-page merchandise-app min-h-app">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 				<CustomerHeader title="Notifikasi" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
 
@@ -126,7 +126,7 @@ function NotifikasiPage() {
 							<p className="mt-2 text-xs text-muted-foreground">Belum ada notifikasi. Update pesananmu akan muncul di sini.</p>
 							<button
 								type="button"
-								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
+								onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })}
 								className="mt-3 min-h-11 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white shadow-sm"
 							>
 								Pesan sekarang

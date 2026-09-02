@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.209",
+	semantic: "0.2.211",
 	// Git/deploy commit hash (short)
-	commitHash: "0eca5d2",
-	message: "refactor: rename marketplace app to merchandise",
+	commitHash: "c51bce4",
+	message: "fix(customer): make special characteristics optional",
 	// Commit subject for the update prompt
-	commitMessage: "refactor: rename marketplace app to merchandise",
+	commitMessage: "fix(customer): make special characteristics optional",
 	// Build timestamp
 	buildDate: "2026-09-02",
 	// Full version string for display

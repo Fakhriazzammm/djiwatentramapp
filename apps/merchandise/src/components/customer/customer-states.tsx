@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function CustomerPageSkeleton({ label = "Memuat halaman" }: { label?: string }) {
 	return (
-		<div className="app-page min-h-app" aria-busy="true" aria-label={label} role="status">
+		<div className="app-page merchandise-app min-h-app" aria-busy="true" aria-label={label} role="status">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background px-3 py-4">
 				<span className="sr-only">{label}</span>
 				<div className="app-card space-y-4 p-4">

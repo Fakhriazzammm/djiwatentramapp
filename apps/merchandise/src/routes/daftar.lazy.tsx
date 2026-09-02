@@ -94,7 +94,7 @@ function DaftarPage() {
 		});
 	};
 	return (
-		<div className="app-page min-h-app">
+		<div className="app-page merchandise-app min-h-app">
 			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				{/* Header */}
 				<CustomerHeader title="Data Diri" subtitle="Djiwa Tentram" onBack={() => navigate({ to: "/" })} leading={<ArrowLeft className="h-4 w-4" />} />

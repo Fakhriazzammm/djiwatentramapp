@@ -56,7 +56,7 @@ function FavoritPage() {
 	const [query, setQuery] = useState("");
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
-	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } });
+	const goOrder = () => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } });
 
 	const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
@@ -76,7 +76,7 @@ function FavoritPage() {
 	}, [products, favoriteSet, query]);
 
 	return (
-		<div className="app-page min-h-app">
+		<div className="app-page merchandise-app min-h-app">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 				<CustomerHeader title="Favorit" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
 

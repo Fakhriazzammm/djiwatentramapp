@@ -277,13 +277,12 @@ export function BarcodeLines({ value }: { value: string }) {
 
 export function CustomerOrderProgress({ step }: { step: "table" | "party" | "refill" | "menu" | "checkout" | "payment" | "receipt" }) {
 	const steps = [
-		{ key: "table", label: "Pilih meja", shortLabel: "Meja" },
-		{ key: "party", label: "Jumlah orang", shortLabel: "Orang" },
-		{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
-		{ key: "checkout", label: "Checkout / Pembayaran", shortLabel: "Checkout" },
+		{ key: "menu", label: "Pilih merchandise", shortLabel: "Produk" },
+		{ key: "checkout", label: "Checkout", shortLabel: "Checkout" },
+		{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
 		{ key: "receipt", label: "Selesai / Struk", shortLabel: "Selesai" },
 	] as const;
-	const normalizedStep = step === "refill" ? "party" : step === "payment" ? "checkout" : step;
+	const normalizedStep = step === "table" || step === "party" || step === "refill" ? "menu" : step;
 	const activeIndex = Math.max(0, steps.findIndex((item) => item.key === normalizedStep));
 	const activeStep = steps[activeIndex];
 

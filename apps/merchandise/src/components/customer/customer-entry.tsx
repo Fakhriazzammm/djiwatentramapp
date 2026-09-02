@@ -47,7 +47,7 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: Cu
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
 
   return (
-    <div className="app-page min-h-app px-3 py-4 sm:py-6">
+    <div className="app-page merchandise-app min-h-app px-3 py-4 sm:py-6">
       <motion.main
         aria-labelledby="customer-onboarding-title"
         className="app-shell mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-md flex-col justify-between bg-background px-4 py-6 sm:min-h-[calc(100dvh-3rem)]"

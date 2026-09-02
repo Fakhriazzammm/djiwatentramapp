@@ -82,7 +82,7 @@ function CustomerAuthPage() {
   const pageMotion = reduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 };
 
   return (
-    <div className="app-page min-h-app px-3 py-4 sm:py-6">
+    <div className="app-page merchandise-app min-h-app px-3 py-4 sm:py-6">
       <motion.main className="app-shell mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-md flex-col bg-background px-4 py-5 sm:min-h-[calc(100dvh-3rem)]" initial={pageMotion} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, duration: 0.4 }}>
         <header className="flex items-center justify-between">
           <button type="button" aria-label="Kembali ke onboarding" onClick={() => navigate({ to: "/" })} className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/70 active:scale-[.97]"><ArrowLeft className="h-4 w-4" /></button>

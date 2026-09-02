@@ -138,7 +138,7 @@ function getCartOwnerKey(
 
 export function OrderProvider({ children }: { children: ReactNode }) {
 	// Step / navigation — always starts at a non-welcome step
-	const [step, setStep] = useState<OrderStep>("table");
+	const [step, setStep] = useState<OrderStep>("menu");
 
 	// Party & refill
 	const [partySize, setPartySize] = useState(1);

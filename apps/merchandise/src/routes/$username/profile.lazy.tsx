@@ -47,7 +47,7 @@ function ProfilePage() {
 
 	if (!customer) {
 		return (
-			<div className="app-page min-h-app">
+			<div className="app-page merchandise-app min-h-app">
 				<div className="app-shell mx-auto flex min-h-app max-w-md items-center justify-center bg-background px-4">
 				<div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
 					<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -140,7 +140,7 @@ function ProfilePage() {
 	};
 
 	return (
-		<div className="app-page min-h-app">
+		<div className="app-page merchandise-app min-h-app">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
 			{/* Header */}
 			<CustomerHeader title="Profil Saya" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
