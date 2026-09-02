@@ -127,7 +127,7 @@ function CustomerAuthPage() {
               </motion.div>
             ) : (
               <motion.div key="auth-options" className="mt-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ ...spring, delay: 0.1 }}>
-                <motion.button type="button" disabled={googleLoading} onClick={handleGoogle} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-black shadow-sm transition-shadow hover:shadow-md disabled:cursor-wait disabled:opacity-60" whileHover={reduceMotion || googleLoading ? undefined : { y: -1 }} whileTap={reduceMotion || googleLoading ? undefined : { scale: 0.97 }} transition={spring}>
+                <motion.button type="button" aria-label="Lanjut dengan Google" disabled={googleLoading} onClick={handleGoogle} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-black shadow-sm transition-shadow hover:shadow-md disabled:cursor-wait disabled:opacity-60" whileHover={reduceMotion || googleLoading ? undefined : { y: -1 }} whileTap={reduceMotion || googleLoading ? undefined : { scale: 0.97 }} transition={spring}>
                   {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <GoogleMark />}
                   {googleLoading ? "Menghubungkan ke Google..." : "Lanjut dengan Google"}
                 </motion.button>
