@@ -30,6 +30,7 @@ function BrandCustomerIndex() {
 
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
+	const [googleLoading, setGoogleLoading] = useState(false);
 	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">("splash");
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
@@ -304,9 +305,11 @@ function BrandCustomerIndex() {
 					onDjiwaAppSignIn={() => redirectToDjiwaAppLogin()}
 					onGoogleSignIn={async () => {
 						try {
+							setGoogleLoading(true);
 							setAuthError(undefined);
 							await signInWithGoogle();
 						} catch (e: any) {
+							setGoogleLoading(false);
 							setAuthError(e?.message || "Gagal masuk dengan Google");
 						}
 					}}
@@ -315,7 +318,7 @@ function BrandCustomerIndex() {
 							await resetPassword(email);
 						} catch {}
 					}}
-					isLoading={isLoading}
+					isLoading={isLoading || googleLoading}
 					needsEmailConfirm={registrationNeedsEmailConfirm}
 					error={authError}
 				/>

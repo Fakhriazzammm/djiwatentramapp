@@ -330,10 +330,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   // ── signInWithGoogle ────────────────────────────────────────
   const signInWithGoogle = useCallback(async () => {
-    await authClient.signIn.social({
+    const { data, error } = await authClient.signIn.social({
       provider: "google",
       callbackURL: window.location.origin + "/masuk",
     });
+    if (error) {
+      throw new Error(error.message || "Gagal masuk dengan Google");
+    }
+    if (!data?.url) {
+      throw new Error("URL login Google tidak diterima server.");
+    }
+    // Explicit navigation is required when the auth endpoint returns { url }.
+    window.location.assign(data.url);
   }, []);
 
   // ── refreshCustomer ─────────────────────────────────────────
