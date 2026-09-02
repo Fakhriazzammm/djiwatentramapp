@@ -621,10 +621,6 @@ function OrderPage() {
 			rejectCheckout("Nomor meja wajib diisi sebelum checkout", "Nomor meja");
 			return;
 		}
-		if (!customerDescription.trim()) {
-			rejectCheckout("Isi ciri khusus customer agar kasir mudah mengenali pesanan", "Ciri khusus customer");
-			return;
-		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
 			if (!customerName.trim()) {
 				rejectCheckout("Nama customer wajib diisi", "Nama customer");

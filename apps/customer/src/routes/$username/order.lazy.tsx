@@ -612,10 +612,6 @@ function OrderPage() {
 			rejectCheckout("Nomor meja wajib diisi sebelum checkout", "Nomor meja");
 			return;
 		}
-		if (!customerDescription.trim()) {
-			rejectCheckout("Isi ciri khusus customer agar kasir mudah mengenali pesanan", "Ciri khusus customer");
-			return;
-		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
 			if (!customerName.trim()) {
 				rejectCheckout("Nama customer wajib diisi", "Nama customer");
@@ -1098,7 +1094,7 @@ function OrderPage() {
 					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
-					{step === "receipt" && receipt ? renderReceiptSection({ cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
+					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
@@ -1116,7 +1112,7 @@ function OrderPage() {
 
 			{/* ── Cart Sheet ─────────────────────────────────────── */}
 			<Sheet open={cartOpen} onOpenChange={setCartOpen}>
-				<SheetContent side="bottom" showCloseButton={false} className="max-h-[85vh] rounded-t-3xl p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="z-[1002] max-h-[85vh] overflow-hidden rounded-t-3xl bg-background p-0">
 					<motion.div
 						initial={shouldReduceMotion ? false : { opacity: 0, y: 28 }}
 						animate={{ opacity: 1, y: 0 }}

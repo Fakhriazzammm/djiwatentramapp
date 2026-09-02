@@ -61,11 +61,6 @@ function DaftarPage() {
 			focusInvalidField("guest-phone", "phone", "Nomor WhatsApp wajib diisi minimal 10 digit");
 			return;
 		}
-		if (!description.trim()) {
-			focusInvalidField("guest-description", "description", "Ciri khusus customer wajib diisi");
-			return;
-		}
-
 		// Generate unique guest username: {nama-slug}-{4digit}
 		const slug = trimmedName
 			.toLowerCase()
@@ -166,7 +161,7 @@ function DaftarPage() {
 						{/* Ciri khusus customer */}
 						<div>
 							<label htmlFor="guest-description" className="text-xs font-bold text-foreground">
-								Ciri khusus customer <span className="text-destructive">*</span>
+								Ciri khusus customer <span className="text-muted-foreground">(opsional)</span>
 							</label>
 							<input
 								id="guest-description"
