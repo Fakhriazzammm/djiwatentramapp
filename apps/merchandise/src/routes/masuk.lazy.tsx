@@ -131,6 +131,8 @@ function CustomerAuthPage() {
                   {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <GoogleMark />}
                   {googleLoading ? "Menghubungkan ke Google..." : "Lanjut dengan Google"}
                 </motion.button>
+                {error ? <p role="alert" className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-left text-[11px] font-semibold text-destructive">{error}</p> : null}
+                {info ? <p role="status" className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-left text-[11px] font-semibold text-emerald-700">{info}</p> : null}
                 <p className="mt-3 text-[11px] text-muted-foreground">Satu akun untuk login dan daftar member.</p>
 
                 <button type="button" onClick={() => { setShowFallback((value) => !value); setError(""); setInfo(""); }} className="mt-6 inline-flex min-h-11 items-center gap-1 text-xs font-bold text-primary hover:underline">
