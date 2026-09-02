@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +57,8 @@ export function AuthModal({
   const [successMessage, setSuccessMessage] = useState("");
   const prevLoadingRef = useRef(false);
   const submitAttemptedRef = useRef(false);
+  const djiwaRedirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isConnectingToDjiwa, setIsConnectingToDjiwa] = useState(false);
 
   // Detect auth transition: was loading → finished → no error → show success
   useEffect(() => {
@@ -80,6 +83,20 @@ export function AuthModal({
     }
   }, [isLoading, error, tab, onOpenChange, needsEmailConfirm]);
 
+  useEffect(() => {
+    return () => {
+      if (djiwaRedirectTimeoutRef.current) clearTimeout(djiwaRedirectTimeoutRef.current);
+    };
+  }, []);
+
+  const handleDjiwaAppSignIn = () => {
+    if (!onDjiwaAppSignIn || isConnectingToDjiwa) return;
+    setIsConnectingToDjiwa(true);
+    djiwaRedirectTimeoutRef.current = setTimeout(() => {
+      onDjiwaAppSignIn();
+    }, 850);
+  };
+
   const handleSubmit = () => {
     if (!email.trim() || !password.trim()) return;
     submitAttemptedRef.current = true;
@@ -96,9 +113,37 @@ export function AuthModal({
     (tab === "login" || name.trim().length > 0);
 
   return (
-    <Dialog open={open} onOpenChange={(value) => { if (!showSuccess) onOpenChange(value); }}>
+    <Dialog open={open} onOpenChange={(value) => { if (!showSuccess && !isConnectingToDjiwa) onOpenChange(value); }}>
       <DialogContent className="p-0 sm:max-w-sm">
-        {showSuccess ? (
+        {isConnectingToDjiwa ? (
+          <motion.div
+            className="flex min-h-[300px] flex-col items-center justify-center px-6 py-8 text-center"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring" as const, stiffness: 320, damping: 26 }}
+          >
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-[28px] bg-primary/10">
+              <motion.div
+                className="absolute inset-1 rounded-[24px] border-2 border-primary/20"
+                animate={{ scale: [1, 1.12, 1], opacity: [0.8, 0.2, 0.8] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"
+                animate={{ x: [0, 5, 0, -5, 0], rotate: [0, 2, 0, -2, 0] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <LogIn aria-hidden="true" className="h-6 w-6" />
+              </motion.div>
+            </div>
+            <p className="mt-6 text-base font-black">Menghubungkan ke Djiwa App</p>
+            <p className="mt-2 max-w-[240px] text-xs leading-relaxed text-muted-foreground">Menyinkronkan sesi login agar kamu tidak perlu masuk ulang.</p>
+            <div className="mt-5 flex items-center gap-2 text-[11px] font-bold text-primary">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+              Secure connection
+            </div>
+          </motion.div>
+        ) : showSuccess ? (
           needsEmailConfirm ? (
             /* ── Email confirmation instructions ─────────────── */
             <div className="flex flex-col items-center px-5 py-8 text-center">
@@ -160,8 +205,8 @@ export function AuthModal({
               {onDjiwaAppSignIn ? (
                 <button
                   type="button"
-                  disabled={isLoading}
-                  onClick={onDjiwaAppSignIn}
+                  disabled={isLoading || isConnectingToDjiwa}
+                  onClick={handleDjiwaAppSignIn}
                   className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all hover:brightness-105 disabled:opacity-50"
                 >
                   <LogIn aria-hidden="true" className="h-4 w-4" />
@@ -252,7 +297,7 @@ export function AuthModal({
                       placeholder="Nama lengkap"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      disabled={isLoading}
+                      disabled={isLoading || isConnectingToDjiwa}
                       className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                     />
                   </div>
@@ -265,7 +310,7 @@ export function AuthModal({
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isLoading || isConnectingToDjiwa}
                     className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-9 pr-3 text-xs font-medium outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                   />
                 </div>
@@ -277,7 +322,7 @@ export function AuthModal({
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isLoading || isConnectingToDjiwa}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && isFormValid) handleSubmit();
                     }}
@@ -318,7 +363,7 @@ export function AuthModal({
                   </div>
                   <button
                     type="button"
-                    disabled={isLoading}
+                    disabled={isLoading || isConnectingToDjiwa}
                     onClick={onGoogleSignIn}
                     className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-border bg-background py-2.5 text-xs font-bold text-foreground shadow-sm transition-all hover:bg-muted disabled:opacity-50"
                   >
@@ -353,7 +398,7 @@ export function AuthModal({
                 variant="ghost"
                 size="lg"
                 className="w-full text-xs text-muted-foreground"
-                disabled={isLoading}
+                disabled={isLoading || isConnectingToDjiwa}
                 onClick={() => {
                   onSkip();
                   onOpenChange(false);
