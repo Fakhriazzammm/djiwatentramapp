@@ -197,18 +197,24 @@ function OrderPage() {
 		if (!products || !memberDiscounts) return;
 		setCart((currentCart) => {
 			let changed = false;
-			const nextCart = currentCart.map((item) => {
-				if (item.variant) return item;
-				const product = products.find((entry) => entry._id === item.productId);
-				if (!product) return item;
-				const pricing = calculateEffectivePrice(
-					{ _id: product._id, price: product.price, categoryId: product.categoryId },
-					memberDiscounts,
-				);
-				if (item.price === pricing.finalPrice && item.originalPrice === pricing.originalPrice) return item;
-				changed = true;
-				return { ...item, price: pricing.finalPrice, originalPrice: pricing.originalPrice };
-			});
+			const nextCart = currentCart
+				.filter((item) => {
+					const productExists = products.some((entry) => entry._id === item.productId);
+					if (!productExists) changed = true;
+					return productExists;
+				})
+				.map((item) => {
+					if (item.variant) return item;
+					const product = products.find((entry) => entry._id === item.productId);
+					if (!product) return item;
+					const pricing = calculateEffectivePrice(
+						{ _id: product._id, price: product.price, categoryId: product.categoryId },
+						memberDiscounts,
+					);
+					if (item.price === pricing.finalPrice && item.originalPrice === pricing.originalPrice) return item;
+					changed = true;
+					return { ...item, price: pricing.finalPrice, originalPrice: pricing.originalPrice };
+				});
 			return changed ? nextCart : currentCart;
 		});
 	}, [memberDiscounts, products, setCart]);
@@ -230,11 +236,13 @@ function OrderPage() {
 	const upsellAddedLabel = typeof siteSettings?.upsellAddedLabel === "string" ? siteSettings.upsellAddedLabel.trim() : "";
 	const visibleUpsellRecommendations = useMemo(() => {
 		if (!upsellEnabled || !Number.isInteger(upsellMaxRecommendations) || upsellMaxRecommendations <= 0) return [];
-		if (!upsellRecommendations) return [];
+		if (!upsellRecommendations || !products) return [];
+		const merchandiseProductIds = new Set(products.map((product) => product._id));
 		return upsellRecommendations
+			.filter((recommendation) => merchandiseProductIds.has(recommendation.recommendedProductSourceId))
 			.filter((recommendation) => recommendation.ctaLabel?.trim())
 			.slice(0, upsellMaxRecommendations);
-	}, [upsellEnabled, upsellMaxRecommendations, upsellRecommendations]);
+	}, [upsellEnabled, upsellMaxRecommendations, upsellRecommendations, products]);
 
 	const orderedCategories = useMemo(
 		() => (categories ? [...categories].sort((a, b) => a.order - b.order) : []),
