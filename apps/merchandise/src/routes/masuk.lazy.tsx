@@ -35,6 +35,7 @@ function CustomerAuthPage() {
   const [forgotMode, setForgotMode] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
   const isSsoHandoff = new URLSearchParams(window.location.search).get("sso") === "1";
 
   useEffect(() => {
@@ -42,11 +43,14 @@ function CustomerAuthPage() {
   }, [customer, isAuthenticated, navigate]);
 
   const handleGoogle = async () => {
+    if (googleLoading) return;
+    setGoogleLoading(true);
     setError("");
     setInfo("");
     try {
       await signInWithGoogle();
     } catch (authError) {
+      setGoogleLoading(false);
       setError(authError instanceof Error ? authError.message : "Gagal masuk dengan Google");
     }
   };
@@ -123,9 +127,9 @@ function CustomerAuthPage() {
               </motion.div>
             ) : (
               <motion.div key="auth-options" className="mt-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ ...spring, delay: 0.1 }}>
-                <motion.button type="button" disabled={isLoading} onClick={handleGoogle} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-black shadow-sm transition-shadow hover:shadow-md disabled:opacity-60" whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
-                  <GoogleMark />
-                  Lanjut dengan Google
+                <motion.button type="button" disabled={googleLoading} onClick={handleGoogle} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-black shadow-sm transition-shadow hover:shadow-md disabled:cursor-wait disabled:opacity-60" whileHover={reduceMotion || googleLoading ? undefined : { y: -1 }} whileTap={reduceMotion || googleLoading ? undefined : { scale: 0.97 }} transition={spring}>
+                  {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <GoogleMark />}
+                  {googleLoading ? "Menghubungkan ke Google..." : "Lanjut dengan Google"}
                 </motion.button>
                 <p className="mt-3 text-[11px] text-muted-foreground">Satu akun untuk login dan daftar member.</p>
 
