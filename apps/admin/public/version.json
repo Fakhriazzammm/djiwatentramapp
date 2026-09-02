@@ -1,6 +1,7 @@
 {
-  "version": "0.2.112",
-  "commitHash": "ce5ff24",
-  "buildDate": "2026-08-31",
-  "generatedAt": "2026-08-31T12:37:11.471Z"
+  "version": "0.2.208",
+  "commitHash": "6618dfb6",
+  "message": "fix(admin): format KOL exports",
+  "buildDate": "2026-09-02",
+  "generatedAt": "2026-09-02T05:56:47.810Z"
 }
