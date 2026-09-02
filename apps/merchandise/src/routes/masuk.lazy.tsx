@@ -3,6 +3,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 
 export const Route = createLazyFileRoute("/masuk")({
   component: CustomerAuthPage,
@@ -34,6 +35,7 @@ function CustomerAuthPage() {
   const [forgotMode, setForgotMode] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const isSsoHandoff = new URLSearchParams(window.location.search).get("sso") === "1";
 
   useEffect(() => {
     if (isAuthenticated && customer) navigate({ to: `/${customer.username}` });
@@ -77,6 +79,20 @@ function CustomerAuthPage() {
       setError(authError instanceof Error ? authError.message : mode === "login" ? "Gagal masuk" : "Gagal mendaftar");
     }
   };
+
+  if (!isLoading && isSsoHandoff && !isAuthenticated) {
+    return (
+      <div className="app-page merchandise-app min-h-app px-3 py-4 sm:py-6">
+        <main className="app-shell mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-md flex-col items-center justify-center bg-background px-5 py-8 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">!</div>
+          <h1 className="mt-5 text-xl font-black">Session Djiwa App belum terbaca</h1>
+          <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">Login di Djiwa App belum tersinkron ke Merchandise. Coba hubungkan ulang dari tombol di bawah.</p>
+          <button type="button" className="mt-6 min-h-11 w-full max-w-xs rounded-[14px] bg-primary px-4 py-2.5 text-sm font-black text-white" onClick={() => redirectToDjiwaAppLogin()}>Hubungkan ulang Djiwa App</button>
+          <button type="button" className="mt-2 min-h-11 w-full max-w-xs rounded-[14px] border border-border px-4 py-2.5 text-xs font-bold text-muted-foreground" onClick={() => { window.history.replaceState({}, "", "/masuk"); window.location.reload(); }}>Login manual</button>
+        </main>
+      </div>
+    );
+  }
 
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
   const pageMotion = reduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 };

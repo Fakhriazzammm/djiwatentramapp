@@ -4,7 +4,7 @@ import { sentinelClient } from "@better-auth/infra/client";
 const AUTH_SERVER_URL = "https://djiwatentram.yumme.id/api/auth";
 const DJIWA_APP_LOGIN_URL = "https://djiwatentram.yumme.id/masuk";
 
-export function redirectToDjiwaAppLogin(returnTo = `${window.location.origin}/masuk`) {
+export function redirectToDjiwaAppLogin(returnTo = `${window.location.origin}/masuk?sso=1`) {
   const url = new URL(DJIWA_APP_LOGIN_URL);
   url.searchParams.set("returnTo", returnTo);
   window.location.assign(url.toString());
