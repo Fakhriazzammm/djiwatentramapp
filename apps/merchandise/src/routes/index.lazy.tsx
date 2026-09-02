@@ -95,12 +95,13 @@ function BrandCustomerIndex() {
 		return () => window.clearInterval(intervalId);
 	}, [carouselPaused, featuredProducts.length]);
 
-	// ponytail: sudah login → langsung ke /{username}, bukan /order
+	// Setelah kembali dari Djiwa App, session bisa sudah valid saat onboarding
+	// masih tampil. Langsung lewati onboarding agar tidak terlihat seperti login loop.
 	useEffect(() => {
-		if (entryPhase === "home" && isAuthenticated && customer) {
-			navigate({ to: `/${customer.username}` });
-		}
-	}, [entryPhase, isAuthenticated, customer, navigate]);
+		if (entryPhase === "splash" || isLoading || !isAuthenticated || !customer) return;
+		if (entryPhase !== "home") setEntryPhase("home");
+		navigate({ to: `/${customer.username}` });
+	}, [entryPhase, isLoading, isAuthenticated, customer, navigate]);
 
 	if (entryPhase === "splash") {
 		return <CustomerSplash logoUrl={logoUrl} storeName={storeName} />;
