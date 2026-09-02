@@ -12,6 +12,12 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  // Customer sessions are shared by the Djiwa App storefronts.
+  trustedOrigins: [
+    "https://djiwatentram.yumme.id",
+    "https://merchandise.yumme.id",
+    "http://localhost:5173",
+  ],
   emailAndPassword: {
     enabled: true,
   },
