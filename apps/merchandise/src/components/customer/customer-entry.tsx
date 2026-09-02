@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 
@@ -46,9 +47,58 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onDjiwaApp, o
   const reduceMotion = useReducedMotion();
   const brandLogoUrl = logoUrl || "/logo-djiwa.png";
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isConnectingToDjiwa, setIsConnectingToDjiwa] = useState(false);
+
+  useEffect(() => () => {
+    if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+  }, []);
+
+  const handleDjiwaApp = () => {
+    if (isConnectingToDjiwa) return;
+    setIsConnectingToDjiwa(true);
+    redirectTimeoutRef.current = setTimeout(onDjiwaApp, 850);
+  };
 
   return (
-    <div className="app-page merchandise-app min-h-app px-3 py-4 sm:py-6">
+    <div className="app-page merchandise-app relative min-h-app px-3 py-4 sm:py-6">
+      {isConnectingToDjiwa ? (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 px-6 text-center backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div
+            className="w-full max-w-sm rounded-3xl border border-border bg-card px-6 py-8 shadow-xl"
+            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring" as const, stiffness: 320, damping: 26 }}
+          >
+            <div className="relative mx-auto flex h-24 w-24 items-center justify-center rounded-[28px] bg-primary/10">
+              <motion.div
+                className="absolute inset-1 rounded-[24px] border-2 border-primary/25"
+                animate={{ scale: [1, 1.14, 1], opacity: [0.8, 0.2, 0.8] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.img
+                src={brandLogoUrl}
+                alt="Merchandise"
+                className="relative h-14 w-14 rounded-2xl object-contain"
+                animate={{ x: [0, 5, 0, -5, 0] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </div>
+            <p className="mt-6 text-base font-black">Menghubungkan ke Djiwa App</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Menyinkronkan sesi login agar kamu tidak perlu masuk ulang.</p>
+            <div className="mt-5 flex items-center justify-center gap-2 text-[11px] font-bold text-primary">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+              Secure connection
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+
       <motion.main
         aria-labelledby="customer-onboarding-title"
         className="app-shell mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-md flex-col justify-between bg-background px-4 py-6 sm:min-h-[calc(100dvh-3rem)]"
@@ -95,7 +145,7 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onDjiwaApp, o
         </div>
 
         <div className="space-y-2">
-          <motion.button type="button" className="min-h-11 w-full rounded-[14px] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm" onClick={onDjiwaApp} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
+          <motion.button type="button" className="min-h-11 w-full rounded-[14px] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm" onClick={handleDjiwaApp} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
             Lanjut dengan Djiwa App
           </motion.button>
           <motion.button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/30 bg-primary/5 px-5 py-3 text-sm font-bold text-primary" onClick={onMember} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>

@@ -12,6 +12,7 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  baseURL: "https://djiwatentram.yumme.id",
   // Customer sessions are shared by the Djiwa App storefronts.
   trustedOrigins: [
     "https://djiwatentram.yumme.id",
