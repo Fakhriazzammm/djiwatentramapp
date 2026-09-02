@@ -4,6 +4,7 @@ import { CalendarDays, Clock, MapPin, Phone, ShoppingCart, UtensilsCrossed } fro
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
+import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { CustomerOnboarding, CustomerSplash } from "@/components/customer/customer-entry";
 import { currency } from "@/components/customer/types";
@@ -295,6 +296,7 @@ function BrandCustomerIndex() {
 						}
 					}}
 					onSkip={() => setAuthModalOpen(false)}
+					onDjiwaAppSignIn={() => redirectToDjiwaAppLogin()}
 					onGoogleSignIn={async () => {
 						try {
 							setAuthError(undefined);

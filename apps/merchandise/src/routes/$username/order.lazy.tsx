@@ -53,6 +53,7 @@ import { UpsellSheet } from "@/components/customer/upsell-sheet";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
+import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 
@@ -993,6 +994,7 @@ function OrderPage() {
 						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
 						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 						onSkip={() => setAuthModalOpen(false)}
+						onDjiwaAppSignIn={() => redirectToDjiwaAppLogin()}
 						onGoogleSignIn={signInWithGoogle}
 						onResetPassword={async (email) => { try { await resetPassword(email); } catch { } }}
 						isLoading={authLoading}

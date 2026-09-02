@@ -20,6 +20,7 @@ type AuthModalProps = {
   onRegister: (email: string, password: string, name: string) => void;
   onResetPassword: (email: string) => void;
   onSkip: () => void;
+  onDjiwaAppSignIn?: () => void;
   onGoogleSignIn?: () => void;
   isLoading?: boolean;
   error?: string;
@@ -33,6 +34,7 @@ export function AuthModal({
   onRegister,
   onResetPassword,
   onSkip,
+  onDjiwaAppSignIn,
   onGoogleSignIn,
   isLoading = false,
   error,
@@ -154,6 +156,18 @@ export function AuthModal({
                     : "Daftar untuk mendapatkan akses Djiwa Pay dan kemudahan pemesanan."}
                 </p>
               </DialogHeader>
+
+              {onDjiwaAppSignIn ? (
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={onDjiwaAppSignIn}
+                  className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all hover:brightness-105 disabled:opacity-50"
+                >
+                  <LogIn aria-hidden="true" className="h-4 w-4" />
+                  Lanjut dengan Djiwa App
+                </button>
+              ) : null}
 
               {/* Tabs */}
               <div className="mt-4 flex rounded-xl bg-muted/50 p-0.5">

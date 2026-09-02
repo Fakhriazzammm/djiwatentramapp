@@ -5,6 +5,7 @@ import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useOrderContext } from "@/hooks/use-order-context";
 import { AuthModal } from "@/components/customer/auth-modal";
+import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
@@ -152,6 +153,7 @@ function MemberHomePage() {
 			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
 			onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 			onSkip={() => setAuthModalOpen(false)}
+			onDjiwaAppSignIn={() => redirectToDjiwaAppLogin()}
 			onGoogleSignIn={async () => {
 				try {
 					setAuthError(undefined);

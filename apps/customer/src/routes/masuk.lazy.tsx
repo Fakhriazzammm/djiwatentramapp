@@ -21,6 +21,20 @@ function GoogleMark() {
   );
 }
 
+function getSafeMerchandiseReturnUrl() {
+  const raw = new URLSearchParams(window.location.search).get("returnTo");
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    const isAllowedOrigin =
+      url.origin === "https://merchandise.yumme.id" ||
+      url.origin === "http://localhost:5174";
+    return isAllowedOrigin ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function CustomerAuthPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
@@ -36,7 +50,14 @@ function CustomerAuthPage() {
   const [info, setInfo] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated && customer) navigate({ to: `/${customer.username}` });
+    if (isAuthenticated && customer) {
+      const returnTo = getSafeMerchandiseReturnUrl();
+      if (returnTo) {
+        window.location.assign(returnTo);
+        return;
+      }
+      navigate({ to: `/${customer.username}` });
+    }
   }, [customer, isAuthenticated, navigate]);
 
   const handleGoogle = async () => {

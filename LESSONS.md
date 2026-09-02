@@ -18,6 +18,7 @@
 | 12 | **Merchandise memakai warna shared Customer** — diferensiasi app cukup melalui layout, komponen, copy, dan flow direct-to-menu; jangan membuat token warna baru yang memecah konsistensi brand. | merchandise/ui-ux/preferensi |
 | 13 | **Merchandise catalog-only tidak memerlukan kode menu** — tampilkan katalog sebagai mode tunggal dan hilangkan input nomor, tab kode, keypad, badge nomor, serta scanner dari UI; Customer tetap dapat mempertahankan akses kode bila dibutuhkan. | merchandise/catalog/ui-ux |
 | 14 | **Customer SSO lintas brand harus memakai auth server pusat + credentials eksplisit** — kedua storefront mengarah ke Better Auth endpoint yang sama, frontend mengirim cookie dengan `credentials: include`, dan server membatasi `trustedOrigins` ke origin production yang terdaftar; email/password tetap tersedia sementara social login bersifat opsional. | customer-auth/sso/security |
+| 15 | **Tombol login lintas app harus memakai return URL allowlist** — Merchandise boleh mengarahkan customer ke halaman auth pusat Djiwa App, tetapi callback hanya boleh kembali ke origin Merchandise yang terdaftar; jangan mempercayai URL redirect arbitrer dari query string. | customer-auth/security/routing |
 
 ## Supabase
 

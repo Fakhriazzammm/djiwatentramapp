@@ -274,7 +274,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       toast.success("Berhasil masuk!");
       // Better Auth has set the session cookie; reload lets useSession recover
       // it deterministically instead of depending on an in-memory hook update.
-      window.location.assign("/masuk");
+      window.location.assign("/masuk" + window.location.search);
     } catch (error) {
       console.error("[customer-auth] Login error:", error);
       setIsLoading(false);
@@ -304,7 +304,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         if (!requiresEmailConfirm) {
           // Auto-confirm registration has a session cookie; recover it from a
           // clean app boot just like password login.
-          window.location.assign("/masuk");
+          window.location.assign("/masuk" + window.location.search);
         }
       } catch (error) {
         console.error("[customer-auth] Register error:", error);
@@ -332,7 +332,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: window.location.origin + "/masuk",
+      callbackURL: window.location.origin + "/masuk" + window.location.search,
     });
   }, []);
 
