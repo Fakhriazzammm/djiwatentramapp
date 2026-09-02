@@ -18,6 +18,18 @@ export const auth = betterAuth({
     "https://merchandise.yumme.id",
     "http://localhost:5173",
   ],
+  // Share the central customer session across Djiwa App subdomains.
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: ".yumme.id",
+    },
+    defaultCookieAttributes: {
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
