@@ -108,6 +108,9 @@ function BrandCustomerIndex() {
 	}
 
 	if (entryPhase === "onboarding") {
+		if (isLoading) {
+			return <CustomerPageSkeleton label="Memeriksa sesi Djiwa App" />;
+		}
 		return (
 			<CustomerOnboarding
 				logoUrl={logoUrl}
