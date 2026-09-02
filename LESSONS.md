@@ -136,6 +136,8 @@
 || 1 | **KOL public intake memisahkan profil publik dan kontak admin** — Guest boleh auto-submit ke Edge Function tervalidasi; public view hanya expose creator/platform, sedangkan kontak, rate card, notes, dan history disimpan di tabel private dengan grant service-role saja. | arsitektur, security, public-intake |
 | 126 | **Target Telegram wajib konsisten lintas bot dan Edge Function** — `yumi-hrd-agent`/`yumi-ai-bot` memakai grup report canonical, sedangkan `process-closing` dapat tetap membawa env lama; setelah mengubah `.env`, container Functions harus di-recreate dan target diverifikasi dengan Bot API. | attendance/telegram/deployment |
 
+| 2 | **Export tabel KOL harus memakai dataset visible** — CSV, XLSX, dan PDF mengambil hasil search/filter/sort yang sedang dilihat operator, memakai BOM UTF-8 untuk kompatibilitas spreadsheet, dan dynamic import untuk menjaga route awal tetap ringan. | kol/marketing/export |
+
 ## POS Checkout
 
 | # | Lesson | Sumber |
