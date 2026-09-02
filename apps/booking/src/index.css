@@ -55,6 +55,11 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .payment-note { max-width: none; margin-top: 9px; padding: 9px 10px; display: flex; align-items: flex-start; gap: 8px; border: 1px solid #cfe0fa; border-radius: 14px; color: #164fa9; background: var(--booking-accent-soft); font-size: 11px; line-height: 1.45; }
 .payment-note svg { flex: 0 0 auto; margin-top: 1px; }
 .info-grid { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; }
+.booking-promo { display: block; margin-top: 12px; overflow: hidden; border: 1px solid rgba(228,231,235,.9); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow-soft); transition: transform 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios); }
+.booking-promo:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(15,23,42,.10); }
+.booking-promo:active { transform: scale(.99); }
+.booking-promo:focus-visible { outline: 3px solid rgba(26,93,198,.35); outline-offset: 3px; }
+.booking-promo img { display: block; width: 100%; height: auto; }
 .info-card, .panel, .form-card, .review-card, .success, .state-card { background: var(--surface); border: 1px solid rgba(228,231,235,.9); border-radius: 22px; box-shadow: var(--shadow-soft); }
 .info-card { min-height: 0; padding: 15px; display: grid; grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; align-items: center; }
 .info-card .info-icon { grid-column: 1; grid-row: 1 / span 2; }

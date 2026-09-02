@@ -183,6 +183,14 @@ function BrandCustomerIndex() {
 
 							</div>
 
+							<a
+								href="https://merchandise.yumme.id/"
+								aria-label="Jelajahi Merchandise Djiwa Tentram"
+								className="block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]"
+							>
+								<img src="/merchandise-promo-banner.png" alt="Bawa Rasa Tentram ke Setiap Hari — Jelajahi Merchandise" className="block h-auto w-full" loading="lazy" />
+							</a>
+
 							{/* ── Kolom kanan: preview menu + info ─── */}
 							<div className="flex w-full flex-col gap-3">
 								{/* Menu preview */}
