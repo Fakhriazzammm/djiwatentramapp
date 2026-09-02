@@ -15,6 +15,7 @@
 | 9 | **Nama peserta Split Bill harus menjadi state live** — peserta default seperti `Saya`/`Teman 1` perlu input editable; saat rename, assignment harus dipindahkan ke nama baru dan exporter harus membaca state peserta terbaru agar nama di PNG sama dengan sheet. | customer/receipt/split-bill |
 | 10 | **Input editable tidak boleh memakai value yang diketik sebagai React key** — key dinamis menyebabkan input di-remount setiap karakter, fokus hilang, dan keyboard mobile menutup; gunakan key stabil berbasis identitas/index peserta. | customer/mobile/debug |
 | 11 | **Ciri khusus customer adalah metadata opsional** — jangan memblokir pendaftaran guest/member atau checkout saat kosong; tetap simpan dan tampilkan nilainya bila customer mengisi, tetapi validasi wajib hanya untuk data yang diperlukan oleh flow pembayaran. | customer/checkout/ux |
+| 12 | **Merchandise memakai warna shared Customer** — diferensiasi app cukup melalui layout, komponen, copy, dan flow direct-to-menu; jangan membuat token warna baru yang memecah konsistensi brand. | merchandise/ui-ux/preferensi |
 
 ## Supabase
 
