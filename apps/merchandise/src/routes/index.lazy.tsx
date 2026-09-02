@@ -112,6 +112,7 @@ function BrandCustomerIndex() {
 				logoUrl={logoUrl}
 				storeName={storeName}
 				onMember={() => { completeOnboarding(); navigate({ to: "/masuk" }); }}
+				onDjiwaApp={() => redirectToDjiwaAppLogin()}
 				onGuest={completeOnboarding}
 			/>
 		);

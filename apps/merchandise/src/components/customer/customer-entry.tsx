@@ -38,10 +38,11 @@ type CustomerOnboardingProps = {
   logoUrl?: string;
   storeName: string;
   onMember: () => void;
+  onDjiwaApp: () => void;
   onGuest: () => void;
 };
 
-export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: CustomerOnboardingProps) {
+export function CustomerOnboarding({ logoUrl, storeName, onMember, onDjiwaApp, onGuest }: CustomerOnboardingProps) {
   const reduceMotion = useReducedMotion();
   const brandLogoUrl = logoUrl || "/logo-djiwa.png";
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
@@ -94,8 +95,11 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: Cu
         </div>
 
         <div className="space-y-2">
-          <motion.button type="button" className="min-h-11 w-full rounded-[14px] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm" onClick={onMember} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
-            Masuk / Daftar Member
+          <motion.button type="button" className="min-h-11 w-full rounded-[14px] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm" onClick={onDjiwaApp} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
+            Lanjut dengan Djiwa App
+          </motion.button>
+          <motion.button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/30 bg-primary/5 px-5 py-3 text-sm font-bold text-primary" onClick={onMember} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
+            Masuk / Daftar dengan email
           </motion.button>
           <motion.button type="button" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-5 py-3 text-sm font-bold text-muted-foreground" onClick={onGuest} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
             Lanjut sebagai tamu
