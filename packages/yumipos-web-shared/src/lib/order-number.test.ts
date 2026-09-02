@@ -15,4 +15,9 @@ describe("order number channel contract", () => {
     expect(getOrderChannel({ source: "customer_self_service", orderType: "dine_in" })).toBe("app");
     expect(getOrderChannel({ source: "pos", orderType: "takeaway" })).toBe("pos");
   });
+
+  it("uses a dedicated merchandise channel when brand_slug is merchandise", () => {
+    expect(formatOrderNumber({ sequence: 1, createdAt: new Date("2026-09-02T10:00:00+07:00").getTime(), context: { source: "customer_self_service", brandSlug: "merchandise", orderType: "online" } })).toBe("ORD-MERCH-O-0001-020926");
+    expect(getOrderChannel({ source: "customer_self_service", brandSlug: "merchandise" })).toBe("merchandise");
+  });
 });

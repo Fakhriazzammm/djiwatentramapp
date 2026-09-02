@@ -25,6 +25,7 @@
     "build:karyawan": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@yumipos/karyawan",
     "build:web": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=web",
     "build:admin": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@yumipos/admin",
+    "build:marketplace": "node scripts/update-version.mjs && node scripts/write-version-manifest.mjs && turbo build --filter=@yumipos/marketplace",
     "dev:pos": "turbo dev --filter=@yumipos/pos",
     "dev:customer": "turbo dev --filter=@yumipos/customer",
     "dev:karyawan": "turbo dev --filter=@yumipos/karyawan",

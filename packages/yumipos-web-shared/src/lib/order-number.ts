@@ -6,6 +6,7 @@ export type OrderChannel =
   | "grabfood"
   | "shopeefood"
   | "telegram"
+  | "merchandise"
   | "unknown";
 
 export type OrderNumberContext = {
@@ -14,6 +15,7 @@ export type OrderNumberContext = {
   businessUnit?: string | null;
   orderType?: string | null;
   platform?: string | null;
+  brandSlug?: string | null;
   booking?: boolean;
 };
 
@@ -23,6 +25,8 @@ function normalized(value?: string | null) {
 
 export function getOrderChannel(context: OrderNumberContext): OrderChannel {
   if (context.booking || normalized(context.source) === "booking") return "booking";
+
+  if (normalized(context.brandSlug) === "merchandise") return "merchandise";
 
   const businessUnit = normalized(context.businessUnit);
   if (businessUnit === "ordermieyamin" || businessUnit === "mieyamin") return "app";
@@ -50,6 +54,7 @@ export function getOrderChannelCode(channel: OrderChannel): string {
     grabfood: "GRAB",
     shopeefood: "SF",
     telegram: "TG",
+    merchandise: "MERCH",
     unknown: "UNK",
   }[channel];
 }

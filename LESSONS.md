@@ -122,6 +122,8 @@
 | 88 | **Profile hero mobile harus centered dan compact** — avatar di atas, nama dan username berdekatan, membership badge tidak full-width, decorative background sangat halus, dan motion hanya pada content identity agar hierarchy terasa seperti Apple Profile. | customer/profile/mobile/ui-ux |
 || 89 | **Ciri khusus customer hanya untuk checkout, bukan Profile** — Profile menampilkan username persisten yang dapat diedit; backend wajib memvalidasi format, ownership, dan uniqueness case-insensitive sebelum menyimpan ke `pos.customers`. | customer/profile/backend/data-integrity |
 
+| 89 | **Marketplace order numbering harus punya discriminator brand dan counter terisolasi** — gunakan `brand_slug=merchandise`, channel code `MERCH`, dan `p_order_kind=merchandise`; pertahankan counter `all` untuk POS/Customer agar nomor historis dan kontrak existing tidak berubah. | marketplace/arsitektur/deployment |
+
 ## Audio / POS
 
 | # | Lesson | Sumber |
