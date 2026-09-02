@@ -19,6 +19,7 @@
 | 13 | **Merchandise catalog-only tidak memerlukan kode menu** — tampilkan katalog sebagai mode tunggal dan hilangkan input nomor, tab kode, keypad, badge nomor, serta scanner dari UI; Customer tetap dapat mempertahankan akses kode bila dibutuhkan. | merchandise/catalog/ui-ux |
 | 14 | **Customer SSO lintas brand harus memakai auth server pusat + credentials eksplisit** — kedua storefront mengarah ke Better Auth endpoint yang sama, frontend mengirim cookie dengan `credentials: include`, dan server membatasi `trustedOrigins` ke origin production yang terdaftar; email/password tetap tersedia sementara social login bersifat opsional. | customer-auth/sso/security |
 | 15 | **Tombol login lintas app harus memakai return URL allowlist** — Merchandise boleh mengarahkan customer ke halaman auth pusat Djiwa App, tetapi callback hanya boleh kembali ke origin Merchandise yang terdaftar; jangan mempercayai URL redirect arbitrer dari query string. | customer-auth/security/routing |
+| 16 | **SSO `returnTo` harus ditandai sebagai handoff** — Customer login/register normal wajib berakhir di `/<slugusername>`; hanya URL auth yang membawa marker `sso=1` boleh kembali ke Merchandise. Tanpa marker, query `returnTo` lama dapat memicu redirect loop lintas storefront. | customer-auth/routing/debug |
 
 ## Supabase
 
@@ -139,6 +140,7 @@
 || 91 | **State array kosong saat loading tidak boleh menjadi baseline audio** — hook notifikasi POS mengembalikan `[]` sebelum request selesai; listener wajib menunggu `isLoading=false` sebelum seed historical IDs, jika tidak transaksi lama yang datang terlambat akan dianggap event realtime dan diputar ulang. | pos/audio/notification/debug |
 ||| 92 | **Customer voice perlu cutoff waktu setelah seed** — realtime reload mengembalikan seluruh daftar order, sehingga order historical yang baru muncul dapat memiliki `previous === undefined`; hanya order dengan `createdAt` setelah seed yang boleh diperlakukan sebagai order baru, sedangkan perubahan status order yang sudah dikenal tetap diproses. | customer/audio/realtime/debug |
 ||| 93 | **Audio transaksi wajib dibatasi ke sumber realtime** — Jangan enqueue suara dari polling notification atau handler create lokal; expose callback setelah reload realtime selesai, lalu proses snapshot hanya sekali per versi event dengan key order yang sama. | pos/customer/audio/realtime/idempotency |
+| 94 | **Formatter Order ID wajib diterapkan di boundary printer** — Memformat ID hanya pada list/detail UI tidak mengubah tiket thermal; `BluetoothPrinterService` harus memanggil formatter canonical sebelum menulis field `ORDER`, dengan provenance source, channel, tipe, sequence, dan tanggal dari caller. | pos/receipt/bug-fix |
 
 ## KOL Marketing
 
