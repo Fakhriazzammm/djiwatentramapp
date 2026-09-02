@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.211",
+	semantic: "0.2.214",
 	// Git/deploy commit hash (short)
-	commitHash: "c51bce4",
-	message: "fix(customer): make special characteristics optional",
+	commitHash: "3a6c4e2",
+	message: "feat(merchandise): use catalog-only ordering",
 	// Commit subject for the update prompt
-	commitMessage: "fix(customer): make special characteristics optional",
+	commitMessage: "feat(merchandise): use catalog-only ordering",
 	// Build timestamp
 	buildDate: "2026-09-02",
 	// Full version string for display

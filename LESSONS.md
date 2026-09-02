@@ -16,6 +16,7 @@
 | 10 | **Input editable tidak boleh memakai value yang diketik sebagai React key** — key dinamis menyebabkan input di-remount setiap karakter, fokus hilang, dan keyboard mobile menutup; gunakan key stabil berbasis identitas/index peserta. | customer/mobile/debug |
 | 11 | **Ciri khusus customer adalah metadata opsional** — jangan memblokir pendaftaran guest/member atau checkout saat kosong; tetap simpan dan tampilkan nilainya bila customer mengisi, tetapi validasi wajib hanya untuk data yang diperlukan oleh flow pembayaran. | customer/checkout/ux |
 | 12 | **Merchandise memakai warna shared Customer** — diferensiasi app cukup melalui layout, komponen, copy, dan flow direct-to-menu; jangan membuat token warna baru yang memecah konsistensi brand. | merchandise/ui-ux/preferensi |
+| 13 | **Merchandise catalog-only tidak memerlukan kode menu** — tampilkan katalog sebagai mode tunggal dan hilangkan input nomor, tab kode, keypad, badge nomor, serta scanner dari UI; Customer tetap dapat mempertahankan akses kode bila dibutuhkan. | merchandise/catalog/ui-ux |
 
 ## Supabase
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-react";
+import { Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice, getActiveHappyHourBanner } from "@/lib/utils/pricing";
@@ -90,9 +90,9 @@ export function renderMenuSection(props: MenuSectionProps) {
 			<div data-banner-variant={bannerVariant} className={cn("overflow-hidden rounded-[24px] border shadow-[0_8px_28px_rgba(15,23,42,0.06)]", bannerClassName, isBrandedBanner ? "text-white" : "text-foreground")}>
 				<div className="flex items-center justify-between gap-3 px-4 py-3.5">
 					<div className="min-w-0">
-						<p className={cn("text-[10px] font-black uppercase tracking-[0.18em]", isBrandedBanner ? "text-white/70" : "text-primary")}>{happyHourBanner ? `Happy Hour ${happyHourBanner.sessionLabel}` : "Step 3 · Pilih menu"}</p>
-						<h2 className="mt-1 font-display text-[21px] font-black leading-tight tracking-[-0.03em]">{happyHourBanner ? happyHourBanner.priceLabel : "Pilih menu"}</h2>
-						{happyHourBanner ? <p className="mt-1 text-[11px] font-medium text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p> : <p className="mt-1 text-xs text-muted-foreground">Tambahkan menu favoritmu ke pesanan.</p>}
+						<p className={cn("text-[10px] font-black uppercase tracking-[0.18em]", isBrandedBanner ? "text-white/70" : "text-primary")}>{happyHourBanner ? `Happy Hour ${happyHourBanner.sessionLabel}` : "Katalog merchandise"}</p>
+						<h2 className="mt-1 font-display text-[21px] font-black leading-tight tracking-[-0.03em]">{happyHourBanner ? happyHourBanner.priceLabel : "Pilih merchandise"}</h2>
+						{happyHourBanner ? <p className="mt-1 text-[11px] font-medium text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p> : <p className="mt-1 text-xs text-muted-foreground">Pilih produk merchandise yang ingin kamu pesan.</p>}
 					</div>
 					<div className={cn("shrink-0 rounded-2xl px-3 py-2 text-right", bannerVariant === "default" ? "bg-primary/10" : "bg-white/12")}><p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", bannerVariant === "default" ? "text-primary/70" : "text-white/60")}>Orang</p><p className={cn("mt-0.5 text-lg font-black leading-none", bannerVariant === "default" ? "text-primary" : "text-white")}>{props.partySize}</p></div>
 				</div>
@@ -103,55 +103,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 				{props.freeRefillCharge > 0 ? <div className={cn("mx-4 mb-3 rounded-xl px-3 py-2 text-[11px] font-bold", bannerVariant === "default" ? "bg-emerald-50 text-emerald-700" : "bg-white/12 text-white/85")}>Free refill · {currency(props.freeRefillCharge)}</div> : null}
 			</div>
 
-			<div className="grid grid-cols-2 gap-2 rounded-[18px] border border-border bg-card p-1.5 shadow-sm" role="tablist" aria-label="Mode pemilihan menu">
-				<button type="button" role="tab" aria-selected={props.menuMode === "number"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("number")}>Kode menu</button>
-				<button type="button" role="tab" aria-selected={props.menuMode === "catalog"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("catalog")}>Katalog</button>
-			</div>
-			<p className="px-1 text-xs text-muted-foreground">{props.menuMode === "number" ? "Masukkan nomor yang tertera di menu meja." : "Pilih makanan dan minuman dari katalog."}</p>
-
-			{props.menuMode === "number" && props.config.enableMenuNumberEntry ? (
-				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-					<div className="flex items-center justify-between gap-2">
-						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: props.themeColor }}>Mode cepat</p><h3 className="text-sm font-black">Input nomor produk</h3></div>
-						{props.config.enableBarcodeScan ? <button type="button" className="flex min-h-11 items-center gap-1.5 rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-bold text-primary" onClick={() => props.setScannerOpen(true)}><Barcode className="h-3.5 w-3.5" />Scan</button> : null}
-					</div>
-					<div className="mt-3 rounded-xl border border-border bg-background px-3 py-3 shadow-inner">
-						<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input className="w-full bg-transparent text-xl font-black tracking-[0.25em] outline-none placeholder:text-base placeholder:font-semibold placeholder:tracking-normal" inputMode="numeric" placeholder="Ketik nomor menu" value={props.manualCode} onChange={(event) => props.setManualCode(event.target.value.replace(/\D/g, ""))} /></div>
-					</div>
-					{props.codeFeedback ? <p role={isCodeFeedbackError ? "alert" : "status"} className={cn("mt-2.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold", isCodeFeedbackError ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700")}>{props.codeFeedback}</p> : <p className="mt-2.5 text-xs text-muted-foreground">Masukkan nomor produk lengkap untuk mencari menu.</p>}
-					{props.pendingNumberProduct ? (
-						<div className="mt-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
-							<p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Konfirmasi Produk</p>
-							<div className="mt-1 flex items-start justify-between gap-3">
-								<div className="min-w-0">
-									<p className="truncate text-sm font-black text-foreground">{props.pendingNumberProduct.name}</p>
-									<p className="mt-0.5 text-xs text-muted-foreground">Nomor {props.pendingNumberProduct.menuNumber ?? props.manualCode}</p>
-								</div>
-								<p className="shrink-0 text-sm font-black text-primary">{currency(calculateEffectivePrice({ _id: props.pendingNumberProduct._id, price: props.pendingNumberProduct.price, categoryId: props.pendingNumberProduct.categoryId }, props.discounts).finalPrice)}</p>
-							</div>
-							<div className="mt-3 flex items-center justify-between gap-2">
-								<div className="flex items-center gap-1 rounded-xl border border-border bg-background p-1">
-									<button type="button" aria-label="Kurangi jumlah" className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted" onClick={() => props.setPendingNumberQuantity(Math.max(1, props.pendingNumberQuantity - 1))}><Minus className="h-4 w-4" /></button>
-									<span className="min-w-8 text-center text-sm font-black">{props.pendingNumberQuantity}</span>
-									<button type="button" aria-label="Tambah jumlah" className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={() => props.setPendingNumberQuantity(props.pendingNumberQuantity + 1)}><Plus className="h-4 w-4" /></button>
-								</div>
-								<div className="flex items-center gap-1.5">
-									<button type="button" className="min-h-11 rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground" onClick={props.cancelPendingNumberProduct}>Batal</button>
-									<button type="button" className="min-h-11 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground" onClick={props.approvePendingNumberProduct}>Tambah ke keranjang</button>
-								</div>
-							</div>
-						</div>
-					) : null}
-					<div className="mt-3 grid grid-cols-3 gap-2">
-						{["1","2","3","4","5","6","7","8","9"].map((digit) => <button type="button" key={digit} className="rounded-xl border border-border bg-background px-3 py-3 text-xl font-black shadow-sm" onClick={() => props.setManualCode(`${props.manualCode}${digit}`)}>{digit}</button>)}
-						<button type="button" className="rounded-xl border border-border bg-background px-3 py-3 text-xs font-black shadow-sm" onClick={() => props.setManualCode("")}>Clear</button>
-						<button type="button" className="rounded-xl border border-border bg-background px-3 py-3 text-xl font-black shadow-sm" onClick={() => props.setManualCode(`${props.manualCode}0`)}>0</button>
-						<button type="button" className="rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={() => props.setManualCode(props.manualCode.slice(0, -1))}>Delete</button>
-					</div>
-				</div>
-			) : null}
-
-			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
+			{props.config.enableCatalogBrowsing ? (
 				<div className="space-y-3">
 					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
@@ -160,7 +112,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							<input
 								aria-label="Cari menu"
 								className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2 pl-9 pr-3 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-								placeholder="Cari nama atau nomor menu"
+								placeholder="Cari merchandise"
 								value={props.catalogQuery}
 								onChange={(event) => props.setCatalogQuery(event.target.value)}
 							/>
@@ -227,7 +179,6 @@ export function renderMenuSection(props: MenuSectionProps) {
 									<article key={product._id} className="flex items-center gap-3 rounded-[24px] border border-border/80 bg-card p-2.5 shadow-[0_4px_20px_rgba(9,9,11,0.05)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[18px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
 											<ProductImage src={product.image} alt={product.name} />
-											{product.menuNumber != null ? <span className="absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}
 											{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
 											{pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 										</button>
@@ -235,7 +186,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 											<div className="flex min-h-full flex-col justify-between gap-1.5">
 												<div>
 													<p className="break-words text-sm font-black leading-tight">{product.name}</p>
-													{product.description ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Siap dipesan di meja Anda.</p>}
+													{product.description ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Siap dikirim atau diambil sesuai pilihan toko.</p>}
 												</div>
 												<div className="flex items-end justify-between gap-2">
 													<div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>
