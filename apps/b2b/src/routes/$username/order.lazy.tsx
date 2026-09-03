@@ -162,6 +162,10 @@ function OrderPage() {
 		setStep("menu");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
+	const goToOrderStep = (nextStep: OrderStep) => {
+		setStep(nextStep);
+		navigate({ to: "/$username/order", params: { username }, search: { step: nextStep } as any, replace: true });
+	};
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
@@ -1028,7 +1032,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Delivery section ─────────────────────────── */}
-					{step === "delivery" ? <DeliveryStep deliveryDate={deliveryDate} setDeliveryDate={setDeliveryDate} deliveryProvider={deliveryProvider} setDeliveryProvider={setDeliveryProvider} deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress} onBack={() => setStep("menu")} onContinue={() => { if (!deliveryDate || !deliveryProvider || !deliveryAddress.trim()) { toast.error("Lengkapi kurir, tanggal, dan alamat pengiriman"); return; } setStep("checkout"); }} /> : null}
+					{step === "delivery" ? <DeliveryStep deliveryDate={deliveryDate} setDeliveryDate={setDeliveryDate} deliveryProvider={deliveryProvider} setDeliveryProvider={setDeliveryProvider} deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress} onBack={() => goToOrderStep("menu")} onContinue={() => { if (!deliveryDate || !deliveryProvider || !deliveryAddress.trim()) { toast.error("Lengkapi kurir, tanggal, dan alamat pengiriman"); return; } goToOrderStep("checkout"); }} /> : null}
 
 					{/* ── Checkout section ────────────────────────── */}
 					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
@@ -1043,7 +1047,7 @@ function OrderPage() {
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep("menu")} />
 							<BottomButton label="Keranjang" icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
-							<BottomButton label={receipt ? "Struk" : "Checkout"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : step === "menu" ? "delivery" : "checkout")} primary disabled={!receipt && (step !== "menu" || !cart.length)} />
+							<BottomButton label={receipt ? "Struk" : "Checkout"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => goToOrderStep(receipt ? "receipt" : "delivery")} primary disabled={!receipt && (step !== "menu" || !cart.length)} />
 						</div>
 					</div>
 				) : null}
