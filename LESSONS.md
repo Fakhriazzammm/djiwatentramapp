@@ -39,7 +39,8 @@
 | 8 | **Self-host PostgreSQL tidak selalu menyediakan helper JSONB yang diasumsikan** — RPC harus diuji pada engine production; gunakan operasi JSONB portable seperti `v_updates <> '{}'::jsonb` dan transactional rollback test sebelum rollout. | debug |
 | 9 | **Setiap app Vite wajib punya publishable Supabase key saat build** — fallback URL saja tidak cukup; `import.meta.env` dibekukan saat build sehingga app tanpa `VITE_SUPABASE_PUBLISHABLE_KEY` masuk state “Supabase belum dikonfigurasi”. Simpan key production di env ignored dan sediakan `.env.example`. | deployment |
 
-| 9 | **Setiap app Vite harus membawa env build sendiri** — cloning app tidak otomatis menyalin file `.env` yang di-ignore Git; tanpa `VITE_SUPABASE_PUBLISHABLE_KEY`, Vite membekukan konfigurasi kosong ke bundle dan runtime menampilkan “Supabase client key is not configured”. Sediakan `.env.example`, salin env production secara aman sebelum build, dan verifikasi marker bundle + REST 200. | merchandise/deployment/debug |
+|| 9 | **Setiap app Vite harus membawa env build sendiri** — cloning app tidak otomatis menyalin file `.env` yang di-ignore Git; tanpa `VITE_SUPABASE_PUBLISHABLE_KEY`, Vite membekukan konfigurasi kosong ke bundle dan runtime menampilkan “Supabase client key is not configured”. Sediakan `.env.example`, salin env production secara aman sebelum build, dan verifikasi marker bundle + REST 200. | merchandise/deployment/debug |
+|| 10 | **Clone app wajib menyiapkan env publishable sebelum build pertama** — `.env` sengaja tidak masuk Git, sehingga app baru dapat ter-build tetapi Supabase client tetap tidak terkonfigurasi. Salin hanya variabel `VITE_*` dari app sumber, jangan membawa service secret, lalu rebuild sebelum deploy. | b2b/deployment/debug |
 
 ## Backend
 
