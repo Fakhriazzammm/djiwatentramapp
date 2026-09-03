@@ -1,7 +1,7 @@
 {
-  "version": "0.2.292",
-  "commitHash": "6ac62d7",
-  "message": "fix(b2b): remove cashier payment option",
+  "version": "0.2.294",
+  "commitHash": "9debaa8",
+  "message": "fix(b2b): use dedicated delivery order numbers",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T17:14:21.499Z"
+  "generatedAt": "2026-09-03T17:21:28.895Z"
 }
