@@ -90,7 +90,7 @@ def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", p
         label = "Djiwa Pay"
     elif method in ("qris", "qris_mayar", "mayar"):
         gateway_provider = payment_gateway.get("provider") if isinstance(payment_gateway, dict) else ""
-        label = "QRIS / Mayar" if str(gateway_provider or "").lower() == "mayar" else "QRIS"
+        label = "QRIS"
     elif method == "djiwaapp":
         label = "QRIS" if payment_gateway else "Metode pembayaran lama"
     elif method in ("transfer", "bank_transfer"):

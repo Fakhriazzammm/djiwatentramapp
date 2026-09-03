@@ -660,9 +660,7 @@ function OrderPage() {
 		try {
 			const normalizedCustomerName = customerName.trim();
 			let guestCustomerSourceId: string | null = null;
-			// Guest QRIS perlu disinkronkan agar identity dan contact dapat dipakai Mayar.
-			// Guest bayar tunai tidak boleh dipaksa mengisi email/WhatsApp; nama dan ciri
-			// customer tetap disimpan langsung pada pending order untuk kasir.
+			// Guest QRIS perlu disinkronkan agar identity dan contact tersimpan lengkap.
 			if (!isAuthenticated && paymentChoice === "mayar") {
 				const guestCapture = await invokeEdgeFunction<{ customerSourceId?: string }>("customer-sync", {
 					action: "captureGuest",
