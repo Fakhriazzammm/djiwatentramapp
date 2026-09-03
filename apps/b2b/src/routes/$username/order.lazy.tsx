@@ -343,9 +343,9 @@ function OrderPage() {
 		taxRate,
 		serviceChargeRate,
 		source: "customer_self_service",
-		paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
+		paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "qris",
 		paymentChoice,
-		paymentReceiptKind: paymentChoice === "cashier" ? "cashier_pending" : null,
+		paymentReceiptKind: null,
 	});
 	const serviceChargeAmount = taxCalculation.serviceChargeAmount;
 	const taxBase = taxCalculation.taxBase;
@@ -356,11 +356,6 @@ function OrderPage() {
 		/(dessert|cake|pudding|ice cream|gelato|tiramisu|sweet)/i.test(item.name)
 	);
 	const paymentOptions = [
-		{
-			key: "cashier" as PaymentChoice,
-			label: "Bayar Tunai di Kasir",
-			description: "Tampilkan struk dan bayar langsung ke kasir.",
-		},
 		...(canUseWallet
 			? [
 					{
@@ -380,6 +375,11 @@ function OrderPage() {
 			  ]
 			: []),
 	];
+	useEffect(() => {
+		if (paymentOptions.length > 0 && !paymentOptions.some((option) => option.key === paymentChoice)) {
+			setPaymentChoice(paymentOptions[0].key);
+		}
+	}, [paymentChoice, paymentOptions]);
 
 	// ── URL sync ────────────────────────────────────────────────
 
@@ -410,10 +410,12 @@ function OrderPage() {
 	}, [activeFreeRefillPromo, config.enableFreeRefillPrompt, freeRefillOptIn]);
 
 	useEffect(() => {
-		if (!paymentOptions.find((option) => option.key === paymentChoice) || (paymentChoice === "wallet" && (!customer || (customer.walletBalance ?? 0) < total))) {
-			setPaymentChoice("cashier");
+		const selectedOption = paymentOptions.find((option) => option.key === paymentChoice);
+		const walletInsufficient = paymentChoice === "wallet" && (!customer || (customer.walletBalance ?? 0) < total);
+		if ((!selectedOption || walletInsufficient) && paymentOptions.length > 0) {
+			setPaymentChoice(paymentOptions[0].key);
 		}
-	}, [customer, paymentChoice, total]);
+	}, [customer, paymentChoice, paymentOptions, total]);
 
 	useEffect(() => {
 		if (!search.orderId || receipt) return;
@@ -855,20 +857,7 @@ function OrderPage() {
 					return;
 				}
 			} else {
-				const orderId = await createOrder({
-					...payload,
-					paymentReceiptKind: "cashier_pending",
-					isOpenBill: true,
-				});
-				if (!isAuthenticated) rememberGuestOrder(String(orderId));
-				setReceipt({
-					orderId,
-					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
-					mode: "cashier_pending",
-					paymentChoice,
-					dessertLater,
-					cartSnapshot: cart,
-				});
+				throw new Error("Metode pembayaran B2B belum tersedia. Pilih QRIS atau Djiwa Pay.");
 			}
 			setCart([]);
 			checkoutRequestKeyRef.current = null;

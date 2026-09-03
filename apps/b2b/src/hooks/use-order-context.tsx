@@ -170,7 +170,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	const [productSheet, setProductSheet] = useState<any | null>(null);
 
 	// Checkout / payment
-	const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("cashier");
+	const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("mayar");
 	const [customerName, setCustomerName] = useState("");
 	const [customerDescription, setCustomerDescription] = useState("");
 	const [deliveryDate, setDeliveryDate] = useState("");
