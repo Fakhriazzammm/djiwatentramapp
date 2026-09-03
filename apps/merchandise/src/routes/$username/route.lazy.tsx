@@ -62,7 +62,7 @@ function MemberHomePage() {
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || MARKETPLACE_BRAND_NAME;
 	const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
-	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://djiwatentram.yumme.id/daftar";
+	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}/order?step=table` : "https://djiwatentram.yumme.id/daftar";
 	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://merchandise.yumme.id/daftar";
 
 	const matches = useMatches();
