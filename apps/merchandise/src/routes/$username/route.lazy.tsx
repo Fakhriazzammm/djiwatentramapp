@@ -4,6 +4,7 @@ import { LogIn, LogOut } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useOrderContext } from "@/hooks/use-order-context";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
@@ -52,6 +53,7 @@ function MemberHomePage() {
 	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
 	const { setCart } = useOrderContext();
+	const siteSettings = useHybridSiteSettings();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
@@ -59,7 +61,7 @@ function MemberHomePage() {
 	const [confirmedProfileSourceId, setConfirmedProfileSourceId] = useState<string | null>(null);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || MARKETPLACE_BRAND_NAME;
-	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
+	const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
 
 	const matches = useMatches();
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
