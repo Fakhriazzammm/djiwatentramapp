@@ -15,6 +15,7 @@ import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/custo
 import { CustomerHomeActions, CustomerHomeHeader, CustomerGreeting, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { B2B_BRAND_NAME } from "@/lib/marketplace-config";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
+import { readGuestOrderReferences } from "@/components/customer/types";
 
 type GuestData = {
 	name: string;
@@ -68,11 +69,12 @@ function MemberHomePage() {
 	const matches = useMatches();
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
+	const latestTrackedOrderId = readGuestOrderReferences()[0]?.orderId;
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
 		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } }) },
 		{ label: "Riwayat", icon: <Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/riwayat"), onSelect: () => navigate({ to: "/$username/riwayat", params: { username } }) },
-		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
+		{ label: "Tracking", icon: <Djiwa3DIcon name="navigation-tracking" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/tracking"), onSelect: () => latestTrackedOrderId ? navigate({ to: "/$username/tracking", params: { username }, search: { orderId: latestTrackedOrderId } }) : navigate({ to: "/$username/riwayat", params: { username } }) },
 		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
 	];
 

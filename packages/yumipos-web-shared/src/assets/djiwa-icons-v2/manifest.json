@@ -1172,6 +1172,16 @@
       "source_type": "openai-codex-gpt-image-2-medium",
       "generation_status": "approved-prototype",
       "notes": "Unique landing-page filename to bypass stale PWA asset cache."
+    },
+    {
+      "name": "navigation-tracking",
+      "source": "generated-by-openai-codex",
+      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/tracking.webp",
+      "canvas": [1254, 1254],
+      "render_targets": [20, 24, 28],
+      "source_type": "openai-codex-gpt-image-2-medium",
+      "generation_status": "approved-prototype",
+      "notes": "Simplified B2B live-order tracking icon; generated for mobile bottom navigation."
     }
   ],
   "generated_provider": "openai-codex",

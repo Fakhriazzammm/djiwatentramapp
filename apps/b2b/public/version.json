@@ -1,7 +1,7 @@
 {
-  "version": "0.2.298",
-  "commitHash": "6737b7a",
-  "message": "fix(b2b): clear cart after successful payment",
+  "version": "0.2.299",
+  "commitHash": "e893769",
+  "message": "feat(b2b): add contact and delivery notification details",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T17:42:34.937Z"
+  "generatedAt": "2026-09-03T17:58:20.612Z"
 }

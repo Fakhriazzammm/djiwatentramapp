@@ -32,6 +32,7 @@ import navigationOrder from "../../assets/djiwa-icons-v2/navigation/order.webp";
 import navigationHistory from "../../assets/djiwa-icons-v2/navigation/history.webp";
 import navigationWallet from "../../assets/djiwa-icons-v2/navigation/wallet.webp";
 import navigationProfile from "../../assets/djiwa-icons-v2/navigation/profile.webp";
+import navigationTracking from "../../assets/djiwa-icons-v2/navigation/tracking.webp";
 import employeeHome from "../../assets/djiwa-icons-v2/navigation/employee-home.webp";
 import employeeSchedule from "../../assets/djiwa-icons-v2/navigation/employee-schedule.webp";
 import employeeAttendance from "../../assets/djiwa-icons-v2/navigation/employee-attendance.webp";
@@ -91,6 +92,7 @@ export const djiwa3DIconSources = {
   "navigation-history": navigationHistory,
   "navigation-wallet": navigationWallet,
   "navigation-profile": navigationProfile,
+  "navigation-tracking": navigationTracking,
   "employee-home": employeeHome,
   "employee-schedule": employeeSchedule,
   "employee-attendance": employeeAttendance,
