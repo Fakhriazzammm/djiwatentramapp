@@ -25,6 +25,7 @@
 | 19 | **Cross-channel switcher sebaiknya membuka katalog langsung** — jika home Customer dan Merchandise memiliki struktur serupa, link member gunakan `/<username>/order?step=menu` agar perpindahan konteks tidak membuat user melewati home yang sama; guest tetap diarahkan ke `/daftar` karena identitas guest tidak lintas-origin. | customer/merchandise/routing/ui-ux |
 | 20 | **Patch shared component wajib memakai konteks signature yang lengkap** — pencarian pendek seperti `}: {` dapat mengenai komponen lain dalam file yang sama; gunakan blok fungsi + nama komponen sebagai konteks dan jalankan build segera setelah perubahan props. | frontend/debug |
 | 21 | **Storefront B2B tanpa meja harus menghapus meja di seluruh flow** — jangan hanya menyembunyikan field pendaftaran; hilangkan juga state URL, input checkout, metadata payload, banner menu, dan struk. Gunakan `orderType: takeaway` agar order tidak diklasifikasikan sebagai dine-in. | b2b/checkout/debug |
+| 22 | **CTA produk spesifik harus mempertahankan intent melewati form guest** — simpan marker non-PII di origin sendiri sebelum `/daftar`, konsumsi sekali setelah validasi, lalu arahkan langsung ke katalog/order; jangan meneruskan PII lewat query lintas domain. | b2b/routing/ui-ux |
 
 ## Supabase
 

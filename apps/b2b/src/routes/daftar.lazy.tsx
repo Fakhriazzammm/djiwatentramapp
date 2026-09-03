@@ -83,9 +83,14 @@ function DaftarPage() {
 			}),
 		);
 
-		navigate({
-			to: `/${guestUsername}`,
-		});
+		const checkoutIntent = localStorage.getItem("b2b-checkout-intent");
+		if (checkoutIntent === "produksi") {
+			localStorage.removeItem("b2b-checkout-intent");
+			navigate({ to: `/${guestUsername}/order`, search: { step: "menu" } });
+			return;
+		}
+
+		navigate({ to: `/${guestUsername}` });
 	};
 	return (
 		<div className="app-page b2b-app min-h-app">

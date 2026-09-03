@@ -20,6 +20,9 @@ function ProduksiPage() {
       navigate({ to: "/$username/order", params: { username: customer.username }, search: { step: "menu" } });
       return;
     }
+    // Preserve the product landing intent through the guest data form.
+    // Guest localStorage is origin-scoped, so the intent is consumed only by B2B.
+    window.localStorage.setItem("b2b-checkout-intent", "produksi");
     navigate({ to: "/daftar" });
   };
 
@@ -45,7 +48,7 @@ function ProduksiPage() {
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Produksi</p>
               <h3 className="text-xl font-black">{product?.name || "Mie Mentah Kiloan Djiwa Tentram"}</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">{product?.description || "Mie mentah kiloan Djiwa Tentram untuk kebutuhan B2B."}</p>
-              <div className="flex items-end justify-between gap-3 pt-2"><p className="text-2xl font-black text-primary">{currency(Number(product?.price ?? 30000))}<span className="text-xs font-bold text-muted-foreground"> / kilo</span></p><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Aktif</span></div>
+              <div className="flex items-end justify-between gap-3 pt-2"><p className="text-2xl font-black text-primary">{currency(Number(product?.price ?? 30000))}<span className="text-xs font-bold text-muted-foreground"> / kilo</span></p><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${product?.isAvailable === false || Number(product?.quantity ?? 1) <= 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>{product?.isAvailable === false || Number(product?.quantity ?? 1) <= 0 ? "SOLD" : "Aktif"}</span></div>
             </div>
           </div>
 
