@@ -384,7 +384,7 @@ function OrderPage() {
 		if (!search.step) return;
 		const requestedStep = search.step === "table" || search.step === "party" ? "menu" : search.step;
 		if (requestedStep !== step) setStep(requestedStep as OrderStep);
-	}, [search.step, setStep, step]);
+	}, [search.step, setStep]);
 
 	// Sync: context state → URL (when step changes)
 	useEffect(() => {
