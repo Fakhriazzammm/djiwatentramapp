@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CalendarDays, Clock, MapPin, Phone, UtensilsCrossed } from "lucide-react";
+import { Clock, MapPin, Phone, UtensilsCrossed } from "lucide-react";
 import { useHybridBestSellers, useHybridProducts, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
 
@@ -62,23 +62,16 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
         href="https://booking.yumme.id/"
         target="_blank"
         rel="noreferrer"
-        className="block rounded-3xl border border-primary/15 bg-primary/[0.04] p-4 shadow-sm transition-shadow hover:shadow-md"
+        aria-label="Booking acara dan kolaborasi bersama Djiwa Tentram"
+        className="relative block overflow-hidden rounded-3xl border border-primary/15 bg-primary/[0.04] shadow-sm transition-shadow hover:shadow-md"
         initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
         whileTap={reduceMotion ? undefined : { scale: 0.98 }}
         transition={{ ...spring, duration: 0.35 }}
       >
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><CalendarDays className="h-5 w-5" strokeWidth={2} /></span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-primary">Booking Acara & Kolaborasi</p>
-            <p className="mt-1 text-sm font-black">Rencanakan acara bersama Djiwa Tentram.</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Untuk acara, gathering, dan kolaborasi.</p>
-          </div>
-          <img src={logoUrl} alt="Djiwa Tentram" className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1 shadow-sm" />
-          <span className="pt-1 text-lg font-black text-primary" aria-hidden="true">→</span>
-        </div>
+        <img src="/booking-promo-banner-v2.png" alt="Booking acara dan kolaborasi — Rencanakan acara bersama Djiwa Tentram" className="block h-auto w-full" loading="lazy" />
+        <img src={logoUrl} alt="Djiwa Tentram" className="absolute right-[13%] top-1/2 h-10 w-10 -translate-y-1/2 rounded-xl bg-white/95 p-1 object-contain shadow-sm" loading="lazy" />
       </motion.a>
 
       {featuredProducts.length > 0 ? (
