@@ -39,7 +39,11 @@ function CustomerAuthPage() {
   const isSsoHandoff = new URLSearchParams(window.location.search).get("sso") === "1";
 
   useEffect(() => {
-    if (isAuthenticated && customer) navigate({ to: `/${customer.username}` });
+    if (isAuthenticated && customer) {
+      const intent = window.localStorage.getItem("b2b-checkout-intent");
+      if (intent === "produksi") window.localStorage.removeItem("b2b-checkout-intent");
+      navigate({ to: `/${customer.username}/order`, search: { step: "menu" } });
+    }
   }, [customer, isAuthenticated, navigate]);
 
   const handleGoogle = async () => {

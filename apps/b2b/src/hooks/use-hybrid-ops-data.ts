@@ -30,6 +30,29 @@ async function fetchOrderById(id: string) {
 	return data as any;
 }
 
+async function fetchDeliveryOrderCounts(monthKey: string) {
+	const [year, month] = monthKey.split("-").map(Number);
+	const start = new Date(Date.UTC(year, month - 1, 1, -7));
+	const end = new Date(Date.UTC(year, month, 1, -7));
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_orders")
+		.select("deliveryDate,status,brandSlug")
+		.eq("brandSlug", "b2b")
+		.in("status", ["paid", "completed"])
+		.gte("deliveryDate", start.toISOString())
+		.lt("deliveryDate", end.toISOString());
+	if (error) throw error;
+	return (data ?? []).reduce<Record<string, number>>((counts, row: any) => {
+		if (!row.deliveryDate) return counts;
+		const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(row.deliveryDate));
+		const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+		const dateKey = `${get("year")}-${get("month")}-${get("day")}`;
+		counts[dateKey] = (counts[dateKey] ?? 0) + 1;
+		return counts;
+	}, {});
+}
+
 async function fetchVariationPresets() {
 	const supabase = createClient();
 	const { data, error } = await supabase
@@ -129,6 +152,15 @@ export function useHybridOrderById(id?: string | null) {
 		[id]
 	);
 	return supabaseData as any;
+}
+
+export function useHybridDeliveryOrderCounts(monthKey: string) {
+	const supabaseData = useSupabaseValue(
+		`b2b-delivery-counts:${monthKey}`,
+		() => fetchDeliveryOrderCounts(monthKey),
+		[monthKey],
+	);
+	return supabaseData as Record<string, number> | null | undefined;
 }
 
 export function useHybridVariationPresets() {

@@ -75,9 +75,11 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 		variant: item.variant ? String(item.variant) : undefined,
 	}));
 	const customerName = props.currentOrder?.customerName || "-";
-	const customerDescription = props.currentOrder?.customerDescription || "-";
-	const orderType = props.currentOrder?.orderType === "takeaway" ? "B2B / Takeaway" : "B2B Order";
+	const orderType = props.currentOrder?.orderType === "delivery" ? "B2B / Delivery" : "B2B Order";
 	const customerNotes = props.currentOrder?.notes || "-";
+	const deliveryProvider = props.currentOrder?.deliveryProvider || props.currentOrder?.delivery_provider || "-";
+	const deliveryDate = props.currentOrder?.deliveryDate || props.currentOrder?.delivery_date;
+	const deliveryAddress = props.currentOrder?.deliveryAddress || props.currentOrder?.delivery_address || "-";
 
 	const unifiedStatusLabel = isSettledOrder && orderStatus !== "completed" && orderStatus !== "selesai" ? "LUNAS"
 		: isSettledOrder ? "SELESAI"
@@ -122,15 +124,13 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 								<span className="text-muted-foreground">Nama</span>
 								<span className="font-semibold text-foreground">{customerName}</span>
 							</div>
-							<div className="flex items-start justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Ciri</span>
-								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerDescription}</span>
-							</div>
-
 							<div className="flex items-center justify-between gap-2 text-[11px]">
 								<span className="text-muted-foreground">Tipe</span>
 								<span className="font-semibold text-foreground">{orderType}</span>
 							</div>
+							<div className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">Kurir</span><span className="font-semibold text-foreground">{deliveryProvider}</span></div>
+							<div className="flex items-start justify-between gap-2 text-[11px]"><span className="text-muted-foreground">Jadwal kirim</span><span className="max-w-[70%] text-right font-semibold text-foreground">{deliveryDate ? new Date(deliveryDate).toLocaleDateString("id-ID", { dateStyle: "long" }) : "-"}</span></div>
+							<div className="flex items-start justify-between gap-2 text-[11px]"><span className="text-muted-foreground">Alamat</span><span className="max-w-[70%] break-words text-right font-semibold text-foreground">{deliveryAddress}</span></div>
 							<div className="flex items-start justify-between gap-2 text-[11px]">
 								<span className="text-muted-foreground">Catatan</span>
 								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerNotes}</span>

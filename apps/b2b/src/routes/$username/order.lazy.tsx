@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
 import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
 import { CustomerHeader, CustomerChannelSwitcher } from "@/components/customer/customer-shell";
+import { DeliveryStep } from "@/components/customer/delivery-step";
 import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
 
@@ -114,6 +115,12 @@ function OrderPage() {
 		setCustomerName,
 		customerDescription,
 		setCustomerDescription,
+		deliveryDate,
+		setDeliveryDate,
+		deliveryProvider,
+		setDeliveryProvider,
+		deliveryAddress,
+		setDeliveryAddress,
 		guestMarketingConsent,
 		notes,
 		setNotes,
@@ -147,6 +154,9 @@ function OrderPage() {
 		setCheckoutError(null);
 		setGuestEmail("");
 		setGuestPhone("");
+		setDeliveryDate("");
+		setDeliveryProvider("");
+		setDeliveryAddress("");
 		setDessertLater(false);
 		setNotes("");
 		setStep("menu");
@@ -683,7 +693,14 @@ function OrderPage() {
 				customerEmail: checkoutEmail || null,
 				customerPhone: checkoutPhone || null,
 				customerDescription: normalizedCustomerDescription,
-				orderType: "takeaway" as const,
+				orderType: "delivery" as const,
+				deliveryDate: deliveryDate ? new Date(`${deliveryDate}T12:00:00+07:00`).toISOString() : null,
+				deliveryProvider: deliveryProvider || null,
+				deliveryStatus: "pending_payment",
+				deliveryContactName: orderCustomerName,
+				deliveryContactPhone: checkoutPhone || null,
+				deliveryAddress: deliveryAddress.trim() || null,
+				deliveryNotes: normalizedNotes,
 				source: "customer_self_service" as const,
 				brandSlug,
 				freeRefillSelected: Boolean(freeRefillOptIn),
@@ -1010,6 +1027,9 @@ function OrderPage() {
 						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 
+					{/* ── Delivery section ─────────────────────────── */}
+					{step === "delivery" ? <DeliveryStep deliveryDate={deliveryDate} setDeliveryDate={setDeliveryDate} deliveryProvider={deliveryProvider} setDeliveryProvider={setDeliveryProvider} deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress} onBack={() => setStep("menu")} onContinue={() => { if (!deliveryDate || !deliveryProvider || !deliveryAddress.trim()) { toast.error("Lengkapi kurir, tanggal, dan alamat pengiriman"); return; } setStep("checkout"); }} /> : null}
+
 					{/* ── Checkout section ────────────────────────── */}
 					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
@@ -1042,7 +1062,7 @@ function OrderPage() {
 						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground"><Djiwa3DIcon name="navigation-order" size="sm" alt="" className="h-8 w-8 object-contain" /><p className="mt-2 font-display text-sm font-bold text-foreground">Keranjang masih kosong</p><p className="mt-1 text-xs">Pilih menu untuk mulai memesan.</p></div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
 						<div className="border-t border-border px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3"><SummaryCardLines productGrossSubtotal={productGrossSubtotal} freeRefillCharge={freeRefillCharge} promoDiscount={promoDiscount} taxAmount={taxAmount} taxEnabled={taxEnabled} taxRate={taxRate} serviceChargeAmount={serviceChargeAmount} serviceChargeRate={serviceChargeRate} total={total} /><button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black text-white" style={{ backgroundColor: themeColor }} onClick={() => {
 							setCartOpen(false);
-							setStep("checkout");
+							setStep("delivery");
 						}}>Lanjut checkout</button></div>
 					</motion.div>
 				</SheetContent>

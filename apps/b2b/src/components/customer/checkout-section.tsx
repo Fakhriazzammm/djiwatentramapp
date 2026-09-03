@@ -65,7 +65,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 						<Wallet className="h-4 w-4" />
 					</div>
 					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 4 · Checkout / Pembayaran</p>
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 3 · Checkout / Pembayaran</p>
 						<h2 className="text-sm font-black">Checkout pesanan</h2>
 					</div>
 				</div>

@@ -27,7 +27,7 @@ import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 // ── Types ──────────────────────────────────────────────────────
 
-export type OrderStep = "table" | "party" | "refill" | "menu" | "checkout" | "payment" | "receipt";
+export type OrderStep = "table" | "party" | "refill" | "menu" | "delivery" | "checkout" | "payment" | "receipt";
 
 export interface OrderContextType {
 	// ── Step / navigation ────────────────────────────────────
@@ -75,6 +75,12 @@ export interface OrderContextType {
 	setCustomerName: (value: string) => void;
 	customerDescription: string;
 	setCustomerDescription: (value: string) => void;
+	deliveryDate: string;
+	setDeliveryDate: (value: string) => void;
+	deliveryProvider: "gojek" | "maxim" | "";
+	setDeliveryProvider: (value: "gojek" | "maxim" | "") => void;
+	deliveryAddress: string;
+	setDeliveryAddress: (value: string) => void;
 	tableNumber: string;
 	setTableNumber: (value: string) => void;
 	notes: string;
@@ -167,6 +173,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("cashier");
 	const [customerName, setCustomerName] = useState("");
 	const [customerDescription, setCustomerDescription] = useState("");
+	const [deliveryDate, setDeliveryDate] = useState("");
+	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "maxim" | "">("");
+	const [deliveryAddress, setDeliveryAddress] = useState("");
 	const [tableNumber, setTableNumber] = useState("");
 	const [notes, setNotes] = useState("");
 	const [dessertLater, setDessertLater] = useState(false);
@@ -331,6 +340,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				setCustomerName,
 				customerDescription,
 				setCustomerDescription,
+				deliveryDate,
+				setDeliveryDate,
+				deliveryProvider,
+				setDeliveryProvider,
+				deliveryAddress,
+				setDeliveryAddress,
 				tableNumber,
 				setTableNumber,
 				notes,

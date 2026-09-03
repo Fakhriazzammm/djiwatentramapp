@@ -38,7 +38,7 @@ function B2BLandingPage() {
 			return;
 		}
 		window.localStorage.setItem("b2b-checkout-intent", "produksi");
-		navigate({ to: "/daftar" });
+		navigate({ to: "/masuk" });
 	};
 
 	if (isLoading) return <CustomerPageSkeleton label="Memeriksa sesi Djiwa Tentram" />;
