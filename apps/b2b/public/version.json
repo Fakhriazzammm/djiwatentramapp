@@ -1,7 +1,7 @@
 {
-  "version": "0.2.288",
-  "commitHash": "96f2005",
-  "message": "fix(b2b): navigate order steps explicitly",
+  "version": "0.2.290",
+  "commitHash": "aefbefd",
+  "message": "fix(b2b): allow delivery order step",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T16:59:14.598Z"
+  "generatedAt": "2026-09-03T17:04:25.565Z"
 }
