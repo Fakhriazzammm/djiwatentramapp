@@ -161,8 +161,8 @@ function OrderPage() {
 	const missingContactFields = getMissingCustomerFields(customer);
 	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
 	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
-	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}` : "https://djiwatentram.yumme.id/daftar";
-	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.yumme.id/${encodeURIComponent(username)}` : "https://merchandise.yumme.id/daftar";
+	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://djiwatentram.yumme.id/daftar";
+	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://merchandise.yumme.id/daftar";
 
 	useEffect(() => {
 		if (isAuthenticated && customer) {
