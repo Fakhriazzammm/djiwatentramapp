@@ -1,7 +1,7 @@
 {
-  "version": "0.2.290",
-  "commitHash": "aefbefd",
-  "message": "fix(b2b): allow delivery order step",
+  "version": "0.2.292",
+  "commitHash": "6ac62d7",
+  "message": "fix(b2b): remove cashier payment option",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T17:04:25.565Z"
+  "generatedAt": "2026-09-03T17:14:21.499Z"
 }
