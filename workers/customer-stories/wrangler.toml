@@ -1,0 +1,15 @@
+name = "djiwa-customer-stories"
+main = "src/index.ts"
+compatibility_date = "2026-09-03"
+
+[[r2_buckets]]
+binding = "STORIES_BUCKET"
+bucket_name = "djiwa-customer-stories"
+
+[[kv_namespaces]]
+binding = "CUSTOMER_STORIES_KV"
+id = "51f2a20c2cfa45fbaaa9ea6e5dcbebb9"
+
+[vars]
+AUTH_ORIGIN = "https://djiwatentram.yumme.id"
+ALLOWED_ORIGINS = "https://djiwatentram.yumme.id,https://merchandise.yumme.id,http://localhost:5173,http://localhost:3003"
