@@ -1,7 +1,7 @@
 {
-  "version": "0.2.133",
-  "commitHash": "e06dac4",
-  "message": "fix(barcode): improve Code 128 camera scanning",
-  "buildDate": "2026-08-31",
-  "generatedAt": "2026-08-31T18:03:15.022Z"
+  "version": "0.2.249",
+  "commitHash": "12aca61",
+  "message": "fix(customer): use database brand logo on slug routes",
+  "buildDate": "2026-09-03",
+  "generatedAt": "2026-09-03T02:48:35.065Z"
 }

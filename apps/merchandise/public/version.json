@@ -1,7 +1,7 @@
 {
-  "version": "0.2.214",
-  "commitHash": "3a6c4e2",
-  "message": "feat(merchandise): use catalog-only ordering",
-  "buildDate": "2026-09-02",
-  "generatedAt": "2026-09-02T11:59:19.243Z"
+  "version": "0.2.250",
+  "commitHash": "12aca61",
+  "message": "fix(customer): use database brand logo on slug routes",
+  "buildDate": "2026-09-03",
+  "generatedAt": "2026-09-03T02:48:35.065Z"
 }
