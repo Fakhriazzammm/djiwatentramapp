@@ -23,8 +23,6 @@ function DaftarPage() {
 		setGuestDescription,
 		guestMarketingConsent,
 		setGuestMarketingConsent,
-		tableNumber,
-		setTableNumber,
 		setCart,
 	} = useOrderContext();
 
@@ -82,15 +80,11 @@ function DaftarPage() {
 				description: description.trim().slice(0, 160),
 				marketingConsent: guestMarketingConsent,
 				username: guestUsername,
-				table: tableNumber.trim() || "",
 			}),
 		);
 
 		navigate({
 			to: `/${guestUsername}`,
-			search: tableNumber.trim()
-				? { table: tableNumber.trim() }
-				: undefined,
 		});
 	};
 	return (
@@ -183,20 +177,6 @@ function DaftarPage() {
 							Saya bersedia menerima informasi promo dan layanan Djiwa Tentram.
 						</label>
 
-						{/* No Meja */}
-						<div>
-							<label htmlFor="guest-table" className="text-xs font-bold text-foreground">
-								No. Meja
-							</label>
-							<input
-								id="guest-table"
-								type="text"
-								value={tableNumber}
-								onChange={(e) => setTableNumber(e.target.value)}
-								placeholder="Contoh: 5"
-								className="mt-1 min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-							/>
-						</div>
 
 						{/* Submit */}
 						<button

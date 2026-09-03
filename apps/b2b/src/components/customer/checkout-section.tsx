@@ -33,8 +33,6 @@ export interface CheckoutSectionProps {
 	setDessertLater: React.Dispatch<React.SetStateAction<boolean>>;
 	setNotes: (v: string) => void;
 	setPaymentChoice: (v: PaymentChoice) => void;
-	setTableNumber: (v: string) => void;
-	tableNumber: string;
 	onBackToMenu: () => void;
 	taxAmount: number;
 	taxEnabled: boolean;
@@ -100,10 +98,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Ciri khusus customer <span className="text-muted-foreground">(opsional)</span></label>
 						<input aria-label="Ciri khusus customer" maxLength={160} className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerDescription} onChange={(event) => props.setCustomerDescription(event.target.value.slice(0, 160))} placeholder="Contoh: baju merah, topi hitam" type="text" />
 					</div>
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nomor meja</label>
-						<input aria-label="Nomor meja" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^\dA-Za-z-]/g, ""))} placeholder="Contoh 12" type="text" />
-					</div>
+
 					{props.paymentChoice === "mayar" && !props.isAuthenticated ? (
 						<div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
 							<p className="text-[10px] font-black uppercase tracking-[0.12em] text-primary">Data untuk pembayaran QRIS</p>

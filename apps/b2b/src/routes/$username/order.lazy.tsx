@@ -115,8 +115,6 @@ function OrderPage() {
 		customerDescription,
 		setCustomerDescription,
 		guestMarketingConsent,
-		tableNumber,
-		setTableNumber,
 		notes,
 		setNotes,
 		dessertLater,
@@ -151,7 +149,6 @@ function OrderPage() {
 		setGuestPhone("");
 		setDessertLater(false);
 		setNotes("");
-		setTableNumber("");
 		setStep("menu");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
@@ -385,18 +382,8 @@ function OrderPage() {
 		if (step === "receipt" && receipt?.orderId) {
 			params.orderId = String(receipt.orderId);
 		}
-		if (search.table) {
-			params.table = search.table;
-		}
 		navigate({ to: "/$username/order", params: { username }, search: params as any, replace: true });
 	}, [step]);
-
-	// Sync: table from URL on mount
-	useEffect(() => {
-		if (search.table) {
-			setTableNumber(search.table);
-		}
-	}, [search.table]);
 
 
 	// ── Side effects ────────────────────────────────────────────
@@ -577,16 +564,15 @@ function OrderPage() {
 	};
 
 	const requestService = async (type: ServiceRequestType) => {
-		const activeTable = tableNumber.trim() || search.table || undefined;
-		if (!activeTable && !receipt?.orderId) {
-			toast.error("Isi nomor meja atau checkout dulu untuk mengirim request");
+		if (!receipt?.orderId) {
+			toast.error("Checkout dulu untuk mengirim request");
 			return;
 		}
 		await createServiceRequest({
 			brandSlug,
 			orderId: receipt?.orderId,
 			requestType: type,
-			tableNumber: activeTable,
+			tableNumber: undefined,
 			customerName: customerName.trim() || undefined,
 		});
 		toast.success(type === "call_staff" ? "Staff dipanggil" : "Request dessert dikirim");
@@ -674,9 +660,8 @@ function OrderPage() {
 			if (paymentChoice === "mayar" && !normalizedCustomerName) {
 				throw new Error("Nama customer wajib diisi sebelum pembayaran");
 			}
-			const orderCustomerName = normalizedCustomerName || `Customer ${tableNumber.trim() || "Walk In"}`;
+			const orderCustomerName = normalizedCustomerName || "Customer B2B";
 			const normalizedCustomerDescription = customerDescription.trim().slice(0, 160) || undefined;
-			const normalizedTableNumber = tableNumber.trim() || undefined;
 			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
 				items: cart.map((item) => ({
@@ -698,8 +683,7 @@ function OrderPage() {
 				customerEmail: checkoutEmail || null,
 				customerPhone: checkoutPhone || null,
 				customerDescription: normalizedCustomerDescription,
-				tableNumber: normalizedTableNumber,
-				orderType: "dine_in" as const,
+				orderType: "takeaway" as const,
 				source: "customer_self_service" as const,
 				brandSlug,
 				freeRefillSelected: Boolean(freeRefillOptIn),
@@ -777,7 +761,7 @@ function OrderPage() {
 				if (!isAuthenticated) rememberGuestOrder(String(orderId));
 				const redirectUrl =
 					typeof window !== "undefined"
-						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
+						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(String(orderId))}`
 						: undefined;
 				let invoice:
 					| {
@@ -1023,11 +1007,11 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}

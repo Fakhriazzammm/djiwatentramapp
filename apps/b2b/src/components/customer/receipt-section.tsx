@@ -76,7 +76,6 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	}));
 	const customerName = props.currentOrder?.customerName || "-";
 	const customerDescription = props.currentOrder?.customerDescription || "-";
-	const tableNumber = props.currentOrder?.tableNumber || "-";
 	const orderType = props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
 	const customerNotes = props.currentOrder?.notes || "-";
 
@@ -127,10 +126,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 								<span className="text-muted-foreground">Ciri</span>
 								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerDescription}</span>
 							</div>
-							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Meja</span>
-								<span className="font-semibold text-foreground">{tableNumber}</span>
-							</div>
+
 							<div className="flex items-center justify-between gap-2 text-[11px]">
 								<span className="text-muted-foreground">Tipe</span>
 								<span className="font-semibold text-foreground">{orderType}</span>
