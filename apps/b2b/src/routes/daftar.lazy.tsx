@@ -11,7 +11,7 @@ export const Route = createLazyFileRoute("/daftar")({
 
 function DaftarPage() {
 	const navigate = useNavigate();
-	const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "email" | "phone" | "description", string>>>({});
+	const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "email" | "phone", string>>>({});
 	const {
 		guestName: name,
 		setGuestName: setName,
@@ -19,8 +19,6 @@ function DaftarPage() {
 		setGuestEmail: setEmail,
 		guestPhone: phone,
 		setGuestPhone: setPhone,
-		guestDescription: description,
-		setGuestDescription,
 		guestMarketingConsent,
 		setGuestMarketingConsent,
 		setCart,
@@ -36,7 +34,7 @@ function DaftarPage() {
 		});
 	};
 
-	const clearFieldError = (field: "name" | "email" | "phone" | "description") => {
+	const clearFieldError = (field: "name" | "email" | "phone") => {
 		setFieldErrors((current) => {
 			if (!current[field]) return current;
 			const next = { ...current };
@@ -77,7 +75,6 @@ function DaftarPage() {
 				name: trimmedName,
 				email: email.trim() || "",
 				phone: phone.trim() || "",
-				description: description.trim().slice(0, 160),
 				marketingConsent: guestMarketingConsent,
 				username: guestUsername,
 			}),
@@ -155,26 +152,6 @@ function DaftarPage() {
 								className={`mt-1 min-h-11 w-full rounded-[14px] border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/20 ${fieldErrors.phone ? "border-destructive focus:border-destructive" : "border-border focus:border-primary/50"}`}
 							/>
 							{fieldErrors.phone ? <p id="guest-phone-error" role="alert" className="mt-1 text-[11px] font-semibold text-destructive">{fieldErrors.phone}</p> : null}
-						</div>
-
-						{/* Ciri khusus customer */}
-						<div>
-							<label htmlFor="guest-description" className="text-xs font-bold text-foreground">
-								Ciri khusus customer <span className="text-muted-foreground">(opsional)</span>
-							</label>
-							<input
-								id="guest-description"
-								type="text"
-								value={description}
-								onChange={(e) => { clearFieldError("description"); setGuestDescription(e.target.value.slice(0, 160)); }}
-								placeholder="Contoh: baju merah, topi hitam"
-								maxLength={160}
-								required
-								aria-invalid={Boolean(fieldErrors.description)}
-								aria-describedby={fieldErrors.description ? "guest-description-error" : undefined}
-								className={`mt-1 min-h-11 w-full rounded-[14px] border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary/20 ${fieldErrors.description ? "border-destructive focus:border-destructive" : "border-border focus:border-primary/50"}`}
-							/>
-							{fieldErrors.description ? <p id="guest-description-error" role="alert" className="mt-1 text-[11px] font-semibold text-destructive">{fieldErrors.description}</p> : null}
 						</div>
 
 						<label className="flex items-start gap-2 rounded-xl bg-muted/40 p-2 text-[10px] leading-relaxed text-muted-foreground">
