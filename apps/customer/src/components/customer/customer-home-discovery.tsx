@@ -40,6 +40,7 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
   const storePhone = typeof siteSettings?.storePhone === "string" ? siteSettings.storePhone.trim() : "";
   const storeAddress = typeof siteSettings?.storeAddress === "string" ? siteSettings.storeAddress.trim() : "";
   const hasRestaurantInfo = Boolean(openingTime || closingTime || openingHours || storePhone || storeAddress);
+  const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
             <p className="mt-1 text-sm font-black">Rencanakan acara bersama Djiwa Tentram.</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Untuk acara, gathering, dan kolaborasi.</p>
           </div>
+          <img src={logoUrl} alt="Djiwa Tentram" className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1 shadow-sm" />
           <span className="pt-1 text-lg font-black text-primary" aria-hidden="true">→</span>
         </div>
       </motion.a>
