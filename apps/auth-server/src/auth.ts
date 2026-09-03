@@ -17,6 +17,7 @@ export const auth = betterAuth({
   trustedOrigins: [
     "https://djiwatentram.yumme.id",
     "https://merchandise.yumme.id",
+    "https://b2b.yumme.id",
     "http://localhost:5173",
   ],
   // Share the central customer session across Djiwa App subdomains.
