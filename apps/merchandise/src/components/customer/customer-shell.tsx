@@ -75,6 +75,15 @@ export function CustomerHeader({
 	);
 }
 
+export function CustomerChannelSwitcher({ active, customerHref, merchandiseHref }: { active: "customer" | "merchandise"; customerHref: string; merchandiseHref: string }) {
+	return (
+		<nav aria-label="Pindah kanal" className={cn("flex w-full items-center gap-1 rounded-2xl border border-border bg-muted/40 p-1")}>
+			<a href={customerHref} className={cn("flex min-h-10 flex-1 items-center justify-center rounded-xl px-2 text-[11px] font-black transition-colors", active === "customer" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground")} aria-current={active === "customer" ? "page" : undefined}>Menu Cafe</a>
+			<a href={merchandiseHref} className={cn("flex min-h-10 flex-1 items-center justify-center rounded-xl px-2 text-[11px] font-black transition-colors", active === "merchandise" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-background hover:text-foreground")} aria-current={active === "merchandise" ? "page" : undefined}>Merchandise</a>
+		</nav>
+	);
+}
+
 export function CustomerSectionHeading({
 	action,
 	description,
