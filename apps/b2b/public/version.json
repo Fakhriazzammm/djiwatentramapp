@@ -1,7 +1,7 @@
 {
   "version": "0.2.295",
-  "commitHash": "19f506a7",
+  "commitHash": "a4896298",
   "message": "fix(b2b): remove redundant payment step",
   "buildDate": "2026-09-04",
-  "generatedAt": "2026-09-03T17:31:23.098940+00:00"
+  "generatedAt": "2026-09-03T17:31:36.095577+00:00"
 }
