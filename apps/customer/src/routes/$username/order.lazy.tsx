@@ -968,7 +968,7 @@ function OrderPage() {
 					title={storeName}
 					subtitle="Djiwa Tentram Cafe & Resto"
 					onBack={handleOrderHeaderBack}
-					leading={<img src="/home-header-icon.png" alt="" className="h-5 w-5 object-contain" aria-hidden="true" />}
+					leading={<span className="flex flex-col items-center justify-center gap-0.5 leading-none"><img src="/home-header-icon.png" alt="" className="h-4 w-4 object-contain" aria-hidden="true" /><span className="text-[9px] font-bold text-muted-foreground">Home</span></span>}
 					right={<span className="inline-flex min-h-9 items-center rounded-full bg-primary/10 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-primary">{totalItems} item</span>}
 				/>
 				<div className="px-3 pt-3"><CustomerChannelSwitcher active="customer" customerHref={customerChannelHref} merchandiseHref={merchandiseChannelHref} /></div>
