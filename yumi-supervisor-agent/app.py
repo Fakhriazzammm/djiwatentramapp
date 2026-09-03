@@ -40,17 +40,20 @@ logger = logging.getLogger(__name__)
 def _display_order_no(row: dict) -> str:
     """Canonical display code; legacy DB order_number remains unchanged."""
     raw = str(row.get("orderNumber") or row.get("order_number") or "-").strip()
-    if re.match(r"^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$", raw, re.I):
+    source = str(row.get("source") or "").strip().lower()
+    source_app = str(row.get("sourceApp") or "").strip().lower()
+    business = str(row.get("businessUnit") or row.get("business_unit") or "").strip().lower()
+    brand = str(row.get("brandSlug") or row.get("brand_slug") or "").strip().lower()
+    is_b2b = business == "b2b" or brand == "b2b"
+    if re.match(r"^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$", raw, re.I) and not (is_b2b and not raw.upper().startswith("ORD-B2B-")):
         return raw.upper()
-    match = re.match(r"^ORD(\d{1,6})-", raw, re.I)
+    match = re.match(r"^ORD(?:-[A-Z]+-[A-Z]+-)?(\d{1,6})-", raw, re.I)
     sequence = row.get("daily_receipt_no") or (match.group(1) if match else None)
     if not sequence:
         return raw
-    source = str(row.get("source") or "").strip().lower()
-    source_app = str(row.get("sourceApp") or "").strip().lower()
-    business = str(row.get("businessUnit") or "").strip().lower()
     joined = f"{source} {source_app} {row.get('platform') or ''}".lower()
-    if source == "booking": channel = "BOOK"
+    if is_b2b: channel = "B2B"
+    elif source == "booking": channel = "BOOK"
     elif business in ("ordermieyamin", "mieyamin") or source == "customer_self_service" or "djiwaapp" in joined: channel = "APP"
     elif "gofood" in joined: channel = "GF"
     elif "grabfood" in joined: channel = "GRAB"
@@ -59,7 +62,7 @@ def _display_order_no(row: dict) -> str:
     elif not source or source in ("pos", "kasir", "internal"): channel = "POS"
     else: channel = "UNK"
     order_type = str(row.get("orderType") or "").lower()
-    type_code = "D" if order_type in ("dine_in", "dinein") else "T" if order_type in ("takeaway", "take_away") else "O" if order_type == "online" else "X"
+    type_code = "D" if order_type in ("dine_in", "dinein") else "T" if order_type in ("takeaway", "take_away") else "DL" if order_type == "delivery" else "O" if order_type == "online" else "X"
     timestamp = row.get("createdAt") or row.get("_creationTime")
     try:
         dt = datetime.fromtimestamp(float(timestamp) / 1000, tz=WIB)
@@ -68,11 +71,18 @@ def _display_order_no(row: dict) -> str:
         date_code = "000000"
     return f"ORD-{channel}-{type_code}-{int(sequence):04d}-{date_code}"
 
-def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", payment_gateway=None) -> str:
+def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", payment_gateway=None, business_unit: str = "", brand_slug: str = "") -> str:
     """Return a provenance-safe business payment label."""
     method = str(raw or "").strip().lower()
     origin = str(source or "").strip().lower()
     receipt = str(payment_receipt_kind or "").strip().lower()
+    business = str(business_unit or "").strip().lower()
+    brand = str(brand_slug or "").strip().lower()
+    is_b2b = business == "b2b" or brand == "b2b"
+    if is_b2b and method in ("qris", "qris_mayar", "mayar", "djiwaapp"):
+        return "B2B - QRIS"
+    if is_b2b and method in ("wallet", "djiwa_pay"):
+        return "B2B - Djiwa Pay"
     is_app = origin == "customer_self_service"
     if method in ("cash", "tunai") or receipt in ("cashier", "cashier_pending"):
         label = "Bayar Tunai di Kasir"
@@ -97,7 +107,10 @@ def _payment_label(raw: str, source: str = "", payment_receipt_kind: str = "", p
 def _source_label(row: dict) -> str | None:
     """Resolve transaction origin strictly from persisted provenance fields."""
     business_unit = str(row.get("businessUnit") or "").strip().lower()
+    brand_slug = str(row.get("brandSlug") or row.get("brand_slug") or "").strip().lower()
     source = str(row.get("source") or "").strip().lower()
+    if business_unit == "b2b" or brand_slug == "b2b":
+        return "B2B - DjiwaApp Member" if row.get("customerSourceId") else "B2B - DjiwaApp Guest"
     if business_unit == "ordermieyamin":
         return "Order Mie Yamin"
     if source == "booking":
@@ -1864,12 +1877,12 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         lines.append(f"📲 SUMBER: {source_label}")
     if arrival_time:
         lines.append(f"🕒 JAM KEDATANGAN: {arrival_time}")
-    payment_display = payment_note or f"PEMBAYARAN: {_payment_label(payment_method)}"
+    payment_display = payment_note or f"PEMBAYARAN: {_payment_label(payment_method, business_unit=str((delivery_context or {}).get('businessUnit') or ''), brand_slug=str((delivery_context or {}).get('brandSlug') or ''))}"
     lines.append(f"⚠️ {payment_display}")
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
-        f"💰 Rp{totalAmount:,.0f} — {_payment_label(payment_method)}",
+        f"💰 Rp{totalAmount:,.0f} — {_payment_label(payment_method, business_unit=str((delivery_context or {}).get('businessUnit') or ''), brand_slug=str((delivery_context or {}).get('brandSlug') or ''))}",
     ])
     for p in promo_parts:
         lines.append(f"🏷️ {p}")
@@ -1882,6 +1895,26 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
     lines.extend(team_lines)
     if table_number:
         lines.append(f"🪑 Meja: {table_number}")
+
+    if delivery_context and (delivery_context.get("businessUnit") == "b2b" or delivery_context.get("brandSlug") == "b2b"):
+        provider_labels = {"gojek": "Gojek", "maxim": "Maxim"}
+        delivery_date = str(delivery_context.get("deliveryDate") or "").strip()
+        try:
+            delivery_date = datetime.fromisoformat(delivery_date.replace("Z", "+00:00")).astimezone(WIB).strftime("%d/%m/%Y")
+        except Exception:
+            delivery_date = delivery_date[:10] or "—"
+        lines.extend([
+            "",
+            "🚚 DETAIL PENGIRIMAN B2B",
+            f"📅 Jadwal dikirim: {delivery_date}",
+            f"🛵 Kurir: {provider_labels.get(str(delivery_context.get('deliveryProvider') or '').lower(), str(delivery_context.get('deliveryProvider') or '—').upper())}",
+            f"👤 Customer: {delivery_context.get('deliveryContactName') or customer}",
+            f"📞 WhatsApp: {delivery_context.get('deliveryContactPhone') or '—'}",
+            f"✉️ Email: {delivery_context.get('customerEmail') or '—'}",
+            f"🏠 Alamat: {delivery_context.get('deliveryAddress') or '—'}",
+        ])
+        if delivery_context.get("deliveryNotes"):
+            lines.append(f"📝 Catatan kirim: {delivery_context['deliveryNotes']}")
 
     if delivery_context and delivery_context.get("businessUnit") == "ordermieyamin":
         provider_labels = {"gojek": "Gojek", "maxim": "Maxim"}
@@ -2107,7 +2140,7 @@ async def _check_new_orders(app):
     try:
         rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,brandSlug,customerEmail,deliveryDate,deliveryStatus,deliveryNotes,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
@@ -2125,7 +2158,7 @@ async def _check_new_orders(app):
     try:
         customer_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,brandSlug,customerEmail,deliveryDate,deliveryStatus,deliveryNotes,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&source=in.(customer_self_service,ordermieyamin_b2b)"
             "&status=in.(completed,paid)"
             f"&_creationTime=gte.{max(0, now_ms - 7 * 86_400_000)}"
@@ -2137,7 +2170,7 @@ async def _check_new_orders(app):
         # menyelesaikan pembayaran. Ini bukan bukti order sudah lunas.
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,deliveryDate,deliveryProvider,deliveryContactPhone,deliveryAddress"
+            "select=_id,orderNumber,status,totalAmount,paymentMethod,createdAt,items,customerName,tableNumber,customerSourceId,orderType,_creationTime,daily_receipt_no,receipt_kind,paymentReceiptKind,guestCount,notes,voucherId,discountAmount,freeRefillSelected,source,businessUnit,brandSlug,customerEmail,deliveryDate,deliveryStatus,deliveryNotes,deliveryProvider,deliveryContactPhone,deliveryAddress"
             "&source=eq.customer_self_service"
             "&status=eq.pending"
             "&paymentMethod=eq.cash"
@@ -2290,9 +2323,14 @@ async def _check_new_orders(app):
         free_refill = row.get("freeRefillSelected")
         delivery_context = {
             "businessUnit": row.get("businessUnit") or "",
+            "brandSlug": row.get("brandSlug") or row.get("brand_slug") or "",
             "deliveryDate": row.get("deliveryDate") or "",
+            "deliveryStatus": row.get("deliveryStatus") or "",
+            "deliveryNotes": row.get("deliveryNotes") or "",
             "deliveryProvider": row.get("deliveryProvider") or "",
+            "deliveryContactName": row.get("customerName") or "",
             "deliveryContactPhone": row.get("deliveryContactPhone") or "",
+            "customerEmail": row.get("customerEmail") or row.get("customer_email") or "",
             "deliveryAddress": row.get("deliveryAddress") or "",
             "deliveryArea": "Tasikmalaya" if row.get("businessUnit") == "ordermieyamin" else "",
         }
@@ -2305,6 +2343,8 @@ async def _check_new_orders(app):
             str(row.get("source") or ""),
             str(row.get("paymentReceiptKind") or ""),
             row.get("paymentGateway"),
+            business_unit=str(row.get("businessUnit") or ""),
+            brand_slug=str(row.get("brandSlug") or row.get("brand_slug") or ""),
         )
         payment_note = (
             f"BELUM LUNAS — {payment_label.upper()}"

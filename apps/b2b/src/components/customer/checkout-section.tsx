@@ -10,6 +10,8 @@ export interface CheckoutSectionProps {
 	config: typeof CUSTOMER_ORDERING_DEFAULTS;
 	currency: (v: number) => string;
 	customerName: string;
+	customerEmail: string;
+	customerPhone: string;
 	customerDescription: string;
 	guestEmail: string;
 	guestPhone: string;
@@ -27,6 +29,8 @@ export interface CheckoutSectionProps {
 	serviceChargeAmount: number;
 	serviceChargeRate: number;
 	setCustomerName: (v: string) => void;
+	setCustomerEmail: (v: string) => void;
+	setCustomerPhone: (v: string) => void;
 	setCustomerDescription: (v: string) => void;
 	setGuestEmail: (v: string) => void;
 	setGuestPhone: (v: string) => void;
@@ -95,18 +99,18 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 						<input aria-label="Nama customer" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Opsional" type="text" />
 					</div>
 
-					{props.paymentChoice === "mayar" && !props.isAuthenticated ? (
+					{props.paymentChoice === "mayar" ? (
 						<div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
 							<p className="text-[10px] font-black uppercase tracking-[0.12em] text-primary">Data untuk pembayaran QRIS</p>
-							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Email dan nomor WhatsApp diperlukan untuk menyiapkan pembayaran QRIS.</p>
+							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Email dan nomor WhatsApp digunakan untuk menyiapkan pembayaran QRIS Mayar.</p>
 							<div className="mt-2 space-y-2">
 								<div className="space-y-0.5">
 									<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Email <span className="text-destructive">*</span></label>
-									<input aria-label="Email untuk pembayaran QRIS" autoComplete="email" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.guestEmail} onChange={(event) => props.setGuestEmail(event.target.value)} placeholder="nama@email.com" type="email" inputMode="email" />
+									<input aria-label="Email untuk pembayaran QRIS" autoComplete="email" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerEmail} onChange={(event) => props.setCustomerEmail(event.target.value)} placeholder="nama@email.com" type="email" inputMode="email" />
 								</div>
 								<div className="space-y-0.5">
 									<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nomor WhatsApp <span className="text-destructive">*</span></label>
-									<input aria-label="Nomor WhatsApp untuk pembayaran QRIS" autoComplete="tel" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.guestPhone} onChange={(event) => props.setGuestPhone(event.target.value.replace(/[^0-9+ ]/g, ""))} placeholder="08xxxxxxxxxx" type="tel" inputMode="tel" />
+									<input aria-label="Nomor WhatsApp untuk pembayaran QRIS" autoComplete="tel" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerPhone} onChange={(event) => props.setCustomerPhone(event.target.value.replace(/[^0-9+ ]/g, ""))} placeholder="08xxxxxxxxxx" type="tel" inputMode="tel" />
 								</div>
 							</div>
 						</div>

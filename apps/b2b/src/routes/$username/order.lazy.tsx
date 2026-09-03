@@ -170,14 +170,16 @@ function OrderPage() {
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
-	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
-	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
+	const checkoutEmail = guestEmail.trim() || customer?.email?.trim() || "";
+	const checkoutPhone = guestPhone.trim() || customer?.phone?.trim() || "";
 	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}/order?step=table` : "https://djiwatentram.yumme.id/daftar";
 	const b2bChannelHref = isAuthenticated && customer ? `https://b2b.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://b2b.yumme.id/daftar";
 
 	useEffect(() => {
 		if (isAuthenticated && customer) {
 			if (customer.name?.trim() && !customerName.trim()) setCustomerName(customer.name.trim());
+			if (customer.email?.trim() && !guestEmail.trim()) setGuestEmail(customer.email.trim());
+			if (customer.phone?.trim() && !guestPhone.trim()) setGuestPhone(customer.phone.trim());
 			if (customer.customerDescription?.trim() && !customerDescription.trim()) setCustomerDescription(customer.customerDescription.trim());
 			return;
 		}
@@ -1027,7 +1029,7 @@ function OrderPage() {
 					{step === "delivery" ? <DeliveryStep deliveryDate={deliveryDate} setDeliveryDate={setDeliveryDate} deliveryProvider={deliveryProvider} setDeliveryProvider={setDeliveryProvider} deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress} onBack={() => goToOrderStep("menu")} onContinue={() => { if (!deliveryDate || !deliveryProvider || !deliveryAddress.trim()) { toast.error("Lengkapi kurir, tanggal, dan alamat pengiriman"); return; } goToOrderStep("checkout"); }} /> : null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerEmail: checkoutEmail, customerPhone: checkoutPhone, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerEmail: setGuestEmail, setCustomerPhone: setGuestPhone, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}

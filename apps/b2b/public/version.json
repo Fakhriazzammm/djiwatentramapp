@@ -1,7 +1,7 @@
 {
-  "version": "0.2.297",
-  "commitHash": "b94de98",
-  "message": "chore(b2b): publish four-step release manifest",
+  "version": "0.2.298",
+  "commitHash": "6737b7a",
+  "message": "fix(b2b): clear cart after successful payment",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T17:35:28.425Z"
+  "generatedAt": "2026-09-03T17:42:34.937Z"
 }
