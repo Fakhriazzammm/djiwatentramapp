@@ -40,7 +40,6 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
   const storePhone = typeof siteSettings?.storePhone === "string" ? siteSettings.storePhone.trim() : "";
   const storeAddress = typeof siteSettings?.storeAddress === "string" ? siteSettings.storeAddress.trim() : "";
   const hasRestaurantInfo = Boolean(openingTime || closingTime || openingHours || storePhone || storeAddress);
-  const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
 
   useEffect(() => {
@@ -71,7 +70,6 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
         transition={{ ...spring, duration: 0.35 }}
       >
         <img src="/booking-promo-banner-v2.png" alt="Booking acara dan kolaborasi — Rencanakan acara bersama Djiwa Tentram" className="block h-auto w-full" loading="lazy" />
-        <img src={logoUrl} alt="Djiwa Tentram" className="absolute right-[13%] top-1/2 h-10 w-10 -translate-y-1/2 rounded-xl bg-white/95 p-1 object-contain shadow-sm" loading="lazy" />
       </motion.a>
 
       {featuredProducts.length > 0 ? (
