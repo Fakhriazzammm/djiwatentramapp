@@ -146,7 +146,7 @@ function ProfilePage() {
 			<CustomerHeader title="Profil Saya" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
 
 			<main className="space-y-3 px-3 pb-28 pt-4 sm:px-4">
-				{!customer.email || !customer.phone ? <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-black text-amber-900">Profile belum lengkap untuk QRIS</p><p className="mt-1 text-[10px] leading-relaxed text-amber-800">Lengkapi email dan nomor WhatsApp agar invoice Mayar dapat dibuat.</p></div> : null}
+				{!customer.email || !customer.phone ? <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-black text-amber-900">Profile belum lengkap untuk QRIS</p><p className="mt-1 text-[10px] leading-relaxed text-amber-800">Lengkapi email dan nomor WhatsApp agar invoice QRIS dapat dibuat.</p></div> : null}
 				{/* Member Card */}
 				<section className="relative isolate overflow-hidden rounded-[28px] bg-[#111d4a] text-white shadow-[0_18px_44px_rgba(15,23,42,0.18)]" aria-label="Kartu member Djiwa Tentram">
 					<img src="/assets/djiwa-member-card-cafe.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-[0.82]" />

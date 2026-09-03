@@ -93,7 +93,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 
 	const currentStepIndex = getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
-	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS Mayar" : "Bayar di Kasir";
+	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS" : "Bayar di Kasir";
 	const printerStatusLabel = mode === "paid" ? "Pembayaran berhasil" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Struk siap ditunjukkan ke kasir";
 	// Do not reconstruct historical totals from item prices. Show this breakdown
 	// only when the backend stored the authoritative tax calculation.

@@ -51,7 +51,7 @@ export function ProfileCompletionOnboarding({ name, email, phone, onSave }: Prof
         <div className="px-5 pb-5 pt-4">
           <div className="flex items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Phone className="h-6 w-6" /></div>
-            <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Langkah {step} dari 2</p><h2 id="profile-completion-title" className="mt-0.5 text-xl font-black tracking-tight">Lengkapi profil untuk lanjut</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Halo {name}, data ini diperlukan untuk invoice Mayar, top up, dan status pembayaran.</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Langkah {step} dari 2</p><h2 id="profile-completion-title" className="mt-0.5 text-xl font-black tracking-tight">Lengkapi profil untuk lanjut</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Halo {name}, data ini diperlukan untuk invoice QRIS, top up, dan status pembayaran.</p></div>
           </div>
           <div className="mt-5 flex gap-1.5" aria-label="Progress pengisian profil"><span className="h-1.5 flex-1 rounded-full bg-primary" /><span className={`h-1.5 flex-1 rounded-full ${step === 2 ? "bg-primary" : "bg-muted"}`} /></div>
 
