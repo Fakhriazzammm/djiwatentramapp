@@ -1,7 +1,7 @@
 {
-  "version": "0.2.287",
-  "commitHash": "f0d54a2",
-  "message": "fix(b2b): remove customer clue fields",
+  "version": "0.2.288",
+  "commitHash": "96f2005",
+  "message": "fix(b2b): navigate order steps explicitly",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T15:35:49.266Z"
+  "generatedAt": "2026-09-03T16:59:14.598Z"
 }
