@@ -24,7 +24,7 @@ function B2BLandingPage() {
 	const products = useHybridProducts();
 	const product = products?.find((item) => Number(item.menuNumber) === 3013);
 	const productIsLoading = products == null;
-	const isAvailable = product ? product.isAvailable !== false && Number(product.quantity ?? 0) > 0 : false;
+	const isAvailable = product ? product.isAvailable !== false && (product.quantity == null || Number(product.quantity) > 0) : false;
 
 	useEffect(() => {
 		if (!isLoading && isAuthenticated && customer) {
