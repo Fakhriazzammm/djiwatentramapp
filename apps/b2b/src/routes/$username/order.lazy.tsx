@@ -128,6 +128,7 @@ function OrderPage() {
 		setDessertLater,
 		receipt,
 		setReceipt,
+		clearCart,
 		isSubmitting,
 		setIsSubmitting,
 		authModalOpen,
@@ -145,8 +146,8 @@ function OrderPage() {
 
 	const startNewOrder = () => {
 		checkoutRequestKeyRef.current = null;
+		clearCart();
 		setReceipt(null);
-		setCart([]);
 		setCartOpen(false);
 		setServiceOpen(false);
 		setScannerOpen(false);
@@ -759,6 +760,7 @@ function OrderPage() {
 						idempotencyKey: checkoutRequestKeyRef.current,
 					});
 					walletCaptured = true;
+					clearCart();
 					if (!isAuthenticated) rememberGuestOrder(String(orderId));
 					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, dessertLater, cartSnapshot: cart });
 				} catch (error) {
@@ -841,6 +843,7 @@ function OrderPage() {
 					await updateOrderStatus({ id: orderId, status: "pending" }).catch(() => undefined);
 					throw error;
 				}
+				clearCart();
 				setReceipt({
 					orderId,
 					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
@@ -859,7 +862,7 @@ function OrderPage() {
 			} else {
 				throw new Error("Metode pembayaran B2B belum tersedia. Pilih QRIS atau Djiwa Pay.");
 			}
-			setCart([]);
+			clearCart();
 			checkoutRequestKeyRef.current = null;
 			setStep("receipt");
 		} catch (error) {

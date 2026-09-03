@@ -1,7 +1,7 @@
 {
-  "version": "0.2.296",
-  "commitHash": "d3d30f5",
-  "message": "chore(b2b): sync release manifest",
+  "version": "0.2.297",
+  "commitHash": "b94de98",
+  "message": "chore(b2b): publish four-step release manifest",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T17:31:54.758Z"
+  "generatedAt": "2026-09-03T17:35:28.425Z"
 }

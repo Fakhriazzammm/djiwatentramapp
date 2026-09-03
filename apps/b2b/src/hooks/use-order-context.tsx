@@ -53,6 +53,7 @@ export interface OrderContextType {
 	// ── Cart ────────────────────────────────────────────────
 	cart: CartItem[];
 	setCart: (value: CartItem[] | ((prev: CartItem[]) => CartItem[])) => void;
+	clearCart: () => void;
 	cartOpen: boolean;
 	setCartOpen: (value: boolean) => void;
 
@@ -291,6 +292,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 		);
 	};
 
+	const clearCart = () => {
+		if (cartOwnerKey) clearPersistedCart(cartOwnerKey);
+		setCart([]);
+	};
+
 	// ── Render ──────────────────────────────────────────────
 	return (
 		<OrderContext.Provider
@@ -318,6 +324,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				// Cart
 				cart,
 				setCart,
+				clearCart,
 				cartOpen,
 				setCartOpen,
 
