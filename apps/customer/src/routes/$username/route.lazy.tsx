@@ -21,6 +21,14 @@ type GuestData = {
 	username: string;
 };
 
+function MerchandisePromoBanner() {
+	return (
+		<a href="https://merchandise.yumme.id/" aria-label="Jelajahi Merchandise Djiwa Tentram" className="block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]">
+			<img src="/merchandise-promo-banner.png" alt="Bawa Rasa Tentram ke Setiap Hari — Jelajahi Merchandise" className="block h-auto w-full" loading="lazy" />
+		</a>
+	);
+}
+
 function loadGuestData(): GuestData | null {
 	try {
 		const raw = localStorage.getItem("guest-data");
@@ -201,6 +209,7 @@ function MemberHomePage() {
 					<CustomerLiveShiftIndicator />
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<CustomerGreeting name={guestData.name} />
+						<MerchandisePromoBanner />
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
@@ -236,6 +245,7 @@ function MemberHomePage() {
 					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<CustomerGreeting name={displayName} />
+						<MerchandisePromoBanner />
 						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
