@@ -64,12 +64,12 @@ export function CustomerHeader({
 						whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
 						whileHover={shouldReduceMotion ? undefined : { y: -1 }}
 						animate={showPressHint && !shouldReduceMotion ? { y: [0, -3, 0] } : undefined}
-						transition={showPressHint ? { type: "spring", stiffness: 380, damping: 20, repeat: 2, repeatDelay: 0.45 } : { type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+						transition={showPressHint ? { type: "spring", stiffness: 380, damping: 20, repeat: Infinity, repeatDelay: 1.8 } : { type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
 						className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all duration-[180ms] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
 						aria-label={backLabel}
 						onClick={onBack}
 					>
-						{showPressHint && !shouldReduceMotion ? <motion.span aria-hidden="true" className="pointer-events-none absolute inset-[-4px] rounded-full border border-primary/40" animate={{ scale: [0.9, 1.16], opacity: [0.55, 0] }} transition={{ duration: 1.15, repeat: 2, repeatDelay: 0.45 }} /> : null}
+						{showPressHint && !shouldReduceMotion ? <motion.span aria-hidden="true" className="pointer-events-none absolute inset-[-4px] rounded-full border border-primary/40" animate={{ scale: [0.9, 1.16], opacity: [0.55, 0] }} transition={{ duration: 1.15, repeat: Infinity, repeatDelay: 1.8 }} /> : null}
 						{leading}
 					</motion.button>
 				) : leading ? <div className="flex h-11 w-11 shrink-0 items-center justify-center">{leading}</div> : <span aria-hidden="true" />}
