@@ -552,7 +552,7 @@ async function fetchProducts() {
 			row.promoPrice === null || row.promoPrice === undefined
 				? null
 				: Number(row.promoPrice),
-		image: row.image,
+		image: row.image ?? row.imageUrl ?? row.image_url ?? row.photoUrl ?? row.photo_url ?? null,
 		isAvailable: Boolean(row.isAvailable),
 		quantity:
 			row.quantity === null || row.quantity === undefined
@@ -614,7 +614,7 @@ async function fetchAllProducts() {
 			row.promoPrice === null || row.promoPrice === undefined
 				? null
 				: Number(row.promoPrice),
-		image: row.image,
+		image: row.image ?? row.imageUrl ?? row.image_url ?? row.photoUrl ?? row.photo_url ?? null,
 		isAvailable: Boolean(row.isAvailable),
 		quantity:
 			row.quantity === null || row.quantity === undefined

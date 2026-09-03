@@ -11,6 +11,13 @@ import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
 type RecentProduct = { productId: string; name: string; quantity: number; variant?: string; price: number; originalPrice?: number; image?: string; category?: string; categoryId: string; menuNumber?: number };
 
+function resolveImageUrl(...candidates: unknown[]): string | undefined {
+  const value = candidates.find((candidate) => typeof candidate === "string" && candidate.trim());
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return /^https?:\/\//.test(trimmed) || trimmed.startsWith("/") ? trimmed : undefined;
+}
+
 export function RecentOrdersCarousel({ username }: { username: string }) {
   const navigate = useNavigate();
   const { orders, isLoading } = useCustomerOrders();
@@ -39,7 +46,14 @@ export function RecentOrdersCarousel({ username }: { username: string }) {
           variant: item.variant ?? undefined,
           price: Number(product?.price ?? item.price ?? 0),
           originalPrice: Number(product?.originalPrice ?? product?.compareAtPrice ?? 0) || undefined,
-          image: typeof product?.image === "string" ? product.image : undefined,
+          image: resolveImageUrl(
+            product?.image,
+            product?.imageUrl,
+            product?.image_url,
+            product?.photoUrl,
+            product?.photo_url,
+            item.image,
+          ),
           category: String(product?.categoryName ?? product?.category ?? "Menu pilihan"),
           categoryId: String(product?.categoryId ?? ""),
           menuNumber: product?.menuNumber == null ? undefined : Number(product.menuNumber),

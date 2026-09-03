@@ -34,6 +34,7 @@ export type CustomerOrderItem = {
 	quantity: number;
 	price: number;
 	originalPrice?: number;
+	image?: string | null;
 	variant?: string | null;
 };
 
@@ -76,6 +77,7 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 					quantity: Number(item.quantity ?? 0),
 					price: Number(item.price ?? 0),
 					originalPrice: item.originalPrice == null ? undefined : Number(item.originalPrice),
+					image: (item.image ?? item.imageUrl ?? item.image_url ?? null) as string | null,
 					variant: (item.variant as string | null | undefined) ?? null,
 				}))
 			: [],
