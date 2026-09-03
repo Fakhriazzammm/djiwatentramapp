@@ -36,6 +36,7 @@ export function CustomerLiveShiftIndicator() {
 
 export function CustomerHeader({
 	backLabel = "Kembali",
+	backVariant = "default",
 	leading,
 	onBack,
 	right,
@@ -44,6 +45,7 @@ export function CustomerHeader({
 	eyebrow,
 }: {
 	backLabel?: string;
+	backVariant?: "default" | "nav";
 	leading?: ReactNode;
 	onBack?: () => void;
 	right?: ReactNode;
@@ -57,7 +59,10 @@ export function CustomerHeader({
 				{onBack ? (
 					<button
 						type="button"
-						className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all duration-[180ms] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
+						className={cn(
+						"flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all duration-[180ms] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]",
+						backVariant === "nav" && "rounded-[14px] bg-primary/10 px-1 text-[10px] font-bold text-primary shadow-none hover:bg-primary/15",
+					)}
 						aria-label={backLabel}
 						onClick={onBack}
 					>
