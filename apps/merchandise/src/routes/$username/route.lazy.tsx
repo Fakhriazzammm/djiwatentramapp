@@ -13,7 +13,6 @@ import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerHomeActions, CustomerHomeHeader, CustomerGreeting, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
-import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
 import { MARKETPLACE_BRAND_NAME } from "@/lib/marketplace-config";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
 
@@ -217,8 +216,8 @@ function MemberHomePage() {
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<CustomerGreeting name={guestData.name} />
 						<MerchandisePromoBanner />
-						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
-						<RecentOrdersCarousel username={username} />
+						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Temukan koleksi merchandise pilihan.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
+						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
 						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
@@ -255,10 +254,9 @@ function MemberHomePage() {
 						<CustomerGreeting name={displayName} />
 						<MerchandisePromoBanner />
 						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
-						<RecentOrdersCarousel username={username} />
+						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
-						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 					</main>
 				</div>
 			</div>
