@@ -7,6 +7,7 @@ export type OrderChannel =
   | "shopeefood"
   | "telegram"
   | "merchandise"
+  | "b2b"
   | "unknown";
 
 export type OrderNumberContext = {
@@ -27,6 +28,7 @@ export function getOrderChannel(context: OrderNumberContext): OrderChannel {
   if (context.booking || normalized(context.source) === "booking") return "booking";
 
   if (normalized(context.brandSlug) === "merchandise") return "merchandise";
+  if (normalized(context.brandSlug) === "b2b" || normalized(context.businessUnit) === "b2b") return "b2b";
 
   const businessUnit = normalized(context.businessUnit);
   if (businessUnit === "ordermieyamin" || businessUnit === "mieyamin") return "app";
@@ -55,6 +57,7 @@ export function getOrderChannelCode(channel: OrderChannel): string {
     shopeefood: "SF",
     telegram: "TG",
     merchandise: "MERCH",
+    b2b: "B2B",
     unknown: "UNK",
   }[channel];
 }
@@ -63,6 +66,7 @@ export function getOrderTypeCode(orderType?: string | null, platform?: string | 
   const type = normalized(orderType);
   if (type === "dine_in" || type === "dinein") return "D";
   if (type === "takeaway" || type === "take_away") return "T";
+  if (type === "delivery") return "DL";
   if (type === "online") {
     const p = normalized(platform);
     if (p === "grab" || p === "grabfood") return "OG";
@@ -103,7 +107,14 @@ export function formatOrderNumber(args: {
 export function getDisplayOrderNumber(orderNumber: string | null | undefined, context: OrderNumberContext & { createdAt?: number | null; sequence?: number | null }) {
   const raw = String(orderNumber ?? "").trim();
   if (!raw) return "-";
-  if (/^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$/i.test(raw)) return raw.toUpperCase();
+  if (/^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$/i.test(raw)) {
+    const channel = getOrderChannel(context);
+    if (channel === "b2b" && !/^ORD-B2B-/i.test(raw)) {
+      const sequence = Number(raw.match(/^ORD-[A-Z]+-[A-Z]+-(\d{4})-/i)?.[1] ?? 0);
+      if (sequence) return formatOrderNumber({ sequence, createdAt: context.createdAt, context });
+    }
+    return raw.toUpperCase();
+  }
 
   const legacySequence = context.sequence ?? Number(raw.match(/^ORD(\d{1,6})-/i)?.[1] ?? 0);
   if (!legacySequence) return raw;

@@ -5,6 +5,7 @@ describe("order number channel contract", () => {
   it("formats new POS and Customer numbers without customer PII", () => {
     expect(formatOrderNumber({ sequence: 35, createdAt: new Date("2026-08-31T10:00:00+07:00").getTime(), context: { source: "pos", orderType: "dine_in" } })).toBe("ORD-POS-D-0035-310826");
     expect(formatOrderNumber({ sequence: 36, createdAt: new Date("2026-08-31T10:00:00+07:00").getTime(), context: { source: "customer_self_service", orderType: "dine_in" } })).toBe("ORD-APP-D-0036-310826");
+    expect(formatOrderNumber({ sequence: 37, createdAt: new Date("2026-08-31T10:00:00+07:00").getTime(), context: { source: "customer_self_service", brandSlug: "b2b", orderType: "delivery" } })).toBe("ORD-B2B-DL-0037-310826");
   });
 
   it("renders legacy IDs consistently while keeping raw IDs unchanged", () => {

@@ -43,7 +43,9 @@ function generateOrderNumber(args: {
 	platform?: string;
 	createdAt: number;
 	receiptNo?: number;
-}) {
+	businessUnit?: string;
+	brandSlug?: string;
+	}) {
 	return formatOrderNumber({
 		sequence: args.receiptNo,
 		createdAt: args.createdAt,
@@ -51,7 +53,9 @@ function generateOrderNumber(args: {
 			source: args.source,
 			orderType: args.orderType,
 			platform: args.platform,
-		},
+			businessUnit: args.businessUnit,
+			brandSlug: args.brandSlug,
+			},
 	});
 }
 
@@ -2481,7 +2485,9 @@ export function useHybridCreateOrder() {
 			}
 
 			// Daily receipt numbering
-			const kind = args?.source === "pos"
+			const kind = args?.brandSlug === "b2b"
+			  ? "online"
+			  : args?.source === "pos"
 				? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
 				: args?.source === "customer_self_service"
 					? "dine_in"
@@ -2501,7 +2507,9 @@ export function useHybridCreateOrder() {
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
 				receiptNo: dailyReceiptNo ?? undefined,
-			});
+				businessUnit: args?.businessUnit,
+				brandSlug: args?.brandSlug,
+				});
 				const orderId = makeSourceId("order");
 
 				let authoritativeTax: any = null;
@@ -2525,7 +2533,7 @@ export function useHybridCreateOrder() {
 				const orderRow = {
 					source_id: orderId,
 					order_number: orderNumber,
-					order_channel: getOrderChannel({ source: args?.source, platform: args?.platform, orderType: args?.orderType }),
+					order_channel: getOrderChannel({ source: args?.source, platform: args?.platform, orderType: args?.orderType, brandSlug: args?.brandSlug }),
 					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0),
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,

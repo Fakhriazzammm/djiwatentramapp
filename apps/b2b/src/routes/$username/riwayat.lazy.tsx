@@ -32,7 +32,7 @@ function displayOrderNumber(order: any) {
     businessUnit: order.businessUnit,
     orderType: order.orderType,
     platform: order.platform,
-    brandSlug: order.brandSlug ?? order.brand_slug,
+    brandSlug: order.brandSlug ?? order.brand_slug ?? "b2b",
   }) || order.id.slice(0, 8);
 }
 
