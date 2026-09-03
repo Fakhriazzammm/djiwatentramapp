@@ -3,3 +3,6 @@
 @import "tailwindcss";
 @import "./lib/tw-animate.css";
 @import "@yumipos/web-shared/theme.css";
+
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
