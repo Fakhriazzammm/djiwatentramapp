@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.249",
+	semantic: "0.2.251",
 	// Git/deploy commit hash (short)
-	commitHash: "12aca61",
-	message: "fix(customer): use database brand logo on slug routes",
+	commitHash: "723f39c0",
+	message: "feat(customer): add database-branded booking banner",
 	// Commit subject for the update prompt
-	commitMessage: "fix(customer): use database brand logo on slug routes",
+	commitMessage: "feat(customer): add database-branded booking banner",
 	// Build timestamp
 	buildDate: "2026-09-03",
 	// Full version string for display

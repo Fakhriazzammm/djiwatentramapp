@@ -1,7 +1,7 @@
 {
-  "version": "0.2.249",
-  "commitHash": "12aca61",
-  "message": "fix(customer): use database brand logo on slug routes",
+  "version": "0.2.251",
+  "commitHash": "723f39c0",
+  "message": "feat(customer): add database-branded booking banner",
   "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T02:48:35.065Z"
+  "generatedAt": "2026-09-03T02:52:28.924Z"
 }
