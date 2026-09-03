@@ -519,7 +519,7 @@ function OrderPage() {
 	};
 
 	const handleProductSelect = (product: (typeof orderedProducts)[number]) => {
-		if (product.isAvailable === false || Number(product.quantity ?? 0) <= 0) {
+		if (product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0)) {
 			toast.info(`${product.name} sedang SOLD`);
 			return;
 		}
