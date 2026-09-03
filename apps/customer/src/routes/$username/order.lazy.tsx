@@ -1,5 +1,4 @@
 import {
-	ArrowLeft,
 	Bell,
 	ChevronRight,
 	LogIn,
@@ -957,11 +956,7 @@ function OrderPage() {
 	// ── Render ───────────────────────────────────────────────────
 
 	const handleOrderHeaderBack = () => {
-		if (step === "table") navigate({ to: "/$username", params: { username } });
-		if (step === "party") setStep("table");
-		if (step === "refill") setStep(config.enablePartySizeSelection ? "party" : "party");
-		if (step === "menu") setStep(config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : config.enablePartySizeSelection ? "party" : "party");
-		if (step === "checkout") setStep("menu");
+		navigate({ to: "/$username", params: { username } });
 	};
 
 	return (
@@ -973,7 +968,7 @@ function OrderPage() {
 					title={storeName}
 					subtitle="Djiwa Tentram Cafe & Resto"
 					onBack={handleOrderHeaderBack}
-					leading={<ArrowLeft className="h-4 w-4" />}
+					leading={<img src="/home-header-icon.png" alt="" className="h-5 w-5 object-contain" aria-hidden="true" />}
 					right={<span className="inline-flex min-h-9 items-center rounded-full bg-primary/10 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-primary">{totalItems} item</span>}
 				/>
 				<div className="px-3 pt-3"><CustomerChannelSwitcher active="customer" customerHref={customerChannelHref} merchandiseHref={merchandiseChannelHref} /></div>
