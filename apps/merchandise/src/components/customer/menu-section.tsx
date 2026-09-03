@@ -94,13 +94,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 						<h2 className="mt-1 font-display text-[21px] font-black leading-tight tracking-[-0.03em]">{happyHourBanner ? happyHourBanner.priceLabel : "Pilih merchandise"}</h2>
 						{happyHourBanner ? <p className="mt-1 text-[11px] font-medium text-white/75">Berlaku {happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p> : <p className="mt-1 text-xs text-muted-foreground">Pilih produk merchandise yang ingin kamu pesan.</p>}
 					</div>
-					<div className={cn("shrink-0 rounded-2xl px-3 py-2 text-right", bannerVariant === "default" ? "bg-primary/10" : "bg-white/12")}><p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", bannerVariant === "default" ? "text-primary/70" : "text-white/60")}>Orang</p><p className={cn("mt-0.5 text-lg font-black leading-none", bannerVariant === "default" ? "text-primary" : "text-white")}>{props.partySize}</p></div>
 				</div>
-				<div className={cn("grid grid-cols-2 gap-3 border-t px-4 py-3", bannerVariant === "default" ? "border-border/70" : "border-white/15")}>
-					<div className="min-w-0"><p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", bannerVariant === "default" ? "text-muted-foreground" : "text-white/60")}>Meja</p><p className={cn("mt-1 truncate text-sm font-black", bannerVariant === "default" ? "text-foreground" : "text-white")}>{props.tableNumber.trim() ? props.tableNumber.trim() : "Belum dipilih"}</p></div>
-					<div className="min-w-0 text-right"><p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", bannerVariant === "default" ? "text-muted-foreground" : "text-white/60")}>Pesanan</p><p className={cn("mt-1 truncate text-sm font-black", bannerVariant === "default" ? "text-foreground" : "text-white")}>{props.totalItems} item <span className={cn("font-semibold", bannerVariant === "default" ? "text-muted-foreground" : "text-white/70")}>· {currency(props.total)}</span></p></div>
-				</div>
-				{props.freeRefillCharge > 0 ? <div className={cn("mx-4 mb-3 rounded-xl px-3 py-2 text-[11px] font-bold", bannerVariant === "default" ? "bg-emerald-50 text-emerald-700" : "bg-white/12 text-white/85")}>Free refill · {currency(props.freeRefillCharge)}</div> : null}
 			</div>
 
 			{props.config.enableCatalogBrowsing ? (
