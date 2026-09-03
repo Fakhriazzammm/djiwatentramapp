@@ -36,38 +36,42 @@ export function CustomerLiveShiftIndicator() {
 
 export function CustomerHeader({
 	backLabel = "Kembali",
-	backVariant = "default",
 	leading,
 	onBack,
 	right,
+	showPressHint = false,
 	subtitle,
 	title,
 	eyebrow,
 }: {
 	backLabel?: string;
-	backVariant?: "default" | "nav";
 	leading?: ReactNode;
 	onBack?: () => void;
 	right?: ReactNode;
+	showPressHint?: boolean;
 	subtitle?: string;
 	title: string;
 	eyebrow?: string;
 }) {
+	const shouldReduceMotion = useReducedMotion();
+
 	return (
 		<header className="sticky top-0 z-30 border-b border-black/[0.04] bg-background/90 px-3 py-2.5 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
 			<div className="grid min-h-11 grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
 				{onBack ? (
-					<button
+					<motion.button
 						type="button"
-						className={cn(
-						"flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all duration-[180ms] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]",
-						backVariant === "nav" && "rounded-[14px] bg-primary/10 px-1 text-[10px] font-bold text-primary shadow-none hover:bg-primary/15",
-					)}
+						whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+						whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+						animate={showPressHint && !shouldReduceMotion ? { y: [0, -3, 0] } : undefined}
+						transition={showPressHint ? { type: "spring", stiffness: 380, damping: 20, repeat: 2, repeatDelay: 0.45 } : { type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
+						className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)] transition-all duration-[180ms] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
 						aria-label={backLabel}
 						onClick={onBack}
 					>
+						{showPressHint && !shouldReduceMotion ? <motion.span aria-hidden="true" className="pointer-events-none absolute inset-[-4px] rounded-full border border-primary/40" animate={{ scale: [0.9, 1.16], opacity: [0.55, 0] }} transition={{ duration: 1.15, repeat: 2, repeatDelay: 0.45 }} /> : null}
 						{leading}
-					</button>
+					</motion.button>
 				) : leading ? <div className="flex h-11 w-11 shrink-0 items-center justify-center">{leading}</div> : <span aria-hidden="true" />}
 				<div className="min-w-0 text-center">
 					{eyebrow ? <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{eyebrow}</p> : null}
