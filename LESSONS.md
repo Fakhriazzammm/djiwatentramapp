@@ -21,6 +21,7 @@
 | 15 | **Tombol login lintas app harus memakai return URL allowlist** — Merchandise boleh mengarahkan customer ke halaman auth pusat Djiwa App, tetapi callback hanya boleh kembali ke origin Merchandise yang terdaftar; jangan mempercayai URL redirect arbitrer dari query string. | customer-auth/security/routing |
 | 16 | **SSO `returnTo` harus ditandai sebagai handoff** — Customer login/register normal wajib berakhir di `/<slugusername>`; hanya URL auth yang membawa marker `sso=1` boleh kembali ke Merchandise. Tanpa marker, query `returnTo` lama dapat memicu redirect loop lintas storefront. | customer-auth/routing/debug |
 | 17 | **Banner promosi customer harus dipasang pada route slug, bukan landing root** — route `/` adalah entry/landing umum; promo customer harus dirender dari home `/<slugcustomer>` agar tidak muncul di halaman publik yang salah. Untuk SPA tanpa route tree, bedakan pathname slug satu segmen dari root dan verifikasi keduanya. | customer/booking/merchandise/routing/ui-ux |
+| 18 | **Gambar produk customer wajib punya fallback runtime** — URL gambar katalog/order dapat kosong atau gagal dimuat; pertahankan tinggi area gambar, teks, harga, dan tombol reorder lalu tampilkan ikon produk fallback. Terapkan markup yang sama pada Customer dan Merchandise agar visual tetap sinkron. | customer/merchandise/ui-ux/reliability |
 
 ## Supabase
 
