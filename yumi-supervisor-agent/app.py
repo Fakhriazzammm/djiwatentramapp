@@ -1720,10 +1720,10 @@ async def _send_cashier_payment_update(app, row: dict):
     lines.extend([
         f"🔔 PEMBARUAN PEMBAYARAN — {_format_time_hm(int(float(row.get('_creationTime') or row.get('createdAt') or 0)))}",
         f"📲 SUMBER: {source_label}",
-        "✅ SUDAH LUNAS — PEMBAYARAN DITERIMA DI KASIR",
+        "✅ LUNAS — DJIWA APP - BAYAR TUNAI DI KASIR",
         "────────────",
         f"🆔 {order_no}",
-        f"💰 Rp{float(row.get('totalAmount') or 0):,.0f} — Tunai",
+        f"💰 Rp{float(row.get('totalAmount') or 0):,.0f} — DJIWA APP - BAYAR TUNAI DI KASIR",
         f"👤 {row.get('customerName') or 'Pelanggan'}",
         f"👥 Kasir: {cashier}",
     ])
