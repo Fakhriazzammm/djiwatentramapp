@@ -3,12 +3,14 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Clock, MapPin, Phone, UtensilsCrossed } from "lucide-react";
 import { useHybridBestSellers, useHybridProducts, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
 
 type CustomerHomeDiscoveryProps = {
   onMenu: () => void;
+  b2bHref?: string;
 };
 
-export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
+export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscoveryProps) {
   const reduceMotion = useReducedMotion();
   const carouselRef = useRef<HTMLDivElement>(null);
   const [carouselPaused, setCarouselPaused] = useState(false);
@@ -93,6 +95,10 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
             ))}
           </div>
         </motion.section>
+      ) : null}
+
+      {b2bHref ? (
+        <B2BPromoBanner href={b2bHref} />
       ) : null}
 
       {hasRestaurantInfo ? (

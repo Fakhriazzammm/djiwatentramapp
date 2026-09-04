@@ -15,6 +15,7 @@ import { CustomerHomeActions, CustomerHomeHeader, CustomerGreeting, CustomerWall
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
+import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
 
 type GuestData = {
 	name: string;
@@ -27,14 +28,6 @@ function MerchandisePromoBanner() {
 	return (
 		<a href="https://merchandise.yumme.id/" aria-label="Jelajahi Merchandise Djiwa Tentram" className="relative block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]">
 			<img src="/merchandise-promo-banner-v2.png" alt="Bawa Rasa Tentram ke Setiap Hari — Jelajahi Merchandise" className="block h-auto w-full" loading="lazy" />
-		</a>
-	);
-}
-
-function B2BPromoBanner({ href }: { href: string }) {
-	return (
-		<a href={href} aria-label="Layanan Pesanan Grosir Mie Yamin — Cek Paket Kiloan untuk katering dan restoran" className="relative block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]">
-			<img src="/b2b-promo-banner.webp" alt="Layanan Pesanan Grosir Mie Yamin — Cek Paket Kiloan untuk katering dan restoran" className="block h-auto w-full" loading="lazy" />
 		</a>
 	);
 }
@@ -264,12 +257,11 @@ function MemberHomePage() {
 						<CustomerGreeting name={displayName} />
 						<CustomerStoryRail />
 						<MerchandisePromoBanner />
-						<B2BPromoBanner href={b2bChannelHref} />
 						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} />
-						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} />
+						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} b2bHref={b2bChannelHref} />
 					</main>
 				</div>
 			</div>
