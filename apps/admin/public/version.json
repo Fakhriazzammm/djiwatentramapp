@@ -1,7 +1,7 @@
 {
-  "version": "0.2.208",
-  "commitHash": "6618dfb6",
-  "message": "fix(admin): format KOL exports",
-  "buildDate": "2026-09-02",
-  "generatedAt": "2026-09-02T05:56:47.810Z"
+  "version": "0.2.138",
+  "commitHash": "ee54838",
+  "message": "feat(admin): surface B2B orders with badge and delivery tracking",
+  "buildDate": "2026-09-04",
+  "generatedAt": "2026-09-04T07:43:50.037Z"
 }
