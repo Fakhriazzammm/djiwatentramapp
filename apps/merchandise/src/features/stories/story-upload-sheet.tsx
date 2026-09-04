@@ -1,4 +1,4 @@
-import { Camera, ImagePlus, Video, UploadCloud } from "lucide-react";
+import { Camera, RefreshCw, Video, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -66,6 +66,16 @@ export function StoryUploadSheet({ open, onOpenChange, onSuccess }: Props) {
     setProgress(0);
   };
 
+  const retake = () => {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(null);
+    setPreview("");
+    setDuration(undefined);
+    setError(null);
+    if (mediaType === "video") videoRef.current?.click();
+    else photoRef.current?.click();
+  };
+
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!next) reset(); onOpenChange(next); }}>
       <SheetContent
@@ -99,7 +109,13 @@ export function StoryUploadSheet({ open, onOpenChange, onSuccess }: Props) {
             ) : (
               <img src={preview} alt="Preview Story" className="max-h-64 w-full object-contain" />
             )}
-            <p className="p-3 text-xs font-semibold text-muted-foreground">{file.name}</p>
+            <p className="flex items-center justify-between gap-2 p-3 text-xs font-semibold text-muted-foreground">
+              <span className="min-w-0 truncate">{file.name}</span>
+              <button type="button" onClick={retake} disabled={saving} className="shrink-0 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <RefreshCw className="mr-1 inline-block h-3 w-3" aria-hidden="true" />
+                {mediaType === "video" ? "Video Ulang" : "Foto Ulang"}
+              </button>
+            </p>
           </div>
         )}
 
