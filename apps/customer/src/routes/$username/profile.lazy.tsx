@@ -1,7 +1,7 @@
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Check, LogIn, LogOut, Mail, MapPin, Phone, ShieldCheck, Star, User, Wallet } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ function ProfilePage() {
 	const { setCart } = useOrderContext();
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 	const { orderCount } = useCustomerOrderCount();
+	const reduceMotion = useReducedMotion();
 
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState("");
@@ -146,22 +147,26 @@ function ProfilePage() {
 
 			<main className="space-y-3 px-3 pb-28 pt-4 sm:px-4">
 				{!customer.email || !customer.phone ? <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-black text-amber-900">Profile belum lengkap untuk QRIS</p><p className="mt-1 text-[10px] leading-relaxed text-amber-800">Lengkapi email dan nomor WhatsApp agar invoice Mayar dapat dibuat.</p></div> : null}
-				{/* Avatar & Username */}
-				<div className="relative overflow-hidden rounded-[28px] bg-card px-5 py-7 text-center shadow-[0_10px_34px_rgba(15,23,42,0.06)]">
-					<div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-28 rounded-full bg-primary/[0.08] blur-3xl" />
-					<div className="relative mx-auto flex h-[88px] w-[88px] items-center justify-center rounded-full bg-background p-1 shadow-[0_10px_26px_rgba(15,23,42,0.12)] ring-1 ring-border/60">
-						{customer.photoUrl ? (
-							<img src={customer.photoUrl} alt="Avatar" className="h-full w-full rounded-full object-cover" />
-						) : (
-							<div className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 text-3xl font-black text-primary">{initials}</div>
-						)}
+				{/* Member Card */}
+				<section className="relative isolate overflow-hidden rounded-[28px] bg-[#111d4a] text-white shadow-[0_18px_44px_rgba(15,23,42,0.18)]" aria-label="Kartu member Djiwa Tentram">
+					<img src="/assets/djiwa-member-card-cafe.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-[0.82]" />
+					<div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(8,17,53,0.95)_0%,rgba(12,26,70,0.76)_46%,rgba(12,26,70,0.18)_100%)]" />
+					<motion.div aria-hidden="true" className="pointer-events-none absolute -inset-y-16 left-[-32%] z-10 w-1/4 rotate-[18deg] bg-gradient-to-r from-transparent via-[#f4d27a]/35 to-transparent blur-lg" animate={reduceMotion ? undefined : { x: [0, 420, 840] }} transition={reduceMotion ? undefined : { duration: 4.8, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} />
+					<div className="relative flex min-h-[238px] flex-col justify-between p-5 sm:min-h-[260px] sm:p-6">
+						<div className="flex items-start justify-between gap-3">
+							<div className="flex items-center gap-2.5">
+								<div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f4d27a]/40 bg-[#f4d27a]/10 text-[#f4d27a] shadow-sm"><ShieldCheck className="h-5 w-5" aria-hidden="true" /></div>
+								<div><p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#f4d27a]">Djiwa Tentram</p><p className="mt-0.5 text-xs font-semibold text-blue-100/80">Member Card</p></div>
+							</div>
+							<span className="rounded-full border border-[#f4d27a]/45 bg-[#0b1740]/55 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#f4d27a]">Member</span>
+						</div>
+						<div className="max-w-[78%]">
+							<motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }} className="break-words font-display text-[26px] font-black leading-[1.05] tracking-[-0.04em] text-white sm:text-[30px]">{customer.name || customer.nickname || "Member"}</motion.p>
+							<p className="mt-2 break-all text-sm font-semibold text-blue-100/90">@{customer.username}</p>
+						</div>
+						<div className="flex items-end justify-between gap-3 border-t border-white/15 pt-3"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-100/70">Member ID</p><p className="mt-1 break-all font-mono text-xs font-bold tracking-[0.14em] text-[#f4d27a]">{String(customer.sourceId || "-").toUpperCase()}</p></div><div className="shrink-0 text-right"><p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#f4d27a]">EXP MEMBERSHIP</p><p className="mt-1 text-[9px] font-semibold text-blue-100/75">Berlaku s/d Des 2026</p></div></div>
 					</div>
-					<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }}>
-						<p className="mt-4 truncate text-[22px] font-black tracking-[-0.04em] text-foreground">{customer.name || "Member"}</p>
-						<p className="mt-1 text-xs font-medium text-muted-foreground">@{username}</p>
-						<div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-primary"><ShieldCheck className="h-3.5 w-3.5" /> Member Djiwa Tentram</div>
-					</motion.div>
-				</div>
+				</section>
 
 				{/* Profile details */}
 				<div className="overflow-hidden rounded-[26px] bg-card shadow-[0_8px_28px_rgba(15,23,42,0.05)]">
