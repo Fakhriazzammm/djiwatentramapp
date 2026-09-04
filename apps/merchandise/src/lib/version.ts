@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.134",
+	semantic: "0.2.135",
 	// Git/deploy commit hash (short)
-	commitHash: "f61c643",
-	message: "feat(customer): match merch profile member card in apps/customer",
+	commitHash: "7ba0538",
+	message: "feat(customer-stories): track story viewers with animated name bubbles",
 	// Commit subject for the update prompt
-	commitMessage: "feat(customer): match merch profile member card in apps/customer",
+	commitMessage: "feat(customer-stories): track story viewers with animated name bubbles",
 	// Build timestamp
 	buildDate: "2026-09-04",
 	// Full version string for display

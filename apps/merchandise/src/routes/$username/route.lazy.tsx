@@ -68,7 +68,8 @@ function MemberHomePage() {
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
 	const customerNav = [
-		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
+		{ label: "Djiwa App", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: false, onSelect: () => window.location.assign(`https://djiwatentram.yumme.id/${encodeURIComponent(username)}`) },
+		{ label: "Menu Merch", icon: <Djiwa3DIcon name="delivery-management" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
 		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } }) },
 	];
 
