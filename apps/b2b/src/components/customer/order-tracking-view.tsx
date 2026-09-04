@@ -49,7 +49,7 @@ export function OrderTrackingView({ orderId }: { orderId: string }) {
   return (
     <main className="mx-auto max-w-md space-y-3 px-3 py-4 pb-28">
       <section className="overflow-hidden rounded-[28px] bg-[linear-gradient(145deg,#0b1740,#1a5dc6)] p-5 text-white shadow-sm">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100">Live tracking B2B</p><h1 className="mt-1 font-display text-2xl font-black">{current.label}</h1><p className="mt-1 text-xs leading-relaxed text-blue-100">{current.description}</p></div><Djiwa3DIcon name="navigation-tracking" size="sm" alt="" className="h-14 w-14 object-contain" /></div>
+        <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100">Live tracking B2B</p><h1 className="mt-1 font-display text-2xl font-black">{current.label}</h1><p className="mt-1 text-xs leading-relaxed text-blue-100">{current.description}</p></div><Djiwa3DIcon name="order-tracking" size="sm" alt="" className="h-14 w-14 object-contain" /></div>
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/20"><div className="h-full rounded-full bg-[#f4d27a] transition-all duration-500" style={{ width: `${Math.max(8, ((activeIndex + 1) / STATUS_STEPS.length) * 100)}%` }} /></div>
         <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-blue-100"><span>Status diperbarui otomatis</span><span>{activeIndex + 1}/{STATUS_STEPS.length}</span></div>
       </section>
