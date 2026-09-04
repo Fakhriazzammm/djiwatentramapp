@@ -195,7 +195,14 @@ export default {
 
       if (request.method === "GET" && parts.length === 1) {
         const stories = await listStories(env, user.id);
-        return json({ data: stories.map((story) => ({ ...story, mediaUrl: `${new URL(request.url).origin}/stories/${story.storyId}/media` })) }, 200, origin);
+        // Include a view count for the current user's own stories (badge on the rail).
+        const ownStories = stories.filter((story) => story.ownerSourceId === user.id);
+        const countByStoryId: Record<string, number> = {};
+        await Promise.all(ownStories.map(async (story) => {
+          const listedCount = await env.CUSTOMER_STORIES_KV.list({ prefix: `view:${story.storyId}:`, limit: 200 });
+          countByStoryId[story.storyId] = listedCount.keys.length;
+        }));
+        return json({ data: stories.map((story) => ({ ...story, mediaUrl: `${new URL(request.url).origin}/stories/${story.storyId}/media`, viewerCount: story.ownerSourceId === user.id ? countByStoryId[story.storyId] ?? 0 : undefined })) }, 200, origin);
       }
 
       if (request.method === "POST" && parts[1] === "upload-url") {

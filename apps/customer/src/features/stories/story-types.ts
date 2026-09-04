@@ -10,6 +10,7 @@ export type CustomerStory = {
   createdAt: string;
   expiresAt: string;
   viewed?: boolean;
+  viewerCount?: number;
 };
 
 export type StoryUploadGrant = {

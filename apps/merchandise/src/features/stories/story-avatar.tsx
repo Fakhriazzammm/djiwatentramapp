@@ -57,6 +57,15 @@ export function StoryAvatar({ story, own = false, onClick }: Props) {
         ) : null}
       </span>
       <span className="max-w-full truncate text-[11px] font-bold text-foreground">{label}</span>
+      {own && story && (story.viewerCount ?? 0) > 0 ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-black text-foreground">
+          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          {story.viewerCount}
+        </span>
+      ) : null}
     </button>
   );
 }
