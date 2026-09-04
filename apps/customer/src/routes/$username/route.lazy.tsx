@@ -1,6 +1,6 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useOrderContext } from "@/hooks/use-order-context";
@@ -33,19 +33,8 @@ function MerchandisePromoBanner() {
 
 function B2BPromoBanner({ href }: { href: string }) {
 	return (
-		<a href={href} aria-label="Cek Paket Kiloan Mie Yamin untuk bisnis — Djiwa Tentram B2B" className="relative block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]">
-			<div className="relative h-auto w-full overflow-hidden bg-[#0b1740] px-4 py-4">
-				{/* subtle warm sheen, no gold/amber/yellow/orange in the palette used for CTA visuals */}
-				<div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(17,29,74,0.9)_0%,rgba(26,93,198,0.55)_52%,rgba(12,26,70,0.25)_100%)]" />
-				<div className="relative flex items-center justify-between gap-3">
-					<div className="min-w-0">
-						<p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#7c9fd4]">Untuk Katering & Restoran</p>
-						<p className="mt-1 font-display text-[15px] font-black leading-tight tracking-[-0.02em] text-white">Mie Yamin Kiloan</p>
-						<p className="mt-1 text-[10px] leading-relaxed text-blue-100/85">Hadirkan Rasa Tentram dalam skala besar.</p>
-					</div>
-					<span className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-[14px] bg-[#1a5dc6] px-3 text-[11px] font-black text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]">Cek Paket Kiloan<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></span>
-				</div>
-			</div>
+		<a href={href} aria-label="Layanan Pesanan Grosir Mie Yamin — Cek Paket Kiloan untuk katering dan restoran" className="relative block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]">
+			<img src="/b2b-promo-banner.webp" alt="Layanan Pesanan Grosir Mie Yamin — Cek Paket Kiloan untuk katering dan restoran" className="block h-auto w-full" loading="lazy" />
 		</a>
 	);
 }
