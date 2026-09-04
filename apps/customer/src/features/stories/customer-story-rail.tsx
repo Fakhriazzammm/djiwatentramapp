@@ -1,6 +1,5 @@
 import { AlertCircle, Plus, RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useCallback, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerStories } from "./use-customer-stories";
@@ -9,6 +8,10 @@ import type { CustomerStory } from "./story-types";
 import { StoryUploadSheet } from "./story-upload-sheet";
 import { StoryViewer } from "./story-viewer";
 
+type StoryGroup = { ownerSourceId: string; ownerLabel: string; stories: CustomerStory[] };
+
+const sortNewest = (a: CustomerStory, b: CustomerStory) => Date.parse(b.createdAt) - Date.parse(a.createdAt);
+
 export function CustomerStoryRail() {
   const { customer } = useCustomerAuth();
   const { stories, state, error, refresh } = useCustomerStories(Boolean(customer));
@@ -16,14 +19,56 @@ export function CustomerStoryRail() {
   const [viewerStory, setViewerStory] = useState<CustomerStory | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => new Set());
 
-  const ownStory = useMemo(() => stories.find((story) => story.ownerSourceId === customer?.sourceId), [stories, customer?.sourceId]);
-  const otherStories = stories.filter((story) => story.ownerSourceId !== customer?.sourceId);
+  // One avatar per owner: group stories by ownerSourceId, own group first.
+  const groups = useMemo(() => {
+    const map = new Map<string, CustomerStory[]>();
+    for (const story of stories) {
+      const list = map.get(story.ownerSourceId) ?? [];
+      list.push(story);
+      map.set(story.ownerSourceId, list);
+    }
+    const ownSourceId = customer?.sourceId;
+    const list: StoryGroup[] = [];
+    for (const [ownerSourceId, ownerStories] of map) {
+      const sorted = [...ownerStories].sort(sortNewest);
+      list.push({ ownerSourceId, ownerLabel: sorted[0]?.ownerLabel || "Member", stories: sorted });
+    }
+    // Own group first, then others by their most recent story.
+    list.sort((a, b) => {
+      if (a.ownerSourceId === ownSourceId) return -1;
+      if (b.ownerSourceId === ownSourceId) return 1;
+      return Date.parse(b.stories[0].createdAt) - Date.parse(a.stories[0].createdAt);
+    });
+    return list;
+  }, [stories, customer?.sourceId]);
 
-  const markSeen = (story: CustomerStory) => {
+  const ownGroup = groups.find((group) => group.ownerSourceId === customer?.sourceId);
+  const otherGroups = groups.filter((group) => group.ownerSourceId !== customer?.sourceId);
+
+  // Playback order for the viewer: flatten groups so one owner's stories run
+  // consecutively, then the next owner (Instagram behaviour).
+  const orderedStories = useMemo(() => groups.flatMap((group) => group.stories), [groups]);
+
+  const markSeen = useCallback((story: CustomerStory) => {
     setViewedIds((prev) => (prev.has(story.storyId) ? prev : new Set(prev).add(story.storyId)));
-  };
+  }, []);
+
+  const openGroup = useCallback((group: StoryGroup | undefined, own: boolean) => {
+    if (!group || group.stories.length === 0) return;
+    if (own && ownGroup === undefined) return;
+    const first = group.stories[0];
+    markSeen(first);
+    setViewerStory(first);
+  }, [markSeen, ownGroup]);
+
+  const handleNavigate = useCallback((next: CustomerStory) => {
+    markSeen(next);
+    setViewerStory(next);
+  }, [markSeen]);
 
   if (!customer) return null;
+
+  const allGroupSeen = (group: StoryGroup) => group.stories.every((story) => viewedIds.has(story.storyId));
 
   return (
     <section className="min-w-0" aria-labelledby="customer-stories-title">
@@ -61,15 +106,18 @@ export function CustomerStoryRail() {
 
       {state === "ready" ? (
         <div className="no-scrollbar flex min-w-0 gap-3 overflow-x-auto overscroll-x-contain pb-1 snap-x" tabIndex={0} aria-label="Daftar Story">
-          <StoryAvatar own story={ownStory} onClick={() => (ownStory ? (setViewerStory(ownStory), markSeen(ownStory)) : setUploadOpen(true))} />
-          {otherStories.map((story) => (
-            <StoryAvatar
-              key={story.storyId}
-              story={{ ...story, viewed: viewedIds.has(story.storyId) }}
-              onClick={() => { markSeen(story); setViewerStory(story); }}
-            />
-          ))}
-          {!ownStory && otherStories.length === 0 ? (
+          <StoryAvatar own story={ownGroup?.stories[0]} onClick={() => (ownGroup ? openGroup(ownGroup, true) : setUploadOpen(true))} />
+          {otherGroups.map((group) => {
+            const seen = allGroupSeen(group);
+            return (
+              <StoryAvatar
+                key={group.ownerSourceId}
+                story={{ ...group.stories[0], viewed: seen }}
+                onClick={() => openGroup(group, false)}
+              />
+            );
+          })}
+          {!ownGroup && otherGroups.length === 0 ? (
             <button type="button" onClick={() => setUploadOpen(true)} className="flex min-h-[72px] items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-3 text-xs font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Plus className="h-4 w-4" aria-hidden="true" /> Bagikan cerita pertamamu
             </button>
@@ -78,7 +126,7 @@ export function CustomerStoryRail() {
       ) : null}
 
       <StoryUploadSheet open={uploadOpen} onOpenChange={setUploadOpen} onSuccess={() => void refresh()} />
-      <StoryViewer story={viewerStory} stories={stories} ownSourceId={customer.sourceId} onNavigate={setViewerStory} onClose={() => setViewerStory(null)} onChanged={() => void refresh()} />
+      <StoryViewer story={viewerStory} stories={orderedStories} ownSourceId={customer.sourceId} onNavigate={handleNavigate} onClose={() => setViewerStory(null)} onChanged={() => void refresh()} />
     </section>
   );
 }
