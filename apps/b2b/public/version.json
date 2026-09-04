@@ -1,7 +1,7 @@
 {
-  "version": "0.2.141",
-  "commitHash": "c78a123",
-  "message": "fix(b2b): distinguish tracking tab from history and support empty state",
+  "version": "0.2.142",
+  "commitHash": "1927c5a",
+  "message": "fix(b2b): list delivery orders on tracking page",
   "buildDate": "2026-09-04",
-  "generatedAt": "2026-09-04T07:59:15.094Z"
+  "generatedAt": "2026-09-04T08:12:17.181Z"
 }
