@@ -1,6 +1,15 @@
 import type { CustomerStory, StoryListResponse, StoryUploadGrant, StoryUploadInput } from "./story-types";
 
-const API_BASE = (import.meta.env.VITE_CUSTOMER_STORIES_API_URL?.trim() || "https://djiwa-customer-stories.zantaratechnology.workers.dev").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_CUSTOMER_STORIES_API_URL?.trim() || "/api/customer-stories").replace(/\/$/, "");
+
+function proxyPath(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${API_BASE}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
 
 export class StoriesClientError extends Error {
   constructor(message: string, public readonly disabled = false) { super(message); }
@@ -22,7 +31,7 @@ export const storiesClient = {
   isConfigured: Boolean(API_BASE),
   async list(signal?: AbortSignal): Promise<CustomerStory[]> {
     const payload = await request<StoryListResponse>("/stories", { signal });
-    return (payload.data ?? []).filter((story) => Date.parse(story.expiresAt) > Date.now());
+    return (payload.data ?? []).filter((story) => Date.parse(story.expiresAt) > Date.now()).map((story) => ({ ...story, mediaUrl: proxyPath(story.mediaUrl) }));
   },
   async createUploadGrant(input: StoryUploadInput): Promise<StoryUploadGrant> {
     const payload = await request<{ data?: StoryUploadGrant }>("/stories/upload-url", {
@@ -31,7 +40,7 @@ export const storiesClient = {
       body: JSON.stringify({ mediaType: input.mediaType, contentType: input.file.type, size: input.file.size, durationSeconds: input.durationSeconds }),
     });
     if (!payload.data?.uploadUrl || !payload.data.storyId) throw new StoriesClientError("Respons upload belum lengkap.");
-    return payload.data;
+    return { ...payload.data, uploadUrl: proxyPath(payload.data.uploadUrl) };
   },
   async upload(grant: StoryUploadGrant, file: File): Promise<void> {
     const response = await fetch(grant.uploadUrl, { method: "PUT", headers: grant.headers, body: file });
