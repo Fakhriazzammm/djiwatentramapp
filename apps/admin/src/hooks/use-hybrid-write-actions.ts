@@ -2914,6 +2914,32 @@ export function useHybridUpdateMieYaminDeliveryStatus() {
 	}, []);
 }
 
+export function useHybridUpdateB2BDeliveryStatus() {
+	const [isLoading, setIsLoading] = useState(false);
+
+	return useCallback(async ({ id, deliveryStatus }: {
+		id: string;
+		deliveryStatus: "pending_payment" | "paid" | "preparing" | "packing" | "ready_to_ship" | "out_for_delivery" | "delivered";
+	}) => {
+		if (!id || !deliveryStatus) throw new Error("Order dan status pengiriman wajib diisi");
+		if (!hasSupabaseConfig) throw new Error("Update status B2B membutuhkan koneksi Supabase");
+
+		setIsLoading(true);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase
+				.schema("pos")
+				.from("orders")
+				.update({ delivery_status: deliveryStatus })
+				.eq("source_id", id)
+				.or("brand_slug.eq.b2b,business_unit.eq.b2b");
+			if (error) throw error;
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
+}
+
 export function useHybridUpdateOrderStatus() {
 	const fallback = useMutation(api.orders.updateOrderStatus);
 	const deductInventory = useHybridDeductOrderInventory();

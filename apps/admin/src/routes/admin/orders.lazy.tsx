@@ -53,6 +53,7 @@ import {
 	useHybridDeleteBookingOrder,
 	useHybridDeleteOrder,
 	useHybridUpdateBookingStatus,
+	useHybridUpdateB2BDeliveryStatus,
 	useHybridUpdateMieYaminDeliveryStatus,
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
@@ -123,7 +124,7 @@ type QuickDateFilter =
 	| "thisMonth"
 	| "lastMonth";
 
-type BusinessFilter = "all" | "pos" | "mieyamin" | "booking";
+type BusinessFilter = "all" | "pos" | "mieyamin" | "b2b" | "booking";
 
 type OrderChannel = {
 	label: string;
@@ -132,6 +133,7 @@ type OrderChannel = {
 
 function resolveOrderChannel(order: any): OrderChannel {
 	const businessUnit = String(order.businessUnit ?? order.business_unit ?? "").trim().toLowerCase();
+	const brandSlug = String(order.brandSlug ?? order.brand_slug ?? "").trim().toLowerCase();
 	const source = String(order.source ?? order.sourceApp ?? order.source_app ?? "").trim().toLowerCase();
 	const orderType = String(order.orderType ?? "").trim().toLowerCase();
 	const joined = `${source} ${orderType}`;
@@ -141,6 +143,9 @@ function resolveOrderChannel(order: any): OrderChannel {
 	}
 	if (businessUnit === "ordermieyamin" || businessUnit === "mieyamin") {
 		return { label: "Mie Yamin", className: "bg-amber-100 text-amber-800" };
+	}
+	if (brandSlug === "b2b" || businessUnit === "b2b") {
+		return { label: "B2B", className: "bg-slate-900 text-amber-300" };
 	}
 	if (joined.includes("gofood") || joined.includes("go_food")) {
 		return { label: "GoFood", className: "bg-green-100 text-green-700" };
@@ -177,9 +182,17 @@ const MIE_YAMIN_DELIVERY_STATUSES = [
 
 type MieYaminDeliveryStatus = (typeof MIE_YAMIN_DELIVERY_STATUSES)[number]["value"];
 
-function getMieYaminDeliveryLabel(status?: string | null) {
-	return MIE_YAMIN_DELIVERY_STATUSES.find((item) => item.value === status)?.label ?? "Belum diatur";
-}
+const B2B_DELIVERY_STATUSES = [
+	{ value: "pending_payment", label: "Menunggu pembayaran" },
+	{ value: "paid", label: "Diterima" },
+	{ value: "preparing", label: "Sedang dibuat" },
+	{ value: "packing", label: "Dikemas" },
+	{ value: "ready_to_ship", label: "Siap dikirim" },
+	{ value: "out_for_delivery", label: "Sedang dikirim" },
+	{ value: "delivered", label: "Selesai" },
+] as const;
+
+type B2BDeliveryStatus = (typeof B2B_DELIVERY_STATUSES)[number]["value"];
 
 const quickDateFilterOptions: Array<{
 	value: QuickDateFilter;
@@ -198,6 +211,7 @@ function AdminOrders() {
 	const allBookingOrders = useHybridBookingOrders({ slug: "booking" });
 	
 	const updateStatus = useHybridUpdateOrderStatus();
+	const updateB2BDeliveryStatus = useHybridUpdateB2BDeliveryStatus();
 	const updateMieYaminDeliveryStatus = useHybridUpdateMieYaminDeliveryStatus();
 	const updateBookingStatus = useHybridUpdateBookingStatus();
 	const deleteOrder = useHybridDeleteOrder();
@@ -212,7 +226,7 @@ function AdminOrders() {
 	const [businessFilter, setBusinessFilter] = useState<BusinessFilter>(() => {
 		if (typeof window === "undefined") return "all";
 		const value = new URLSearchParams(window.location.search).get("business");
-		return value === "pos" || value === "mieyamin" || value === "booking" ? value : "all";
+		return value === "pos" || value === "mieyamin" || value === "b2b" || value === "booking" ? value : "all";
 	});
 	const [searchQuery, setSearchQuery] = useState("");
 	const [quickDateFilter, setQuickDateFilter] =
@@ -277,7 +291,11 @@ function AdminOrders() {
 		const orders = (allOrders || []).map((o: any) => ({
 			...o,
 			type: "regular",
-			businessCategory: o.businessUnit === "ordermieyamin" || o.business_unit === "ordermieyamin" ? "mieyamin" : "pos",
+			businessCategory: o.businessUnit === "ordermieyamin" || o.business_unit === "ordermieyamin"
+				? "mieyamin"
+				: o.brandSlug === "b2b" || o.brand_slug === "b2b" || o.businessUnit === "b2b" || o.business_unit === "b2b"
+					? "b2b"
+					: "pos",
 			id: o._id,
 			displayId: getDisplayOrderNumber(o.orderNumber, {
 				sequence: o.dailyReceiptNo ?? o.daily_receipt_no,
@@ -285,6 +303,7 @@ function AdminOrders() {
 				source: o.source,
 				sourceApp: o.sourceApp,
 				businessUnit: o.businessUnit,
+				brandSlug: o.brandSlug ?? o.brand_slug,
 				orderType: o.orderType,
 				platform: o.platform,
 			}),
@@ -440,30 +459,47 @@ function AdminOrders() {
 		}
 	};
 
-	const handleMieYaminDeliveryStatusUpdate = async (newStatus: MieYaminDeliveryStatus) => {
-		if (!selectedOrder || resolveOrderChannel(selectedOrder).label !== "Mie Yamin") return;
+	const getOrderTrackingOptions = (order: Order): readonly { value: string; label: string }[] =>
+		resolveOrderChannel(order).label === "B2B" ? B2B_DELIVERY_STATUSES : MIE_YAMIN_DELIVERY_STATUSES;
+
+	const getOrderTrackingLabel = (order: Order, status: string) =>
+		getOrderTrackingOptions(order).find((item) => item.value === status)?.label ?? "Belum diatur";
+
+	const handleDetailDeliveryStatusUpdate = async (newStatus: string) => {
+		if (!selectedOrder) return;
+		const channel = resolveOrderChannel(selectedOrder).label;
+		if (channel !== "Mie Yamin" && channel !== "B2B") return;
 		try {
-			await updateMieYaminDeliveryStatus({ id: String(selectedOrder._id), deliveryStatus: newStatus });
+			if (channel === "B2B") {
+				await updateB2BDeliveryStatus({ id: String(selectedOrder._id), deliveryStatus: newStatus as B2BDeliveryStatus });
+			} else {
+				await updateMieYaminDeliveryStatus({ id: String(selectedOrder._id), deliveryStatus: newStatus as MieYaminDeliveryStatus });
+			}
 			setSelectedOrder({ ...selectedOrder, deliveryStatus: newStatus });
 			triggerHybridRefresh();
-			toast.success(`Tracking Mie Yamin diperbarui menjadi ${getMieYaminDeliveryLabel(newStatus)}`);
+			toast.success(`Tracking ${channel} diperbarui menjadi ${getOrderTrackingLabel(selectedOrder, newStatus)}`);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Gagal memperbarui tracking Mie Yamin");
+			toast.error(error instanceof Error ? error.message : `Gagal memperbarui tracking ${channel}`);
 		}
 	};
 
-	const handleInlineMieYaminDeliveryStatusUpdate = async (order: Order, newStatus: MieYaminDeliveryStatus) => {
-		if (resolveOrderChannel(order).label !== "Mie Yamin") return;
+	const handleInlineDeliveryStatusUpdate = async (order: Order, newStatus: string) => {
+		const channel = resolveOrderChannel(order).label;
+		if (channel !== "Mie Yamin" && channel !== "B2B") return;
 		setUpdatingDeliveryId(String(order._id));
 		try {
-			await updateMieYaminDeliveryStatus({ id: String(order._id), deliveryStatus: newStatus });
+			if (channel === "B2B") {
+				await updateB2BDeliveryStatus({ id: String(order._id), deliveryStatus: newStatus as B2BDeliveryStatus });
+			} else {
+				await updateMieYaminDeliveryStatus({ id: String(order._id), deliveryStatus: newStatus as MieYaminDeliveryStatus });
+			}
 			if (selectedOrder?._id === order._id) {
 				setSelectedOrder({ ...selectedOrder, deliveryStatus: newStatus });
 			}
 			triggerHybridRefresh();
-			toast.success(`Tracking diperbarui menjadi ${getMieYaminDeliveryLabel(newStatus)}`);
+			toast.success(`Tracking diperbarui menjadi ${getOrderTrackingLabel(order, newStatus)}`);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Gagal memperbarui tracking Mie Yamin");
+			toast.error(error instanceof Error ? error.message : `Gagal memperbarui tracking ${channel}`);
 		} finally {
 			setUpdatingDeliveryId(null);
 		}
@@ -764,11 +800,12 @@ function AdminOrders() {
 								<div className="min-w-0">
 									<label className="sr-only" htmlFor="orders-business-filter">Bisnis</label>
 									<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
-										<SelectTrigger id="orders-business-filter" className="w-full min-w-0 overflow-hidden" size="sm"><SelectValue className="min-w-0 truncate">{businessFilter === "all" ? "Bisnis: Semua" : businessFilter === "pos" ? "Bisnis: POS Reguler" : businessFilter === "mieyamin" ? "Bisnis: Mie Yamin" : "Bisnis: Booking"}</SelectValue></SelectTrigger>
+										<SelectTrigger id="orders-business-filter" className="w-full min-w-0 overflow-hidden" size="sm"><SelectValue className="min-w-0 truncate">{businessFilter === "all" ? "Bisnis: Semua" : businessFilter === "pos" ? "Bisnis: POS Reguler" : businessFilter === "mieyamin" ? "Bisnis: Mie Yamin" : businessFilter === "b2b" ? "Bisnis: Djiwa B2B" : "Bisnis: Booking"}</SelectValue></SelectTrigger>
 										<SelectContent className="min-w-[210px]">
 											<SelectItem className="whitespace-nowrap" value="all">Semua bisnis</SelectItem>
 											<SelectItem className="whitespace-nowrap" value="pos">POS Reguler</SelectItem>
 											<SelectItem className="whitespace-nowrap" value="mieyamin">Order Mie Yamin</SelectItem>
+											<SelectItem className="whitespace-nowrap" value="b2b">Djiwa B2B</SelectItem>
 											<SelectItem className="whitespace-nowrap" value="booking">Booking</SelectItem>
 								</SelectContent>
 							</Select>
@@ -1090,15 +1127,15 @@ function AdminOrders() {
 																<div className="flex items-center gap-2">
 																	<Badge className="rounded-md px-1.5 py-0 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getPaymentLabel(order)}</Badge>
 																</div>
-																{resolveOrderChannel(order).label === "Mie Yamin" && (
+																{(["Mie Yamin", "B2B"] as string[]).includes(resolveOrderChannel(order).label) && (
 																	<div className="flex items-center justify-between gap-2">
 																		<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tracking</span>
 																		<div className="min-w-0 flex-1">
-																			<Select disabled={updatingDeliveryId === String(order._id)} onValueChange={(value: string | null) => value && handleInlineMieYaminDeliveryStatusUpdate(order, value as MieYaminDeliveryStatus)} value={getTrackingValue(order)}>
+																			<Select disabled={updatingDeliveryId === String(order._id)} onValueChange={(value: string | null) => value && handleInlineDeliveryStatusUpdate(order, value)} value={getTrackingValue(order)}>
 																				<SelectTrigger aria-label={`Ubah tracking order ${order.displayId}`} className="h-8 w-full text-[10px]" size="sm">
 																					{updatingDeliveryId === String(order._id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SelectValue />}
 																				</SelectTrigger>
-																				<SelectContent>{MIE_YAMIN_DELIVERY_STATUSES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+																				<SelectContent>{getOrderTrackingOptions(order).map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
 																			</Select>
 																		</div>
 																	</div>
@@ -1112,7 +1149,7 @@ function AdminOrders() {
 															return <Badge className={`w-fit px-1.5 py-0 text-[11px] ${channel.className}`} variant="outline">{channel.label}</Badge>;
 														})()}
 														<span className="text-[10px] text-muted-foreground">
-															{order.orderType === "dine_in" ? "Dine in" : "Takeaway"}
+															{order.orderType === "dine_in" ? "Dine in" : order.orderType === "delivery" ? "Delivery" : order.orderType === "online" ? "Online" : "Takeaway"}
 														</span>
 													</div>
 												</td>
@@ -1396,30 +1433,39 @@ function AdminOrders() {
 							<div className="sticky bottom-0 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 								<div className="space-y-3">
 									<div className="space-y-2">
-										{resolveOrderChannel(selectedOrder).label === "Mie Yamin" ? (
-											<div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3">
-												<div className="flex items-start justify-between gap-3">
-													<div>
-														<h4 className="text-xs font-black text-amber-900">Tracking Mie Yamin</h4>
-														<p className="mt-0.5 text-[10px] leading-relaxed text-amber-800/80">Pilih status di kotak bawah. Perubahannya tampil di tracking customer.</p>
+										{(() => {
+											const channel = resolveOrderChannel(selectedOrder).label;
+											const isTrackingChannel = channel === "Mie Yamin" || channel === "B2B";
+											if (!isTrackingChannel) return null;
+											const isB2B = channel === "B2B";
+											const options: readonly { value: string; label: string }[] = isB2B ? B2B_DELIVERY_STATUSES : MIE_YAMIN_DELIVERY_STATUSES;
+											const currentStatus = selectedOrder.deliveryStatus || (selectedOrder.status === "paid" || selectedOrder.status === "completed" ? "paid" : "pending_payment");
+											const currentLabel = options.find((item) => item.value === currentStatus)?.label ?? "Belum diatur";
+											return (
+												<div className={isB2B ? "rounded-xl border border-slate-800 bg-slate-900 p-3" : "rounded-xl border border-amber-200 bg-amber-50/70 p-3"}>
+													<div className="flex items-start justify-between gap-3">
+														<div>
+															<h4 className={`text-xs font-black ${isB2B ? "text-amber-300" : "text-amber-900"}`}>Tracking {channel}</h4>
+															<p className={`mt-0.5 text-[10px] leading-relaxed ${isB2B ? "text-slate-300" : "text-amber-800/80"}`}>Pilih status di kotak bawah. Perubahannya tampil real-time di tracking customer.</p>
+														</div>
+														<div className="text-right">
+															<p className={`text-[9px] font-bold uppercase tracking-wide ${isB2B ? "text-slate-400" : "text-amber-800/70"}`}>Status saat ini</p>
+															<Badge className={`mt-0.5 px-1.5 py-0 text-[10px] ${isB2B ? "border-amber-300 bg-slate-800 text-amber-300" : "border-amber-200 bg-white text-amber-800"}`} variant="outline">{currentLabel}</Badge>
+														</div>
 													</div>
-													<div className="text-right">
-														<p className="text-[9px] font-bold uppercase tracking-wide text-amber-800/70">Status saat ini</p>
-														<Badge className="mt-0.5 border-amber-200 bg-white px-1.5 py-0 text-[10px] text-amber-800" variant="outline">{getMieYaminDeliveryLabel(selectedOrder.deliveryStatus || (selectedOrder.status === "paid" || selectedOrder.status === "completed" ? "paid" : "pending_payment"))}</Badge>
-													</div>
+													<Select
+														value={currentStatus}
+														onValueChange={(value: string | null) => { if (value) void handleDetailDeliveryStatusUpdate(value); }}
+													>
+														<SelectTrigger aria-label={`Ubah status tracking ${channel}`} className={`mt-2 h-11 w-full text-sm font-semibold shadow-sm ${isB2B ? "border-slate-700 bg-slate-800 text-white" : "border-amber-200 bg-background"}`}><SelectValue placeholder="Pilih status tracking" /></SelectTrigger>
+														<SelectContent>
+															{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+														</SelectContent>
+													</Select>
 												</div>
-												<Select
-													value={selectedOrder.deliveryStatus || (selectedOrder.status === "paid" || selectedOrder.status === "completed" ? "paid" : "pending_payment")}
-													onValueChange={(value: string | null) => { if (value) void handleMieYaminDeliveryStatusUpdate(value as MieYaminDeliveryStatus); }}
-												>
-													<SelectTrigger aria-label="Ubah status tracking Mie Yamin" className="mt-2 h-11 w-full border-amber-200 bg-background text-sm font-semibold shadow-sm"><SelectValue placeholder="Pilih status tracking" /></SelectTrigger>
-													<SelectContent>
-														{MIE_YAMIN_DELIVERY_STATUSES.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-													</SelectContent>
-												</Select>
-											</div>
-										) : null}
-										{resolveOrderChannel(selectedOrder).label !== "Mie Yamin" && (
+											);
+										})()}
+										{!(["Mie Yamin", "B2B"] as string[]).includes(resolveOrderChannel(selectedOrder).label) && (
 											<>
 											<h4 className="font-medium text-[10px] text-muted-foreground uppercase tracking-widest">
 												Ubah Status Pesanan

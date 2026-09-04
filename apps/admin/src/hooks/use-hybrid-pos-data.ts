@@ -776,7 +776,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		deliveryStatus: row.deliveryStatus ?? row.delivery_status ?? null,
 		deliveryDate: row.deliveryDate ?? row.delivery_date ?? null,
 		deliveryProvider: row.deliveryProvider ?? row.delivery_provider ?? null,
-		brandSlug: row.brandSlug ?? null,
+		brandSlug: row.brandSlug ?? row.brand_slug ?? null,
 		guestCount:
 			row.guestCount === null || row.guestCount === undefined
 				? null
