@@ -1,6 +1,6 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogIn, LogOut } from "lucide-react";
+import { ChevronRight, LogIn, LogOut } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useOrderContext } from "@/hooks/use-order-context";
@@ -27,6 +27,25 @@ function MerchandisePromoBanner() {
 	return (
 		<a href="https://merchandise.yumme.id/" aria-label="Jelajahi Merchandise Djiwa Tentram" className="relative block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]">
 			<img src="/merchandise-promo-banner-v2.png" alt="Bawa Rasa Tentram ke Setiap Hari — Jelajahi Merchandise" className="block h-auto w-full" loading="lazy" />
+		</a>
+	);
+}
+
+function B2BPromoBanner({ href }: { href: string }) {
+	return (
+		<a href={href} aria-label="Cek Paket Kiloan Mie Yamin untuk bisnis — Djiwa Tentram B2B" className="relative block overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition-transform duration-[180ms] hover:-translate-y-0.5 active:scale-[.99]">
+			<div className="relative h-auto w-full overflow-hidden bg-[#0b1740] px-4 py-4">
+				{/* subtle warm sheen, no gold/amber/yellow/orange in the palette used for CTA visuals */}
+				<div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(17,29,74,0.9)_0%,rgba(26,93,198,0.55)_52%,rgba(12,26,70,0.25)_100%)]" />
+				<div className="relative flex items-center justify-between gap-3">
+					<div className="min-w-0">
+						<p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#7c9fd4]">Untuk Katering & Restoran</p>
+						<p className="mt-1 font-display text-[15px] font-black leading-tight tracking-[-0.02em] text-white">Mie Yamin Kiloan</p>
+						<p className="mt-1 text-[10px] leading-relaxed text-blue-100/85">Hadirkan Rasa Tentram dalam skala besar.</p>
+					</div>
+					<span className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-[14px] bg-[#1a5dc6] px-3 text-[11px] font-black text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]">Cek Paket Kiloan<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></span>
+				</div>
+			</div>
 		</a>
 	);
 }
@@ -64,6 +83,7 @@ function MemberHomePage() {
 	const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
 	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://djiwatentram.yumme.id/daftar";
 	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://merchandise.yumme.id/daftar";
+	const b2bChannelHref = isAuthenticated && customer ? `https://b2b.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://b2b.yumme.id/daftar";
 
 	const matches = useMatches();
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
@@ -216,6 +236,7 @@ function MemberHomePage() {
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<CustomerGreeting name={guestData.name} />
 						<MerchandisePromoBanner />
+						<B2BPromoBanner href={b2bChannelHref} />
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
@@ -254,6 +275,7 @@ function MemberHomePage() {
 						<CustomerGreeting name={displayName} />
 						<CustomerStoryRail />
 						<MerchandisePromoBanner />
+						<B2BPromoBanner href={b2bChannelHref} />
 						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
