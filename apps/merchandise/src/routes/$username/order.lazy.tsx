@@ -631,7 +631,7 @@ function OrderPage() {
 		if (paymentChoice === "mayar") {
 			if (isAuthenticated && missingContactFields.length > 0) {
 				toast.error(getCustomerContactMessage(missingContactFields));
-				navigate({ to: "/$username/profile", params: { username } });
+				window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`);
 				return;
 			}
 			if (!isAuthenticated && !/^\S+@\S+\.\S+$/.test(checkoutEmail)) {
@@ -645,7 +645,7 @@ function OrderPage() {
 		}
 		if (paymentChoice === "wallet" && (!isAuthenticated || missingContactFields.length > 0)) {
 			toast.error(isAuthenticated ? getCustomerContactMessage(missingContactFields) : "Masuk dan lengkapi profil untuk pembayaran Djiwa Pay");
-			if (isAuthenticated) navigate({ to: "/$username/profile", params: { username } });
+			if (isAuthenticated) window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`);
 			else navigate({ to: "/masuk" });
 			return;
 		}
@@ -982,7 +982,7 @@ function OrderPage() {
 							isLoading={authLoading}
 							onOpenAuth={() => navigate({ to: "/masuk" })}
 							onLogout={logout}
-							onProfileClick={() => navigate({ to: "/$username/profile", params: { username } })}
+							onProfileClick={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`)}
 						/>
 					</div>
 
@@ -1027,7 +1027,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}

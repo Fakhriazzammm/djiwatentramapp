@@ -15,7 +15,6 @@ import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/custo
 import { CustomerHomeActions, CustomerHomeHeader, CustomerGreeting, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { MARKETPLACE_BRAND_NAME } from "@/lib/marketplace-config";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
-import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 
 type GuestData = {
 	name: string;
@@ -71,9 +70,6 @@ function MemberHomePage() {
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
 		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } }) },
-		{ label: "Riwayat", icon: <Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/riwayat"), onSelect: () => navigate({ to: "/$username/riwayat", params: { username } }) },
-		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
-		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
 	];
 
 	// ── Guest data dari localStorage (synchronous, no network) ──
@@ -220,7 +216,7 @@ function MemberHomePage() {
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Temukan koleksi merchandise pilihan.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
 						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
-						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
+						<CustomerHomeActions onHistory={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/riwayat`)} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
 					</main>
 				</div>
@@ -250,15 +246,14 @@ function MemberHomePage() {
 					/>
 					<CustomerLiveShiftIndicator />
 					<div className="px-4 pt-3"><CustomerChannelSwitcher active="merchandise" customerHref={customerChannelHref} merchandiseHref={merchandiseChannelHref} /></div>
-					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
+					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`)} type="button">Lengkapi</button></div></div> : null}
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<CustomerGreeting name={displayName} />
-						<CustomerStoryRail />
 						<MerchandisePromoBanner />
-						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
+						<CustomerWalletSummary customer={customer} onTopup={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`)} />
 						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
-						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
-						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
+						<DjiwaPayOfferCard isMember onAction={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`)} />
+						<CustomerHomeActions onHistory={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/riwayat`)} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 					</main>
 				</div>
 			</div>

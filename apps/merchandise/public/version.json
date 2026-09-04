@@ -1,7 +1,7 @@
 {
-  "version": "0.2.254",
-  "commitHash": "5e640769",
-  "message": "feat(customer): regenerate slug promo banners with Imagen",
-  "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T03:06:22.447Z"
+  "version": "0.2.134",
+  "commitHash": "f61c643",
+  "message": "feat(customer): match merch profile member card in apps/customer",
+  "buildDate": "2026-09-04",
+  "generatedAt": "2026-09-04T05:56:05.302Z"
 }

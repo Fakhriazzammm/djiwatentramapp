@@ -14,15 +14,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DaftarRouteImport } from './routes/daftar'
 import { Route as UsernameRouteRouteImport } from './routes/$username/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UsernameSaldoRouteImport } from './routes/$username/saldo'
-import { Route as UsernameRiwayatRouteImport } from './routes/$username/riwayat'
-import { Route as UsernamePromoRouteImport } from './routes/$username/promo'
-import { Route as UsernameProfileRouteImport } from './routes/$username/profile'
-import { Route as UsernamePoinRouteImport } from './routes/$username/poin'
 import { Route as UsernameOrderRouteImport } from './routes/$username/order'
-import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
-import { Route as UsernameMinigamesRouteImport } from './routes/$username/minigames'
-import { Route as UsernameFavoritRouteImport } from './routes/$username/favorit'
 
 const MasukLazyRouteImport = createFileRoute('/masuk')()
 
@@ -48,41 +40,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
-const UsernameSaldoRoute = UsernameSaldoRouteImport.update({
-  id: '/saldo',
-  path: '/saldo',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/saldo.lazy').then((d) => d.Route),
-)
-const UsernameRiwayatRoute = UsernameRiwayatRouteImport.update({
-  id: '/riwayat',
-  path: '/riwayat',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/riwayat.lazy').then((d) => d.Route),
-)
-const UsernamePromoRoute = UsernamePromoRouteImport.update({
-  id: '/promo',
-  path: '/promo',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/promo.lazy').then((d) => d.Route),
-)
-const UsernameProfileRoute = UsernameProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/profile.lazy').then((d) => d.Route),
-)
-const UsernamePoinRoute = UsernamePoinRouteImport.update({
-  id: '/poin',
-  path: '/poin',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/poin.lazy').then((d) => d.Route),
-)
 const UsernameOrderRoute = UsernameOrderRouteImport.update({
   id: '/order',
   path: '/order',
@@ -90,57 +47,20 @@ const UsernameOrderRoute = UsernameOrderRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/order.lazy').then((d) => d.Route),
 )
-const UsernameNotifikasiRoute = UsernameNotifikasiRouteImport.update({
-  id: '/notifikasi',
-  path: '/notifikasi',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/notifikasi.lazy').then((d) => d.Route),
-)
-const UsernameMinigamesRoute = UsernameMinigamesRouteImport.update({
-  id: '/minigames',
-  path: '/minigames',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/minigames.lazy').then((d) => d.Route),
-)
-const UsernameFavoritRoute = UsernameFavoritRouteImport.update({
-  id: '/favorit',
-  path: '/favorit',
-  getParentRoute: () => UsernameRouteRoute,
-} as any).lazy(() =>
-  import('./routes/$username/favorit.lazy').then((d) => d.Route),
-)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$username': typeof UsernameRouteRouteWithChildren
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
-  '/$username/favorit': typeof UsernameFavoritRoute
-  '/$username/minigames': typeof UsernameMinigamesRoute
-  '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/order': typeof UsernameOrderRoute
-  '/$username/poin': typeof UsernamePoinRoute
-  '/$username/profile': typeof UsernameProfileRoute
-  '/$username/promo': typeof UsernamePromoRoute
-  '/$username/riwayat': typeof UsernameRiwayatRoute
-  '/$username/saldo': typeof UsernameSaldoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$username': typeof UsernameRouteRouteWithChildren
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
-  '/$username/favorit': typeof UsernameFavoritRoute
-  '/$username/minigames': typeof UsernameMinigamesRoute
-  '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/order': typeof UsernameOrderRoute
-  '/$username/poin': typeof UsernamePoinRoute
-  '/$username/profile': typeof UsernameProfileRoute
-  '/$username/promo': typeof UsernamePromoRoute
-  '/$username/riwayat': typeof UsernameRiwayatRoute
-  '/$username/saldo': typeof UsernameSaldoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,62 +68,20 @@ export interface FileRoutesById {
   '/$username': typeof UsernameRouteRouteWithChildren
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
-  '/$username/favorit': typeof UsernameFavoritRoute
-  '/$username/minigames': typeof UsernameMinigamesRoute
-  '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/order': typeof UsernameOrderRoute
-  '/$username/poin': typeof UsernamePoinRoute
-  '/$username/profile': typeof UsernameProfileRoute
-  '/$username/promo': typeof UsernamePromoRoute
-  '/$username/riwayat': typeof UsernameRiwayatRoute
-  '/$username/saldo': typeof UsernameSaldoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/$username'
-    | '/daftar'
-    | '/masuk'
-    | '/$username/favorit'
-    | '/$username/minigames'
-    | '/$username/notifikasi'
-    | '/$username/order'
-    | '/$username/poin'
-    | '/$username/profile'
-    | '/$username/promo'
-    | '/$username/riwayat'
-    | '/$username/saldo'
+  fullPaths: '/' | '/$username' | '/daftar' | '/masuk' | '/$username/order'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/$username'
-    | '/daftar'
-    | '/masuk'
-    | '/$username/favorit'
-    | '/$username/minigames'
-    | '/$username/notifikasi'
-    | '/$username/order'
-    | '/$username/poin'
-    | '/$username/profile'
-    | '/$username/promo'
-    | '/$username/riwayat'
-    | '/$username/saldo'
+  to: '/' | '/$username' | '/daftar' | '/masuk' | '/$username/order'
   id:
     | '__root__'
     | '/'
     | '/$username'
     | '/daftar'
     | '/masuk'
-    | '/$username/favorit'
-    | '/$username/minigames'
-    | '/$username/notifikasi'
     | '/$username/order'
-    | '/$username/poin'
-    | '/$username/profile'
-    | '/$username/promo'
-    | '/$username/riwayat'
-    | '/$username/saldo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -243,41 +121,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$username/saldo': {
-      id: '/$username/saldo'
-      path: '/saldo'
-      fullPath: '/$username/saldo'
-      preLoaderRoute: typeof UsernameSaldoRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/riwayat': {
-      id: '/$username/riwayat'
-      path: '/riwayat'
-      fullPath: '/$username/riwayat'
-      preLoaderRoute: typeof UsernameRiwayatRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/promo': {
-      id: '/$username/promo'
-      path: '/promo'
-      fullPath: '/$username/promo'
-      preLoaderRoute: typeof UsernamePromoRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/profile': {
-      id: '/$username/profile'
-      path: '/profile'
-      fullPath: '/$username/profile'
-      preLoaderRoute: typeof UsernameProfileRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/poin': {
-      id: '/$username/poin'
-      path: '/poin'
-      fullPath: '/$username/poin'
-      preLoaderRoute: typeof UsernamePoinRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
     '/$username/order': {
       id: '/$username/order'
       path: '/order'
@@ -285,52 +128,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameOrderRouteImport
       parentRoute: typeof UsernameRouteRoute
     }
-    '/$username/notifikasi': {
-      id: '/$username/notifikasi'
-      path: '/notifikasi'
-      fullPath: '/$username/notifikasi'
-      preLoaderRoute: typeof UsernameNotifikasiRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/minigames': {
-      id: '/$username/minigames'
-      path: '/minigames'
-      fullPath: '/$username/minigames'
-      preLoaderRoute: typeof UsernameMinigamesRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
-    '/$username/favorit': {
-      id: '/$username/favorit'
-      path: '/favorit'
-      fullPath: '/$username/favorit'
-      preLoaderRoute: typeof UsernameFavoritRouteImport
-      parentRoute: typeof UsernameRouteRoute
-    }
   }
 }
 
 interface UsernameRouteRouteChildren {
-  UsernameFavoritRoute: typeof UsernameFavoritRoute
-  UsernameMinigamesRoute: typeof UsernameMinigamesRoute
-  UsernameNotifikasiRoute: typeof UsernameNotifikasiRoute
   UsernameOrderRoute: typeof UsernameOrderRoute
-  UsernamePoinRoute: typeof UsernamePoinRoute
-  UsernameProfileRoute: typeof UsernameProfileRoute
-  UsernamePromoRoute: typeof UsernamePromoRoute
-  UsernameRiwayatRoute: typeof UsernameRiwayatRoute
-  UsernameSaldoRoute: typeof UsernameSaldoRoute
 }
 
 const UsernameRouteRouteChildren: UsernameRouteRouteChildren = {
-  UsernameFavoritRoute: UsernameFavoritRoute,
-  UsernameMinigamesRoute: UsernameMinigamesRoute,
-  UsernameNotifikasiRoute: UsernameNotifikasiRoute,
   UsernameOrderRoute: UsernameOrderRoute,
-  UsernamePoinRoute: UsernamePoinRoute,
-  UsernameProfileRoute: UsernameProfileRoute,
-  UsernamePromoRoute: UsernamePromoRoute,
-  UsernameRiwayatRoute: UsernameRiwayatRoute,
-  UsernameSaldoRoute: UsernameSaldoRoute,
 }
 
 const UsernameRouteRouteWithChildren = UsernameRouteRoute._addFileChildren(
