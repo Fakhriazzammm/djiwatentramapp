@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.135",
+	semantic: "0.2.136",
 	// Git/deploy commit hash (short)
-	commitHash: "7ba0538",
-	message: "feat(customer-stories): track story viewers with animated name bubbles",
+	commitHash: "f0dba76",
+	message: "feat(customer-stories): viewer count badge on own story + livelier bubbles",
 	// Commit subject for the update prompt
-	commitMessage: "feat(customer-stories): track story viewers with animated name bubbles",
+	commitMessage: "feat(customer-stories): viewer count badge on own story + livelier bubbles",
 	// Build timestamp
 	buildDate: "2026-09-04",
 	// Full version string for display
