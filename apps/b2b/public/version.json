@@ -1,7 +1,7 @@
 {
-  "version": "0.2.140",
-  "commitHash": "1d44a03",
-  "message": "fix(b2b): tracking only for delivery and trackable from history",
+  "version": "0.2.141",
+  "commitHash": "c78a123",
+  "message": "fix(b2b): distinguish tracking tab from history and support empty state",
   "buildDate": "2026-09-04",
-  "generatedAt": "2026-09-04T07:50:26.290Z"
+  "generatedAt": "2026-09-04T07:59:15.094Z"
 }
