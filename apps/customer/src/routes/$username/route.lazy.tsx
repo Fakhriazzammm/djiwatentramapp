@@ -1,6 +1,6 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogIn, LogOut } from "lucide-react";
+import { LogIn, ShieldCheck } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useOrderContext } from "@/hooks/use-order-context";
@@ -255,7 +255,20 @@ function MemberHomePage() {
 						storeName={storeName}
 						eyebrow={greetingWord()}
 						title={displayName}
-						action={<button type="button" aria-label="Keluar" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-transform duration-[180ms] hover:bg-destructive/10 hover:text-destructive active:scale-[.97]" onClick={async () => { setCart([]); await logout(); navigate({ to: "/" }); }}><LogOut className="h-4 w-4" /></button>}
+						action={
+							<button
+								type="button"
+								onClick={() => navigate({ to: "/$username/profile", params: { username } })}
+								aria-label="Member Djiwa Tentram — Kartu member berlaku sampai Desember 2026. Buka profil."
+								className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-[#f4d27a]/45 bg-[#0b1740] px-3 text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
+							>
+								<ShieldCheck className="h-3.5 w-3.5 text-[#f4d27a]" aria-hidden="true" />
+								<span className="text-left leading-none">
+									<span className="block text-[9px] font-black uppercase tracking-[0.14em] text-[#f4d27a]">Member</span>
+									<span className="mt-0.5 block text-[9px] font-semibold text-blue-100/90">s/d Des 2026</span>
+								</span>
+							</button>
+						}
 					/>
 					<CustomerLiveShiftIndicator />
 					<div className="px-4 pt-3"><CustomerChannelSwitcher active="customer" customerHref={customerChannelHref} merchandiseHref={merchandiseChannelHref} /></div>
