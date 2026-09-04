@@ -234,6 +234,36 @@ export default {
         return new Response(object.body, { headers });
       }
 
+      if (parts[1] && parts[2] === "view" && request.method === "POST") {
+        const story = (await listStories(env, user.id)).find((item) => item.storyId === parts[1]);
+        if (!story) return json({ error: "Story tidak ditemukan atau sudah kedaluwarsa." }, 404, origin);
+        if (story.ownerSourceId === user.id) return json({ data: { recorded: false, self: true } }, 200, origin);
+        const viewerLabel = (user.name || "Member").trim().split(/\s+/)[0]?.slice(0, 40) || "Member";
+        await env.CUSTOMER_STORIES_KV.put(
+          `view:${story.storyId}:${user.id}`,
+          JSON.stringify({ label: viewerLabel, at: new Date().toISOString() }),
+          { expirationTtl: 24 * 60 * 60 },
+        );
+        return json({ data: { recorded: true } }, 202, origin);
+      }
+
+      if (parts[1] && parts[2] === "views" && request.method === "GET") {
+        const story = (await listStories(env, user.id)).find((item) => item.storyId === parts[1]);
+        if (!story) return json({ error: "Story tidak ditemukan atau sudah kedaluwarsa." }, 404, origin);
+        if (story.ownerSourceId !== user.id) return json({ error: "Daftar penonton hanya tersedia untuk pemilik Story." }, 403, origin);
+        const listed = await env.CUSTOMER_STORIES_KV.list({ prefix: `view:${story.storyId}:`, limit: 200 });
+        const viewers = (await Promise.all(listed.keys.map(async (key) => {
+          const value = await env.CUSTOMER_STORIES_KV.get(key.name);
+          if (!value) return null;
+          try {
+            const parsed = JSON.parse(value) as { label?: string; at?: string };
+            return { sourceId: key.name.slice(`view:${story.storyId}:`.length), label: parsed.label || "Member", viewedAt: parsed.at || new Date().toISOString() };
+          } catch { return null; }
+        }))).filter((item): item is NonNullable<typeof item> => Boolean(item))
+          .sort((a, b) => Date.parse(b.viewedAt) - Date.parse(a.viewedAt));
+        return json({ data: viewers }, 200, origin);
+      }
+
       if (parts[1] && request.method === "DELETE") {
         const story = (await listStories(env, user.id)).find((item) => item.storyId === parts[1]);
         if (!story || story.ownerSourceId !== user.id) return json({ error: "Story tidak ditemukan." }, 404, origin);

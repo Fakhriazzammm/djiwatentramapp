@@ -1,4 +1,4 @@
-import type { CustomerStory, StoryListResponse, StoryUploadGrant, StoryUploadInput } from "./story-types";
+import type { CustomerStory, StoryListResponse, StoryUploadGrant, StoryUploadInput, StoryViewer, StoryViewersResponse } from "./story-types";
 
 const API_BASE = (import.meta.env.VITE_CUSTOMER_STORIES_API_URL?.trim() || "/api/customer-stories").replace(/\/$/, "");
 
@@ -51,5 +51,13 @@ export const storiesClient = {
   },
   async delete(storyId: string): Promise<void> {
     await request(`/stories/${encodeURIComponent(storyId)}`, { method: "DELETE" });
+  },
+  async recordView(storyId: string): Promise<boolean> {
+    const payload = await request<{ data?: { recorded?: boolean } }>(`/stories/${encodeURIComponent(storyId)}/view`, { method: "POST" });
+    return Boolean(payload.data?.recorded);
+  },
+  async viewers(storyId: string, signal?: AbortSignal): Promise<StoryViewer[]> {
+    const payload = await request<StoryViewersResponse>(`/stories/${encodeURIComponent(storyId)}/views`, { signal });
+    return payload.data ?? [];
   },
 };

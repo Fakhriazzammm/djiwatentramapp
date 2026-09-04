@@ -29,3 +29,11 @@ export type StoryUploadInput = {
   mediaType: StoryMediaType;
   durationSeconds?: number;
 };
+
+export type StoryViewer = {
+  sourceId: string;
+  label: string;
+  viewedAt: string;
+};
+
+export type StoryViewersResponse = { data?: StoryViewer[]; error?: string };
