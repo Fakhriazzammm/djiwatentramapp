@@ -20,6 +20,7 @@ export type CustomerOrder = {
 	source?: string | null;
 	sourceApp?: string | null;
 	businessUnit?: string | null;
+	brandSlug?: string | null;
 	platform?: string | null;
 	dailyReceiptNo?: number | null;
 	orderType: string | null;
@@ -70,6 +71,7 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 		source: (row.source as string) ?? null,
 		sourceApp: (row.sourceApp as string) ?? null,
 		businessUnit: (row.businessUnit as string) ?? null,
+		brandSlug: (row.brandSlug ?? row.brand_slug ?? null) as string | null,
 		platform: (row.platform as string) ?? null,
 		dailyReceiptNo: row.dailyReceiptNo == null ? null : Number(row.dailyReceiptNo),
 		orderType: (row.orderType as string) ?? null,
