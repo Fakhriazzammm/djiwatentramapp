@@ -1,6 +1,6 @@
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ChevronDown, ClipboardList, FileText, LogIn, RotateCcw } from "lucide-react";
+import { ArrowLeft, ChevronDown, ClipboardList, FileText, LogIn, RotateCcw, Truck } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { rememberGuestOrder } from "@/components/customer/types";
 import type { CartItem } from "@/components/customer/types";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
@@ -46,6 +47,11 @@ const STATUS_LABEL: Record<string, string> = {
 	paid: "Dibayar",
 	cancelled: "Dibatalkan",
 	canceled: "Dibatalkan",
+	pending_payment: "Menunggu pembayaran",
+	packing: "Dikemas",
+	ready_to_ship: "Siap dikirim",
+	out_for_delivery: "Sedang dikirim",
+	delivered: "Selesai",
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -58,6 +64,11 @@ const STATUS_STYLE: Record<string, string> = {
 	paid: "bg-emerald-100 text-emerald-700",
 	cancelled: "bg-red-100 text-red-600",
 	canceled: "bg-red-100 text-red-600",
+	pending_payment: "bg-amber-100 text-amber-700",
+	packing: "bg-violet-100 text-violet-700",
+	ready_to_ship: "bg-violet-100 text-violet-700",
+	out_for_delivery: "bg-sky-100 text-sky-700",
+	delivered: "bg-emerald-100 text-emerald-700",
 };
 
 function getDateGroup(ms: number) {
@@ -96,6 +107,14 @@ function RiwayatPage() {
 			to: "/$username/order",
 			params: { username },
 			search: { step: "receipt", orderId },
+		});
+	};
+	const bukaTracking = (orderId: string) => {
+		rememberGuestOrder(orderId);
+		navigate({
+			to: "/$username/tracking",
+			params: { username },
+			search: { orderId },
 		});
 	};
 
@@ -201,7 +220,9 @@ function RiwayatPage() {
 									<h2 id={`orders-${group}`} className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">{group}</h2>
 									<div className="space-y-2">
 										{groupOrders.map((order) => {
-											const statusKey = order.status?.toLowerCase?.() ?? "";
+											const statusKey = String(order.orderType ?? "").toLowerCase() === "delivery"
+												? String(order.deliveryStatus || order.status || "").toLowerCase()
+												: String(order.status || "").toLowerCase();
 											const isExpanded = expandedOrderId === order.id;
 											const itemSubtotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 											const discount = order.discountAmount ?? Math.max(0, itemSubtotal - order.totalAmount);
@@ -216,9 +237,14 @@ function RiwayatPage() {
 														<div className="mb-3 flex flex-wrap items-center gap-2"><p className="text-[10px] font-medium text-muted-foreground">#{displayOrderNumber(order)} · {fmtDate(order.createdAt)}</p>{happyHourApplied ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">Happy Hour</span> : null}</div>
 														<div className="space-y-2">{order.items.map((item, index) => <div key={`${order.id}-${index}`} className="flex items-start justify-between gap-3 text-xs"><span className="min-w-0 text-foreground"><span className="font-bold">{item.quantity}×</span> {item.productName}{item.variant ? ` (${item.variant})` : ""}<span className="ml-1 text-muted-foreground">· {currency(item.price)} / item</span></span><span className="shrink-0 font-semibold">{currency(item.price * item.quantity)}</span></div>)}</div>
 														<div className="mt-3 space-y-1 border-t border-border/60 pt-3 text-xs">{itemSubtotal !== order.totalAmount ? <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{currency(itemSubtotal)}</span></div> : null}{discount > 0 ? <div className="flex justify-between text-emerald-600"><span>Diskon</span><span>-{currency(discount)}</span></div> : null}{(Number(order.taxAmount ?? 0) > 0 || Number((order.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0) ? <div className="flex justify-between text-muted-foreground"><span>PBJT/Pajak Restoran ({Number((order.receiptMeta as any)?.taxRateSnapshot ?? 0)}%)</span><span>{currency(order.taxAmount ?? 0)}</span></div> : null}<div className="flex justify-between text-muted-foreground"><span>Service charge</span><span>{currency(order.serviceChargeAmount ?? 0)}</span></div><div className="flex justify-between pt-1 text-sm font-black"><span>Total</span><span>{currency(order.totalAmount)}</span></div></div>
-														<div className="mt-4 grid grid-cols-2 gap-2">
-															<button type="button" onClick={(event) => { event.stopPropagation(); lihatStruk(order.id); }} className="flex min-h-10 items-center justify-center gap-1.5 rounded-[13px] border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-black text-primary transition-colors hover:bg-primary/15 active:scale-[.97]"><FileText className="h-3.5 w-3.5" /> Lihat struk</button>
-															<button type="button" onClick={(event) => { event.stopPropagation(); pesanLagi(order); }} className="flex min-h-10 items-center justify-center gap-1.5 rounded-[13px] bg-primary px-3 py-2 text-xs font-black text-primary-foreground transition-transform duration-200 active:scale-[.97]"><RotateCcw className="h-3.5 w-3.5" /> Pesan lagi</button>
+														<div className="mt-4 space-y-2">
+															{String(order.orderType ?? "").toLowerCase() === "delivery" && (
+																<button type="button" onClick={(event) => { event.stopPropagation(); bukaTracking(order.id); }} className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-[13px] bg-slate-900 px-3 py-2 text-xs font-black text-amber-300 shadow-sm transition-transform duration-200 active:scale-[.97]"><Truck className="h-3.5 w-3.5" /> Lacak pesanan</button>
+															)}
+															<div className="grid grid-cols-2 gap-2">
+																<button type="button" onClick={(event) => { event.stopPropagation(); lihatStruk(order.id); }} className="flex min-h-10 items-center justify-center gap-1.5 rounded-[13px] border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-black text-primary transition-colors hover:bg-primary/15 active:scale-[.97]"><FileText className="h-3.5 w-3.5" /> Lihat struk</button>
+																<button type="button" onClick={(event) => { event.stopPropagation(); pesanLagi(order); }} className="flex min-h-10 items-center justify-center gap-1.5 rounded-[13px] bg-primary px-3 py-2 text-xs font-black text-primary-foreground transition-transform duration-200 active:scale-[.97]"><RotateCcw className="h-3.5 w-3.5" /> Pesan lagi</button>
+															</div>
 														</div>
 													</div></motion.div> : null}</AnimatePresence>
 												</div>

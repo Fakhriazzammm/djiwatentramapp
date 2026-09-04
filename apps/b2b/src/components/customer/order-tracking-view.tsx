@@ -41,6 +41,10 @@ export function OrderTrackingView({ orderId }: { orderId: string }) {
   if (order === null) {
     return <main className="mx-auto max-w-md px-4 py-10 text-center"><PackageCheck className="mx-auto h-9 w-9 text-muted-foreground" /><h1 className="mt-3 text-lg font-black">Pesanan tidak ditemukan</h1><p className="mt-1 text-xs text-muted-foreground">Pastikan link tracking menggunakan ID order yang benar.</p></main>;
   }
+  const orderType = String(order?.orderType ?? "").toLowerCase();
+  if (orderType && orderType !== "delivery") {
+    return <main className="mx-auto max-w-md px-4 py-10 text-center"><Truck className="mx-auto h-9 w-9 text-muted-foreground" /><h1 className="mt-3 text-lg font-black">Tracking tidak tersedia</h1><p className="mt-1 text-xs text-muted-foreground">Pelacakan hanya berlaku untuk pesanan pengiriman (delivery).</p></main>;
+  }
 
   return (
     <main className="mx-auto max-w-md space-y-3 px-3 py-4 pb-28">

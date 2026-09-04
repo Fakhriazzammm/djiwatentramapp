@@ -24,6 +24,10 @@ export type CustomerOrder = {
 	dailyReceiptNo?: number | null;
 	orderType: string | null;
 	tableNumber: string | null;
+	deliveryStatus?: string | null;
+	deliveryProvider?: string | null;
+	deliveryAddress?: string | null;
+	deliveryDate?: string | null;
 	items: CustomerOrderItem[];
 	createdAt: number;
 };
@@ -70,6 +74,10 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 		dailyReceiptNo: row.dailyReceiptNo == null ? null : Number(row.dailyReceiptNo),
 		orderType: (row.orderType as string) ?? null,
 		tableNumber: (row.tableNumber as string) ?? null,
+		deliveryStatus: (row.deliveryStatus ?? row.delivery_status ?? null) as string | null,
+		deliveryProvider: (row.deliveryProvider ?? row.delivery_provider ?? null) as string | null,
+		deliveryAddress: (row.deliveryAddress ?? row.delivery_address ?? null) as string | null,
+		deliveryDate: (row.deliveryDate ?? row.delivery_date ?? null) as string | null,
 		items: Array.isArray(row.items)
 			? row.items.map((item: Record<string, unknown>) => ({
 					productId: String(item.productId ?? item.product_id ?? ""),
