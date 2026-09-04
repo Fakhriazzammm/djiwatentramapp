@@ -1,4 +1,4 @@
-import { Camera, RefreshCw, Video, UploadCloud } from "lucide-react";
+import { Camera, ImagePlus, RefreshCw, Video, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -13,8 +13,10 @@ type Props = { open: boolean; onOpenChange: (open: boolean) => void; onSuccess: 
 export function StoryUploadSheet({ open, onOpenChange, onSuccess }: Props) {
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const submitLock = useRef(false);
   const [mediaType, setMediaType] = useState<StoryMediaType | null>(null);
+  const [source, setSource] = useState<"camera" | "gallery">("camera");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [duration, setDuration] = useState<number>();
@@ -22,8 +24,11 @@ export function StoryUploadSheet({ open, onOpenChange, onSuccess }: Props) {
   const [progress, setProgress] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const choosePhoto = () => { setMediaType("image"); setFile(null); setPreview(""); setDuration(undefined); setError(null); photoRef.current?.click(); };
-  const chooseVideo = () => { setMediaType("video"); setFile(null); setPreview(""); setDuration(undefined); setError(null); videoRef.current?.click(); };
+  const choosePhoto = () => { setMediaType("image"); setSource("camera"); setFile(null); setPreview(""); setDuration(undefined); setError(null); photoRef.current?.click(); };
+  const chooseVideo = () => { setMediaType("video"); setSource("camera"); setFile(null); setPreview(""); setDuration(undefined); setError(null); videoRef.current?.click(); };
+  const chooseGallery = () => { setSource("gallery"); setFile(null); setPreview(""); setDuration(undefined); setError(null); galleryRef.current?.click(); };
+
+  const detectMediaType = (candidate: File): StoryMediaType | null => candidate.type.startsWith("video/") ? "video" : candidate.type.startsWith("image/") ? "image" : null;
 
   const onFile = (type: StoryMediaType, candidate?: File) => {
     if (!candidate) return;
@@ -72,7 +77,8 @@ export function StoryUploadSheet({ open, onOpenChange, onSuccess }: Props) {
     setPreview("");
     setDuration(undefined);
     setError(null);
-    if (mediaType === "video") videoRef.current?.click();
+    if (source === "gallery") galleryRef.current?.click();
+    else if (mediaType === "video") videoRef.current?.click();
     else photoRef.current?.click();
   };
 
@@ -90,9 +96,11 @@ export function StoryUploadSheet({ open, onOpenChange, onSuccess }: Props) {
         {/* Hidden camera inputs — `capture` forces the device camera on mobile, skips the gallery */}
         <input ref={photoRef} type="file" className="sr-only" accept="image/*" capture="environment" onChange={(event) => onFile("image", event.target.files?.[0])} />
         <input ref={videoRef} type="file" className="sr-only" accept="video/*" capture="environment" onChange={(event) => onFile("video", event.target.files?.[0])} />
+        {/* Gallery input — no `capture`, lets the user pick from the device gallery */}
+        <input ref={galleryRef} type="file" className="sr-only" accept="image/*,video/*" onChange={(event) => { const candidate = event.target.files?.[0]; if (!candidate) return; const type = detectMediaType(candidate); if (!type) { setError("Pilih foto atau video dari galeri."); setFile(null); setPreview(""); return; } setSource("gallery"); setMediaType(type); onFile(type, candidate); }} />
 
         {!file ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <button type="button" onClick={choosePhoto} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-muted/30 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Camera className="h-5 w-5 text-primary" aria-hidden="true" />
               Foto
@@ -100,6 +108,10 @@ export function StoryUploadSheet({ open, onOpenChange, onSuccess }: Props) {
             <button type="button" onClick={chooseVideo} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-muted/30 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Video className="h-5 w-5 text-primary" aria-hidden="true" />
               Video
+            </button>
+            <button type="button" onClick={chooseGallery} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-muted/30 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <ImagePlus className="h-5 w-5 text-primary" aria-hidden="true" />
+              Galeri
             </button>
           </div>
         ) : (
