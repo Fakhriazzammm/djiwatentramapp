@@ -28,6 +28,7 @@ interface Customer {
 	last_active_at: string | null;
 	djiwaapp_visit_count: number;
 	created_at: string;
+	membership_expires_at: string | null;
 	wallet_balance: number;
 	wallet_held_balance: number;
 	wallet_total_credited: number;
@@ -71,6 +72,12 @@ function formatRupiah(amount: number) {
 function formatDate(value: string | null, withTime = false) {
 	if (!value) return "-";
 	return format(new Date(value), withTime ? "dd MMM yyyy HH:mm" : "dd MMM yyyy", { locale: id });
+}
+
+function formatMembershipExpiry(value: string | null) {
+	if (!value) return "—";
+	const [year, month, day] = value.slice(0, 10).split("-");
+	return year && month && day ? `${day} ${format(new Date(Number(year), Number(month) - 1, Number(day)), "MMM yyyy", { locale: id })}` : "—";
 }
 
 function customerPresence(customer: Customer): "online" | "offline" | "never" {
@@ -146,6 +153,8 @@ function AdminCustomers() {
 	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
+	const [membershipExpiryValue, setMembershipExpiryValue] = useState("");
+	const [membershipExpiryBusy, setMembershipExpiryBusy] = useState(false);
 	const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
 	const [walletLedgerLoading, setWalletLedgerLoading] = useState(false);
 	const [walletAdjustmentAmount, setWalletAdjustmentAmount] = useState("");
@@ -193,11 +202,15 @@ function AdminCustomers() {
 		createClient().from("pos_orders").select("*").order("createdAt", { ascending: false }).limit(2000)
 			.then(({ data, error }) => {
 				if (!active) return;
-				if (error) { console.warn("[customers] order detail error:", error); setSelectedCustomerOrders([]); return; }
+				if (error) {
+					console.warn("[customers] order detail error:", error);
+					setSelectedCustomerOrders([]);
+					setCustomerOrdersLoading(false);
+					return;
+				}
 				setSelectedCustomerOrders((data || []).filter((order: any) => customerMatchesOrder(detailCustomer, order)).slice(0, 50));
-			})
-			.catch((error) => { if (active) { console.warn("[customers] order detail request failed:", error); setSelectedCustomerOrders([]); } })
-			.finally(() => { if (active) setCustomerOrdersLoading(false); });
+				setCustomerOrdersLoading(false);
+			});
 		return () => { active = false; };
 	}, [detailCustomer?.source_id]);
 
@@ -240,6 +253,10 @@ function AdminCustomers() {
 	};
 
 	useEffect(() => {
+		setMembershipExpiryValue(detailCustomer?.membership_expires_at?.slice(0, 10) ?? "");
+	}, [detailCustomer?.source_id, detailCustomer?.membership_expires_at]);
+
+	useEffect(() => {
 		if (!detailCustomer?.source_id || !detailCustomer.email) { setWalletLedger([]); return; }
 		let active = true;
 		setWalletLedgerLoading(true);
@@ -271,6 +288,29 @@ function AdminCustomers() {
 
 	const selectedCustomers = (customers ?? []).filter((customer) => selectedIds.has(customer.source_id));
 	const allVisibleSelected = Boolean(filteredCustomers?.length) && (filteredCustomers ?? []).every((customer) => selectedIds.has(customer.source_id));
+
+	const handleMembershipExpirySave = async () => {
+		if (!detailCustomer) return;
+		setMembershipExpiryBusy(true);
+		try {
+			const { data, error } = await createClient()
+				.schema("pos")
+				.from("customers")
+				.update({ membership_expires_at: membershipExpiryValue || null })
+				.eq("source_id", detailCustomer.source_id)
+				.select("source_id, membership_expires_at")
+				.single();
+			if (error) throw error;
+			const nextExpiry = data?.membership_expires_at ?? null;
+			setDetailCustomer((current) => current ? { ...current, membership_expires_at: nextExpiry } : current);
+			setCustomers((current) => current?.map((customer) => customer.source_id === detailCustomer.source_id ? { ...customer, membership_expires_at: nextExpiry } : customer));
+			toast.success("Exp Member berhasil disimpan");
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Exp Member gagal disimpan");
+		} finally {
+			setMembershipExpiryBusy(false);
+		}
+	};
 
 	const handleBulkDelete = async () => {
 		if (!confirmDeleteCustomers?.length) return;
@@ -422,6 +462,9 @@ function AdminCustomers() {
 										<span>· Terakhir aktif: {formatDate(c.last_active_at, true)} · {c.djiwaapp_visit_count ?? 0} kunjungan DjiwaApp</span>
 									</div>
 									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+										<Star className="h-3 w-3" /> Exp Member {formatMembershipExpiry(c.membership_expires_at)}
+									</p>
+									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
 										<CalendarDays className="h-3 w-3" /> Bergabung {formatDate(c.created_at)}
 									</p>
 							</div>
@@ -448,6 +491,7 @@ function AdminCustomers() {
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2">Status</th>
+								<th className="whitespace-nowrap px-2.5 py-2">Exp Member</th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 							</tr>
 						</thead>
@@ -456,7 +500,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={12}
+										colSpan={13}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -507,6 +551,9 @@ function AdminCustomers() {
 											</span>
 										</td>
 										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+											{formatMembershipExpiry(c.membership_expires_at)}
+										</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
 											{formatDate(c.created_at)}
 										</td>
 									</tr>
@@ -542,6 +589,7 @@ function AdminCustomers() {
 							<DetailField label="Order terakhir" value={formatDate(detailCustomer.last_order_at, true)} />
 							<DetailField label="Terakhir aktif di Djiwa App" value={formatDate(detailCustomer.last_active_at, true)} />
 							<DetailField label="Status Djiwa App" value={presenceLabel(detailCustomer)} />
+							<DetailField label="Exp Member" value={formatMembershipExpiry(detailCustomer.membership_expires_at)} />
 							<DetailField label="Kunjungan DjiwaApp" value={detailCustomer.djiwaapp_visit_count ?? 0} />
 							<DetailField label="Tanggal lahir" value={formatDate(detailCustomer.birth_date)} />
 							<DetailField label="Gender" value={detailCustomer.gender} />
@@ -553,6 +601,7 @@ function AdminCustomers() {
 							<DetailField label="Alamat" value={detailCustomer.address} wide />
 							<DetailField label="Deskripsi customer" value={detailCustomer.customer_description} wide />
 						</div>
+						<div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3"><p className="text-xs font-black">Membership</p><div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end"><label className="flex-1 text-[11px] font-semibold text-muted-foreground">Exp Member<input type="date" value={membershipExpiryValue} onChange={(event) => setMembershipExpiryValue(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-2 text-xs text-foreground" /></label><button type="button" disabled={membershipExpiryBusy} onClick={() => void handleMembershipExpirySave()} className="h-10 rounded-lg bg-primary px-4 text-xs font-black text-primary-foreground disabled:opacity-50">{membershipExpiryBusy ? "Menyimpan..." : "Simpan Exp Member"}</button></div><p className="mt-2 text-[10px] text-muted-foreground">Kosongkan tanggal lalu simpan untuk menghapus masa berlaku.</p></div>
 						<div className="mt-4 rounded-xl border border-border bg-muted/20 p-3"><p className="text-xs font-black">Adjustment Djiwa Pay admin</p><div className="mt-2 grid grid-cols-2 gap-2"><input type="number" min="1" value={walletAdjustmentAmount} onChange={(event) => setWalletAdjustmentAmount(event.target.value)} placeholder="Nominal" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /><input value={walletAdjustmentNote} onChange={(event) => setWalletAdjustmentNote(event.target.value)} placeholder="Alasan wajib" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("credit")} className="h-10 rounded-lg bg-emerald-600 text-xs font-black text-white disabled:opacity-50">Tambah Saldo</button><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("debit")} className="h-10 rounded-lg bg-rose-600 text-xs font-black text-white disabled:opacity-50">Kurangi Saldo</button></div></div>
 						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat pembelian</p>{customerOrdersLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat riwayat order...</p> : selectedCustomerOrders.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada order yang terhubung.</p> : <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">{selectedCustomerOrders.map((order: any) => <div key={order._id} className="rounded-lg bg-muted/30 p-2 text-[11px]"><div className="flex justify-between gap-2"><span className="font-bold">#{order.orderNumber || "-"}</span><span className="font-bold">{formatRupiah(Number(order.totalAmount || 0))}</span></div><div className="mt-1 text-muted-foreground">{order.status || "-"} · {formatDate(order.createdAt ? new Date(Number(order.createdAt)).toISOString() : null, true)}</div>{Array.isArray(order.items) && order.items.length > 0 ? <div className="mt-1 text-muted-foreground">{order.items.map((item: any) => `${item.quantity || 0}× ${item.productName || item.name || "Item"}`).join(", ")}</div> : null}</div>)}</div>}</div><div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat Djiwa Pay</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi Djiwa Pay.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
 					</div>
