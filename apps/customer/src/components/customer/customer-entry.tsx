@@ -28,6 +28,37 @@ export function CustomerSplash({ logoUrl, storeName }: CustomerSplashProps) {
   );
 }
 
+type RouteTransitionSplashProps = {
+  logoUrl?: string;
+  storeName?: string;
+};
+
+export function RouteTransitionSplash({ logoUrl, storeName }: RouteTransitionSplashProps) {
+  const reduceMotion = useReducedMotion();
+  const brandLogoUrl = logoUrl || "/logo-djiwa.png";
+  const label = storeName || "Djiwa Tentram";
+
+  return (
+    <motion.div
+      aria-hidden="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background"
+      initial={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0 }}
+      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+    >
+      <motion.img
+        alt={label}
+        className="h-14 w-14 rounded-2xl object-contain"
+        src={brandLogoUrl}
+        initial={reduceMotion ? {} : { scale: 0.8, opacity: 0 }}
+        animate={reduceMotion ? {} : { scale: 1, opacity: 1 }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+      />
+    </motion.div>
+  );
+}
+
 const benefits: Array<{ illustration: Djiwa3DIconName; label: string; description: string }> = [
   { illustration: "customer-benefit-wallet", label: "Djiwa Pay", description: "Bayar lebih praktis" },
   { illustration: "customer-benefit-happy-hour", label: "Happy Hour", description: "All Menu Rp 15.000" },
