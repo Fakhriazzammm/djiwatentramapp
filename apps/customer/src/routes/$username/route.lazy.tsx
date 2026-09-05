@@ -7,7 +7,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
-import { CustomerBottomNav, CustomerChannelSwitcher, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
+import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
@@ -71,8 +71,6 @@ function MemberHomePage() {
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
-	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://djiwatentram.yumme.id/daftar";
-	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://merchandise.yumme.id/daftar";
 	const b2bChannelHref = isAuthenticated && customer ? `https://b2b.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://b2b.yumme.id/daftar";
 
 	const matches = useMatches();
@@ -222,7 +220,6 @@ function MemberHomePage() {
 				<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 					<CustomerHomeHeader logoUrl={logoUrl} storeName={storeName} eyebrow={greetingWord()} title={guestData.name} />
 					<CustomerLiveShiftIndicator />
-					<div className="px-4 pt-3"><CustomerChannelSwitcher active="customer" customerHref={customerChannelHref} merchandiseHref={merchandiseChannelHref} /></div>
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<MerchandisePromoBanner />
 						<B2BPromoBanner href={b2bChannelHref} />
@@ -271,7 +268,6 @@ function MemberHomePage() {
 						}
 					/>
 					<CustomerLiveShiftIndicator />
-					<div className="px-4 pt-3"><CustomerChannelSwitcher active="customer" customerHref={customerChannelHref} merchandiseHref={merchandiseChannelHref} /></div>
 					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<CustomerStoryRail />

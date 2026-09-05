@@ -34,7 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
 import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
-import { CustomerHeader, CustomerChannelSwitcher } from "@/components/customer/customer-shell";
+import { CustomerHeader } from "@/components/customer/customer-shell";
 import { DeliveryStep } from "@/components/customer/delivery-step";
 import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
@@ -172,8 +172,6 @@ function OrderPage() {
 	const missingContactFields = getMissingCustomerFields(customer);
 	const checkoutEmail = guestEmail.trim() || customer?.email?.trim() || "";
 	const checkoutPhone = guestPhone.trim() || customer?.phone?.trim() || "";
-	const customerChannelHref = isAuthenticated && customer ? `https://djiwatentram.yumme.id/${encodeURIComponent(username)}/order?step=table` : "https://djiwatentram.yumme.id/daftar";
-	const b2bChannelHref = isAuthenticated && customer ? `https://b2b.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://b2b.yumme.id/daftar";
 
 	useEffect(() => {
 		if (isAuthenticated && customer) {
@@ -959,7 +957,6 @@ function OrderPage() {
 					leading={<span className="flex flex-col items-center justify-center gap-0.5 leading-none"><img src="/home-header-icon.png" alt="" className="h-4 w-4 object-contain" aria-hidden="true" /><span className="text-[9px] font-bold text-muted-foreground">Home</span></span>}
 					right={<span className="inline-flex min-h-9 items-center rounded-full bg-primary/10 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-primary">{totalItems} item</span>}
 				/>
-				<div className="px-3 pt-3"><CustomerChannelSwitcher active="b2b" customerHref={customerChannelHref} b2bHref={b2bChannelHref} /></div>
 
 				<main
 					className={
