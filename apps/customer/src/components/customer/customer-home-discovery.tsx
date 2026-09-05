@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Clock, MapPin, Phone, UtensilsCrossed } from "lucide-react";
 import { useHybridBestSellers, useHybridProducts, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import { CustomerDiscoverySkeleton } from "@/components/customer/customer-states";
 import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
 
 type CustomerHomeDiscoveryProps = {
@@ -57,6 +58,10 @@ export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscovery
     return () => window.clearInterval(intervalId);
   }, [carouselPaused, featuredProducts.length, reduceMotion]);
 
+  if (products === undefined || bestSellers === undefined || siteSettings === undefined) {
+    return <CustomerDiscoverySkeleton />;
+  }
+
   return (
     <div className="space-y-4">
       <motion.a
@@ -71,7 +76,9 @@ export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscovery
         whileTap={reduceMotion ? undefined : { scale: 0.98 }}
         transition={{ ...spring, duration: 0.35 }}
       >
-        <img src="/booking-promo-banner-v2.png" alt="Booking acara dan kolaborasi — Rencanakan acara bersama Djiwa Tentram" className="block h-auto w-full" loading="lazy" />
+        <img src="/booking-promo-banner-v2.png" alt="Booking acara dan kolaborasi — Rencanakan acara bersama Djiwa Tentram" className="block h-auto w-full"
+        loading="eager"
+        fetchPriority="high" />
       </motion.a>
 
       {featuredProducts.length > 0 ? (
@@ -86,8 +93,8 @@ export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscovery
           <div ref={carouselRef} aria-label="Menu best seller" className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onPointerEnter={() => setCarouselPaused(true)} onPointerLeave={() => setCarouselPaused(false)} onPointerDown={() => setCarouselPaused(true)} onPointerUp={() => setCarouselPaused(false)}>
             {featuredProducts.map((product) => (
               <motion.button key={product.productId} type="button" data-carousel-card onClick={onMenu} className="min-w-[176px] snap-start overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-shadow hover:shadow-md" whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
-                <div className="relative h-24 w-full bg-muted">
-                  {product.image ? <><img src={product.image} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.nextElementSibling?.removeAttribute("hidden"); }} /><div hidden data-image-fallback className="flex h-full items-center justify-center text-muted-foreground"><UtensilsCrossed className="h-5 w-5" aria-hidden="true" /></div></> : <div className="flex h-full items-center justify-center text-muted-foreground"><UtensilsCrossed className="h-5 w-5" aria-hidden="true" /></div>}
+                <div className="relative h-24 w-full bg-muted animate-pulse">
+                  {product.image ? <><img src={product.image} alt={product.name} className="h-full w-full object-cover" onLoad={(event) => event.currentTarget.parentElement?.classList.remove("animate-pulse")} onError={(event) => { event.currentTarget.parentElement?.classList.remove("animate-pulse"); event.currentTarget.style.display = "none"; event.currentTarget.nextElementSibling?.removeAttribute("hidden"); }} /><div hidden data-image-fallback className="flex h-full items-center justify-center text-muted-foreground"><UtensilsCrossed className="h-5 w-5" aria-hidden="true" /></div></> : <div className="flex h-full items-center justify-center text-muted-foreground"><UtensilsCrossed className="h-5 w-5" aria-hidden="true" /></div>}
                   {product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-bold text-white">#{product.menuNumber}</span> : null}
                 </div>
                 <div className="space-y-1 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><p className="text-sm font-black text-primary">{currency(product.price)}</p><p className="text-[10px] font-semibold text-muted-foreground">Terjual {product.totalSold.toLocaleString("id-ID")}x</p></div>

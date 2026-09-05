@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Clock, MapPin, Package, Phone } from "lucide-react";
 import { useHybridBestSellers, useHybridProducts, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import { CustomerDiscoverySkeleton } from "@/components/customer/customer-states";
 
 type CustomerHomeDiscoveryProps = {
   onMenu: () => void;
@@ -40,6 +41,10 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
   const hasRestaurantInfo = Boolean(openingTime || closingTime || openingHours || storePhone || storeAddress);
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
 
+  if (products === undefined || bestSellers === undefined || siteSettings === undefined) {
+    return <CustomerDiscoverySkeleton />;
+  }
+
   return (
     <div className="space-y-4">
       <motion.a
@@ -54,7 +59,9 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
         whileTap={reduceMotion ? undefined : { scale: 0.98 }}
         transition={{ ...spring, duration: 0.35 }}
       >
-        <img src="/booking-promo-banner-v2.png" alt="Booking acara dan kolaborasi — Rencanakan acara bersama Djiwa Tentram" className="block h-auto w-full" loading="lazy" />
+        <img src="/booking-promo-banner-v2.png" alt="Booking acara dan kolaborasi — Rencanakan acara bersama Djiwa Tentram" className="block h-auto w-full"
+        loading="eager"
+        fetchPriority="high" />
       </motion.a>
 
       {featuredProducts.length > 0 ? (
@@ -70,8 +77,8 @@ export function CustomerHomeDiscovery({ onMenu }: CustomerHomeDiscoveryProps) {
           <div className="mt-3 grid grid-cols-2 gap-2.5" aria-label="Koleksi b2b">
             {featuredProducts.map((product) => (
               <motion.button key={product.productId} type="button" onClick={onMenu} className="overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-shadow hover:shadow-md" whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
-                <div className="relative h-28 w-full bg-primary/[0.06]">
-                  {product.image ? <><img src={product.image} alt={product.name} className="h-full w-full object-cover" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.nextElementSibling?.removeAttribute("hidden"); }} /><div hidden data-image-fallback className="flex h-full items-center justify-center text-primary"><Package className="h-8 w-8" aria-hidden="true" /></div></> : <div className="flex h-full items-center justify-center text-primary"><Package className="h-8 w-8" aria-hidden="true" /></div>}
+                <div className="relative h-28 w-full bg-primary/[0.06] animate-pulse">
+                  {product.image ? <><img src={product.image} alt={product.name} className="h-full w-full object-cover" loading="lazy" onLoad={(event) => event.currentTarget.parentElement?.classList.remove("animate-pulse")} onError={(event) => { event.currentTarget.parentElement?.classList.remove("animate-pulse"); event.currentTarget.style.display = "none"; event.currentTarget.nextElementSibling?.removeAttribute("hidden"); }} /><div hidden data-image-fallback className="flex h-full items-center justify-center text-primary"><Package className="h-8 w-8" aria-hidden="true" /></div></> : <div className="flex h-full items-center justify-center text-primary"><Package className="h-8 w-8" aria-hidden="true" /></div>}
                   {product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white">#{product.menuNumber}</span> : null}
                 </div>
                 <div className="space-y-1 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><div><p className="text-sm font-black text-primary">{currency(product.price)}</p>{product.originalPrice && product.originalPrice > product.price ? <p className="text-[10px] text-muted-foreground line-through">{currency(product.originalPrice)}</p> : null}</div></div>

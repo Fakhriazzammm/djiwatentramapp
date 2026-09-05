@@ -29,6 +29,22 @@ export function CustomerPageSkeleton({ label = "Memuat halaman" }: { label?: str
 	);
 }
 
+export function CustomerDiscoverySkeleton({ label = "Memuat katalog" }: { label?: string }) {
+	return (
+		<div className="space-y-4" aria-busy="true" aria-label={label} role="status">
+			<span className="sr-only">{label}</span>
+			<Skeleton className="h-40 w-full rounded-3xl" />
+			<section className="app-card-strong space-y-3 px-4 py-4">
+				<div className="space-y-2"><Skeleton className="h-3 w-28" /><Skeleton className="h-5 w-40" /></div>
+				<div className="grid grid-cols-2 gap-3">
+					{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-40 rounded-[20px]" />)}
+				</div>
+			</section>
+			<section className="app-card-strong space-y-3 px-4 py-4"><Skeleton className="h-5 w-32" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></section>
+		</div>
+	);
+}
+
 export function CustomerSectionSkeleton({ label = "Memuat data" }: { label?: string }) {
 	return (
 		<div className="space-y-3 py-3" aria-busy="true" aria-label={label} role="status">

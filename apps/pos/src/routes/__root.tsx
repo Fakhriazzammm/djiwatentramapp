@@ -7,6 +7,19 @@ import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useDemoMode } from "@yumipos/web-shared";
 import { useEffect } from "react";
 import { clearTransactionVoiceQueue, unlockAudio } from "../lib/transaction-voice-queue";
+import { Skeleton } from "../components/ui/skeleton";
+
+function PosRoutePending() {
+	return (
+		<div className="min-h-app bg-background px-3 py-4" aria-busy="true" aria-label="Memuat halaman" role="status">
+			<div className="mx-auto max-w-5xl space-y-4">
+				<div className="flex items-center justify-between"><Skeleton className="h-8 w-36" /><Skeleton className="h-9 w-24 rounded-xl" /></div>
+				<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-24 rounded-2xl" />)}</div>
+				<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{Array.from({ length: 8 }, (_, index) => <Skeleton key={index} className="h-40 rounded-2xl" />)}</div>
+			</div>
+		</div>
+	);
+}
 
 function RootContent() {
 	const navigate = useNavigate();
@@ -84,6 +97,7 @@ function RootContent() {
 }
 
 export const Route = createRootRoute({
+	pendingComponent: PosRoutePending,
 	component: () => (
 		<YumiAuthProvider>
 			<RootContent />

@@ -5,8 +5,10 @@ import { CustomerAuthProvider } from "@/hooks/use-customer-auth";
 import { OrderProvider } from "@/hooks/use-order-context";
 import { OwnerFooter } from "@yumipos/web-shared";
 import { RouteTransitionSplash } from "@/components/customer/customer-entry";
+import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createRootRoute({
+	pendingComponent: CustomerPageSkeleton,
 	component: () => {
 		const location = useLocation();
 		const prevPathRef = useRef(location.pathname);
