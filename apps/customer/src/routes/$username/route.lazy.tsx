@@ -76,6 +76,7 @@ function MemberHomePage() {
 	const matches = useMatches();
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
+	const isCommunityChild = matches.some(m => m.routeId.startsWith("/$username/komunitas"));
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
 		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
@@ -202,7 +203,7 @@ function MemberHomePage() {
 		return (
 			<>
 				<div className="min-h-app pb-safe-with-nav">
-					<CustomerLiveShiftIndicator />
+					{!isCommunityChild ? <CustomerLiveShiftIndicator /> : null}
 					<Outlet />
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
