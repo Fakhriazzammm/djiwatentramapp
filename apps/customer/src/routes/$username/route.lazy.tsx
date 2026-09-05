@@ -79,7 +79,6 @@ function MemberHomePage() {
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
 		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
-		{ label: "Riwayat", icon: <Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/riwayat"), onSelect: () => navigate({ to: "/$username/riwayat", params: { username } }) },
 		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
 		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
 	];
@@ -253,18 +252,28 @@ function MemberHomePage() {
 						eyebrow={greetingWord()}
 						title={displayName}
 						action={
-							<button
-								type="button"
-								onClick={() => navigate({ to: "/$username/profile", params: { username } })}
-								aria-label="Member Djiwa Tentram — Kartu member berlaku sampai Desember 2026. Buka profil."
-								className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-[#f4d27a]/45 bg-[#0b1740] px-3 text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
-							>
-								<ShieldCheck className="h-3.5 w-3.5 text-[#f4d27a]" aria-hidden="true" />
-								<span className="text-left leading-none">
-									<span className="block text-[9px] font-black uppercase tracking-[0.14em] text-[#f4d27a]">Member</span>
-									<span className="mt-0.5 block text-[9px] font-semibold text-blue-100/90">s/d Des 2026</span>
-								</span>
-							</button>
+							<div className="flex items-center gap-1.5">
+								<button
+									type="button"
+									onClick={() => navigate({ to: "/$username/riwayat", params: { username } })}
+									aria-label="Buka riwayat pesanan"
+									className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
+								>
+									<Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />
+								</button>
+								<button
+									type="button"
+									onClick={() => navigate({ to: "/$username/profile", params: { username } })}
+									aria-label="Member Djiwa Tentram — Kartu member berlaku sampai Desember 2026. Buka profil."
+									className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-[#f4d27a]/45 bg-[#0b1740] px-3 text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
+								>
+									<ShieldCheck className="h-3.5 w-3.5 text-[#f4d27a]" aria-hidden="true" />
+									<span className="text-left leading-none">
+										<span className="block text-[9px] font-black uppercase tracking-[0.14em] text-[#f4d27a]">Member</span>
+										<span className="mt-0.5 block text-[9px] font-semibold text-blue-100/90">s/d Des 2026</span>
+									</span>
+								</button>
+							</div>
 						}
 					/>
 					<CustomerLiveShiftIndicator />
