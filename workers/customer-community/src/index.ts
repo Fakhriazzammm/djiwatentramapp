@@ -71,10 +71,17 @@ function preflight(request: Request, env: Env) {
 async function authenticate(request: Request, env: Env): Promise<SessionUser | null> {
   const cookie = request.headers.get("Cookie");
   if (cookie) {
-    const response = await fetch(`${env.AUTH_ORIGIN.replace(/\/$/, "")}/api/auth/get-session`, {
-      headers: { Cookie: cookie, Accept: "application/json" },
-    });
-    if (response.ok) {
+    const authOrigin = env.AUTH_ORIGIN.replace(/\/$/, "");
+    const headers = {
+      Cookie: cookie,
+      Accept: "application/json",
+      Origin: request.headers.get("Origin") || authOrigin,
+      Referer: request.headers.get("Referer") || `${authOrigin}/`,
+      "User-Agent": request.headers.get("User-Agent") || "djiwa-customer-community",
+    };
+    for (const suffix of ["", "?disableCookieCache=true"]) {
+      const response = await fetch(`${authOrigin}/api/auth/get-session${suffix}`, { headers });
+      if (!response.ok) continue;
       const payload = (await response.json().catch(() => null)) as { user?: SessionUser } | null;
       if (payload?.user?.id) return payload.user;
     }
