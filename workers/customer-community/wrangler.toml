@@ -1,0 +1,12 @@
+name = "djiwa-customer-community"
+main = "src/index.ts"
+compatibility_date = "2026-09-06"
+
+[[r2_buckets]]
+binding = "COMMUNITY_BUCKET"
+bucket_name = "djiwa-customer-community"
+
+[vars]
+AUTH_ORIGIN = "https://djiwatentram.yumme.id"
+SUPABASE_URL = "https://xaemykhjpkgypqqpfdcb.supabase.co"
+ALLOWED_ORIGINS = "https://djiwatentram.yumme.id,https://admindjiwatentram.yumme.id,http://localhost:5173,http://localhost:3003"

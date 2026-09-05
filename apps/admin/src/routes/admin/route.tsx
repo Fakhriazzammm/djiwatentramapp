@@ -30,6 +30,7 @@ import {
 	MoreHorizontal,
 	Package,
 	Percent,
+	ShieldAlert,
 	Settings,
 	Sparkles,
 	User,
@@ -438,6 +439,12 @@ function AdminLayout() {
 						label="Order Mie Yamin"
 						to="/admin/order-mie-yamin"
 						permission="orders:view"
+					/>
+					<DesktopNavLink
+						icon={<ShieldAlert />}
+						isCollapsed={isCollapsed}
+						label="Moderasi Komunitas"
+						to="/admin/community"
 					/>
 					<SidebarSection isCollapsed={isCollapsed} label="Manajemen" />
 					<DesktopNavLink

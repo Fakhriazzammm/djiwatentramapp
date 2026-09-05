@@ -1,0 +1,142 @@
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Send, Video, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
+import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
+import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { CommunityClientError, communityClient } from "@/features/community/community-client";
+import type { CommunityPost } from "@/features/community/community-types";
+
+export const Route = createLazyFileRoute("/$username/komunitas")({ component: CommunityPage });
+
+const MAX_BODY_LENGTH = 1000;
+const MAX_VIDEO_SECONDS = 60;
+
+function relativeTime(value: string) {
+  const ms = Date.now() - Date.parse(value);
+  if (!Number.isFinite(ms) || ms < 60_000) return "baru saja";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 60) return `${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  return new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+}
+
+function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(video.duration); };
+    video.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Video tidak dapat dibaca.")); };
+    video.src = url;
+  });
+}
+
+function PostCard({ post, currentSourceId, onDelete, onReport }: { post: CommunityPost; currentSourceId?: string; onDelete: (post: CommunityPost) => void; onReport: (post: CommunityPost) => void }) {
+  const [open, setOpen] = useState(false);
+  const isOwner = currentSourceId === post.author.sourceId;
+  return (
+    <article className="rounded-[22px] border border-border/80 bg-card p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-black text-primary" aria-hidden="true">{post.author.name.slice(0, 1).toUpperCase()}</div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0"><p className="truncate text-sm font-black text-foreground">{post.author.name}</p><p className="text-[11px] text-muted-foreground">{post.author.username ? `@${post.author.username} · ` : ""}{relativeTime(post.createdAt)}</p></div>
+            <div className="relative"><button type="button" className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Aksi postingan" onClick={() => setOpen((value) => !value)}><MoreHorizontal className="h-4 w-4" /></button>{open ? <div className="absolute right-0 top-10 z-10 w-40 rounded-xl border border-border bg-background p-1 shadow-lg">{isOwner ? <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(post); }}>Hapus postingan</button> : <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold hover:bg-muted" onClick={() => { setOpen(false); onReport(post); }}>Laporkan postingan</button>}</div> : null}</div>
+          </div>
+          {post.body ? <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{post.body}</p> : null}
+          {post.mediaUrl && post.mediaType === "image" ? <img src={post.mediaUrl} alt={`Kiriman dari ${post.author.name}`} className="mt-3 max-h-[420px] w-full rounded-2xl object-cover" loading="lazy" /> : null}
+          {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-3 max-h-[420px] w-full rounded-2xl bg-slate-950 object-contain" controls playsInline preload="metadata" /> : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CommunityPage() {
+  const { username } = Route.useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading, customer } = useCustomerAuth();
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [body, setBody] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [durationSeconds, setDurationSeconds] = useState<number | undefined>();
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(async (nextCursor?: string, signal?: AbortSignal) => {
+    const page = await communityClient.list(nextCursor, signal);
+    setPosts((current) => nextCursor ? [...current, ...page.data.filter((item) => !current.some((existing) => existing.id === item.id))] : page.data);
+    setCursor(page.nextCursor);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) { setLoading(false); return; }
+    const controller = new AbortController();
+    setLoading(true); setError(null);
+    void load(undefined, controller.signal).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Komunitas belum dapat dimuat."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [isAuthenticated, load]);
+
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+
+  const navItems = useMemo(() => [
+    { label: "Home", active: false, onSelect: () => navigate({ to: "/$username", params: { username } }), icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }), icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+    { label: "Komunitas", active: true, onSelect: () => {}, icon: <MessageCircle className="h-5 w-5" aria-hidden="true" /> },
+    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }), icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }), icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+  ], [navigate, username]);
+
+  const selectFile = async (next: File | undefined) => {
+    if (!next) return;
+    setNotice(null);
+    if (next.type.startsWith("image/") && next.size > 5 * 1024 * 1024) { setNotice("Foto maksimal 5 MB."); return; }
+    if (next.type.startsWith("video/")) {
+      if (next.size > 50 * 1024 * 1024) { setNotice("Video maksimal 50 MB."); return; }
+      try {
+        const duration = await readVideoDuration(next);
+        if (duration > MAX_VIDEO_SECONDS) { setNotice("Video maksimal 60 detik."); return; }
+        setDurationSeconds(duration);
+      } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Video tidak valid."); return; }
+    } else setDurationSeconds(undefined);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setFile(next); setPreviewUrl(URL.createObjectURL(next));
+  };
+
+  const clearFile = () => { if (previewUrl) URL.revokeObjectURL(previewUrl); setFile(null); setPreviewUrl(null); setDurationSeconds(undefined); if (fileRef.current) fileRef.current.value = ""; };
+
+  const submit = async () => {
+    if ((!body.trim() && !file) || saving) return;
+    setSaving(true); setNotice(null);
+    try {
+      let media: { postId: string; objectKey: string; mediaType: "image" | "video"; mediaContentType: string; mediaSizeBytes: number } | undefined;
+      if (file) {
+        const grant = await communityClient.createUploadGrant({ contentType: file.type, sizeBytes: file.size, durationSeconds });
+        const uploadResult = await communityClient.upload(grant, file);
+        media = { postId: grant.postId, objectKey: uploadResult.objectKey, mediaType: file.type.startsWith("video/") ? "video" : "image", mediaContentType: file.type, mediaSizeBytes: file.size };
+      }
+      const post = await communityClient.create({ postId: media?.postId, body: body.trim() || undefined, mediaType: media?.mediaType, mediaObjectKey: media?.objectKey, mediaContentType: media?.mediaContentType, mediaSizeBytes: media?.mediaSizeBytes });
+      setPosts((current) => [post, ...current]); setBody(""); clearFile(); setNotice("Postingan berhasil dibagikan.");
+    } catch (reason) { setNotice(reason instanceof CommunityClientError ? reason.message : "Postingan belum berhasil dibagikan."); }
+    finally { setSaving(false); }
+  };
+
+  const deletePost = async (post: CommunityPost) => { if (!window.confirm("Hapus postingan ini?")) return; try { await communityClient.remove(post.id); setPosts((current) => current.filter((item) => item.id !== post.id)); } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Post belum dapat dihapus."); } };
+  const reportPost = async (post: CommunityPost) => { try { await communityClient.report(post.id); setNotice("Laporan sudah diterima Admin."); } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Post belum dapat dilaporkan."); } };
+
+  if (authLoading) return <CustomerSectionSkeleton label="Menyiapkan Komunitas Djiwa" />;
+  if (!isAuthenticated || !customer) return <main className="mx-auto flex min-h-app max-w-md flex-col bg-background"><CustomerHeader title="Komunitas Djiwa" subtitle="Khusus Teman Djiwa" onBack={() => navigate({ to: "/$username", params: { username } })} leading={<ArrowLeft className="h-4 w-4" />} /><section className="m-4 rounded-3xl border border-border bg-card p-5 text-center shadow-sm"><p className="text-sm font-black">Masuk untuk membuka Komunitas</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Komunitas Djiwa hanya dapat dibaca dan digunakan oleh customer yang sudah login.</p><button type="button" className="mt-4 min-h-11 rounded-xl bg-primary px-4 text-xs font-black text-primary-foreground" onClick={() => navigate({ to: "/masuk" })}>Masuk / Daftar</button></section><CustomerBottomNav items={navItems} /></main>;
+
+  return <main className="mx-auto flex min-h-app max-w-md flex-col bg-background pb-24"><CustomerHeader title="Komunitas Djiwa" subtitle="Ruang berbagi Teman Djiwa" onBack={() => navigate({ to: "/$username", params: { username } })} leading={<ArrowLeft className="h-4 w-4" />} />
+    <section className="m-4 rounded-[22px] border border-border bg-card p-4 shadow-sm"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-black text-primary">{(customer.name || "M").slice(0, 1).toUpperCase()}</div><textarea value={body} onChange={(event) => setBody(event.target.value.slice(0, MAX_BODY_LENGTH))} placeholder="Apa yang ingin kamu bagikan?" rows={3} className="min-h-20 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground" aria-label="Isi postingan Komunitas" /></div><div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-3"><div className="flex items-center gap-1"><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" className="sr-only" onChange={(event) => void selectFile(event.target.files?.[0])} /><button type="button" className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-bold text-primary hover:bg-primary/10" onClick={() => fileRef.current?.click()}><ImagePlus className="h-4 w-4" /> Foto / Video</button><span className="text-[10px] text-muted-foreground">{body.length}/{MAX_BODY_LENGTH}</span></div><button type="button" disabled={saving || (!body.trim() && !file)} className="flex min-h-11 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-black text-primary-foreground disabled:opacity-50" onClick={() => void submit()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Bagikan</button></div>{previewUrl ? <div className="relative mt-3 overflow-hidden rounded-2xl bg-muted">{file?.type.startsWith("video/") ? <video src={previewUrl} className="max-h-60 w-full object-contain" controls /> : <img src={previewUrl} alt="Preview media" className="max-h-60 w-full object-contain" />}<button type="button" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white" aria-label="Hapus media" onClick={clearFile}><X className="h-4 w-4" /></button></div> : null}{notice ? <p role="status" className="mt-2 text-xs font-semibold text-primary">{notice}</p> : null}</section>
+    <section className="space-y-3 px-4" aria-label="Feed Komunitas">{loading ? <CustomerSectionSkeleton label="Memuat postingan Komunitas" /> : error ? <CustomerErrorState message={error} onRetry={() => { setLoading(true); void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Gagal memuat.")).finally(() => setLoading(false)); }} /> : posts.length === 0 ? <div className="rounded-[22px] border border-dashed border-border p-6 text-center"><p className="text-sm font-black">Belum ada cerita di Komunitas Djiwa</p><p className="mt-1 text-xs text-muted-foreground">Jadilah yang pertama berbagi dengan Teman Djiwa.</p></div> : posts.map((post) => <PostCard key={post.id} post={post} currentSourceId={customer.sourceId} onDelete={deletePost} onReport={reportPost} />)}{cursor && !loading ? <button type="button" disabled={loadingMore} className="mx-auto flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-xs font-black" onClick={() => { setLoadingMore(true); void load(cursor).finally(() => setLoadingMore(false)); }}>{loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Muat postingan berikutnya</button> : null}</section><CustomerBottomNav items={navItems} /></main>;
+}
