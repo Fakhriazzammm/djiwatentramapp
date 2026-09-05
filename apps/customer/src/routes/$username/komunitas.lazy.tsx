@@ -1,12 +1,12 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Heart, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Repeat2, Send, Share2, Video, X } from "lucide-react";
+import { ArrowLeft, Heart, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Send, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { CommunityClientError, communityClient } from "@/features/community/community-client";
-import type { CommunityPost } from "@/features/community/community-types";
+import type { CommunityComment, CommunityPost } from "@/features/community/community-types";
 
 export const Route = createLazyFileRoute("/$username/komunitas")({ component: CommunityPage });
 
@@ -36,8 +36,52 @@ function readVideoDuration(file: File): Promise<number> {
 
 function PostCard({ post, currentSourceId, onDelete, onReport }: { post: CommunityPost; currentSourceId?: string; onDelete: (post: CommunityPost) => void; onReport: (post: CommunityPost) => void }) {
   const [open, setOpen] = useState(false);
+  const [liked, setLiked] = useState(post.likedByMe);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<CommunityComment[]>([]);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSaving, setCommentSaving] = useState(false);
   const isOwner = currentSourceId === post.author.sourceId;
   const displayName = post.author.username ? `@${post.author.username}` : post.author.name;
+
+  const toggleLike = async () => {
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikeCount((count) => Math.max(0, count + (nextLiked ? 1 : -1)));
+    try {
+      const result = nextLiked ? await communityClient.like(post.id) : await communityClient.unlike(post.id);
+      setLiked(result.liked);
+      setLikeCount(result.likeCount);
+    } catch {
+      setLiked(!nextLiked);
+      setLikeCount((count) => Math.max(0, count + (nextLiked ? -1 : 1)));
+    }
+  };
+
+  const toggleComments = async () => {
+    const nextOpen = !commentsOpen;
+    setCommentsOpen(nextOpen);
+    if (!nextOpen || comments.length > 0) return;
+    setCommentsLoading(true);
+    try { const page = await communityClient.listComments(post.id); setComments(page.data); } catch { setComments([]); }
+    finally { setCommentsLoading(false); }
+  };
+
+  const submitComment = async () => {
+    const body = commentBody.trim();
+    if (!body || commentSaving) return;
+    setCommentSaving(true);
+    try {
+      const comment = await communityClient.addComment(post.id, body);
+      setComments((current) => [...current, comment]);
+      setCommentCount((count) => count + 1);
+      setCommentBody("");
+    } finally { setCommentSaving(false); }
+  };
+
   return (
     <article className="relative border-b border-[#e5e5e5] bg-white px-5 py-6 sm:px-8" aria-label={`Postingan ${displayName}`}>
       <div className="flex items-start gap-4">
@@ -47,25 +91,20 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2 text-[15px] leading-6">
-              <p className="truncate font-bold text-[#111111]">{displayName}</p>
-              <span className="shrink-0 text-[#969696]">{relativeTime(post.createdAt)}</span>
-            </div>
-            <div className="relative -mr-2 -mt-2">
-              <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full text-[#777777] hover:bg-[#f5f5f5]" aria-label="Aksi postingan" onClick={() => setOpen((value) => !value)}><MoreHorizontal className="h-5 w-5" /></button>
-              {open ? <div className="absolute right-0 top-10 z-10 w-44 rounded-xl border border-[#e2e2e2] bg-white p-1 shadow-lg">{isOwner ? <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(post); }}>Hapus postingan</button> : <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold hover:bg-[#f5f5f5]" onClick={() => { setOpen(false); onReport(post); }}>Laporkan postingan</button>}</div> : null}
-            </div>
+            <div className="flex min-w-0 items-center gap-2 text-[15px] leading-6"><p className="truncate font-bold text-[#111111]">{displayName}</p><span className="shrink-0 text-[#969696]">{relativeTime(post.createdAt)}</span></div>
+            <div className="relative -mr-2 -mt-2"><button type="button" className="flex h-10 w-10 items-center justify-center rounded-full text-[#777777] hover:bg-[#f5f5f5]" aria-label="Aksi postingan" onClick={() => setOpen((value) => !value)}><MoreHorizontal className="h-5 w-5" /></button>{open ? <div className="absolute right-0 top-10 z-10 w-44 rounded-xl border border-[#e2e2e2] bg-white p-1 shadow-lg">{isOwner ? <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(post); }}>Hapus postingan</button> : <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold hover:bg-[#f5f5f5]" onClick={() => { setOpen(false); onReport(post); }}>Laporkan postingan</button>}</div> : null}</div>
           </div>
           {post.body ? <p className="mt-1 whitespace-pre-wrap text-[16px] leading-[1.55] text-[#161616]">{post.body}</p> : null}
           {post.mediaUrl && post.mediaType === "image" ? <img src={post.mediaUrl} alt={`Kiriman dari ${post.author.name}`} className="mt-4 max-h-[500px] w-full rounded-xl object-cover" loading="lazy" /> : null}
           {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-4 max-h-[500px] w-full rounded-xl bg-black object-contain" controls playsInline preload="metadata" /> : null}
-          <p className="mt-2 text-sm text-[#969696]">Translate</p>
           <div className="mt-4 flex items-center gap-5 text-[#333333] sm:gap-7">
-            <button type="button" className="flex min-h-10 items-center gap-1.5 rounded-lg text-sm hover:text-rose-500" aria-label="Suka"><Heart className="h-5 w-5" strokeWidth={1.8} /><span>♡</span></button>
-            <button type="button" className="flex min-h-10 items-center gap-1.5 rounded-lg text-sm hover:text-[#3156a3]" aria-label="Balas"><MessageCircle className="h-5 w-5" strokeWidth={1.8} /></button>
-            <button type="button" className="flex min-h-10 items-center rounded-lg hover:text-[#3156a3]" aria-label="Repost"><Repeat2 className="h-5 w-5" strokeWidth={1.8} /></button>
-            <button type="button" className="flex min-h-10 items-center rounded-lg hover:text-[#3156a3]" aria-label="Bagikan"><Share2 className="h-5 w-5" strokeWidth={1.8} /></button>
+            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} onClick={() => void toggleLike}><Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} /><span>{likeCount}</span></button>
+            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${commentsOpen ? "text-[#3156a3]" : "hover:text-[#3156a3]"}`} aria-label="Komentar" aria-expanded={commentsOpen} onClick={() => void toggleComments}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{commentCount}</span></button>
           </div>
+          {commentsOpen ? <div className="mt-3 rounded-xl bg-[#f7f8fa] p-3">
+            {commentsLoading ? <p className="text-xs text-[#777777]">Memuat komentar…</p> : comments.length ? <div className="space-y-3">{comments.map((comment) => <div key={comment.id} className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-xs font-bold text-[#3156a3]">{comment.author.name.slice(0, 1).toUpperCase()}</div><div><p className="text-xs font-bold text-[#111111]">{comment.author.username ? `@${comment.author.username}` : comment.author.name}</p><p className="text-sm leading-relaxed text-[#333333]">{comment.body}</p></div></div>)}</div> : <p className="text-xs text-[#777777]">Belum ada komentar.</p>}
+            <div className="mt-3 flex gap-2"><input value={commentBody} onChange={(event) => setCommentBody(event.target.value.slice(0, 500))} onKeyDown={(event) => { if (event.key === "Enter") void submitComment(); }} placeholder="Tulis komentar…" aria-label="Tulis komentar" className="min-h-10 min-w-0 flex-1 rounded-full border border-[#dfe3e8] bg-white px-4 text-sm outline-none focus:border-[#3156a3]" /><button type="button" disabled={!commentBody.trim() || commentSaving} onClick={() => void submitComment()} className="min-h-10 rounded-full bg-[#111111] px-4 text-xs font-bold text-white disabled:bg-[#e8ebef] disabled:text-[#8f969e]">Kirim</button></div>
+          </div> : null}
         </div>
       </div>
     </article>

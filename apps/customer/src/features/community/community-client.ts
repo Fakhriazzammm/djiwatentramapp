@@ -15,6 +15,9 @@ export type CommunityPost = {
   createdAt: string;
   updatedAt: string;
   reportCount: number;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
   author: CommunityAuthor;
   mediaUrl: string | null;
 };
@@ -27,6 +30,19 @@ export type CommunityUploadGrant = {
 
 export type CommunityPage = {
   data: CommunityPost[];
+  nextCursor: string | null;
+};
+
+export type CommunityComment = {
+  id: string;
+  postId: string;
+  body: string;
+  createdAt: string;
+  author: CommunityAuthor;
+};
+
+export type CommunityCommentPage = {
+  data: CommunityComment[];
   nextCursor: string | null;
 };
 
@@ -86,5 +102,20 @@ export const communityClient = {
   },
   async report(id: string, reason = "Konten tidak sesuai"): Promise<void> {
     await request(`/posts/${encodeURIComponent(id)}/report`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) });
+  },
+  async like(id: string): Promise<{ liked: boolean; likeCount: number }> {
+    const payload = await request<{ data: { liked: boolean; likeCount: number } }>(`/posts/${encodeURIComponent(id)}/like`, { method: "POST" });
+    return payload.data;
+  },
+  async unlike(id: string): Promise<{ liked: boolean; likeCount: number }> {
+    const payload = await request<{ data: { liked: boolean; likeCount: number } }>(`/posts/${encodeURIComponent(id)}/like`, { method: "DELETE" });
+    return payload.data;
+  },
+  async listComments(id: string): Promise<CommunityCommentPage> {
+    return request<CommunityCommentPage>(`/posts/${encodeURIComponent(id)}/comments?limit=50`);
+  },
+  async addComment(id: string, body: string): Promise<CommunityComment> {
+    const payload = await request<{ data: CommunityComment }>(`/posts/${encodeURIComponent(id)}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
+    return payload.data;
   },
 };

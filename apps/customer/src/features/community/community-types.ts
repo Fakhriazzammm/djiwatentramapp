@@ -15,6 +15,9 @@ export type CommunityPost = {
   createdAt: string;
   updatedAt: string;
   reportCount: number;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
   author: CommunityAuthor;
   mediaUrl: string | null;
 };
@@ -27,6 +30,19 @@ export type CommunityUploadGrant = {
 
 export type CommunityPage = {
   data: CommunityPost[];
+  nextCursor: string | null;
+};
+
+export type CommunityComment = {
+  id: string;
+  postId: string;
+  body: string;
+  createdAt: string;
+  author: CommunityAuthor;
+};
+
+export type CommunityCommentPage = {
+  data: CommunityComment[];
   nextCursor: string | null;
 };
 

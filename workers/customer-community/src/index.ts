@@ -178,8 +178,31 @@ async function isModerator(env: Env, userId: string) {
   return ["admin", "administrator", "owner", "superadmin", "super admin"].includes(name) || permissions.includes("community.moderate");
 }
 
-async function serializePosts(env: Env, rows: PostRow[], request: Request) {
+async function engagementMap(env: Env, postIds: string[], userId: string) {
+  if (!postIds.length) return new Map<string, { likeCount: number; commentCount: number; likedByMe: boolean }>();
+  const inFilter = postIds.map(encodeURIComponent).join(",");
+  const [likes, comments] = await Promise.all([
+    db<Array<{ post_id: string; customer_source_id: string }>>(env, "customer_community_post_likes", {}, `select=post_id,customer_source_id&post_id=in.(${inFilter})`),
+    db<Array<{ post_id: string }>>(env, "customer_community_comments", {}, `select=post_id&post_id=in.(${inFilter})&moderation_status=eq.published&deleted_at=is.null`),
+  ]);
+  const map = new Map<string, { likeCount: number; commentCount: number; likedByMe: boolean }>();
+  for (const postId of postIds) map.set(postId, { likeCount: 0, commentCount: 0, likedByMe: false });
+  for (const like of likes) {
+    const entry = map.get(like.post_id);
+    if (!entry) continue;
+    entry.likeCount += 1;
+    if (like.customer_source_id === userId) entry.likedByMe = true;
+  }
+  for (const comment of comments) {
+    const entry = map.get(comment.post_id);
+    if (entry) entry.commentCount += 1;
+  }
+  return map;
+}
+
+async function serializePosts(env: Env, rows: PostRow[], request: Request, userId: string) {
   const authors = await authorMap(env, [...new Set(rows.map((row) => row.author_source_id))]);
+  const engagement = await engagementMap(env, rows.map((row) => row.id), userId);
   const origin = new URL(request.url).origin;
   return rows.map((row) => ({
     id: row.id,
@@ -190,8 +213,20 @@ async function serializePosts(env: Env, rows: PostRow[], request: Request) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     reportCount: row.report_count,
+    ...(engagement.get(row.id) || { likeCount: 0, commentCount: 0, likedByMe: false }),
     author: authors.get(row.author_source_id) || { sourceId: row.author_source_id, name: "Member", username: null },
     mediaUrl: row.media_object_key ? `${origin}/posts/${row.id}/media` : null,
+  }));
+}
+
+async function serializeComments(env: Env, rows: Array<{ id: string; post_id: string; author_source_id: string; body: string; created_at: string }>) {
+  const authors = await authorMap(env, [...new Set(rows.map((row) => row.author_source_id))]);
+  return rows.map((row) => ({
+    id: row.id,
+    postId: row.post_id,
+    body: row.body,
+    createdAt: row.created_at,
+    author: authors.get(row.author_source_id) || { sourceId: row.author_source_id, name: "Member", username: null },
   }));
 }
 
@@ -231,7 +266,7 @@ export default {
         const rows = await db<PostRow[]>(env, "customer_community_posts", {}, `select=id,author_source_id,body,media_type,media_object_key,media_content_type,media_size_bytes,moderation_status,report_count,created_at,updated_at,deleted_at&${filters.join("&")}`);
         const hasMore = rows.length > limit;
         const page = rows.slice(0, limit);
-        return json({ data: await serializePosts(env, page, request), nextCursor: hasMore ? page.at(-1)?.created_at ?? null : null }, 200, origin);
+        return json({ data: await serializePosts(env, page, request, user.id), nextCursor: hasMore ? page.at(-1)?.created_at ?? null : null }, 200, origin);
       }
 
       if (request.method === "POST" && parts[0] === "posts" && parts[1] === "upload-url") {
@@ -265,7 +300,7 @@ export default {
           if (!object || metadata.ownerSourceId !== user.id || metadata.postId !== String(input?.postId || "")) return json({ error: "Media tidak cocok dengan sesi postingan." }, 403, origin);
         }
         const rows = await db<PostRow[]>(env, "customer_community_posts", { method: "POST", body: JSON.stringify({ id: input?.postId || crypto.randomUUID(), author_source_id: user.id, body: body || null, media_type: mediaType, media_object_key: objectKey, media_content_type: mediaContentType, media_size_bytes: Number.isInteger(mediaSizeBytes) ? mediaSizeBytes : null }) }, "select=id,author_source_id,body,media_type,media_object_key,media_content_type,media_size_bytes,moderation_status,report_count,created_at,updated_at,deleted_at");
-        return json({ data: (await serializePosts(env, rows, request))[0] }, 201, origin);
+        return json({ data: (await serializePosts(env, rows, request, user.id))[0] }, 201, origin);
       }
 
       if (parts[0] === "posts" && parts[1] && parts[2] === "media" && request.method === "GET") {
@@ -275,6 +310,37 @@ export default {
         const object = await env.COMMUNITY_BUCKET.get(row.media_object_key);
         if (!object) return json({ error: "Media tidak ditemukan." }, 404, origin);
         return new Response(object.body, { headers: { "Content-Type": row.media_content_type || "application/octet-stream", "Cache-Control": "private, max-age=60", "X-Content-Type-Options": "nosniff" } });
+      }
+
+      if (parts[0] === "posts" && parts[1] && parts[2] === "like" && request.method === "POST") {
+        const post = await db<Array<{ id: string }>>(env, "customer_community_posts", {}, `select=id&id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
+        if (!post[0]) return json({ error: "Postingan tidak tersedia." }, 404, origin);
+        await db(env, "customer_community_post_likes", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify({ post_id: parts[1], customer_source_id: user.id }) });
+        const likes = await db<Array<{ post_id: string }>>(env, "customer_community_post_likes", {}, `select=post_id&post_id=eq.${encodeURIComponent(parts[1])}`);
+        return json({ data: { liked: true, likeCount: likes.length } }, 200, origin);
+      }
+
+      if (parts[0] === "posts" && parts[1] && parts[2] === "like" && request.method === "DELETE") {
+        await db(env, "customer_community_post_likes", { method: "DELETE" }, `post_id=eq.${encodeURIComponent(parts[1])}&customer_source_id=eq.${encodeURIComponent(user.id)}`);
+        const likes = await db<Array<{ post_id: string }>>(env, "customer_community_post_likes", {}, `select=post_id&post_id=eq.${encodeURIComponent(parts[1])}`);
+        return json({ data: { liked: false, likeCount: likes.length } }, 200, origin);
+      }
+
+      if (parts[0] === "posts" && parts[1] && parts[2] === "comments" && request.method === "GET") {
+        const url = new URL(request.url);
+        const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 50);
+        const rows = await db<Array<{ id: string; post_id: string; author_source_id: string; body: string; created_at: string }>>(env, "customer_community_comments", {}, `select=id,post_id,author_source_id,body,created_at&post_id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&order=created_at.asc,id.asc&limit=${limit}`);
+        return json({ data: await serializeComments(env, rows), nextCursor: null }, 200, origin);
+      }
+
+      if (parts[0] === "posts" && parts[1] && parts[2] === "comments" && request.method === "POST") {
+        const input = await request.json().catch(() => null) as { body?: unknown } | null;
+        const body = typeof input?.body === "string" ? input.body.trim() : "";
+        if (!body || body.length > 500) return json({ error: "Komentar harus 1–500 karakter." }, 400, origin);
+        const post = await db<Array<{ id: string }>>(env, "customer_community_posts", {}, `select=id&id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
+        if (!post[0]) return json({ error: "Postingan tidak tersedia." }, 404, origin);
+        const rows = await db<Array<{ id: string; post_id: string; author_source_id: string; body: string; created_at: string }>>(env, "customer_community_comments", { method: "POST", body: JSON.stringify({ post_id: parts[1], author_source_id: user.id, body }) }, "select=id,post_id,author_source_id,body,created_at");
+        return json({ data: (await serializeComments(env, rows))[0] }, 201, origin);
       }
 
       if (parts[0] === "posts" && parts[1] && request.method === "DELETE") {
