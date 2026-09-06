@@ -238,7 +238,7 @@ export default {
 
     try {
       const requestUrl = new URL(request.url);
-      const delegatedPath = requestUrl.searchParams.get("community_path");
+      const delegatedPath = requestUrl.searchParams.get("route");
       const parts = routeParts(delegatedPath ? new URL(delegatedPath, requestUrl.origin) : requestUrl);
       if (parts[0] !== "posts" && parts[0] !== "admin") return json({ error: "Endpoint tidak ditemukan." }, 404, origin);
 

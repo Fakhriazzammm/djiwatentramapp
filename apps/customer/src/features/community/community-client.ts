@@ -51,7 +51,7 @@ export class CommunityClientError extends Error {}
 const API_BASE = (import.meta.env.VITE_CUSTOMER_COMMUNITY_API_URL?.trim() || "/api/auth/get-session").replace(/\/$/, "");
 
 function communityQuery(path: string): string {
-  return `community_path=${encodeURIComponent(path)}`;
+  return `route=${encodeURIComponent(path)}`;
 }
 
 function proxyPath(value: string | null): string | null {
