@@ -261,6 +261,7 @@ function AdminRekrutmen() {
       review: c.filter((r) => ["Application Received", "Applied", "Review", "New"].includes(r.fields.Status)).length,
       interview: c.filter((r) => ["Interview Scheduled", "Interview"].includes(r.fields.Status)).length,
       accepted: c.filter((r) => ["Hired", "Accepted"].includes(r.fields.Status)).length,
+      rejected: c.filter((r) => ["Rejected"].includes(r.fields.Status)).length,
     };
   }, [allData]);
 
@@ -460,6 +461,7 @@ function AdminRekrutmen() {
           <button className="rk-summary-chip" onClick={() => { setActiveTab('candidates'); handleQuickFilter('Application Received'); }}>{stats.review} Masuk</button>
           <button className="rk-summary-chip" onClick={() => { setActiveTab('candidates'); handleQuickFilter('Interview Scheduled'); }}>{stats.interview} Interview</button>
           <button className="rk-summary-chip" onClick={() => { setActiveTab('candidates'); handleQuickFilter('Hired'); }}>{stats.accepted} Diterima</button>
+          <button className="rk-summary-chip" onClick={() => { setActiveTab('candidates'); handleQuickFilter('Rejected'); }}>{stats.rejected} Ditolak</button>
         </div>
 
         {loadError && (
