@@ -75,7 +75,8 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
     setCommentsOpen(nextOpen);
     if (!nextOpen || comments.length > 0) return;
     setCommentsLoading(true);
-    try { const page = await communityClient.listComments(post.id); setComments(page.data); } catch { setComments([]); }
+    setCommentError(null);
+    try { const page = await communityClient.listComments(post.id); setComments(page.data); } catch (reason) { setComments([]); setCommentError(reason instanceof Error ? reason.message : "Komentar belum dapat dimuat."); }
     finally { setCommentsLoading(false); }
   };
 
@@ -110,7 +111,7 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
           {post.mediaUrl && post.mediaType === "image" ? <img src={post.mediaUrl} alt={`Kiriman dari ${post.author.name}`} className="mt-4 max-h-[500px] w-full rounded-xl object-cover" loading="lazy" /> : null}
           {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-4 max-h-[500px] w-full rounded-xl bg-black object-contain" controls playsInline preload="metadata" /> : null}
           <div className="mt-4 flex items-center gap-5 text-[#333333] sm:gap-7">
-            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} disabled={likePending} onClick={() => void toggleLike}><Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} /><span>{likeCount}</span></button>
+            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} aria-busy={likePending} disabled={likePending} onClick={() => void toggleLike}>{likePending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} />}<span>{likePending ? "Memproses…" : likeCount}</span></button>
             <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${commentsOpen ? "text-[#3156a3]" : "hover:text-[#3156a3]"}`} aria-label="Komentar" aria-expanded={commentsOpen} onClick={() => void toggleComments}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{commentCount}</span></button>
           </div>
           {likeError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{likeError}</p> : null}

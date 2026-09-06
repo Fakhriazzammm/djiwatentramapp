@@ -61,10 +61,19 @@ function proxyPath(value: string | null): string | null {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...init });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.error) throw new CommunityClientError(payload?.error || "Komunitas belum dapat dimuat.");
-  return payload as T;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, { credentials: "include", signal: init?.signal ?? controller.signal, ...init });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.error) throw new CommunityClientError(payload?.error || `Komunitas gagal dimuat (HTTP ${response.status}).`);
+    return payload as T;
+  } catch (reason) {
+    if (reason instanceof DOMException && reason.name === "AbortError") throw new CommunityClientError("Koneksi Komunitas timeout. Coba lagi.");
+    throw reason;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function mapPost(post: CommunityPost): CommunityPost {
