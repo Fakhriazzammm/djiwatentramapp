@@ -165,7 +165,7 @@ function CommunityPostDetailPage() {
   if (authLoading) return <CustomerSectionSkeleton label="Menyiapkan detail Komunitas Djiwa" />;
   if (!isAuthenticated || !customer) return <main className="mx-auto flex min-h-app max-w-md flex-col bg-background"><CustomerHeader title="Komunitas Djiwa" subtitle="Khusus Teman Djiwa" onBack={backToCommunity} leading={<ArrowLeft className="h-4 w-4" />} /><section className="m-4 rounded-3xl border border-border bg-card p-5 text-center shadow-sm"><p className="text-sm font-black">Masuk untuk melihat postingan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Detail Komunitas hanya dapat dibuka oleh customer yang sudah login.</p><button type="button" className="mt-4 min-h-11 rounded-xl bg-primary px-4 text-xs font-black text-primary-foreground" onClick={() => navigate({ to: "/masuk" })}>Masuk / Daftar</button></section><CustomerBottomNav items={navItems} /></main>;
 
-  return <main className="mx-auto flex min-h-app max-w-[654px] flex-col overflow-hidden rounded-[28px] border border-[#dedede] bg-white pb-24 shadow-sm">
+  return <main className="mx-auto flex min-h-app max-w-[654px] flex-col overflow-hidden rounded-[28px] bg-white pb-24">
     <CustomerHeader title="Detail Postingan" subtitle="Komunitas" onBack={backToCommunity} leading={<ArrowLeft className="h-4 w-4" />} />
     {loading ? <CustomerSectionSkeleton label="Memuat postingan" /> : error && !post ? <section className="p-5"><CustomerErrorState message={error} onRetry={() => void load(true)} /></section> : post ? <>
       <article className="border-b border-[#e5e5e5] px-5 py-6 sm:px-8" aria-label="Detail postingan">
