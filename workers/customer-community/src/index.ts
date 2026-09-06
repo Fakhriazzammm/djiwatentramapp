@@ -347,7 +347,7 @@ export default {
         if (!body || body.length > 500) return json({ error: "Komentar harus 1–500 karakter." }, 400, origin);
         const post = await db<Array<{ id: string }>>(env, "customer_community_posts", {}, `select=id&id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
         if (!post[0]) return json({ error: "Postingan tidak tersedia." }, 404, origin);
-        const rows = await db<Array<{ id: string; post_id: string; author_source_id: string; body: string; created_at: string }>>(env, "customer_community_comments", { method: "POST", body: JSON.stringify({ post_id: parts[1], author_source_id: user.id, body }) }, "select=id,post_id,author_source_id,body,created_at");
+        const rows = await db<Array<{ id: string; post_id: string; author_source_id: string; body: string; created_at: string }>>(env, "customer_community_comments", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ post_id: parts[1], author_source_id: user.id, body }) }, "select=id,post_id,author_source_id,body,created_at");
         return json({ data: (await serializeComments(env, rows))[0] }, 201, origin);
       }
 
@@ -358,7 +358,7 @@ export default {
         const rows = await db<Array<{ id: string; post_id: string; author_source_id: string; body: string; created_at: string }>>(env, "customer_community_comments", {}, `select=id,post_id,author_source_id,body,created_at&id=eq.${encodeURIComponent(parts[3])}&post_id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
         const row = rows[0];
         if (!row || row.author_source_id !== user.id) return json({ error: "Komentar tidak ditemukan atau bukan milik Anda." }, 404, origin);
-        const updated = await db<typeof rows>(env, "customer_community_comments", { method: "PATCH", body: JSON.stringify({ body }) }, `id=eq.${encodeURIComponent(parts[3])}&post_id=eq.${encodeURIComponent(parts[1])}&author_source_id=eq.${encodeURIComponent(user.id)}&deleted_at=is.null&select=id,post_id,author_source_id,body,created_at`);
+        const updated = await db<typeof rows>(env, "customer_community_comments", { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ body }) }, `id=eq.${encodeURIComponent(parts[3])}&post_id=eq.${encodeURIComponent(parts[1])}&author_source_id=eq.${encodeURIComponent(user.id)}&deleted_at=is.null&select=id,post_id,author_source_id,body,created_at`);
         return json({ data: (await serializeComments(env, updated))[0] }, 200, origin);
       }
 
