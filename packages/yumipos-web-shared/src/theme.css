@@ -320,6 +320,13 @@
 	select {
 		font: inherit;
 	}
+	input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+	textarea,
+	select {
+		/* Shared borderless field treatment; focus is communicated by ring/outline. */
+		border-width: 0 !important;
+		border-color: transparent !important;
+	}
 	h1,
 	h2,
 	h3,

@@ -26,6 +26,7 @@
 | 20 | **Patch shared component wajib memakai konteks signature yang lengkap** — pencarian pendek seperti `}: {` dapat mengenai komponen lain dalam file yang sama; gunakan blok fungsi + nama komponen sebagai konteks dan jalankan build segera setelah perubahan props. | frontend/debug |
 | 21 | **Storefront B2B tanpa meja harus menghapus meja di seluruh flow** — jangan hanya menyembunyikan field pendaftaran; hilangkan juga state URL, input checkout, metadata payload, banner menu, dan struk. Gunakan `orderType: takeaway` agar order tidak diklasifikasikan sebagai dine-in. | b2b/checkout/debug |
 | 22 | **CTA produk spesifik harus mempertahankan intent melewati form guest** — simpan marker non-PII di origin sendiri sebelum `/daftar`, konsumsi sekali setelah validasi, lalu arahkan langsung ke katalog/order; jangan meneruskan PII lewat query lintas domain. | b2b/routing/ui-ux |
+| 22 | **Input lintas app harus memakai field borderless shared** — hapus border visual dari `Input` dan native text controls di theme, tetapi pertahankan ring/outline focus dan jangan mengubah checkbox/radio/range. Standalone app seperti Booking perlu aturan setara di stylesheet lokal. | ui-ux/design-system |
 
 ## Supabase
 

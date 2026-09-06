@@ -25,6 +25,9 @@ button { cursor: pointer; border: 0; -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; opacity: .48; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--booking-accent) 28%, transparent); outline-offset: 3px; }
 
+/* Borderless text controls across the standalone booking app. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select { border-width: 0 !important; border-color: transparent !important; }
+
 h1, h2, h3, strong { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
 p { color: var(--muted); line-height: 1.6; }
 
