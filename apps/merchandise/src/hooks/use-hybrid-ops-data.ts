@@ -1,6 +1,8 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+
+const CUSTOMER_ORDER_API = "https://djiwatentram.yumme.id/api/customer";
 
 function useSupabaseValue<T>(
 	key: string,
@@ -19,15 +21,15 @@ function resolveMayarConfig() {
 }
 
 async function fetchOrderById(id: string) {
-	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_orders")
-		.select("*")
-		.eq("_id", id)
-		.maybeSingle();
-
-	if (error) throw error;
-	return data as any;
+	const response = await fetch(`${CUSTOMER_ORDER_API}/guest-orders`, {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ orderIds: [id] }),
+	});
+	if (!response.ok) throw new Error(`Order fetch HTTP ${response.status}`);
+	const payload = (await response.json()) as { success?: boolean; orders?: unknown[] };
+	return (payload.success ? payload.orders?.[0] : null) ?? null;
 }
 
 async function fetchVariationPresets() {
