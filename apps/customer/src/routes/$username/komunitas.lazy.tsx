@@ -38,17 +38,21 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
   const [open, setOpen] = useState(false);
   const [liked, setLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [likePending, setLikePending] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [commentBody, setCommentBody] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSaving, setCommentSaving] = useState(false);
   const isOwner = currentSourceId === post.author.sourceId;
   const displayName = post.author.username ? `@${post.author.username}` : post.author.name;
 
   const toggleLike = async () => {
+    if (likePending) return;
     const nextLiked = !liked;
+    setLikePending(true);
     setLiked(nextLiked);
     setLikeCount((count) => Math.max(0, count + (nextLiked ? 1 : -1)));
     try {
@@ -58,6 +62,8 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
     } catch {
       setLiked(!nextLiked);
       setLikeCount((count) => Math.max(0, count + (nextLiked ? -1 : 1)));
+    } finally {
+      setLikePending(false);
     }
   };
 
@@ -74,11 +80,14 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
     const body = commentBody.trim();
     if (!body || commentSaving) return;
     setCommentSaving(true);
+    setCommentError(null);
     try {
       const comment = await communityClient.addComment(post.id, body);
       setComments((current) => [...current, comment]);
       setCommentCount((count) => count + 1);
       setCommentBody("");
+    } catch (reason) {
+      setCommentError(reason instanceof Error ? reason.message : "Komentar belum berhasil dikirim.");
     } finally { setCommentSaving(false); }
   };
 
@@ -98,11 +107,12 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
           {post.mediaUrl && post.mediaType === "image" ? <img src={post.mediaUrl} alt={`Kiriman dari ${post.author.name}`} className="mt-4 max-h-[500px] w-full rounded-xl object-cover" loading="lazy" /> : null}
           {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-4 max-h-[500px] w-full rounded-xl bg-black object-contain" controls playsInline preload="metadata" /> : null}
           <div className="mt-4 flex items-center gap-5 text-[#333333] sm:gap-7">
-            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} onClick={() => void toggleLike}><Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} /><span>{likeCount}</span></button>
+            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} disabled={likePending} onClick={() => void toggleLike}><Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} /><span>{likeCount}</span></button>
             <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${commentsOpen ? "text-[#3156a3]" : "hover:text-[#3156a3]"}`} aria-label="Komentar" aria-expanded={commentsOpen} onClick={() => void toggleComments}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{commentCount}</span></button>
           </div>
           {commentsOpen ? <div className="mt-3 rounded-xl bg-[#f7f8fa] p-3">
             {commentsLoading ? <p className="text-xs text-[#777777]">Memuat komentar…</p> : comments.length ? <div className="space-y-3">{comments.map((comment) => <div key={comment.id} className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-xs font-bold text-[#3156a3]">{comment.author.name.slice(0, 1).toUpperCase()}</div><div><p className="text-xs font-bold text-[#111111]">{comment.author.username ? `@${comment.author.username}` : comment.author.name}</p><p className="text-sm leading-relaxed text-[#333333]">{comment.body}</p></div></div>)}</div> : <p className="text-xs text-[#777777]">Belum ada komentar.</p>}
+            {commentError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{commentError}</p> : null}
             <div className="mt-3 flex gap-2"><input value={commentBody} onChange={(event) => setCommentBody(event.target.value.slice(0, 500))} onKeyDown={(event) => { if (event.key === "Enter") void submitComment(); }} placeholder="Tulis komentar…" aria-label="Tulis komentar" className="min-h-10 min-w-0 flex-1 rounded-full border border-[#dfe3e8] bg-white px-4 text-sm outline-none focus:border-[#3156a3]" /><button type="button" disabled={!commentBody.trim() || commentSaving} onClick={() => void submitComment()} className="min-h-10 rounded-full bg-[#111111] px-4 text-xs font-bold text-white disabled:bg-[#e8ebef] disabled:text-[#8f969e]">Kirim</button></div>
           </div> : null}
         </div>
