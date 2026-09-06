@@ -134,4 +134,8 @@ export const communityClient = {
   async removeComment(postId: string, commentId: string): Promise<void> {
     await request(`/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" });
   },
+  async updateComment(postId: string, commentId: string, body: string): Promise<CommunityComment> {
+    const payload = await request<{ data: CommunityComment }>(`/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
+    return payload.data;
+  },
 };
