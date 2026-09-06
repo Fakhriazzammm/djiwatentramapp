@@ -5,10 +5,10 @@ export const APP_VERSION = {
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
 	semantic: "0.2.135",
 	// Git/deploy commit hash (short)
-	commitHash: "ae0c542",
-	message: "fix(customer): refresh pwa on commit-only updates",
+	commitHash: "66b776d",
+	message: "fix(customer): force pwa cache refresh for community release",
 	// Commit subject for the update prompt
-	commitMessage: "fix(customer): refresh pwa on commit-only updates",
+	commitMessage: "fix(customer): force pwa cache refresh for community release",
 	// Build timestamp
 	buildDate: "2026-09-06",
 	// Full version string for display

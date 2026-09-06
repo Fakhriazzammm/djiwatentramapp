@@ -1,7 +1,7 @@
 {
-  "version": "0.2.253",
-  "commitHash": "5e640769",
-  "message": "feat(customer): regenerate slug promo banners with Imagen",
-  "buildDate": "2026-09-03",
-  "generatedAt": "2026-09-03T03:06:22.447Z"
+  "version": "0.2.135",
+  "commitHash": "66b776d",
+  "message": "fix(customer): force pwa cache refresh for community release",
+  "buildDate": "2026-09-06",
+  "generatedAt": "2026-09-06T06:47:33.648Z"
 }
