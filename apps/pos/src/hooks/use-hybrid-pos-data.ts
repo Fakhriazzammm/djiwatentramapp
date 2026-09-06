@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { resolvePosAssetUrl } from "@/lib/asset-url";
 
 // Global refresh — call triggerHybridRefresh() after any write to
 // instantly refresh ALL hybrid data hooks across the entire app.
@@ -520,7 +521,7 @@ async function fetchProducts() {
 			row.promoPrice === null || row.promoPrice === undefined
 				? null
 				: Number(row.promoPrice),
-		image: row.image,
+		image: resolvePosAssetUrl(row.image),
 		isAvailable: Boolean(row.isAvailable),
 		quantity:
 			row.quantity === null || row.quantity === undefined
@@ -555,7 +556,7 @@ async function fetchAllProducts() {
 			row.promoPrice === null || row.promoPrice === undefined
 				? null
 				: Number(row.promoPrice),
-		image: row.image,
+		image: resolvePosAssetUrl(row.image),
 		isAvailable: Boolean(row.isAvailable),
 		quantity:
 			row.quantity === null || row.quantity === undefined
