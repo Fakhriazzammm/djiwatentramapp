@@ -2,6 +2,7 @@ import { BadgePercent, ChevronRight, Loader2, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 import type { CustomerUser } from "@/hooks/use-customer-auth";
 import { currency } from "@/components/customer/types";
+import { CUSTOMER_LOGO_FALLBACK } from "@/lib/asset-url";
 
 export function CustomerHomeHeader({
   logoUrl,
@@ -21,7 +22,7 @@ export function CustomerHomeHeader({
       <div className="flex min-h-11 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]">
-            <img alt={storeName} className="h-full w-full rounded-full object-contain" src={logoUrl || "/logo-djiwa.png"} />
+            <img alt={storeName} className="h-full w-full rounded-full object-contain" src={logoUrl || CUSTOMER_LOGO_FALLBACK} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{eyebrow}</p>

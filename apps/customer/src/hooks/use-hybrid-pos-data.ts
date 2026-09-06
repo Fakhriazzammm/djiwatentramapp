@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { resolveCustomerAssetUrl } from "@/lib/asset-url";
 
 // Global refresh — call triggerHybridRefresh() after any write to
 // instantly refresh ALL hybrid data hooks across the entire app.
@@ -474,6 +475,10 @@ async function fetchSiteSettings() {
 	return {
 		_id: data._id,
 		...raw,
+		logoUrl: resolveCustomerAssetUrl(raw.logoUrl),
+		headerLogoUrl: resolveCustomerAssetUrl(raw.headerLogoUrl),
+		receiptLogo: resolveCustomerAssetUrl(raw.receiptLogo),
+		faviconUrl: resolveCustomerAssetUrl(raw.faviconUrl),
 		taxEnabled: raw.taxEnabled ?? data.tax_enabled ?? Number(data.tax_rate ?? raw.taxRate ?? 0) > 0,
 		orderTypes,
 		platforms,
@@ -518,7 +523,7 @@ async function fetchProducts() {
 			row.promoPrice === null || row.promoPrice === undefined
 				? null
 				: Number(row.promoPrice),
-		image: row.image,
+		image: resolveCustomerAssetUrl(row.image),
 		isAvailable: Boolean(row.isAvailable),
 		quantity:
 			row.quantity === null || row.quantity === undefined
@@ -567,7 +572,7 @@ async function fetchAllProducts() {
 			row.promoPrice === null || row.promoPrice === undefined
 				? null
 				: Number(row.promoPrice),
-		image: row.image,
+		image: resolveCustomerAssetUrl(row.image),
 		isAvailable: Boolean(row.isAvailable),
 		quantity:
 			row.quantity === null || row.quantity === undefined

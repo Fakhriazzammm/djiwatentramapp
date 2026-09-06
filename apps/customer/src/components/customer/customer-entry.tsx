@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { CUSTOMER_LOGO_FALLBACK } from "@/lib/asset-url";
 
 type CustomerSplashProps = {
   logoUrl?: string;
@@ -8,7 +9,7 @@ type CustomerSplashProps = {
 
 export function CustomerSplash({ logoUrl, storeName }: CustomerSplashProps) {
   const reduceMotion = useReducedMotion();
-  const brandLogoUrl = logoUrl || "/logo-djiwa.png";
+  const brandLogoUrl = logoUrl || CUSTOMER_LOGO_FALLBACK;
 
   return (
     <div className="app-page flex min-h-app items-center justify-center px-4 py-8">
@@ -20,7 +21,7 @@ export function CustomerSplash({ logoUrl, storeName }: CustomerSplashProps) {
         exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
         transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
       >
-        <img alt={storeName} className="h-24 w-24 rounded-[28px] object-contain" src={brandLogoUrl} />
+        <img alt={storeName} className="h-24 w-24 rounded-[28px] object-contain" src={brandLogoUrl} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
         <p className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-primary">Djiwa Tentram</p>
         <p className="mt-2 text-xs text-muted-foreground">Menyiapkan pengalaman pesan yang lebih mudah</p>
       </motion.section>
@@ -35,7 +36,7 @@ type RouteTransitionSplashProps = {
 
 export function RouteTransitionSplash({ logoUrl, storeName }: RouteTransitionSplashProps) {
   const reduceMotion = useReducedMotion();
-  const brandLogoUrl = logoUrl || "/logo-djiwa.png";
+  const brandLogoUrl = logoUrl || CUSTOMER_LOGO_FALLBACK;
   const label = storeName || "Djiwa Tentram";
 
   return (
@@ -51,6 +52,7 @@ export function RouteTransitionSplash({ logoUrl, storeName }: RouteTransitionSpl
         alt={label}
         className="h-14 w-14 rounded-2xl object-contain"
         src={brandLogoUrl}
+        onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }}
         initial={reduceMotion ? {} : { scale: 0.8, opacity: 0 }}
         animate={reduceMotion ? {} : { scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
@@ -74,7 +76,7 @@ type CustomerOnboardingProps = {
 
 export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: CustomerOnboardingProps) {
   const reduceMotion = useReducedMotion();
-  const brandLogoUrl = logoUrl || "/logo-djiwa.png";
+  const brandLogoUrl = logoUrl || CUSTOMER_LOGO_FALLBACK;
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
 
   return (
@@ -87,7 +89,7 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: Cu
         transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
       >
         <div className="flex items-center gap-2">
-          <img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={brandLogoUrl} />
+          <img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={brandLogoUrl} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Welcome</p>
             <p className="text-sm font-black tracking-tight">{storeName}</p>
@@ -101,7 +103,7 @@ export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: Cu
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ ...spring, delay: 0.05 }}
           >
-            <img alt="" className="h-28 w-28 object-contain" src={brandLogoUrl} />
+            <img alt="" className="h-28 w-28 object-contain" src={brandLogoUrl} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
           </motion.div>
           <motion.p className="mt-7 text-[11px] font-black uppercase tracking-[0.22em] text-primary" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.12 }}>
             Pesan lebih mudah

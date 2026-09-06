@@ -7,6 +7,7 @@ import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { CustomerOnboarding, CustomerSplash } from "@/components/customer/customer-entry";
 import { currency } from "@/components/customer/types";
+import { CUSTOMER_LOGO_FALLBACK } from "@/lib/asset-url";
 
 export const Route = createLazyFileRoute("/")({
 	component: BrandCustomerIndex,
@@ -32,12 +33,12 @@ function BrandCustomerIndex() {
 	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">("splash");
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
-	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
 
 	// ── Data tambahan landing: best seller + info toko ──────────
 	const products = useHybridProducts();
 	const bestSellers = useHybridBestSellers();
 	const siteSettings = useHybridSiteSettings();
+	const logoUrl = siteSettings?.logoUrl || import.meta.env.VITE_BRAND_LOGO_URL || CUSTOMER_LOGO_FALLBACK;
 
 	const productMap = new Map<string, Record<string, any>>();
 	for (const p of products ?? []) productMap.set(String((p as Record<string, any>)._id), p as Record<string, any>);
