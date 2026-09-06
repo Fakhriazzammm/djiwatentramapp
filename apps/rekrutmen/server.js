@@ -89,7 +89,12 @@ async function validateRecruitmentAdmin(req, res, next) {
     const payload = await authRes.json();
     const session = payload?.session;
     const roleName = String(session?.role?.name || "").trim().toLowerCase();
-    if (!session || roleName !== "admin") {
+    const permissions = Array.isArray(session?.role?.permissions)
+      ? session.role.permissions.map(String)
+      : [];
+    const allowedName = ["admin", "administrator", "owner", "superadmin", "super admin", "manager"].includes(roleName);
+    const allowedPermission = permissions.includes("users:manage");
+    if (!session || (!allowedName && !allowedPermission)) {
       return res.status(403).json({ error: "Akses admin diperlukan" });
     }
     res.locals.recruitmentAdmin = session.user;

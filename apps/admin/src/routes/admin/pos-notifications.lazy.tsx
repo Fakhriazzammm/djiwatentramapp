@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { isBroadcastRole } from "@/lib/admin-access";
 
 export const Route = createLazyFileRoute("/admin/pos-notifications")({
   component: PosNotificationsAdminPage,
@@ -14,7 +15,7 @@ export const Route = createLazyFileRoute("/admin/pos-notifications")({
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pos-notifications`;
 
 function PosNotificationsAdminPage() {
-  const { token, isAdmin } = useYumiAuth();
+  const { token, role } = useYumiAuth(); const canBroadcast = isBroadcastRole(role?.name);
   const [notificationType, setNotificationType] = useState<"admin_info" | "admin_briefing">("admin_info");
   const [priority, setPriority] = useState<"normal" | "high" | "urgent">("normal");
   const [title, setTitle] = useState("");
@@ -22,7 +23,7 @@ function PosNotificationsAdminPage() {
   const [sending, setSending] = useState(false);
 
   const submit = async () => {
-    if (!token || !isAdmin) {
+    if (!token || !canBroadcast) {
       toast.error("Sesi admin tidak tersedia.");
       return;
     }
@@ -55,7 +56,7 @@ function PosNotificationsAdminPage() {
     }
   };
 
-  if (!isAdmin) return <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">Halaman ini hanya untuk admin.</div>;
+  if (!canBroadcast) return <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">Halaman ini hanya untuk admin.</div>;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-24">
