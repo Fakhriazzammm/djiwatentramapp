@@ -7,7 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createClient } from "@/lib/client";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
@@ -110,40 +109,26 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
   };
 }
 
+const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+
 async function fetchCustomer(
   sourceId: string,
-  email?: string | null,
+  _email?: string | null,
 ): Promise<CustomerUser | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("pos_customers_view")
-    .select("*")
-    .eq("source_id", sourceId)
-    .maybeSingle();
+  const response = await fetch(`${CUSTOMER_API_BASE}/profile`, {
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error(`Customer profile HTTP ${response.status}`);
 
-  if (error) {
-    console.warn("[customer-auth] fetchCustomer error:", error);
-    return null;
-  }
-  if (data) return mapCustomerRow(data as Record<string, unknown>);
-
-  // ponytail: relink-by-email — existing customers keyed to the OLD auth id
-  // (UUID) won't match the new Better Auth id. Re-point source_id to the new
-  // id on first login so their points/orders history is preserved.
-  if (!email) return null;
-
-  const { data: relinked, error: relinkErr } = await supabase
-    .schema("pos")
-    .from("customers")
-    .update({ source_id: sourceId, updated_at: new Date().toISOString() })
-    .eq("email", email)
-    .select("*")
-    .maybeSingle();
-  if (relinkErr || !relinked) {
-    console.warn("[customer-auth] relink failed:", relinkErr);
-    return null;
-  }
-  return mapCustomerRow(relinked as Record<string, unknown>);
+  const payload = await response.json() as {
+    success?: boolean;
+    customer?: Record<string, unknown> | null;
+  };
+  const row = payload.success ? payload.customer : null;
+  if (!row || String(row.source_id ?? "") !== sourceId) return null;
+  return mapCustomerRow(row);
 }
 
 function buildFallbackCustomer(

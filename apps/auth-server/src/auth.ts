@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { dash } from "@better-auth/infra";
 
-const pool = new Pool({
+export const pool = new Pool({
   host: "localhost",
   port: 5433,
   user: "supabase_admin",
@@ -18,6 +18,7 @@ export const auth = betterAuth({
     "https://djiwatentram.yumme.id",
     "https://merchandise.yumme.id",
     "https://b2b.yumme.id",
+    "https://ordermieyamin.yumme.id",
     "http://localhost:5173",
   ],
   // Share the central customer session across Djiwa App subdomains.

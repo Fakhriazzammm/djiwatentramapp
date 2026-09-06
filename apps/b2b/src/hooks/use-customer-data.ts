@@ -108,6 +108,8 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 	};
 }
 
+const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+
 // ── useCustomerOrders ──────────────────────────────────────────
 // Query pos_orders WHERE customer_source_id = user.id.
 // Realtime: reload otomatis saat ada perubahan di schema pos
@@ -121,30 +123,29 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 	const data = useSupabaseLiveValue<CustomerOrder[]>(
 		`customer-orders-${sourceId ?? "guest"}`,
 		async () => {
-			const supabase = createClient();
 			if (!sourceId) {
 				const references = readGuestOrderReferences();
 				if (references.length === 0) return [];
-				const ids = references.map((item) => item.orderId);
-				const { data, error: queryError } = await supabase
-					.from("pos_orders")
-					.select("*")
-					.in("_id", ids);
-				if (queryError) throw queryError;
-				const byId = new Map((data ?? []).map((row: any) => [String(row._id ?? row.id), row]));
+				const response = await fetch(`${CUSTOMER_API_BASE}/guest-orders`, {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ orderIds: references.map((item) => item.orderId) }),
+				});
+				if (!response.ok) throw new Error(`Guest orders HTTP ${response.status}`);
+				const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };
+				const rows = payload.success ? payload.orders ?? [] : [];
+				const byId = new Map(rows.map((row) => [String(row._id ?? row.id), row]));
 				return references.map((item) => byId.get(item.orderId)).filter(Boolean).map((row) => mapOrder(row as Record<string, unknown>));
 			}
-			const { data, error: queryError } = await supabase
-				.from("pos_orders")
-				.select("*")
-				.eq("customerSourceId", sourceId)
-				.order("createdAt", { ascending: false })
-				.limit(50);
 
-			if (queryError) throw queryError;
-			return (data ?? []).map((row: unknown) =>
-				mapOrder(row as Record<string, unknown>),
-			);
+			const response = await fetch(`${CUSTOMER_API_BASE}/orders`, {
+				credentials: "include",
+				headers: { Accept: "application/json" },
+			});
+			if (!response.ok) throw new Error(`Customer orders HTTP ${response.status}`);
+			const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };
+			return (payload.success ? payload.orders ?? [] : []).map((row) => mapOrder(row));
 		},
 		[sourceId],
 		{

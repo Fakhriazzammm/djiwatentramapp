@@ -47,29 +47,29 @@ export type CustomerPointEntry = {
 
 function mapOrder(row: Record<string, unknown>): CustomerOrder {
 	return {
-		id: String(row._id ?? row.id ?? ""),
-		orderNumber: String(row.orderNumber ?? ""),
+		id: String(row._id ?? row.source_id ?? row.id ?? ""),
+		orderNumber: String(row.orderNumber ?? row.order_number ?? ""),
 		status: String(row.status ?? ""),
-		totalAmount: Number(row.totalAmount ?? 0),
-		discountAmount: Number(row.discountAmount ?? 0),
-		taxAmount: Number(row.taxAmount ?? 0),
-		serviceChargeAmount: Number(row.serviceChargeAmount ?? 0),
-		paymentReceiptKind: (row.paymentReceiptKind as string) ?? null,
-		receiptMeta: row.receiptMeta && typeof row.receiptMeta === "object" ? row.receiptMeta as Record<string, unknown> : null,
-		paymentMethod: (row.paymentMethod as string) ?? null,
-		orderType: (row.orderType as string) ?? null,
-		tableNumber: (row.tableNumber as string) ?? null,
+		totalAmount: Number(row.totalAmount ?? row.total_amount ?? 0),
+		discountAmount: Number(row.discountAmount ?? row.discount_amount ?? 0),
+		taxAmount: Number(row.taxAmount ?? row.tax_amount ?? 0),
+		serviceChargeAmount: Number(row.serviceChargeAmount ?? row.service_charge_amount ?? 0),
+		paymentReceiptKind: (row.paymentReceiptKind as string) ?? (row.payment_receipt_kind as string) ?? null,
+		receiptMeta: (row.receiptMeta ?? row.receipt_meta) && typeof (row.receiptMeta ?? row.receipt_meta) === "object" ? (row.receiptMeta ?? row.receipt_meta) as Record<string, unknown> : null,
+		paymentMethod: (row.paymentMethod as string) ?? (row.payment_method as string) ?? null,
+		orderType: (row.orderType as string) ?? (row.order_type as string) ?? null,
+		tableNumber: (row.tableNumber as string) ?? (row.table_number as string) ?? null,
 		items: Array.isArray(row.items)
 			? row.items.map((item: Record<string, unknown>) => ({
 					productId: String(item.productId ?? item.product_id ?? ""),
-					productName: String(item.productName ?? ""),
+					productName: String(item.productName ?? item.product_name ?? ""),
 					quantity: Number(item.quantity ?? 0),
 					price: Number(item.price ?? 0),
 					originalPrice: item.originalPrice == null ? undefined : Number(item.originalPrice),
 					variant: (item.variant as string | null | undefined) ?? null,
 				}))
 			: [],
-		createdAt: Number(row.createdAt ?? row._creationTime ?? 0),
+		createdAt: Number(row.createdAt ?? row.created_at ?? row._creationTime ?? 0),
 	};
 }
 
@@ -86,6 +86,8 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 	};
 }
 
+const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+
 // ── useCustomerOrders ──────────────────────────────────────────
 // Query pos_orders WHERE customer_source_id = user.id.
 // Realtime: reload otomatis saat ada perubahan di schema pos
@@ -99,30 +101,29 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 	const data = useSupabaseLiveValue<CustomerOrder[]>(
 		`customer-orders-${sourceId ?? "guest"}`,
 		async () => {
-			const supabase = createClient();
 			if (!sourceId) {
 				const references = readGuestOrderReferences();
 				if (references.length === 0) return [];
-				const ids = references.map((item) => item.orderId);
-				const { data, error: queryError } = await supabase
-					.from("pos_orders")
-					.select("*")
-					.in("_id", ids);
-				if (queryError) throw queryError;
-				const byId = new Map((data ?? []).map((row: any) => [String(row._id ?? row.id), row]));
+				const response = await fetch(`${CUSTOMER_API_BASE}/guest-orders`, {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ orderIds: references.map((item) => item.orderId) }),
+				});
+				if (!response.ok) throw new Error(`Guest orders HTTP ${response.status}`);
+				const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };
+				const rows = payload.success ? payload.orders ?? [] : [];
+				const byId = new Map(rows.map((row) => [String(row._id ?? row.id), row]));
 				return references.map((item) => byId.get(item.orderId)).filter(Boolean).map((row) => mapOrder(row as Record<string, unknown>));
 			}
-			const { data, error: queryError } = await supabase
-				.from("pos_orders")
-				.select("*")
-				.eq("customerSourceId", sourceId)
-				.order("createdAt", { ascending: false })
-				.limit(50);
 
-			if (queryError) throw queryError;
-			return (data ?? []).map((row: unknown) =>
-				mapOrder(row as Record<string, unknown>),
-			);
+			const response = await fetch(`${CUSTOMER_API_BASE}/orders`, {
+				credentials: "include",
+				headers: { Accept: "application/json" },
+			});
+			if (!response.ok) throw new Error(`Customer orders HTTP ${response.status}`);
+			const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };
+			return (payload.success ? payload.orders ?? [] : []).map((row) => mapOrder(row));
 		},
 		[sourceId],
 		{
