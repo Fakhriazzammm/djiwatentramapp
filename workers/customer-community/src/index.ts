@@ -351,6 +351,14 @@ export default {
         return json({ data: (await serializeComments(env, rows))[0] }, 201, origin);
       }
 
+      if (parts[0] === "posts" && parts[1] && parts[2] === "comments" && parts[3] && request.method === "DELETE") {
+        const rows = await db<Array<{ id: string; post_id: string; author_source_id: string }>>(env, "customer_community_comments", {}, `select=id,post_id,author_source_id&id=eq.${encodeURIComponent(parts[3])}&post_id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
+        const row = rows[0];
+        if (!row || row.author_source_id !== user.id) return json({ error: "Komentar tidak ditemukan atau bukan milik Anda." }, 404, origin);
+        await db(env, "customer_community_comments", { method: "PATCH", body: JSON.stringify({ deleted_at: new Date().toISOString() }) }, `id=eq.${encodeURIComponent(parts[3])}&post_id=eq.${encodeURIComponent(parts[1])}&author_source_id=eq.${encodeURIComponent(user.id)}&deleted_at=is.null`);
+        return json({ data: { id: parts[3], postId: parts[1], deleted: true } }, 200, origin);
+      }
+
       if (parts[0] === "posts" && parts[1] && request.method === "DELETE") {
         const rows = await db<PostRow[]>(env, "customer_community_posts", {}, `select=id,author_source_id,media_object_key&id=eq.${encodeURIComponent(parts[1])}&limit=1`);
         const row = rows[0];
