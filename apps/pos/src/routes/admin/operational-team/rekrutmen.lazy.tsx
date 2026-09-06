@@ -40,8 +40,8 @@ const TAB_CONFIG = {
     statusField: "Status",
     defaultSort: "date_desc",
     searchFields: ["Nama Lengkap", "Posisi Dilamar", "Email", "Nomor Telepon/HP"],
-    statusOptions: ["All", "New", "Review", "Interview", "Accepted", "Rejected"],
-    quickFilters: ["All", "New", "Review", "Interview", "Accepted", "Rejected"],
+    statusOptions: ["All", "Application Received", "Applied", "Interview Scheduled", "Hired", "Rejected"],
+    quickFilters: ["All", "Application Received", "Applied", "Interview Scheduled", "Hired", "Rejected"],
     sortOptions: [
       { value: "date_desc", label: "Terbaru" },
       { value: "date_asc", label: "Terlama" },
@@ -96,6 +96,7 @@ function AdminRekrutmen() {
     onboarding: [],
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortBy, setSortBy] = useState("");
@@ -123,6 +124,7 @@ function AdminRekrutmen() {
 
   async function fetchAllData() {
     setLoading(true);
+    setLoadError(null);
     try {
       const headers = { "X-Yumi-Session": token || "" };
       const [cRes, iRes, oRes] = await Promise.all([
@@ -140,6 +142,8 @@ function AdminRekrutmen() {
         onboarding: oData.records || [],
       });
     } catch (e) {
+      const message = e instanceof Error ? e.message : "Gagal memuat data recruitment";
+      setLoadError(message);
       console.error("Gagal fetch rekrutmen data:", e);
     } finally {
       setLoading(false);
@@ -237,9 +241,9 @@ function AdminRekrutmen() {
     const c = allData.candidates;
     return {
       total: c.length,
-      review: c.filter((r) => ["New", "Review"].includes(r.fields.Status)).length,
-      interview: c.filter((r) => r.fields.Status === "Interview").length,
-      accepted: c.filter((r) => r.fields.Status === "Accepted").length,
+      review: c.filter((r) => ["Application Received", "Applied", "Review", "New"].includes(r.fields.Status)).length,
+      interview: c.filter((r) => ["Interview Scheduled", "Interview"].includes(r.fields.Status)).length,
+      accepted: c.filter((r) => ["Hired", "Accepted"].includes(r.fields.Status)).length,
     };
   }, [allData]);
 
@@ -421,11 +425,19 @@ function AdminRekrutmen() {
           ))}
         </div>
 
+        {loadError && (
+          <div className="rk-empty !min-h-0 !p-4 !mb-4" role="alert">
+            <div className="rk-empty-title">Data kandidat belum dapat dimuat</div>
+            <div className="rk-empty-desc">{loadError}. Pastikan login sebagai admin lalu coba refresh.</div>
+            <button className="rk-empty-cta" onClick={fetchAllData}><RefreshCw className="h-4 w-4" /> Coba lagi</button>
+          </div>
+        )}
+
         {/* Pipeline */}
         <div className="rk-pipeline" aria-label="Pipeline kandidat">
-          {[['Application Received', 'Masuk'], ['Review', 'Screening'], ['Interview', 'Interview'], ['Accepted', 'Diterima']].map(([status, label]) => {
-            const count = allData.candidates.filter((r) => status === 'Application Received' ? ['Application Received', 'New'].includes(String(r.fields.Status)) : r.fields.Status === status).length;
-            return <button key={status} className="rk-pipeline-item" onClick={() => { setActiveTab('candidates'); handleQuickFilter(status === 'Application Received' ? 'New' : status); }}><span className="rk-pipeline-count">{count}</span><span>{label}</span></button>;
+          {[['Application Received', 'Masuk'], ['Applied', 'Ditinjau'], ['Interview Scheduled', 'Interview'], ['Hired', 'Diterima']].map(([status, label]) => {
+            const count = allData.candidates.filter((r) => String(r.fields.Status) === status).length;
+            return <button key={status} className="rk-pipeline-item" onClick={() => { setActiveTab('candidates'); handleQuickFilter(status); }}><span className="rk-pipeline-count">{count}</span><span>{label}</span></button>;
           })}
         </div>
 
