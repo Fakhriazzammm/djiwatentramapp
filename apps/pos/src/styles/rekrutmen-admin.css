@@ -1319,21 +1319,21 @@
   margin: 0 16px 24px;
   animation: rk-fade-in 200ms ease both;
 }
-.rk .rk-table table { border-collapse: collapse; width: 100%; min-width: 800px; }
+.rk .rk-table table { border-collapse: collapse; width: 100%; min-width: 560px; }
 .rk .rk-table th {
   text-align: left;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--rk-muted);
   background: #f8fafc;
-  padding: 11px 14px;
+  padding: 9px 12px;
   white-space: nowrap;
   border-bottom: 1px solid var(--rk-border);
 }
 .rk .rk-table td {
-  padding: 12px 14px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--rk-border);
   vertical-align: middle;
   font-size: 12px;
@@ -1342,6 +1342,46 @@
 .rk .rk-table tbody tr:hover { background: #f8fafc; }
 .rk .rk-table tbody tr:last-child td { border-bottom: none; }
 @media (max-width: 640px) { .rk .rk-table { margin: 0 14px 18px; } }
+
+/* Compact summary row */
+.rk .rk-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 14px;
+  animation: rk-fade-in 200ms ease both;
+}
+.rk .rk-summary-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--rk-primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+.rk .rk-summary-total strong { font-size: 16px; }
+.rk .rk-summary-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rk-border);
+  background: var(--rk-card);
+  color: var(--rk-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-micro) var(--ease-ios), color var(--dur-micro) var(--ease-ios), border-color var(--dur-micro) var(--ease-ios);
+}
+.rk .rk-summary-chip:hover { background: var(--rk-primary-soft); border-color: var(--rk-primary); color: var(--rk-primary); }
+@media (max-width: 640px) { .rk .rk-summary { padding: 0 14px 12px; } }
 
 /* Compact pipeline overview */
 .rk .rk-pipeline { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0 20px 16px; }

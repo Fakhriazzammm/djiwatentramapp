@@ -454,22 +454,12 @@ function AdminRekrutmen() {
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="rk-stats">
-          {[
-            { label: "Total Candidates", value: stats.total, trend: "+18 minggu ini" },
-            { label: "Interview", value: stats.interview, percent: stats.total > 0 ? `${Math.round(stats.interview / stats.total * 100)}%` : "0%", trend: "+3 minggu ini" },
-            { label: "Diterima", value: stats.accepted, percent: stats.total > 0 ? `${Math.round(stats.accepted / stats.total * 100)}%` : "0%", trend: "+2 minggu ini" },
-          ].map((s) => (
-            <div key={s.label} className="rk-stat">
-              <div className="rk-stat-value">{s.value}</div>
-              <div className="rk-stat-label">{s.label}</div>
-              <div className="rk-stat-sub">
-                <span className="rk-stat-trend up">{s.trend}</span>
-                {s.percent && <span className="rk-stat-percent">{s.percent}</span>}
-              </div>
-            </div>
-          ))}
+        {/* Summary (compact) */}
+        <div className="rk-summary" aria-label="Ringkasan kandidat">
+          <span className="rk-summary-total"><strong>{stats.total}</strong> Kandidat</span>
+          <button className="rk-summary-chip" onClick={() => { setActiveTab('candidates'); handleQuickFilter('Application Received'); }}>{stats.review} Masuk</button>
+          <button className="rk-summary-chip" onClick={() => { setActiveTab('candidates'); handleQuickFilter('Interview Scheduled'); }}>{stats.interview} Interview</button>
+          <button className="rk-summary-chip" onClick={() => { setActiveTab('candidates'); handleQuickFilter('Hired'); }}>{stats.accepted} Diterima</button>
         </div>
 
         {loadError && (
@@ -479,14 +469,6 @@ function AdminRekrutmen() {
             <button className="rk-empty-cta" onClick={fetchAllData}><RefreshCw className="h-4 w-4" /> Coba lagi</button>
           </div>
         )}
-
-        {/* Pipeline */}
-        <div className="rk-pipeline" aria-label="Pipeline kandidat">
-          {[['Application Received', 'Masuk'], ['Applied', 'Ditinjau'], ['Interview Scheduled', 'Interview'], ['Hired', 'Diterima']].map(([status, label]) => {
-            const count = allData.candidates.filter((r) => String(r.fields.Status) === status).length;
-            return <button key={status} className="rk-pipeline-item" onClick={() => { setActiveTab('candidates'); handleQuickFilter(status); }}><span className="rk-pipeline-count">{count}</span><span>{label}</span></button>;
-          })}
-        </div>
 
         {/* Search */}
         <div className="rk-search">
@@ -697,16 +679,14 @@ function AdminRekrutmen() {
               </div>
             </div>
           ) : activeTab === "candidates" ? (
-            <table className="w-full min-w-[800px] text-xs">
+            <table className="w-full min-w-[560px] text-xs">
               <thead>
                 <tr>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10">Kandidat</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Posisi</th>
-                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Kontak</th>
-                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">CV</th>
+                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Tipe</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Tanggal</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Status</th>
-                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Tipe</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Aksi</th>
                 </tr>
               </thead>
@@ -719,30 +699,14 @@ function AdminRekrutmen() {
                         <div className="row-title">{esc(f["Nama Lengkap"] || "-")}</div>
                         <div className="row-sub">{esc(f.Email || "tanpa email")}</div>
                       </td>
-                      <td>
-                        <div>{esc(f["Posisi Dilamar"] || "-")}</div>
-                        <div className="row-sub">{esc(f["Sosial Media Instagram/Tiktok"] || "")}</div>
-                      </td>
-                      <td>
-                        <div>{esc(f["Nomor Telepon/HP"] || "-")}</div>
-                        <div className="row-sub">{esc(f.Email || "")}</div>
-                      </td>
-                      <td>
-                        {f["CV URL"] ? (
-                          <a href={f["CV URL"]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline">
-                            <FileText className="h-3 w-3" /> Lihat CV
-                          </a>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">-</span>
-                        )}
-                      </td>
+                      <td>{esc(f["Posisi Dilamar"] || "-")}</td>
+                      <td>{esc(f["Full time/Part time"] || "-")}</td>
                       <td>{esc(f["Application Date"] || "-")}</td>
                       <td>
                         <span className={`rk-card-badge rk-status-${(f.Status || "new").toLowerCase().replace(/\\s+/g, "")}`}>
                           {esc(f.Status || "New")}
                         </span>
                       </td>
-                      <td>{esc(f["Full time/Part time"] || "-")}</td>
                       <td>
                         <div className="flex gap-1">
                           <button className="rk-card-action" onClick={() => openModal(r.id, f.Status)}>Update</button>
