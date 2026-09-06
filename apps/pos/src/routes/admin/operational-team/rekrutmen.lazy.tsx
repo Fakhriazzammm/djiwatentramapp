@@ -676,8 +676,8 @@ function AdminRekrutmen() {
           )}
         </div>
 
-        {/* Desktop Table */}
-        <div className="rk-table desktop-only">
+        {/* Candidate Table (primary) */}
+        <div className="rk-table">
           {loading ? (
             <div className="rk-loading">Memuat data...</div>
           ) : !config.supported ? (

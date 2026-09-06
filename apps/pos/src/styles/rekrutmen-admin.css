@@ -1306,6 +1306,43 @@
 .rk .rk-card-badge.status-inprogress { background: #fffbeb; color: var(--rk-in-progress); }
 .rk .rk-card-badge.status-completed  { background: #ecfdf5; color: var(--rk-completed); }
 
+/* ════════════════════════════════════════════════════════════
+   DATA TABLE (primary presentation — cards hidden)
+   ════════════════════════════════════════════════════════════ */
+.rk .rk-list { display: none !important; }
+.rk .rk-table {
+  display: block;
+  overflow-x: auto;
+  border: 1px solid var(--rk-border);
+  border-radius: var(--rk-radius-sm);
+  background: var(--rk-card);
+  margin: 0 16px 24px;
+  animation: rk-fade-in 200ms ease both;
+}
+.rk .rk-table table { border-collapse: collapse; width: 100%; min-width: 800px; }
+.rk .rk-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rk-muted);
+  background: #f8fafc;
+  padding: 11px 14px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--rk-border);
+}
+.rk .rk-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rk-border);
+  vertical-align: middle;
+  font-size: 12px;
+  color: var(--rk-text);
+}
+.rk .rk-table tbody tr:hover { background: #f8fafc; }
+.rk .rk-table tbody tr:last-child td { border-bottom: none; }
+@media (max-width: 640px) { .rk .rk-table { margin: 0 14px 18px; } }
+
 /* Compact pipeline overview */
 .rk .rk-pipeline { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0 20px 16px; }
 .rk .rk-pipeline-item { display:flex; align-items:center; gap:9px; min-height:58px; padding:10px 12px; border:1px solid var(--rk-border); border-radius:14px; background:white; color:var(--rk-muted); font-size:11px; font-weight:800; text-align:left; transition:all var(--dur-micro) var(--ease-ios); }
