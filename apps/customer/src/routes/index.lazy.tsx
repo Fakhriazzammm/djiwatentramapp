@@ -97,10 +97,10 @@ function BrandCustomerIndex() {
 
 	// ponytail: sudah login → langsung ke /{username}, bukan /order
 	useEffect(() => {
-		if (entryPhase === "home" && isAuthenticated && customer) {
+		if (isAuthenticated && customer) {
 			navigate({ to: `/${customer.username}` });
 		}
-	}, [entryPhase, isAuthenticated, customer, navigate]);
+	}, [isAuthenticated, customer, navigate]);
 
 	if (entryPhase === "splash") {
 		return <CustomerSplash logoUrl={logoUrl} storeName={storeName} />;
