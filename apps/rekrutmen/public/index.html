@@ -90,7 +90,7 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #0a0a0b; outline-offset: 3px; box-shadow: 0 0 0 5px rgba(31,94,255,0.18); }
 ::selection { background: #1f5eff; color: white; }
 
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after, .animate-rise, .animate-pop-in, .skel.shimmer { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after, .animate-rise, .animate-pop-in, .skel.shimmer { animation: none !important; transition: none !important; } }
 
 /* Standalone app update prompt */
 #appUpdateModal.show { opacity: 1; pointer-events: auto; }
@@ -105,8 +105,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .career-hero { background: linear-gradient(135deg,#0d214b 0%,#123b82 58%,#1f5eff 100%); color: white; position: relative; overflow: hidden; }
 .career-hero::after { content: ''; position: absolute; width: 240px; height: 240px; right: -70px; top: -90px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); box-shadow: 0 0 0 28px rgba(255,255,255,.05), 0 0 0 56px rgba(255,255,255,.04); }
 .career-kicker { color: #b9d0ff; letter-spacing: .13em; text-transform: uppercase; font-size: 11px; font-weight: 800; }
-.job-card { min-height: 146px; }
-.job-card .job-apply { opacity: 0; transform: translateY(4px); transition: opacity 180ms ease, transform 180ms ease; }
+.job-card { min-height: 170px; }
+.job-card > .flex.items-center { align-items: flex-start; }
+.job-card > .flex.items-center > .size-\[34px\] { width: 42px; height: 42px; }
+.job-card .job-apply { opacity: 1; transform: none; margin-top: auto; padding-top: 13px; font-size: 12px; }
 .job-card:hover .job-apply, .job-card:focus-within .job-apply { opacity: 1; transform: translateY(0); }
 .wizard-progress { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 0 0 20px; }
 .wizard-step { display: flex; align-items: center; gap: 7px; min-width: 0; color: #a1a1aa; font-size: 11px; font-weight: 800; }
@@ -213,7 +215,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
               <h2 class="font-display text-[22px] font-extrabold tracking-[-0.03em]">Lowongan tersedia</h2>
               <p class="mt-1.5 text-[13px] text-ink-2 leading-[1.6] max-w-[580px]">Pilih posisi yang cocok, lalu isi form lamaran di samping.</p>
             </div>
-            <span class="flex items-center gap-2 px-3 py-2 bg-accent-soft border border-accent-line text-accent rounded-full text-[12px] font-extrabold whitespace-nowrap" id="totalBadge">0 lowongan</span>
+            <span class="flex items-center gap-2 px-3 py-2 bg-accent-soft border border-accent-line text-accent rounded-full text-[12px] font-extrabold whitespace-nowrap" id="totalBadge">Memuat lowongan…</span>
           </div>
           <div class="grid grid-cols-[1fr_auto] gap-3 mb-4">
             <div class="relative">
@@ -231,7 +233,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         </div>
 
         <!-- Job Grid (Gojek service-grid style) -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" id="jobList"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="jobList"></div>
       </div>
 
       <!-- Right: Form (sticky) -->
@@ -648,6 +650,8 @@ function renderJobs() {
   const q = (document.getElementById('searchInput').value || '').toLowerCase();
   const filtered = (currentFilter === 'All' ? JOBS : JOBS.filter(j => (Array.isArray(j.tags) ? j.tags : []).includes(currentFilter)))
     .filter(j => j.title.toLowerCase().includes(q));
+  const badge = document.getElementById('totalBadge');
+  if (badge) badge.textContent = `${filtered.length} ${filtered.length === 1 ? 'lowongan' : 'lowongan'}`;
 
   if (filtered.length === 0) {
     list.innerHTML = renderEmpty(q);
@@ -722,6 +726,10 @@ function selectJob(title) {
 function updateMetrics() {
   document.getElementById('metricPositions').textContent = JOBS.length;
   document.getElementById('metricApplicants').textContent = '—';
+  const badge = document.getElementById('totalBadge');
+  if (badge && !document.getElementById('searchInput').value && currentFilter === 'All') {
+    badge.textContent = `${JOBS.length} lowongan`;
+  }
 }
 
 // ── Toast ──
@@ -766,7 +774,10 @@ const WIZARD_FIELDS = {
   2: ['fieldNama', 'fieldGender', 'fieldBirth', 'fieldEmail', 'fieldPhone'],
   3: ['fieldSocial', 'fieldTipe', 'fieldCv', 'fieldNotes'],
 };
-function wizardField(id) { return document.getElementById(id)?.closest('.flex'); }
+function wizardField(id) {
+  const field = document.getElementById(id);
+  return field?.closest('.flex.flex-col') || field?.closest('.flex');
+}
 function wizardSetStep(step) {
   wizardStep = Math.max(1, Math.min(4, step));
   Object.entries(WIZARD_FIELDS).forEach(([key, ids]) => ids.forEach(id => {
