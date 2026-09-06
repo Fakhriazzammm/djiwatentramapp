@@ -6,7 +6,7 @@ import { CustomerBottomNav, CustomerHeader } from "@/components/customer/custome
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { CommunityClientError, communityClient } from "@/features/community/community-client";
-import type { CommunityComment, CommunityPost } from "@/features/community/community-types";
+import type { CommunityPost } from "@/features/community/community-types";
 
 export const Route = createLazyFileRoute("/$username/komunitas")({ component: CommunityPage });
 
@@ -34,20 +34,13 @@ function readVideoDuration(file: File): Promise<number> {
   });
 }
 
-function PostCard({ post, currentSourceId, onDelete, onReport }: { post: CommunityPost; currentSourceId?: string; onDelete: (post: CommunityPost) => void; onReport: (post: CommunityPost) => void }) {
+function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post: CommunityPost; currentSourceId?: string; onDelete: (post: CommunityPost) => void; onReport: (post: CommunityPost) => void; onOpen: (post: CommunityPost) => void }) {
   const [open, setOpen] = useState(false);
   const [liked, setLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [likePending, setLikePending] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
   const [likeSuccess, setLikeSuccess] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [comments, setComments] = useState<CommunityComment[]>([]);
-  const [commentCount, setCommentCount] = useState(post.commentCount);
-  const [commentBody, setCommentBody] = useState("");
-  const [commentError, setCommentError] = useState<string | null>(null);
-  const [commentsLoading, setCommentsLoading] = useState(false);
-  const [commentSaving, setCommentSaving] = useState(false);
   const isOwner = currentSourceId === post.author.sourceId;
   const displayName = post.author.username ? `@${post.author.username}` : post.author.name;
 
@@ -74,31 +67,6 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
     }
   };
 
-  const toggleComments = async () => {
-    const nextOpen = !commentsOpen;
-    setCommentsOpen(nextOpen);
-    if (!nextOpen || comments.length > 0) return;
-    setCommentsLoading(true);
-    setCommentError(null);
-    try { const page = await communityClient.listComments(post.id); setComments(page.data); } catch (reason) { setComments([]); setCommentError(reason instanceof Error ? reason.message : "Komentar belum dapat dimuat."); }
-    finally { setCommentsLoading(false); }
-  };
-
-  const submitComment = async () => {
-    const body = commentBody.trim();
-    if (!body || commentSaving) return;
-    setCommentSaving(true);
-    setCommentError(null);
-    try {
-      const comment = await communityClient.addComment(post.id, body);
-      setComments((current) => [...current, comment]);
-      setCommentCount((count) => count + 1);
-      setCommentBody("");
-    } catch (reason) {
-      setCommentError(reason instanceof Error ? reason.message : "Komentar belum berhasil dikirim.");
-    } finally { setCommentSaving(false); }
-  };
-
   return (
     <article className="relative border-b border-[#e5e5e5] bg-white px-5 py-6 sm:px-8" aria-label={`Postingan ${displayName}`}>
       <div className="flex items-start gap-4">
@@ -116,15 +84,11 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
           {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-4 max-h-[500px] w-full rounded-xl bg-black object-contain" controls playsInline preload="metadata" /> : null}
           <div className="mt-4 flex items-center gap-5 text-[#333333] sm:gap-7">
             <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-125 ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} aria-busy={likePending} disabled={likePending} onClick={() => void toggleLike}>{likePending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} />}<span>{likePending ? "Memproses…" : likeCount}</span></button>
-            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-110 ${commentsOpen ? "text-[#3156a3]" : "hover:text-[#3156a3]"}`} aria-label="Komentar" aria-expanded={commentsOpen} onClick={() => void toggleComments}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{commentCount}</span></button>
+            <button type="button" className="flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-110 hover:text-[#3156a3]" aria-label="Buka komentar postingan" onClick={() => onOpen(post)}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{post.commentCount}</span></button>
           </div>
           {likeError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{likeError}</p> : null}
           {likeSuccess ? <p role="status" className="mt-2 text-xs font-semibold text-emerald-600">{liked ? "Suka tersimpan" : "Suka dibatalkan"}</p> : null}
-          {commentsOpen ? <div className="mt-3 rounded-xl bg-[#f7f8fa] p-3">
-            {commentsLoading ? <p className="text-xs text-[#777777]">Memuat komentar…</p> : comments.length ? <div className="space-y-3">{comments.map((comment) => <div key={comment.id} className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-xs font-bold text-[#3156a3]">{comment.author.name.slice(0, 1).toUpperCase()}</div><div><p className="text-xs font-bold text-[#111111]">{comment.author.username ? `@${comment.author.username}` : comment.author.name}</p><p className="text-sm leading-relaxed text-[#333333]">{comment.body}</p></div></div>)}</div> : <p className="text-xs text-[#777777]">Belum ada komentar.</p>}
-            {commentError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{commentError}</p> : null}
-            <div className="mt-3 flex gap-2"><input value={commentBody} onChange={(event) => setCommentBody(event.target.value.slice(0, 500))} onKeyDown={(event) => { if (event.key === "Enter") void submitComment(); }} placeholder="Tulis komentar…" aria-label="Tulis komentar" className="min-h-10 min-w-0 flex-1 rounded-full border border-[#dfe3e8] bg-white px-4 text-sm outline-none focus:border-[#3156a3]" /><button type="button" disabled={!commentBody.trim() || commentSaving} onClick={() => void submitComment()} className="min-h-10 rounded-full bg-[#111111] px-4 text-xs font-bold text-white transition-transform active:scale-95 disabled:bg-[#e8ebef] disabled:text-[#8f969e]">{commentSaving ? "Mengirim…" : "Kirim"}</button></div>
-          </div> : null}
+          <button type="button" className="mt-1 text-xs font-semibold text-[#777777] hover:text-[#3156a3]" onClick={() => onOpen(post)}>Lihat komentar{post.commentCount ? ` (${post.commentCount})` : ""}</button>
         </div>
       </div>
     </article>
@@ -214,5 +178,5 @@ function CommunityPage() {
 
   return <main className="mx-auto flex min-h-app max-w-[654px] flex-col overflow-hidden rounded-[28px] border border-[#dedede] bg-white pb-24 shadow-sm"><CustomerHeader title="Komunitas" subtitle="" onBack={() => navigate({ to: "/$username", params: { username } })} leading={<ArrowLeft className="h-4 w-4" />} />
     <section className="border-b border-[#e5e5e5] px-5 py-4 sm:px-8"><div className="flex items-start gap-3"><div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-base font-bold text-[#3156a3]">{(customer.name || "M").slice(0, 1).toUpperCase()}</div><textarea value={body} onChange={(event) => setBody(event.target.value.slice(0, MAX_BODY_LENGTH))} placeholder="What's new?" rows={2} className="min-h-12 flex-1 resize-none bg-transparent py-2 text-[16px] outline-none placeholder:text-[#999999]" aria-label="Isi postingan Komunitas" /></div><div className="mt-2 flex items-center justify-between gap-2 pl-14"><div className="flex items-center gap-1"><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" className="sr-only" onChange={(event) => void selectFile(event.target.files?.[0])} /><button type="button" className="flex min-h-10 items-center gap-1.5 rounded-xl px-2 text-xs font-bold text-primary hover:bg-primary/10" onClick={() => fileRef.current?.click()}><ImagePlus className="h-4 w-4" /> Foto / Video</button><span className="text-[10px] text-muted-foreground">{body.length}/{MAX_BODY_LENGTH}</span></div><button type="button" disabled={saving || (!body.trim() && !file)} className={`flex min-h-10 items-center gap-1.5 rounded-full px-5 text-sm font-bold transition-colors ${saving || (!body.trim() && !file) ? "bg-[#e8ebef] text-[#8f969e]" : "bg-[#111111] text-white hover:bg-[#333333]"}`} onClick={() => void submit()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Post</button></div>{previewUrl ? <div className="relative mt-3 overflow-hidden rounded-xl bg-[#f1f1f1]">{file?.type.startsWith("video/") ? <video src={previewUrl} className="max-h-60 w-full object-contain" controls /> : <img src={previewUrl} alt="Preview media" className="max-h-60 w-full object-contain" />}<button type="button" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white" aria-label="Hapus media" onClick={clearFile}><X className="h-4 w-4" /></button></div> : null}{notice ? <p role="status" className="mt-2 text-xs font-semibold text-primary">{notice}</p> : null}</section>
-    <section className="mt-0" aria-label="Feed Komunitas">{loading ? <CustomerSectionSkeleton label="Memuat postingan Komunitas" /> : error ? <CustomerErrorState message={error} onRetry={() => { setLoading(true); void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Gagal memuat.")).finally(() => setLoading(false)); }} /> : posts.length === 0 ? <div className="rounded-[22px] border border-dashed border-border p-6 text-center"><p className="text-sm font-black">Belum ada cerita di Komunitas Djiwa</p><p className="mt-1 text-xs text-muted-foreground">Jadilah yang pertama berbagi dengan Teman Djiwa.</p></div> : posts.map((post) => <PostCard key={post.id} post={post} currentSourceId={customer.sourceId} onDelete={deletePost} onReport={reportPost} />)}{cursor && !loading ? <button type="button" disabled={loadingMore} className="mx-auto flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-xs font-black" onClick={() => { setLoadingMore(true); void load(cursor).finally(() => setLoadingMore(false)); }}>{loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Muat postingan berikutnya</button> : null}</section><CustomerBottomNav items={navItems} /></main>;
+    <section className="mt-0" aria-label="Feed Komunitas">{loading ? <CustomerSectionSkeleton label="Memuat postingan Komunitas" /> : error ? <CustomerErrorState message={error} onRetry={() => { setLoading(true); void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Gagal memuat.")).finally(() => setLoading(false)); }} /> : posts.length === 0 ? <div className="rounded-[22px] border border-dashed border-border p-6 text-center"><p className="text-sm font-black">Belum ada cerita di Komunitas Djiwa</p><p className="mt-1 text-xs text-muted-foreground">Jadilah yang pertama berbagi dengan Teman Djiwa.</p></div> : posts.map((post) => <PostCard key={post.id} post={post} currentSourceId={customer.sourceId} onDelete={deletePost} onReport={reportPost} onOpen={(post) => navigate({ to: "/$username/komunitas/$postId", params: { username, postId: post.id } })} />)}{cursor && !loading ? <button type="button" disabled={loadingMore} className="mx-auto flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-xs font-black" onClick={() => { setLoadingMore(true); void load(cursor).finally(() => setLoadingMore(false)); }}>{loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Muat postingan berikutnya</button> : null}</section><CustomerBottomNav items={navItems} /></main>;
 }

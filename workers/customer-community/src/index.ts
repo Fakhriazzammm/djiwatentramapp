@@ -271,6 +271,12 @@ export default {
         return json({ data: await serializePosts(env, page, request, user.id), nextCursor: hasMore ? page.at(-1)?.created_at ?? null : null }, 200, origin);
       }
 
+      if (request.method === "GET" && parts[0] === "posts" && parts.length === 2) {
+        const rows = await db<PostRow[]>(env, "customer_community_posts", {}, `select=id,author_source_id,body,media_type,media_object_key,media_content_type,media_size_bytes,moderation_status,report_count,created_at,updated_at,deleted_at&id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
+        if (!rows[0]) return json({ error: "Postingan tidak tersedia." }, 404, origin);
+        return json({ data: (await serializePosts(env, rows, request, user.id))[0] }, 200, origin);
+      }
+
       if (request.method === "POST" && parts[0] === "posts" && parts[1] === "upload-url") {
         const input = await request.json().catch(() => null) as Record<string, unknown> | null;
         const contentType = typeof input?.contentType === "string" ? input.contentType : "";

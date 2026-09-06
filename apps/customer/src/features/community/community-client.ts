@@ -87,6 +87,10 @@ export const communityClient = {
     const payload = await request<CommunityPage>(`/posts?${params.toString()}`, { signal });
     return { ...payload, data: (payload.data ?? []).map(mapPost) };
   },
+  async get(id: string): Promise<CommunityPost> {
+    const payload = await request<{ data: CommunityPost }>(`/posts/${encodeURIComponent(id)}`);
+    return mapPost(payload.data);
+  },
   async createUploadGrant(input: { contentType: string; sizeBytes: number; durationSeconds?: number }): Promise<CommunityUploadGrant> {
     const payload = await request<{ data?: CommunityUploadGrant }>("/posts/upload-url", {
       method: "POST",

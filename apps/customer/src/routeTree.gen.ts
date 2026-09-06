@@ -24,6 +24,7 @@ import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notif
 import { Route as UsernameMinigamesRouteImport } from './routes/$username/minigames'
 import { Route as UsernameKomunitasRouteImport } from './routes/$username/komunitas'
 import { Route as UsernameFavoritRouteImport } from './routes/$username/favorit'
+import { Route as UsernameKomunitasPostIdRouteImport } from './routes/$username/komunitas/$postId'
 
 const MasukLazyRouteImport = createFileRoute('/masuk')()
 
@@ -119,6 +120,13 @@ const UsernameFavoritRoute = UsernameFavoritRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/favorit.lazy').then((d) => d.Route),
 )
+const UsernameKomunitasPostIdRoute = UsernameKomunitasPostIdRouteImport.update({
+  id: '/$postId',
+  path: '/$postId',
+  getParentRoute: () => UsernameKomunitasRoute,
+} as any).lazy(() =>
+  import('./routes/$username/komunitas/$postId.lazy').then((d) => d.Route),
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -126,7 +134,7 @@ export interface FileRoutesByFullPath {
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
   '/$username/favorit': typeof UsernameFavoritRoute
-  '/$username/komunitas': typeof UsernameKomunitasRoute
+  '/$username/komunitas': typeof UsernameKomunitasRouteWithChildren
   '/$username/minigames': typeof UsernameMinigamesRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/order': typeof UsernameOrderRoute
@@ -135,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/$username/promo': typeof UsernamePromoRoute
   '/$username/riwayat': typeof UsernameRiwayatRoute
   '/$username/saldo': typeof UsernameSaldoRoute
+  '/$username/komunitas/$postId': typeof UsernameKomunitasPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -142,7 +151,7 @@ export interface FileRoutesByTo {
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
   '/$username/favorit': typeof UsernameFavoritRoute
-  '/$username/komunitas': typeof UsernameKomunitasRoute
+  '/$username/komunitas': typeof UsernameKomunitasRouteWithChildren
   '/$username/minigames': typeof UsernameMinigamesRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/order': typeof UsernameOrderRoute
@@ -151,6 +160,7 @@ export interface FileRoutesByTo {
   '/$username/promo': typeof UsernamePromoRoute
   '/$username/riwayat': typeof UsernameRiwayatRoute
   '/$username/saldo': typeof UsernameSaldoRoute
+  '/$username/komunitas/$postId': typeof UsernameKomunitasPostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -159,7 +169,7 @@ export interface FileRoutesById {
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
   '/$username/favorit': typeof UsernameFavoritRoute
-  '/$username/komunitas': typeof UsernameKomunitasRoute
+  '/$username/komunitas': typeof UsernameKomunitasRouteWithChildren
   '/$username/minigames': typeof UsernameMinigamesRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/order': typeof UsernameOrderRoute
@@ -168,6 +178,7 @@ export interface FileRoutesById {
   '/$username/promo': typeof UsernamePromoRoute
   '/$username/riwayat': typeof UsernameRiwayatRoute
   '/$username/saldo': typeof UsernameSaldoRoute
+  '/$username/komunitas/$postId': typeof UsernameKomunitasPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/$username/promo'
     | '/$username/riwayat'
     | '/$username/saldo'
+    | '/$username/komunitas/$postId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -202,6 +214,7 @@ export interface FileRouteTypes {
     | '/$username/promo'
     | '/$username/riwayat'
     | '/$username/saldo'
+    | '/$username/komunitas/$postId'
   id:
     | '__root__'
     | '/'
@@ -218,6 +231,7 @@ export interface FileRouteTypes {
     | '/$username/promo'
     | '/$username/riwayat'
     | '/$username/saldo'
+    | '/$username/komunitas/$postId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -327,12 +341,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameFavoritRouteImport
       parentRoute: typeof UsernameRouteRoute
     }
+    '/$username/komunitas/$postId': {
+      id: '/$username/komunitas/$postId'
+      path: '/$postId'
+      fullPath: '/$username/komunitas/$postId'
+      preLoaderRoute: typeof UsernameKomunitasPostIdRouteImport
+      parentRoute: typeof UsernameKomunitasRoute
+    }
   }
 }
 
+interface UsernameKomunitasRouteChildren {
+  UsernameKomunitasPostIdRoute: typeof UsernameKomunitasPostIdRoute
+}
+
+const UsernameKomunitasRouteChildren: UsernameKomunitasRouteChildren = {
+  UsernameKomunitasPostIdRoute: UsernameKomunitasPostIdRoute,
+}
+
+const UsernameKomunitasRouteWithChildren =
+  UsernameKomunitasRoute._addFileChildren(UsernameKomunitasRouteChildren)
+
 interface UsernameRouteRouteChildren {
   UsernameFavoritRoute: typeof UsernameFavoritRoute
-  UsernameKomunitasRoute: typeof UsernameKomunitasRoute
+  UsernameKomunitasRoute: typeof UsernameKomunitasRouteWithChildren
   UsernameMinigamesRoute: typeof UsernameMinigamesRoute
   UsernameNotifikasiRoute: typeof UsernameNotifikasiRoute
   UsernameOrderRoute: typeof UsernameOrderRoute
@@ -345,7 +377,7 @@ interface UsernameRouteRouteChildren {
 
 const UsernameRouteRouteChildren: UsernameRouteRouteChildren = {
   UsernameFavoritRoute: UsernameFavoritRoute,
-  UsernameKomunitasRoute: UsernameKomunitasRoute,
+  UsernameKomunitasRoute: UsernameKomunitasRouteWithChildren,
   UsernameMinigamesRoute: UsernameMinigamesRoute,
   UsernameNotifikasiRoute: UsernameNotifikasiRoute,
   UsernameOrderRoute: UsernameOrderRoute,
