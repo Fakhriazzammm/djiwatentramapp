@@ -40,6 +40,7 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [likePending, setLikePending] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
+  const [likeSuccess, setLikeSuccess] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [commentCount, setCommentCount] = useState(post.commentCount);
@@ -55,12 +56,15 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
     const nextLiked = !liked;
     setLikePending(true);
     setLikeError(null);
+    setLikeSuccess(false);
     setLiked(nextLiked);
     setLikeCount((count) => Math.max(0, count + (nextLiked ? 1 : -1)));
     try {
       const result = nextLiked ? await communityClient.like(post.id) : await communityClient.unlike(post.id);
       setLiked(result.liked);
-      setLikeCount(result.likeCount);
+      setLikeCount(Math.max(0, result.likeCount));
+      setLikeSuccess(true);
+      window.setTimeout(() => setLikeSuccess(false), 1600);
     } catch (reason) {
       setLiked(!nextLiked);
       setLikeCount((count) => Math.max(0, count + (nextLiked ? -1 : 1)));
@@ -115,11 +119,12 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
             <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-110 ${commentsOpen ? "text-[#3156a3]" : "hover:text-[#3156a3]"}`} aria-label="Komentar" aria-expanded={commentsOpen} onClick={() => void toggleComments}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{commentCount}</span></button>
           </div>
           {likeError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{likeError}</p> : null}
-          <div className="mt-3 rounded-xl bg-[#f7f8fa] p-3">
-            {commentsOpen ? (commentsLoading ? <p className="text-xs text-[#777777]">Memuat komentar…</p> : comments.length ? <div className="space-y-3">{comments.map((comment) => <div key={comment.id} className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-xs font-bold text-[#3156a3]">{comment.author.name.slice(0, 1).toUpperCase()}</div><div><p className="text-xs font-bold text-[#111111]">{comment.author.username ? `@${comment.author.username}` : comment.author.name}</p><p className="text-sm leading-relaxed text-[#333333]">{comment.body}</p></div></div>)}</div> : <p className="text-xs text-[#777777]">Belum ada komentar.</p>) : <p className="text-xs text-[#777777]">Tulis komentar pada postingan ini.</p>}
+          {likeSuccess ? <p role="status" className="mt-2 text-xs font-semibold text-emerald-600">{liked ? "Suka tersimpan" : "Suka dibatalkan"}</p> : null}
+          {commentsOpen ? <div className="mt-3 rounded-xl bg-[#f7f8fa] p-3">
+            {commentsLoading ? <p className="text-xs text-[#777777]">Memuat komentar…</p> : comments.length ? <div className="space-y-3">{comments.map((comment) => <div key={comment.id} className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-xs font-bold text-[#3156a3]">{comment.author.name.slice(0, 1).toUpperCase()}</div><div><p className="text-xs font-bold text-[#111111]">{comment.author.username ? `@${comment.author.username}` : comment.author.name}</p><p className="text-sm leading-relaxed text-[#333333]">{comment.body}</p></div></div>)}</div> : <p className="text-xs text-[#777777]">Belum ada komentar.</p>}
             {commentError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{commentError}</p> : null}
             <div className="mt-3 flex gap-2"><input value={commentBody} onChange={(event) => setCommentBody(event.target.value.slice(0, 500))} onKeyDown={(event) => { if (event.key === "Enter") void submitComment(); }} placeholder="Tulis komentar…" aria-label="Tulis komentar" className="min-h-10 min-w-0 flex-1 rounded-full border border-[#dfe3e8] bg-white px-4 text-sm outline-none focus:border-[#3156a3]" /><button type="button" disabled={!commentBody.trim() || commentSaving} onClick={() => void submitComment()} className="min-h-10 rounded-full bg-[#111111] px-4 text-xs font-bold text-white transition-transform active:scale-95 disabled:bg-[#e8ebef] disabled:text-[#8f969e]">{commentSaving ? "Mengirim…" : "Kirim"}</button></div>
-          </div>
+          </div> : null}
         </div>
       </div>
     </article>
