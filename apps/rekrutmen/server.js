@@ -231,6 +231,26 @@ app.post("/api/recruitment-status", (req, res) => {
   }
 });
 
+// ── Public stats (only aggregate counts, no PII) ──
+app.get("/api/recruitment-stats", async (req, res) => {
+  try {
+    const raw = psql(`SELECT json_build_object(
+      'positions', (SELECT COUNT(*) FROM pos.recruitment_positions WHERE is_open = true),
+      'applicants', (SELECT COUNT(*) FROM pos.${TABLE}),
+      'byPosition', (SELECT COALESCE(json_agg(json_build_object('title', title, 'count', cnt)), '[]'::json)
+                     FROM (
+                       SELECT posisi_dilamar AS title, COUNT(*) AS cnt
+                       FROM pos.${TABLE} GROUP BY posisi_dilamar
+                     ) s)
+    )::text`);
+    if (!raw) return res.json({ positions: 0, applicants: 0, byPosition: [] });
+    return res.json(JSON.parse(raw.trim().split("\\n").filter(Boolean)[0]));
+  } catch (e) {
+    console.error("Recruitment stats failed:", e.message);
+    return res.status(500).json({ error: "Statistik belum dapat dimuat" });
+  }
+});
+
 // ── POST /api/table/Candidates ──
 app.post("/api/table/Candidates", async (req, res) => {
   try {

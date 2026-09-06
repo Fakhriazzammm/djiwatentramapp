@@ -106,6 +106,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .route-view.is-active { display: block; }
 .route-view.is-active#jobsView { display: grid; }
 body[data-career-route="daftar"] #jobsSection > .max-w-\[1180px\] > .grid { display: block; }
+body[data-career-route="lowongan"] #jobsSection > .max-w-\[1180px\] > .grid { display: block; }
+body[data-career-route="lowongan"] #applyView { display: none; }
 body[data-career-route="daftar"] #applyView { max-width: 760px; margin: 0 auto; }
 body[data-career-route="daftar"] #applyPanel { width: 100%; }
 .status-table-wrap { overflow-x: auto; border: 1px solid #ecedef; border-radius: 16px; }
@@ -642,8 +644,8 @@ function escapeHtml(text) {
 }
 
 function getApplicantCountByJob(title) {
-  // Jumlah pelamar adalah data internal; jangan mengambil kandidat ke browser publik.
-  return '—';
+  const entry = (RECRUITMENT_STATS.byPosition || []).find((p) => p.title === title);
+  return entry && Number(entry.count) > 0 ? Number(entry.count).toLocaleString('id-ID') : '0';
 }
 
 // ── Filters ──
@@ -763,13 +765,31 @@ function selectJob(title) {
 }
 
 // ── Metrics ──
+let RECRUITMENT_STATS = { positions: 0, applicants: 0, byPosition: [] };
 function updateMetrics() {
   document.getElementById('metricPositions').textContent = JOBS.length;
-  document.getElementById('metricApplicants').textContent = '—';
+  const applicants = Number(RECRUITMENT_STATS.applicants) || 0;
+  document.getElementById('metricApplicants').textContent = applicants > 0 ? applicants.toLocaleString('id-ID') : JOBS.length ? '0' : 'Memuat…';
   const badge = document.getElementById('totalBadge');
   if (badge && !document.getElementById('searchInput').value && currentFilter === 'All') {
     badge.textContent = `${JOBS.length} lowongan`;
   }
+}
+async function loadStats() {
+  try {
+    const res = await fetch('/api/recruitment-stats');
+    if (!res.ok) return;
+    const data = await res.json();
+    RECRUITMENT_STATS = {
+      positions: Number(data.positions) || 0,
+      applicants: Number(data.applicants) || 0,
+      byPosition: Array.isArray(data.byPosition) ? data.byPosition : [],
+    };
+  } catch (e) {
+    console.error('Gagal load statistik:', e);
+  }
+  updateMetrics();
+  renderJobs();
 }
 
 // ── Toast ──
@@ -1065,6 +1085,7 @@ initCareerRoutes();
 initStatusLookup();
 initWizard();
 loadJobs();
+loadStats();
 </script>
 </body>
 </html>
