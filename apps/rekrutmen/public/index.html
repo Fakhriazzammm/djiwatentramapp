@@ -882,7 +882,7 @@ function setCareerRoute(route) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function initCareerRoutes() {
-  const sync = () => setCareerRoute(location.hash.replace('#', '') || 'lowongan');
+  const sync = () => setCareerRoute(location.hash.replace('#', '') || 'daftar');
   window.addEventListener('hashchange', sync);
   document.querySelectorAll('[data-route-link]').forEach((link) => link.addEventListener('click', () => setTimeout(sync, 0)));
   sync();
