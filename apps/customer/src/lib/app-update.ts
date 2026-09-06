@@ -116,15 +116,7 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
-	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
-		sessionStorage.setItem("__app_update_inflight__", "1");
-		if ("serviceWorker" in navigator) {
-			navigator.serviceWorker.getRegistrations().then((regs) => {
-				regs.forEach((reg) => {
-					if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
-				});
-			});
-		}
+	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion && latestUpdateInfo.currentCommit === latestUpdateInfo.latestCommit) {
 		applyingUpdate = false;
 		return;
 	}
