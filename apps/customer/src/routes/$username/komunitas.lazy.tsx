@@ -1,4 +1,4 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Heart, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Send, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
@@ -97,6 +97,8 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
 function CommunityPage() {
   const { username } = Route.useParams();
   const navigate = useNavigate();
+  const matches = useMatches();
+  const isPostDetail = matches.some((match) => match.routeId === "/$username/komunitas/$postId");
   const { isAuthenticated, isLoading: authLoading, customer } = useCustomerAuth();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -172,6 +174,7 @@ function CommunityPage() {
   const deletePost = async (post: CommunityPost) => { if (!window.confirm("Hapus postingan ini?")) return; try { await communityClient.remove(post.id); setPosts((current) => current.filter((item) => item.id !== post.id)); } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Post belum dapat dihapus."); } };
   const reportPost = async (post: CommunityPost) => { try { await communityClient.report(post.id); setNotice("Laporan sudah diterima Admin."); } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Post belum dapat dilaporkan."); } };
 
+  if (isPostDetail) return <Outlet />;
   if (authLoading) return <CustomerSectionSkeleton label="Menyiapkan Komunitas Djiwa" />;
   if (!isAuthenticated || !customer) return <main className="mx-auto flex min-h-app max-w-md flex-col bg-background"><CustomerHeader title="Komunitas Djiwa" subtitle="Khusus Teman Djiwa" onBack={() => navigate({ to: "/$username", params: { username } })} leading={<ArrowLeft className="h-4 w-4" />} /><section className="m-4 rounded-3xl border border-border bg-card p-5 text-center shadow-sm"><p className="text-sm font-black">Masuk untuk membuka Komunitas</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Komunitas Djiwa hanya dapat dibaca dan digunakan oleh customer yang sudah login.</p><button type="button" className="mt-4 min-h-11 rounded-xl bg-primary px-4 text-xs font-black text-primary-foreground" onClick={() => navigate({ to: "/masuk" })}>Masuk / Daftar</button></section><CustomerBottomNav items={navItems} /></main>;
 
