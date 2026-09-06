@@ -329,8 +329,54 @@ app.delete("/api/table/Candidates/:id", validateRecruitmentAdmin, async (req, re
   }
 });
 
-// ── Other tables (Interviews / Onboarding) ──
-app.get("/api/table/:name", validateRecruitmentAdmin, (req, res) => { res.json({ records: [] }); });
+// ── Recruitment read models ──
+// Interviews has no backing table in the current schema; never present it as an
+// empty dataset. Onboarding is a read-only projection of the real application
+// table used by the onboarding flow.
+app.get("/api/table/Onboarding", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const sql = `SELECT json_build_object('id', id, 'created_at', created_at, 'updated_at', updated_at, 'status', status, 'full_name', full_name, 'email', email, 'phone', phone, 'employment', employment, 'raw', raw, 'review_notes', review_notes, 'reviewed_at', reviewed_at)::text FROM public.employee_onboarding_applications ORDER BY created_at DESC`;
+    const raw = execSync(
+      `docker exec -i supabase-db psql -U postgres -d postgres -t -A -c '${sql.replace(/'/g, "'\"'\"'")}'`,
+      { encoding: "utf-8", timeout: 10000 },
+    );
+    const records = raw.trim().split("\n").filter(Boolean).map((line) => {
+      const row = JSON.parse(line);
+      const employment = row.employment && typeof row.employment === "object" ? row.employment : {};
+      const source = row.raw && typeof row.raw === "object" ? row.raw : {};
+      const startDate = employment.startDate || employment.start_date || source.startDate || source.start_date || null;
+      const probationEndDate = employment.probationEndDate || employment.probation_end_date || source.probationEndDate || source.probation_end_date || null;
+      const trainingSchedule = source.trainingSchedule || source.training_schedule || null;
+      return {
+        id: row.id,
+        createdTime: row.created_at,
+        fields: {
+          Employee: row.full_name || "",
+          "Onboarding ID": row.id,
+          "Start Date": startDate,
+          "Probation End Date": probationEndDate,
+          "Training Completion Status": row.status || "pending",
+          "Document Collection Status": null,
+          "Training Schedule": trainingSchedule,
+          Notes: row.review_notes || "",
+          Email: row.email || "",
+          "Nomor Telepon/HP": row.phone || "",
+          "Reviewed At": row.reviewed_at || null,
+        },
+      };
+    });
+    res.json({ records, readOnly: true, source: "public.employee_onboarding_applications" });
+  } catch (e) {
+    console.error("Onboarding read model failed:", e.message);
+    res.status(500).json({ error: "Data onboarding tidak dapat dimuat saat ini" });
+  }
+});
+
+app.get("/api/table/Interviews", validateRecruitmentAdmin, (req, res) => {
+  res.status(404).json({ error: "Interview tracking belum tersedia: belum ada tabel sumber di schema recruitment" });
+});
+
+app.get("/api/table/:name", validateRecruitmentAdmin, (req, res) => { res.status(404).json({ error: "Read model recruitment tidak tersedia" }); });
 app.post("/api/table/:name", (req, res) => { res.status(400).json({ error: "Table not supported" }); });
 app.patch("/api/table/:name/:id", validateRecruitmentAdmin, (req, res) => { res.status(400).json({ error: "Table not supported" }); });
 

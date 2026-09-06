@@ -1,7 +1,7 @@
 #!/bin/bash
 # Auto-deploy script for Djiwa Tentram apps (VPS)
 # Run after git pull to rebuild and redeploy all apps
-# Usage: ./scripts/deploy-vps.sh [pos|karyawan|customer|web|all]
+# Usage: ./scripts/deploy-vps.sh [pos|karyawan|customer|admin|all]
 
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -98,14 +98,15 @@ case "$APP" in
 		deploy_app "customer" "djiwatentram.yumme.id"
 		deploy_edge_function "customer-auth"
 		;;
-	web)
-		deploy_app "web" "admindjiwatentram.yumme.id"
+	admin|web)
+		# `web` dipertahankan sebagai alias legacy, tetapi sumber Admin selalu apps/admin.
+		deploy_app "admin" "admindjiwatentram.yumme.id"
 		;;
 	all|*)
 		deploy_app "pos" "pos.yumme.id"
 		deploy_app "karyawan" "karyawan.yumme.id"
 		deploy_app "customer" "djiwatentram.yumme.id"
-		deploy_app "web" "admindjiwatentram.yumme.id"
+		deploy_app "admin" "admindjiwatentram.yumme.id"
 		deploy_edge_function "customer-auth"
 		;;
 esac

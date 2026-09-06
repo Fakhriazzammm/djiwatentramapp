@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deploy script for Admin subdomain (admindjiwatentram.yumme.id)
-# Admin app = build dari apps/pos (Opsi A: kode share pos, deploy terpisah)
-# Flow: build pos -> copy dist ke webroot admin domain
+# Admin app = build eksklusif dari apps/admin (jangan pernah memakai artifact apps/pos)
+# Flow: build admin -> validasi marker route Admin -> copy dist ke webroot admin domain
 #
 # Usage: ./scripts/deploy-admin.sh
 #   (opsional) DEBUG=1 ./scripts/deploy-admin.sh   # skip copy, hanya build
@@ -15,7 +15,7 @@ POS_DOMAIN="pos.yumme.id"
 DEBUG="${DEBUG:-0}"
 
 echo "🚀 Deploying Admin subdomain -> https://$ADMIN_DOMAIN"
-echo "Mode: Opsi A (build pos, copy ke domain admin)"
+echo "Source artifact: apps/admin/dist (isolated dari apps/pos)"
 
 # ── Pre-flight: disk check ──
 check_disk() {
@@ -37,6 +37,15 @@ echo "📦 Building admin (apps/admin)..."
 rm -rf ".turbo" "apps/admin/.turbo" "apps/admin/dist"
 bun run build --filter=admin 2>/dev/null || bun run --cwd apps/admin build
 echo "✅ Build admin succeeded"
+
+# Guard: jangan pernah deploy bundle POS/partial sebagai Admin.
+for marker in '/admin/kol' '/admin/community' '/admin/customers'; do
+	if ! grep -Rqs -- "$marker" apps/admin/dist/assets; then
+		echo "❌ Artifact Admin tidak valid: marker $marker tidak ditemukan"
+		exit 1
+	fi
+done
+echo "✅ Artifact guard passed: route Admin lengkap"
 
 if [ "$DEBUG" = "1" ]; then
 	echo "🐛 DEBUG mode: skip copy. Dist ada di apps/admin/dist/"

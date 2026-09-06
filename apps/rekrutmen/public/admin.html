@@ -754,6 +754,7 @@ const TAB_CONFIG = {
   },
   interviews: {
     label: 'Interviews',
+    supported: false,
     tableName: 'Interviews',
     statusField: 'Status',
     defaultSort: 'date_desc',
@@ -768,12 +769,14 @@ const TAB_CONFIG = {
   },
   onboarding: {
     label: 'Onboarding',
+    supported: true,
+    readOnly: true,
     tableName: 'Onboarding',
     statusField: 'Training Completion Status',
     defaultSort: 'date_desc',
     searchFields: ['Employee', 'Onboarding ID', 'Training Schedule', 'Notes'],
-    statusOptions: ['All', 'In Progress', 'Completed'],
-    quickFilters: ['All', 'In Progress', 'Completed'],
+    statusOptions: ['All', 'pending', 'approved', 'rejected', 'needs_revision'],
+    quickFilters: ['All', 'pending', 'approved', 'rejected', 'needs_revision'],
     sortOptions: [
       { value: 'date_desc', label: 'Start terbaru' },
       { value: 'date_asc', label: 'Start terlama' },
@@ -810,10 +813,14 @@ function getRecords(tab) {
   return state.allData[tab] || [];
 }
 
+function onboardingStatusLabel(value) {
+  return ({ pending: 'Menunggu Review', approved: 'Disetujui', rejected: 'Ditolak', needs_revision: 'Perlu Revisi' })[value] || value;
+}
+
 function statusClass(rawStatus) {
   const value = String(rawStatus || 'new').toLowerCase().replace(/\s+/g, '');
-  if (value === 'inprogress') return 'status-inprogress';
-  if (value === 'completed') return 'status-completed';
+  if (value === 'inprogress' || value === 'pending' || value === 'needs_revision') return 'status-inprogress';
+  if (value === 'completed' || value === 'approved') return 'status-completed';
   if (value === 'accepted') return 'status-accepted';
   if (value === 'rejected') return 'status-rejected';
   if (value === 'review') return 'status-review';
@@ -841,7 +848,8 @@ function renderStats() {
 function renderTabs() {
   document.getElementById('tabRow').innerHTML = Object.entries(TAB_CONFIG).map(([key, config]) => {
     const count = getRecords(key).length;
-    return `<button class="tab ${state.activeTab === key ? 'active' : ''}" type="button" onclick="switchTab('${key}')">${config.label}<span class="count">${count}</span></button>`;
+    const disabled = config.supported === false ? 'disabled title="Belum tersedia: belum ada tabel sumber interview"' : '';
+    return `<button class="tab ${state.activeTab === key ? 'active' : ''}" type="button" ${disabled} onclick="switchTab('${key}')">${config.label}<span class="count">${count}</span></button>`;
   }).join('');
 }
 
@@ -857,7 +865,7 @@ function switchTab(tab) {
 function populateToolbars() {
   const config = TAB_CONFIG[state.activeTab];
   const statusFilter = document.getElementById('statusFilter');
-  statusFilter.innerHTML = config.statusOptions.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join('');
+  statusFilter.innerHTML = config.statusOptions.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(state.activeTab === 'onboarding' ? onboardingStatusLabel(item) : item)}</option>`).join('');
   statusFilter.value = 'All';
 
   const sortBy = document.getElementById('sortBy');
@@ -866,14 +874,15 @@ function populateToolbars() {
 
   document.getElementById('quickFilters').innerHTML = config.quickFilters.map((item) => {
     const active = state.activeQuickFilter === item ? 'active' : '';
-    return `<button class="filter-chip ${active}" type="button" onclick="setQuickFilter('${escapeHtml(item)}')">${escapeHtml(item)}</button>`;
+    const label = state.activeTab === 'onboarding' ? onboardingStatusLabel(item) : item;
+    return `<button class="filter-chip ${active}" data-value="${escapeHtml(item)}" type="button" onclick="setQuickFilter('${escapeHtml(item)}')">${escapeHtml(label)}</button>`;
   }).join('');
 }
 
 function setQuickFilter(value) {
   state.activeQuickFilter = value;
   document.querySelectorAll('#quickFilters .filter-chip').forEach((button) => {
-    button.classList.toggle('active', button.textContent === value);
+    button.classList.toggle('active', button.dataset.value === value);
   });
   document.getElementById('statusFilter').value = value;
   renderActiveView();
@@ -923,6 +932,11 @@ function renderActiveView() {
   document.getElementById('contextLabel').textContent = `${config.label} • ${statusValue} • ${document.getElementById('sortBy').selectedOptions[0].textContent}`;
 
   if (!filtered.length) {
+    if (config.supported === false) {
+      document.getElementById('tableContainer').innerHTML = '<div class="empty"><strong>Interviews belum tersedia.</strong><span>Belum ada tabel sumber interview di schema recruitment. Tab ini tidak menampilkan data sintetis.</span></div>';
+      document.getElementById('mobileContainer').innerHTML = '<div class="empty"><strong>Interviews belum tersedia.</strong><span>Belum ada tabel sumber interview di schema recruitment. Tab ini tidak menampilkan data sintetis.</span></div>';
+      return;
+    }
     document.getElementById('tableContainer').innerHTML = '<div class="empty"><strong>Tidak ada data.</strong><span>Coba ubah pencarian atau filter.</span></div>';
     document.getElementById('mobileContainer').innerHTML = '<div class="empty"><strong>Tidak ada data.</strong><span>Coba ubah pencarian atau filter.</span></div>';
     return;
@@ -1073,13 +1087,13 @@ function renderOnboardingTable(records) {
               </td>
               <td>${escapeHtml(f['Start Date'] || '-')}</td>
               <td>${escapeHtml(f['Probation End Date'] || '-')}</td>
-              <td><span class="badge ${statusClass(f['Training Completion Status'])}">${escapeHtml(f['Training Completion Status'] || 'In Progress')}</span></td>
+              <td><span class="badge ${statusClass(f['Training Completion Status'])}">${escapeHtml(onboardingStatusLabel(f['Training Completion Status'] || 'pending'))}</span></td>
               <td class="row-sub">${escapeHtml(docs)}</td>
               <td class="row-sub">${escapeHtml(f['Training Schedule'] || '-')}</td>
               <td>
                 <div class="row-actions">
-                  <button class="small-btn success" type="button" onclick="openModal('${record.id}', 'onboarding')">Update</button>
                   <button class="small-btn" type="button" onclick="openDrawer('onboarding', '${record.id}')">Detail</button>
+                  <span class="row-sub">Hanya-baca</span>
                 </div>
               </td>
             </tr>
@@ -1154,7 +1168,7 @@ function renderOnboardingMobile(records) {
             <div class="row-title">#${escapeHtml(f['Onboarding ID'] || record.id.slice(0, 6))}</div>
             <div class="row-sub">${escapeHtml(f.Employee || '-')}</div>
           </div>
-          <span class="badge ${statusClass(f['Training Completion Status'])}">${escapeHtml(f['Training Completion Status'] || 'In Progress')}</span>
+          <span class="badge ${statusClass(f['Training Completion Status'])}">${escapeHtml(onboardingStatusLabel(f['Training Completion Status'] || 'pending'))}</span>
         </div>
         <div class="mobile-card-grid">
           <div class="mobile-field"><div class="mobile-label">Mulai</div><div class="mobile-value">${escapeHtml(f['Start Date'] || '-')}</div></div>
@@ -1162,8 +1176,8 @@ function renderOnboardingMobile(records) {
           <div class="mobile-field"><div class="mobile-label">Dokumen</div><div class="mobile-value">${escapeHtml(docs)}</div></div>
         </div>
         <div class="mobile-actions">
-          <button class="small-btn success" type="button" onclick="openModal('${record.id}', 'onboarding')">Update</button>
           <button class="small-btn" type="button" onclick="openDrawer('onboarding', '${record.id}')">Detail</button>
+          <span class="row-sub">Hanya-baca</span>
         </div>
       </article>
     `;
@@ -1239,7 +1253,7 @@ function openDrawer(tab, id) {
         <h4>Onboarding</h4>
         <div class="detail-item"><strong>ID</strong><span>${escapeHtml(f['Onboarding ID'] || id.slice(0, 6))}</span></div>
         <div class="detail-item"><strong>Employee</strong><span>${escapeHtml(f.Employee || '-')}</span></div>
-        <div class="detail-item"><strong>Status</strong><span>${escapeHtml(f['Training Completion Status'] || 'In Progress')}</span></div>
+        <div class="detail-item"><strong>Status</strong><span>${escapeHtml(onboardingStatusLabel(f['Training Completion Status'] || 'pending'))}</span></div>
       </div>
       <div class="detail-card">
         <h4>Detail</h4>
@@ -1329,6 +1343,11 @@ function closeModal(event) {
 async function saveStatus() {
   const recordId = document.getElementById('modalRecordId').value;
   const table = document.getElementById('modalTableName').value;
+  if (TAB_CONFIG[table].readOnly) {
+    closeModal();
+    showToast('Onboarding bersumber dari workflow onboarding dan hanya dapat dibaca di sini.', 'info');
+    return;
+  }
   const status = document.getElementById('modalStatus').value;
   const notes = document.getElementById('modalNotes').value.trim();
   const config = TAB_CONFIG[table];
@@ -1364,14 +1383,14 @@ function recruitmentHeaders(json = false) {
 async function refreshAll(showLoadingToast = true) {
   if (showLoadingToast) showToast('Memuat ulang data...', 'info');
   try {
-    const [cRes, iRes, oRes] = await Promise.all([
+    const [cRes, oRes] = await Promise.all([
       fetch('/api/table/Candidates', { headers: recruitmentHeaders() }),
-      fetch('/api/table/Interviews', { headers: recruitmentHeaders() }),
       fetch('/api/table/Onboarding', { headers: recruitmentHeaders() })
     ]);
-    const [cData, iData, oData] = await Promise.all([cRes.json(), iRes.json(), oRes.json()]);
+    const [cData, oData] = await Promise.all([cRes.json(), oRes.json()]);
+    if (!cRes.ok || !oRes.ok) throw new Error(cData.error || oData.error || 'Data recruitment gagal dimuat');
     state.allData.candidates = cData.records || [];
-    state.allData.interviews = iData.records || [];
+    state.allData.interviews = [];
     state.allData.onboarding = oData.records || [];
     renderStats();
     renderTabs();

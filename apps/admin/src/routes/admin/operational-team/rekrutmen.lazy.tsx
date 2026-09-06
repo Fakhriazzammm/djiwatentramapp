@@ -36,6 +36,8 @@ export const Route = createLazyFileRoute("/admin/operational-team/rekrutmen")({
 const TAB_CONFIG = {
   candidates: {
     label: "Candidates",
+    supported: true,
+    readOnly: false,
     tableName: "Candidates",
     statusField: "Status",
     defaultSort: "date_desc",
@@ -51,6 +53,8 @@ const TAB_CONFIG = {
   },
   interviews: {
     label: "Interviews",
+    supported: false,
+    readOnly: true,
     tableName: "Interviews",
     statusField: "Status",
     defaultSort: "date_desc",
@@ -65,12 +69,14 @@ const TAB_CONFIG = {
   },
   onboarding: {
     label: "Onboarding",
+    supported: true,
+    readOnly: true,
     tableName: "Onboarding",
     statusField: "Training Completion Status",
     defaultSort: "date_desc",
     searchFields: ["Employee", "Onboarding ID", "Training Schedule", "Notes"],
-    statusOptions: ["All", "In Progress", "Completed"],
-    quickFilters: ["All", "In Progress", "Completed"],
+    statusOptions: ["All", "pending", "approved", "rejected", "needs_revision"],
+    quickFilters: ["All", "pending", "approved", "rejected", "needs_revision"],
     sortOptions: [
       { value: "date_desc", label: "Start terbaru" },
       { value: "date_asc", label: "Start terlama" },
@@ -78,6 +84,10 @@ const TAB_CONFIG = {
     ],
   },
 };
+
+function onboardingStatusLabel(value: string): string {
+  return ({ pending: "Menunggu Review", approved: "Disetujui", rejected: "Ditolak", needs_revision: "Perlu Revisi" } as Record<string, string>)[value] || value;
+}
 
 type TabKey = keyof typeof TAB_CONFIG;
 
@@ -127,18 +137,20 @@ function AdminRekrutmen() {
     setLoadError(null);
     try {
       const headers = { "X-Yumi-Session": token || "" };
-      const [cRes, iRes, oRes] = await Promise.all([
+      const [cRes, oRes] = await Promise.all([
         fetch("/api/rekrutmen/table/Candidates", { headers }),
-        fetch("/api/rekrutmen/table/Interviews", { headers }),
         fetch("/api/rekrutmen/table/Onboarding", { headers }),
       ]);
-      if ([cRes, iRes, oRes].some((response) => response.status === 401 || response.status === 403)) {
+      const [cData, oData] = await Promise.all([cRes.json(), oRes.json()]);
+      if ([cRes, oRes].some((response) => response.status === 401 || response.status === 403)) {
         throw new Error("Sesi admin tidak valid atau akses ditolak");
       }
-      const [cData, iData, oData] = await Promise.all([cRes.json(), iRes.json(), oRes.json()]);
+      if (!cRes.ok || !oRes.ok) {
+        throw new Error(String(cData.error || oData.error || "Data recruitment gagal dimuat"));
+      }
       setAllData({
         candidates: cData.records || [],
-        interviews: iData.records || [],
+        interviews: [],
         onboarding: oData.records || [],
       });
     } catch (e) {
@@ -213,6 +225,11 @@ function AdminRekrutmen() {
 
   async function saveStatus() {
     if (!modalRecordId) return;
+    if (config.readOnly) {
+      alert("Data onboarding bersumber dari workflow onboarding dan hanya dapat dibaca di sini.");
+      closeModal();
+      return;
+    }
     setSaving(true);
     const payload: Record<string, string> = { [config.statusField]: modalStatus };
     if (modalNotes.trim()) payload.Notes = modalNotes.trim();
@@ -253,6 +270,36 @@ function AdminRekrutmen() {
     if (!drawerRecord) return null;
     const f = drawerRecord.fields;
     const tab = activeTab;
+
+    if (tab === "onboarding") {
+      const status = String(f["Training Completion Status"] || "pending");
+      return (
+        <div className={`rk-sheet ${drawerRecord ? "open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) closeDrawer(); }}>
+          <div className="rk-sheet-overlay" onClick={closeDrawer} />
+          <div className="rk-sheet-content" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[var(--rk-text)]">{esc(f.Employee || "Detail Onboarding")}</h3>
+              <button className="rk-card-action !min-h-[36px] !min-w-[36px] !p-2 !border-0" onClick={closeDrawer}><X className="h-5 w-5" /></button>
+            </div>
+            <div className="mb-5"><span className={`rk-card-badge rk-status-${status.toLowerCase().replace(/\s+/g, "")}`}>{onboardingStatusLabel(status)}</span></div>
+            <div className="rk-sheet-section">
+              <div className="rk-sheet-section-title">Onboarding</div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">ID</span><span className="rk-sheet-field-value">{esc(f["Onboarding ID"] || drawerRecord.id)}</span></div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">Mulai</span><span className="rk-sheet-field-value">{esc(f["Start Date"] || "-")}</span></div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">Akhir probation</span><span className="rk-sheet-field-value">{esc(f["Probation End Date"] || "-")}</span></div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">Jadwal training</span><span className="rk-sheet-field-value">{esc(f["Training Schedule"] || "-")}</span></div>
+            </div>
+            <div className="rk-sheet-section">
+              <div className="rk-sheet-section-title">Kontak & review</div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">Email</span><span className="rk-sheet-field-value">{esc(f.Email || "-")}</span></div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">No HP</span><span className="rk-sheet-field-value">{esc(f["Nomor Telepon/HP"] || "-")}</span></div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">Catatan</span><span className="rk-sheet-field-value">{esc(f.Notes || "Belum ada catatan")}</span></div>
+            </div>
+            <div className="rk-sheet-section"><div className="text-sm text-[var(--rk-muted)]">Data ini hanya-baca dan bersumber dari workflow onboarding karyawan.</div></div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className={`rk-sheet ${drawerRecord ? "open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) closeDrawer(); }}>
@@ -470,7 +517,7 @@ function AdminRekrutmen() {
               className={`rk-segmented-item ${activeQuickFilter === f ? "active" : ""}`}
               onClick={() => handleQuickFilter(f)}
             >
-              {f}
+              {activeTab === "onboarding" ? onboardingStatusLabel(f) : f}
             </button>
           ))}
         </div>
@@ -483,6 +530,8 @@ function AdminRekrutmen() {
               <button
                 key={key}
                 className={`rk-tab ${activeTab === key ? "active" : ""}`}
+                disabled={cfg.supported === false}
+                title={cfg.supported === false ? "Belum tersedia: belum ada tabel sumber interview" : undefined}
                 onClick={() => {
                   setActiveTab(key);
                   setSearchQuery("");
@@ -502,6 +551,12 @@ function AdminRekrutmen() {
         <div className="rk-list">
           {loading ? (
             <div className="rk-loading">Memuat data...</div>
+          ) : !config.supported ? (
+            <div className="rk-empty">
+              <div className="rk-empty-icon"><MessageSquare className="h-7 w-7" /></div>
+              <div className="rk-empty-title">Interviews belum tersedia</div>
+              <div className="rk-empty-desc">Belum ada tabel sumber interview di schema recruitment. Tab ini tidak menampilkan data sintetis.</div>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="rk-empty">
               <div className="rk-empty-icon">
@@ -604,7 +659,7 @@ function AdminRekrutmen() {
                         <div className="rk-card-name">#{esc(f["Onboarding ID"] || r.id.slice(0, 6))}</div>
                         <div className="rk-card-position">{esc(f.Employee || "-")}</div>
                       </div>
-                      <span className={`rk-card-badge rk-status-${(f["Training Completion Status"] || "inprogress").toLowerCase().replace(/\\s+/g, "")}`}>{esc(f["Training Completion Status"] || "In Progress")}</span>
+                      <span className={`rk-card-badge rk-status-${(f["Training Completion Status"] || "pending").toLowerCase().replace(/\s+/g, "")}`}>{onboardingStatusLabel(String(f["Training Completion Status"] || "pending"))}</span>
                     </div>
                     <div className="rk-card-meta">
                       <span>{esc(f["Start Date"] || "-")}</span>
@@ -612,18 +667,7 @@ function AdminRekrutmen() {
                     </div>
                     <div className="rk-card-actions">
                       <button className="rk-card-action" onClick={() => openDrawer(r)}>Detail</button>
-                      <div className="rk-more-wrap">
-                        <button className="rk-more-btn" onClick={() => setMoreMenuId(moreMenuId === r.id ? null : r.id)}>
-                          More <ChevronDown className="h-3.5 w-3.5" />
-                        </button>
-                        {moreMenuId === r.id && (
-                          <div className="rk-more-menu">
-                            <button className="rk-more-menu-item" onClick={() => { setMoreMenuId(null); openModal(r.id); }}>
-                              <FileSignature className="h-4 w-4" /> Update Status
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <span className="text-[10px] text-muted-foreground">Hanya-baca</span>
                     </div>
                   </div>
                 );
@@ -636,6 +680,12 @@ function AdminRekrutmen() {
         <div className="rk-table desktop-only">
           {loading ? (
             <div className="rk-loading">Memuat data...</div>
+          ) : !config.supported ? (
+            <div className="rk-empty">
+              <div className="rk-empty-icon"><MessageSquare className="h-7 w-7" /></div>
+              <div className="rk-empty-title">Interviews belum tersedia</div>
+              <div className="rk-empty-desc">Belum ada tabel sumber interview di schema recruitment. Tab ini tidak menampilkan data sintetis.</div>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="rk-empty">
               <div className="rk-empty-icon">
@@ -778,16 +828,16 @@ function AdminRekrutmen() {
                       <td>{esc(f["Start Date"] || "-")}</td>
                       <td>{esc(f["Probation End Date"] || "-")}</td>
                       <td>
-                        <span className={`rk-card-badge rk-status-${(f["Training Completion Status"] || "inprogress").toLowerCase().replace(/\\s+/g, "")}`}>
-                          {esc(f["Training Completion Status"] || "In Progress")}
+                        <span className={`rk-card-badge rk-status-${(f["Training Completion Status"] || "pending").toLowerCase().replace(/\s+/g, "")}`}>
+                          {onboardingStatusLabel(String(f["Training Completion Status"] || "pending"))}
                         </span>
                       </td>
                       <td className="text-muted-foreground max-w-[150px] truncate">{esc(docs)}</td>
                       <td className="text-muted-foreground">{esc(f["Training Schedule"] || "-")}</td>
                       <td>
-                        <div className="flex gap-1">
-                          <button className="rk-card-action" onClick={() => openModal(r.id)}>Update</button>
+                        <div className="flex items-center gap-2">
                           <button className="rk-card-action" onClick={() => openDrawer(r)}>Detail</button>
+                          <span className="text-[10px] text-muted-foreground">Hanya-baca</span>
                         </div>
                       </td>
                     </tr>
