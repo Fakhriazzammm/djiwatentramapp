@@ -105,6 +105,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .route-view { display: none; }
 .route-view.is-active { display: block; }
 .route-view.is-active#jobsView { display: grid; }
+body[data-career-route="daftar"] #jobsSection > .max-w-\[1180px\] > .grid { display: block; }
+body[data-career-route="daftar"] #applyView { max-width: 760px; margin: 0 auto; }
+body[data-career-route="daftar"] #applyPanel { width: 100%; }
 .status-table-wrap { overflow-x: auto; border: 1px solid #ecedef; border-radius: 16px; }
 .status-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
 .status-table th { background: #fafafa; color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; text-align: left; padding: 13px 15px; white-space: nowrap; }
@@ -876,6 +879,7 @@ function initWizard() {
 // ── Three-page navigation ──
 function setCareerRoute(route) {
   const current = ['daftar', 'lowongan', 'lamaran'].includes(route) ? route : 'lowongan';
+  document.body.dataset.careerRoute = current;
   document.getElementById('jobsSection').classList.toggle('hidden', current === 'lamaran');
   document.getElementById('jobsView').classList.toggle('is-active', current === 'lowongan');
   document.getElementById('applyView').classList.toggle('is-active', current === 'daftar');
