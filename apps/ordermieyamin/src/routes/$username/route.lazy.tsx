@@ -41,7 +41,7 @@ function MemberHomePage() {
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
-	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "";
+	const logoUrl = import.meta.env.VITE_BRAND_LOGO_URL || "/logo-djiwa.png";
 
 	const matches = useMatches();
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
