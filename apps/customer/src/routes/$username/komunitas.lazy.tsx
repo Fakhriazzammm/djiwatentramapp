@@ -88,7 +88,6 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
           </div>
           {likeError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{likeError}</p> : null}
           {likeSuccess ? <p role="status" className="mt-2 text-xs font-semibold text-emerald-600">{liked ? "Suka tersimpan" : "Suka dibatalkan"}</p> : null}
-          <button type="button" className="mt-1 text-xs font-semibold text-[#777777] hover:text-[#3156a3]" onClick={() => onOpen(post)}>Lihat komentar{post.commentCount ? ` (${post.commentCount})` : ""}</button>
         </div>
       </div>
     </article>
