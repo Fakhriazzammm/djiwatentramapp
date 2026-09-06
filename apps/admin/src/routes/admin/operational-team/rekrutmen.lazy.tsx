@@ -421,6 +421,14 @@ function AdminRekrutmen() {
           ))}
         </div>
 
+        {/* Pipeline */}
+        <div className="rk-pipeline" aria-label="Pipeline kandidat">
+          {[['Application Received', 'Masuk'], ['Review', 'Screening'], ['Interview', 'Interview'], ['Accepted', 'Diterima']].map(([status, label]) => {
+            const count = allData.candidates.filter((r) => status === 'Application Received' ? ['Application Received', 'New'].includes(String(r.fields.Status)) : r.fields.Status === status).length;
+            return <button key={status} className="rk-pipeline-item" onClick={() => { setActiveTab('candidates'); handleQuickFilter(status === 'Application Received' ? 'New' : status); }}><span className="rk-pipeline-count">{count}</span><span>{label}</span></button>;
+          })}
+        </div>
+
         {/* Search */}
         <div className="rk-search">
           <Search className="rk-search-icon" />

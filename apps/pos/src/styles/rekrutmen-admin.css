@@ -1305,3 +1305,10 @@
 .rk .rk-card-badge.status-failed     { background: #fef2f2; color: var(--rk-failed); }
 .rk .rk-card-badge.status-inprogress { background: #fffbeb; color: var(--rk-in-progress); }
 .rk .rk-card-badge.status-completed  { background: #ecfdf5; color: var(--rk-completed); }
+
+/* Compact pipeline overview */
+.rk .rk-pipeline { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0 20px 16px; }
+.rk .rk-pipeline-item { display:flex; align-items:center; gap:9px; min-height:58px; padding:10px 12px; border:1px solid var(--rk-border); border-radius:14px; background:white; color:var(--rk-muted); font-size:11px; font-weight:800; text-align:left; transition:all var(--dur-micro) var(--ease-ios); }
+.rk .rk-pipeline-item:hover { border-color:var(--rk-primary); background:var(--rk-primary-soft); color:var(--rk-primary); transform:translateY(-1px); }
+.rk .rk-pipeline-count { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; border-radius:10px; background:var(--rk-primary-soft); color:var(--rk-primary); font-size:15px; }
+@media (max-width: 640px) { .rk .rk-pipeline { grid-template-columns:repeat(2,minmax(0,1fr)); margin:0 14px 14px; } .rk .rk-pipeline-item { min-height:52px; padding:8px 10px; } }

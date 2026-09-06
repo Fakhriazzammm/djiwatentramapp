@@ -100,6 +100,29 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 #appUpdateModal.is-loading .update-progress { width: 72%; }
 #appUpdateModal.is-complete .update-progress { width: 100%; }
 @media (prefers-reduced-motion: reduce) { #appUpdateModal .update-card, #appUpdateModal .update-progress { transition: none; } }
+
+/* Career application journey */
+.career-hero { background: linear-gradient(135deg,#0d214b 0%,#123b82 58%,#1f5eff 100%); color: white; position: relative; overflow: hidden; }
+.career-hero::after { content: ''; position: absolute; width: 240px; height: 240px; right: -70px; top: -90px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); box-shadow: 0 0 0 28px rgba(255,255,255,.05), 0 0 0 56px rgba(255,255,255,.04); }
+.career-kicker { color: #b9d0ff; letter-spacing: .13em; text-transform: uppercase; font-size: 11px; font-weight: 800; }
+.job-card { min-height: 146px; }
+.job-card .job-apply { opacity: 0; transform: translateY(4px); transition: opacity 180ms ease, transform 180ms ease; }
+.job-card:hover .job-apply, .job-card:focus-within .job-apply { opacity: 1; transform: translateY(0); }
+.wizard-progress { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 0 0 20px; }
+.wizard-step { display: flex; align-items: center; gap: 7px; min-width: 0; color: #a1a1aa; font-size: 11px; font-weight: 800; }
+.wizard-step::before { content: attr(data-index); width: 25px; height: 25px; flex: 0 0 25px; display: grid; place-items: center; border-radius: 999px; background: #f4f4f5; color: #71717a; }
+.wizard-step.active { color: #1f5eff; }
+.wizard-step.active::before { background: #1f5eff; color: white; box-shadow: 0 0 0 4px rgba(31,94,255,.12); }
+.wizard-step.done::before { content: '✓'; background: #eaf8f0; color: #1f9d57; }
+.wizard-step span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wizard-panel { display: none; }
+.wizard-panel.is-active { display: grid; }
+.wizard-nav { display: flex; gap: 10px; margin-top: 18px; }
+.wizard-nav button { flex: 1; min-height: 46px; border-radius: 14px; font-weight: 800; font-size: 13px; }
+.wizard-back { border: 2px solid #ecedef; background: white; color: #52525b; }
+.wizard-next { background: #eef4ff; border: 2px solid #8aa8ff; color: #1f5eff; }
+.application-trust { display:flex; align-items:flex-start; gap:9px; padding:12px 13px; margin-top:14px; border:1px solid #dbe7ff; border-radius:14px; background:#f6f9ff; color:#52525b; font-size:11px; line-height:1.5; }
+@media (max-width: 640px) { .wizard-progress { gap: 4px; } .wizard-step { flex-direction: column; gap: 4px; text-align:center; font-size: 9px; } .wizard-step span { max-width: 62px; } .job-card .job-apply { opacity: 1; transform: none; } }
 </style>
 
 		<!-- Google tag (gtag.js) -->
@@ -136,11 +159,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   <div class="max-w-[1180px] mx-auto px-4 sm:px-6 pb-6">
 
     <!-- Greeting Card (white, not gradient) -->
-    <div class="bg-white rounded-card p-5 sm:p-7 shadow-ios-1 border border-border-ios">
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+    <div class="career-hero rounded-card p-5 sm:p-8 shadow-ios-2">
+      <div class="relative z-[1] flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
-          <h1 class="font-display text-[clamp(28px,4.5vw,42px)] leading-[1.05] tracking-[-0.03em] font-extrabold text-ink">Mulai karir di Djiwa Tentram</h1>
-          <p class="text-ink-2 text-[15px] leading-[1.6] mt-2.5 max-w-[560px]">Pilih posisi, kirim lamaran, dan bergabung dengan tim kami. Kami akan review dan menghubungi kamu.</p>
+          <div class="career-kicker mb-3">Djiwa Tentram Careers</div>
+          <h1 class="font-display text-[clamp(30px,4.5vw,46px)] leading-[1.04] tracking-[-0.04em] font-extrabold">Mulai karirmu bersama kami</h1>
+          <p class="text-blue-100 text-[15px] leading-[1.65] mt-3 max-w-[560px]">Tumbuh, belajar, dan menciptakan pengalaman terbaik bersama tim Djiwa Tentram.</p>
         </div>
         <!-- Quick Actions -->
         <div class="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
@@ -154,21 +178,20 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
           </a>
         </div>
       </div>
-      <!-- Stats inline 1 row -->
-      <div class="flex items-center gap-3 sm:gap-5 mt-5 pt-5 border-t border-border-ios whitespace-nowrap overflow-x-auto no-scrollbar">
+      <div class="relative z-[1] flex items-center gap-3 sm:gap-5 mt-6 pt-5 border-t border-white/20 whitespace-nowrap overflow-x-auto no-scrollbar">
         <div class="flex items-baseline gap-1.5 flex-shrink-0">
-          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricPositions">0</span>
-          <span class="text-[11px] sm:text-[12px] text-ink-2 font-semibold">Posisi dibuka</span>
+          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-white" id="metricPositions">0</span>
+          <span class="text-[11px] sm:text-[12px] text-blue-100 font-semibold">Posisi dibuka</span>
         </div>
-        <div class="w-px h-4 bg-border-ios flex-shrink-0"></div>
+        <div class="w-px h-4 bg-white/25 flex-shrink-0"></div>
         <div class="flex items-baseline gap-1.5 flex-shrink-0">
-          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent" id="metricApplicants">0</span>
-          <span class="text-[11px] sm:text-[12px] text-ink-2 font-semibold">Total pelamar</span>
+          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-white" id="metricApplicants">0</span>
+          <span class="text-[11px] sm:text-[12px] text-blue-100 font-semibold">Total pelamar</span>
         </div>
-        <div class="w-px h-4 bg-border-ios flex-shrink-0"></div>
+        <div class="w-px h-4 bg-white/25 flex-shrink-0"></div>
         <div class="flex items-baseline gap-1.5 flex-shrink-0">
-          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-accent">1–3</span>
-          <span class="text-[11px] sm:text-[12px] text-ink-2 font-semibold">Hari review</span>
+          <span class="text-[18px] sm:text-[19px] font-display font-extrabold tracking-[-0.03em] text-white">1–3</span>
+          <span class="text-[11px] sm:text-[12px] text-blue-100 font-semibold">Hari review</span>
         </div>
       </div>
     </div>
@@ -230,7 +253,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
           </div>
 
           <form id="applicationForm" novalidate>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="wizard-progress" id="wizardProgress" aria-label="Progress lamaran">
+              <div class="wizard-step active" data-step="1" data-index="1"><span>Posisi</span></div>
+              <div class="wizard-step" data-step="2" data-index="2"><span>Data diri</span></div>
+              <div class="wizard-step" data-step="3" data-index="3"><span>Dokumen</span></div>
+              <div class="wizard-step" data-step="4" data-index="4"><span>Review</span></div>
+            </div>
+            <div class="mb-4 p-3.5 rounded-[16px] bg-surface border border-border-ios text-[12px] text-ink-2 leading-[1.5]" id="wizardHint">Pilih posisi yang paling sesuai dengan pengalaman dan minat kamu.</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="applicationFields">
               <div class="flex flex-col gap-[7px] sm:col-span-2">
                 <label class="text-[12px] font-extrabold text-ink">Posisi dilamar *</label>
                 <p class="text-[10.5px] text-ink-3 -mt-[3px]">Pilih posisi yang ingin kamu lamar</p>
@@ -300,7 +330,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
                 <textarea id="fieldNotes" rows="3" placeholder="Tulis pesan singkat..." class="w-full min-h-[46px] border-2 border-border-ios rounded-ctl px-3.5 py-3 bg-white text-ink outline-none transition-colors duration-180 ease-spring focus:border-accent focus:shadow-[0_0_0_4px_rgba(31,94,255,0.10)]"></textarea>
               </div>
             </div>
-            <div class="flex gap-3 mt-5">
+            <div class="hidden mt-4 p-4 rounded-[16px] bg-accent-soft border border-accent-line" id="wizardReview" aria-live="polite"></div>
+            <div class="wizard-nav" id="wizardNav">
+              <button type="button" class="wizard-back hidden" id="wizardBack">Kembali</button>
+              <button type="button" class="wizard-next" id="wizardNext">Lanjutkan</button>
+            </div>
+            <div class="application-trust">
+              <svg class="size-4 text-accent flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+              <span>Data kamu digunakan hanya untuk proses seleksi dan akan ditinjau oleh tim HR Djiwa Tentram.</span>
+            </div>
+            <div class="flex gap-3 mt-5 hidden" id="submitActions">
               <button type="submit" class="flex-1 inline-flex items-center justify-center gap-2 min-h-[48px] rounded-ctl px-5 bg-accent text-white font-display font-extrabold text-[14px] motion-safe disabled:opacity-50 disabled:cursor-not-allowed" id="submitBtn">
                 <span id="submitText">Kirim lamaran</span>
                 <span id="submitSpinner" class="hidden"><svg class="animate-spin size-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></span>
@@ -631,7 +670,10 @@ function renderJobs() {
               ${(job.types||[]).map(t => `<span class="inline-flex items-center min-h-[18px] px-1.5 rounded-full bg-accent-soft border border-accent-line text-accent text-[8.5px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
             </div>
           </div>
-          <svg class="size-3.5 text-ink-3 flex-shrink-0 group-hover:text-accent group-hover:translate-x-0.5 transition-all duration-180 ease-spring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="job-apply mt-3 pt-2 border-t border-border-ios flex items-center justify-between text-[11px] font-extrabold text-accent">
+          <span>Lamar posisi ini</span>
+          <span aria-hidden="true">→</span>
         </div>
       </article>`;
   }).join('');
@@ -715,6 +757,67 @@ function showSkeleton() {
       </div>
     </div>
   `).join('');
+}
+
+// ── Guided application flow ──
+let wizardStep = 1;
+const WIZARD_FIELDS = {
+  1: ['fieldPosisi'],
+  2: ['fieldNama', 'fieldGender', 'fieldBirth', 'fieldEmail', 'fieldPhone'],
+  3: ['fieldSocial', 'fieldTipe', 'fieldCv', 'fieldNotes'],
+};
+function wizardField(id) { return document.getElementById(id)?.closest('.flex'); }
+function wizardSetStep(step) {
+  wizardStep = Math.max(1, Math.min(4, step));
+  Object.entries(WIZARD_FIELDS).forEach(([key, ids]) => ids.forEach(id => {
+    const el = wizardField(id);
+    if (el) el.style.display = Number(key) === wizardStep ? '' : 'none';
+  }));
+  document.getElementById('wizardReview').classList.toggle('hidden', wizardStep !== 4);
+  document.getElementById('wizardNav').classList.toggle('hidden', wizardStep === 4);
+  document.getElementById('wizardBack').classList.toggle('hidden', wizardStep === 1);
+  document.getElementById('submitActions').classList.toggle('hidden', wizardStep !== 4);
+  document.querySelectorAll('.wizard-step').forEach((el) => {
+    const n = Number(el.dataset.step);
+    el.classList.toggle('active', n === wizardStep);
+    el.classList.toggle('done', n < wizardStep);
+  });
+  const hints = {
+    1: 'Pilih posisi yang paling sesuai dengan pengalaman dan minat kamu.',
+    2: 'Masukkan data yang mudah dihubungi oleh tim HR kami.',
+    3: 'Tambahkan dokumen dan informasi yang membantu kami mengenal kamu.',
+    4: 'Periksa kembali data kamu sebelum mengirim lamaran.',
+  };
+  document.getElementById('wizardHint').textContent = hints[wizardStep];
+  if (wizardStep === 4) {
+    const value = id => document.getElementById(id)?.value || '-';
+    document.getElementById('wizardReview').innerHTML = `<div class="text-[11px] uppercase tracking-[.08em] font-extrabold text-accent mb-2">Ringkasan lamaran</div><div class="grid gap-1.5 text-[13px] text-ink-2"><div><strong class="text-ink">Posisi:</strong> ${escapeHtml(value('fieldPosisi'))}</div><div><strong class="text-ink">Nama:</strong> ${escapeHtml(value('fieldNama'))}</div><div><strong class="text-ink">Kontak:</strong> ${escapeHtml(value('fieldEmail'))} · ${escapeHtml(value('fieldPhone'))}</div><div><strong class="text-ink">Preferensi:</strong> ${escapeHtml(value('fieldTipe'))}</div><div><strong class="text-ink">CV:</strong> ${escapeHtml(document.getElementById('cvFileName')?.textContent || 'Belum ada file')}</div></div>`;
+  }
+}
+function wizardValidate(step) {
+  const ids = WIZARD_FIELDS[step] || [];
+  for (const id of ids) {
+    const field = document.getElementById(id);
+    if (field?.required && !String(field.value || '').trim()) {
+      showToast('Lengkapi data yang wajib diisi dulu ya', 'error');
+      field.focus();
+      return false;
+    }
+  }
+  return true;
+}
+function initWizard() {
+  document.getElementById('wizardNext').addEventListener('click', () => {
+    if (wizardValidate(wizardStep)) wizardSetStep(wizardStep + 1);
+  });
+  document.getElementById('wizardBack').addEventListener('click', () => wizardSetStep(wizardStep - 1));
+  document.getElementById('fieldPosisi').addEventListener('change', () => {
+    if (document.getElementById('fieldPosisi').value) {
+      document.getElementById('selectedRoleBox').classList.remove('hidden');
+      document.getElementById('selectedRoleName').textContent = document.getElementById('fieldPosisi').value;
+    }
+  });
+  wizardSetStep(1);
 }
 
 // ── Search ──
@@ -843,6 +946,7 @@ function fileToDataURL(file) {
 }
 
 initAppUpdatePrompt();
+initWizard();
 loadJobs();
 </script>
 </body>
