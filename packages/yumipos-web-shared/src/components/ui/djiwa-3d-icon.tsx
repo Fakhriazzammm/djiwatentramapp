@@ -29,6 +29,7 @@ import returnManagement from "../../assets/djiwa-icons-v2/return-management.webp
 import notificationsAlerts from "../../assets/djiwa-icons-v2/notifications-alerts.webp";
 import navigationHome from "../../assets/djiwa-icons-v2/navigation/home.webp";
 import navigationOrder from "../../assets/djiwa-icons-v2/navigation/order.webp";
+import navigationCommunity from "../../assets/djiwa-icons-v2/navigation/community.webp";
 import navigationHistory from "../../assets/djiwa-icons-v2/navigation/history.webp";
 import navigationWallet from "../../assets/djiwa-icons-v2/navigation/wallet.webp";
 import navigationProfile from "../../assets/djiwa-icons-v2/navigation/profile.webp";
@@ -89,6 +90,7 @@ export const djiwa3DIconSources = {
   "notifications-alerts": notificationsAlerts,
   "navigation-home": navigationHome,
   "navigation-order": navigationOrder,
+  "navigation-community": navigationCommunity,
   "navigation-history": navigationHistory,
   "navigation-wallet": navigationWallet,
   "navigation-profile": navigationProfile,
