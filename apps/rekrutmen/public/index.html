@@ -101,6 +101,20 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 #appUpdateModal.is-complete .update-progress { width: 100%; }
 @media (prefers-reduced-motion: reduce) { #appUpdateModal .update-card, #appUpdateModal .update-progress { transition: none; } }
 
+.route-link.is-active { color: #1f5eff; background: #eef4ff; }
+.route-view { display: none; }
+.route-view.is-active { display: block; }
+.route-view.is-active#jobsView { display: grid; }
+.status-table-wrap { overflow-x: auto; border: 1px solid #ecedef; border-radius: 16px; }
+.status-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
+.status-table th { background: #fafafa; color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; text-align: left; padding: 13px 15px; white-space: nowrap; }
+.status-table td { padding: 15px; border-top: 1px solid #ecedef; vertical-align: middle; }
+.status-pill { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.status-received, .status-applied, .status-interview { color: #1f5eff; background: #eef4ff; border: 1px solid #c8d7ff; }
+.status-hired { color: #1f9d57; background: #eaf8f0; border: 1px solid #b9e8cb; }
+.status-rejected { color: #e11d48; background: #fff0f3; border: 1px solid #ffc5d2; }
+@media (max-width: 640px) { .route-link { padding-left: 8px; padding-right: 8px; font-size: 11px; } .status-table { min-width: 560px; } }
+
 /* Career application journey */
 .career-hero { background: linear-gradient(135deg,#0d214b 0%,#123b82 58%,#1f5eff 100%); color: white; position: relative; overflow: hidden; }
 .career-hero::after { content: ''; position: absolute; width: 240px; height: 240px; right: -70px; top: -90px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); box-shadow: 0 0 0 28px rgba(255,255,255,.05), 0 0 0 56px rgba(255,255,255,.04); }
@@ -146,8 +160,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       <span class="hidden sm:inline text-[15px]">Karir Djiwa Tentram</span>
     </a>
     <div class="flex items-center gap-1.5">
-      <a href="#jobsSection" class="text-[13px] font-bold text-ink-2 no-underline px-3 py-2.5 rounded-full hover:bg-accent-soft hover:text-accent transition-colors duration-180 ease-spring">Lowongan</a>
-      <a href="#applyPanel" class="inline-flex items-center gap-1.5 text-[13px] font-bold text-white no-underline px-4 py-2.5 rounded-full bg-accent hover:bg-[#184ed6] transition-colors duration-180 ease-spring">
+      <a href="#lowongan" data-route-link="lowongan" class="route-link text-[13px] font-bold text-ink-2 no-underline px-3 py-2.5 rounded-full hover:bg-accent-soft hover:text-accent transition-colors duration-180 ease-spring">Lihat lowongan</a>
+      <a href="#lamaran" data-route-link="lamaran" class="route-link text-[13px] font-bold text-ink-2 no-underline px-3 py-2.5 rounded-full hover:bg-accent-soft hover:text-accent transition-colors duration-180 ease-spring">Lamaran saya</a>
+      <a href="#daftar" data-route-link="daftar" class="route-link inline-flex items-center gap-1.5 text-[13px] font-bold text-white no-underline px-4 py-2.5 rounded-full bg-accent hover:bg-[#184ed6] transition-colors duration-180 ease-spring">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         Daftar
       </a>
@@ -170,11 +185,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         </div>
         <!-- Quick Actions -->
         <div class="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
-          <a href="#jobsSection" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-4 bg-accent text-white font-display font-extrabold text-[14px] no-underline motion-safe shadow-ios-1 whitespace-nowrap">
+          <a href="#lowongan" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-4 bg-accent text-white font-display font-extrabold text-[14px] no-underline motion-safe shadow-ios-1 whitespace-nowrap">
             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             Lihat Lowongan
           </a>
-          <a href="#applyPanel" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-5 border-2 border-accent bg-accent-soft text-accent font-display font-extrabold text-[14px] no-underline motion-safe">
+          <a href="#daftar" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[46px] rounded-ctl px-5 border-2 border-accent bg-accent-soft text-accent font-display font-extrabold text-[14px] no-underline motion-safe">
             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
             Daftar
           </a>
@@ -207,7 +222,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
 
       <!-- Left: Jobs -->
-      <div class="grid gap-5">
+      <div class="grid gap-5 route-view is-active" id="jobsView">
         <!-- Search header -->
         <div class="bg-white rounded-card p-5 shadow-ios-1 border border-border-ios">
           <div class="flex items-end justify-between gap-3 flex-wrap mb-4">
@@ -237,7 +252,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       </div>
 
       <!-- Right: Form (sticky) -->
-      <div class="lg:sticky lg:top-[92px]">
+      <div class="lg:sticky lg:top-[92px] route-view" id="applyView">
         <div class="bg-white rounded-card p-6 shadow-ios-1 border border-border-ios" id="applyPanel">
           <div class="mb-4">
             <span class="inline-flex items-center gap-2 px-[10px] py-[6px] rounded-full bg-accent-soft text-accent text-[11px] font-extrabold mb-3">
@@ -355,6 +370,32 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     </div>
   </div>
 </section>
+
+<section id="statusView" class="route-view">
+  <div class="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+    <div class="bg-white rounded-card p-5 sm:p-7 shadow-ios-1 border border-border-ios">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+        <div>
+          <span class="inline-flex items-center gap-2 px-[10px] py-[6px] rounded-full bg-accent-soft text-accent text-[11px] font-extrabold mb-3">Status lamaran</span>
+          <h2 class="font-display text-[24px] font-extrabold tracking-[-0.03em]">Lamaran saya</h2>
+          <p class="mt-2 text-[13px] text-ink-2 leading-[1.6] max-w-[580px]">Masukkan email dan nomor WhatsApp yang digunakan saat mendaftar untuk melihat status lamaran kamu.</p>
+        </div>
+        <form id="statusLookupForm" class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <input id="statusEmail" type="email" required placeholder="Email" class="min-h-[44px] border-2 border-border-ios rounded-ctl px-3.5 text-[13px] outline-none focus:border-accent">
+          <input id="statusPhone" type="tel" required placeholder="Nomor WhatsApp" class="min-h-[44px] border-2 border-border-ios rounded-ctl px-3.5 text-[13px] outline-none focus:border-accent">
+          <button class="min-h-[44px] rounded-ctl px-4 bg-accent text-white font-display font-extrabold text-[13px] whitespace-nowrap">Lihat status</button>
+        </form>
+      </div>
+      <div id="statusMessage" class="hidden mb-4 p-3.5 rounded-[14px] text-[13px]" role="status"></div>
+      <div class="status-table-wrap">
+        <table class="status-table">
+          <thead><tr><th>Nama</th><th>Posisi</th><th>Tipe kerja</th><th>Tanggal daftar</th><th>Status</th></tr></thead>
+          <tbody id="statusTableBody"><tr><td colspan="5" class="text-center text-ink-3 py-10">Belum ada data. Isi email dan nomor WhatsApp untuk mengecek.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
 </main>
 
 <!-- ═══ FOOTER ═══ -->
@@ -370,9 +411,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <div>
       <div class="text-[12px] font-extrabold uppercase tracking-[0.08em] text-ink-3 mb-3">Karir</div>
       <ul class="grid gap-2 text-[13px] text-ink-2">
-        <li><a href="#jobsSection" class="no-underline hover:text-accent transition-colors">Lowongan</a></li>
-        <li><a href="#applyPanel" class="no-underline hover:text-accent transition-colors">Cara daftar</a></li>
-        <li><a href="#applyPanel" class="no-underline hover:text-accent transition-colors">Kirim lamaran</a></li>
+        <li><a href="#lowongan" class="no-underline hover:text-accent transition-colors">Lihat lowongan</a></li>
+        <li><a href="#daftar" class="no-underline hover:text-accent transition-colors">Daftar</a></li>
+        <li><a href="#lamaran" class="no-underline hover:text-accent transition-colors">Cek status lamaran</a></li>
       </ul>
     </div>
     <div>
@@ -576,6 +617,7 @@ async function loadJobs() {
     const res = await fetch('/api/recruitment-positions');
     if (!res.ok) throw new Error('fetch jobs failed');
     JOBS = await res.json();
+    window.JOBS = JOBS;
   } catch (e) {
     console.error('Gagal load posisi:', e);
     JOBS = [];
@@ -831,6 +873,69 @@ function initWizard() {
   wizardSetStep(1);
 }
 
+// ── Three-page navigation ──
+function setCareerRoute(route) {
+  const current = ['daftar', 'lowongan', 'lamaran'].includes(route) ? route : 'lowongan';
+  document.getElementById('jobsSection').classList.toggle('hidden', current === 'lamaran');
+  document.getElementById('jobsView').classList.toggle('is-active', current === 'lowongan');
+  document.getElementById('applyView').classList.toggle('is-active', current === 'daftar');
+  document.getElementById('statusView').classList.toggle('is-active', current === 'lamaran');
+  document.querySelectorAll('[data-route-link]').forEach((link) => link.classList.toggle('is-active', link.dataset.routeLink === current));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function initCareerRoutes() {
+  const sync = () => setCareerRoute(location.hash.replace('#', '') || 'lowongan');
+  window.addEventListener('hashchange', sync);
+  document.querySelectorAll('[data-route-link]').forEach((link) => link.addEventListener('click', () => setTimeout(sync, 0)));
+  sync();
+}
+
+// ── Public application status lookup ──
+function statusPresentation(status) {
+  const map = {
+    'Application Received': ['Lamaran diterima', 'status-received'],
+    Applied: ['Sedang ditinjau', 'status-applied'],
+    'Interview Scheduled': ['Interview dijadwalkan', 'status-interview'],
+    Hired: ['Diterima', 'status-hired'],
+    Rejected: ['Tidak diterima', 'status-rejected'],
+  };
+  return map[status] || [status || 'Sedang diproses', 'status-received'];
+}
+function renderStatusRows(rows) {
+  const body = document.getElementById('statusTableBody');
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-ink-3 py-10">Belum ditemukan lamaran dengan data tersebut.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map((row) => {
+    const [label, tone] = statusPresentation(row.status);
+    const date = row.application_date || row.created_at ? new Date(row.application_date || row.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+    return `<tr><td class="font-extrabold text-ink">${escapeHtml(row.name || '-')}</td><td>${escapeHtml(row.position || '-')}</td><td>${escapeHtml(row.work_type || '-')}</td><td class="whitespace-nowrap">${escapeHtml(date)}</td><td><span class="status-pill ${tone}">${escapeHtml(label)}</span></td></tr>`;
+  }).join('');
+}
+function initStatusLookup() {
+  document.getElementById('statusLookupForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const message = document.getElementById('statusMessage');
+    const body = document.getElementById('statusTableBody');
+    message.className = 'mb-4 p-3.5 rounded-[14px] text-[13px] bg-accent-soft text-accent';
+    message.textContent = 'Memuat status lamaran…';
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-ink-3 py-10">Memuat data…</td></tr>';
+    try {
+      const response = await fetch('/api/recruitment-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('statusEmail').value.trim(), phone: document.getElementById('statusPhone').value.trim() }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Status belum dapat dimuat');
+      renderStatusRows(result.applications || []);
+      message.textContent = result.applications?.length ? `${result.applications.length} lamaran ditemukan.` : 'Data belum ditemukan. Pastikan email dan nomor WhatsApp sesuai.';
+      message.className = `mb-4 p-3.5 rounded-[14px] text-[13px] ${result.applications?.length ? 'bg-[#eaf8f0] text-success' : 'bg-[#fff7e8] text-warning'}`;
+    } catch (error) {
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-ink-3 py-10">Status belum dapat dimuat. Coba lagi.</td></tr>';
+      message.textContent = error.message;
+      message.className = 'mb-4 p-3.5 rounded-[14px] text-[13px] bg-[#fff0f3] text-danger';
+    }
+  });
+}
+
 // ── Search ──
 document.getElementById('searchInput').addEventListener('input', function() {
   const q = this.value.toLowerCase();
@@ -957,6 +1062,8 @@ function fileToDataURL(file) {
 }
 
 initAppUpdatePrompt();
+initCareerRoutes();
+initStatusLookup();
 initWizard();
 loadJobs();
 </script>

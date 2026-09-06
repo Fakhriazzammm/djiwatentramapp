@@ -209,6 +209,23 @@ app.post("/api/upload-cv", async (req, res) => {
   }
 });
 
+// ── Public status lookup (only matching email + phone, no CV/notes) ──
+app.post("/api/recruitment-status", (req, res) => {
+  try {
+    const esc = (v) => `'${String(v ?? "").replace(/'/g, "''")}'`;
+    const email = String(req.body?.email || "").trim();
+    const phone = String(req.body?.phone || "").trim();
+    if (!email || !phone) return res.status(400).json({ error: "Email dan nomor WhatsApp wajib diisi" });
+    const sql = `SELECT json_build_object('name', nama_lengkap, 'position', posisi_dilamar, 'work_type', tipe_kerja, 'application_date', application_date, 'created_at', created_at, 'status', status)::text FROM pos.${TABLE} WHERE lower(trim(email)) = lower(trim(${esc(email)})) AND regexp_replace(nomor_telepon, '[^0-9]', '', 'g') = regexp_replace(${esc(phone)}, '[^0-9]', '', 'g') ORDER BY created_at DESC LIMIT 20`;
+    const raw = psql(sql);
+    const rows = raw ? raw.split("\\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+    return res.json({ applications: rows });
+  } catch (e) {
+    console.error("Recruitment status lookup failed:", e.message);
+    return res.status(500).json({ error: "Status lamaran belum dapat dimuat" });
+  }
+});
+
 // ── POST /api/table/Candidates ──
 app.post("/api/table/Candidates", async (req, res) => {
   try {
