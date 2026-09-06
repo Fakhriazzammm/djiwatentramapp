@@ -237,7 +237,9 @@ export default {
     if (request.headers.get("Origin") && !origin) return json({ error: "Origin tidak diizinkan." }, 403);
 
     try {
-      const parts = routeParts(new URL(request.url));
+      const requestUrl = new URL(request.url);
+      const delegatedPath = requestUrl.searchParams.get("community_path");
+      const parts = routeParts(delegatedPath ? new URL(delegatedPath, requestUrl.origin) : requestUrl);
       if (parts[0] !== "posts" && parts[0] !== "admin") return json({ error: "Endpoint tidak ditemukan." }, 404, origin);
 
       if (request.method === "PUT" && parts[0] === "posts" && parts[1] === "upload" && parts[2]) {
