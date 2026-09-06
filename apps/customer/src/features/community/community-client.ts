@@ -48,24 +48,20 @@ export type CommunityCommentPage = {
 
 export class CommunityClientError extends Error {}
 
-const API_BASE = (import.meta.env.VITE_CUSTOMER_COMMUNITY_API_URL?.trim() || "/api/auth/get-session").replace(/\/$/, "");
-
-function communityQuery(path: string): string {
-  return `route=${encodeURIComponent(path)}`;
-}
+const API_BASE = (import.meta.env.VITE_CUSTOMER_COMMUNITY_API_URL?.trim() || "/z9").replace(/\/$/, "");
 
 function proxyPath(value: string | null): string | null {
   if (!value) return null;
   try {
     const parsed = new URL(value);
-    return `${API_BASE}?${communityQuery(parsed.pathname)}${parsed.search ? `&${parsed.search.slice(1)}` : ""}`;
+    return `${API_BASE}${parsed.pathname}${parsed.search}`;
   } catch {
     return value;
   }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}?${communityQuery(path)}`, { credentials: "include", ...init });
+  const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...init });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.error) throw new CommunityClientError(payload?.error || "Komunitas belum dapat dimuat.");
   return payload as T;
