@@ -32,13 +32,8 @@ with open(ENV_FILE) as f:
 SUPABASE_URL = env.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = env.get("SUPABASE_KEY", "")
 ACCESS_TOKEN = env.get("SUPABASE_ACCESS_TOKEN", "")
-project_ref = SUPABASE_URL.split("//")[-1].split(".")[0]
 
-MGMT_URL = f"https://api.supabase.com/v1/projects/{project_ref}/database/query"
-MGMT_HEADERS = {
-    "Authorization": f"Bearer {ACCESS_TOKEN}",
-    "Content-Type": "application/json",
-}
+# Self-hosted DB lives in the local supabase-db container — no cloud Management API.
 
 # ── Known inventory item names for smart matching ──
 KNOWN_INVENTORY = {}  # filled later
@@ -139,20 +134,35 @@ def extract_items_from_description(desc: str, total_amount: float, inventory_nam
     
     return []
 
-# ── SQL helpers ──
+# ── SQL helpers (local supabase-db container — self-hosted) ──
+
+def _psql(sql: str, want_rows: bool = False):
+    import subprocess
+    q = sql.strip().rstrip(";")
+    if want_rows:
+        q = f"WITH __q AS ({q}) SELECT coalesce(json_agg(__q), '[]'::json) FROM __q"
+    proc = subprocess.run(
+        ["docker", "exec", "-i", "supabase-db", "psql", "-U", "postgres", "-d", "postgres", "-q", "-t", "-A", "-c", q],
+        capture_output=True, text=True, timeout=60,
+    )
+    if proc.returncode != 0:
+        print(f"  ⚠️ SQL error: {proc.stderr[:200]}")
+        return [] if want_rows else False
+    if not want_rows:
+        return True
+    out = proc.stdout.strip()
+    if not out:
+        return []
+    try:
+        return json.loads(out)
+    except json.JSONDecodeError:
+        return []
 
 def mgmt_sql(sql: str):
-    r = httpx.post(MGMT_URL, headers=MGMT_HEADERS, json={"query": sql}, timeout=30)
-    if r.status_code < 300:
-        return r.json()
-    print(f"  ⚠️ SQL error ({r.status_code}): {r.text[:200]}")
-    return []
+    return _psql(sql, want_rows=True)
 
 def mgmt_sql_exec(sql: str):
-    r = httpx.post(MGMT_URL, headers=MGMT_HEADERS, json={"query": sql}, timeout=30)
-    if r.status_code >= 300:
-        print(f"  ⚠️ SQL exec error ({r.status_code}): {r.text[:200]}")
-    return r.status_code < 300
+    return bool(_psql(sql, want_rows=False))
 
 # ── Main ──
 

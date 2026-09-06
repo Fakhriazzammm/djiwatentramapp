@@ -12,8 +12,8 @@ from datetime import datetime, timezone, timedelta
 WIB = timezone(timedelta(hours=7))
 
 # Config
-SUPABASE_URL = "https://xaemykhjpkgypqqpfdcb.supabase.co"
-SUPABASE_KEY = "sb_publishable_LGFL7r4JQVqG1fvwNniJ7A_ub29yf_3"
+SUPABASE_URL = "https://supabase.yumme.id"
+SUPABASE_KEY = None
 
 # Telegram config — read from yumi-ai-bot .env
 ENV_FILE = "/opt/djiwatentramapp/yumi-ai-bot/.env"
@@ -21,7 +21,17 @@ TELEGRAM_TOKEN = None
 TELEGRAM_CHAT_ID = None
 
 def load_env():
-    global TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+    global TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, SUPABASE_KEY
+    with open("/opt/supabase-selfhost/.env") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("ANON_KEY="):
+                SUPABASE_KEY = line.split("=", 1)[1].strip()
+            elif line.startswith("TELEGRAM_BOT_TOKEN="):
+                TELEGRAM_TOKEN = line.split("=", 1)[1]
+            elif line.startswith("TELEGRAM_REPORT_CHAT_ID="):
+                TELEGRAM_CHAT_ID = line.split("=", 1)[1]
+
     with open(ENV_FILE) as f:
         for line in f:
             line = line.strip()

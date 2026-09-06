@@ -51,19 +51,37 @@ class TransactionAnalyzer:
         self._price_memory: dict[str, list[float]] = {}  # category -> [amounts]
         self._item_price_memory: dict[str, list[float]] = {}  # item_name -> [prices]
 
-    def _mgmt_sql(self, query: str) -> list:
-        """Execute SQL via Supabase Management API."""
-        resp = httpx.post(
-            f"https://api.supabase.com/v1/projects/xaemykhjpkgypqqpfdcb/database/query",
-            json={"query": query},
-            headers={
-                "Authorization": f"Bearer {self.access_token}",
-                "Content-Type": "application/json",
-            },
-            timeout=15,
+    def _local_sql(self, query: str) -> list:
+        """Execute SQL against the SELF-HOSTED database on this VPS (container supabase-db).
+
+        Replaces the old Supabase Management API (cloud) call so analytics always
+        read/write the production self-hosted database.
+        """
+        import json as _json
+        import subprocess as _sp
+
+        q = query.strip().rstrip(";")
+        upper = q.upper()
+        returns_rows = upper.startswith("SELECT") or upper.startswith("WITH")
+        wrapped = f"WITH __q AS ({q}) SELECT coalesce(json_agg(__q), '[]'::json) FROM __q" if returns_rows else q
+        proc = _sp.run(
+            ["docker", "exec", "-i", "supabase-db", "psql", "-U", "postgres", "-d", "postgres", "-q", "-t", "-A", "-c", wrapped],
+            capture_output=True, text=True, timeout=60,
         )
-        resp.raise_for_status()
-        return resp.json()
+        if proc.returncode != 0:
+            raise RuntimeError(f"psql error: {proc.stderr[:300]}")
+        out = proc.stdout.strip()
+        if not out:
+            return []
+        try:
+            parsed = _json.loads(out)
+            return parsed if returns_rows else []
+        except _json.JSONDecodeError:
+            return []
+
+    def _mgmt_sql(self, query: str) -> list:
+        """Backward-compatible name — now executes against self-hosted DB."""
+        return self._local_sql(query)
 
     def _get_historical_amounts(self, category: str, days: int = 90) -> list[float]:
         """Get historical amounts for a category for price range estimation."""

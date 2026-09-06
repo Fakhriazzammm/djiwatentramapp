@@ -7,8 +7,8 @@
 -- Cara pakai:
 --   psql "$SUPABASE_DB_URL" -f 001_ai_learning_memory.sql
 --
--- Atau via Management API SQL endpoint:
---   curl -X POST https://api.supabase.com/v1/projects/$PROJECT_REF/database/query \
+--   (self-hosted: jalankan via psql di container supabase-db)
+
 --     -H "Authorization: Bearer $ACCESS_TOKEN" \
 --     -H "Content-Type: application/json" \
 --     -d '{"query": "..."}'
@@ -71,7 +71,6 @@ CREATE TRIGGER trg_ai_learning_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_ai_learning_updated_at();
 
-
 -- ── pos_ai_learning_stats ──────────────────────────────────────
 -- Daily aggregation for dashboard BI — tracks learning effectiveness.
 
@@ -90,7 +89,6 @@ CREATE TABLE IF NOT EXISTS pos_ai_learning_stats (
 -- Index: date-based stats queries
 CREATE INDEX IF NOT EXISTS idx_ai_learning_stats_date
     ON pos_ai_learning_stats (date DESC);
-
 
 -- ── RLS Policies ───────────────────────────────────────────────
 

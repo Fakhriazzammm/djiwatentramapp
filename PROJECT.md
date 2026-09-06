@@ -695,9 +695,10 @@ Dead code note: `backend-bridge.ts` is a stub that rejects with "Legacy fallback
 | `generate-payroll` | 441 | false | Open | payroll_*, payslips | Supabase Management API |
 | `delete-employee-cascade` | 181 | false | x-admin-secret | yumi_users, onboarding_apps | None |
 
-**Deploy command:**
+**Deploy command (self-hosted di VPS ini):**
 ```bash
-SUPABASE_ACCESS_TOKEN="$TOKEN" npx supabase functions deploy --no-verify-jwt <name> --project-ref xaemykhjpkgypqqpfdcb
+cp supabase/functions/<name>/index.ts /opt/supabase-selfhost/volumes/functions/<name>/index.ts
+cd /opt/supabase-selfhost && docker compose up -d functions
 ```
 
 ---

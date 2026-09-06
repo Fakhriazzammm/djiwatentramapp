@@ -162,6 +162,23 @@ class InventoryManager:
             "Authorization": f"Bearer {self.supabase_key}",
         }
 
+    def _local_sql(self, sql: str) -> bool:
+        """Run DML against the SELF-HOSTED database on this VPS.
+
+        Replaces the old Supabase Management API (cloud) call so menu stock sync
+        writes to the production self-hosted database.
+        """
+        import subprocess as _sp
+
+        proc = _sp.run(
+            ["docker", "exec", "-i", "supabase-db", "psql", "-U", "postgres", "-d", "postgres", "-q", "-t", "-A", "-c", sql],
+            capture_output=True, text=True, timeout=30,
+        )
+        if proc.returncode != 0:
+            logger.warning("Local SQL failed: %s", proc.stderr[:200])
+            return False
+        return True
+
     def _service_headers(self):
         return {
             "apikey": self.supabase_key,
@@ -754,22 +771,15 @@ class InventoryManager:
             if new_qty == current_qty:
                 continue
 
-            # Update via Management API SQL endpoint
-            if self.supabase_access_token and self.project_ref:
-                mgmt_url = f"https://api.supabase.com/v1/projects/{self.project_ref}/database/query"
-                sql = f"UPDATE pos.products SET quantity = {new_qty} WHERE source_id = '{product_id}'"
-                async with httpx.AsyncClient(timeout=15) as client:
-                    resp = await client.post(
-                        mgmt_url,
-                        headers={"Authorization": f"Bearer {self.supabase_access_token}", "Content-Type": "application/json"},
-                        json={"query": sql},
-                    )
-                    if resp.status_code < 400:
-                        updated_count += 1
-                    logger.debug(
-                        "Menu stock sync: product %s qty %s -> %s",
-                        product_id, current_qty, new_qty,
-                    )
+            # Update via local psql against the SELF-HOSTED database
+            sql = f"UPDATE pos.products SET quantity = {new_qty} WHERE source_id = '{product_id}'"
+            ok = self._local_sql(sql)
+            if ok:
+                updated_count += 1
+                logger.debug(
+                    "Menu stock sync: product %s qty %s -> %s",
+                    product_id, current_qty, new_qty,
+                )
 
         logger.info("Menu stock sync: %d product(s) updated", updated_count)
         return updated_count
