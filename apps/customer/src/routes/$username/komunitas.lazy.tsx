@@ -39,6 +39,7 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
   const [liked, setLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [likePending, setLikePending] = useState(false);
+  const [likeError, setLikeError] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [commentCount, setCommentCount] = useState(post.commentCount);
@@ -53,15 +54,17 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
     if (likePending) return;
     const nextLiked = !liked;
     setLikePending(true);
+    setLikeError(null);
     setLiked(nextLiked);
     setLikeCount((count) => Math.max(0, count + (nextLiked ? 1 : -1)));
     try {
       const result = nextLiked ? await communityClient.like(post.id) : await communityClient.unlike(post.id);
       setLiked(result.liked);
       setLikeCount(result.likeCount);
-    } catch {
+    } catch (reason) {
       setLiked(!nextLiked);
       setLikeCount((count) => Math.max(0, count + (nextLiked ? -1 : 1)));
+      setLikeError(reason instanceof Error ? reason.message : "Like belum berhasil disimpan.");
     } finally {
       setLikePending(false);
     }
@@ -110,6 +113,7 @@ function PostCard({ post, currentSourceId, onDelete, onReport }: { post: Communi
             <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} disabled={likePending} onClick={() => void toggleLike}><Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} /><span>{likeCount}</span></button>
             <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-colors ${commentsOpen ? "text-[#3156a3]" : "hover:text-[#3156a3]"}`} aria-label="Komentar" aria-expanded={commentsOpen} onClick={() => void toggleComments}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{commentCount}</span></button>
           </div>
+          {likeError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{likeError}</p> : null}
           {commentsOpen ? <div className="mt-3 rounded-xl bg-[#f7f8fa] p-3">
             {commentsLoading ? <p className="text-xs text-[#777777]">Memuat komentar…</p> : comments.length ? <div className="space-y-3">{comments.map((comment) => <div key={comment.id} className="flex gap-2"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-xs font-bold text-[#3156a3]">{comment.author.name.slice(0, 1).toUpperCase()}</div><div><p className="text-xs font-bold text-[#111111]">{comment.author.username ? `@${comment.author.username}` : comment.author.name}</p><p className="text-sm leading-relaxed text-[#333333]">{comment.body}</p></div></div>)}</div> : <p className="text-xs text-[#777777]">Belum ada komentar.</p>}
             {commentError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{commentError}</p> : null}

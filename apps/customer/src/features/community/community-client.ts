@@ -48,7 +48,7 @@ export type CommunityCommentPage = {
 
 export class CommunityClientError extends Error {}
 
-const API_BASE = (import.meta.env.VITE_CUSTOMER_COMMUNITY_API_URL?.trim() || "/api/customer-community").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_CUSTOMER_COMMUNITY_API_URL?.trim() || "/api/auth/community").replace(/\/$/, "");
 
 function proxyPath(value: string | null): string | null {
   if (!value) return null;
