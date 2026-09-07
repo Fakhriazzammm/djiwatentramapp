@@ -27,7 +27,6 @@ import {
 	useHybridCreateServiceRequest,
 	useHybridMayarCreateInvoice,
 	useHybridMayarGetInvoiceDetail,
-	useHybridUpdateOrderPaymentGateway,
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
@@ -74,7 +73,6 @@ function OrderPage() {
 	const products = useHybridAllProducts(menuRefreshTrigger);
 	const discounts = useHybridActiveDiscounts();
 	const createOrder = useHybridCreateOrder();
-	const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
 	const updateOrderStatus = useHybridUpdateOrderStatus();
 	const createServiceRequest = useHybridCreateServiceRequest();
 	const createMayarInvoice = useHybridMayarCreateInvoice();
@@ -826,16 +824,6 @@ function OrderPage() {
 					if (!invoice?.data?.id) {
 						throw new Error(invoice?.messages || "Gagal membuat invoice pembayaran");
 					}
-					await updateOrderPaymentGateway({
-						id: orderId,
-						paymentGateway: {
-							provider: "mayar",
-							invoiceId: invoice.data.id,
-							transactionId: invoice.data.transactionId,
-							invoiceUrl: invoice.data.link,
-							status: "created",
-						},
-					});
 				} catch (error) {
 					// Jangan membatalkan order: invoice Mayar bisa sudah tercipta/terbayar
 					// walau response browser gagal diterima. Rekonsiliasi server akan memverifikasi provider.
@@ -914,7 +902,6 @@ function OrderPage() {
 				const redirectUrl = `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(orderId)}`;
 				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "", forceNew: true });
 				if (!invoice?.data?.id || !invoice.data.link) throw new Error(invoice?.messages || "Link pembayaran baru tidak tersedia");
-				await updateOrderPaymentGateway({ id: receipt.orderId, paymentGateway: { provider: "mayar", invoiceId: invoice.data.id, transactionId: invoice.data.transactionId, invoiceUrl: invoice.data.link, status: "created", retryOf: (currentOrder as any).gatewayInvoiceId ?? (currentOrder as any).gateway_invoice_id ?? null } });
 				setReceipt((value) => value ? { ...value, mode: "mayar_pending", paymentChoice: "mayar", invoiceId: invoice.data?.id, invoiceUrl: invoice.data?.link } : value);
 				window.location.assign(invoice.data.link);
 				return;

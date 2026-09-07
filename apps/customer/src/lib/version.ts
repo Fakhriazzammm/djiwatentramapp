@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.180",
+	semantic: "0.2.181",
 	// Git/deploy commit hash (short)
-	commitHash: "3e1ee41",
-	message: "fix(customer): allow anonymous checkout after RLS hardening",
+	commitHash: "0396c2b",
+	message: "chore(customer): refresh deployed version metadata",
 	// Commit subject for the update prompt
-	commitMessage: "fix(customer): allow anonymous checkout after RLS hardening",
+	commitMessage: "chore(customer): refresh deployed version metadata",
 	// Build timestamp
 	buildDate: "2026-09-07",
 	// Full version string for display
