@@ -57,6 +57,8 @@ export function RouteTransitionSplash({ logoUrl, storeName }: RouteTransitionSpl
         animate={reduceMotion ? {} : { scale: 1, opacity: 1 }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
       />
+      <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Memuat halaman</p>
+      <span className="mt-3 h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-label="Memuat" />
     </motion.div>
   );
 }

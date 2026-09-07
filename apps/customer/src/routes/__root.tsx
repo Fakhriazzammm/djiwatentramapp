@@ -12,16 +12,16 @@ export const Route = createRootRoute({
 	component: () => {
 		const location = useLocation();
 		const prevPathRef = useRef(location.pathname);
-		const [visible, setVisible] = useState(false);
+		// Tampil juga saat full reload dari navbar, bukan hanya SPA navigation.
+		const [visible, setVisible] = useState(true);
 
 		useEffect(() => {
 			const prev = prevPathRef.current;
-			if (location.pathname !== prev) {
-				prevPathRef.current = location.pathname;
-				setVisible(true);
-				const id = setTimeout(() => setVisible(false), 400);
-				return () => clearTimeout(id);
-			}
+			if (location.pathname !== prev) prevPathRef.current = location.pathname;
+
+			setVisible(true);
+			const id = window.setTimeout(() => setVisible(false), 650);
+			return () => window.clearTimeout(id);
 		}, [location.pathname]);
 
 		return (
