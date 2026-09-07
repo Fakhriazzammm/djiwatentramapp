@@ -2477,7 +2477,10 @@ export function useHybridCreateOrder() {
 						.select("source_id")
 						.eq("idempotency_key", idempotencyKey)
 						.maybeSingle();
-					if (existingError) throw existingError;
+					// Anonymous checkout intentionally has INSERT-only access after the
+					// order-data RLS hardening. A preflight SELECT can therefore return
+					// permission denied; let the INSERT path remain authoritative.
+					if (existingError && existingError.code !== "42501") throw existingError;
 					if (existingOrder?.source_id) return existingOrder.source_id;
 				}
 
