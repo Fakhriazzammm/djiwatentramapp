@@ -77,12 +77,15 @@ function MemberHomePage() {
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
 	const isCommunityChild = matches.some(m => m.routeId.startsWith("/$username/komunitas"));
+	const goCustomerPath = (path: string) => {
+		if (typeof window !== "undefined") window.location.assign(path);
+	};
 	const customerNav = [
-		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => navigate({ to: "/$username", params: { username } }) },
-		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
-		{ label: "Komunitas", icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/komunitas"), onSelect: () => navigate({ to: "/$username/komunitas", params: { username } }) },
-		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
-		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
+		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },
+		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/order?step=table`) },
+		{ label: "Komunitas", icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/komunitas"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/komunitas`) },
+		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/saldo`) },
+		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/profile`) },
 	];
 
 	// ── Guest data dari localStorage (synchronous, no network) ──
