@@ -1035,15 +1035,13 @@ function OrderPage() {
 										</div>
 									) : null}
 								</div>
-								<button type="button" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => {
+								<div className="mt-2.5 grid grid-cols-2 gap-2"><button type="button" className="flex min-h-11 items-center justify-center rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setStep("table")}>← Kembali</button><button type="button" className="flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => {
 									if (config.enableFreeRefillPrompt && activeFreeRefillPromo) {
 										setStep("refill");
 										return;
 									}
 									setStep("menu");
-								}}>
-									Lanjut dengan {partySize} orang <ChevronRight className="h-4 w-4" />
-								</button>
+								}}>Lanjut dengan {partySize} orang <ChevronRight className="h-4 w-4" /></button></div>
 							</div>
 						</section>
 					) : null}
@@ -1060,10 +1058,7 @@ function OrderPage() {
 									<p className="text-xs font-black">{activeFreeRefillPromo?.name || "Free refill minuman tersedia"}</p>
 									<p className="mt-1 text-xs leading-relaxed text-muted-foreground">{activeFreeRefillPromo?.refillPrice ? `Tambahan ${currency(activeFreeRefillPromo.refillPrice)} per orang. Estimasi total ${currency((activeFreeRefillPromo.refillPrice || 0) * Math.max(1, partySize))}.` : `Promo refill aktif untuk ${partySize} orang.`}</p>
 								</div>
-								<div className="mt-2.5 grid grid-cols-2 gap-1.5">
-									<button type="button" className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => { setFreeRefillOptIn(false); setStep("menu"); }}>Tidak sekarang</button>
-									<button type="button" className="rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => { setFreeRefillOptIn(true); setStep("menu"); }}>Ya, tambahkan</button>
-								</div>
+								<div className="mt-2.5 grid grid-cols-2 gap-1.5"><button type="button" className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setStep("party")}>← Kembali</button><button type="button" className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => { setFreeRefillOptIn(false); setStep("menu"); }}>Tidak sekarang</button><button type="button" className="col-span-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => { setFreeRefillOptIn(true); setStep("menu"); }}>Ya, tambahkan</button></div>
 							</div>
 						</section>
 					) : null}
