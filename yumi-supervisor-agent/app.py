@@ -151,9 +151,16 @@ def _bot() -> Bot:
 # ── Supabase helpers ─────────────────────────────────────────────
 
 def _headers():
+    """Use the trusted worker credential for all Supervisor DB I/O.
+
+    The public/anon key no longer has read access to orders after RLS hardening;
+    Supervisor is a server-side worker and must use service_role for polling,
+    routing lookups, and order-status writes.
+    """
+    key = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY
     return {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
     }
 
 async def _fetch(table: str, query: str = "", use_service_role: bool = False) -> list[dict]:
