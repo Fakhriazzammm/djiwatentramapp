@@ -1,7 +1,7 @@
 {
-  "version": "0.2.135",
-  "commitHash": "66b776d",
-  "message": "fix(customer): force pwa cache refresh for community release",
-  "buildDate": "2026-09-06",
-  "generatedAt": "2026-09-06T06:47:33.648Z"
+  "version": "0.2.180",
+  "commitHash": "3e1ee41",
+  "message": "fix(customer): allow anonymous checkout after RLS hardening",
+  "buildDate": "2026-09-07",
+  "generatedAt": "2026-09-07T04:58:04.691Z"
 }
