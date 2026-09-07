@@ -331,6 +331,7 @@ export function MenuSidebar({
 				})),
 				totalAmount: finalTotal,
 				paymentMethod: "cash",
+				source: "pos",
 				customerName: data.customerName || customerInfo.name,
 				tableNumber: data.tableNumber || customerInfo.tableNumber,
 				notes: data.notes || customerInfo.notes,
