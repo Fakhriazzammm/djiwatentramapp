@@ -1,7 +1,7 @@
 {
-  "version": "0.2.183",
-  "commitHash": "8ec67da",
-  "message": "chore(customer): sync QRIS release metadata",
+  "version": "0.2.184",
+  "commitHash": "be56c1a",
+  "message": "fix(customer): normalize numeric table query on receipt",
   "buildDate": "2026-09-07",
-  "generatedAt": "2026-09-07T05:07:47.512Z"
+  "generatedAt": "2026-09-07T05:08:21.583Z"
 }
