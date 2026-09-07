@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.181",
+	semantic: "0.2.182",
 	// Git/deploy commit hash (short)
-	commitHash: "0396c2b",
-	message: "chore(customer): refresh deployed version metadata",
+	commitHash: "b3d18ff",
+	message: "fix(customer): redirect QRIS after invoice creation",
 	// Commit subject for the update prompt
-	commitMessage: "chore(customer): refresh deployed version metadata",
+	commitMessage: "fix(customer): redirect QRIS after invoice creation",
 	// Build timestamp
 	buildDate: "2026-09-07",
 	// Full version string for display

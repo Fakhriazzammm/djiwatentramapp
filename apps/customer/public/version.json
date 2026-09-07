@@ -1,7 +1,7 @@
 {
-  "version": "0.2.181",
-  "commitHash": "0396c2b",
-  "message": "chore(customer): refresh deployed version metadata",
+  "version": "0.2.182",
+  "commitHash": "b3d18ff",
+  "message": "fix(customer): redirect QRIS after invoice creation",
   "buildDate": "2026-09-07",
-  "generatedAt": "2026-09-07T05:03:52.038Z"
+  "generatedAt": "2026-09-07T05:04:34.418Z"
 }
