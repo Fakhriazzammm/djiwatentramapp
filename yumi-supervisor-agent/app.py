@@ -2255,8 +2255,11 @@ async def _check_new_orders(app):
                     _settlement_retry_not_before.pop(order_no, None)
                     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
                 else:
-                    _settlement_retry_not_before[order_no] = now_ms + 60_000
-                    logger.warning("Settlement delivery incomplete for %s; retry after 60s", order_no)
+                    # Telegram edit failures (especially 429) must not be retried
+                    # every poll interval. Keep the failed settlement pending, but
+                    # give Telegram a real cooldown before the next attempt.
+                    _settlement_retry_not_before[order_no] = now_ms + 5 * 60_000
+                    logger.warning("Settlement delivery incomplete for %s; retry after 5m", order_no)
             continue
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
