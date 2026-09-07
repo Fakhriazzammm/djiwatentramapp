@@ -163,11 +163,13 @@ def _headers():
         "Authorization": f"Bearer {key}",
     }
 
-async def _fetch(table: str, query: str = "", use_service_role: bool = False) -> list[dict]:
+async def _fetch(table: str, query: str = "", use_service_role: bool = False, schema: str | None = None) -> list[dict]:
     url = f"{SUPABASE_URL}/rest/v1/{table}"
     if query:
         url = f"{url}?{query}"
     headers = _service_role_headers() if use_service_role else _headers()
+    if schema:
+        headers = {**headers, "Accept-Profile": schema}
     async with httpx.AsyncClient() as client:
         r = await client.get(url, headers=headers, timeout=15)
         r.raise_for_status()
@@ -2199,6 +2201,22 @@ async def _check_new_orders(app):
                 str(row.get("orderNumber") or ""),
             ),
         )
+        # pos_orders is a compatibility view and does not expose customer_description.
+        # Enrich from the canonical pos.orders table without weakening RLS.
+        order_ids = [str(row.get("_id") or "") for row in rows if row.get("_id")]
+        if order_ids:
+            base_query = (
+                "select=source_id,customer_description"
+                f"&source_id=in.({','.join(order_ids)})"
+            )
+            base_rows = await _fetch("orders", base_query, use_service_role=True, schema="pos")
+            descriptions = {
+                str(base.get("source_id")): base.get("customer_description")
+                for base in base_rows
+                if base.get("source_id")
+            }
+            for row in rows:
+                row["customerDescription"] = descriptions.get(str(row.get("_id") or ""))
     except Exception as e:
         logger.warning("customer settled/cashier-order lookback failed: %s", e)
 
