@@ -385,7 +385,7 @@ function OrderPage() {
 	}, [search.table]);
 
 	useEffect(() => {
-		if ((step === "menu" || step === "checkout") && !tableNumber.trim()) {
+		if ((step === "menu" || step === "review" || step === "payment") && !tableNumber.trim()) {
 			setStep("table");
 		}
 	}, [step, tableNumber]);
@@ -967,7 +967,7 @@ function OrderPage() {
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
-					<CustomerOrderProgress step={step === "payment" ? "checkout" : step} />
+					<CustomerOrderProgress step={step} />
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -1073,21 +1073,21 @@ function OrderPage() {
 						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 
-					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{/* ── Review and payment sections ───────────────── */}
+					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
-				{step !== "table" && step !== "party" && step !== "refill" && step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
+				{step !== "table" && step !== "party" && step !== "refill" && step !== "review" && step !== "payment" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep("menu")} />
 							<BottomButton label="Keranjang" icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
 							<BottomButton label="Staff" icon={<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setServiceOpen(true)} />
-							<BottomButton label={receipt ? "Struk" : "Checkout"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : "checkout")} primary disabled={!receipt && !cart.length} />
+							<BottomButton label={receipt ? "Struk" : "Review"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : "review")} primary disabled={!receipt && !cart.length} />
 						</div>
 					</div>
 				) : null}
@@ -1106,8 +1106,8 @@ function OrderPage() {
 						<div className="flex-1 overflow-y-auto px-4 py-3">{cart.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border bg-muted/20 px-3 py-8 text-center text-muted-foreground"><Djiwa3DIcon name="navigation-order" size="sm" alt="" className="h-8 w-8 object-contain" /><p className="mt-2 font-display text-sm font-bold text-foreground">Keranjang masih kosong</p><p className="mt-1 text-xs">Pilih menu untuk mulai memesan.</p></div> : <div className="space-y-2.5">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
 						<div className="border-t border-border px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3"><SummaryCardLines productGrossSubtotal={productGrossSubtotal} freeRefillCharge={freeRefillCharge} promoDiscount={promoDiscount} taxAmount={taxAmount} taxEnabled={taxEnabled} taxRate={taxRate} serviceChargeAmount={serviceChargeAmount} serviceChargeRate={serviceChargeRate} total={total} /><button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-black text-white" style={{ backgroundColor: themeColor }} onClick={() => {
 							setCartOpen(false);
-							setStep("checkout");
-						}}>Lanjut checkout</button></div>
+							setStep("review");
+						}}>Lanjut review pesanan</button></div>
 					</motion.div>
 				</SheetContent>
 			</Sheet>
