@@ -35,6 +35,9 @@ export interface CheckoutSectionProps {
 	setPaymentChoice: (v: PaymentChoice) => void;
 	setTableNumber: (v: string) => void;
 	tableNumber: string;
+	updateCartQuantity: (productId: string, variant: string | undefined, delta: number) => void;
+	onRemoveItem: (productId: string, variant: string | undefined) => void;
+	onEditMenu: () => void;
 	mode?: "review" | "payment";
 	onContinueToPayment?: () => void;
 	onBackToMenu: () => void;
@@ -75,6 +78,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 						<h2 className="text-sm font-black">{isReview ? "Periksa dan edit pesanan" : "Pilih metode pembayaran"}</h2>
 					</div>
 				</div>
+				{isReview ? <button type="button" onClick={props.onEditMenu} className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[14px] border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-black text-primary">Ubah menu / tambah produk</button> : null}
 				{!isPaymentOnly ? <>
 				<div className="mt-3 rounded-2xl border border-border bg-muted/25 p-3" aria-label="Detail pesanan">
 					<div className="mb-2 flex items-center justify-between">
@@ -90,6 +94,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 								<div className="min-w-0 flex-1">
 									<p className="truncate text-xs font-black">{item.name}</p>
 									<p className="mt-0.5 text-[10px] text-muted-foreground">{item.variant ? `${item.variant} · ` : ""}{item.quantity} × {currency(item.price)}</p>
+									{isReview ? <div className="mt-2 flex items-center gap-1.5"><button type="button" aria-label={`Kurangi jumlah ${item.name}`} onClick={() => props.updateCartQuantity(item.productId, item.variant, -1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-black">−</button><span className="min-w-6 text-center text-xs font-black">{item.quantity}</span><button type="button" aria-label={`Tambah jumlah ${item.name}`} onClick={() => props.updateCartQuantity(item.productId, item.variant, 1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">+</button><button type="button" aria-label={`Hapus ${item.name}`} onClick={() => props.onRemoveItem(item.productId, item.variant)} className="ml-1 min-h-9 rounded-full bg-destructive/10 px-2.5 text-[10px] font-black text-destructive">Hapus</button></div> : null}
 								</div>
 								<p className="shrink-0 text-xs font-black text-foreground">{currency(item.price * item.quantity)}</p>
 							</div>
