@@ -7,7 +7,10 @@ const orderSearchSchema = z.object({
 		.optional()
 		.default("table"),
 	orderId: z.string().optional(),
-	table: z.string().optional(),
+	table: z.preprocess(
+		(value) => (value === undefined || value === null ? value : String(value)),
+		z.string().optional(),
+	),
 });
 
 export const Route = createFileRoute("/$username/order")({

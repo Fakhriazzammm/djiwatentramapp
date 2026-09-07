@@ -1,7 +1,7 @@
 {
-  "version": "0.2.182",
-  "commitHash": "b3d18ff",
-  "message": "fix(customer): redirect QRIS after invoice creation",
+  "version": "0.2.183",
+  "commitHash": "8ec67da",
+  "message": "chore(customer): sync QRIS release metadata",
   "buildDate": "2026-09-07",
-  "generatedAt": "2026-09-07T05:04:34.418Z"
+  "generatedAt": "2026-09-07T05:07:47.512Z"
 }

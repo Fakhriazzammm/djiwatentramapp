@@ -2,7 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 const brandCustomerSearchSchema = z.object({
-	table: z.string().optional(),
+	table: z.preprocess(
+		(value) => (value === undefined || value === null ? value : String(value)),
+		z.string().optional(),
+	),
 	orderId: z.string().optional(),
 });
 
