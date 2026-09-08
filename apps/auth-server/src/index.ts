@@ -3,6 +3,9 @@ import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { auth, pool } from "./auth.js";
 import { staffAuth } from "./staff-auth.js";
+import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.yumme.id/functions/v1/mayar-proxy";
@@ -16,6 +19,19 @@ const customerOrigins = [
   "https://500kopitasik.yumme.id",
   "http://localhost:5173",
 ];
+const stickerRateLimit = new Map<string, number[]>();
+
+function allowStickerRequest(key: string) {
+  const now = Date.now();
+  const recent = (stickerRateLimit.get(key) || []).filter((timestamp) => now - timestamp < 10 * 60 * 1000);
+  if (recent.length >= 3) {
+    stickerRateLimit.set(key, recent);
+    return false;
+  }
+  recent.push(now);
+  stickerRateLimit.set(key, recent);
+  return true;
+}
 
 // CORS — allow customer app domain with credentials
 app.use(
@@ -135,7 +151,7 @@ app.get("/api/coffee-passport/bootstrap", async (c) => {
     return privateJson({ success: true, authenticated: false, customer: null, shops: shops.rows, visits: [], collection: [], rewards: { available: 0, count: 0 } });
   }
   const [visits, collection, rewards] = await Promise.all([
-    pool.query("SELECT v.visit_id, v.shop_id, s.name AS shop_name, v.photo_path, v.photo_category, v.title, v.description, v.status, v.created_at, st.sticker_path, st.status AS sticker_status FROM pos.coffee_passport_visits v JOIN pos.coffee_passport_shops s ON s.shop_id = v.shop_id LEFT JOIN pos.coffee_passport_stickers st ON st.visit_id = v.visit_id WHERE v.customer_id = $1 ORDER BY v.created_at DESC LIMIT 100", [session.user.id]),
+    pool.query("SELECT v.visit_id, v.shop_id, s.name AS shop_name, v.photo_path, v.photo_category, v.title, v.description, v.status, v.created_at, st.sticker_id, st.sticker_path, st.status AS sticker_status FROM pos.coffee_passport_visits v JOIN pos.coffee_passport_shops s ON s.shop_id = v.shop_id LEFT JOIN pos.coffee_passport_stickers st ON st.visit_id = v.visit_id WHERE v.customer_id = $1 ORDER BY v.created_at DESC LIMIT 100", [session.user.id]),
     pool.query("SELECT * FROM public.pos_coffee_passport_collection_view WHERE customer_id = $1 ORDER BY first_visit_at DESC", [session.user.id]),
     pool.query("SELECT COALESCE(sum(amount) FILTER (WHERE status = 'available'), 0)::bigint AS available, count(*) FILTER (WHERE status IN ('available','redeemed'))::integer AS count FROM pos.coffee_passport_rewards WHERE customer_id = $1", [session.user.id]),
   ]);
@@ -159,7 +175,7 @@ app.post("/api/coffee-passport/collect", async (c) => {
   const duplicate = await pool.query("SELECT visit_id FROM pos.coffee_passport_visits WHERE customer_id = $1 AND shop_id = $2 AND status <> 'failed' LIMIT 1", [session.user.id, shop.rows[0].shop_id]);
   if (duplicate.rows[0]) return privateJson({ success: true, status: "duplicate", duplicate: true, visit_id: duplicate.rows[0].visit_id, shop_id: shop.rows[0].shop_id, message: "Kedai ini sudah ada di passport kamu." });
   try {
-    const inserted = await pool.query("INSERT INTO pos.coffee_passport_visits (visit_id, customer_id, shop_id, photo_path, photo_category, title, status, idempotency_key) VALUES ($1, $2, $3, NULL, 'other', $4, 'draft', $5) RETURNING visit_id, shop_id", [`vst_${crypto.randomUUID().replace(/-/g, "")}`, session.user.id, shop.rows[0].shop_id, shop.rows[0].name, idempotencyKey]);
+    const inserted = await pool.query("INSERT INTO pos.coffee_passport_visits (visit_id, customer_id, shop_id, photo_path, photo_category, title, status, idempotency_key) VALUES ($1, $2, $3, NULL, 'other', $4, 'recorded', $5) RETURNING visit_id, shop_id", [`vst_${crypto.randomUUID().replace(/-/g, "")}`, session.user.id, shop.rows[0].shop_id, shop.rows[0].name, idempotencyKey]);
     return privateJson({ success: true, status: "saved", duplicate: false, visit_id: inserted.rows[0].visit_id, shop_id: inserted.rows[0].shop_id, message: "Stamp tersimpan dari data kedai official. Lengkapi foto kunjunganmu." });
   } catch (error) {
     if ((error as { code?: string }).code === "23505") return privateJson({ success: true, status: "duplicate", duplicate: true, message: "Kedai ini sudah ada di passport kamu." });
@@ -234,6 +250,100 @@ app.post("/api/coffee-passport/shops/onboard", async (c) => {
     client.release();
   }
 });
+
+app.post("/api/coffee-passport/stickers/generate", async (c) => {
+  const session = await requirePassportSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
+  const body = await c.req.json().catch(() => ({})) as { visit_id?: unknown; idempotency_key?: unknown };
+  const visitId = typeof body.visit_id === "string" ? body.visit_id.trim() : "";
+  const idempotencyKey = typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+  if (!/^vst_[A-Za-z0-9_-]{8,120}$/.test(visitId)) return privateJson({ success: false, message: "Kunjungan tidak valid." }, 400);
+  if (!/^[A-Za-z0-9_-]{12,160}$/.test(idempotencyKey)) return privateJson({ success: false, message: "Permintaan sticker tidak valid." }, 400);
+  const contentLength = Number(c.req.header("content-length") || 0);
+  if (contentLength > 12_000) return privateJson({ success: false, message: "Permintaan terlalu besar." }, 413);
+  const forwardedFor = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!allowStickerRequest(`${session.user.id}:${forwardedFor}`)) return privateJson({ success: false, message: "Terlalu banyak permintaan. Coba lagi beberapa menit lagi." }, 429);
+
+  const client = await pool.connect();
+  let stickerId = "";
+  let prompt = "";
+  try {
+    await client.query("BEGIN");
+    const visitResult = await client.query<{ visit_id: string; customer_id: string; title: string; status: string; shop_name: string; area: string | null }>(
+      "SELECT v.visit_id, v.customer_id, v.title, v.status, s.name AS shop_name, s.area FROM pos.coffee_passport_visits v JOIN pos.coffee_passport_shops s ON s.shop_id = v.shop_id WHERE v.visit_id = $1 AND v.customer_id = $2 FOR UPDATE",
+      [visitId, session.user.id],
+    );
+    const visit = visitResult.rows[0];
+    if (!visit) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, message: "Kunjungan tidak ditemukan." }, 404);
+    }
+    const existing = await client.query<{ sticker_id: string; sticker_path: string | null; status: string; attempt_count: number }>(
+      "SELECT sticker_id, sticker_path, status, attempt_count FROM pos.coffee_passport_stickers WHERE visit_id = $1 OR (customer_id = $2 AND idempotency_key = $3) LIMIT 1 FOR UPDATE",
+      [visitId, session.user.id, idempotencyKey],
+    );
+    const row = existing.rows[0];
+    if (row?.status === "completed" && row.sticker_path) {
+      await client.query("COMMIT");
+      return privateJson({ success: true, status: "completed", sticker_id: row.sticker_id, visit_id: visitId, image_url: `/api/coffee-passport/stickers/${encodeURIComponent(row.sticker_id)}/image` });
+    }
+    if (row?.status === "generating") {
+      await client.query("COMMIT");
+      return privateJson({ success: true, status: "generating", sticker_id: row.sticker_id }, 202);
+    }
+    stickerId = row?.sticker_id || `stk_${crypto.randomUUID().replace(/-/g, "")}`;
+    prompt = buildCoffeePassportStickerPrompt({ shopName: visit.shop_name, area: visit.area, visitTitle: visit.title });
+    if (row) {
+      await client.query("UPDATE pos.coffee_passport_stickers SET status = 'generating', error_code = NULL, failed_at = NULL, attempt_count = attempt_count + 1, idempotency_key = $2 WHERE sticker_id = $1", [stickerId, idempotencyKey]);
+    } else {
+      await client.query("INSERT INTO pos.coffee_passport_stickers (sticker_id, visit_id, customer_id, status, provider, prompt_version, model, attempt_count, idempotency_key) VALUES ($1, $2, $3, 'generating', '9router', $4, $5, 1, $6)", [stickerId, visitId, session.user.id, stickerPromptVersion(), stickerModel(), idempotencyKey]);
+    }
+    await client.query("UPDATE pos.coffee_passport_visits SET status = 'sticker_pending' WHERE visit_id = $1", [visitId]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    if ((error as { code?: string }).code === "23505") return privateJson({ success: false, message: "Sticker sedang diproses. Muat ulang beberapa saat lagi." }, 409);
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  const storageRoot = process.env.COFFEE_PASSPORT_STICKER_DIR || join(process.cwd(), ".runtime", "coffee-passport-stickers");
+  const filename = `${stickerId}_${crypto.randomUUID().replace(/-/g, "")}.png`;
+  try {
+    const raw = await generateCoffeePassportPng(prompt);
+    await mkdir(storageRoot, { recursive: true, mode: 0o750 });
+    await writeFile(join(storageRoot, filename), raw, { mode: 0o640 });
+    await pool.query("UPDATE pos.coffee_passport_stickers SET sticker_path = $1, status = 'completed', file_size_bytes = $2, mime_type = 'image/png', completed_at = now(), error_code = NULL WHERE sticker_id = $3 AND customer_id = $4", [filename, raw.byteLength, stickerId, session.user.id]);
+    await pool.query("UPDATE pos.coffee_passport_visits SET status = 'completed' WHERE visit_id = $1 AND customer_id = $2", [visitId, session.user.id]);
+    return privateJson({ success: true, status: "completed", sticker_id: stickerId, visit_id: visitId, image_url: `/api/coffee-passport/stickers/${encodeURIComponent(stickerId)}/image` });
+  } catch (error) {
+    const errorCode = String((error as Error).message || "provider_error").slice(0, 80);
+    await pool.query("UPDATE pos.coffee_passport_stickers SET status = 'failed', error_code = $1, failed_at = now() WHERE sticker_id = $2 AND customer_id = $3", [errorCode.startsWith("provider_") || errorCode === "invalid_png" ? errorCode : "provider_error", stickerId, session.user.id]);
+    console.error("Coffee passport sticker generation failed", { stickerId, errorCode });
+    const status = errorCode === "provider_timeout" ? 504 : errorCode === "provider_http_503" ? 503 : 502;
+    return privateJson({ success: false, status: "failed", sticker_id: stickerId, message: status === 504 ? "Proses terlalu lama. Coba lagi." : "Sticker belum berhasil dibuat. Coba lagi beberapa saat." }, status);
+  }
+});
+
+app.get("/api/coffee-passport/stickers/:stickerId/image", async (c) => {
+  const session = await requirePassportSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
+  const stickerId = c.req.param("stickerId");
+  if (!/^stk_[A-Za-z0-9_-]{8,120}$/.test(stickerId)) return privateJson({ success: false, message: "Sticker tidak ditemukan." }, 404);
+  const result = await pool.query<{ sticker_path: string | null }>("SELECT sticker_path FROM pos.coffee_passport_stickers WHERE sticker_id = $1 AND customer_id = $2 AND status = 'completed' LIMIT 1", [stickerId, session.user.id]);
+  const filename = result.rows[0]?.sticker_path;
+  if (!filename || filename !== filename.replace(/[^A-Za-z0-9_.-]/g, "")) return privateJson({ success: false, message: "Gambar tidak ditemukan." }, 404);
+  const storageRoot = process.env.COFFEE_PASSPORT_STICKER_DIR || join(process.cwd(), ".runtime", "coffee-passport-stickers");
+  try {
+    const raw = await readFile(join(storageRoot, filename));
+    return new Response(raw, { status: 200, headers: { "Content-Type": "image/png", "Content-Disposition": "inline", "Cache-Control": "private, no-store" } });
+  } catch {
+    return privateJson({ success: false, message: "Gambar tidak ditemukan." }, 404);
+  }
+});
+
+app.get("/api/health", (c) => privateJson({ ok: true, service: "coffee-passport-sticker-generator" }));
 
 app.get("/api/coffee-passport/bid/board", async (c) => {
   const requestedTab = c.req.query("tab") || "all-time";
