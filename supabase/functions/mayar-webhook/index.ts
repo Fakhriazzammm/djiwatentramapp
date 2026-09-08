@@ -184,7 +184,7 @@ async function settleCoffeePassportListing(listingPaymentId: string, invoiceId: 
   if (!Number.isFinite(providerAmount) || providerAmount !== 1000) throw new Error("Coffee passport listing payment amount mismatch");
   const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/coffee_passport_settle_listing`, {
     method: "POST",
-    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
     body: JSON.stringify({ p_listing_payment_id: listingPaymentId, p_invoice_id: invoiceId, p_transaction_id: transactionId, p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
   });
   if (!response.ok) throw new Error(`Coffee passport listing settlement failed (${response.status})`);
@@ -196,7 +196,7 @@ async function settleCoffeePassportBid(entryId: string, invoiceId: string, trans
   if (!entryId || !transactionId) return null;
   const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/coffee_passport_settle_bid`, {
     method: "POST",
-    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
     body: JSON.stringify({ p_entry_id: entryId, p_invoice_id: invoiceId, p_transaction_id: transactionId, p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
   });
   if (!response.ok) throw new Error(`Coffee passport bid settlement failed (${response.status})`);
