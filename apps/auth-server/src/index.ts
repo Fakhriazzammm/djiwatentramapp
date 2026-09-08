@@ -2,13 +2,18 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { auth, pool } from "./auth.js";
+import { staffAuth } from "./staff-auth.js";
 
 const app = new Hono();
+const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.yumme.id/functions/v1/mayar-proxy";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
 const customerOrigins = [
   "https://djiwatentram.yumme.id",
   "https://merchandise.yumme.id",
   "https://b2b.yumme.id",
   "https://ordermieyamin.yumme.id",
+  "https://500kopitasik.yumme.id",
   "http://localhost:5173",
 ];
 
@@ -23,9 +28,70 @@ app.use(
   }),
 );
 
-// Better Auth handler
+// CORS — passport data is requested from the 500 Kopi subdomain.
+app.use(
+  "/api/coffee-passport/*",
+  cors({
+    origin: ["https://500kopitasik.yumme.id", "http://localhost:3010"],
+    allowHeaders: ["Accept", "Content-Type", "X-Request-Id"],
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+  }),
+);
+
+// Better Auth handler (customer)
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
+});
+
+// ── Better Auth KARYAWAN (staff) ──────────────────────────────────
+const staffOrigins = [
+  "https://karyawan.yumme.id",
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
+
+app.use(
+  "/api/staff-auth/*",
+  cors({
+    origin: staffOrigins,
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    credentials: true,
+  }),
+);
+
+app.on(["POST", "GET"], "/api/staff-auth/*", (c) => {
+  return staffAuth.handler(c.req.raw);
+});
+
+// Bridge: Better Auth staff session → Yumi session (ys_) supaya useYumiAuth jalan
+app.post("/api/staff/yumi-login", async (c) => {
+  const session = await staffAuth.api.getSession({ headers: c.req.raw.headers });
+  const yumiSourceId = String((session?.user as { metadata?: { yumiSourceId?: string } } | undefined)?.metadata?.yumiSourceId ?? "");
+  if (!session || !yumiSourceId) {
+    return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  }
+  const yumi = await pool.query(
+    `SELECT u.source_id, u.name, u.is_active
+       FROM public.yumi_users u
+      WHERE u.source_id = $1 LIMIT 1`,
+    [yumiSourceId],
+  );
+  const staff = yumi.rows[0];
+  if (!staff || !staff.is_active) {
+    return privateJson({ success: false, error: "STAFF_INACTIVE" }, 403);
+  }
+  const token = `ys_${crypto.randomUUID().replace(/-/g, "")}_${crypto
+    .randomUUID()
+    .replace(/-/g, "")
+    .slice(0, 18)}`;
+  await pool.query(
+    `INSERT INTO public.yumi_sessions (token, user_source_id, expires_at)
+     VALUES ($1, $2, now() + interval '24 hours')`,
+    [token, staff.source_id],
+  );
+  return privateJson({ success: true, token, user: staff });
 });
 
 app.use(
@@ -37,6 +103,191 @@ app.use(
     credentials: true,
   }),
 );
+
+type PassportShop = {
+  shop_id: string;
+  name: string;
+  slug: string;
+  area: string | null;
+  description: string | null;
+  cover_url: string | null;
+  google_maps_url: string | null;
+  current_bid_amount: number;
+};
+
+async function requirePassportSession(headers: Headers) {
+  const session = await requireCustomerSession(headers);
+  if (!session?.user?.id) return null;
+  const customer = await pool.query(
+    "SELECT source_id, name, email, photo_url FROM public.pos_customers_view WHERE source_id = $1 LIMIT 1",
+    [session.user.id],
+  );
+  if (!customer.rows[0]) return null;
+  return { user: session.user, customer: customer.rows[0] };
+}
+
+app.get("/api/coffee-passport/bootstrap", async (c) => {
+  const session = await requirePassportSession(c.req.raw.headers);
+  const shops = await pool.query<PassportShop>(
+    "SELECT shop_id, name, slug, area, description, cover_url, google_maps_url, current_bid_amount FROM pos.coffee_passport_shops WHERE is_active = true AND verification_status = 'approved' ORDER BY current_bid_amount DESC, name ASC",
+  );
+  if (!session) {
+    return privateJson({ success: true, authenticated: false, customer: null, shops: shops.rows, visits: [], collection: [], rewards: { available: 0, count: 0 } });
+  }
+  const [visits, collection, rewards] = await Promise.all([
+    pool.query("SELECT v.visit_id, v.shop_id, s.name AS shop_name, v.photo_path, v.photo_category, v.title, v.description, v.status, v.created_at, st.sticker_path, st.status AS sticker_status FROM pos.coffee_passport_visits v JOIN pos.coffee_passport_shops s ON s.shop_id = v.shop_id LEFT JOIN pos.coffee_passport_stickers st ON st.visit_id = v.visit_id WHERE v.customer_id = $1 ORDER BY v.created_at DESC LIMIT 100", [session.user.id]),
+    pool.query("SELECT * FROM public.pos_coffee_passport_collection_view WHERE customer_id = $1 ORDER BY first_visit_at DESC", [session.user.id]),
+    pool.query("SELECT COALESCE(sum(amount) FILTER (WHERE status = 'available'), 0)::bigint AS available, count(*) FILTER (WHERE status IN ('available','redeemed'))::integer AS count FROM pos.coffee_passport_rewards WHERE customer_id = $1", [session.user.id]),
+  ]);
+  return privateJson({ success: true, authenticated: true, customer: session.customer, shops: shops.rows, visits: visits.rows, collection: collection.rows, rewards: rewards.rows[0] ?? { available: 0, count: 0 } });
+});
+
+function normalizeShopName(value: string) {
+  return value.toLocaleLowerCase("id-ID").normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu, "");
+}
+
+app.post("/api/coffee-passport/collect", async (c) => {
+  const session = await requirePassportSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
+  const body = await c.req.json().catch(() => ({})) as { shop_id?: unknown; idempotency_key?: unknown };
+  const shopId = typeof body.shop_id === "string" ? body.shop_id.trim() : "";
+  const idempotencyKey = typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+  if (!/^shop_[A-Za-z0-9_-]{8,120}$/.test(shopId)) return privateJson({ success: false, message: "Pilih kedai resmi terlebih dahulu." }, 400);
+  if (!/^[A-Za-z0-9_-]{12,100}$/.test(idempotencyKey)) return privateJson({ success: false, message: "Stamp belum bisa disimpan. Coba lagi." }, 400);
+
+  const existingRequest = await pool.query("SELECT visit_id, shop_id FROM pos.coffee_passport_visits WHERE customer_id = $1 AND idempotency_key = $2 LIMIT 1", [session.user.id, idempotencyKey]);
+  if (existingRequest.rows[0]) return privateJson({ success: true, status: "saved", duplicate: true, visit_id: existingRequest.rows[0].visit_id, shop_id: existingRequest.rows[0].shop_id });
+
+  const shop = await pool.query<PassportShop>("SELECT shop_id, name, slug, area, description, cover_url, google_maps_url, current_bid_amount FROM pos.coffee_passport_shops WHERE shop_id = $1 AND is_active = true AND verification_status = 'approved' LIMIT 1", [shopId]);
+  if (!shop.rows[0]) return privateJson({ success: false, message: "Kedai official tidak ditemukan atau belum disetujui." }, 404);
+  const duplicate = await pool.query("SELECT visit_id FROM pos.coffee_passport_visits WHERE customer_id = $1 AND shop_id = $2 AND status <> 'failed' LIMIT 1", [session.user.id, shop.rows[0].shop_id]);
+  if (duplicate.rows[0]) return privateJson({ success: true, status: "duplicate", duplicate: true, visit_id: duplicate.rows[0].visit_id, shop_id: shop.rows[0].shop_id, message: "Kedai ini sudah ada di passport kamu." });
+  try {
+    const inserted = await pool.query("INSERT INTO pos.coffee_passport_visits (visit_id, customer_id, shop_id, photo_path, photo_category, title, status, idempotency_key) VALUES ($1, $2, $3, NULL, 'other', $4, 'draft', $5) RETURNING visit_id, shop_id", [`vst_${crypto.randomUUID().replace(/-/g, "")}`, session.user.id, shop.rows[0].shop_id, shop.rows[0].name, idempotencyKey]);
+    return privateJson({ success: true, status: "saved", duplicate: false, visit_id: inserted.rows[0].visit_id, shop_id: inserted.rows[0].shop_id, message: "Stamp tersimpan dari data kedai official. Lengkapi foto kunjunganmu." });
+  } catch (error) {
+    if ((error as { code?: string }).code === "23505") return privateJson({ success: true, status: "duplicate", duplicate: true, message: "Kedai ini sudah ada di passport kamu." });
+    throw error;
+  }
+});
+
+function isGoogleMapsUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && ["maps.google.com", "www.google.com", "google.com", "maps.app.goo.gl"].includes(url.hostname.toLowerCase())
+      && (url.hostname.toLowerCase() !== "google.com" || url.pathname.startsWith("/maps"));
+  } catch { return false; }
+}
+
+app.post("/api/coffee-passport/shops/onboard", async (c) => {
+  const session = await requirePassportSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
+  const body = await c.req.json().catch(() => ({})) as { name?: unknown; google_maps_url?: unknown; area?: unknown; description?: unknown };
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const mapsUrl = typeof body.google_maps_url === "string" ? body.google_maps_url.trim() : "";
+  const area = typeof body.area === "string" ? body.area.trim().slice(0, 80) : "";
+  const description = typeof body.description === "string" ? body.description.trim().slice(0, 1000) : "";
+  if (name.length < 2 || name.length > 160) return privateJson({ success: false, message: "Nama kedai belum lengkap." }, 400);
+  if (!isGoogleMapsUrl(mapsUrl)) return privateJson({ success: false, message: "Isi link Google Maps resmi kedai." }, 400);
+  const existing = await pool.query("SELECT shop_id FROM pos.coffee_passport_shops WHERE owner_customer_id = $1 AND verification_status = 'pending_review' LIMIT 1", [session.user.id]);
+  if (existing.rows[0]) return privateJson({ success: true, status: "pending_review", shop_id: existing.rows[0].shop_id, message: "Pengajuan kedaimu sedang diperiksa." });
+  const shopId = `shop_${crypto.randomUUID().replace(/-/g, "")}`;
+  const slug = `${name.toLocaleLowerCase("id-ID").normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 70)}-${shopId.slice(-8)}`;
+  await pool.query("INSERT INTO pos.coffee_passport_shops (shop_id, name, slug, area, description, owner_customer_id, google_maps_url, verification_status, is_active) VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), $6, $7, 'pending_review', false)", [shopId, name, slug, area, description, session.user.id, mapsUrl]);
+  return privateJson({ success: true, status: "pending_review", shop_id: shopId, message: "Data kedai dan Google Maps sudah diterima untuk diverifikasi." });
+});
+
+app.get("/api/coffee-passport/bid/leaderboard", async (c) => {
+  const result = await pool.query(`SELECT s.shop_id, s.name, s.slug, s.area, s.description, s.cover_url, s.google_maps_url,
+      s.current_bid_amount, count(DISTINCT cl.click_id)::integer AS clicks
+    FROM pos.coffee_passport_shops s
+    LEFT JOIN pos.coffee_passport_bid_clicks cl ON cl.shop_id = s.shop_id
+    WHERE s.is_active = true AND s.verification_status = 'approved'
+    GROUP BY s.shop_id ORDER BY s.current_bid_amount DESC, s.current_bid_paid_sequence ASC NULLS LAST, s.updated_at ASC, s.name ASC LIMIT 100`);
+  const config = await pool.query("SELECT minimum_bid_amount, minimum_increment, maximum_bid_amount FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
+  const row = config.rows[0] ?? { minimum_bid_amount: 5000, minimum_increment: 500, maximum_bid_amount: 999999999 };
+  const top = Number(result.rows[0]?.current_bid_amount || 0);
+  return privateJson({ success: true, shops: result.rows, next_bid_amount: Math.max(Number(row.minimum_bid_amount), top + Number(row.minimum_increment)), minimum_increment: Number(row.minimum_increment), minimum_bid_amount: Number(row.minimum_bid_amount), maximum_bid_amount: Number(row.maximum_bid_amount) });
+});
+
+app.post("/api/coffee-passport/bid/intent", async (c) => {
+  const session = await requirePassportSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
+  const body = await c.req.json().catch(() => ({})) as { shop_id?: unknown; bid_amount?: unknown; idempotency_key?: unknown };
+  const shopId = typeof body.shop_id === "string" ? body.shop_id.trim() : "";
+  const bidAmount = Number(body.bid_amount);
+  const idempotencyKey = typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+  if (!shopId || !Number.isSafeInteger(bidAmount) || bidAmount <= 0 || !/^[A-Za-z0-9_-]{12,100}$/.test(idempotencyKey)) return privateJson({ success: false, message: "Data bid belum lengkap." }, 400);
+  const shop = await pool.query("SELECT shop_id, name, owner_customer_id FROM pos.coffee_passport_shops WHERE shop_id = $1 AND is_active = true AND verification_status = 'approved' LIMIT 1", [shopId]);
+  if (!shop.rows[0]) return privateJson({ success: false, message: "Kedai official tidak ditemukan." }, 404);
+  if (shop.rows[0].owner_customer_id !== session.user.id) return privateJson({ success: false, message: "Hanya pemilik kedai yang dapat melakukan bid." }, 403);
+  const client = await pool.connect();
+  let entryId = "";
+  try {
+    await client.query("BEGIN");
+    const config = await client.query("SELECT minimum_bid_amount, minimum_increment, maximum_bid_amount FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
+    const current = await client.query("SELECT current_bid_amount FROM pos.coffee_passport_shops WHERE shop_id = $1 FOR UPDATE", [shopId]);
+    const minimum = Math.max(Number(config.rows[0]?.minimum_bid_amount || 5000), Number(current.rows[0]?.current_bid_amount || 0) + Number(config.rows[0]?.minimum_increment || 500));
+    const maximum = Number(config.rows[0]?.maximum_bid_amount || 999999999);
+    if (bidAmount > maximum) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, message: `Bid maksimal ${formatRupiahServer(maximum)}.` }, 400);
+    }
+    if (bidAmount < minimum) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, message: `Bid minimum saat ini ${formatRupiahServer(minimum)}.` }, 409);
+    }
+    const existing = await client.query("SELECT entry_id, status, mayar_invoice_id FROM pos.coffee_passport_bid_entries WHERE idempotency_key = $1 LIMIT 1", [idempotencyKey]);
+    if (existing.rows[0]) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: true, entry_id: existing.rows[0].entry_id, status: existing.rows[0].status, invoice_id: existing.rows[0].mayar_invoice_id, duplicate: true });
+    }
+    entryId = `bid_${crypto.randomUUID().replace(/-/g, "")}`;
+    await client.query("INSERT INTO pos.coffee_passport_bid_entries (entry_id, shop_id, bidder_customer_id, bid_amount, idempotency_key) VALUES ($1, $2, $3, $4, $5)", [entryId, shopId, session.user.id, bidAmount, idempotencyKey]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    if ((error as { code?: string }).code === "23505") return privateJson({ success: false, message: "Bid dengan permintaan ini sudah diproses. Coba muat ulang halaman." }, 409);
+    throw error;
+  } finally {
+    client.release();
+  }
+  try {
+    const invoice = await createBidInvoice(entryId, String(shop.rows[0].name), bidAmount, session.customer);
+    await pool.query("UPDATE pos.coffee_passport_bid_entries SET mayar_invoice_id = $1, mayar_transaction_id = $2 WHERE entry_id = $3", [invoice.invoiceId, invoice.transactionId, entryId]);
+    return privateJson({ success: true, entry_id: entryId, status: "pending_payment", amount: bidAmount, invoice_id: invoice.invoiceId, invoice_url: invoice.link, message: "Bid dibuat. Selesaikan pembayaran melalui Mayar." });
+  } catch (error) {
+    await pool.query("UPDATE pos.coffee_passport_bid_entries SET status = 'failed' WHERE entry_id = $1", [entryId]);
+    return privateJson({ success: false, message: "Invoice Mayar belum dapat dibuat. Coba lagi." }, 502);
+  }
+});
+
+async function createBidInvoice(entryId: string, shopName: string, amount: number, customer: { name?: string | null; email?: string | null }) {
+  const response = await fetch(MAYAR_PROXY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}),
+    },
+    body: JSON.stringify({
+      action: "create-invoice",
+      name: customer.name || "Pemilik kedai",
+      email: customer.email,
+      mobile: MAYAR_DEFAULT_MOBILE,
+      redirectUrl: "https://500kopitasik.yumme.id",
+      description: `Bid Rank ${shopName}`,
+      items: [{ quantity: 1, rate: amount, description: `Bid Rank ${shopName}` }],
+      extraData: { coffeePassportBidEntryId: entryId, shopName },
+    }),
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  const data = payload.data && typeof payload.data === "object" ? payload.data as Record<string, unknown> : {};
+  const link = data.link || data.paymentUrl || data.url;
+  if (!response.ok || !payload.success || !data.id || !link) throw new Error("Invoice Mayar belum dapat dibuat. Coba lagi.");
+  return { invoiceId: String(data.id), transactionId: data.transactionId ? String(data.transactionId) : null, link: String(link) };
+}
+
+function formatRupiahServer(value: number) { return `Rp${new Intl.NumberFormat("id-ID").format(value)}`; }
 
 async function requireCustomerSession(headers: Headers) {
   const session = await auth.api.getSession({ headers });

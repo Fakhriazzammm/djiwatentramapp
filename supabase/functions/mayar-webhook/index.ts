@@ -177,6 +177,18 @@ function parseExtraData(value: unknown) {
   }
 }
 
+async function settleCoffeePassportBid(entryId: string, invoiceId: string, transaction: Record<string, unknown>) {
+  const transactionId = String(transaction.id || "");
+  if (!entryId || !transactionId) return null;
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/coffee_passport_settle_bid`, {
+    method: "POST",
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_entry_id: entryId, p_invoice_id: invoiceId, p_transaction_id: transactionId, p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
+  });
+  if (!response.ok) throw new Error(`Coffee passport bid settlement failed (${response.status})`);
+  return await response.json();
+}
+
 async function settleWalletTopup(topupId: string, transaction: Record<string, unknown>) {
   const transactionId=String(transaction.id||""); if(!topupId||!transactionId) return null;
   const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/wallet_settle_topup`,{method:"POST",headers:{apikey:SERVICE_ROLE_KEY,Authorization:`Bearer ${SERVICE_ROLE_KEY}`,"Content-Type":"application/json","Content-Profile":"pos"},body:JSON.stringify({p_topup_id:topupId,p_transaction_id:transactionId,p_paid_at:new Date(Number(transaction.updatedAt||transaction.createdAt||Date.now())).toISOString()})});
@@ -306,6 +318,11 @@ Deno.serve(async (req) => {
     if (walletTopupId) {
       const settledWallet = await settleWalletTopup(walletTopupId, transaction);
       return json({ ok: true, walletTopup: settledWallet });
+    }
+    const coffeePassportBidEntryId = String(data?.extraData?.coffeePassportBidEntryId || transactionExtraData.coffeePassportBidEntryId || "");
+    if (coffeePassportBidEntryId) {
+      const settledBid = await settleCoffeePassportBid(coffeePassportBidEntryId, String(data.id || ""), transaction);
+      return json({ ok: true, coffeePassportBid: settledBid });
     }
     const bookingId = String(data?.extraData?.bookingId || transactionExtraData.bookingId || "");
     const invoiceId = String(data.id || "");

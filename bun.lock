@@ -16,6 +16,25 @@
         "typescript": "5.0.4",
       },
     },
+    "apps/500kopitasik": {
+      "name": "@yumipos/500kopitasik",
+      "version": "0.0.0",
+      "dependencies": {
+        "@tailwindcss/vite": "^4.0.15",
+        "framer-motion": "^12.29.0",
+        "lucide-react": "^0.473.0",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "tailwindcss": "^4.0.15",
+        "vite": "^6.4.2",
+      },
+      "devDependencies": {
+        "@types/react": "19.2.7",
+        "@types/react-dom": "19.2.3",
+        "@vitejs/plugin-react": "^4.3.4",
+        "typescript": "catalog:",
+      },
+    },
     "apps/admin": {
       "name": "@yumipos/admin",
       "version": "0.0.0",
@@ -1132,6 +1151,8 @@
     "@vite-pwa/assets-generator": ["@vite-pwa/assets-generator@1.0.2", "", { "dependencies": { "cac": "^6.7.14", "colorette": "^2.0.20", "consola": "^3.4.2", "sharp": "^0.33.5", "sharp-ico": "^0.1.5", "unconfig": "^7.3.1" }, "bin": { "pwa-assets-generator": "bin/pwa-assets-generator.mjs" } }, "sha512-MCbrb508JZHqe7bUibmZj/lyojdhLRnfkmyXnkrCM2zVrjTgL89U8UEfInpKTvPeTnxsw2hmyZxnhsdNR6yhwg=="],
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@4.7.0", "", { "dependencies": { "@babel/core": "^7.28.0", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-beta.27", "@types/babel__core": "^7.20.5", "react-refresh": "^0.17.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA=="],
+
+    "@yumipos/500kopitasik": ["@yumipos/500kopitasik@workspace:apps/500kopitasik"],
 
     "@yumipos/admin": ["@yumipos/admin@workspace:apps/admin"],
 
