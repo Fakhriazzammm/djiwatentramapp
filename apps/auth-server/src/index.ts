@@ -4,7 +4,7 @@ import { serve } from "@hono/node-server";
 import { auth, pool } from "./auth.js";
 import { staffAuth } from "./staff-auth.js";
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const app = new Hono();
@@ -156,6 +156,38 @@ app.get("/api/coffee-passport/bootstrap", async (c) => {
     pool.query("SELECT COALESCE(sum(amount) FILTER (WHERE status = 'available'), 0)::bigint AS available, count(*) FILTER (WHERE status IN ('available','redeemed'))::integer AS count FROM pos.coffee_passport_rewards WHERE customer_id = $1", [session.user.id]),
   ]);
   return privateJson({ success: true, authenticated: true, customer: session.customer, shops: shops.rows, visits: visits.rows, collection: collection.rows, rewards: rewards.rows[0] ?? { available: 0, count: 0 } });
+});
+
+app.post("/api/coffee-passport/visits/create", async (c) => {
+  const session = await requirePassportSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
+  const body = await c.req.json().catch(() => ({})) as { shop_id?: unknown; idempotency_key?: unknown; photo_data_url?: unknown };
+  const shopId = typeof body.shop_id === "string" ? body.shop_id.trim() : "";
+  const idempotencyKey = typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+  const photoDataUrl = typeof body.photo_data_url === "string" ? body.photo_data_url : "";
+  if (!/^shop_[A-Za-z0-9_-]{8,120}$/.test(shopId) || !/^[A-Za-z0-9_-]{12,160}$/.test(idempotencyKey)) return privateJson({ success: false, message: "Data visit tidak valid." }, 400);
+  const match = photoDataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return privateJson({ success: false, message: "Foto visit wajib berupa JPG, PNG, atau WebP." }, 400);
+  const rawPhoto = Buffer.from(match[2], "base64");
+  if (rawPhoto.byteLength < 100 || rawPhoto.byteLength > 8 * 1024 * 1024) return privateJson({ success: false, message: "Ukuran foto harus antara 100 byte dan 8 MB." }, 413);
+  const shop = await pool.query<PassportShop>("SELECT shop_id, name, slug, area, description, cover_url, google_maps_url, current_bid_amount FROM pos.coffee_passport_shops WHERE shop_id = $1 AND is_active = true AND verification_status = 'approved' LIMIT 1", [shopId]);
+  if (!shop.rows[0]) return privateJson({ success: false, message: "Coffee shop official tidak ditemukan." }, 404);
+  const existing = await pool.query("SELECT visit_id FROM pos.coffee_passport_visits WHERE customer_id = $1 AND idempotency_key = $2 LIMIT 1", [session.user.id, idempotencyKey]);
+  if (existing.rows[0]) return privateJson({ success: true, status: "duplicate", visit_id: existing.rows[0].visit_id, shop_id: shopId });
+  const visitId = `vst_${crypto.randomUUID().replace(/-/g, "")}`;
+  const extension = match[1] === "image/png" ? "png" : match[1] === "image/webp" ? "webp" : "jpg";
+  const photoRoot = process.env.COFFEE_PASSPORT_PHOTO_DIR || join(process.cwd(), ".runtime", "coffee-passport-photos");
+  const photoFilename = `${visitId}_${crypto.randomUUID().replace(/-/g, "")}.${extension}`;
+  await mkdir(photoRoot, { recursive: true, mode: 0o750 });
+  await writeFile(join(photoRoot, photoFilename), rawPhoto, { mode: 0o640 });
+  try {
+    await pool.query("INSERT INTO pos.coffee_passport_visits (visit_id, customer_id, shop_id, photo_path, photo_category, title, status, idempotency_key, captured_at) VALUES ($1, $2, $3, $4, 'other', $5, 'recorded', $6, now())", [visitId, session.user.id, shopId, photoFilename, shop.rows[0].name, idempotencyKey]);
+    return privateJson({ success: true, status: "saved", visit_id: visitId, shop_id: shopId, message: "Foto visit tersimpan. Sticker passport siap dibuat." });
+  } catch (error) {
+    await unlink(join(photoRoot, photoFilename)).catch(() => undefined);
+    if ((error as { code?: string }).code === "23505") return privateJson({ success: false, message: "Visit sedang diproses. Coba lagi." }, 409);
+    throw error;
+  }
 });
 
 app.post("/api/coffee-passport/collect", async (c) => {
