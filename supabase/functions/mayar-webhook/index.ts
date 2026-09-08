@@ -326,100 +326,26 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method === "GET") return json({ status: "ok", service: "mayar-webhook" });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  if (!WEBHOOK_TOKEN || !safeTokenEqual(tokenFromRequest(req), WEBHOOK_TOKEN)) {
-    return json({ error: "Unauthorized" }, 401);
-  }
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-    return json({ error: "Webhook storage is not configured" }, 500);
-  }
-
+  if (!WEBHOOK_TOKEN || !safeTokenEqual(tokenFromRequest(req), WEBHOOK_TOKEN)) return json({ error: "Unauthorized" }, 401);
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return json({ error: "Webhook storage is not configured" }, 500);
   try {
     const payload = await req.json();
-    // Mayar mengirim event sebagai string ("payment.received") atau object
-    // ({ received: ... }); dukung keduanya agar webhook produksi tidak terabaikan.
-    const rawEvent = typeof payload?.event === "string"
-      ? payload.event
-      : String(payload?.event?.received || payload?.action || "");
-    const event = rawEvent.trim();
-    if (event === "reconcile") {
-      return json({
-        ok: true,
-        wallet: await reconcilePendingWalletTopups(),
-        orders: await reconcilePendingOrders(),
-        coffeePassportListings: await reconcilePendingCoffeePassportListings(),
-      });
-    }
+    const event = typeof payload?.event === "string" ? payload.event.trim() : String(payload?.event?.received || payload?.action || "").trim();
+    if (event !== "payment.received") return json({ ok: true, ignored: true, event });
     const data = payload?.data || {};
-    if (event !== "payment.received") {
-      return json({ ok: true, ignored: true, event });
-    }
-
     const transactionId = String(data.transactionId || "");
-    if (!transactionId || !MAYAR_API_KEY) {
-      return json({ ok: true, ignored: true, reason: "missing_transaction_id" });
-    }
-    const transaction = await verifyTransaction(transactionId);
-    if (!transaction) {
-      return json({ ok: true, ignored: true, reason: "transaction_not_paid" });
-    }
-
-    const customFields = Array.isArray(data.custom_field) ? data.custom_field : [];
-    const transactionExtraData = parseExtraData(transaction.extraData);
-    const walletTopupId = String(data?.extraData?.walletTopupId || transactionExtraData.walletTopupId || "");
-    if (walletTopupId) {
-      const settledWallet = await settleWalletTopup(walletTopupId, transaction);
-      return json({ ok: true, walletTopup: settledWallet });
-    }
-    const coffeePassportListingPaymentId = String(data?.extraData?.coffeePassportListingPaymentId || transactionExtraData.coffeePassportListingPaymentId || "");
-    if (coffeePassportListingPaymentId) {
-      const settledListing = await settleCoffeePassportListing(coffeePassportListingPaymentId, String(data.id || ""), transaction);
-      return json({ ok: true, coffeePassportListing: settledListing });
-    }
-    const coffeePassportBidEntryId = String(data?.extraData?.coffeePassportBidEntryId || transactionExtraData.coffeePassportBidEntryId || "");
-    if (coffeePassportBidEntryId) {
-      const settledBid = await settleCoffeePassportBid(coffeePassportBidEntryId, String(data.id || ""), transaction);
-      return json({ ok: true, coffeePassportBid: settledBid });
-    }
-    const bookingId = String(data?.extraData?.bookingId || transactionExtraData.bookingId || "");
-    const invoiceId = String(data.id || "");
-    if (bookingId) {
-      const settledBooking = await settleBooking(bookingId, invoiceId, transaction);
-      return json({ ok: true, booking: settledBooking });
-    }
-    const customOrderId = customFields.find((field: Record<string, unknown>) => field?.key === "order_id")?.value;
-    const orderId = String(
-      data?.extraData?.orderId || parseExtraData(transaction?.extraData).orderId || customOrderId || "",
-    );
-    let settled = { scanned: 0, settled: [] as Array<Record<string, unknown>> };
-    if (orderId) {
-      const directOrderResponse = await fetchWithTimeout(
-        `${SUPABASE_URL}/rest/v1/orders?select=*&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
-        { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
-      );
-      const directOrders = directOrderResponse.ok
-        ? await directOrderResponse.json() as Array<Record<string, unknown>>
-        : [];
-      if (directOrders[0]) {
-        const result = await settleOrder(directOrders[0], transaction, invoiceId);
-        settled = { scanned: directOrders.length, settled: [{ orderId, ...result }] };
-      }
-    }
-    if (!settled.settled.length && orderId) {
-      settled = await reconcilePendingOrders();
-    }
-    if (!settled.settled.length && invoiceId) {
-      const fallback = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders?select=*&gateway_invoice_id=eq.${encodeURIComponent(invoiceId)}&limit=1`, { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Profile": "pos" } });
-      const orders = fallback.ok ? await fallback.json() as Array<Record<string, unknown>> : [];
-      if (orders[0]) {
-        const result = await settleOrder(orders[0], transaction, invoiceId);
-        settled = { scanned: orders.length, settled: [{ orderId: orders[0].source_id, ...result }] };
-      }
-    }
-    const first = settled.settled[0];
-    return json({ ok: true, updated: first?.updated || 0, transactionCreated: first?.transactionCreated || false });
+    const providerEventId = String(data.id || data.eventId || payload.id || "");
+    const eventKey = providerEventId || `payment.received:${transactionId}`;
+    if (!transactionId || !eventKey) return json({ ok: true, ignored: true, reason: "missing_event_identity" });
+    const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/enqueue_mayar_payment_event`, {
+      method: "POST",
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
+      body: JSON.stringify({ p_provider_event_key: eventKey, p_event_type: event, p_provider_transaction_id: transactionId, p_payload: payload }),
+    });
+    if (!response.ok) throw new Error(`Mayar event enqueue failed (${response.status})`);
+    return json({ ok: true, queued: true, ...(await response.json()) });
   } catch (error) {
-    console.error("mayar-webhook failed", error);
-    return json({ error: "Webhook processing failed" }, 500);
+    console.error("mayar-webhook enqueue failed", error);
+    return json({ error: "Webhook storage failed" }, 500);
   }
 });

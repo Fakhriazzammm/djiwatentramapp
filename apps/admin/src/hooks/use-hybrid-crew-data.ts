@@ -20,7 +20,7 @@ export function useHybridCrewProduction() {
 		"crew-production:today",
 		() => fetchCrewProductionToday(),
 		[],
-		{ tables: ["pos_order_status"] },
+		{ tables: ["order_status"] }
 	);
 
 	return useMemo(() => {

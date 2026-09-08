@@ -8,13 +8,15 @@ function safeNum(value: unknown) {
 	return Number.isFinite(n) ? n : 0;
 }
 
+const REALTIME_TABLES = ["documents", "yumi_users", "attendance_schedules", "attendance_logs"];
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[],
 	options?: UseSupabaseLiveValueOptions
 ) {
-	return useSupabaseLiveValue(key, load, deps, options);
+	return useSupabaseLiveValue(key, load, deps, { tables: REALTIME_TABLES, ...options });
 }
 
 async function fetchPublicUsers() {

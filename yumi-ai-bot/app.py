@@ -7,6 +7,7 @@ import io
 from datetime import datetime, timedelta, timezone
 from collections import Counter
 import asyncio
+import time
 
 import httpx
 from dotenv import load_dotenv
@@ -187,6 +188,7 @@ _reported_expense_ids: set[str] = set()
 
 # Polling state for real-time transaction monitoring
 _last_expense_check_ms = 0
+_expense_seed_ready = False
 
 # Shift-close report state. Keep it outside Git so deploys cannot replay old shifts.
 _SHIFT_RECAP_STATE_FILE = os.path.join(os.path.dirname(__file__), ".runtime", "shift_recap_cursor.txt")
@@ -2627,7 +2629,15 @@ async def _check_new_attendance(app):
 
 async def _check_new_transactions(app):
     """Poll for new expenses, report to group."""
-    global _last_expense_check_ms, _reported_expense_ids
+    global _last_expense_check_ms, _reported_expense_ids, _expense_seed_ready
+    # Startup is a baseline, not a delivery pass. This prevents a restart from
+    # replaying the prior one-minute recovery window; later cycles remain
+    # incremental and retain the existing expense-id dedupe set.
+    if not _expense_seed_ready:
+        _last_expense_check_ms = int(_now_wib().timestamp() * 1000)
+        _expense_seed_ready = True
+        logger.info("expense polling baseline seeded at %d", _last_expense_check_ms)
+        return 0
     now_ms = int(_now_wib().timestamp() * 1000)
 
     # Initialize on first run
@@ -2757,9 +2767,11 @@ async def _check_new_transactions(app):
 
         # Always advance expense cursor
         _last_expense_check_ms = now_ms
+        return len(fin_rows)
 
     except Exception as e:
         logger.warning("check_new_transactions failed: %s", e)
+        return 0
 
 
 async def _check_closed_shift_reports(app) -> None:
@@ -2784,10 +2796,10 @@ async def _check_closed_shift_reports(app) -> None:
             shifts = response.json() if isinstance(response.json(), list) else []
     except Exception as e:
         logger.warning("shift_report fetch failed: %s", e)
-        return
+        return 0
 
     if not shifts:
-        return
+        return 0
 
     last_cursor = _SHIFT_RECAP_CURSOR_MS
     for shift in shifts:
@@ -3051,6 +3063,31 @@ async def _send_marketlist_to_group(app):
         logger.exception("send_marketlist_to_group failed")
 
 
+_AI_TRANSACTION_INTERVAL_S = 30
+_AI_SHIFT_INTERVAL_S = 60
+_ai_transaction_poll_lock = asyncio.Lock()
+_ai_shift_poll_lock = asyncio.Lock()
+_ai_poll_metrics: dict[str, dict[str, float | int]] = {}
+
+async def _run_ai_poll(name: str, check, app):
+    lock = _ai_transaction_poll_lock if name == "transactions" else _ai_shift_poll_lock
+    if lock.locked():
+        logger.info("auto-reporter poll skip: %s already in flight", name)
+        return
+    started = time.perf_counter()
+    async with lock:
+        try:
+            result = await check(app)
+            rows = result if isinstance(result, int) else 0
+            metric = _ai_poll_metrics.setdefault(name, {"calls": 0, "rows": 0, "last_duration_ms": 0.0})
+            metric["calls"] += 1
+            metric["rows"] += rows
+            metric["last_duration_ms"] = round((time.perf_counter() - started) * 1000, 2)
+            logger.info("auto-reporter metric %s duration_ms=%.2f rows=%d", name, metric["last_duration_ms"], rows)
+        except Exception:
+            logger.exception("auto-reporter poll failed: %s", name)
+
+
 async def _start_auto_reporter(app):
     """Start polling loop and daily summary scheduler."""
     if not AUTO_REPORTER_ENABLED:
@@ -3103,29 +3140,26 @@ async def _start_auto_reporter(app):
     )
     logger.info("Auto-reporter: marketlist scheduled at 07:00 WIB")
 
-    # Real-time polling every 30 seconds
-    async def _poll_loop():
-        # Immediate catch-up on startup
-        try:
-            await _check_new_transactions(app)
-            logger.info("Auto-reporter: catch-up check complete")
-        except Exception as e:
-            logger.warning("Auto-reporter: catch-up check failed: %s", e)
-        # Attendance notifications belong exclusively to yumi-hrd-agent.
-        # Do not duplicate check-in/check-out broadcasts from General Manager.
-        try:
-            await _check_closed_shift_reports(app)
-            logger.info("Auto-reporter: shift report catch-up complete")
-        except Exception as e:
-            logger.warning("Auto-reporter: shift report catch-up failed: %s", e)
-        while True:
-            await asyncio.sleep(30)
-            await _check_new_transactions(app)
-            # Attendance notifications belong exclusively to yumi-hrd-agent.
-            await _check_closed_shift_reports(app)
+    # Immediate startup baselines/catch-up are single-flight. Expense baseline
+    # intentionally sends nothing; shift cursor retains its existing semantics.
+    await _run_ai_poll("transactions", _check_new_transactions, app)
+    await _run_ai_poll("shifts", _check_closed_shift_reports, app)
 
-    asyncio.create_task(_poll_loop())
-    logger.info("Auto-reporter: real-time polling started (30s interval, immediate catch-up)")
+    async def _transaction_poll_loop():
+        while True:
+            await asyncio.sleep(_AI_TRANSACTION_INTERVAL_S)
+            await _run_ai_poll("transactions", _check_new_transactions, app)
+
+    async def _shift_poll_loop():
+        while True:
+            await asyncio.sleep(_AI_SHIFT_INTERVAL_S)
+            # Attendance notifications belong exclusively to yumi-hrd-agent.
+            await _run_ai_poll("shifts", _check_closed_shift_reports, app)
+
+    asyncio.create_task(_transaction_poll_loop())
+    asyncio.create_task(_shift_poll_loop())
+    logger.info("Auto-reporter polling started (transactions=%ss shifts=%ss)",
+                _AI_TRANSACTION_INTERVAL_S, _AI_SHIFT_INTERVAL_S)
 
 
 # ===================================================================

@@ -2,12 +2,14 @@
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
+const REALTIME_TABLES = ["minigames", "minigame_entries"];
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, { tables: REALTIME_TABLES });
 }
 
 async function fetchGames(args: {

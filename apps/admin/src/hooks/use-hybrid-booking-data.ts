@@ -22,13 +22,15 @@ function toPublicAssetUrl(value?: string | null) {
 	return `${publicAssetBaseUrl}/${String(value).replace(/^\/+/, "")}`;
 }
 
+const REALTIME_TABLES = ["booking_settings", "booking_orders", "booking_order_items", "booking_date_capacity", "products"];
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
 	const refreshTrigger = useGlobalRefreshTrigger();
-	return useSupabaseLiveValue(key, load, deps, { refreshTrigger });
+	return useSupabaseLiveValue(key, load, deps, { refreshTrigger, tables: REALTIME_TABLES });
 }
 
 async function fetchBookingSettings(slug: string) {

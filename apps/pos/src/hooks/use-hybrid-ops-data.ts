@@ -5,9 +5,10 @@ import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
-	deps: readonly unknown[]
+	deps: readonly unknown[],
+	options?: { tables?: string[]; refreshMs?: number }
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, options);
 }
 
 function resolveMayarConfig() {
@@ -136,7 +137,8 @@ export function useHybridVariationPresets() {
 	const supabaseData = useSupabaseValue(
 		"variation-presets",
 		fetchVariationPresets,
-		[]
+		[],
+		{ tables: ["variation_presets"] }
 	);
 	return supabaseData as any;
 }
@@ -145,7 +147,8 @@ export function useHybridTrackOrders(track: "kitchen" | "bar") {
 	const supabaseData = useSupabaseValue(
 		`track-orders:${track}`,
 		() => fetchTrackOrders(track),
-		[track]
+		[track],
+		{ tables: ["orders", "order_items"] }
 	);
 	return supabaseData as any;
 }
@@ -166,7 +169,8 @@ export function useHybridOrderStatus(track: "barista" | "kitchen") {
 	const supabaseData = useSupabaseValue(
 		`order-status:${track}`,
 		() => fetchOrderStatus(track),
-		[track]
+		[track],
+		{ tables: ["order_status"] }
 	);
 	return supabaseData as any;
 }

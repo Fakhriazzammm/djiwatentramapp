@@ -2053,8 +2053,8 @@ async function fetchDashboardStats() {
 export function useHybridSiteSettings(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("site-settings", fetchSiteSettings, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_site_settings'] } 
-			: { tables: ['pos_site_settings'] }
+			? { refreshTrigger, tables: ['site_settings'] }
+			: { tables: ['site_settings'] }
 	);
 	return supabaseData as SiteSettingsRecord | undefined;
 }
@@ -2062,8 +2062,8 @@ export function useHybridSiteSettings(refreshTrigger?: number) {
 export function useHybridCategories(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("categories", fetchCategories, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_categories'] } 
-			: { tables: ['pos_categories'] }
+			? { refreshTrigger, tables: ['categories'] }
+			: { tables: ['categories'] }
 	);
 	return supabaseData as CategoryRecord[] | undefined;
 }
@@ -2074,8 +2074,8 @@ export function useHybridActiveDiscounts(refreshTrigger?: number) {
 		fetchActiveDiscounts,
 		[],
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_active_discounts'] } 
-			: { tables: ['pos_active_discounts'] }
+			? { refreshTrigger, tables: ['discounts'] }
+			: { tables: ['discounts'] }
 	);
 	return supabaseData as DiscountRecord[] | undefined;
 }
@@ -2083,8 +2083,8 @@ export function useHybridActiveDiscounts(refreshTrigger?: number) {
 export function useHybridAllDiscounts(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("all-discounts", fetchAllDiscounts, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_discounts'] } 
-			: { tables: ['pos_discounts'] }
+			? { refreshTrigger, tables: ['discounts'] }
+			: { tables: ['discounts'] }
 	);
 	return supabaseData as DiscountRecord[] | undefined;
 }
@@ -2095,8 +2095,8 @@ export function useHybridOrders(options?: { status?: string; limit?: number; ref
 		() => fetchOrders(options),
 		[options?.status, options?.limit],
 		options?.refreshTrigger !== undefined 
-			? { refreshTrigger: options.refreshTrigger, tables: ['pos_orders'] } 
-			: { tables: ['pos_orders'] }
+			? { refreshTrigger: options.refreshTrigger, tables: ['orders', 'order_items'] }
+			: { tables: ['orders', 'order_items'] }
 	);
 	return supabaseData as OrderRecord[] | undefined;
 }
@@ -2104,8 +2104,8 @@ export function useHybridOrders(options?: { status?: string; limit?: number; ref
 export function useHybridInventory(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("inventory", fetchInventory, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_inventory'] } 
-			: { tables: ['pos_inventory'] }
+			? { refreshTrigger, tables: ['inventory', 'inventory_transactions'] }
+			: { tables: ['inventory', 'inventory_transactions'] }
 	);
 	return supabaseData as InventoryRecord[] | undefined;
 }
@@ -2129,8 +2129,8 @@ export function useHybridProducts(categoryId?: string | null, refreshTrigger?: n
 	const categories = useHybridCategories(refreshTrigger);
 	const supabaseData = useSupabaseValue("products", fetchProducts, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_products'] } 
-			: { tables: ['pos_products'] }
+			? { refreshTrigger, tables: ['products', 'categories'] }
+			: { tables: ['products', 'categories'] }
 	);
 
 	return useMemo(() => {
@@ -2152,8 +2152,8 @@ export function useHybridProducts(categoryId?: string | null, refreshTrigger?: n
 export function useHybridAllProducts(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("products-all", fetchAllProducts, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_products_all'] } 
-			: { tables: ['pos_products_all'] }
+			? { refreshTrigger, tables: ['products', 'categories'] }
+			: { tables: ['products', 'categories'] }
 	);
 	return supabaseData as ProductRecord[] | undefined;
 }
@@ -2161,8 +2161,8 @@ export function useHybridAllProducts(refreshTrigger?: number) {
 export function useHybridHppProductMap(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("hpp-product-map", fetchHppProductMap, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_hpp_calculations'] } 
-			: { tables: ['pos_hpp_calculations'] }
+			? { refreshTrigger, tables: ['hpp_calculations'] }
+			: { tables: ['hpp_calculations'] }
 	);
 	return supabaseData as HppProductMapRecord | undefined;
 }
@@ -2173,8 +2173,8 @@ export function useHybridLatestInventoryCosts(refreshTrigger?: number) {
 		fetchLatestInventoryCosts,
 		[],
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_inventory_latest_costs'] } 
-			: { tables: ['pos_inventory_latest_costs'] }
+			? { refreshTrigger, tables: ['inventory_transactions'] }
+			: { tables: ['inventory_transactions'] }
 	);
 	return supabaseData as InventoryCostMapRecord | undefined;
 }
@@ -2187,7 +2187,7 @@ export function useHybridShiftReportRows(refreshTrigger?: number) {
 		[],
 		// Bug #12: Polling 10 detik + realtime di tabel sumber (orders/shifts/financial)
 		// agar revenue dashboard ikut ter-update saat ada order baru.
-		{ refreshMs: 10_000, tables: ['shifts', 'orders', 'financial_transactions'], ...(refreshTrigger !== undefined ? { refreshTrigger } : {}) }
+		{ refreshMs: 10_000, tables: ['shifts', 'orders', 'order_items', 'financial_transactions'], ...(refreshTrigger !== undefined ? { refreshTrigger } : {}) }
 	);
 	return supabaseData as ShiftReportRecord[] | undefined;
 }
@@ -2198,8 +2198,8 @@ export function useHybridCurrentMonthProgress(refreshTrigger?: number) {
 		fetchCurrentMonthProgress,
 		[],
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_current_month_progress'] } 
-			: { tables: ['pos_current_month_progress'] }
+			? { refreshTrigger, tables: ['financial_targets', 'financial_transactions'] }
+			: { tables: ['financial_targets', 'financial_transactions'] }
 	);
 	return supabaseData as CurrentMonthProgressRecord | undefined;
 }
@@ -2228,8 +2228,8 @@ export function useHybridShiftDetails(
 export function useHybridStaffRoles(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("staff-roles", fetchStaffRoles, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_staff_roles'] } 
-			: { tables: ['pos_staff_roles'] }
+			? { refreshTrigger, tables: ['yumi_roles'] }
+			: { tables: ['yumi_roles'] }
 	);
 	return supabaseData as StaffRoleRecord[] | undefined;
 }
@@ -2237,8 +2237,8 @@ export function useHybridStaffRoles(refreshTrigger?: number) {
 export function useHybridStaffUsers(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("staff-users", fetchStaffUsers, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_staff_users'] } 
-			: { tables: ['pos_staff_users'] }
+			? { refreshTrigger, tables: ['yumi_users'] }
+			: { tables: ['yumi_users'] }
 	);
 	return supabaseData as StaffUserRecord[] | undefined;
 }
@@ -2246,8 +2246,8 @@ export function useHybridStaffUsers(refreshTrigger?: number) {
 export function useHybridShiftStatus(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("shift-status", fetchShiftStatus, [], 
 		refreshTrigger !== undefined 
-			? { refreshTrigger, tables: ['pos_shifts'] } 
-			: { tables: ['pos_shifts'] }
+			? { refreshTrigger, tables: ['shifts'] }
+			: { tables: ['shifts'] }
 	);
 	return supabaseData as ShiftStatusRecord | undefined;
 }
@@ -2257,7 +2257,7 @@ export function useHybridDashboardStats() {
 		"dashboard-stats",
 		fetchDashboardStats,
 		[],
-		{ tables: ['pos_shifts','pos_orders','pos_financial_transactions','pos_booking_orders','pos_inventory','pos_products_all'] }
+		{ tables: ['shifts', 'orders', 'order_items', 'financial_transactions', 'booking_orders', 'inventory', 'products'] }
 	);
 	return supabaseData as DashboardStatsRecord | undefined;
 }
@@ -2314,7 +2314,6 @@ export type {
 	InventoryRecord,
 	InventoryCostMapRecord,
 	OrderRecord,
-	OrderStatusRecord,
 	ProductRecord,
 	ShiftOperationalRecord,
 	ShiftStatusRecord,
@@ -2368,8 +2367,8 @@ export function useHybridOrderStatus(refreshTrigger?: number) {
 		fetchOrderStatus,
 		[],
 		refreshTrigger !== undefined
-			? { refreshTrigger, tables: ['pos_order_status'] }
-			: { tables: ['pos_order_status'] }
+			? { refreshTrigger, tables: ['order_status'] }
+			: { tables: ['order_status'] }
 	);
 	return supabaseData as OrderStatusRecord[] | undefined;
 }

@@ -257,12 +257,14 @@ type InventoryWorkspaceData = {
 	}>;
 };
 
+const REALTIME_TABLES = ["inventory", "inventory_transactions", "inventory_stores", "base_recipes", "recipes", "products", "hpp_calculations", "financial_transactions"];
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, { tables: REALTIME_TABLES });
 }
 
 function normalizeLookupText(input?: string | null) {
@@ -1635,7 +1637,7 @@ export function useHybridInventoryWorkspace(options?: { daysWindow?: number }) {
 		`inventory-workspace:${daysWindow}`,
 		() => loadWorkspace(daysWindow),
 		[daysWindow],
-		{ refreshMs: 60_000 }
+		{ refreshMs: 60_000, tables: ["inventory", "inventory_transactions", "products", "recipes"] }
 	);
 	return supabaseData as any;
 }

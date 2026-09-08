@@ -7,12 +7,14 @@ function safeNum(value: unknown) {
 	return Number.isFinite(n) ? n : 0;
 }
 
+const REALTIME_TABLES = ["payroll_periods", "payroll_role_rules", "payroll_user_overrides", "payroll_runs", "payroll_run_items", "payslips", "payroll_audit_logs", "attendance_schedules"];
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, { tables: REALTIME_TABLES });
 }
 
 // ─── Constants ──────────────────────────────────────

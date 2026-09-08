@@ -3,6 +3,7 @@ import json
 import logging
 import asyncio
 import re
+import time
 from html import escape
 from collections import Counter
 from datetime import datetime, timezone, timedelta
@@ -2067,7 +2068,7 @@ async def _check_new_booking_transactions(app):
         )
     except Exception as e:
         logger.error("check_new_booking_transactions fetch failed: %s", e)
-        return
+        return 0
 
     for finance in finance_rows:
         transaction_id = str(finance.get("_id") or "").strip()
@@ -2136,12 +2137,14 @@ async def _check_new_booking_transactions(app):
             logger.error("Booking transaction notification failed for %s: %s", code, e)
             # Do not mark as sent; the next poll retries the same finance transaction.
 
+    return len(finance_rows)
+
 
 async def _check_new_orders(app):
     global _last_order_check_ms, _reported_order_nos, _cashier_paid_update_nos, _startup_event_cutoff_ms
     if not _cashier_paid_seed_ready:
         logger.warning("Order polling paused: cashier settlement seed is not ready")
-        return
+        return 0
     now_ms = int(_now_wib().timestamp() * 1000)
     # min(cursor, now-10min) → backfill: pakai cursor (24h), normal: lookback 10m dari now
     scan_from = min(_last_order_check_ms, max(0, now_ms - _LOOKBACK_MS))
@@ -2157,7 +2160,7 @@ async def _check_new_orders(app):
         )
     except Exception as e:
         logger.error("check_new_orders fetch failed: %s", e)
-        return
+        return 0
 
     # Customer self-service orders are created as `pending` and may become
     # `paid` later (cashier confirmation or Mayar polling). Their creation
@@ -2224,7 +2227,7 @@ async def _check_new_orders(app):
         # Advance cursor to now so we don't re-scan stale window
         _last_order_check_ms = now_ms
         _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
-        return
+        return 0
 
     max_creation_time = _last_order_check_ms
     retry_from_time: int | None = None
@@ -2428,6 +2431,7 @@ async def _check_new_orders(app):
 
     _last_order_check_ms = max_creation_time if retry_from_time is None else max(_last_order_check_ms, retry_from_time - 1)
     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
+    return len(rows)
 
 # ── Customer service request polling ──
 
@@ -2462,12 +2466,12 @@ async def _check_new_csr(app):
                 rows = []
     except Exception as e:
         logger.warning("check_new_csr fetch failed: %s", e)
-        return
+        return 0
 
     if not rows:
         _last_csr_check_ms = now_ms
         _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
-        return
+        return 0
 
     max_ts = _last_csr_check_ms
     for row in rows:
@@ -2617,9 +2621,9 @@ async def _check_closed_shifts(bot: Bot):
             rows = r.json() if isinstance(r.json(), list) else []
     except Exception as e:
         logger.warning("shift_recap fetch error: %s", e)
-        return
+        return 0
     if not rows:
-        return
+        return 0
     logger.info("shift_recap: %d newly closed shift(s)", len(rows))
     last_ts = cursor
     for shift in rows:
@@ -2781,7 +2785,47 @@ async def _check_closed_shifts(bot: Bot):
             last_ts = s_end
     _save_shift_recap_cursor(last_ts)
     logger.info("shift_recap: cursor updated to %d", last_ts)
+    return len(rows)
 
+
+# ── Polling controls ─────────────────────────────────────────────
+# Keep the established 5s order/status cadence; slower domains are scheduled
+# independently so a slow reconciliation cannot delay order delivery.
+_SUPERVISOR_ORDER_INTERVAL_S = 5
+_SUPERVISOR_PAYMENT_INTERVAL_S = 30
+_SUPERVISOR_SHIFT_INTERVAL_S = 60
+_SUPERVISOR_LOOKUP_INTERVAL_S = 30 * 60
+_supervisor_order_poll_lock = asyncio.Lock()
+_supervisor_payment_poll_lock = asyncio.Lock()
+_supervisor_shift_poll_lock = asyncio.Lock()
+_supervisor_lookup_poll_lock = asyncio.Lock()
+_supervisor_poll_metrics: dict[str, dict[str, float | int]] = {}
+
+async def _run_supervisor_check(name: str, check, *args):
+    """Run one poll check single-flight and record duration/row count."""
+    lock = {
+        "orders": _supervisor_order_poll_lock,
+        "csr": _supervisor_order_poll_lock,
+        "payments": _supervisor_payment_poll_lock,
+        "booking_transactions": _supervisor_payment_poll_lock,
+        "closed_shifts": _supervisor_shift_poll_lock,
+        "lookups": _supervisor_lookup_poll_lock,
+    }[name]
+    if lock.locked():
+        logger.info("poll skip: %s already in flight", name)
+        return
+    started = time.perf_counter()
+    async with lock:
+        try:
+            result = await check(*args)
+            rows = result if isinstance(result, int) else 0
+            metric = _supervisor_poll_metrics.setdefault(name, {"calls": 0, "rows": 0, "last_duration_ms": 0.0})
+            metric["calls"] += 1
+            metric["rows"] += rows
+            metric["last_duration_ms"] = round((time.perf_counter() - started) * 1000, 2)
+            logger.info("poll metric %s duration_ms=%.2f rows=%d", name, metric["last_duration_ms"], rows)
+        except Exception:
+            logger.exception("poll check failed: %s", name)
 
 # ── Main (sync, uses post_init for async setup) ──────────────────
 
@@ -2830,31 +2874,42 @@ async def _post_init(app):
     # Initial shift recap check
     await _check_closed_shifts(app.bot)
 
-    # Background polling every 5s
-    async def _poll_loop():
-        refresh_counter = 0
+    # Independent loops preserve the existing order cadence without making
+    # payment/report/master-data queries run at the order frequency.
+    async def _order_poll_loop():
         while True:
-            await asyncio.sleep(5)
-            await _reconcile_mayar_payments()
-            await _check_new_booking_transactions(app)
+            await asyncio.sleep(_SUPERVISOR_ORDER_INTERVAL_S)
             if not _cashier_paid_seed_ready:
-                await _seed_existing_order_notifications()
-            await _check_new_orders(app)
-            await _check_new_csr(app)
-            await _check_closed_shifts(app.bot)
-            # Refresh lookups every ~30 minutes (360 * 5s = 1800s)
-            refresh_counter += 1
-            if refresh_counter >= 360:
-                refresh_counter = 0
-                logger.info("Periodic lookup refresh starting...")
-                await _build_beverage_lookup()
-                await _build_food_lookup()
-                await _build_staff_lookup()
-                logger.info("Periodic lookup refresh done: %d beverage, %d food products",
-                            len(_BEVERAGE_PRODUCT_IDS), len(_FOOD_PRODUCT_IDS))
+                await _run_supervisor_check("orders", _seed_existing_order_notifications)
+            await _run_supervisor_check("orders", _check_new_orders, app)
+            await _run_supervisor_check("csr", _check_new_csr, app)
 
-    app.create_task(_poll_loop())
-    logger.info("Polling loop started (5s interval)")
+    async def _payment_poll_loop():
+        while True:
+            await asyncio.sleep(_SUPERVISOR_PAYMENT_INTERVAL_S)
+            await _run_supervisor_check("payments", _reconcile_mayar_payments)
+            await _run_supervisor_check("booking_transactions", _check_new_booking_transactions, app)
+
+    async def _shift_poll_loop():
+        while True:
+            await asyncio.sleep(_SUPERVISOR_SHIFT_INTERVAL_S)
+            await _run_supervisor_check("closed_shifts", _check_closed_shifts, app.bot)
+
+    async def _lookup_poll_loop():
+        while True:
+            await asyncio.sleep(_SUPERVISOR_LOOKUP_INTERVAL_S)
+            logger.info("Periodic lookup refresh starting...")
+            await _run_supervisor_check("lookups", _build_beverage_lookup)
+            await _run_supervisor_check("lookups", _build_food_lookup)
+            await _run_supervisor_check("lookups", _build_staff_lookup)
+            logger.info("Periodic lookup refresh done: %d beverage, %d food products",
+                        len(_BEVERAGE_PRODUCT_IDS), len(_FOOD_PRODUCT_IDS))
+
+    for loop in (_order_poll_loop, _payment_poll_loop, _shift_poll_loop, _lookup_poll_loop):
+        app.create_task(loop())
+    logger.info("Polling loops started (orders=%ss payments=%ss shifts=%ss lookups=%ss)",
+                _SUPERVISOR_ORDER_INTERVAL_S, _SUPERVISOR_PAYMENT_INTERVAL_S,
+                _SUPERVISOR_SHIFT_INTERVAL_S, _SUPERVISOR_LOOKUP_INTERVAL_S)
 
 
 def _telegram_context_from_update(update: Update) -> TelegramContext:

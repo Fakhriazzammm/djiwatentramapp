@@ -125,8 +125,13 @@ export function useSupabaseLiveValueState<T>(
 	useEffect(() => {
 		let active = true;
 		let inFlight = false;
+		let pendingReload = false;
 		const reload = async () => {
-			if (!active || inFlight) return;
+			if (!active) return;
+			if (inFlight) {
+				pendingReload = true;
+				return;
+			}
 			inFlight = true;
 			setStatus((current) => (current === "ready" ? current : "loading"));
 			try {

@@ -135,15 +135,10 @@ function metadataFromObject(object: R2StoryObject): StoryMetadata | null {
 }
 
 async function listStories(env: Env, viewerSourceId?: string): Promise<StoryMetadata[]> {
-  const listed = await env.STORIES_BUCKET.list({ prefix: "stories/", limit: 1000 });
+  const listed = await env.STORIES_BUCKET.list({ prefix: "stories/", limit: 1000, include: ["customMetadata", "httpMetadata"] });
   const stories: StoryMetadata[] = [];
   for (const object of listed.objects) {
-    // `list()` does NOT return customMetadata (only `get()` does), so we must
-    // fetch each object to read its metadata. Otherwise every story is dropped
-    // by metadataFromObject (metadata = {}) and the feed appears empty.
-    const fetched = await env.STORIES_BUCKET.get(object.key);
-    if (!fetched) continue;
-    const story = metadataFromObject(fetched as R2StoryObject);
+    const story = metadataFromObject(object as R2StoryObject);
     if (story) stories.push(story);
   }
   if (!viewerSourceId) return stories.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));

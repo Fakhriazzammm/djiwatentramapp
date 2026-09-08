@@ -7,12 +7,14 @@ function safeNum(value: unknown) {
 	return Number.isFinite(n) ? n : 0;
 }
 
+const REALTIME_TABLES = ["financial_transactions", "orders", "order_items", "inventory", "hpp_calculations", "accounting_entries", "accounting_chart_of_accounts", "ai_conversation_memory", "follow_up_tasks"];
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, { tables: REALTIME_TABLES });
 }
 
 function monthStartMs() {
