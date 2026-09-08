@@ -1,17 +1,23 @@
-import { useState, type ComponentPropsWithoutRef } from "react";
+import { useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type ImageWithPlaceholderProps = Omit<ComponentPropsWithoutRef<"img">, "onLoad" | "onError"> & {
   containerClassName?: string;
+  fallback?: ReactNode;
 };
 
 export function ImageWithPlaceholder({
   alt,
   className,
   containerClassName,
+  fallback,
   ...props
 }: ImageWithPlaceholderProps) {
-  const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
+  const [state, setState] = useState<"loading" | "loaded" | "error">(props.src ? "loading" : "error");
+
+  useEffect(() => {
+    setState(props.src ? "loading" : "error");
+  }, [props.src]);
 
   return (
     <span
@@ -29,7 +35,7 @@ export function ImageWithPlaceholder({
           className="absolute inset-0 flex items-center justify-center bg-muted text-[10px] font-semibold text-muted-foreground"
           aria-hidden="true"
         >
-          Gambar tidak tersedia
+          {fallback ?? "Gambar tidak tersedia"}
         </span>
       ) : null}
       <img

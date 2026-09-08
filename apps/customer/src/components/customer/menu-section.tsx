@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice, getActiveHappyHourBanner } from "@/lib/utils/pricing";
+import { ImageWithPlaceholder } from "./image-with-placeholder";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
@@ -10,29 +10,16 @@ import { chipClassName } from "./shared-components";
 
 
 function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
-	const [isLoaded, setIsLoaded] = useState(false);
-	const [hasError, setHasError] = useState(false);
-	const hasImage = Boolean(src) && !hasError;
-
 	return (
-		<>
-			{hasImage && !isLoaded ? <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted via-muted/60 to-muted" /> : null}
-			{hasImage ? (
-				<img
-					alt={alt}
-					className={cn("absolute inset-0 h-full w-full object-cover transition-opacity duration-300", isLoaded ? "opacity-100" : "opacity-0")}
-					decoding="async"
-					loading="lazy"
-					onError={() => setHasError(true)}
-					onLoad={() => setIsLoaded(true)}
-					src={src as string}
-				/>
-			) : (
-				<div aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-muted text-muted-foreground">
-					<PackageSearch className="h-7 w-7" strokeWidth={1.8} />
-				</div>
-			)}
-		</>
+		<ImageWithPlaceholder
+			src={src ?? undefined}
+			alt={alt}
+			containerClassName="absolute inset-0"
+			className="object-cover"
+			loading="lazy"
+			decoding="async"
+			fallback={<PackageSearch className="h-7 w-7" strokeWidth={1.8} />}
+		/>
 	);
 }
 export interface MenuSectionProps {

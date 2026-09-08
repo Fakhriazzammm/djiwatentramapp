@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Check, Minus, Plus, Trash2 } from "lucide-react";
+import { Check, Minus, Plus, Trash2, Utensils } from "lucide-react";
+import { ImageWithPlaceholder } from "@/components/customer/image-with-placeholder";
 import type { CartItem } from "./types";
 import { currency } from "./types";
 
@@ -88,8 +89,10 @@ export function CartRow({
 			<div className="flex gap-2.5">
 				<div className="h-12 w-12 overflow-hidden rounded-xl bg-muted">
 					{item.image ? (
-						<img alt={item.name} className="h-full w-full object-cover" src={item.image} />
-					) : null}
+						<ImageWithPlaceholder src={item.image} alt={item.name} containerClassName="h-full w-full" className="object-cover" loading="lazy" decoding="async" fallback={<Utensils aria-hidden="true" className="h-4 w-4" strokeWidth={2} />} />
+					) : (
+						<div className="flex h-full w-full items-center justify-center text-muted-foreground"><Utensils aria-hidden="true" className="h-4 w-4" strokeWidth={2} /></div>
+					)}
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-2">

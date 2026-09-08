@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Check, Minus, Plus, X } from "lucide-react";
+import { Check, Minus, PackageSearch, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
+import { ImageWithPlaceholder } from "./image-with-placeholder";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem } from "./types";
 import { currency } from "./types";
@@ -48,9 +49,15 @@ export function ProductSheet({
 				<div className="h-1 w-10 rounded-full bg-foreground/20" />
 			</div>
 			<div className="relative h-40 shrink-0 bg-muted sm:h-44">
-				{product.image ? (
-					<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
-				) : null}
+				<ImageWithPlaceholder
+					src={product.image ?? undefined}
+					alt={product.name}
+					containerClassName="absolute inset-0"
+					className="object-cover"
+					loading="eager"
+					decoding="async"
+					fallback={<PackageSearch className="h-8 w-8" strokeWidth={1.8} />}
+				/>
 				<button
 					type="button"
 					className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/30"

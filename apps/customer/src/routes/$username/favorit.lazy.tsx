@@ -6,6 +6,7 @@ import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
 import { useCustomerFavorites } from "@/hooks/use-customer-favorites";
 import { currency } from "@/components/customer/types";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
+import { ImageWithPlaceholder } from "@/components/customer/image-with-placeholder";
 
 export const Route = createLazyFileRoute("/$username/favorit")({
 	component: FavoritPage,
@@ -23,7 +24,7 @@ function ProductCard({ product, isFavorite, onToggle, onOrder }: {
 	return (
 		<div className="flex items-center gap-3 rounded-[20px] border border-border bg-card p-3 shadow-sm">
 			{image ? (
-				<img alt={product.name} src={image} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+				<ImageWithPlaceholder src={image} alt={product.name} containerClassName="h-12 w-12 shrink-0 rounded-lg" className="object-cover" loading="lazy" decoding="async" fallback={<Utensils aria-hidden="true" className="h-5 w-5" strokeWidth={2} />} />
 			) : (
 				<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-muted text-muted-foreground"><Utensils aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>
 			)}
