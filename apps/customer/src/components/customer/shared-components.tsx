@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import JsBarcode from "jsbarcode";
 import { cn } from "@/lib/utils";
 import { Check, Minus, Plus, Trash2 } from "lucide-react";
 import type { CartItem } from "./types";
@@ -253,16 +252,23 @@ export function BarcodeLines({ value }: { value: string }) {
 	const svgRef = useRef<SVGSVGElement>(null);
 
 	useEffect(() => {
+		let cancelled = false;
 		if (!svgRef.current || !value.trim()) return;
-		JsBarcode(svgRef.current, value.trim(), {
-			format: "CODE128",
-			displayValue: false,
-			margin: 12,
-			height: 84,
-			width: 2,
-			background: "#ffffff",
-			lineColor: "#000000",
+		void import("jsbarcode").then(({ default: JsBarcode }) => {
+			if (cancelled || !svgRef.current) return;
+			JsBarcode(svgRef.current, value.trim(), {
+				format: "CODE128",
+				displayValue: false,
+				margin: 12,
+				height: 84,
+				width: 2,
+				background: "#ffffff",
+				lineColor: "#000000",
+			});
 		});
+		return () => {
+			cancelled = true;
+		};
 	}, [value]);
 
 	return (

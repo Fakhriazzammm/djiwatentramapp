@@ -42,7 +42,7 @@ export default defineConfig({
 				// biarkan lewat ke nginx→better-auth (mis. callback OAuth Google).
 				navigateFallbackDenylist: [/^\/api\//],
 				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-				globPatterns: ["**/*.{js,css,html,png,svg,gif,ico,webmanifest}"],
+				globPatterns: ["**/*.{js,css,html,webmanifest}"],
 				skipWaiting: true,
 				clientsClaim: true,
 				cleanupOutdatedCaches: true,
@@ -66,10 +66,9 @@ export default defineConfig({
 					},
 					{
 						urlPattern: /\.(?:js|css)$/,
-						handler: "NetworkFirst",
+						handler: "CacheFirst",
 						options: {
 							cacheName: "menu-assets",
-							networkTimeoutSeconds: 5,
 							expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
 						},
 					},
