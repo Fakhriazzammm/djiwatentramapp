@@ -135,7 +135,7 @@ async function requirePassportSession(headers: Headers) {
   const session = await requireCustomerSession(headers);
   if (!session?.user?.id) return null;
   const customer = await pool.query(
-    "SELECT source_id, name, email, photo_url FROM public.pos_customers_view WHERE source_id = $1 LIMIT 1",
+    "SELECT source_id, name, email, phone, photo_url FROM public.pos_customers_view WHERE source_id = $1 LIMIT 1",
     [session.user.id],
   );
   if (!customer.rows[0]) return null;
@@ -456,7 +456,7 @@ app.post("/api/coffee-passport/bid/intent", async (c) => {
   }
 });
 
-async function createListingInvoice(listingPaymentId: string, shopName: string, customer: { name?: string | null; email?: string | null }) {
+async function createListingInvoice(listingPaymentId: string, shopName: string, customer: { name?: string | null; email?: string | null; phone?: string | null }) {
   if (!customer.email) throw new Error("Email customer wajib tersedia untuk invoice Mayar");
   const response = await fetch(MAYAR_PROXY_URL, {
     method: "POST",
@@ -468,9 +468,9 @@ async function createListingInvoice(listingPaymentId: string, shopName: string, 
       action: "create-invoice",
       name: customer.name || "Pemilik coffee shop",
       email: customer.email,
-      mobile: MAYAR_DEFAULT_MOBILE,
       redirectUrl: `https://500kopitasik.yumme.id/?listing_payment=${encodeURIComponent(listingPaymentId)}`,
       description: `Listing Coffee Shop 500 Kopi Tasik - ${shopName}`,
+      mobile: customer.phone || MAYAR_DEFAULT_MOBILE,
       items: [{ quantity: 1, rate: 1000, description: `Listing Coffee Shop - ${shopName}` }],
       extraData: { coffeePassportListingPaymentId: listingPaymentId, shopName },
     }),
