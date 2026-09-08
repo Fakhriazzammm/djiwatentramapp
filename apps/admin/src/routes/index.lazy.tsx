@@ -1,16 +1,6 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { DashboardAdmin } from "./admin/index.lazy";
 
 export const Route = createLazyFileRoute("/")({
-	component: IndexRedirect,
+  component: DashboardAdmin,
 });
-
-function IndexRedirect() {
-	const navigate = useNavigate();
-
-	useEffect(() => {
-		navigate({ to: "/admin/login", replace: true });
-	}, [navigate]);
-
-	return null;
-}

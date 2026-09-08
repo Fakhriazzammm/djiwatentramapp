@@ -29,7 +29,7 @@ export const Route = createLazyFileRoute("/admin/")({
 	component: DashboardAdmin,
 });
 
-function DashboardAdmin() {
+export function DashboardAdmin() {
 	const stats = useHybridDashboardStats();
 	const shiftStatus = useHybridShiftStatus();
 	const [selectedShift, setSelectedShift] = useState<any>(null);

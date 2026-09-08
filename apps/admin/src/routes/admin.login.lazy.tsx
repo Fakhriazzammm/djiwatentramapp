@@ -90,7 +90,7 @@ function AdminLoginPage() {
 			
 			toast.success(`Selamat datang, ${result.user.name}`);
 			setPin("");
-			navigate({ to: "/admin" as any, replace: true });
+			navigate({ to: "/" as any, replace: true });
 		} catch (err: any) {
 			toast.error(err.message || "PIN salah");
 			setPin("");
@@ -110,9 +110,9 @@ function AdminLoginPage() {
 	useEffect(() => {
 		if (isAuthenticated) {
 			if (isAdmin) {
-				navigate({ to: "/admin" as any, replace: true });
+				navigate({ to: "/" as any, replace: true });
 			} else {
-				navigate({ to: "/admin" as any, replace: true });
+				navigate({ to: "/" as any, replace: true });
 			}
 		}
 	}, [isAuthenticated, isAdmin, navigate]);
