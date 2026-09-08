@@ -187,8 +187,41 @@ async function settleCoffeePassportListing(listingPaymentId: string, invoiceId: 
     headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
     body: JSON.stringify({ p_listing_payment_id: listingPaymentId, p_invoice_id: invoiceId, p_transaction_id: transactionId, p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
   });
-  if (!response.ok) throw new Error(`Coffee passport listing settlement failed (${response.status})`);
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    console.error("Coffee passport listing settlement rejected", response.status, errorBody.slice(0, 300));
+    throw new Error(`Coffee passport listing settlement failed (${response.status})`);
+  }
   return await response.json();
+}
+
+async function reconcilePendingCoffeePassportListings() {
+  const response = await fetchWithTimeout(
+    `${SUPABASE_URL}/rest/v1/rpc/coffee_passport_pending_listing_payments`,
+    { method: "POST", headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" }, body: "{}" },
+  );
+  if (!response.ok) throw new Error(`Pending coffee passport listing lookup failed (${response.status})`);
+  const payments = await response.json() as Array<Record<string, unknown>>;
+  const settled: Array<Record<string, unknown>> = [];
+  for (const payment of payments) {
+    const invoiceId = String(payment.mayar_invoice_id || "");
+    if (!invoiceId) continue;
+    const invoiceResponse = await fetchWithTimeout(
+      `${MAYAR_API_BASE}/invoices/${encodeURIComponent(invoiceId)}`,
+      { headers: { Authorization: `Bearer ${MAYAR_API_KEY}` } },
+    );
+    const invoiceBody = await invoiceResponse.json().catch(() => ({})) as Record<string, unknown>;
+    const invoiceData = invoiceBody.data && typeof invoiceBody.data === "object"
+      ? invoiceBody.data as Record<string, unknown>
+      : invoiceBody;
+    const transactionId = String(invoiceData.transactionId || invoiceData.transaction_id || "");
+    if (!transactionId) continue;
+    const transaction = await verifyTransaction(transactionId);
+    if (!transaction) continue;
+    const result = await settleCoffeePassportListing(String(payment.listing_payment_id || ""), invoiceId, transaction);
+    settled.push({ listingPaymentId: payment.listing_payment_id, ...((result && typeof result === "object") ? result : {}) });
+  }
+  return { scanned: payments.length, settled };
 }
 
 async function settleCoffeePassportBid(entryId: string, invoiceId: string, transaction: Record<string, unknown>) {
@@ -310,7 +343,12 @@ Deno.serve(async (req) => {
       : String(payload?.event?.received || payload?.action || "");
     const event = rawEvent.trim();
     if (event === "reconcile") {
-      return json({ ok: true, wallet: await reconcilePendingWalletTopups(), orders: await reconcilePendingOrders() });
+      return json({
+        ok: true,
+        wallet: await reconcilePendingWalletTopups(),
+        orders: await reconcilePendingOrders(),
+        coffeePassportListings: await reconcilePendingCoffeePassportListings(),
+      });
     }
     const data = payload?.data || {};
     if (event !== "payment.received") {
