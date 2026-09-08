@@ -142,10 +142,6 @@ app.get("/api/coffee-passport/bootstrap", async (c) => {
   return privateJson({ success: true, authenticated: true, customer: session.customer, shops: shops.rows, visits: visits.rows, collection: collection.rows, rewards: rewards.rows[0] ?? { available: 0, count: 0 } });
 });
 
-function normalizeShopName(value: string) {
-  return value.toLocaleLowerCase("id-ID").normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu, "");
-}
-
 app.post("/api/coffee-passport/collect", async (c) => {
   const session = await requirePassportSession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
@@ -179,6 +175,19 @@ function isGoogleMapsUrl(value: string) {
   } catch { return false; }
 }
 
+function normalizeShopName(value: string) {
+  return value.toLocaleLowerCase("id-ID").normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function canonicalMapsUrl(value: string) {
+  const url = new URL(value);
+  url.hostname = url.hostname.toLowerCase();
+  url.hash = "";
+  url.search = "";
+  url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+  return url.toString();
+}
+
 app.post("/api/coffee-passport/shops/onboard", async (c) => {
   const session = await requirePassportSession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
@@ -187,14 +196,31 @@ app.post("/api/coffee-passport/shops/onboard", async (c) => {
   const mapsUrl = typeof body.google_maps_url === "string" ? body.google_maps_url.trim() : "";
   const area = typeof body.area === "string" ? body.area.trim().slice(0, 80) : "";
   const description = typeof body.description === "string" ? body.description.trim().slice(0, 1000) : "";
-  if (name.length < 2 || name.length > 160) return privateJson({ success: false, message: "Nama kedai belum lengkap." }, 400);
-  if (!isGoogleMapsUrl(mapsUrl)) return privateJson({ success: false, message: "Isi link Google Maps resmi kedai." }, 400);
-  const existing = await pool.query("SELECT shop_id FROM pos.coffee_passport_shops WHERE owner_customer_id = $1 AND verification_status = 'pending_review' LIMIT 1", [session.user.id]);
-  if (existing.rows[0]) return privateJson({ success: true, status: "pending_review", shop_id: existing.rows[0].shop_id, message: "Pengajuan kedaimu sedang diperiksa." });
-  const shopId = `shop_${crypto.randomUUID().replace(/-/g, "")}`;
-  const slug = `${name.toLocaleLowerCase("id-ID").normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 70)}-${shopId.slice(-8)}`;
-  await pool.query("INSERT INTO pos.coffee_passport_shops (shop_id, name, slug, area, description, owner_customer_id, google_maps_url, verification_status, is_active) VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), $6, $7, 'pending_review', false)", [shopId, name, slug, area, description, session.user.id, mapsUrl]);
-  return privateJson({ success: true, status: "pending_review", shop_id: shopId, message: "Data kedai dan Google Maps sudah diterima untuk diverifikasi." });
+  if (name.length < 2 || name.length > 160) return privateJson({ success: false, message: "Nama coffee shop belum lengkap." }, 400);
+  if (!isGoogleMapsUrl(mapsUrl)) return privateJson({ success: false, message: "Isi link Google Maps resmi coffee shop." }, 400);
+  const canonicalUrl = canonicalMapsUrl(mapsUrl);
+  const normalizedName = normalizeShopName(name);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('500kopitasik:shop-onboard', 0))");
+    const existing = await client.query<{ shop_id: string; name: string; google_maps_url: string | null; verification_status: string; is_active: boolean }>("SELECT shop_id, name, google_maps_url, verification_status, is_active FROM pos.coffee_passport_shops WHERE is_active = true OR verification_status = 'pending_review' FOR UPDATE");
+    const duplicate = existing.rows.find((row) => normalizeShopName(row.name) === normalizedName || (row.google_maps_url && canonicalMapsUrl(row.google_maps_url) === canonicalUrl));
+    if (duplicate) {
+      await client.query("COMMIT");
+      return privateJson({ success: true, status: "duplicate", duplicate: true, shop_id: duplicate.shop_id, message: duplicate.is_active ? "Coffee shop sudah terdaftar di Jelajah." : "Pendaftaran coffee shop ini sedang diproses." });
+    }
+    const shopId = `shop_${crypto.randomUUID().replace(/-/g, "")}`;
+    const slug = `${name.toLocaleLowerCase("id-ID").normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 70)}-${shopId.slice(-8)}`;
+    await client.query("INSERT INTO pos.coffee_passport_shops (shop_id, name, slug, area, description, owner_customer_id, google_maps_url, verification_status, is_active) VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), $6, $7, 'approved', true)", [shopId, name, slug, area, description, session.user.id, canonicalUrl]);
+    await client.query("COMMIT");
+    return privateJson({ success: true, status: "listed", duplicate: false, shop_id: shopId, message: "Coffee shop langsung tampil di Jelajah." });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 app.get("/api/coffee-passport/bid/board", async (c) => {
