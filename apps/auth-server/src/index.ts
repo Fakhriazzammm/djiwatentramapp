@@ -207,10 +207,11 @@ function canonicalMapsUrl(value: string) {
 app.post("/api/coffee-passport/shops/onboard", async (c) => {
   const session = await requirePassportSession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, message: "Silakan masuk terlebih dahulu." }, 401);
-  const body = await c.req.json().catch(() => ({})) as { name?: unknown; google_maps_url?: unknown; area?: unknown; description?: unknown };
+  const body = await c.req.json().catch(() => ({})) as { name?: unknown; google_maps_url?: unknown; area?: unknown; mobile?: unknown; description?: unknown };
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const mapsUrl = typeof body.google_maps_url === "string" ? body.google_maps_url.trim() : "";
   const area = typeof body.area === "string" ? body.area.trim().slice(0, 80) : "";
+  const mobile = typeof body.mobile === "string" ? body.mobile.trim() : "";
   const description = typeof body.description === "string" ? body.description.trim().slice(0, 1000) : "";
   if (name.length < 2 || name.length > 160) return privateJson({ success: false, message: "Nama coffee shop belum lengkap." }, 400);
   if (!isGoogleMapsUrl(mapsUrl)) return privateJson({ success: false, message: "Isi link Google Maps resmi coffee shop." }, 400);
@@ -234,7 +235,7 @@ app.post("/api/coffee-passport/shops/onboard", async (c) => {
     await client.query("INSERT INTO pos.coffee_passport_listing_payments (listing_payment_id, shop_id, customer_id, amount, idempotency_key) VALUES ($1, $2, $3, 1000, $4)", [listingPaymentId, shopId, session.user.id, idempotencyKey]);
     await client.query("COMMIT");
     try {
-      const invoice = await createListingInvoice(listingPaymentId, name, session.customer);
+      const invoice = await createListingInvoice(listingPaymentId, name, { ...session.customer, phone: mobile || session.customer.phone });
       await pool.query("UPDATE pos.coffee_passport_listing_payments SET mayar_invoice_id = $1, mayar_invoice_url = $2 WHERE listing_payment_id = $3", [invoice.invoiceId, invoice.link, listingPaymentId]);
       return privateJson({ success: true, status: "pending_payment", duplicate: false, shop_id: shopId, listing_payment_id: listingPaymentId, amount: 1000, invoice_id: invoice.invoiceId, invoice_url: invoice.link, message: "Selesaikan pembayaran Rp1.000 melalui Mayar agar coffee shop tampil di Jelajah." });
     } catch (error) {
