@@ -217,7 +217,7 @@ app.get("/api/coffee-passport/bid/board", async (c) => {
   const result = await pool.query(`SELECT *, count(*) OVER()::integer AS total_count FROM ${base} AND ${where.join(" AND ")} ORDER BY overall_rank ASC LIMIT ${pageSize} OFFSET ${offset}`, values);
   const categories = await pool.query("SELECT DISTINCT COALESCE(NULLIF(trim(area), ''), 'Lainnya') AS category FROM public.pos_coffee_passport_board_view ORDER BY 1");
   const config = await pool.query("SELECT minimum_new_bid_amount, minimum_top_increment, minimum_existing_increment, maximum_bid_amount, refund_policy FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
-  const row = config.rows[0] ?? { minimum_new_bid_amount: 1000, minimum_top_increment: 50000, minimum_existing_increment: 10000, maximum_bid_amount: 999999999, refund_policy: "final_non_refundable" };
+  const row = config.rows[0] ?? { minimum_new_bid_amount: 1000, minimum_top_increment: 1000, minimum_existing_increment: 1000, maximum_bid_amount: 999999999, refund_policy: "final_non_refundable" };
   const top = Number(result.rows[0]?.current_bid_amount || 0);
   const nextTop = top > 0 ? top + Number(row.minimum_top_increment) : Number(row.minimum_new_bid_amount);
   const activity = await pool.query("SELECT * FROM public.pos_coffee_passport_activity_view ORDER BY created_at DESC LIMIT 8");
@@ -256,6 +256,7 @@ app.post("/api/coffee-passport/bid/intent", async (c) => {
   const bidAmount = Number(body.bid_amount);
   const idempotencyKey = typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
   if (!shopId || !Number.isSafeInteger(bidAmount) || bidAmount <= 0 || !/^[A-Za-z0-9_-]{12,100}$/.test(idempotencyKey)) return privateJson({ success: false, message: "Data bid belum lengkap." }, 400);
+  if (bidAmount % 1000 !== 0) return privateJson({ success: false, message: "Kenaikan bid harus kelipatan Rp1.000." }, 400);
   const shop = await pool.query("SELECT shop_id, name, owner_customer_id FROM pos.coffee_passport_shops WHERE shop_id = $1 AND is_active = true AND verification_status = 'approved' LIMIT 1", [shopId]);
   if (!shop.rows[0]) return privateJson({ success: false, message: "Kedai official tidak ditemukan." }, 404);
   if (shop.rows[0].owner_customer_id !== session.user.id) return privateJson({ success: false, message: "Hanya pemilik kedai yang dapat melakukan bid." }, 403);
@@ -268,10 +269,10 @@ app.post("/api/coffee-passport/bid/intent", async (c) => {
     const configRow = config.rows[0] || {};
     const currentBid = Number(current.rows[0]?.current_bid_amount || 0);
     const minimum = currentBid > 0
-      ? currentBid + Number(configRow.minimum_existing_increment || configRow.minimum_increment || 10000)
+      ? currentBid + Number(configRow.minimum_existing_increment || configRow.minimum_increment || 1000)
       : Number(configRow.minimum_new_bid_amount || configRow.minimum_bid_amount || 1000);
     const topBid = Number((await client.query("SELECT COALESCE(max(current_bid_amount), 0) AS amount FROM pos.coffee_passport_shops WHERE is_active = true AND verification_status = 'approved'")).rows[0]?.amount || 0);
-    const topMinimum = topBid > 0 ? topBid + Number(configRow.minimum_top_increment || 50000) : minimum;
+    const topMinimum = topBid > 0 ? topBid + Number(configRow.minimum_top_increment || 1000) : minimum;
     const enforcedMinimum = currentBid >= topBid ? Math.max(minimum, topMinimum) : minimum;
     const maximum = Number(configRow.maximum_bid_amount || 999999999);
     if (bidAmount > maximum) {
