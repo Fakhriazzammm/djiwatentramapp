@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/client";
+import { APP_VERSION } from "@/lib/version";
 
 export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
@@ -16,13 +17,35 @@ export type UseSupabaseLiveValueOptions = {
 /** Shared channel registry — dedup WebSocket connections per schema set */
 const sharedChannels = new Map<string, { refCount: number; listeners: Set<() => void>; unsubscribe: () => void }>();
 
+const CACHE_SCHEMA_VERSION = "v2";
+const CACHE_PREFIX = `customer-cache:${CACHE_SCHEMA_VERSION}:${APP_VERSION.semantic}:${APP_VERSION.commitHash}:`;
+
+function versionedCacheKey(key: string) {
+	return `${CACHE_PREFIX}${key}`;
+}
+
+function cleanupStaleCaches() {
+	try {
+		for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+			const key = localStorage.key(index);
+			if (key?.startsWith("customer-cache:") && !key.startsWith(CACHE_PREFIX)) {
+				localStorage.removeItem(key);
+			}
+		}
+	} catch {
+		// Storage may be unavailable or restricted; caching remains optional.
+	}
+}
+
+cleanupStaleCaches();
+
 function loadCache<T>(key: string, ttlMs: number): T | null {
 	try {
-		const raw = localStorage.getItem(key);
+		const raw = localStorage.getItem(versionedCacheKey(key));
 		if (!raw) return null;
 		const entry = JSON.parse(raw);
 		if (Date.now() - entry.ts > ttlMs) {
-			localStorage.removeItem(key);
+			localStorage.removeItem(versionedCacheKey(key));
 			return null;
 		}
 		return entry.data as T;
@@ -33,7 +56,7 @@ function loadCache<T>(key: string, ttlMs: number): T | null {
 
 function saveCache<T>(key: string, data: T) {
 	try {
-		localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+		localStorage.setItem(versionedCacheKey(key), JSON.stringify({ ts: Date.now(), data }));
 	} catch {
 		// Silently ignore quota errors
 	}
@@ -147,10 +170,8 @@ export function useSupabaseLiveValue<T>(
 		};
 		activeChannelEntry.listeners.add(realtimeListener);
 
-		// Only poll for non-cached data (cached data uses 5 min interval above)
-		const timer = !options?.cacheKey
-			? window.setInterval(() => void reload(), refreshMs)
-			: undefined;
+		// Realtime memperbarui segera; polling menjadi fallback jika koneksi realtime putus.
+		const timer = window.setInterval(() => void reload(), refreshMs);
 
 		return () => {
 			active = false;
