@@ -215,7 +215,7 @@ function BrandCustomerIndex() {
 													className="min-w-[176px] snap-start overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-all duration-[180ms] active:scale-[.97]"
 												>
 													<div className="relative h-24 w-full bg-muted">
-														{p.image ? <ImageWithPlaceholder src={p.image} alt={p.name} containerClassName="h-full w-full" className="object-cover" loading="lazy" decoding="async" fallback={<UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} />} /> : <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"><UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} /></div>}
+														<ImageWithPlaceholder src={p.image ?? ""} alt={p.name} containerClassName="h-full w-full" className="object-cover" loading="lazy" decoding="async" fallback={<UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} />} />
 														{p.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-bold text-white shadow">#{p.menuNumber}</span> : null}
 													</div>
 													<div className="space-y-1 p-2.5">

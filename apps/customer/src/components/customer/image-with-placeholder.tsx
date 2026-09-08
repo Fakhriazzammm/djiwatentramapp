@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type ImageWithPlaceholderProps = Omit<ComponentPropsWithoutRef<"img">, "onLoad" | "onError"> & {
@@ -14,10 +14,22 @@ export function ImageWithPlaceholder({
   ...props
 }: ImageWithPlaceholderProps) {
   const [state, setState] = useState<"loading" | "loaded" | "error">(props.src ? "loading" : "error");
+  const startedAtRef = useRef(Date.now());
+  const loadTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
+    startedAtRef.current = Date.now();
     setState(props.src ? "loading" : "error");
+    return () => {
+      if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
+    };
   }, [props.src]);
+
+  const handleLoad = () => {
+    const remaining = Math.max(0, 220 - (Date.now() - startedAtRef.current));
+    loadTimerRef.current = window.setTimeout(() => setState("loaded"), remaining);
+  };
 
   return (
     <span
@@ -26,7 +38,7 @@ export function ImageWithPlaceholder({
     >
       {state !== "loaded" ? (
         <span
-          className="absolute inset-0 animate-pulse bg-gradient-to-r from-muted via-muted/60 to-muted"
+          className="absolute inset-0 animate-pulse bg-gradient-to-r from-muted/80 via-muted/30 to-muted/80"
           aria-hidden="true"
         />
       ) : null}
@@ -41,8 +53,11 @@ export function ImageWithPlaceholder({
       <img
         {...props}
         alt={alt}
-        onLoad={() => setState("loaded")}
-        onError={() => setState("error")}
+        onLoad={handleLoad}
+        onError={() => {
+          if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
+          setState("error");
+        }}
         className={cn(
           "relative block h-full w-full object-cover transition-opacity duration-300",
           state === "loaded" ? "opacity-100" : "opacity-0",
