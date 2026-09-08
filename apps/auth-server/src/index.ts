@@ -217,7 +217,7 @@ app.get("/api/coffee-passport/bid/board", async (c) => {
   const result = await pool.query(`SELECT *, count(*) OVER()::integer AS total_count FROM ${base} AND ${where.join(" AND ")} ORDER BY overall_rank ASC LIMIT ${pageSize} OFFSET ${offset}`, values);
   const categories = await pool.query("SELECT DISTINCT COALESCE(NULLIF(trim(area), ''), 'Lainnya') AS category FROM public.pos_coffee_passport_board_view ORDER BY 1");
   const config = await pool.query("SELECT minimum_new_bid_amount, minimum_top_increment, minimum_existing_increment, maximum_bid_amount, refund_policy FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
-  const row = config.rows[0] ?? { minimum_new_bid_amount: 100000, minimum_top_increment: 50000, minimum_existing_increment: 10000, maximum_bid_amount: 999999999, refund_policy: "final_non_refundable" };
+  const row = config.rows[0] ?? { minimum_new_bid_amount: 1000, minimum_top_increment: 50000, minimum_existing_increment: 10000, maximum_bid_amount: 999999999, refund_policy: "final_non_refundable" };
   const top = Number(result.rows[0]?.current_bid_amount || 0);
   const nextTop = top > 0 ? top + Number(row.minimum_top_increment) : Number(row.minimum_new_bid_amount);
   const activity = await pool.query("SELECT * FROM public.pos_coffee_passport_activity_view ORDER BY created_at DESC LIMIT 8");
@@ -269,7 +269,7 @@ app.post("/api/coffee-passport/bid/intent", async (c) => {
     const currentBid = Number(current.rows[0]?.current_bid_amount || 0);
     const minimum = currentBid > 0
       ? currentBid + Number(configRow.minimum_existing_increment || configRow.minimum_increment || 10000)
-      : Number(configRow.minimum_new_bid_amount || configRow.minimum_bid_amount || 100000);
+      : Number(configRow.minimum_new_bid_amount || configRow.minimum_bid_amount || 1000);
     const topBid = Number((await client.query("SELECT COALESCE(max(current_bid_amount), 0) AS amount FROM pos.coffee_passport_shops WHERE is_active = true AND verification_status = 'approved'")).rows[0]?.amount || 0);
     const topMinimum = topBid > 0 ? topBid + Number(configRow.minimum_top_increment || 50000) : minimum;
     const enforcedMinimum = currentBid >= topBid ? Math.max(minimum, topMinimum) : minimum;

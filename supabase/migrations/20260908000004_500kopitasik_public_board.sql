@@ -2,13 +2,13 @@
 -- Additive only. Today = rolling 24 hours; Daily = UTC calendar day.
 
 ALTER TABLE pos.coffee_passport_bid_config
-  ADD COLUMN IF NOT EXISTS minimum_new_bid_amount bigint NOT NULL DEFAULT 100000 CHECK (minimum_new_bid_amount > 0),
+  ADD COLUMN IF NOT EXISTS minimum_new_bid_amount bigint NOT NULL DEFAULT 1000 CHECK (minimum_new_bid_amount > 0),
   ADD COLUMN IF NOT EXISTS minimum_top_increment bigint NOT NULL DEFAULT 50000 CHECK (minimum_top_increment > 0),
   ADD COLUMN IF NOT EXISTS minimum_existing_increment bigint NOT NULL DEFAULT 10000 CHECK (minimum_existing_increment > 0),
   ADD COLUMN IF NOT EXISTS refund_policy text NOT NULL DEFAULT 'final_non_refundable' CHECK (refund_policy IN ('final_non_refundable', 'manual_review'));
 
 UPDATE pos.coffee_passport_bid_config
-SET minimum_new_bid_amount = GREATEST(minimum_new_bid_amount, 100000),
+SET minimum_new_bid_amount = 1000,
     minimum_top_increment = GREATEST(minimum_top_increment, 50000),
     minimum_existing_increment = GREATEST(minimum_existing_increment, 10000),
     maximum_bid_amount = LEAST(maximum_bid_amount, 999999999)
