@@ -197,17 +197,55 @@ app.post("/api/coffee-passport/shops/onboard", async (c) => {
   return privateJson({ success: true, status: "pending_review", shop_id: shopId, message: "Data kedai dan Google Maps sudah diterima untuk diverifikasi." });
 });
 
-app.get("/api/coffee-passport/bid/leaderboard", async (c) => {
-  const result = await pool.query(`SELECT s.shop_id, s.name, s.slug, s.area, s.description, s.cover_url, s.google_maps_url,
-      s.current_bid_amount, count(DISTINCT cl.click_id)::integer AS clicks
-    FROM pos.coffee_passport_shops s
-    LEFT JOIN pos.coffee_passport_bid_clicks cl ON cl.shop_id = s.shop_id
-    WHERE s.is_active = true AND s.verification_status = 'approved'
-    GROUP BY s.shop_id ORDER BY s.current_bid_amount DESC, s.current_bid_paid_sequence ASC NULLS LAST, s.updated_at ASC, s.name ASC LIMIT 100`);
-  const config = await pool.query("SELECT minimum_bid_amount, minimum_increment, maximum_bid_amount FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
-  const row = config.rows[0] ?? { minimum_bid_amount: 5000, minimum_increment: 500, maximum_bid_amount: 999999999 };
+app.get("/api/coffee-passport/bid/board", async (c) => {
+  const requestedTab = c.req.query("tab") || "all-time";
+  const tab = ["all-time", "today", "daily"].includes(requestedTab) ? requestedTab : "all-time";
+  const query = (c.req.query("q") || "").trim().slice(0, 80);
+  const category = (c.req.query("category") || "").trim().slice(0, 80);
+  const page = Math.max(1, Math.min(10000, Number(c.req.query("page") || 1)));
+  const pageSize = Math.max(1, Math.min(50, Number(c.req.query("page_size") || 50)));
+  const offset = (page - 1) * pageSize;
+  const where: string[] = ["1=1"];
+  const values: unknown[] = [];
+  if (query) { values.push(`%${query}%`); where.push(`(name ILIKE $${values.length} OR COALESCE(description, '') ILIKE $${values.length})`); }
+  if (category) { values.push(category); where.push(`COALESCE(NULLIF(trim(area), ''), 'Lainnya') = $${values.length}`); }
+  const base = tab === "today"
+    ? "public.pos_coffee_passport_board_view WHERE (today_clicks > 0 OR current_bid_amount > 0)"
+    : tab === "daily"
+      ? "public.pos_coffee_passport_board_view WHERE shop_id IN (SELECT DISTINCT shop_id FROM pos.coffee_passport_bid_activity WHERE (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date)"
+      : "public.pos_coffee_passport_board_view WHERE 1=1";
+  const result = await pool.query(`SELECT *, count(*) OVER()::integer AS total_count FROM ${base} AND ${where.join(" AND ")} ORDER BY overall_rank ASC LIMIT ${pageSize} OFFSET ${offset}`, values);
+  const categories = await pool.query("SELECT DISTINCT COALESCE(NULLIF(trim(area), ''), 'Lainnya') AS category FROM public.pos_coffee_passport_board_view ORDER BY 1");
+  const config = await pool.query("SELECT minimum_new_bid_amount, minimum_top_increment, minimum_existing_increment, maximum_bid_amount, refund_policy FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
+  const row = config.rows[0] ?? { minimum_new_bid_amount: 100000, minimum_top_increment: 50000, minimum_existing_increment: 10000, maximum_bid_amount: 999999999, refund_policy: "final_non_refundable" };
   const top = Number(result.rows[0]?.current_bid_amount || 0);
-  return privateJson({ success: true, shops: result.rows, next_bid_amount: Math.max(Number(row.minimum_bid_amount), top + Number(row.minimum_increment)), minimum_increment: Number(row.minimum_increment), minimum_bid_amount: Number(row.minimum_bid_amount), maximum_bid_amount: Number(row.maximum_bid_amount) });
+  const nextTop = top > 0 ? top + Number(row.minimum_top_increment) : Number(row.minimum_new_bid_amount);
+  const activity = await pool.query("SELECT * FROM public.pos_coffee_passport_activity_view ORDER BY created_at DESC LIMIT 8");
+  const dailyArchive = await pool.query("SELECT * FROM public.pos_coffee_passport_daily_view LIMIT 30");
+  return privateJson({ success: true, tab, shops: result.rows, total: Number(result.rows[0]?.total_count || 0), page, page_size: pageSize, categories: categories.rows.map((item: { category: string }) => item.category), next_top_bid_amount: nextTop, minimum_new_bid_amount: Number(row.minimum_new_bid_amount), minimum_top_increment: Number(row.minimum_top_increment), minimum_existing_increment: Number(row.minimum_existing_increment), maximum_bid_amount: Number(row.maximum_bid_amount), refund_policy: row.refund_policy, activity: activity.rows, daily_archive: dailyArchive.rows });
+});
+
+app.get("/api/coffee-passport/bid/shops/:shopId", async (c) => {
+  const shopId = c.req.param("shopId");
+  const result = await pool.query("SELECT * FROM public.pos_coffee_passport_board_view WHERE shop_id = $1 LIMIT 1", [shopId]);
+  if (!result.rows[0]) return privateJson({ success: false, message: "Kedai tidak ditemukan." }, 404);
+  const today = await pool.query("SELECT count(DISTINCT click_id)::integer AS clicks FROM pos.coffee_passport_bid_clicks WHERE shop_id = $1 AND created_at >= now() - interval '24 hours'", [shopId]);
+  return privateJson({ success: true, shop: { ...result.rows[0], today_clicks: Number(today.rows[0]?.clicks || 0) } });
+});
+
+app.post("/api/coffee-passport/bid/click", async (c) => {
+  const body = await c.req.json().catch(() => ({})) as { shop_id?: unknown; visitor_key?: unknown };
+  const shopId = typeof body.shop_id === "string" ? body.shop_id.trim() : "";
+  const visitorKey = typeof body.visitor_key === "string" ? body.visitor_key.trim() : "";
+  if (!/^shop_[A-Za-z0-9_-]{8,120}$/.test(shopId) || !/^[A-Za-z0-9_-]{16,160}$/.test(visitorKey)) return privateJson({ success: false, message: "Data kunjungan tidak valid." }, 400);
+  const result = await pool.query("SELECT pos.coffee_passport_record_click($1, $2) AS result", [shopId, visitorKey]);
+  return privateJson({ success: true, ...(result.rows[0]?.result || {}) });
+});
+
+app.get("/api/coffee-passport/bid/leaderboard", async (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = "/api/coffee-passport/bid/board";
+  return app.fetch(new Request(url, c.req.raw));
 });
 
 app.post("/api/coffee-passport/bid/intent", async (c) => {
@@ -225,17 +263,24 @@ app.post("/api/coffee-passport/bid/intent", async (c) => {
   let entryId = "";
   try {
     await client.query("BEGIN");
-    const config = await client.query("SELECT minimum_bid_amount, minimum_increment, maximum_bid_amount FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
+    const config = await client.query("SELECT minimum_bid_amount, minimum_increment, minimum_new_bid_amount, minimum_top_increment, minimum_existing_increment, maximum_bid_amount FROM pos.coffee_passport_bid_config WHERE config_id = 'default'");
     const current = await client.query("SELECT current_bid_amount FROM pos.coffee_passport_shops WHERE shop_id = $1 FOR UPDATE", [shopId]);
-    const minimum = Math.max(Number(config.rows[0]?.minimum_bid_amount || 5000), Number(current.rows[0]?.current_bid_amount || 0) + Number(config.rows[0]?.minimum_increment || 500));
-    const maximum = Number(config.rows[0]?.maximum_bid_amount || 999999999);
+    const configRow = config.rows[0] || {};
+    const currentBid = Number(current.rows[0]?.current_bid_amount || 0);
+    const minimum = currentBid > 0
+      ? currentBid + Number(configRow.minimum_existing_increment || configRow.minimum_increment || 10000)
+      : Number(configRow.minimum_new_bid_amount || configRow.minimum_bid_amount || 100000);
+    const topBid = Number((await client.query("SELECT COALESCE(max(current_bid_amount), 0) AS amount FROM pos.coffee_passport_shops WHERE is_active = true AND verification_status = 'approved'")).rows[0]?.amount || 0);
+    const topMinimum = topBid > 0 ? topBid + Number(configRow.minimum_top_increment || 50000) : minimum;
+    const enforcedMinimum = currentBid >= topBid ? Math.max(minimum, topMinimum) : minimum;
+    const maximum = Number(configRow.maximum_bid_amount || 999999999);
     if (bidAmount > maximum) {
       await client.query("ROLLBACK");
       return privateJson({ success: false, message: `Bid maksimal ${formatRupiahServer(maximum)}.` }, 400);
     }
-    if (bidAmount < minimum) {
+    if (bidAmount < enforcedMinimum) {
       await client.query("ROLLBACK");
-      return privateJson({ success: false, message: `Bid minimum saat ini ${formatRupiahServer(minimum)}.` }, 409);
+      return privateJson({ success: false, message: `Bid minimum saat ini ${formatRupiahServer(enforcedMinimum)}.` }, 409);
     }
     const existing = await client.query("SELECT entry_id, status, mayar_invoice_id FROM pos.coffee_passport_bid_entries WHERE idempotency_key = $1 LIMIT 1", [idempotencyKey]);
     if (existing.rows[0]) {

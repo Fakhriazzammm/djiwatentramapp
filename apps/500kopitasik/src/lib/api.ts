@@ -23,32 +23,17 @@ export type PassportVisit = {
 };
 export type PassportCollection = { customer_id: string; shop_id: string; shop_name: string; shop_slug: string; first_visit_at: string; visit_count: number; sticker_completed: boolean };
 export type PassportState = { authenticated: boolean; customer: { name: string | null; email: string | null; photo_url: string | null } | null; shops: PassportShop[]; visits: PassportVisit[]; collection: PassportCollection[]; rewards: { available: number; count: number } };
+export type BoardShop = PassportShop & { overall_rank: number; category_rank: number; clicks: number; today_clicks: number; created_at: string; current_bid_paid_sequence: number | null };
+export type BoardActivity = { activity_id: string; shop_id: string; shop_name: string; from_rank: number | null; to_rank: number; bid_amount: number; created_at: string };
+export type BoardPayload = { success: boolean; tab: string; shops: BoardShop[]; total: number; page: number; page_size: number; categories: string[]; next_top_bid_amount: number; minimum_new_bid_amount: number; minimum_top_increment: number; minimum_existing_increment: number; maximum_bid_amount: number; refund_policy: string; activity: BoardActivity[] };
 
 const API_BASE = "https://djiwatentram.yumme.id/api/coffee-passport";
-export async function fetchPassport(): Promise<PassportState> {
-  const response = await fetch(`${API_BASE}/bootstrap`, { credentials: "include", headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`Passport API HTTP ${response.status}`);
-  const payload = await response.json() as { success?: boolean } & PassportState;
-  if (!payload.success) throw new Error("Passport API returned an invalid response");
-  return payload;
-}
-export async function requestGoogleLogin() {
-  const response = await fetch("https://djiwatentram.yumme.id/api/auth/sign-in/social", { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider: "google", callbackURL: window.location.href }) });
-  const payload = await response.json().catch(() => null) as { url?: string } | null;
-  if (!response.ok || !payload?.url) throw new Error("Google OAuth tidak tersedia");
-  window.location.assign(payload.url);
-}
-
-export async function requestCollectStamp(shopId: string, idempotencyKey: string) {
-  const response = await fetch("https://djiwatentram.yumme.id/api/coffee-passport/collect", { method: "POST", credentials: "include", headers: { "content-type": "application/json", Accept: "application/json" }, body: JSON.stringify({ shop_id: shopId, idempotency_key: idempotencyKey }) });
-  const payload = await response.json().catch(() => null) as { message?: string; status?: string } | null;
-  if (!response.ok) throw new Error(payload?.message ?? "Stamp belum bisa disimpan. Coba lagi.");
-  return payload;
-}
-
-export async function requestShopOnboarding(payload: { name: string; google_maps_url: string; area?: string; description?: string }) {
-  const response = await fetch("https://djiwatentram.yumme.id/api/coffee-passport/shops/onboard", { method: "POST", credentials: "include", headers: { "content-type": "application/json", Accept: "application/json" }, body: JSON.stringify(payload) });
-  const result = await response.json().catch(() => null) as { message?: string; shop_id?: string } | null;
-  if (!response.ok) throw new Error(result?.message ?? "Data kedai belum bisa dikirim.");
-  return result;
-}
+async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> { const response = await fetch(url, { ...init, credentials: "include", headers: { Accept: "application/json", ...(init?.headers || {}) } }); const payload = await response.json().catch(() => null); if (!response.ok) throw new Error((payload as { message?: string } | null)?.message || `Passport API HTTP ${response.status}`); return payload as T; }
+export async function fetchPassport(): Promise<PassportState> { const payload = await jsonFetch<{ success?: boolean } & PassportState>(`${API_BASE}/bootstrap`); if (!payload.success) throw new Error("Passport API returned an invalid response"); return payload; }
+export async function fetchBoard(params: { tab: "all-time" | "today" | "daily"; query?: string; category?: string; page?: number }): Promise<BoardPayload> { const search = new URLSearchParams({ tab: params.tab, page: String(params.page || 1), page_size: "50" }); if (params.query) search.set("q", params.query); if (params.category) search.set("category", params.category); return jsonFetch<BoardPayload>(`${API_BASE}/bid/board?${search}`); }
+export async function fetchShopDetail(shopId: string) { return jsonFetch<{ success: boolean; shop: BoardShop }>(`${API_BASE}/bid/shops/${encodeURIComponent(shopId)}`); }
+export async function recordBidClick(shopId: string) { const storageKey = "500kopitasik_visitor_key"; let visitorKey = localStorage.getItem(storageKey); if (!visitorKey) { visitorKey = `${crypto.randomUUID()}_${crypto.randomUUID()}`; localStorage.setItem(storageKey, visitorKey); } return jsonFetch<{ success: boolean; recorded: boolean }>(`${API_BASE}/bid/click`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ shop_id: shopId, visitor_key: visitorKey }) }); }
+export async function requestGoogleLogin() { const payload = await jsonFetch<{ url?: string }>("https://djiwatentram.yumme.id/api/auth/sign-in/social", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider: "google", callbackURL: window.location.href }) }); if (!payload.url) throw new Error("Google OAuth tidak tersedia"); window.location.assign(payload.url); }
+export async function requestCollectStamp(shopId: string, idempotencyKey: string) { return jsonFetch<{ message?: string; status?: string }>(`${API_BASE}/collect`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ shop_id: shopId, idempotency_key: idempotencyKey }) }); }
+export async function requestShopOnboarding(payload: { name: string; google_maps_url: string; area?: string; description?: string }) { return jsonFetch<{ message?: string; shop_id?: string }>(`${API_BASE}/shops/onboard`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }); }
+export async function requestBid(shopId: string, bidAmount: number) { return jsonFetch<{ invoice_url?: string; message?: string }>(`${API_BASE}/bid/intent`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ shop_id: shopId, bid_amount: bidAmount, idempotency_key: `${crypto.randomUUID()}_${crypto.randomUUID()}` }) }); }
