@@ -1,0 +1,14 @@
+{
+  "name": "500 Kopi Tasik — Coffee Passport",
+  "short_name": "500 Kopi Tasik",
+  "description": "Digital coffee passport untuk menjelajahi coffee shop Tasikmalaya.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fbf8f2",
+  "theme_color": "#293e57",
+  "icons": [
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logo-500kopitasik.png", "sizes": "1254x1254", "type": "image/png" }
+  ]
+}

@@ -44,7 +44,7 @@ import {
 	CalendarDays,
 	CheckCircle2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -59,7 +59,7 @@ import { APP_VERSION } from "@/lib/version";
 import { Footer } from "@/components/layout/Footer";
 
 export const Route = createFileRoute("/admin")({
-	component: AdminLayout,
+	component: AdminRouteLayout,
 });
 
 // Page title map for mobile header
@@ -233,7 +233,11 @@ const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/rekrutmen",
 	];
 
-function AdminLayout() {
+export function AdminRouteLayout() {
+	return <AdminLayout />;
+}
+
+export function AdminLayout({ children }: { children?: ReactNode }) {
 	const navigate = useNavigate();
 	const { user: authUser, logout, isAdmin, role, isAuthenticated, isLoading } = useYumiAuth();
 	const [isAccessDenied, setIsAccessDenied] = useState(false);
@@ -876,7 +880,7 @@ function AdminLayout() {
 					{isAccessDenied ? (
 						<PermissionDenied onBack={() => navigate({ to: "/admin" })} />
 					) : (
-						<Outlet />
+						children ?? <Outlet />
 					)}
 				</div>
 
