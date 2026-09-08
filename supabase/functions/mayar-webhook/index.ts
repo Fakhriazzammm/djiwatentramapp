@@ -177,6 +177,20 @@ function parseExtraData(value: unknown) {
   }
 }
 
+async function settleCoffeePassportListing(listingPaymentId: string, invoiceId: string, transaction: Record<string, unknown>) {
+  const transactionId = String(transaction.id || "");
+  if (!listingPaymentId || !transactionId) return null;
+  const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
+  if (!Number.isFinite(providerAmount) || providerAmount !== 1000) throw new Error("Coffee passport listing payment amount mismatch");
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/coffee_passport_settle_listing`, {
+    method: "POST",
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_listing_payment_id: listingPaymentId, p_invoice_id: invoiceId, p_transaction_id: transactionId, p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
+  });
+  if (!response.ok) throw new Error(`Coffee passport listing settlement failed (${response.status})`);
+  return await response.json();
+}
+
 async function settleCoffeePassportBid(entryId: string, invoiceId: string, transaction: Record<string, unknown>) {
   const transactionId = String(transaction.id || "");
   if (!entryId || !transactionId) return null;
@@ -318,6 +332,11 @@ Deno.serve(async (req) => {
     if (walletTopupId) {
       const settledWallet = await settleWalletTopup(walletTopupId, transaction);
       return json({ ok: true, walletTopup: settledWallet });
+    }
+    const coffeePassportListingPaymentId = String(data?.extraData?.coffeePassportListingPaymentId || transactionExtraData.coffeePassportListingPaymentId || "");
+    if (coffeePassportListingPaymentId) {
+      const settledListing = await settleCoffeePassportListing(coffeePassportListingPaymentId, String(data.id || ""), transaction);
+      return json({ ok: true, coffeePassportListing: settledListing });
     }
     const coffeePassportBidEntryId = String(data?.extraData?.coffeePassportBidEntryId || transactionExtraData.coffeePassportBidEntryId || "");
     if (coffeePassportBidEntryId) {

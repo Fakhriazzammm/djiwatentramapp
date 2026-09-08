@@ -204,17 +204,29 @@ app.post("/api/coffee-passport/shops/onboard", async (c) => {
   try {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended('500kopitasik:shop-onboard', 0))");
-    const existing = await client.query<{ shop_id: string; name: string; google_maps_url: string | null; verification_status: string; is_active: boolean }>("SELECT shop_id, name, google_maps_url, verification_status, is_active FROM pos.coffee_passport_shops WHERE is_active = true OR verification_status = 'pending_review' FOR UPDATE");
-    const duplicate = existing.rows.find((row) => normalizeShopName(row.name) === normalizedName || (row.google_maps_url && canonicalMapsUrl(row.google_maps_url) === canonicalUrl));
+    const existing = await client.query<{ shop_id: string; name: string; google_maps_url: string | null; verification_status: string; is_active: boolean; listing_payment_id: string | null; mayar_invoice_id: string | null; mayar_invoice_url: string | null }>("SELECT s.shop_id, s.name, s.google_maps_url, s.verification_status, s.is_active, p.listing_payment_id, p.mayar_invoice_id, p.mayar_invoice_url FROM pos.coffee_passport_shops s LEFT JOIN pos.coffee_passport_listing_payments p ON p.shop_id = s.shop_id WHERE s.is_active = true OR s.verification_status = 'pending_review' FOR UPDATE");
+    const duplicate = existing.rows.find((row: { shop_id: string; name: string; google_maps_url: string | null; verification_status: string; is_active: boolean; listing_payment_id: string | null; mayar_invoice_id: string | null; mayar_invoice_url: string | null }) => normalizeShopName(row.name) === normalizedName || (row.google_maps_url && canonicalMapsUrl(row.google_maps_url) === canonicalUrl));
     if (duplicate) {
       await client.query("COMMIT");
-      return privateJson({ success: true, status: "duplicate", duplicate: true, shop_id: duplicate.shop_id, message: duplicate.is_active ? "Coffee shop sudah terdaftar di Jelajah." : "Pendaftaran coffee shop ini sedang diproses." });
+      return privateJson({ success: true, status: duplicate.is_active ? "duplicate" : "pending_payment", duplicate: true, shop_id: duplicate.shop_id, listing_payment_id: duplicate.listing_payment_id, invoice_id: duplicate.mayar_invoice_id, invoice_url: duplicate.mayar_invoice_url, message: duplicate.is_active ? "Coffee shop sudah terdaftar di Jelajah." : "Coffee shop ini sudah menunggu pembayaran Mayar." });
     }
     const shopId = `shop_${crypto.randomUUID().replace(/-/g, "")}`;
+    const listingPaymentId = `listing_${crypto.randomUUID().replace(/-/g, "")}`;
+    const idempotencyKey = `listing_${crypto.randomUUID().replace(/-/g, "")}`;
     const slug = `${name.toLocaleLowerCase("id-ID").normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 70)}-${shopId.slice(-8)}`;
-    await client.query("INSERT INTO pos.coffee_passport_shops (shop_id, name, slug, area, description, owner_customer_id, google_maps_url, verification_status, is_active) VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), $6, $7, 'approved', true)", [shopId, name, slug, area, description, session.user.id, canonicalUrl]);
+    await client.query("INSERT INTO pos.coffee_passport_shops (shop_id, name, slug, area, description, owner_customer_id, google_maps_url, verification_status, is_active) VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), $6, $7, 'pending_review', false)", [shopId, name, slug, area, description, session.user.id, canonicalUrl]);
+    await client.query("INSERT INTO pos.coffee_passport_listing_payments (listing_payment_id, shop_id, customer_id, amount, idempotency_key) VALUES ($1, $2, $3, 1000, $4)", [listingPaymentId, shopId, session.user.id, idempotencyKey]);
     await client.query("COMMIT");
-    return privateJson({ success: true, status: "listed", duplicate: false, shop_id: shopId, message: "Coffee shop langsung tampil di Jelajah." });
+    try {
+      const invoice = await createListingInvoice(listingPaymentId, name, session.customer);
+      await pool.query("UPDATE pos.coffee_passport_listing_payments SET mayar_invoice_id = $1, mayar_invoice_url = $2 WHERE listing_payment_id = $3", [invoice.invoiceId, invoice.link, listingPaymentId]);
+      return privateJson({ success: true, status: "pending_payment", duplicate: false, shop_id: shopId, listing_payment_id: listingPaymentId, amount: 1000, invoice_id: invoice.invoiceId, invoice_url: invoice.link, message: "Selesaikan pembayaran Rp1.000 melalui Mayar agar coffee shop tampil di Jelajah." });
+    } catch (error) {
+      await pool.query("UPDATE pos.coffee_passport_listing_payments SET status = 'failed' WHERE listing_payment_id = $1", [listingPaymentId]);
+      await pool.query("UPDATE pos.coffee_passport_shops SET verification_status = 'rejected', updated_at = now() WHERE shop_id = $1", [shopId]);
+      console.error("Coffee passport listing invoice failed", error);
+      return privateJson({ success: false, message: "Invoice Mayar belum dapat dibuat. Coba lagi." }, 502);
+    }
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -333,6 +345,32 @@ app.post("/api/coffee-passport/bid/intent", async (c) => {
     return privateJson({ success: false, message: "Invoice Mayar belum dapat dibuat. Coba lagi." }, 502);
   }
 });
+
+async function createListingInvoice(listingPaymentId: string, shopName: string, customer: { name?: string | null; email?: string | null }) {
+  if (!customer.email) throw new Error("Email customer wajib tersedia untuk invoice Mayar");
+  const response = await fetch(MAYAR_PROXY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}),
+    },
+    body: JSON.stringify({
+      action: "create-invoice",
+      name: customer.name || "Pemilik coffee shop",
+      email: customer.email,
+      mobile: MAYAR_DEFAULT_MOBILE,
+      redirectUrl: `https://500kopitasik.yumme.id/?listing_payment=${encodeURIComponent(listingPaymentId)}`,
+      description: `Listing Coffee Shop 500 Kopi Tasik - ${shopName}`,
+      items: [{ quantity: 1, rate: 1000, description: `Listing Coffee Shop - ${shopName}` }],
+      extraData: { coffeePassportListingPaymentId: listingPaymentId, shopName },
+    }),
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  const data = payload.data && typeof payload.data === "object" ? payload.data as Record<string, unknown> : {};
+  const link = data.link || data.paymentUrl || data.url;
+  if (!response.ok || !payload.success || !data.id || !link) throw new Error("Invoice Mayar belum dapat dibuat. Coba lagi.");
+  return { invoiceId: String(data.id), transactionId: data.transactionId ? String(data.transactionId) : null, link: String(link) };
+}
 
 async function createBidInvoice(entryId: string, shopName: string, amount: number, customer: { name?: string | null; email?: string | null }) {
   const response = await fetch(MAYAR_PROXY_URL, {
