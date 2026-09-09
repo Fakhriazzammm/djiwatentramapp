@@ -131,11 +131,11 @@ function deleteUploadedObject(url) {
   }
 }
 
-// ── GET /api/recruitment-positions (hanya yang is_open=true) ──
+// ── GET /api/recruitment-positions (semua posisi + is_open) ──
 app.get("/api/recruitment-positions", async (req, res) => {
   try {
     const raw = psql(
-      `SELECT json_build_object('title', title, 'icon', icon, 'summary', summary, 'types', types, 'tags', tags)::text FROM pos.recruitment_positions WHERE is_open = true ORDER BY sort_order ASC`
+      `SELECT json_build_object('title', title, 'icon', icon, 'summary', summary, 'types', types, 'tags', tags, 'is_open', is_open)::text FROM pos.recruitment_positions ORDER BY sort_order ASC`
     );
     if (!raw) return res.json([]);
     const rows = raw.split("\n").filter(Boolean).map((line) => JSON.parse(line));

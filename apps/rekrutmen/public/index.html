@@ -130,6 +130,11 @@ body[data-career-route="daftar"] #applyPanel { width: 100%; }
 .job-card > .flex.items-center > .size-\[34px\] { width: 42px; height: 42px; }
 .job-card .job-apply { opacity: 1; transform: none; margin-top: auto; padding-top: 13px; font-size: 12px; }
 .job-card:hover .job-apply, .job-card:focus-within .job-apply { opacity: 1; transform: translateY(0); }
+.job-card.job-closed { opacity: 1; }
+.job-card.job-closed .job-apply { color: #71717a; }
+.job-closed-tag { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 6px; padding: 2px 8px; border-radius: 999px; color: #52525b; background: #e4e4e7; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.job-closed-tag.hidden { display: none; }
+#jdApplyBtn.job-apply-disabled { background: #d4d4d8; color: #71717a; cursor: not-allowed; box-shadow: none; }
 .wizard-progress { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 0 0 20px; }
 .wizard-step { display: flex; align-items: center; gap: 7px; min-width: 0; color: #a1a1aa; font-size: 11px; font-weight: 800; }
 .wizard-step::before { content: attr(data-index); width: 25px; height: 25px; flex: 0 0 25px; display: grid; place-items: center; border-radius: 999px; background: #f4f4f5; color: #71717a; }
@@ -474,7 +479,7 @@ body[data-career-route="daftar"] #applyPanel { width: 100%; }
       <div class="flex items-center gap-3.5 mb-4">
         <div class="size-[52px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0" id="jdIcon"></div>
         <div class="flex-1 min-w-0">
-          <h2 class="font-display text-[22px] font-extrabold tracking-[-0.03em] leading-tight" id="jdTitle">—</h2>
+          <h2 class="font-display text-[22px] font-extrabold tracking-[-0.03em] leading-tight" id="jdTitle">— <span id="jdClosedTag" class="job-closed-tag hidden">Closed</span></h2>
           <div class="flex flex-wrap gap-1.5 mt-2">
             <span class="inline-flex items-center gap-1 min-h-[26px] px-2.5 rounded-full bg-success/10 border border-success/25 text-success text-[11px] font-extrabold" id="jdApplicants"></span>
             <span id="jdTypes" class="flex flex-wrap gap-1.5"></span>
@@ -486,9 +491,9 @@ body[data-career-route="daftar"] #applyPanel { width: 100%; }
         <div class="text-[12px] font-extrabold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Kategori</div>
         <div id="jdTags" class="flex flex-wrap gap-1.5"></div>
       </div>
-      <button onclick="applyFromDetail()" class="w-full inline-flex items-center justify-center gap-2 min-h-[50px] rounded-ctl bg-accent text-white font-display font-extrabold text-[15px] motion-safe shadow-ios-1">
+      <button id="jdApplyBtn" onclick="applyFromDetail()" class="w-full inline-flex items-center justify-center gap-2 min-h-[50px] rounded-ctl bg-accent text-white font-display font-extrabold text-[15px] motion-safe shadow-ios-1">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-        Lamar posisi ini
+        <span id="jdApplyText">Lamar posisi ini</span>
       </button>
     </div>
   </div>
@@ -630,7 +635,7 @@ async function loadJobs() {
   if (sel) {
     const current = sel.value;
     sel.innerHTML = '<option value="">Pilih posisi</option>' +
-      JOBS.map(j => `<option value="${escapeHtml(j.title)}">${escapeHtml(j.title)}</option>`).join('');
+      JOBS.filter(j => isJobOpen(j)).map(j => `<option value="${escapeHtml(j.title)}">${escapeHtml(j.title)}</option>`).join('');
     if (current) sel.value = current;
   }
 }
@@ -647,6 +652,10 @@ function escapeHtml(text) {
 function getApplicantCountByJob(title) {
   const entry = (RECRUITMENT_STATS.byPosition || []).find((p) => p.title === title);
   return entry && Number(entry.count) > 0 ? Number(entry.count).toLocaleString('id-ID') : '0';
+}
+
+function isJobOpen(job) {
+  return job && job.is_open === true;
 }
 
 // ── Filters ──
@@ -704,23 +713,24 @@ function renderJobs() {
   list.innerHTML = filtered.map((job, i) => {
     const ac = getApplicantCountByJob(job.title);
     const active = selectedJob?.title === job.title;
+    const open = isJobOpen(job);
     return `
-      <article class="group bg-white rounded-card p-3 border border-border-ios animate-rise shadow-ios-1 motion-safe job-card cursor-pointer flex flex-col ${active ? '!border-accent !shadow-[0_0_0_4px_rgba(31,94,255,0.10),0_12px_32px_-12px_rgba(9,9,11,0.12)]' : 'hover:-translate-y-0.5 hover:shadow-ios-2'}"
+      <article class="group bg-white rounded-card p-3 border border-border-ios animate-rise shadow-ios-1 motion-safe job-card cursor-pointer flex flex-col ${active ? '!border-accent !shadow-[0_0_0_4px_rgba(31,94,255,0.10),0_12px_32px_-12px_rgba(9,9,11,0.12)]' : 'hover:-translate-y-0.5 hover:shadow-ios-2'} ${open ? '' : 'job-closed'}"
         data-job="${escapeHtml(job.title)}" style="animation-delay:${i * 40}ms"
         title="${escapeHtml(job.summary)}" role="button" tabindex="0" onclick="openJobDetail('${escapeHtml(job.title)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openJobDetail('${escapeHtml(job.title)}')}">
         <div class="flex items-center gap-2">
           <div class="size-[34px] rounded-ctl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">${ICONS[job.icon] || ICONS.briefcase}</div>
           <div class="flex-1 min-w-0">
-            <h3 class="font-display text-[14px] font-extrabold tracking-[-0.02em] leading-tight">${escapeHtml(job.title)}</h3>
+            <h3 class="font-display text-[14px] font-extrabold tracking-[-0.02em] leading-tight">${escapeHtml(job.title)} ${open ? '' : '<span class="job-closed-tag">Closed</span>'}</h3>
             <div class="flex flex-wrap items-center gap-1 mt-1.5">
               <span class="inline-flex items-center gap-1 min-h-[18px] px-1.5 rounded-full bg-success/10 border border-success/25 text-success text-[8.5px] font-extrabold">${ICONS.users}${ac}</span>
               ${(job.types||[]).map(t => `<span class="inline-flex items-center min-h-[18px] px-1.5 rounded-full bg-accent-soft border border-accent-line text-accent text-[8.5px] font-extrabold">${escapeHtml(t)}</span>`).join('')}
             </div>
           </div>
         </div>
-        <div class="job-apply mt-3 pt-2 border-t border-border-ios flex items-center justify-between text-[11px] font-extrabold text-accent">
-          <span>Lamar posisi ini</span>
-          <span aria-hidden="true">→</span>
+        <div class="job-apply mt-3 pt-2 border-t border-border-ios flex items-center justify-between text-[11px] font-extrabold ${open ? 'text-accent' : 'text-ink-2'}">
+          <span>${open ? 'Lamar posisi ini' : 'Lowongan ditutup'}</span>
+          <span aria-hidden="true">${open ? '→' : 'Closed'}</span>
         </div>
       </article>`;
   }).join('');
@@ -733,11 +743,22 @@ function openJobDetail(title) {
   selectedJob = job;
   const ac = getApplicantCountByJob(job.title);
   document.getElementById('jdIcon').innerHTML = ICONS[job.icon] || ICONS.briefcase;
-  document.getElementById('jdTitle').textContent = job.title;
+  document.getElementById('jdTitle').innerHTML = escapeHtml(job.title) + ' <span id="jdClosedTag" class="job-closed-tag ' + (isJobOpen(job) ? 'hidden' : '') + '">Closed</span>';
   document.getElementById('jdApplicants').innerHTML = ICONS.users + ' ' + ac + ' pelamar';
   document.getElementById('jdTypes').innerHTML = (job.types||[]).map(t => `<span class="inline-flex items-center min-h-[26px] px-2.5 rounded-full bg-accent-soft border border-accent-line text-accent text-[11px] font-extrabold">${escapeHtml(t)}</span>`).join('');
   document.getElementById('jdSummary').textContent = job.summary || '-';
   document.getElementById('jdTags').innerHTML = (job.tags||[]).map(t => `<span class="inline-flex items-center min-h-[26px] px-2.5 rounded-full bg-surface-2 border border-border-ios text-ink-2 text-[11px] font-extrabold">${escapeHtml(t)}</span>`).join('');
+  const applyBtn = document.getElementById('jdApplyBtn');
+  const applyText = document.getElementById('jdApplyText');
+  if (isJobOpen(job)) {
+    applyBtn.disabled = false;
+    applyBtn.classList.remove('job-apply-disabled');
+    applyText.textContent = 'Lamar posisi ini';
+  } else {
+    applyBtn.disabled = true;
+    applyBtn.classList.add('job-apply-disabled');
+    applyText.textContent = 'Lowongan ditutup';
+  }
   document.body.style.overflow = 'hidden';
 }
 
@@ -749,8 +770,12 @@ function closeJobDetail() {
 // ── Apply from detail sheet ──
 function applyFromDetail() {
   if (!selectedJob) return;
-  closeJobDetail();
   const job = selectedJob;
+  if (!isJobOpen(job)) {
+    showToast('Lowongan ini sedang ditutup. Coba posisi lain yang masih terbuka.', 'error');
+    return;
+  }
+  closeJobDetail();
   document.getElementById('fieldPosisi').value = job.title;
   document.getElementById('selectedRoleBox').classList.remove('hidden');
   document.getElementById('selectedRoleName').textContent = job.title;
