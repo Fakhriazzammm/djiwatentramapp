@@ -296,8 +296,11 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
 }
 
 async function reconcilePendingOrders() {
+  // Jangan filter gateway_invoice_id=not.is.null: order qris menyimpan invoiceId di
+  // jsonb payment_gateway, kolom gateway_invoice_id sering NULL sebelum settle pertama.
+  const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
   const response = await fetchWithTimeout(
-    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway,source&gateway_invoice_id=not.is.null&order=created_at.desc&limit=100`,
+    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway,source&status=in.(pending,cancelled)&created_at=gte.${threeDaysAgo}&order=created_at.desc&limit=100`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
   );
   if (!response.ok) throw new Error(`Pending order lookup failed (${response.status})`);
@@ -330,7 +333,17 @@ Deno.serve(async (req) => {
   if (!WEBHOOK_TOKEN || !safeTokenEqual(tokenFromRequest(req), WEBHOOK_TOKEN)) return json({ error: "Unauthorized" }, 401);
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return json({ error: "Webhook storage is not configured" }, 500);
   try {
-    const payload = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const action = typeof body?.action === "string" ? body.action.trim() : "";
+    if (action === "reconcile") {
+      const reconcile = await reconcilePendingOrders().catch((error) => ({
+        scanned: 0,
+        settled: [],
+        error: String((error as Error)?.message || "reconcile_failed").slice(0, 160),
+      }));
+      return json({ ok: true, ...reconcile });
+    }
+    const payload = body;
     const event = typeof payload?.event === "string" ? payload.event.trim() : String(payload?.event?.received || payload?.action || "").trim();
     if (event !== "payment.received") return json({ ok: true, ignored: true, event });
     const data = payload?.data || {};

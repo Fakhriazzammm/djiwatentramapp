@@ -296,11 +296,14 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
 }
 
 async function reconcilePendingOrders() {
+  // Jangan filter gateway_invoice_id=not.is.null: order qris menyimpan invoiceId di
+  // jsonb payment_gateway, kolom gateway_invoice_id sering NULL sebelum settle pertama.
+  const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
   const response = await fetchWithTimeout(
-    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway,source&gateway_invoice_id=not.is.null&order=created_at.desc&limit=100`,
+    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway,source&status=in.(pending,cancelled)&created_at=gte.${threeDaysAgo}&order=created_at.desc&limit=100`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
   );
-  if (!response.ok) throw new Error(`Pending order lookup failed (${response.status})`);
+if (!response.ok) throw new Error(`Pending order lookup failed (${response.status})`);
   const orders = await response.json() as Array<Record<string, unknown>>;
   const mayarOrders = orders.filter((order) => {
     const status = String(order.status || "");
@@ -344,7 +347,9 @@ async function processEvent(payload: Record<string, unknown>) {
   const bidId = String(extraData.coffeePassportBidEntryId || transactionExtraData.coffeePassportBidEntryId || "");
   if (bidId) return { coffeePassportBid: await settleCoffeePassportBid(bidId, String(data.id || ""), transaction) };
   const bookingId = String(extraData.bookingId || transactionExtraData.bookingId || "");
-  const invoiceId = String(data.id || "");
+  // Mayar payment.received menaruh invoice id di data.productId.
+  // data.id / data.transactionId adalah transaction id. Salah ambil = invoice mismatch.
+  const invoiceId = String(data.productId || data.id || "");
   if (bookingId) return { booking: await settleBooking(bookingId, invoiceId, transaction) };
   const customFields = Array.isArray(data.custom_field) ? data.custom_field as Array<Record<string, unknown>> : [];
   const customOrderId = customFields.find((field) => field?.key === "order_id")?.value;
