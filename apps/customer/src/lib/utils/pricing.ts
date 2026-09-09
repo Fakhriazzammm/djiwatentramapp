@@ -56,6 +56,10 @@ export function isDiscountApplicable(
 		if (context.channel && context.channel !== "djiwa_app") return false;
 		if (context.paymentMethod !== "wallet") return false;
 		if (Number(product.price) !== 30000) return false;
+		if (discount.startDate && context.currentTimestamp < discount.startDate) return false;
+		if (discount.endDate && context.currentTimestamp > discount.endDate + 86399999) return false;
+		const campaignMinutes = getWibMinutes(context.currentTimestamp);
+		if (campaignMinutes < 8 * 60 || campaignMinutes > 21 * 60) return false;
 	}
 
 	// Date Range Check
@@ -205,6 +209,17 @@ export function getActiveHappyHourBanner(
 	};
 }
 
+function getWibMinutes(timestamp = Date.now()): number {
+	const parts = new Intl.DateTimeFormat("en-US", {
+		timeZone: "Asia/Jakarta",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(timestamp);
+	const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+	const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+	return hour * 60 + minute;
+}
 export function isDjiwaPayCampaign(discount: Doc<"discounts">): boolean {
 	return discount.code === "DJIWA-PAY-50-SEPTEMBER-2026";
 }
@@ -220,6 +235,8 @@ export function isDjiwaPayCampaignActive(
 		endOfDay.setHours(23, 59, 59, 999);
 		if (timestamp > endOfDay.getTime()) return false;
 	}
+	const wibMinutes = getWibMinutes(timestamp);
+	if (wibMinutes < 8 * 60 || wibMinutes > 21 * 60) return false;
 	return true;
 }
 
@@ -244,7 +261,7 @@ export function calculateEffectivePrice(
 	const context: DiscountContext = {
 		currentTimestamp: now.getTime(),
 		currentDay: now.getDay(),
-		currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		currentTimeVal: getWibMinutes(now.getTime()),
 		...contextOverrides,
 	};
 
