@@ -48,6 +48,9 @@ export function isDiscountApplicable(
 	if (!discount.isActive) {
 		return false;
 	}
+	if (discount.code === "DJIWA-PAY-50-SEPTEMBER-2026") {
+		return false;
+	}
 
 	// Date Range Check
 	if (discount.startDate && context.currentTimestamp < discount.startDate) {
