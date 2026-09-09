@@ -308,8 +308,13 @@ function MenuImageWithSkeleton({
 	const [imageState, setImageState] = useState<"loading" | "loaded" | "error">(
 		src ? "loading" : "error"
 	);
+	const loadStartedAtRef = useRef(Date.now());
+	const loadTimerRef = useRef<number | null>(null);
 
 	useEffect(() => {
+		if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
+		loadStartedAtRef.current = Date.now();
+
 		if (!src) {
 			setImageState("error");
 			return;
@@ -321,18 +326,24 @@ function MenuImageWithSkeleton({
 		img.decoding = "async";
 		img.src = src;
 
-		const handleLoad = () => setImageState("loaded");
-		const handleError = () => setImageState("error");
+		const finishLoading = () => {
+			const remaining = Math.max(0, 220 - (Date.now() - loadStartedAtRef.current));
+			loadTimerRef.current = window.setTimeout(() => setImageState("loaded"), remaining);
+		};
+		const handleError = () => {
+			if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
+			setImageState("error");
+		};
 
 		if (img.complete && img.naturalWidth > 0) {
-			setImageState("loaded");
-			return;
+			finishLoading();
+		} else {
+			img.onload = finishLoading;
+			img.onerror = handleError;
 		}
 
-		img.onload = handleLoad;
-		img.onerror = handleError;
-
 		return () => {
+			if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
 			img.onload = null;
 			img.onerror = null;
 		};
