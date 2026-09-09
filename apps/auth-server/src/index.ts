@@ -349,6 +349,7 @@ app.post("/api/coffee-passport/stickers/generate", async (c) => {
     await writeFile(join(storageRoot, filename), raw, { mode: 0o640 });
     await pool.query("UPDATE pos.coffee_passport_stickers SET sticker_path = $1, status = 'completed', file_size_bytes = $2, mime_type = 'image/png', completed_at = now(), error_code = NULL WHERE sticker_id = $3 AND customer_id = $4", [filename, raw.byteLength, stickerId, session.user.id]);
     await pool.query("UPDATE pos.coffee_passport_visits SET status = 'completed' WHERE visit_id = $1 AND customer_id = $2", [visitId, session.user.id]);
+    await pool.query("SELECT pos.coffee_passport_reward_credit($1, $2, $3)", [session.user.id, visitId, `reward_${visitId}`]).catch((rewardError) => console.error("Coffee passport reward credit deferred", { visitId, error: String((rewardError as Error).message).slice(0, 120) }));
     return privateJson({ success: true, status: "completed", sticker_id: stickerId, visit_id: visitId, image_url: `/api/coffee-passport/stickers/${encodeURIComponent(stickerId)}/image` });
   } catch (error) {
     const errorCode = String((error as Error).message || "provider_error").slice(0, 80);
