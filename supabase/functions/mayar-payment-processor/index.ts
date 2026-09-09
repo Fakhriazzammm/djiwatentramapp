@@ -226,11 +226,12 @@ async function reconcilePendingCoffeePassportListings() {
 
 async function settleCoffeePassportBid(entryId: string, invoiceId: string, transaction: Record<string, unknown>) {
   const transactionId = String(transaction.id || "");
-  if (!entryId || !transactionId) return null;
+  const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
+  if (!entryId || !transactionId || !Number.isFinite(providerAmount) || providerAmount <= 0) return null;
   const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/coffee_passport_settle_bid`, {
     method: "POST",
     headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
-    body: JSON.stringify({ p_entry_id: entryId, p_invoice_id: invoiceId, p_transaction_id: transactionId, p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
+    body: JSON.stringify({ p_entry_id: entryId, p_invoice_id: invoiceId, p_transaction_id: transactionId, p_provider_amount: providerAmount, p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
   });
   if (!response.ok) throw new Error(`Coffee passport bid settlement failed (${response.status})`);
   return await response.json();

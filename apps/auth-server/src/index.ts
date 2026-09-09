@@ -311,8 +311,8 @@ app.post("/api/coffee-passport/stickers/generate", async (c) => {
       await client.query("ROLLBACK");
       return privateJson({ success: false, message: "Kunjungan tidak ditemukan." }, 404);
     }
-    const existing = await client.query<{ sticker_id: string; sticker_path: string | null; status: string; attempt_count: number }>(
-      "SELECT sticker_id, sticker_path, status, attempt_count FROM pos.coffee_passport_stickers WHERE visit_id = $1 OR (customer_id = $2 AND idempotency_key = $3) LIMIT 1 FOR UPDATE",
+    const existing = await client.query<{ sticker_id: string; sticker_path: string | null; status: string; attempt_count: number; lease_until: string | null }>(
+      "SELECT sticker_id, sticker_path, status, attempt_count, lease_until FROM pos.coffee_passport_stickers WHERE visit_id = $1 OR (customer_id = $2 AND idempotency_key = $3) LIMIT 1 FOR UPDATE",
       [visitId, session.user.id, idempotencyKey],
     );
     const row = existing.rows[0];
@@ -320,16 +320,16 @@ app.post("/api/coffee-passport/stickers/generate", async (c) => {
       await client.query("COMMIT");
       return privateJson({ success: true, status: "completed", sticker_id: row.sticker_id, visit_id: visitId, image_url: `/api/coffee-passport/stickers/${encodeURIComponent(row.sticker_id)}/image` });
     }
-    if (row?.status === "generating") {
+    if (row?.status === "generating" && row.lease_until && new Date(row.lease_until).getTime() > Date.now()) {
       await client.query("COMMIT");
       return privateJson({ success: true, status: "generating", sticker_id: row.sticker_id }, 202);
     }
     stickerId = row?.sticker_id || `stk_${crypto.randomUUID().replace(/-/g, "")}`;
     prompt = buildCoffeePassportStickerPrompt({ shopName: visit.shop_name, area: visit.area, visitTitle: visit.title });
     if (row) {
-      await client.query("UPDATE pos.coffee_passport_stickers SET status = 'generating', error_code = NULL, failed_at = NULL, attempt_count = attempt_count + 1, idempotency_key = $2 WHERE sticker_id = $1", [stickerId, idempotencyKey]);
+      await client.query("UPDATE pos.coffee_passport_stickers SET status = 'generating', error_code = NULL, failed_at = NULL, generation_started_at = now(), lease_until = now() + interval '10 minutes', attempt_count = attempt_count + 1, idempotency_key = $2 WHERE sticker_id = $1", [stickerId, idempotencyKey]);
     } else {
-      await client.query("INSERT INTO pos.coffee_passport_stickers (sticker_id, visit_id, customer_id, status, provider, prompt_version, model, attempt_count, idempotency_key) VALUES ($1, $2, $3, 'generating', '9router', $4, $5, 1, $6)", [stickerId, visitId, session.user.id, stickerPromptVersion(), stickerModel(), idempotencyKey]);
+      await client.query("INSERT INTO pos.coffee_passport_stickers (sticker_id, visit_id, customer_id, status, provider, prompt_version, model, attempt_count, idempotency_key, generation_started_at, lease_until) VALUES ($1, $2, $3, 'generating', '9router', $4, $5, 1, $6, now(), now() + interval '10 minutes')", [stickerId, visitId, session.user.id, stickerPromptVersion(), stickerModel(), idempotencyKey]);
     }
     await client.query("UPDATE pos.coffee_passport_visits SET status = 'sticker_pending' WHERE visit_id = $1", [visitId]);
     await client.query("COMMIT");
@@ -347,13 +347,13 @@ app.post("/api/coffee-passport/stickers/generate", async (c) => {
     const raw = await generateCoffeePassportPng(prompt);
     await mkdir(storageRoot, { recursive: true, mode: 0o750 });
     await writeFile(join(storageRoot, filename), raw, { mode: 0o640 });
-    await pool.query("UPDATE pos.coffee_passport_stickers SET sticker_path = $1, status = 'completed', file_size_bytes = $2, mime_type = 'image/png', completed_at = now(), error_code = NULL WHERE sticker_id = $3 AND customer_id = $4", [filename, raw.byteLength, stickerId, session.user.id]);
+    await pool.query("UPDATE pos.coffee_passport_stickers SET sticker_path = $1, status = 'completed', lease_until = NULL, file_size_bytes = $2, mime_type = 'image/png', completed_at = now(), error_code = NULL WHERE sticker_id = $3 AND customer_id = $4", [filename, raw.byteLength, stickerId, session.user.id]);
     await pool.query("UPDATE pos.coffee_passport_visits SET status = 'completed' WHERE visit_id = $1 AND customer_id = $2", [visitId, session.user.id]);
     await pool.query("SELECT pos.coffee_passport_reward_credit($1, $2, $3)", [session.user.id, visitId, `reward_${visitId}`]).catch((rewardError) => console.error("Coffee passport reward credit deferred", { visitId, error: String((rewardError as Error).message).slice(0, 120) }));
     return privateJson({ success: true, status: "completed", sticker_id: stickerId, visit_id: visitId, image_url: `/api/coffee-passport/stickers/${encodeURIComponent(stickerId)}/image` });
   } catch (error) {
     const errorCode = String((error as Error).message || "provider_error").slice(0, 80);
-    await pool.query("UPDATE pos.coffee_passport_stickers SET status = 'failed', error_code = $1, failed_at = now() WHERE sticker_id = $2 AND customer_id = $3", [errorCode.startsWith("provider_") || errorCode === "invalid_png" ? errorCode : "provider_error", stickerId, session.user.id]);
+    await pool.query("UPDATE pos.coffee_passport_stickers SET status = 'failed', lease_until = NULL, error_code = $1, failed_at = now() WHERE sticker_id = $2 AND customer_id = $3", [errorCode.startsWith("provider_") || errorCode === "invalid_png" ? errorCode : "provider_error", stickerId, session.user.id]);
     console.error("Coffee passport sticker generation failed", { stickerId, errorCode });
     const status = errorCode === "provider_timeout" ? 504 : errorCode === "provider_http_503" ? 503 : 502;
     return privateJson({ success: false, status: "failed", sticker_id: stickerId, message: status === 504 ? "Proses terlalu lama. Coba lagi." : "Sticker belum berhasil dibuat. Coba lagi beberapa saat." }, status);
