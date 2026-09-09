@@ -201,6 +201,7 @@ function OrderPage() {
 				const pricing = calculateEffectivePrice(
 					{ _id: product._id, price: product.price, categoryId: product.categoryId },
 					memberDiscounts,
+					{ channel: "djiwa_app", paymentMethod: paymentChoice === "wallet" ? "wallet" : undefined },
 				);
 				if (item.price === pricing.finalPrice && item.originalPrice === pricing.originalPrice) return item;
 				changed = true;
@@ -308,7 +309,7 @@ function OrderPage() {
 			? cart.reduce((sum, item) => {
 					const masterProduct = products?.find((product) => product._id === item.productId);
 					const basePrice = Number(masterProduct?.price ?? item.originalPrice ?? item.price);
-					return basePrice === 30000 ? sum + Math.max(0, item.price - 15000) * item.quantity : sum;
+					return basePrice === 30000 ? sum + Math.max(0, basePrice - 15000) * item.quantity : sum;
 				}, 0)
 			: promoDiscount === 0
 				? Math.min(productSubtotal, Math.max(0, Math.round(productSubtotal * (djiwaPayDiscountPercent / 100))))
@@ -536,7 +537,8 @@ function OrderPage() {
 		}
 		const pricing = calculateEffectivePrice(
 			{ _id: product._id, price: product.price, categoryId: product.categoryId },
-			memberDiscounts
+			memberDiscounts,
+			{ channel: "djiwa_app", paymentMethod: paymentChoice === "wallet" ? "wallet" : undefined },
 		);
 		addItemAndOfferUpsells({
 			productId: product._id,
@@ -554,7 +556,8 @@ function OrderPage() {
 		if (!pendingNumberProduct) return;
 		const pricing = calculateEffectivePrice(
 			{ _id: pendingNumberProduct._id, price: pendingNumberProduct.price, categoryId: pendingNumberProduct.categoryId },
-			memberDiscounts
+			memberDiscounts,
+			{ channel: "djiwa_app", paymentMethod: paymentChoice === "wallet" ? "wallet" : undefined },
 		);
 		addItemAndOfferUpsells({
 			productId: pendingNumberProduct._id,
@@ -729,7 +732,7 @@ function OrderPage() {
 				voucherId: djiwaPayDiscount > 0 ? (activeDjiwaPayCampaign ? "DJIWA-PAY-50-SEPTEMBER-2026" : "djiwa-pay-20") : null,
 				receiptMeta: {
 					happyHourApplied: cart.some((item) => {
-						const pricing = calculateEffectivePrice({ _id: item.productId, price: item.originalPrice ?? item.price, categoryId: item.categoryId }, memberDiscounts);
+						const pricing = calculateEffectivePrice({ _id: item.productId, price: item.originalPrice ?? item.price, categoryId: item.categoryId }, memberDiscounts, { channel: "djiwa_app", paymentMethod: paymentChoice === "wallet" ? "wallet" : undefined });
 						return pricing.isHappyHour && item.price < (item.originalPrice ?? item.price);
 					}),
 					...(freeRefillOptIn && activeFreeRefillPromo ? { adjustmentLines: [{ label: `${activeFreeRefillPromo.name || "Free Refill"} x${partySize}`, amount: freeRefillCharge }] } : {}),
