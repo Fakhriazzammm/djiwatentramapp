@@ -118,6 +118,9 @@ function AdminRekrutmen() {
   const [modalNotes, setModalNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [moreMenuId, setMoreMenuId] = useState<string | null>(null);
+  const [positions, setPositions] = useState<Array<{ id: string; title: string; icon: string | null; summary: string | null; is_open: boolean; sort_order: number | null }>>([]);
+  const [positionBusy, setPositionBusy] = useState<string | null>(null);
+  const [showPositions, setShowPositions] = useState(false);
 
   const config = TAB_CONFIG[activeTab];
   const records = allData[activeTab] || [];
@@ -153,12 +156,46 @@ function AdminRekrutmen() {
         interviews: [],
         onboarding: oData.records || [],
       });
+      void fetchPositions();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Gagal memuat data recruitment";
       setLoadError(message);
       console.error("Gagal fetch rekrutmen data:", e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchPositions() {
+    try {
+      const headers = { "X-Yumi-Session": token || "" };
+      const res = await fetch("/api/rekrutmen/recruitment-positions-admin", { headers });
+      if (!res.ok) return setPositions([]);
+      const data = await res.json();
+      setPositions(Array.isArray(data) ? data : []);
+    } catch {
+      setPositions([]);
+    }
+  }
+
+  async function togglePosition(id: string) {
+    if (positionBusy) return;
+    setPositionBusy(id);
+    try {
+      const target = positions.find((p) => p.id === id);
+      if (!target) return;
+      const headers = { "X-Yumi-Session": token || "", "Content-Type": "application/json" };
+      const res = await fetch(`/api/rekrutmen/recruitment-positions/${id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ is_open: !target.is_open }),
+      });
+      if (!res.ok) throw new Error("Gagal memperbarui status lowongan");
+      await fetchPositions();
+    } catch (e) {
+      console.error("Gagal toggle posisi:", e);
+    } finally {
+      setPositionBusy(null);
     }
   }
 
@@ -453,6 +490,38 @@ function AdminRekrutmen() {
           <button className="rk-header-action" onClick={fetchAllData} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
+        </div>
+
+        {/* Positions management (buka/tutup lowongan) */}
+        <div className="rk-positions">
+          <div className="rk-positions-head">
+            <div>
+              <div className="rk-positions-title">Pengaturan Lowongan</div>
+              <div className="rk-positions-sub">Kontrol posisi yang tampil di rekrutmen.yumme.id. Perubahan langsung tersinkron.</div>
+            </div>
+            <button className="rk-segmented-item" onClick={() => setShowPositions((v) => !v)}>{showPositions ? "Sembunyikan" : "Kelola"}</button>
+          </div>
+          {showPositions && (
+            <div className="rk-positions-list">
+              {positions.length === 0 && <div className="rk-positions-empty">Memuat posisi…</div>}
+              {positions.map((p) => (
+                <div key={p.id} className="rk-positions-row">
+                  <div className="rk-positions-meta">
+                    <strong>{p.title}</strong>
+                    <span>{p.is_open ? "Dibuka" : "Ditutup"}</span>
+                  </div>
+                  <button
+                    className={`rk-positions-toggle ${p.is_open ? "on" : ""}`}
+                    disabled={positionBusy === p.id}
+                    aria-label={`${p.is_open ? "Tutup" : "Buka"} lowongan ${p.title}`}
+                    onClick={() => void togglePosition(p.id)}
+                  >
+                    {positionBusy === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <span />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Summary (compact) */}

@@ -145,6 +145,40 @@ app.get("/api/recruitment-positions", async (req, res) => {
   }
 });
 
+// ── GET /api/recruitment-positions-admin (semua posisi + is_open) ──
+app.get("/api/recruitment-positions-admin", validateRecruitmentAdmin, async (req, res) => {
+  try {
+    const raw = psql(
+      `SELECT json_build_object('id', id, 'title', title, 'icon', icon, 'summary', summary, 'types', types, 'tags', tags, 'is_open', is_open, 'sort_order', sort_order)::text FROM pos.recruitment_positions ORDER BY sort_order ASC, title ASC`
+    );
+    if (!raw) return res.json([]);
+    const rows = raw.split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PATCH /api/recruitment-positions/:id (admin toggle is_open) ──
+app.patch("/api/recruitment-positions/:id", validateRecruitmentAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+      return res.status(400).json({ error: "ID posisi tidak valid" });
+    }
+    const body = req.body || {};
+    if (typeof body.is_open !== "boolean") return res.status(400).json({ error: "is_open harus boolean" });
+    const sql = `UPDATE pos.recruitment_positions SET is_open = ${body.is_open} WHERE id = '${id}' RETURNING id, title, is_open`;
+    const out = execSync(
+      `docker exec -i supabase-db psql -U postgres -d postgres -t -A -F '|' -c '${sql.replace(/'/g, "'\"'\"'")}'`,
+      { encoding: "utf-8", timeout: 10000 }
+    );
+    res.json({ success: true, updated: body.is_open });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── GET /api/table/Candidates ──
 app.get("/api/table/Candidates", validateRecruitmentAdmin, async (req, res) => {
   try {

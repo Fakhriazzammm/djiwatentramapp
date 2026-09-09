@@ -1383,6 +1383,22 @@
 .rk .rk-summary-chip:hover { background: var(--rk-primary-soft); border-color: var(--rk-primary); color: var(--rk-primary); }
 @media (max-width: 640px) { .rk .rk-summary { padding: 0 14px 12px; } }
 
+/* Positions management */
+.rk .rk-positions { margin: 0 20px 16px; padding: 14px 16px; border: 1px solid var(--rk-border); border-radius: 14px; background: var(--rk-card); }
+.rk .rk-positions-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rk .rk-positions-title { color: var(--rk-ink); font-size: 13px; font-weight: 800; }
+.rk .rk-positions-sub { margin-top: 3px; color: var(--rk-muted); font-size: 11px; line-height: 1.4; }
+.rk .rk-positions-list { display: grid; gap: 6px; margin-top: 12px; }
+.rk .rk-positions-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--rk-border); border-radius: 10px; background: white; }
+.rk .rk-positions-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.rk .rk-positions-meta strong { overflow: hidden; color: var(--rk-ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.rk .rk-positions-meta span { flex: 0 0 auto; color: var(--rk-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.rk .rk-positions-toggle { display: grid; place-items: center; width: 44px; height: 26px; flex: 0 0 44px; border: 0; border-radius: 999px; background: var(--rk-border); cursor: pointer; transition: background var(--dur-micro) var(--ease-ios); }
+.rk .rk-positions-toggle span { width: 18px; height: 18px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.rk .rk-positions-toggle.on { background: var(--rk-primary); }
+.rk .rk-positions-empty { color: var(--rk-muted); font-size: 11px; }
+@media (max-width: 640px) { .rk .rk-positions { margin: 0 14px 14px; } }
+
 /* Compact pipeline overview */
 .rk .rk-pipeline { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0 20px 16px; }
 .rk .rk-pipeline-item { display:flex; align-items:center; gap:9px; min-height:58px; padding:10px 12px; border:1px solid var(--rk-border); border-radius:14px; background:white; color:var(--rk-muted); font-size:11px; font-weight:800; text-align:left; transition:all var(--dur-micro) var(--ease-ios); }
