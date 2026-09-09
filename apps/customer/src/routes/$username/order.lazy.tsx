@@ -306,11 +306,19 @@ function OrderPage() {
 	const djiwaPayDiscountPercent = activeDjiwaPayCampaign ? 50 : Number(siteSettings?.djiwaPayDiscountPercent ?? 20);
 	const djiwaPayDiscount = paymentChoice === "wallet"
 		? activeDjiwaPayCampaign
-			? cart.reduce((sum, item) => {
-					const masterProduct = products?.find((product) => product._id === item.productId);
-					const basePrice = Number(masterProduct?.price ?? item.originalPrice ?? item.price);
-					return basePrice === 30000 ? sum + Math.max(0, basePrice - 15000) * item.quantity : sum;
-				}, 0)
+			? Math.min(
+					productSubtotal,
+					cart.reduce((sum, item) => {
+						const masterProduct = products?.find((product) => product._id === item.productId);
+						const basePrice = Number(masterProduct?.price ?? item.originalPrice ?? item.price);
+						// Anti-stack: kalau item Rp30.000 sudah terdiskon ke Rp15.000
+						// (oleh kampanye atau Happy Hour), jangan potong lagi di level order.
+						// Hanya potong sisa yang benar-benar belum terdiskon.
+						if (basePrice !== 30000) return sum;
+						const remaining = Math.max(0, Math.min(item.price, basePrice) - 15000);
+						return sum + remaining * item.quantity;
+					}, 0),
+				)
 			: promoDiscount === 0
 				? Math.min(productSubtotal, Math.max(0, Math.round(productSubtotal * (djiwaPayDiscountPercent / 100))))
 				: 0
