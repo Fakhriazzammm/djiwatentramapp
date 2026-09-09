@@ -1,7 +1,7 @@
 import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { calculateEffectivePrice, getActiveHappyHourBanner } from "@/lib/utils/pricing";
+import { calculateEffectivePrice, getActiveHappyHourBanner, isDjiwaPayCampaignActive } from "@/lib/utils/pricing";
 import { ImageWithPlaceholder } from "./image-with-placeholder";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
@@ -61,6 +61,7 @@ export interface MenuSectionProps {
 
 export function renderMenuSection(props: MenuSectionProps) {
 	const happyHourBanner = getActiveHappyHourBanner(props.discounts);
+	const djiwaPayCampaignActive = props.discounts?.some((discount) => isDjiwaPayCampaignActive(discount)) ?? false;
 	const bannerVariant = happyHourBanner?.session ?? "default";
 	const isBrandedBanner = bannerVariant !== "default" && bannerVariant !== "custom";
 	const bannerClassName = bannerVariant === "sarapan"
@@ -207,6 +208,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							{props.filteredProducts.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-10 text-center"><PackageSearch aria-hidden="true" className="h-7 w-7 text-muted-foreground" strokeWidth={2} /><p className="mt-3 font-display text-sm font-bold">Menu belum tersedia</p><p className="mt-1 text-xs text-muted-foreground">Pilih kategori lain atau coba lagi sebentar.</p></div> : null}
 							{props.filteredProducts.map((product) => {
 								const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
+								const isDjiwaPayEligible = djiwaPayCampaignActive && Number(product.price) === 30000;
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
 								const isSold = product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0);
 								const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
@@ -216,7 +218,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 											<ProductImage src={product.image} alt={product.name} />
 											{product.menuNumber != null ? <span className="absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}
 											{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
-											{pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
+											{isDjiwaPayEligible ? <span className="absolute bottom-1.5 left-1.5 rounded-full bg-[#2563eb] px-1.5 py-0.5 text-[9px] font-black text-white shadow">Djiwa Pay 50%</span> : pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 										</button>
 										<div className="min-w-0 flex-1 self-stretch py-0.5">
 											<div className="flex min-h-full flex-col justify-between gap-1.5">

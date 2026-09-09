@@ -179,7 +179,7 @@ export function SummaryCardLines({
 				<Line label="Promo / diskon" value={`-${currency(promoDiscount)}`} className="text-orange-600" />
 			) : null}
 			{djiwaPayDiscount > 0 ? (
-				<Line label="Voucher Djiwa Pay (20%)" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
+				<Line label="Djiwa Pay 50%" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
 			) : null}
 			<Line label={`Service Charge (${serviceChargeRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(serviceChargeAmount)} />
 			{taxEnabled ? <Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(taxAmount)} /> : null}

@@ -15,6 +15,8 @@ export interface DiscountContext {
 	currentTimestamp: number;
 	currentDay: number;
 	currentTimeVal: number;
+	channel?: string;
+	paymentMethod?: string;
 }
 
 function isTargetApplicable(
@@ -46,6 +48,14 @@ export function isDiscountApplicable(
 ): boolean {
 	if (!discount.isActive) {
 		return false;
+	}
+
+	// Djiwa Pay campaign is payment-channel scoped. Without explicit wallet
+	// context it must never change a displayed or submitted product price.
+	if (discount.code === "DJIWA-PAY-50-SEPTEMBER-2026") {
+		if (context.channel && context.channel !== "djiwa_app") return false;
+		if (context.paymentMethod !== "wallet") return false;
+		if (Number(product.price) !== 30000) return false;
 	}
 
 	// Date Range Check
@@ -195,9 +205,28 @@ export function getActiveHappyHourBanner(
 	};
 }
 
+export function isDjiwaPayCampaign(discount: Doc<"discounts">): boolean {
+	return discount.code === "DJIWA-PAY-50-SEPTEMBER-2026";
+}
+
+export function isDjiwaPayCampaignActive(
+	discount: Doc<"discounts">,
+	timestamp = Date.now(),
+): boolean {
+	if (!isDjiwaPayCampaign(discount) || !discount.isActive) return false;
+	if (discount.startDate && timestamp < discount.startDate) return false;
+	if (discount.endDate) {
+		const endOfDay = new Date(discount.endDate);
+		endOfDay.setHours(23, 59, 59, 999);
+		if (timestamp > endOfDay.getTime()) return false;
+	}
+	return true;
+}
+
 export function calculateEffectivePrice(
 	product: { _id: string; price: number; categoryId: string },
-	activeDiscounts: Doc<"discounts">[] | undefined | null
+	activeDiscounts: Doc<"discounts">[] | undefined | null,
+	contextOverrides?: Partial<DiscountContext>,
 ): PricingResult {
 	const originalPrice = product.price;
 
@@ -216,13 +245,32 @@ export function calculateEffectivePrice(
 		currentTimestamp: now.getTime(),
 		currentDay: now.getDay(),
 		currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		...contextOverrides,
 	};
 
 	let bestPrice = originalPrice;
 	let appliedDiscount: Doc<"discounts"> | undefined;
 
-	// Sort discounts: Happy Hour first, then others
+	// Payment campaign first when wallet context is explicit, then Happy Hour.
+	const campaignDiscount = activeDiscounts.find((discount) =>
+		isDjiwaPayCampaign(discount) && isDiscountApplicable(discount, product, context)
+	);
+	if (campaignDiscount) {
+		const finalPrice = getPotentialPrice(campaignDiscount, product);
+		return {
+			finalPrice,
+			originalPrice,
+			discountAmount: originalPrice - finalPrice,
+			discountName: campaignDiscount.name,
+			isPromo: finalPrice < originalPrice,
+			appliedDiscountId: campaignDiscount._id,
+			isHappyHour: false,
+		};
+	}
+
 	const sortedDiscounts = [...activeDiscounts].sort((a, b) => {
+		if (isDjiwaPayCampaign(a) && !isDjiwaPayCampaign(b)) return -1;
+		if (!isDjiwaPayCampaign(a) && isDjiwaPayCampaign(b)) return 1;
 		if (a.isHappyHour && !b.isHappyHour) return -1;
 		if (!a.isHappyHour && b.isHappyHour) return 1;
 		return 0;

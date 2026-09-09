@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
 import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
 import { CustomerHeader } from "@/components/customer/customer-shell";
-import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
+import { calculateEffectivePrice, isDjiwaPayCampaignActive, isFreeRefillActive } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
 
 import { useOrderContext } from "@/hooks/use-order-context";
@@ -301,9 +301,18 @@ function OrderPage() {
 	const subtotal = productSubtotal + freeRefillCharge;
 	const grossSubtotal = productGrossSubtotal + freeRefillCharge;
 	const promoDiscount = Math.max(0, grossSubtotal - subtotal);
-	const djiwaPayDiscountPercent = Number(siteSettings?.djiwaPayDiscountPercent ?? 20);
-	const djiwaPayDiscount = paymentChoice === "wallet" && promoDiscount === 0
-		? Math.min(productSubtotal, Math.max(0, Math.round(productSubtotal * (djiwaPayDiscountPercent / 100))))
+	const activeDjiwaPayCampaign = discounts?.find((discount) => isDjiwaPayCampaignActive(discount)) ?? null;
+	const djiwaPayDiscountPercent = activeDjiwaPayCampaign ? 50 : Number(siteSettings?.djiwaPayDiscountPercent ?? 20);
+	const djiwaPayDiscount = paymentChoice === "wallet"
+		? activeDjiwaPayCampaign
+			? cart.reduce((sum, item) => {
+					const masterProduct = products?.find((product) => product._id === item.productId);
+					const basePrice = Number(masterProduct?.price ?? item.originalPrice ?? item.price);
+					return basePrice === 30000 ? sum + Math.max(0, item.price - 15000) * item.quantity : sum;
+				}, 0)
+			: promoDiscount === 0
+				? Math.min(productSubtotal, Math.max(0, Math.round(productSubtotal * (djiwaPayDiscountPercent / 100))))
+				: 0
 		: 0;
 	const chargeableSubtotal = Math.max(0, subtotal - djiwaPayDiscount);
 	const taxEnabled = siteSettings?.taxEnabled ?? false;
@@ -685,15 +694,19 @@ function OrderPage() {
 			const normalizedTableNumber = tableNumber.trim() || undefined;
 			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
-				items: cart.map((item) => ({
-					productId: item.productId,
-					productName: item.name,
-					categoryId: item.categoryId,
-					variant: item.variant,
-					quantity: item.quantity,
-					price: item.price,
-					originalPrice: item.originalPrice,
-				})),
+				items: cart.map((item) => {
+					const masterProduct = products?.find((product) => product._id === item.productId);
+					const isCampaignItem = paymentChoice === "wallet" && Boolean(activeDjiwaPayCampaign) && Number(masterProduct?.price ?? item.originalPrice ?? item.price) === 30000;
+					return {
+						productId: item.productId,
+						productName: item.name,
+						categoryId: item.categoryId,
+						variant: item.variant,
+						quantity: item.quantity,
+						price: isCampaignItem ? 15000 : item.price,
+						originalPrice: isCampaignItem ? 30000 : item.originalPrice,
+					};
+				}),
 				totalAmount: total,
 				taxAmount,
 				serviceChargeAmount,
@@ -713,14 +726,23 @@ function OrderPage() {
 				dessertLater,
 				notes: normalizedNotes,
 				discountAmount: getAdditionalOrderDiscount(promoDiscount, djiwaPayDiscount),
-				voucherId: djiwaPayDiscount > 0 ? "djiwa-pay-20" : null,
+				voucherId: djiwaPayDiscount > 0 ? (activeDjiwaPayCampaign ? "DJIWA-PAY-50-SEPTEMBER-2026" : "djiwa-pay-20") : null,
 				receiptMeta: {
 					happyHourApplied: cart.some((item) => {
 						const pricing = calculateEffectivePrice({ _id: item.productId, price: item.originalPrice ?? item.price, categoryId: item.categoryId }, memberDiscounts);
 						return pricing.isHappyHour && item.price < (item.originalPrice ?? item.price);
 					}),
 					...(freeRefillOptIn && activeFreeRefillPromo ? { adjustmentLines: [{ label: `${activeFreeRefillPromo.name || "Free Refill"} x${partySize}`, amount: freeRefillCharge }] } : {}),
-					...(djiwaPayDiscount > 0 ? { djiwaPayDiscountPercent, djiwaPayDiscount, djiwaPayDiscountPaymentMethod: "wallet" } : {}),
+					...(promoDiscount > 0 ? { promoDiscount } : {}),
+					...(djiwaPayDiscount > 0 ? {
+						djiwaPayDiscountPercent,
+						djiwaPayDiscount,
+						djiwaPayDiscountPaymentMethod: "wallet",
+						...(activeDjiwaPayCampaign ? {
+							djiwaPayCampaignCode: "DJIWA-PAY-50-SEPTEMBER-2026",
+							djiwaPayCampaignLabel: "Djiwa Pay 50%",
+						} : {}),
+					} : {}),
 				},
 				customerSourceId: customer?.sourceId || guestCustomerSourceId,
 			};

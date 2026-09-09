@@ -14,6 +14,8 @@ export interface DiscountContext {
 	currentTimestamp: number;
 	currentDay: number;
 	currentTimeVal: number;
+	channel?: string;
+	paymentMethod?: string;
 }
 
 function isTargetApplicable(
@@ -45,6 +47,12 @@ export function isDiscountApplicable(
 ): boolean {
 	if (!discount.isActive) {
 		return false;
+	}
+
+	if (discount.code === "DJIWA-PAY-50-SEPTEMBER-2026") {
+		if (context.channel && context.channel !== "djiwa_app") return false;
+		if (context.paymentMethod !== "wallet") return false;
+		if (Number(product.price) !== 30000) return false;
 	}
 
 	// Date Range Check
@@ -117,6 +125,23 @@ function getPotentialPrice(
 export interface PricingOptions {
 	/** POS is regular-cashier by default; member-only Happy Hour must be explicit. */
 	allowHappyHour?: boolean;
+	channel?: string;
+	paymentMethod?: string;
+}
+
+export function isDjiwaPayCampaign(discount: Doc<"discounts">): boolean {
+	return discount.code === "DJIWA-PAY-50-SEPTEMBER-2026";
+}
+
+export function isDjiwaPayCampaignActive(discount: Doc<"discounts">, timestamp = Date.now()): boolean {
+	if (!isDjiwaPayCampaign(discount) || !discount.isActive) return false;
+	if (discount.startDate && timestamp < discount.startDate) return false;
+	if (discount.endDate) {
+		const endOfDay = new Date(discount.endDate);
+		endOfDay.setHours(23, 59, 59, 999);
+		if (timestamp > endOfDay.getTime()) return false;
+	}
+	return true;
 }
 
 export function calculateEffectivePrice(
@@ -143,13 +168,25 @@ export function calculateEffectivePrice(
 		currentTimestamp: now.getTime(),
 		currentDay: now.getDay(),
 		currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		channel: options.channel,
+		paymentMethod: options.paymentMethod,
 	};
 
 	let bestPrice = originalPrice;
 	let appliedDiscount: Doc<"discounts"> | undefined;
 
-	// Sort discounts: Happy Hour first, then others
+	// Customer payment campaign has explicit priority; POS has no wallet context.
+	const campaignDiscount = eligibleDiscounts.find((discount) =>
+		isDjiwaPayCampaign(discount) && isDiscountApplicable(discount, product, context)
+	);
+	if (campaignDiscount) {
+		const finalPrice = getPotentialPrice(campaignDiscount, product);
+		return { finalPrice, originalPrice, discountAmount: originalPrice - finalPrice, discountName: campaignDiscount.name, isPromo: finalPrice < originalPrice, appliedDiscountId: campaignDiscount._id, isHappyHour: false };
+	}
+
 	const sortedDiscounts = [...eligibleDiscounts].sort((a, b) => {
+		if (isDjiwaPayCampaign(a) && !isDjiwaPayCampaign(b)) return -1;
+		if (!isDjiwaPayCampaign(a) && isDjiwaPayCampaign(b)) return 1;
 		if (a.isHappyHour && !b.isHappyHour) return -1;
 		if (!a.isHappyHour && b.isHappyHour) return 1;
 		return 0;

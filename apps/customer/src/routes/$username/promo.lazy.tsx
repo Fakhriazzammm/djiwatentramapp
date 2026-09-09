@@ -83,6 +83,7 @@ function PromoPage() {
 							{activePromos.map((promo) => {
 								const validUntil = fmtDate(promo.endDate);
 								const minOrder = promo.minOrderValue ? Number(promo.minOrderValue) : null;
+								const isDjiwaPayCampaign = promo.code === "DJIWA-PAY-50-SEPTEMBER-2026";
 								return (
 									<div key={String(promo._id)} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
 										<div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 to-primary/5 px-3 py-3">
@@ -91,7 +92,7 @@ function PromoPage() {
 											</div>
 											<div className="min-w-0">
 												<p className="break-words font-display text-sm font-black">{promo.name || "Promo"}</p>
-												<p className="text-xs font-bold text-primary">Diskon {discountValueLabel(promo)}</p>
+												<p className="text-xs font-bold text-primary">Diskon {discountValueLabel(promo)}</p>{isDjiwaPayCampaign ? <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Menu Rp30.000 menjadi Rp15.000. Khusus pembayaran Djiwa Pay; top up saldo terlebih dahulu jika belum cukup.</p> : null}
 											</div>
 										</div>
 										{(promo.code || minOrder || validUntil) ? (
