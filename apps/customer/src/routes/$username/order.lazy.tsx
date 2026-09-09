@@ -96,6 +96,7 @@ function OrderPage() {
 		setCodeFeedback,
 		cart,
 		setCart,
+		clearCart,
 		cartOpen,
 		setCartOpen,
 		serviceOpen,
@@ -137,7 +138,7 @@ function OrderPage() {
 	const startNewOrder = () => {
 		checkoutRequestKeyRef.current = null;
 		setReceipt(null);
-		setCart([]);
+		clearCart();
 		setCartOpen(false);
 		setServiceOpen(false);
 		setScannerOpen(false);
@@ -842,6 +843,7 @@ function OrderPage() {
 				});
 
 				if (invoice?.data?.link && typeof window !== "undefined") {
+					clearCart();
 					window.location.assign(invoice.data.link);
 					return;
 				}
@@ -861,7 +863,7 @@ function OrderPage() {
 					cartSnapshot: cart,
 				});
 			}
-			setCart([]);
+			clearCart();
 			checkoutRequestKeyRef.current = null;
 			setStep("receipt");
 		} catch (error) {

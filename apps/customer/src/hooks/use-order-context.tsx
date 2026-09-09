@@ -53,6 +53,7 @@ export interface OrderContextType {
 	// ── Cart ────────────────────────────────────────────────
 	cart: CartItem[];
 	setCart: (value: CartItem[] | ((prev: CartItem[]) => CartItem[])) => void;
+	clearCart: () => void;
 	cartOpen: boolean;
 	setCartOpen: (value: boolean) => void;
 
@@ -234,6 +235,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 		persistCart(cartOwnerKey, cart);
 	}, [cart, cartOwnerKey]);
 
+	const clearCart = () => {
+		if (cartOwnerKey) clearPersistedCart(cartOwnerKey);
+		setCart([]);
+	};
+
 	// Jika aplikasi tetap terbuka melewati tengah malam WIB, cart harus expired.
 	useEffect(() => {
 		const interval = window.setInterval(() => {
@@ -309,6 +315,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				// Cart
 				cart,
 				setCart,
+				clearCart,
 				cartOpen,
 				setCartOpen,
 
