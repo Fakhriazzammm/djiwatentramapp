@@ -204,4 +204,18 @@ main { padding-top: max(20px, env(safe-area-inset-top)); }
 @keyframes passport-dot { 0%, 60%, 100% { opacity: .28; transform: scale(.8); } 30% { opacity: 1; transform: scale(1.15); } }
 .submit-hint { margin: 10px 0 0; color: #6e6e73; font-size: 11px; line-height: 1.45; text-align: center; }
 .button-spinner { animation: passport-spin 1s linear infinite; }
+.journey-card { border: 1px solid #e5e5ea; border-radius: 20px; padding: 16px; background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.04); }
+.journey-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.journey-header h2 { margin: 4px 0 0; color: #1d1d1f; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.journey-status { flex: 0 0 auto; border-radius: 99px; padding: 6px 8px; color: #007aff; background: #eaf3ff; font-size: 10px; font-weight: 700; }
+.journey-steps { display: grid; grid-template-columns: 1fr 18px 1fr 18px 1fr; align-items: start; gap: 4px; margin-top: 18px; }
+.journey-steps button { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 3px; border: 0; padding: 0; color: #8e8e93; background: transparent; text-align: left; }
+.journey-steps button > span { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid #d2d2d7; border-radius: 50%; color: #8e8e93; background: #fff; font-size: 12px; font-weight: 700; }
+.journey-steps button.done > span, .journey-steps button.active > span { border-color: #007aff; color: #fff; background: #007aff; }
+.journey-steps button strong { overflow: hidden; max-width: 100%; color: #1d1d1f; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.journey-steps button small { overflow: hidden; max-width: 100%; color: #6e6e73; font-size: 9px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.journey-steps > i { height: 1px; margin-top: 13px; background: #d2d2d7; }
+.journey-steps > i.filled { background: #007aff; }
+.journey-copy { margin: 16px 0 0; color: #6e6e73; font-size: 12px; line-height: 1.45; }
+.journey-action { display: inline-flex; min-height: 38px; align-items: center; gap: 7px; margin-top: 12px; border: 0; border-radius: 11px; padding: 0 12px; color: #007aff; background: #eaf3ff; font-size: 12px; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .status-chip.processing svg, .generation-track span, .generation-dots i, .button-spinner { animation: none; } }
