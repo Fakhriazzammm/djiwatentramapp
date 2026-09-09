@@ -202,4 +202,6 @@ main { padding-top: max(20px, env(safe-area-inset-top)); }
 @keyframes passport-spin { to { transform: rotate(360deg); } }
 @keyframes passport-progress { 0% { transform: translateX(-110%); } 100% { transform: translateX(320%); } }
 @keyframes passport-dot { 0%, 60%, 100% { opacity: .28; transform: scale(.8); } 30% { opacity: 1; transform: scale(1.15); } }
-@media (prefers-reduced-motion: reduce) { .status-chip.processing svg, .generation-track span, .generation-dots i { animation: none; } }
+.submit-hint { margin: 10px 0 0; color: #6e6e73; font-size: 11px; line-height: 1.45; text-align: center; }
+.button-spinner { animation: passport-spin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .status-chip.processing svg, .generation-track span, .generation-dots i, .button-spinner { animation: none; } }
