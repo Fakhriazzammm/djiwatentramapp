@@ -36,9 +36,9 @@ export function ImageWithPlaceholder({
       className={cn("relative block overflow-hidden bg-muted", containerClassName)}
       aria-busy={state === "loading"}
     >
-      {state !== "loaded" ? (
+      {state === "loading" ? (
         <span
-          className="absolute inset-0 animate-pulse bg-gradient-to-r from-muted/80 via-muted/30 to-muted/80"
+          className="absolute inset-0 z-[1] animate-pulse bg-gradient-to-r from-muted/65 via-muted/20 to-muted/65 transition-opacity duration-500"
           aria-hidden="true"
         />
       ) : null}
@@ -59,8 +59,8 @@ export function ImageWithPlaceholder({
           setState("error");
         }}
         className={cn(
-          "relative block h-full w-full object-cover transition-opacity duration-300",
-          state === "loaded" ? "opacity-100" : "opacity-0",
+          "relative block h-full w-full object-cover transition-[filter,opacity] duration-500 ease-out",
+          state === "loaded" ? "opacity-100 blur-0" : "opacity-60 blur-md",
           className,
         )}
       />

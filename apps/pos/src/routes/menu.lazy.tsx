@@ -314,40 +314,22 @@ function MenuImageWithSkeleton({
 	useEffect(() => {
 		if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
 		loadStartedAtRef.current = Date.now();
-
-		if (!src) {
-			setImageState("error");
-			return;
-		}
-
-		setImageState("loading");
-
-		const img = new Image();
-		img.decoding = "async";
-		img.src = src;
-
-		const finishLoading = () => {
-			const remaining = Math.max(0, 220 - (Date.now() - loadStartedAtRef.current));
-			loadTimerRef.current = window.setTimeout(() => setImageState("loaded"), remaining);
-		};
-		const handleError = () => {
-			if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
-			setImageState("error");
-		};
-
-		if (img.complete && img.naturalWidth > 0) {
-			finishLoading();
-		} else {
-			img.onload = finishLoading;
-			img.onerror = handleError;
-		}
+		setImageState(src ? "loading" : "error");
 
 		return () => {
 			if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
-			img.onload = null;
-			img.onerror = null;
 		};
 	}, [src]);
+
+	const handleLoad = () => {
+		const remaining = Math.max(0, 220 - (Date.now() - loadStartedAtRef.current));
+		loadTimerRef.current = window.setTimeout(() => setImageState("loaded"), remaining);
+	};
+
+	const handleError = () => {
+		if (loadTimerRef.current !== null) window.clearTimeout(loadTimerRef.current);
+		setImageState("error");
+	};
 
 	if (!src || imageState === "error") {
 		return (
@@ -363,22 +345,24 @@ function MenuImageWithSkeleton({
 	return (
 		<>
 			{imageState === "loading" && (
-				<div className="absolute inset-0 flex h-full w-full items-center justify-center bg-muted/70">
-					<Skeleton className="absolute inset-0 h-full w-full rounded-none" />
+				<div className="absolute inset-0 z-[1] flex h-full w-full items-center justify-center bg-muted/35">
+					<Skeleton className="absolute inset-0 h-full w-full rounded-none opacity-60" />
 					<ShoppingBag className="relative z-[1] h-8 w-8 text-muted-foreground/35" />
 				</div>
 			)}
-			{imageState === "loaded" && (
-				<img
-					src={src}
-					alt={alt}
-					className={cn(
-						"absolute inset-0 h-full w-full object-cover",
-						imageClassName
-					)}
-					loading={loading}
-				/>
-			)}
+			<img
+				src={src}
+				alt={alt}
+				className={cn(
+					"absolute inset-0 h-full w-full object-cover transition-[filter,opacity] duration-500 ease-out",
+					imageState === "loaded" ? "opacity-100 blur-0" : "opacity-60 blur-md",
+					imageClassName
+				)}
+				loading={loading}
+				decoding="async"
+				onLoad={handleLoad}
+				onError={handleError}
+			/>
 		</>
 	);
 }
