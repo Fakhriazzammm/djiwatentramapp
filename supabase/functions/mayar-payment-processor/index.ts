@@ -383,7 +383,11 @@ Deno.serve(async (req) => {
       try { const result = await processEvent(event.payload as Record<string, unknown>); results.push({ id: event.id, ...(await completeEvent(String(event.id), "sent")), result }); }
       catch (error) { const message = error instanceof Error ? error.message : "Processor failure"; results.push({ id: event.id, ...(await completeEvent(String(event.id), "retrying", message)) }); }
     }
-    return json({ ok: true, claimed: events.length, results });
+    const walletReconciliation = await reconcilePendingWalletTopups().catch((error) => {
+      console.error("wallet topup reconciliation failed", { error: String((error as Error).message).slice(0, 160) });
+      return { scanned: 0, settled: [], error: "wallet_reconcile_failed" };
+    });
+    return json({ ok: true, claimed: events.length, results, walletReconciliation });
   } catch (error) {
     console.error("mayar-payment-processor failed", error);
     return json({ error: "Processor failed" }, 500);
