@@ -88,6 +88,7 @@ import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
+import { MarketingInfoStrip } from "@/components/pos/marketing-info-strip";
 import { StockToolbarPanel } from "@/components/pos/stock-toolbar-panel";
 import { StockTutorial, shouldShowStockTutorial } from "@/components/pos/stock-tutorial";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
@@ -2196,6 +2197,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					onDetected={handleBarcodeDetected}
 					transactionSuggestions={transactionSuggestions}
 				/>
+
+				{/* MARKETING INFO — compact/collapsible, read-only */}
+				<MarketingInfoStrip />
 
 				{/* HORIZONTAL QUEUE BAR */}
 				<QueueHorizontalBar />
