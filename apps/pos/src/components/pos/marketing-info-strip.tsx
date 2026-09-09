@@ -2,8 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Megaphone, Tag } from "lucide-react";
 import { useHybridActiveDiscounts } from "@/hooks/use-hybrid-pos-data";
 
+const DJIWA_PAY_CAMPAIGN_CODE = "DJIWA-PAY-50-SEPTEMBER-2026";
+
 const formatCurrency = (value: number) =>
 	new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+
+function isDjiwaPayCampaign(discount: any) {
+	const codeCandidates = [discount?.code, discount?.raw?.code, discount?.raw?.campaignCode, discount?.raw?.djiwaPayCampaignCode];
+	return codeCandidates.some((code) => String(code ?? "").toUpperCase() === DJIWA_PAY_CAMPAIGN_CODE) || String(discount?.name ?? "").toLowerCase().includes("djiwa pay 50");
+}
 
 function wibMinutes(date: Date) {
 	const parts = new Intl.DateTimeFormat("en-US", {
@@ -32,6 +39,7 @@ function isCurrentlyActive(discount: any, now: Date) {
 }
 
 function scopeLabel(discount: any) {
+	if (isDjiwaPayCampaign(discount)) return "Djiwa App";
 	const channel = String(discount?.raw?.channel ?? discount?.channel ?? "").toLowerCase();
 	if (channel === "djiwa_app") return "Djiwa App";
 	if (channel === "pos" || channel === "cashier") return "POS Kasir";
@@ -82,7 +90,12 @@ export function MarketingInfoStrip() {
 					<span className="shrink-0 font-black text-indigo-700">{valueLabel(promo)}</span>
 					<span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 font-bold text-slate-600">{scopeLabel(promo)}</span>
 				</div>)}
-				<p className="px-1 text-[10px] text-indigo-700/70">Informasi saja · tidak mengubah harga atau transaksi kasir.</p>
+				{activePromos.some(isDjiwaPayCampaign) && <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 py-2 text-[11px] leading-relaxed text-indigo-950">
+					<p className="font-black">Cara menjelaskan ke customer:</p>
+					<p>Promo hanya berlaku di Djiwa App untuk menu harga Rp30.000, menjadi Rp15.000 saat dibayar dengan Djiwa Pay.</p>
+					<p>Berlaku pukul 08.00–21.00 WIB. Harga di POS Kasir tetap normal.</p>
+				</div>}
+				<p className="px-1 text-[10px] text-indigo-700/70">Kasir: arahkan customer melakukan pemesanan dan pembayaran melalui Djiwa App.</p>
 			</div>}
 		</section>
 	);
