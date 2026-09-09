@@ -152,7 +152,7 @@ app.get("/api/coffee-passport/bootstrap", async (c) => {
   }
   const [visits, collection, rewards] = await Promise.all([
     pool.query("SELECT v.visit_id, v.shop_id, s.name AS shop_name, v.photo_path, v.photo_category, v.title, v.description, v.status, v.created_at, st.sticker_id, st.sticker_path, st.status AS sticker_status FROM pos.coffee_passport_visits v JOIN pos.coffee_passport_shops s ON s.shop_id = v.shop_id LEFT JOIN pos.coffee_passport_stickers st ON st.visit_id = v.visit_id WHERE v.customer_id = $1 ORDER BY v.created_at DESC LIMIT 100", [session.user.id]),
-    pool.query("SELECT * FROM public.pos_coffee_passport_collection_view WHERE customer_id = $1 ORDER BY first_visit_at DESC", [session.user.id]),
+    pool.query("SELECT v.customer_id, v.shop_id, s.name AS shop_name, s.slug AS shop_slug, min(v.created_at) AS first_visit_at, count(*)::integer AS visit_count, true AS sticker_completed FROM pos.coffee_passport_visits v JOIN pos.coffee_passport_shops s ON s.shop_id = v.shop_id JOIN pos.coffee_passport_stickers st ON st.visit_id = v.visit_id WHERE v.customer_id = $1 AND v.status IN ('sticker_pending', 'completed') AND st.status = 'completed' GROUP BY v.customer_id, v.shop_id, s.name, s.slug ORDER BY first_visit_at DESC", [session.user.id]),
     pool.query("SELECT COALESCE(sum(amount) FILTER (WHERE status = 'available'), 0)::bigint AS available, count(*) FILTER (WHERE status IN ('available','redeemed'))::integer AS count FROM pos.coffee_passport_rewards WHERE customer_id = $1", [session.user.id]),
   ]);
   return privateJson({ success: true, authenticated: true, customer: session.customer, shops: shops.rows, visits: visits.rows, collection: collection.rows, rewards: rewards.rows[0] ?? { available: 0, count: 0 } });
