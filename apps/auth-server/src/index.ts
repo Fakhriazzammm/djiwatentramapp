@@ -257,7 +257,7 @@ app.post("/api/coffee-passport/shops/onboard", async (c) => {
     const duplicate = existing.rows.find((row: { shop_id: string; name: string; google_maps_url: string | null; verification_status: string; is_active: boolean; listing_payment_id: string | null; mayar_invoice_id: string | null; mayar_invoice_url: string | null }) => normalizeShopName(row.name) === normalizedName || (row.google_maps_url && canonicalMapsUrl(row.google_maps_url) === canonicalUrl));
     if (duplicate) {
       await client.query("COMMIT");
-      return privateJson({ success: true, status: duplicate.is_active ? "duplicate" : "pending_payment", duplicate: true, shop_id: duplicate.shop_id, listing_payment_id: duplicate.listing_payment_id, invoice_id: duplicate.mayar_invoice_id, invoice_url: duplicate.mayar_invoice_url, message: duplicate.is_active ? "Coffee shop sudah terdaftar di Jelajah." : "Coffee shop ini sudah menunggu pembayaran Mayar." });
+      return privateJson({ success: true, status: duplicate.is_active ? "duplicate" : "pending_payment", duplicate: true, shop_id: duplicate.shop_id, listing_payment_id: duplicate.listing_payment_id, invoice_id: duplicate.mayar_invoice_id, invoice_url: duplicate.mayar_invoice_url, message: duplicate.is_active ? "Coffee shop sudah terdaftar di Jelajah." : "Coffee shop ini menunggu verifikasi pembayaran." });
     }
     const shopId = `shop_${crypto.randomUUID().replace(/-/g, "")}`;
     const listingPaymentId = `listing_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -269,12 +269,12 @@ app.post("/api/coffee-passport/shops/onboard", async (c) => {
     try {
       const invoice = await createListingInvoice(listingPaymentId, name, { ...session.customer, phone: mobile || session.customer.phone });
       await pool.query("UPDATE pos.coffee_passport_listing_payments SET mayar_invoice_id = $1, mayar_invoice_url = $2 WHERE listing_payment_id = $3", [invoice.invoiceId, invoice.link, listingPaymentId]);
-      return privateJson({ success: true, status: "pending_payment", duplicate: false, shop_id: shopId, listing_payment_id: listingPaymentId, amount: 1000, invoice_id: invoice.invoiceId, invoice_url: invoice.link, message: "Selesaikan pembayaran Rp1.000 melalui Mayar agar coffee shop tampil di Jelajah." });
+      return privateJson({ success: true, status: "pending_payment", duplicate: false, shop_id: shopId, listing_payment_id: listingPaymentId, amount: 1000, invoice_id: invoice.invoiceId, invoice_url: invoice.link, message: "Selesaikan pembayaran Rp1.000 agar coffee shop tampil di Jelajah." });
     } catch (error) {
       await pool.query("UPDATE pos.coffee_passport_listing_payments SET status = 'failed' WHERE listing_payment_id = $1", [listingPaymentId]);
       await pool.query("UPDATE pos.coffee_passport_shops SET verification_status = 'rejected', updated_at = now() WHERE shop_id = $1", [shopId]);
       console.error("Coffee passport listing invoice failed", error);
-      return privateJson({ success: false, message: "Invoice Mayar belum dapat dibuat. Coba lagi." }, 502);
+      return privateJson({ success: false, message: "Pembayaran belum dapat dibuat. Coba lagi." }, 502);
     }
   } catch (error) {
     await client.query("ROLLBACK");
@@ -482,10 +482,10 @@ app.post("/api/coffee-passport/bid/intent", async (c) => {
   try {
     const invoice = await createBidInvoice(entryId, String(shop.rows[0].name), bidAmount, session.customer);
     await pool.query("UPDATE pos.coffee_passport_bid_entries SET mayar_invoice_id = $1, mayar_transaction_id = $2 WHERE entry_id = $3", [invoice.invoiceId, invoice.transactionId, entryId]);
-    return privateJson({ success: true, entry_id: entryId, status: "pending_payment", amount: bidAmount, invoice_id: invoice.invoiceId, invoice_url: invoice.link, message: "Bid dibuat. Selesaikan pembayaran melalui Mayar." });
+    return privateJson({ success: true, entry_id: entryId, status: "pending_payment", amount: bidAmount, invoice_id: invoice.invoiceId, invoice_url: invoice.link, message: "Bid dibuat. Selesaikan pembayaran untuk melanjutkan." });
   } catch (error) {
     await pool.query("UPDATE pos.coffee_passport_bid_entries SET status = 'failed' WHERE entry_id = $1", [entryId]);
-    return privateJson({ success: false, message: "Invoice Mayar belum dapat dibuat. Coba lagi." }, 502);
+    return privateJson({ success: false, message: "Pembayaran belum dapat dibuat. Coba lagi." }, 502);
   }
 });
 
