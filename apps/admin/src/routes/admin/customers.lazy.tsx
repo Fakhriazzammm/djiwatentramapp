@@ -153,6 +153,9 @@ function AdminCustomers() {
 	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
+	const [editingProfile, setEditingProfile] = useState(false);
+	const [profileDraft, setProfileDraft] = useState({ name: "", phone: "", nickname: "", address: "", city: "", province: "", postal_code: "", customer_description: "" });
+	const [profileSaveBusy, setProfileSaveBusy] = useState(false);
 	const [membershipExpiryValue, setMembershipExpiryValue] = useState("");
 	const [membershipExpiryBusy, setMembershipExpiryBusy] = useState(false);
 	const [walletLedger, setWalletLedger] = useState<WalletLedgerEntry[]>([]);
@@ -255,6 +258,27 @@ function AdminCustomers() {
 	useEffect(() => {
 		setMembershipExpiryValue(detailCustomer?.membership_expires_at?.slice(0, 10) ?? "");
 	}, [detailCustomer?.source_id, detailCustomer?.membership_expires_at]);
+
+	useEffect(() => {
+		if (!detailCustomer) { setEditingProfile(false); return; }
+		setProfileDraft({ name: detailCustomer.name ?? "", phone: detailCustomer.phone ?? "", nickname: detailCustomer.nickname ?? "", address: detailCustomer.address ?? "", city: detailCustomer.city ?? "", province: detailCustomer.province ?? "", postal_code: detailCustomer.postal_code ?? "", customer_description: detailCustomer.customer_description ?? "" });
+	}, [detailCustomer?.source_id]);
+
+	const handleProfileSave = async () => {
+		if (!detailCustomer) return;
+		const staffToken = typeof window !== "undefined" ? window.localStorage.getItem("yumi_session_token") : "";
+		if (!staffToken) { toast.error("Sesi staff tidak ditemukan"); return; }
+		setProfileSaveBusy(true);
+		try {
+			const result = await invokeEdgeFunction<{ result: Customer }>("customer-wallet", { action: "admin-update-customer", staffToken, customerId: detailCustomer.source_id, ...profileDraft });
+			const updated = result.result;
+			setDetailCustomer(updated);
+			setCustomers((current) => current?.map((customer) => customer.source_id === updated.source_id ? { ...customer, ...updated } : customer));
+			setEditingProfile(false);
+			toast.success("Data pelanggan berhasil disimpan");
+		} catch (error) { toast.error(error instanceof Error ? error.message : "Data pelanggan gagal disimpan"); }
+		finally { setProfileSaveBusy(false); }
+	};
 
 	useEffect(() => {
 		if (!detailCustomer?.source_id || !detailCustomer.email) { setWalletLedger([]); return; }
@@ -567,10 +591,19 @@ function AdminCustomers() {
 			{detailCustomer ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailCustomer(null); }}>
 					<div role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="w-full max-w-lg rounded-[20px] border border-border bg-card p-4 shadow-xl">
-						<div className="flex items-start justify-between gap-4">
-							<div className="flex min-w-0 items-center gap-3"><CustomerAvatar customer={detailCustomer} /><div className="min-w-0"><p id="customer-detail-title" className="truncate text-lg font-black">{detailCustomer.name || "Tanpa Nama"}</p><p className="truncate text-sm text-muted-foreground">Detail customer</p></div></div>
-							<button type="button" aria-label="Tutup detail customer" onClick={() => setDetailCustomer(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button>
-						</div>
+							<div className="flex items-start justify-between gap-4">
+								<div className="flex min-w-0 items-center gap-3"><CustomerAvatar customer={detailCustomer} /><div className="min-w-0"><p id="customer-detail-title" className="truncate text-lg font-black">{detailCustomer.name || "Tanpa Nama"}</p><p className="truncate text-sm text-muted-foreground">Detail customer</p></div></div>
+								<div className="flex items-center gap-1"><button type="button" onClick={() => setEditingProfile((value) => !value)} className="h-10 rounded-xl bg-primary px-3 text-xs font-black text-primary-foreground">{editingProfile ? "Batal" : "Edit data"}</button><button type="button" aria-label="Tutup detail customer" onClick={() => setDetailCustomer(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="h-5 w-5" /></button></div>
+							</div>
+						{editingProfile ? (
+							<div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3">
+								<p className="text-xs font-black">Edit data pelanggan</p>
+								<div className="mt-2 grid grid-cols-2 gap-2">{([['name','Nama'],['phone','Telepon'],['nickname','Nickname'],['city','Kota'],['province','Provinsi'],['postal_code','Kode pos']] as const).map(([field, label]) => <label key={field} className="text-[11px] font-semibold text-muted-foreground">{label}<input value={profileDraft[field]} onChange={(event) => setProfileDraft((current) => ({ ...current, [field]: event.target.value }))} className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-2 text-xs text-foreground" /></label>)}</div>
+								<label className="mt-2 block text-[11px] font-semibold text-muted-foreground">Alamat<textarea value={profileDraft.address} onChange={(event) => setProfileDraft((current) => ({ ...current, address: event.target.value }))} className="mt-1 min-h-16 w-full rounded-lg border border-border bg-background p-2 text-xs text-foreground" /></label>
+								<label className="mt-2 block text-[11px] font-semibold text-muted-foreground">Deskripsi<textarea value={profileDraft.customer_description} onChange={(event) => setProfileDraft((current) => ({ ...current, customer_description: event.target.value }))} className="mt-1 min-h-16 w-full rounded-lg border border-border bg-background p-2 text-xs text-foreground" /></label>
+								<button type="button" disabled={profileSaveBusy} onClick={() => void handleProfileSave()} className="mt-2 h-10 w-full rounded-lg bg-emerald-600 text-xs font-black text-white disabled:opacity-50">{profileSaveBusy ? "Menyimpan..." : "Simpan data pelanggan"}</button>
+							</div>
+						) : null}
 						<div className="mt-5 grid max-h-[45vh] grid-cols-2 gap-2 overflow-y-auto pr-1 text-sm">
 							<DetailField label="Source ID" value={detailCustomer.source_id} wide />
 							<DetailField label="Email" value={detailCustomer.email} wide />

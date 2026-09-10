@@ -122,6 +122,23 @@ async function settleOrder(payload: Json) {
   if (error) throw error;
   return data;
 }
+async function adminUpdateCustomer(payload: Json) {
+  const staffId = await verifyStaff(payload);
+  const customerId = text(payload.customerId);
+  if (!customerId) throw new Error("Customer wajib dipilih");
+  const allowed = ["name", "phone", "nickname", "birth_date", "gender", "address", "city", "province", "postal_code", "customer_description", "marketing_consent"] as const;
+  const updates: Record<string, unknown> = {};
+  for (const field of allowed) {
+    if (field in payload) updates[field] = field === "marketing_consent" ? Boolean(payload[field]) : (text(payload[field]) || null);
+  }
+  if (Object.keys(updates).length === 0) throw new Error("Tidak ada data customer yang diubah");
+  updates.updated_at = new Date().toISOString();
+  const { data, error } = await admin.schema("pos").from("customers").update(updates).eq("source_id", customerId).select("*").single();
+  if (error) throw error;
+  console.info("admin customer profile updated", { staffId, customerId, fields: Object.keys(updates) });
+  return data;
+}
+
 async function adminAdjust(payload: Json) {
   const staffId = await verifyStaff(payload);
   const customerId = text(payload.customerId);
@@ -148,7 +165,8 @@ Deno.serve(async (req) => {
     if (action === "release") return response({ success: true, result: await mutateHold(body, "release") });
     if (action === "settle-order") return response({ success: true, result: await settleOrder(body) });
     if (action === "admin-adjustment") return response({ success: true, result: await adminAdjust(body) });
-    return fail("UNKNOWN_ACTION", "Gunakan action get, topup, hold, capture, release, settle-order, atau admin-adjustment", 404);
+    if (action === "admin-update-customer") return response({ success: true, result: await adminUpdateCustomer(body) });
+    return fail("UNKNOWN_ACTION", "Gunakan action get, topup, hold, capture, release, settle-order, admin-adjustment, atau admin-update-customer", 404);
   } catch (error) {
     console.error("customer-wallet failed", error);
     const message = error instanceof Error ? error.message : "Gagal memproses wallet";
