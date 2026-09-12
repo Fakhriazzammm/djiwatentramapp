@@ -1,7 +1,7 @@
 {
-  "version": "0.2.133",
-  "commitHash": "e06dac4",
-  "message": "fix(barcode): improve Code 128 camera scanning",
-  "buildDate": "2026-08-31",
-  "generatedAt": "2026-08-31T18:03:15.022Z"
+  "version": "0.2.161",
+  "commitHash": "3e4491e",
+  "message": "fix(pos): move marketing strip below header",
+  "buildDate": "2026-09-12",
+  "generatedAt": "2026-09-12T05:04:46.666Z"
 }
