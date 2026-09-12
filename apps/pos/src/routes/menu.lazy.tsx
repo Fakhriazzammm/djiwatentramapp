@@ -2146,6 +2146,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					)}
 				</header>
 
+				{/* MARKETING INFO — directly below header */}
+				<MarketingInfoStrip />
+
 				<TransactionAlertStack
 				notifications={notifications.filter((item) => transactionAlertIds.includes(item.id))}
 				onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
@@ -2197,9 +2200,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					onDetected={handleBarcodeDetected}
 					transactionSuggestions={transactionSuggestions}
 				/>
-
-				{/* MARKETING INFO — compact/collapsible, read-only */}
-				<MarketingInfoStrip />
 
 				{/* HORIZONTAL QUEUE BAR */}
 				<QueueHorizontalBar />
