@@ -1,7 +1,7 @@
 {
-  "version": "0.2.161",
-  "commitHash": "3e4491e",
-  "message": "fix(pos): move marketing strip below header",
+  "version": "0.2.162",
+  "commitHash": "b3efc79",
+  "message": "fix(pos): place marketing above target panel",
   "buildDate": "2026-09-12",
-  "generatedAt": "2026-09-12T05:04:46.666Z"
+  "generatedAt": "2026-09-12T05:31:18.587Z"
 }

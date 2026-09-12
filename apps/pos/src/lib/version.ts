@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.161",
+	semantic: "0.2.162",
 	// Git/deploy commit hash (short)
-	commitHash: "3e4491e",
-	message: "fix(pos): move marketing strip below header",
+	commitHash: "b3efc79",
+	message: "fix(pos): place marketing above target panel",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): move marketing strip below header",
+	commitMessage: "fix(pos): place marketing above target panel",
 	// Build timestamp
 	buildDate: "2026-09-12",
 	// Full version string for display
