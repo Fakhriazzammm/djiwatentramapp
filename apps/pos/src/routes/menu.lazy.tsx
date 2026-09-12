@@ -1958,6 +1958,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						</div>
 					</div>
 
+					{/* MARKETING INFO — directly below the header identity */}
+					<MarketingInfoStrip />
+
 					{/* TARGET PERFORMANCE PANEL (Below Logo) */}
 					{progress && progress.hasTarget && (
 						<div className="border-t border-border/50 bg-muted/10 px-3 py-2 transition-all">
@@ -2145,9 +2148,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						</div>
 					)}
 				</header>
-
-				{/* MARKETING INFO — directly below header */}
-				<MarketingInfoStrip />
 
 				<TransactionAlertStack
 				notifications={notifications.filter((item) => transactionAlertIds.includes(item.id))}
