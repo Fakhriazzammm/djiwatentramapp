@@ -1081,7 +1081,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			let order = (orders ?? []).find((candidate: any) => {
 				const displayNumber = getDisplayOrderNumber(candidate.orderNumber, {
 					sequence: candidate.dailyReceiptNo ?? candidate.daily_receipt_no,
-					createdAt: candidate.createdAt ?? candidate._creationTime,
+					createdAt: candidate.createdAt ?? candidate.created_at ?? candidate._creationTime,
 					source: candidate.source,
 					sourceApp: candidate.sourceApp,
 					businessUnit: candidate.businessUnit,
@@ -1103,7 +1103,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						.limit(100);
 					if (receiptError) throw receiptError;
 					order = (receiptMatches ?? []).find((candidate: any) => {
-						const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", day: "2-digit", month: "2-digit", year: "2-digit" }).formatToParts(new Date(Number(candidate.createdAt ?? 0)));
+						const rawCreatedAt = candidate.createdAt ?? candidate.created_at ?? candidate._creationTime;
+						const timestamp = typeof rawCreatedAt === "number" ? rawCreatedAt : Date.parse(String(rawCreatedAt ?? ""));
+						if (!Number.isFinite(timestamp)) return false;
+						const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", day: "2-digit", month: "2-digit", year: "2-digit" }).formatToParts(new Date(timestamp));
 						const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
 						return `${values.day}${values.month}${values.year}` === shortDate;
 					}) as any;
@@ -1114,7 +1117,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			if (order) {
 				setSelectedOrderId(String(order._id));
 				setSelectedOrderNotification({ id: `barcode:${order._id}`, notification_type: "order_cashier_pending", priority: "high", title: "Order dari Barcode", message: "Order ditemukan dari scanner POS", order_source_id: order._id, order_number: order.orderNumber, source: order.source, action_payload: { orderId: order._id, orderNumber: order.orderNumber, customerName: order.customerName, totalAmount: order.totalAmount, paymentMethod: order.paymentMethod }, created_at: new Date().toISOString(), isRead: false } as any);
-				toast.success(`Order ${getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo, createdAt: order.createdAt, source: order.source, orderType: order.orderType })} ditemukan`);
+				toast.success(`Order ${getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo ?? order.daily_receipt_no, createdAt: order.createdAt ?? order.created_at ?? order._creationTime, source: order.source, orderType: order.orderType })} ditemukan`);
 				return;
 			}
 			const product = (allProducts ?? []).find((candidate: any) =>
