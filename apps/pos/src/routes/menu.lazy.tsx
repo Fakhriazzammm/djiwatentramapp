@@ -1072,13 +1072,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	);
 
 	const handleBarcodeDetected = useCallback(
-		(code: string) => {
+		async (code: string) => {
 			const normalizedCode = code.trim().toLowerCase();
 			const compactCode = normalizedCode.replace(/[^a-z0-9]/g, "");
 			const shortCodeMatch = compactCode.match(/(?:ordappd|ordapp|appd)?(\d{1,4})(\d{6})$/i);
 			const shortSequence = shortCodeMatch ? String(Number(shortCodeMatch[1])) : null;
 			const shortDate = shortCodeMatch?.[2] ?? null;
-			const order = (orders ?? []).find((candidate: any) => {
+			let order = (orders ?? []).find((candidate: any) => {
 				const displayNumber = getDisplayOrderNumber(candidate.orderNumber, {
 					sequence: candidate.dailyReceiptNo ?? candidate.daily_receipt_no,
 					createdAt: candidate.createdAt ?? candidate._creationTime,
@@ -1093,6 +1093,24 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				const shortMatch = Boolean(shortSequence && shortDate && candidateSequence === shortSequence && candidateDate === shortDate);
 				return shortMatch || [displayNumber, candidate.orderNumber, candidate._id].some((value) => String(value ?? "").trim().toLowerCase() === normalizedCode);
 			});
+			if (!order && shortSequence && shortDate) {
+				try {
+					const { data: receiptMatches, error: receiptError } = await createClient()
+						.from("pos_orders")
+						.select("*")
+						.eq("daily_receipt_no", Number(shortSequence))
+						.order("createdAt", { ascending: false })
+						.limit(100);
+					if (receiptError) throw receiptError;
+					order = (receiptMatches ?? []).find((candidate: any) => {
+						const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", day: "2-digit", month: "2-digit", year: "2-digit" }).formatToParts(new Date(Number(candidate.createdAt ?? 0)));
+						const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+						return `${values.day}${values.month}${values.year}` === shortDate;
+					}) as any;
+				} catch (lookupError) {
+					console.error("[barcode] failed to lookup receipt:", lookupError);
+				}
+			}
 			if (order) {
 				setSelectedOrderId(String(order._id));
 				setSelectedOrderNotification({ id: `barcode:${order._id}`, notification_type: "order_cashier_pending", priority: "high", title: "Order dari Barcode", message: "Order ditemukan dari scanner POS", order_source_id: order._id, order_number: order.orderNumber, source: order.source, action_payload: { orderId: order._id, orderNumber: order.orderNumber, customerName: order.customerName, totalAmount: order.totalAmount, paymentMethod: order.paymentMethod }, created_at: new Date().toISOString(), isRead: false } as any);
@@ -1114,7 +1132,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			setSelectedProduct(product);
 			toast.success(`${product.name} ditemukan — konfirmasi sebelum masuk keranjang`);
 		},
-		[allProducts]
+		[allProducts, orders]
 	);
 
 	const handleCategorySelect = useCallback(

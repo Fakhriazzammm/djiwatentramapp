@@ -15,7 +15,7 @@ import { ImageWithPlaceholder } from "@/components/customer/image-with-placehold
 export const Route = createLazyFileRoute("/$username/saldo")({ component: SaldoPage });
 
 const TOPUP_PENDING_KEY = "djiwa-topup-pending";
-const TOPUP_VERIFY_WINDOW_MS = 90_000;
+const TOPUP_VERIFY_WINDOW_MS = 10 * 60_000;
 
 const LABELS: Record<string, string> = {
   wallet_hold: "Saldo ditahan",
@@ -54,21 +54,36 @@ function SaldoPage() {
   const [topupVerified, setTopupVerified] = useState(false);
   const [topupVerifiedAmount, setTopupVerifiedAmount] = useState(0);
   const [topupTimedOut, setTopupTimedOut] = useState(false);
+  const [scrambleBalance, setScrambleBalance] = useState<string | null>(null);
 
+  const topupPendingKey = customer?.sourceId ? `${TOPUP_PENDING_KEY}:${customer.sourceId}` : TOPUP_PENDING_KEY;
   const missingContactFields = getMissingCustomerFields(customer);
 
   useEffect(() => {
+    if (!refreshing) {
+      setScrambleBalance(null);
+      return;
+    }
+    const current = Math.max(0, Number(walletData?.available_balance ?? customer?.walletBalance ?? 0));
+    const ceiling = Math.max(100_000, Math.round(current * 1.35));
+    const scramble = () => setScrambleBalance(currency(Math.floor(Math.random() * ceiling)));
+    scramble();
+    const timer = window.setInterval(scramble, 90);
+    return () => window.clearInterval(timer);
+  }, [refreshing, walletData?.available_balance, customer?.walletBalance]);
+
+  useEffect(() => {
     try {
-      const raw = window.sessionStorage.getItem(TOPUP_PENDING_KEY);
+      const raw = window.sessionStorage.getItem(topupPendingKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { amount?: number; startedAt?: number; creditedBefore?: number };
       if (Number.isFinite(parsed.amount) && Number.isFinite(parsed.startedAt) && Date.now() - Number(parsed.startedAt) < TOPUP_VERIFY_WINDOW_MS) {
         setTopupPending({ amount: Number(parsed.amount), startedAt: Number(parsed.startedAt), creditedBefore: Number(parsed.creditedBefore ?? 0) });
       } else {
-        window.sessionStorage.removeItem(TOPUP_PENDING_KEY);
+        window.sessionStorage.removeItem(topupPendingKey);
       }
     } catch { /* Abaikan storage yang tidak tersedia/rusak. */ }
-  }, []);
+  }, [topupPendingKey]);
 
   useEffect(() => {
     if (!topupPending) return;
@@ -82,17 +97,17 @@ function SaldoPage() {
         setTopupVerifiedAmount(amount);
         setTopupVerified(true);
         setTopupPending(null);
-        window.sessionStorage.removeItem(TOPUP_PENDING_KEY);
+        window.sessionStorage.removeItem(topupPendingKey);
       } else if (elapsed >= TOPUP_VERIFY_WINDOW_MS) {
         setTopupTimedOut(true);
         setTopupPending(null);
-        window.sessionStorage.removeItem(TOPUP_PENDING_KEY);
+        window.sessionStorage.removeItem(topupPendingKey);
       }
     };
     void verify();
     const timer = window.setInterval(() => void verify(), 7000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [topupPending, refetch, walletData]);
+  }, [topupPending, refetch, topupPendingKey, walletData]);
   const topup = async () => {
     if (missingContactFields.length > 0) {
       window.alert(getCustomerContactMessage(missingContactFields));
@@ -107,7 +122,7 @@ function SaldoPage() {
       const result = await invokeEdgeFunction<{ result?: { invoice_url?: string } }>("customer-wallet", { action: "topup", sourceId: customer.sourceId, email: customer.email, amount, origin: `${window.location.origin}/${encodeURIComponent(username)}`, idempotencyKey: `topup-${customer.sourceId}-${Date.now()}` });
       if (!result.result?.invoice_url) throw new Error("Invoice top up tidak tersedia");
       const startedAt = Date.now();
-      window.sessionStorage.setItem(TOPUP_PENDING_KEY, JSON.stringify({ amount, startedAt, creditedBefore: Number(walletData?.total_credited ?? 0) }));
+      window.sessionStorage.setItem(topupPendingKey, JSON.stringify({ amount, startedAt, creditedBefore: Number(walletData?.total_credited ?? 0) }));
       window.location.assign(result.result.invoice_url);
     } catch (err) { window.alert(err instanceof Error ? err.message : "Gagal membuat invoice top up"); setTopupBusy(false); }
   };
@@ -154,7 +169,7 @@ function SaldoPage() {
           {!reduceMotion ? <motion.div aria-hidden="true" className="pointer-events-none absolute -inset-y-12 left-[-35%] w-1/3 rotate-[20deg] bg-gradient-to-r from-transparent via-white/35 to-transparent blur-md" animate={{ x: [0, 430, 860] }} transition={{ duration: 4.8, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} /> : null}
           <div className="relative flex h-full min-h-0 flex-col p-4 sm:min-h-[270px] sm:p-5">
             <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm sm:h-9 sm:w-9"><Wallet className="h-4 w-4" /></div><div><p className="text-[9px] font-bold uppercase tracking-[0.18em] text-blue-100 sm:text-[10px]">Djiwa Pay</p><p className="text-[11px] font-semibold text-white/75 sm:text-xs">Digital wallet</p></div></div><span className="rounded-full border border-white/25 bg-white/12 px-2.5 py-1 text-[9px] font-bold text-blue-50 backdrop-blur-sm sm:text-[10px]">AKTIF</span></div>
-            <div className="mt-auto flex items-end justify-between gap-2 pt-4"><div className="min-w-0"><p className="text-[10px] font-semibold text-blue-100 sm:text-[11px]">Saldo tersedia</p><motion.p className="mt-0.5 truncate font-display text-[26px] font-black tracking-[-0.04em] sm:text-[32px]" initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }} animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }} transition={{ delay: 0.12, duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>{showSensitiveData ? currency(walletData?.available_balance ?? customer.walletBalance ?? 0) : "••••••"}</motion.p></div><button type="button" onClick={() => setShowSensitiveData((visible) => !visible)} aria-label={showSensitiveData ? "Sembunyikan saldo dan User ID" : "Tampilkan saldo dan User ID"} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/12 text-blue-50 backdrop-blur-sm transition-all duration-200 hover:bg-white/20 active:scale-[.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-11 sm:w-11">{showSensitiveData ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
+            <div className="mt-auto flex items-end justify-between gap-2 pt-4"><div className="min-w-0"><p className="text-[10px] font-semibold text-blue-100 sm:text-[11px]">Saldo tersedia</p><motion.p className="mt-0.5 truncate font-display text-[26px] font-black tracking-[-0.04em] sm:text-[32px]" initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }} animate={reduceMotion ? undefined : refreshing ? { opacity: [1, 0.55, 1], scale: [1, 1.045, 1] } : { opacity: 1, scale: 1 }} transition={refreshing ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" } : { delay: 0.12, duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>{showSensitiveData ? (refreshing ? scrambleBalance ?? currency(0) : currency(walletData?.available_balance ?? customer.walletBalance ?? 0)) : "••••••"}</motion.p></div><button type="button" onClick={() => void handleRefreshWallet()} disabled={refreshing || authLoading || isLoading} aria-label="Perbarui saldo Djiwa Pay" aria-busy={refreshing} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/12 text-blue-50 backdrop-blur-sm transition-all duration-200 hover:bg-white/20 active:scale-[.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-60 sm:h-11 sm:w-11"><RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} /></button><button type="button" onClick={() => setShowSensitiveData((visible) => !visible)} aria-label={showSensitiveData ? "Sembunyikan saldo dan User ID" : "Tampilkan saldo dan User ID"} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/12 text-blue-50 backdrop-blur-sm transition-all duration-200 hover:bg-white/20 active:scale-[.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-11 sm:w-11">{showSensitiveData ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
             {(walletData?.held_balance ?? customer.walletHeldBalance ?? 0) > 0 ? <p className="mt-1 text-xs font-semibold text-blue-100">{showSensitiveData ? `Saldo ditahan ${currency(walletData?.held_balance ?? customer.walletHeldBalance ?? 0)}` : "Saldo ditahan ••••••"}</p> : null}
             <div className="mt-3 flex items-end justify-between gap-3 sm:mt-8"><div className="min-w-0"><p className="mb-1 truncate text-sm font-black text-white sm:mb-2 sm:text-base">{customer.name || customer.username || "Member"}</p><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-blue-100/90 sm:text-[10px]">User ID</p><p className="mt-0.5 max-w-[calc(100vw-9rem)] truncate font-mono text-[11px] tracking-[0.12em] text-white/90 sm:mt-1 sm:text-sm sm:tracking-[0.18em]">{showSensitiveData ? String(customer.sourceId || "NPEF").toUpperCase() : `••••••••${String(customer.sourceId || "NPEF").slice(-4).toUpperCase()}`}</p></div><CreditCard className="h-6 w-6 shrink-0 text-white/75 sm:h-7 sm:w-7" /></div>
           </div>
