@@ -1,7 +1,7 @@
 {
-  "version": "0.2.165",
-  "commitHash": "ffd411e",
-  "message": "fix(pos): lookup scanned receipts directly",
+  "version": "0.2.167",
+  "commitHash": "8a8a193",
+  "message": "fix(pos): support all scanned receipt timestamp formats",
   "buildDate": "2026-09-13",
-  "generatedAt": "2026-09-13T09:02:11.608Z"
+  "generatedAt": "2026-09-13T09:06:56.454Z"
 }

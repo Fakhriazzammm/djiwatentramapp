@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.165",
+	semantic: "0.2.167",
 	// Git/deploy commit hash (short)
-	commitHash: "ffd411e",
-	message: "fix(pos): lookup scanned receipts directly",
+	commitHash: "8a8a193",
+	message: "fix(pos): support all scanned receipt timestamp formats",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): lookup scanned receipts directly",
+	commitMessage: "fix(pos): support all scanned receipt timestamp formats",
 	// Build timestamp
 	buildDate: "2026-09-13",
 	// Full version string for display
