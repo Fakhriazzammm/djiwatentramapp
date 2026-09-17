@@ -17,6 +17,7 @@ type Icon = typeof Store;
 
 type Package = {
   slug: string;
+  aliases?: string[];
   name: string;
   price: string;
   note: string;
@@ -72,17 +73,17 @@ const offers: Offer[] = [
   {
     number: "03",
     slug: "akuisisi",
-    title: "Member dan pelanggan kembali",
-    text: "Ubah transaksi pertama menjadi kunjungan ulang dengan member, penawaran, dan laporan yang jelas.",
-    detail: "Kami membantu membuat program member, penawaran, dan komunikasi yang mendorong pelanggan datang kembali berdasarkan data transaksi.",
-    outcome: "Anda tahu siapa pelanggan Anda, penawaran mana yang dipakai, dan berapa banyak pelanggan yang kembali.",
-    items: ["Program member dan hadiah", "Penawaran untuk pelanggan lama", "Laporan pelanggan kembali"],
+    title: "Marketing dan akuisisi pelanggan",
+    text: "Datangkan pelanggan baru dengan promosi yang terarah dan bisa diukur.",
+    detail: "Kami membantu menentukan target pasar, membuat pesan promosi, memilih kanal, lalu mengukur pelanggan dan penjualan yang dihasilkan.",
+    outcome: "Promosi tidak lagi berjalan tanpa arah. Anda tahu siapa targetnya, apa yang ditawarkan, dan hasilnya.",
+    items: ["Target pasar dan pesan promosi", "Konten, iklan, dan kerja sama KOL", "Laporan pelanggan dan penjualan"],
     icon: BarChart3,
     tone: "sand",
     packages: [
-      { slug: "program-member-dasar", name: "Program member dasar", price: "Rp8 juta", note: "satu kali pekerjaan", items: ["Aturan dan manfaat member", "Penawaran untuk pelanggan", "Laporan hasil awal"] },
-      { slug: "kampanye-pelanggan-kembali", name: "Kampanye pelanggan kembali", price: "Rp15 juta", note: "mulai dari", items: ["Rencana penawaran", "Konten dan kerja sama KOL", "Laporan pemakaian dan penjualan"] },
-      { slug: "pengelolaan-member-bulanan", name: "Pengelolaan member bulanan", price: "Rp12 juta", note: "per bulan", items: ["Rencana komunikasi bulanan", "Perbaikan program member", "Pengecekan pelanggan yang kembali"] },
+      { slug: "rencana-marketing", aliases: ["program-member-dasar"], name: "Rencana marketing", price: "Rp8 juta", note: "satu kali pekerjaan", items: ["Cek brand dan target pasar", "Rencana promosi 30 hari", "Prioritas kanal dan anggaran"] },
+      { slug: "kampanye-akuisisi", aliases: ["kampanye-pelanggan-kembali"], name: "Kampanye akuisisi pelanggan", price: "Rp15 juta", note: "mulai dari", items: ["Konsep dan pesan kampanye", "Konten, iklan, atau kerja sama KOL", "Laporan pelanggan dan penjualan"] },
+      { slug: "pengelolaan-marketing", aliases: ["pengelolaan-member-bulanan"], name: "Pengelolaan marketing bulanan", price: "Rp12 juta", note: "per bulan", items: ["Rencana marketing bulanan", "Pelaksanaan dan perbaikan promosi", "Laporan hasil marketing"] },
     ],
   },
 ];
@@ -100,49 +101,49 @@ type PackageDetail = {
 
 const packageDetails: PackageDetail[] = [
   {
-    packageSlug: "program-member-dasar",
-    promise: "Buat pelanggan mau kembali, bukan hanya datang sekali.",
-    audience: "Untuk cafe atau resto yang belum punya program member.",
-    problem: "Pelanggan datang sekali lalu hilang. Data pelanggan belum dipakai untuk mengajak mereka kembali.",
-    duration: "2–3 minggu",
+    packageSlug: "rencana-marketing",
+    promise: "Tahu harus promosi ke siapa, dengan pesan apa, dan lewat kanal mana.",
+    audience: "Untuk cafe atau resto yang ingin mulai marketing dengan arah yang jelas.",
+    problem: "Promosi sering dibuat tanpa target. Konten berjalan, tetapi tidak jelas siapa yang dituju dan apa hasilnya.",
+    duration: "1–2 minggu",
     steps: [
-      { title: "Cek transaksi", text: "Kami melihat menu, nilai transaksi, jam ramai, dan data pelanggan yang sudah ada." },
-      { title: "Buat aturan member", text: "Kami menentukan cara daftar, manfaat, dan aturan yang mudah dipahami kasir dan pelanggan." },
-      { title: "Buat penawaran pertama", text: "Kami menyiapkan penawaran untuk mendorong pelanggan datang kembali." },
-      { title: "Jalankan dan cek hasil", text: "Tim menjalankan program. Kami melihat member baru, pemakaian penawaran, dan pelanggan yang kembali." },
+      { title: "Cek kondisi brand", text: "Kami melihat produk, harga, lokasi, pelanggan, dan cara brand Anda tampil saat ini." },
+      { title: "Tentukan target pasar", text: "Kami memilih pelanggan utama yang paling masuk akal untuk dikejar lebih dulu." },
+      { title: "Susun rencana promosi", text: "Kami membuat pesan, ide konten, kanal, dan rencana promosi untuk 30 hari." },
+      { title: "Tentukan prioritas", text: "Anda mendapat urutan pekerjaan dan perkiraan anggaran sebelum mulai berpromosi." },
     ],
-    deliverables: ["Aturan program member", "Penawaran untuk pelanggan", "Panduan singkat untuk tim", "Laporan hasil awal"],
-    metrics: ["Member baru", "Penawaran terpakai", "Pelanggan yang kembali"],
+    deliverables: ["Ringkasan kondisi brand", "Target pelanggan utama", "Rencana marketing 30 hari", "Prioritas kanal dan anggaran"],
+    metrics: ["Target pelanggan jelas", "Rencana konten tersedia", "Prioritas biaya promosi"],
   },
   {
-    packageSlug: "kampanye-pelanggan-kembali",
-    promise: "Arahkan promosi ke pelanggan yang paling mungkin kembali.",
-    audience: "Untuk bisnis yang sudah punya data pelanggan dan ingin membuat promosi yang lebih tepat.",
-    problem: "Promosi dikirim ke semua orang. Biaya keluar, tetapi hasilnya tidak jelas.",
+    packageSlug: "kampanye-akuisisi",
+    promise: "Datangkan pelanggan baru melalui kampanye yang jelas target dan ukurannya.",
+    audience: "Untuk cafe atau resto yang ingin menjalankan promosi untuk produk, outlet, atau pembukaan baru.",
+    problem: "Promosi sudah mengeluarkan biaya, tetapi belum jelas berapa pelanggan dan penjualan yang dihasilkan.",
     duration: "4–6 minggu per kampanye",
     steps: [
-      { title: "Tentukan target", text: "Kami memilih satu tujuan: mengajak pelanggan lama kembali, mengisi jam sepi, atau menjual menu tertentu." },
-      { title: "Pilih pelanggan", text: "Kami memilih pelanggan berdasarkan riwayat transaksi, bukan mengirim promosi secara acak." },
-      { title: "Buat promosi", text: "Kami menyiapkan penawaran, pesan, konten, dan KOL bila memang dibutuhkan." },
-      { title: "Ukur hasil", text: "Kami melihat penawaran yang dipakai, kunjungan, penjualan, dan biaya promosi." },
+      { title: "Tentukan tujuan kampanye", text: "Kami memilih satu tujuan: mengenalkan brand, mengisi outlet, meluncurkan menu, atau meningkatkan penjualan." },
+      { title: "Buat konsep dan pesan", text: "Kami menyusun ide kampanye yang mudah dipahami dan sesuai dengan target pelanggan." },
+      { title: "Jalankan di kanal yang tepat", text: "Kami mengatur konten, iklan, atau kerja sama KOL sesuai kebutuhan kampanye." },
+      { title: "Lihat hasilnya", text: "Kami melaporkan jangkauan, respons, pelanggan, penjualan, dan biaya yang digunakan." },
     ],
-    deliverables: ["Target kampanye", "Penawaran dan materi promosi", "Konten atau kerja sama KOL bila dibutuhkan", "Laporan kunjungan dan penjualan"],
-    metrics: ["Pelanggan yang menerima promosi", "Penawaran terpakai", "Kunjungan dan penjualan"],
+    deliverables: ["Tujuan dan target kampanye", "Konsep dan materi promosi", "Pelaksanaan konten, iklan, atau KOL", "Laporan pelanggan dan penjualan"],
+    metrics: ["Jangkauan kampanye", "Respons pelanggan", "Pelanggan baru", "Penjualan dari kampanye"],
   },
   {
-    packageSlug: "pengelolaan-member-bulanan",
-    promise: "Jaga member tetap aktif dan terus kembali.",
-    audience: "Untuk bisnis yang sudah punya program member, tetapi belum punya tim untuk mengelolanya setiap bulan.",
-    problem: "Program member berhenti setelah diluncurkan. Penawaran berulang dan pelanggan yang kembali tidak terukur.",
+    packageSlug: "pengelolaan-marketing",
+    promise: "Jalankan marketing setiap bulan tanpa harus membangun tim baru.",
+    audience: "Untuk cafe atau resto yang ingin marketing rutin, tetapi belum punya tim marketing internal.",
+    problem: "Marketing berhenti di tengah jalan. Konten tidak rutin dan hasil promosi tidak pernah direview.",
     duration: "Berjalan per bulan",
     steps: [
-      { title: "Tentukan target bulan ini", text: "Kami memilih satu target, seperti mengajak member lama kembali atau mengisi hari sepi." },
-      { title: "Susun penawaran", text: "Kami membuat jadwal pesan dan penawaran sesuai kondisi bisnis dan kemampuan outlet." },
-      { title: "Jalankan bersama tim", text: "Kami memberi arahan kepada tim dan mengecek apakah penawaran berjalan dengan benar." },
-      { title: "Review hasil", text: "Kami melihat data, menghentikan yang tidak bekerja, dan melanjutkan yang menghasilkan kunjungan." },
+      { title: "Tentukan target bulanan", text: "Kami memilih target utama, seperti pelanggan baru, penjualan menu, atau kunjungan outlet." },
+      { title: "Buat rencana konten", text: "Kami menyusun tema, pesan, jadwal, dan kanal marketing untuk satu bulan." },
+      { title: "Jalankan promosi", text: "Kami membantu menjalankan konten, iklan, atau kerja sama marketing yang disepakati." },
+      { title: "Review dan perbaiki", text: "Kami melihat apa yang berhasil, menghentikan yang tidak efektif, dan menyusun langkah bulan berikutnya." },
     ],
-    deliverables: ["Rencana member bulanan", "Penawaran dan materi komunikasi", "Review bersama tim", "Laporan pelanggan kembali"],
-    metrics: ["Member aktif", "Frekuensi kunjungan", "Penjualan dari member", "Biaya promosi"],
+    deliverables: ["Rencana marketing bulanan", "Konten dan materi promosi", "Pelaksanaan marketing yang disepakati", "Laporan hasil dan rencana berikutnya"],
+    metrics: ["Konten yang berjalan", "Pelanggan baru", "Respons dan penjualan", "Biaya marketing"],
   },
 ];
 
@@ -359,7 +360,7 @@ function App() {
   const path = window.location.pathname.replace(/\/$/, "");
   const segments = path.split("/").filter(Boolean);
   const offer = offers.find((item) => path === `/layanan/${item.slug}` || segments[0] === "layanan" && segments[1] === item.slug);
-  const pkg = offer?.packages.find((item) => item.slug === segments[2]);
+  const pkg = offer?.packages.find((item) => item.slug === segments[2] || item.aliases?.includes(segments[2]));
   const detail = pkg ? packageDetails.find((item) => item.packageSlug === pkg.slug) : undefined;
   return offer && pkg && detail ? <PackagePage offer={offer} pkg={pkg} detail={detail} /> : offer ? <ServicePage offer={offer} /> : <LandingPage />;
 }
