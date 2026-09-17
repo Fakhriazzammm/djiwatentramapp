@@ -16,6 +16,7 @@ import {
 type Icon = typeof Store;
 
 type Package = {
+  slug: string;
   name: string;
   price: string;
   note: string;
@@ -47,9 +48,9 @@ const offers: Offer[] = [
     icon: Settings2,
     tone: "blue",
     packages: [
-      { name: "Audit operasional outlet", price: "Rp7,5 juta", note: "satu kali pekerjaan", items: ["Cek kasir, shift, dan tutup kas", "Cek stok, HPP, dan pengeluaran", "Daftar masalah dan prioritas perbaikan"] },
-      { name: "Sistem kasir, stok, dan HPP", price: "Rp18 juta", note: "satu kali pekerjaan", items: ["SOP kasir dan tutup kas", "Pencatatan stok dan HPP", "Laporan penjualan dasar"] },
-      { name: "Pendampingan kontrol outlet", price: "Rp12 juta", note: "per bulan", items: ["Pengecekan laporan mingguan", "Pendampingan supervisor", "Tindak lanjut masalah operasional"] },
+      { slug: "audit-operasional-outlet", name: "Audit operasional outlet", price: "Rp7,5 juta", note: "satu kali pekerjaan", items: ["Cek kasir, shift, dan tutup kas", "Cek stok, HPP, dan pengeluaran", "Daftar masalah dan prioritas perbaikan"] },
+      { slug: "sistem-kasir-stok-hpp", name: "Sistem kasir, stok, dan HPP", price: "Rp18 juta", note: "satu kali pekerjaan", items: ["SOP kasir dan tutup kas", "Pencatatan stok dan HPP", "Laporan penjualan dasar"] },
+      { slug: "pendampingan-kontrol-outlet", name: "Pendampingan kontrol outlet", price: "Rp12 juta", note: "per bulan", items: ["Pengecekan laporan mingguan", "Pendampingan supervisor", "Tindak lanjut masalah operasional"] },
     ],
   },
   {
@@ -63,9 +64,9 @@ const offers: Offer[] = [
     icon: Code2,
     tone: "sage",
     packages: [
-      { name: "Menu online dan website", price: "Rp12 juta", note: "satu kali pekerjaan", items: ["Menu dan informasi usaha", "Tulisan dan desain", "Form pemesanan atau kontak"] },
-      { name: "Sistem pesan dan bayar", price: "Rp35 juta", note: "mulai dari", items: ["Menu dan keranjang", "Pembayaran dan status pesanan", "Riwayat pesanan pelanggan"] },
-      { name: "Integrasi kasir dan dashboard", price: "Rp20 juta", note: "mulai dari", items: ["Kasir dan pencatatan transaksi", "Akses untuk setiap tim", "Laporan penjualan dasar"] },
+      { slug: "menu-online-dan-website", name: "Menu online dan website", price: "Rp12 juta", note: "satu kali pekerjaan", items: ["Menu dan informasi usaha", "Tulisan dan desain", "Form pemesanan atau kontak"] },
+      { slug: "sistem-pesan-dan-bayar", name: "Sistem pesan dan bayar", price: "Rp35 juta", note: "mulai dari", items: ["Menu dan keranjang", "Pembayaran dan status pesanan", "Riwayat pesanan pelanggan"] },
+      { slug: "integrasi-kasir-dan-dashboard", name: "Integrasi kasir dan dashboard", price: "Rp20 juta", note: "mulai dari", items: ["Kasir dan pencatatan transaksi", "Akses untuk setiap tim", "Laporan penjualan dasar"] },
     ],
   },
   {
@@ -79,10 +80,69 @@ const offers: Offer[] = [
     icon: BarChart3,
     tone: "sand",
     packages: [
-      { name: "Program member dasar", price: "Rp8 juta", note: "satu kali pekerjaan", items: ["Aturan dan manfaat member", "Penawaran untuk pelanggan", "Laporan hasil awal"] },
-      { name: "Kampanye pelanggan kembali", price: "Rp15 juta", note: "mulai dari", items: ["Rencana penawaran", "Konten dan kerja sama KOL", "Laporan pemakaian dan penjualan"] },
-      { name: "Pengelolaan member bulanan", price: "Rp12 juta", note: "per bulan", items: ["Rencana komunikasi bulanan", "Perbaikan program member", "Pengecekan pelanggan yang kembali"] },
+      { slug: "program-member-dasar", name: "Program member dasar", price: "Rp8 juta", note: "satu kali pekerjaan", items: ["Aturan dan manfaat member", "Penawaran untuk pelanggan", "Laporan hasil awal"] },
+      { slug: "kampanye-pelanggan-kembali", name: "Kampanye pelanggan kembali", price: "Rp15 juta", note: "mulai dari", items: ["Rencana penawaran", "Konten dan kerja sama KOL", "Laporan pemakaian dan penjualan"] },
+      { slug: "pengelolaan-member-bulanan", name: "Pengelolaan member bulanan", price: "Rp12 juta", note: "per bulan", items: ["Rencana komunikasi bulanan", "Perbaikan program member", "Pengecekan pelanggan yang kembali"] },
     ],
+  },
+];
+
+type PackageDetail = {
+  packageSlug: string;
+  promise: string;
+  audience: string;
+  problem: string;
+  duration: string;
+  steps: { title: string; text: string }[];
+  deliverables: string[];
+  metrics: string[];
+};
+
+const packageDetails: PackageDetail[] = [
+  {
+    packageSlug: "program-member-dasar",
+    promise: "Mulai mengenal pelanggan dan memberi alasan untuk kembali.",
+    audience: "Cocok untuk cafe atau resto yang sudah punya transaksi, tetapi belum punya program member yang jelas.",
+    problem: "Pelanggan datang sekali lalu hilang. Tim belum tahu siapa pelanggan lama dan penawaran apa yang relevan.",
+    duration: "2–3 minggu",
+    steps: [
+      { title: "Pahami pola transaksi", text: "Kami membaca menu, nilai transaksi, jam ramai, dan pola pelanggan yang sudah ada." },
+      { title: "Susun aturan member", text: "Kami menentukan cara daftar, manfaat, batas penggunaan, dan aturan yang mudah dijelaskan kasir." },
+      { title: "Siapkan penawaran pertama", text: "Kami membuat penawaran yang mendorong kunjungan berikutnya tanpa mengorbankan margin secara sembarangan." },
+      { title: "Uji dan baca hasil awal", text: "Tim menjalankan program. Kami mengecek pendaftaran, pemakaian penawaran, dan masukan pelanggan." },
+    ],
+    deliverables: ["Aturan dan manfaat program member", "Materi penawaran untuk pelanggan", "Panduan singkat untuk tim outlet", "Laporan hasil awal dan rekomendasi"],
+    metrics: ["Jumlah member baru", "Penawaran yang digunakan", "Pelanggan yang kembali"],
+  },
+  {
+    packageSlug: "kampanye-pelanggan-kembali",
+    promise: "Mengubah data pelanggan menjadi kampanye yang mendorong kunjungan ulang.",
+    audience: "Cocok untuk bisnis yang sudah memiliki data pelanggan dan ingin menguji promosi dengan target yang lebih jelas.",
+    problem: "Promosi sering dibuat untuk semua orang. Biaya keluar, tetapi sulit diketahui mana yang benar-benar menghasilkan kunjungan dan penjualan.",
+    duration: "4–6 minggu per kampanye",
+    steps: [
+      { title: "Tentukan target kampanye", text: "Kami memilih tujuan yang jelas: mengaktifkan pelanggan lama, mengisi jam sepi, atau mendorong menu tertentu." },
+      { title: "Pilih pelanggan yang relevan", text: "Kami mengelompokkan pelanggan berdasarkan riwayat transaksi, frekuensi, dan ketertarikan—bukan mengirim pesan secara acak." },
+      { title: "Buat penawaran dan konten", text: "Kami menyiapkan pesan, penawaran, kanal komunikasi, dan bila perlu kerja sama KOL yang sesuai dengan target." },
+      { title: "Jalankan, ukur, dan perbaiki", text: "Kami membandingkan pemakaian penawaran, kunjungan, penjualan, dan biaya agar kampanye berikutnya lebih tajam." },
+    ],
+    deliverables: ["Rencana kampanye dan target pelanggan", "Konsep penawaran dan materi komunikasi", "Koordinasi konten atau KOL sesuai kebutuhan", "Laporan pemakaian, kunjungan, dan penjualan"],
+    metrics: ["Jangkauan pelanggan target", "Penawaran yang digunakan", "Kunjungan dan penjualan dari kampanye"],
+  },
+  {
+    packageSlug: "pengelolaan-member-bulanan",
+    promise: "Menjaga program member tetap aktif, relevan, dan menghasilkan kunjungan ulang.",
+    audience: "Cocok untuk bisnis yang sudah memiliki program member tetapi belum punya waktu atau tim untuk mengelolanya secara konsisten.",
+    problem: "Program member berhenti setelah diluncurkan. Penawaran berulang, data tidak dibaca, dan pelanggan kembali tidak terukur.",
+    duration: "Berjalan per bulan",
+    steps: [
+      { title: "Tetapkan target bulan ini", text: "Kami menyepakati sasaran yang realistis, misalnya mengaktifkan member lama atau meningkatkan kunjungan di hari sepi." },
+      { title: "Rencanakan komunikasi", text: "Kami menyusun kalender penawaran dan pesan berdasarkan momen bisnis, perilaku pelanggan, dan kapasitas outlet." },
+      { title: "Jalankan bersama tim", text: "Kami menyiapkan arahan untuk outlet dan memantau apakah penawaran dipahami serta dijalankan dengan benar." },
+      { title: "Review hasil dan putuskan langkah berikutnya", text: "Setiap bulan kami membahas data, menghentikan yang tidak bekerja, dan memperkuat yang menghasilkan kunjungan." },
+    ],
+    deliverables: ["Rencana komunikasi member bulanan", "Penawaran dan materi komunikasi", "Review program bersama tim", "Laporan pelanggan kembali dan rekomendasi"],
+    metrics: ["Member aktif", "Frekuensi kunjungan", "Penjualan dari member", "Biaya per kampanye"],
   },
 ];
 
@@ -136,7 +196,7 @@ function ServicePage({ offer }: { offer: Offer }) {
         <section className="section-pad pricing-section">
           <div className="container">
             <div className="section-heading"><div><span className="eyebrow">PILIH PAKETNYA</span><h2>Pilih bantuan yang paling Anda butuhkan.</h2></div><p>Harga di bawah adalah harga mulai. Harga final menyesuaikan ukuran bisnis, jumlah outlet, dan kebutuhan Anda.</p></div>
-            <div className="pricing-grid">{offer.packages.map((pkg, index) => <article className={`pricing-card${index === 1 ? " pricing-card-featured" : ""}`} key={pkg.name}><div className="pricing-card-top"><span>0{index + 1}</span><span>{pkg.note}</span></div><h3>{pkg.name}</h3><strong>{pkg.price}</strong><ul>{pkg.items.map((item) => <li key={item}><Check size={15} />{item}</li>)}</ul><a className="pricing-link" href="/#kontak">Bahas paket ini <ArrowUpRight size={15} /></a></article>)}</div>
+            <div className="pricing-grid">{offer.packages.map((pkg, index) => <article className={`pricing-card${index === 1 ? " pricing-card-featured" : ""}`} key={pkg.name}><div className="pricing-card-top"><span>0{index + 1}</span><span>{pkg.note}</span></div><h3>{pkg.name}</h3><strong>{pkg.price}</strong><ul>{pkg.items.map((item) => <li key={item}><Check size={15} />{item}</li>)}</ul><a className="pricing-link" href={`/layanan/${offer.slug}/${pkg.slug}`}>Bahas paket ini <ArrowUpRight size={15} /></a></article>)}</div>
             <p className="pricing-note">* Harga belum termasuk iklan, biaya KOL, domain, hosting, biaya pembayaran online, atau sambungan ke layanan lain. Harga final ditentukan setelah kebutuhan disepakati.</p>
           </div>
         </section>
@@ -144,6 +204,27 @@ function ServicePage({ offer }: { offer: Offer }) {
         <section className="service-cta"><div className="container"><span className="eyebrow eyebrow-light">LANGKAH BERIKUTNYA</span><h2>Belum tahu harus mulai dari mana?</h2><p>Ceritakan kondisi bisnis Anda. Kami bantu memilih pekerjaan pertama yang paling berguna.</p><a className="button button-light" href="/#kontak">Ceritakan bisnis Anda <ArrowUpRight size={17} /></a></div></section>
       </main>
       <footer className="site-footer"><div className="container footer-bottom"><span>© {new Date().getFullYear()} Yumme Group</span><a href="/">Kembali ke yumme.id</a></div></footer>
+    </div>
+  );
+}
+
+function PackagePage({ offer, pkg, detail }: { offer: Offer; pkg: Package; detail: PackageDetail }) {
+  return (
+    <div className="site package-page" id="top">
+      <header className="site-header"><div className="container nav-wrap"><Logo /><a className="nav-cta" href="/#kontak">Bahas bisnis Anda <ArrowUpRight size={15} /></a></div></header>
+      <main>
+        <section className={`package-hero ${offer.tone}`}>
+          <div className="container package-hero-grid">
+            <div><a className="back-link" href={`/layanan/${offer.slug}`}><ChevronRight size={16} className="back-link-icon" /> Kembali ke layanan</a><span className="package-label">PAKET {pkg.price.toUpperCase()} · {pkg.note.toUpperCase()}</span><h1>{pkg.name}</h1><p className="package-promise">{detail.promise}</p><a className="button button-primary" href="/#kontak">Bahas paket ini <ArrowUpRight size={17} /></a></div>
+            <div className="package-price-card"><span>INVESTASI</span><strong>{pkg.price}</strong><small>{pkg.note}. Harga final mengikuti ukuran bisnis dan kebutuhan implementasi.</small><div><Check size={16} /> Durasi awal: {detail.duration}</div></div>
+          </div>
+        </section>
+        <section className="section-pad package-overview"><div className="container package-overview-grid"><div><span className="eyebrow">UNTUK SIAPA</span><h2>{detail.audience}</h2></div><div className="package-problem"><span className="eyebrow">MASALAH YANG KAMI SELESAIKAN</span><p>{detail.problem}</p></div></div></section>
+        <section className="section-pad package-steps"><div className="container"><div className="section-heading"><div><span className="eyebrow">CARA KERJA KAMI</span><h2>Dari kondisi bisnis sampai hasil yang bisa dibaca.</h2></div><p>Kami tidak langsung membuat promosi. Kami mulai dari data dan masalah yang ingin diselesaikan.</p></div><div className="package-step-grid">{detail.steps.map((step, index) => <article className="package-step" key={step.title}><span>0{index + 1}</span><h3>{step.title}</h3><p>{step.text}</p></article>)}</div></div></section>
+        <section className="section-pad package-results"><div className="container package-results-grid"><div><span className="eyebrow">YANG ANDA TERIMA</span><h2>Bukan hanya ide. Ada pekerjaan dan hasil yang jelas.</h2><ul className="package-deliverables">{detail.deliverables.map((item) => <li key={item}><Check size={17} />{item}</li>)}</ul></div><div className="package-metrics"><span className="eyebrow">HASIL YANG KAMI UKUR</span>{detail.metrics.map((metric) => <div key={metric}><strong><Check size={17} /></strong><span>{metric}</span></div>)}</div></div></section>
+        <section className="service-cta package-final-cta"><div className="container"><span className="eyebrow eyebrow-light">LANGKAH BERIKUTNYA</span><h2>Siap melihat apakah paket ini cocok untuk bisnis Anda?</h2><p>Ceritakan kondisi outlet dan target Anda. Kami akan membantu memastikan ruang lingkupnya masuk akal sebelum mulai.</p><a className="button button-light" href="/#kontak">Bahas paket ini <ArrowUpRight size={17} /></a></div></section>
+      </main>
+      <footer className="site-footer"><div className="container footer-bottom"><span>© {new Date().getFullYear()} Yumme Group</span><a href={`/layanan/${offer.slug}`}>Kembali ke layanan</a></div></footer>
     </div>
   );
 }
@@ -276,8 +357,11 @@ function LandingPage() {
 
 function App() {
   const path = window.location.pathname.replace(/\/$/, "");
-  const offer = offers.find((item) => path === `/layanan/${item.slug}`);
-  return offer ? <ServicePage offer={offer} /> : <LandingPage />;
+  const segments = path.split("/").filter(Boolean);
+  const offer = offers.find((item) => path === `/layanan/${item.slug}` || segments[0] === "layanan" && segments[1] === item.slug);
+  const pkg = offer?.packages.find((item) => item.slug === segments[2]);
+  const detail = pkg ? packageDetails.find((item) => item.packageSlug === pkg.slug) : undefined;
+  return offer && pkg && detail ? <PackagePage offer={offer} pkg={pkg} detail={detail} /> : offer ? <ServicePage offer={offer} /> : <LandingPage />;
 }
 
 export default App;
