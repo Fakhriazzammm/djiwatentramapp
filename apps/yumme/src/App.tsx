@@ -15,39 +15,74 @@ import {
 
 type Icon = typeof Store;
 
+type Package = {
+  name: string;
+  price: string;
+  note: string;
+  items: string[];
+};
+
 type Offer = {
   number: string;
+  slug: string;
   title: string;
   text: string;
+  detail: string;
+  outcome: string;
   items: string[];
   icon: Icon;
   tone: string;
+  packages: Package[];
 };
 
 const offers: Offer[] = [
   {
     number: "01",
+    slug: "operasional",
     title: "Jalankan lebih rapi",
     text: "Kami membantu pemilik F&B merapikan cara outlet bekerja setiap hari.",
+    detail: "Dari SOP yang hanya tersimpan di kepala sampai ritme kerja yang tidak konsisten, kami bantu mengubahnya menjadi cara kerja yang jelas dan bisa diulang.",
+    outcome: "Tim tahu apa yang harus dikerjakan, kapan, dan dengan standar seperti apa.",
     items: ["Operasional outlet", "SOP dan pelatihan", "SDM, jadwal, dan absensi"],
     icon: Settings2,
     tone: "blue",
+    packages: [
+      { name: "Rapikan dasar", price: "Rp7,5 juta", note: "satu kali proyek", items: ["Audit operasional", "Peta masalah utama", "3 SOP prioritas"] },
+      { name: "Bangun sistem kerja", price: "Rp18 juta", note: "satu kali proyek", items: ["10 SOP inti", "Training team", "Template jadwal dan checklist"] },
+      { name: "Dampingi berjalan", price: "Rp12 juta", note: "per bulan", items: ["Review operasional mingguan", "Pendampingan supervisor", "Perbaikan berkelanjutan"] },
+    ],
   },
   {
     number: "02",
+    slug: "sistem",
     title: "Bangun fondasi yang siap tumbuh",
     text: "Dari website sampai aplikasi, kami membuat sistem yang benar-benar dipakai tim.",
+    detail: "Kami merancang fondasi digital sesuai alur bisnis—bukan menambah teknologi yang tidak dipakai. Mulai dari halaman pertama sampai data operasional.",
+    outcome: "Bisnis punya sistem yang terhubung, mudah dipakai, dan siap dikembangkan.",
     items: ["Website dan landing page", "Aplikasi customer", "POS dan dashboard"],
     icon: Code2,
     tone: "sage",
+    packages: [
+      { name: "Website bisnis", price: "Rp12 juta", note: "satu kali proyek", items: ["Struktur halaman", "Copy dan desain responsif", "Form inquiry dan analytics"] },
+      { name: "Customer app", price: "Rp35 juta", note: "mulai dari", items: ["Flow customer", "Login dan profil", "Menu, order, dan status"] },
+      { name: "Sistem operasional", price: "Rp20 juta", note: "mulai dari", items: ["POS atau dashboard", "Role dan akses team", "Laporan operasional dasar"] },
+    ],
   },
   {
     number: "03",
+    slug: "akuisisi",
     title: "Datangkan lebih banyak pelanggan",
     text: "Kami menghubungkan brand dengan customer melalui campaign yang relevan.",
+    detail: "Akuisisi bukan sekadar membuat konten. Kami menghubungkan pesan, channel, partner, dan pengukuran supaya setiap campaign punya tujuan bisnis yang jelas.",
+    outcome: "Brand lebih mudah ditemukan dan setiap aktivitas marketing bisa dievaluasi.",
     items: ["KOL partnership", "Konten dan campaign", "Pengukuran penjualan"],
     icon: BarChart3,
     tone: "sand",
+    packages: [
+      { name: "Campaign starter", price: "Rp8 juta", note: "per campaign", items: ["Strategi campaign", "Content plan", "Laporan hasil"] },
+      { name: "KOL partnership", price: "Rp15 juta", note: "mulai dari", items: ["Seleksi KOL", "Brief dan koordinasi", "Rekap reach dan conversion"] },
+      { name: "Growth partner", price: "Rp12 juta", note: "per bulan", items: ["Kalender campaign", "Optimasi channel", "Review data dan eksperimen"] },
+    ],
   },
 ];
 
@@ -75,7 +110,45 @@ function ArrowLink({ children, href = "#kontak", light = false }: { children: Re
   );
 }
 
-function App() {
+function ServicePage({ offer }: { offer: Offer }) {
+  const IconComponent = offer.icon;
+  return (
+    <div className="site service-page" id="top">
+      <header className="site-header">
+        <div className="container nav-wrap">
+          <Logo />
+          <a className="nav-cta" href="/#kontak">Bahas bisnis Anda <ArrowUpRight size={15} /></a>
+        </div>
+      </header>
+      <main>
+        <section className={`service-hero ${offer.tone}`}>
+          <div className="container service-hero-grid">
+            <div>
+              <a className="back-link" href="/#layanan"><ChevronRight size={16} className="back-link-icon" /> Semua layanan</a>
+              <div className="service-identity"><span className="service-icon"><IconComponent size={25} /></span><span>LAYANAN {offer.number}</span></div>
+              <h1>{offer.title}</h1>
+              <p>{offer.detail}</p>
+              <a className="button button-primary" href="/#kontak">Diskusikan kebutuhan Anda <ArrowUpRight size={17} /></a>
+            </div>
+            <div className="service-outcome"><span className="eyebrow">HASIL YANG DITUJU</span><strong>{offer.outcome}</strong><div className="service-outcome-list">{offer.items.map((item) => <span key={item}><Check size={16} />{item}</span>)}</div></div>
+          </div>
+        </section>
+        <section className="section-pad pricing-section">
+          <div className="container">
+            <div className="section-heading"><div><span className="eyebrow">PILIH RUANG LINGKUP</span><h2>Paket yang bisa dimulai dari kebutuhan Anda.</h2></div><p>Harga di bawah adalah harga mulai. Kami finalkan setelah memahami ukuran bisnis, jumlah outlet, dan target yang ingin dicapai.</p></div>
+            <div className="pricing-grid">{offer.packages.map((pkg, index) => <article className={`pricing-card${index === 1 ? " pricing-card-featured" : ""}`} key={pkg.name}><div className="pricing-card-top"><span>0{index + 1}</span><span>{pkg.note}</span></div><h3>{pkg.name}</h3><strong>{pkg.price}</strong><ul>{pkg.items.map((item) => <li key={item}><Check size={15} />{item}</li>)}</ul><a className="pricing-link" href="/#kontak">Bahas paket ini <ArrowUpRight size={15} /></a></article>)}</div>
+            <p className="pricing-note">* Belum termasuk biaya iklan, talent/KOL, domain, hosting, payment gateway, atau integrasi pihak ketiga jika diperlukan. Proposal final mengikuti scope yang disepakati.</p>
+          </div>
+        </section>
+        <section className="service-process section-pad"><div className="container process-grid"><div><span className="eyebrow">CARA KERJA</span><h2>Mulai dari kondisi nyata, bukan asumsi.</h2></div><div className="process-steps"><div><b>01</b><span><strong>Pahami</strong><small>Kami pelajari bisnis dan masalah yang paling menghambat.</small></span></div><div><b>02</b><span><strong>Bangun</strong><small>Kami susun solusi yang sesuai kapasitas dan prioritas.</small></span></div><div><b>03</b><span><strong>Jalankan</strong><small>Team mendapat pendampingan sampai sistem mulai dipakai.</small></span></div></div></div></section>
+        <section className="service-cta"><div className="container"><span className="eyebrow eyebrow-light">NEXT STEP</span><h2>Belum yakin mulai dari paket mana?</h2><p>Ceritakan kondisi bisnis Anda. Kami bantu menentukan langkah pertama yang paling masuk akal.</p><a className="button button-light" href="/#kontak">Mulai diskusi <ArrowUpRight size={17} /></a></div></section>
+      </main>
+      <footer className="site-footer"><div className="container footer-bottom"><span>© {new Date().getFullYear()} Yumme Group</span><a href="/">Kembali ke yumme.id</a></div></footer>
+    </div>
+  );
+}
+
+function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -168,12 +241,13 @@ function App() {
             </div>
             <div className="offer-grid">
               {offers.map(({ number, title, text, items, icon: IconComponent, tone }) => (
-                <article className={`offer-card ${tone}`} key={title}>
+                <a className={`offer-card ${tone}`} href={`/layanan/${offers.find((offer) => offer.title === title)?.slug ?? ""}`}>
                   <div className="offer-card-top"><span className="offer-icon"><IconComponent size={21} strokeWidth={1.8} /></span><span className="offer-number">{number}</span></div>
                   <h3>{title}</h3>
                   <p>{text}</p>
                   <ul>{items.map((item) => <li key={item}><Check size={15} />{item}</li>)}</ul>
-                </article>
+                  <span className="offer-card-link">Lihat cakupan & harga <ArrowUpRight size={15} /></span>
+                </a>
               ))}
             </div>
           </div>
@@ -198,6 +272,12 @@ function App() {
       <footer className="site-footer"><div className="container footer-inner"><div><Logo /><p>Partner untuk bisnis F&B yang ingin berjalan lebih baik.</p></div><div className="footer-links"><a href="#layanan">Cara kami membantu</a><a href="#proof">Djiwa Tentram</a><a href="#kontak">Bahas bisnis Anda</a></div></div><div className="container footer-bottom"><span>© {new Date().getFullYear()} Yumme Group</span><span>Built from real operations.</span></div></footer>
     </div>
   );
+}
+
+function App() {
+  const path = window.location.pathname.replace(/\/$/, "");
+  const offer = offers.find((item) => path === `/layanan/${item.slug}`);
+  return offer ? <ServicePage offer={offer} /> : <LandingPage />;
 }
 
 export default App;
