@@ -142,10 +142,11 @@ function App() {
           </div>
         </section>
 
-        <section className="intro-strip">
-          <div className="container intro-strip-inner">
-            <span className="eyebrow">BUKAN SEKADAR VENDOR</span>
-            <p>Kami ikut memahami dapur, outlet, tim, dan customer — lalu membantu Anda membuat semuanya bekerja lebih baik.</p>
+        <section className="proof-highlight" id="proof">
+          <div className="container proof-highlight-inner">
+            <div className="proof-highlight-brand"><span className="proof-highlight-mark"><b>D</b><i>T</i></span><span><strong>Djiwa Tentram</strong><small>Brand cafe & resto Yumme Group</small></span></div>
+            <div className="proof-highlight-copy"><span className="eyebrow">CONTOH YANG SUDAH BERJALAN</span><p>Kami tidak hanya membuat jasa untuk F&B. Kami membangun dan menjalankan Djiwa Tentram sendiri — dari outlet, team, sistem customer, sampai marketing.</p></div>
+            <a className="proof-highlight-link" href="https://djiwatentram.yumme.id" aria-label="Lihat Djiwa Tentram">Lihat contoh bisnisnya <ArrowUpRight size={17} /></a>
           </div>
         </section>
 
@@ -165,14 +166,6 @@ function App() {
                 </article>
               ))}
             </div>
-          </div>
-        </section>
-
-        <section className="proof-section section-pad" id="proof">
-          <div className="container proof-grid">
-            <div className="proof-mark" aria-hidden="true"><span>D</span><b>T</b></div>
-            <div className="proof-copy"><span className="eyebrow">CONTOH YANG SUDAH BERJALAN</span><h2>Djiwa Tentram adalah brand dan ruang uji nyata kami.</h2><p>Kami mengembangkan Djiwa Tentram sambil mengelola operasionalnya. Dari outlet, team, POS, aplikasi customer, hingga marketing — semua dibangun dari kebutuhan yang benar-benar terjadi di lapangan.</p><ArrowLink href="https://djiwatentram.yumme.id">Lihat Djiwa Tentram</ArrowLink></div>
-            <div className="proof-note"><span>CASE STUDY / 01</span><strong>Build it.<br />Run it.<br /><em>Learn from it.</em></strong></div>
           </div>
         </section>
 
