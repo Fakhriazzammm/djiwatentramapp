@@ -39,49 +39,49 @@ const offers: Offer[] = [
   {
     number: "01",
     slug: "operasional",
-    title: "Rapikan operasional outlet",
-    text: "Kami bantu membuat pekerjaan harian outlet lebih teratur dan mudah diawasi.",
-    detail: "Kami melihat cara kerja outlet Anda, lalu membantu membuat aturan kerja, jadwal, dan checklist yang bisa dipakai setiap hari.",
-    outcome: "Setiap orang tahu tugasnya. Pekerjaan tidak lagi bergantung pada satu orang.",
-    items: ["Aturan kerja outlet", "SOP dan pelatihan", "Jadwal, absensi, dan evaluasi"],
+    title: "Kontrol outlet dan keuntungan",
+    text: "Satukan kasir, stok, biaya, dan laporan supaya Anda tahu kondisi outlet setiap hari.",
+    detail: "Kami merapikan alur buka shift, transaksi, stok bahan, pengeluaran, dan tutup kas agar pemilik tidak lagi menunggu rekap manual.",
+    outcome: "Anda bisa melihat penjualan, stok, dan hasil outlet dengan data yang lebih jelas.",
+    items: ["Kasir, shift, dan tutup kas", "Stok bahan dan HPP", "Laporan penjualan dan biaya"],
     icon: Settings2,
     tone: "blue",
     packages: [
-      { name: "Rapikan dasar", price: "Rp7,5 juta", note: "satu kali pekerjaan", items: ["Pengecekan cara kerja", "Daftar masalah utama", "3 SOP penting"] },
-      { name: "Bangun cara kerja", price: "Rp18 juta", note: "satu kali pekerjaan", items: ["10 SOP utama", "Pelatihan tim", "Template jadwal dan checklist"] },
-      { name: "Pendampingan outlet", price: "Rp12 juta", note: "per bulan", items: ["Pengecekan mingguan", "Pendampingan supervisor", "Perbaikan cara kerja"] },
+      { name: "Cek kondisi outlet", price: "Rp7,5 juta", note: "satu kali pekerjaan", items: ["Cek alur kasir dan shift", "Cek stok dan pengeluaran", "Daftar perbaikan utama"] },
+      { name: "Bangun sistem kontrol", price: "Rp18 juta", note: "satu kali pekerjaan", items: ["SOP kasir dan tutup kas", "Stok dan perhitungan HPP", "Laporan penjualan dasar"] },
+      { name: "Pantau dan dampingi", price: "Rp12 juta", note: "per bulan", items: ["Pengecekan laporan mingguan", "Pendampingan supervisor", "Perbaikan kebocoran operasional"] },
     ],
   },
   {
     number: "02",
     slug: "sistem",
-    title: "Bangun sistem bisnis",
-    text: "Kami membuat website, aplikasi, atau dashboard yang benar-benar membantu pekerjaan Anda.",
-    detail: "Kami mulai dari kebutuhan bisnis Anda, lalu membuat website, aplikasi, atau dashboard yang mudah dipakai oleh pelanggan dan tim.",
-    outcome: "Data dan pekerjaan lebih mudah dikelola tanpa menambah kerumitan.",
-    items: ["Website bisnis", "Aplikasi pelanggan", "Kasir dan dashboard"],
+    title: "Kasir dan pengalaman pelanggan",
+    text: "Buat pelanggan lebih mudah melihat menu, memesan, dan membayar.",
+    detail: "Kami membuat website, aplikasi, atau sistem kasir yang terhubung dengan pekerjaan di outlet dan data pelanggan.",
+    outcome: "Pelanggan mendapat pengalaman yang lebih mudah. Tim mendapat data yang lebih rapi.",
+    items: ["Menu dan pemesanan online", "Pembayaran dan status pesanan", "Kasir dan dashboard terhubung"],
     icon: Code2,
     tone: "sage",
     packages: [
-      { name: "Website bisnis", price: "Rp12 juta", note: "satu kali pekerjaan", items: ["Susunan halaman", "Tulisan dan desain", "Form kontak dan pengukuran"] },
-      { name: "Aplikasi pelanggan", price: "Rp35 juta", note: "mulai dari", items: ["Alur pemesanan", "Login dan profil", "Menu, pesanan, dan status"] },
-      { name: "Sistem kasir", price: "Rp20 juta", note: "mulai dari", items: ["Kasir atau dashboard", "Akses untuk setiap tim", "Laporan penjualan dasar"] },
+      { name: "Website yang menghasilkan kontak", price: "Rp12 juta", note: "satu kali pekerjaan", items: ["Menu dan informasi usaha", "Tulisan dan desain", "Form pemesanan atau kontak"] },
+      { name: "Pemesanan pelanggan", price: "Rp35 juta", note: "mulai dari", items: ["Menu dan keranjang", "Pembayaran dan status pesanan", "Riwayat pelanggan"] },
+      { name: "Kasir dan dashboard", price: "Rp20 juta", note: "mulai dari", items: ["Kasir dan pencatatan transaksi", "Akses untuk setiap tim", "Laporan penjualan dasar"] },
     ],
   },
   {
     number: "03",
     slug: "akuisisi",
-    title: "Dapatkan pelanggan baru",
-    text: "Kami membantu brand Anda lebih dikenal dan mendatangkan pelanggan baru.",
-    detail: "Kami merencanakan promosi, memilih media yang sesuai, dan melihat hasilnya supaya biaya promosi tidak berjalan tanpa arah.",
-    outcome: "Anda tahu promosi mana yang menghasilkan perhatian, kunjungan, dan penjualan.",
-    items: ["Promosi dan KOL", "Konten untuk pelanggan", "Pengukuran hasil penjualan"],
+    title: "Buat pelanggan datang kembali",
+    text: "Bangun hubungan dengan pelanggan agar mereka tidak hanya datang sekali.",
+    detail: "Kami membantu membuat program member, promosi, dan komunikasi yang mendorong kunjungan ulang—dengan hasil yang bisa dilihat dari data transaksi.",
+    outcome: "Anda tahu siapa pelanggan Anda, promosi apa yang berhasil, dan apa yang perlu diperbaiki.",
+    items: ["Program member dan hadiah", "Promosi untuk pelanggan lama", "Laporan kunjungan ulang"],
     icon: BarChart3,
     tone: "sand",
     packages: [
-      { name: "Promosi awal", price: "Rp8 juta", note: "per promosi", items: ["Tujuan promosi", "Rencana konten", "Laporan hasil"] },
-      { name: "Kerja sama KOL", price: "Rp15 juta", note: "mulai dari", items: ["Memilih KOL", "Brief dan koordinasi", "Laporan jangkauan dan hasil"] },
-      { name: "Pendampingan promosi", price: "Rp12 juta", note: "per bulan", items: ["Rencana promosi bulanan", "Pemilihan media", "Pengecekan data dan percobaan baru"] },
+      { name: "Mulai program pelanggan", price: "Rp8 juta", note: "satu kali pekerjaan", items: ["Aturan program member", "Penawaran untuk pelanggan", "Laporan hasil awal"] },
+      { name: "Promosi yang terukur", price: "Rp15 juta", note: "mulai dari", items: ["Rencana promosi", "Konten dan kerja sama KOL", "Laporan kunjungan dan penjualan"] },
+      { name: "Pendampingan pelanggan", price: "Rp12 juta", note: "per bulan", items: ["Rencana komunikasi bulanan", "Perbaikan program member", "Pengecekan pelanggan kembali"] },
     ],
   },
 ];
@@ -140,7 +140,7 @@ function ServicePage({ offer }: { offer: Offer }) {
             <p className="pricing-note">* Harga belum termasuk iklan, biaya KOL, domain, hosting, biaya pembayaran online, atau sambungan ke layanan lain. Harga final ditentukan setelah kebutuhan disepakati.</p>
           </div>
         </section>
-        <section className="service-process section-pad"><div className="container process-grid"><div><span className="eyebrow">CARA KERJA</span><h2>Kita mulai dari masalah yang paling penting.</h2></div><div className="process-steps"><div><b>01</b><span><strong>Ceritakan</strong><small>Anda menjelaskan kondisi bisnis dan masalah yang sedang dihadapi.</small></span></div><div><b>02</b><span><strong>Susun solusi</strong><small>Kami memilih pekerjaan yang paling penting dan sesuai anggaran.</small></span></div><div><b>03</b><span><strong>Kerjakan bersama</strong><small>Kami membantu menjalankan solusi sampai bisa dipakai team.</small></span></div></div></div></section>
+        <section className="service-process section-pad"><div className="container process-grid"><div><span className="eyebrow">CARA KERJA</span><h2>Kita mulai dari masalah yang paling penting.</h2></div><div className="process-steps"><div><b>01</b><span><strong>Ceritakan</strong><small>Anda menjelaskan kondisi bisnis dan masalah yang sedang dihadapi.</small></span></div><div><b>02</b><span><strong>Susun solusi</strong><small>Kami memilih pekerjaan yang paling penting dan sesuai anggaran.</small></span></div><div><b>03</b><span><strong>Kerjakan bersama</strong><small>Kami membantu menjalankan solusi sampai bisa dipakai tim.</small></span></div></div></div></section>
         <section className="service-cta"><div className="container"><span className="eyebrow eyebrow-light">LANGKAH BERIKUTNYA</span><h2>Belum tahu harus mulai dari mana?</h2><p>Ceritakan kondisi bisnis Anda. Kami bantu memilih pekerjaan pertama yang paling berguna.</p><a className="button button-light" href="/#kontak">Ceritakan bisnis Anda <ArrowUpRight size={17} /></a></div></section>
       </main>
       <footer className="site-footer"><div className="container footer-bottom"><span>© {new Date().getFullYear()} Yumme Group</span><a href="/">Kembali ke yumme.id</a></div></footer>
@@ -259,7 +259,7 @@ function LandingPage() {
             <form className="contact-form" onSubmit={handleSubmit}>
               <div className="form-row"><label>Nama<input name="name" required placeholder="Nama Anda" /></label><label>Nama bisnis<input name="business" required placeholder="Nama bisnis" /></label></div>
               <label>Email / WhatsApp<input name="contact" required placeholder="email atau nomor WhatsApp" /></label>
-              <label>Yang ingin dibantu<select name="need" defaultValue=""><option value="" disabled>Pilih salah satu</option><option>Operasional outlet</option><option>Website atau aplikasi</option><option>SDM dan SOP</option><option>Promosi dan kerja sama KOL</option><option>Belum yakin, ingin konsultasi</option></select></label>
+              <label>Yang ingin dibantu<select name="need" defaultValue=""><option value="" disabled>Pilih salah satu</option><option>Operasional outlet</option><option>Website atau aplikasi</option><option>SDM dan SOP</option><option>Program pelanggan dan promosi</option><option>Belum yakin, ingin konsultasi</option></select></label>
               <label>Ceritakan singkat<textarea name="message" rows={3} placeholder="Apa yang sedang ingin dirapikan atau dikembangkan?"></textarea></label>
               {submitted && <div className="form-honesty" role="status"><Check size={17} /> Terima kasih. Formulir Anda sudah diterima di halaman ini, tetapi belum dikirim ke server.</div>}
               <button className="button button-light" type="submit">Kirim formulir <ArrowUpRight size={17} /></button>
