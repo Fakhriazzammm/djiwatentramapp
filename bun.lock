@@ -432,6 +432,25 @@
         "express": "^5.2.1",
       },
     },
+    "apps/yumme": {
+      "name": "@yumme/group-landing",
+      "version": "0.1.0",
+      "dependencies": {
+        "@tailwindcss/vite": "^4.0.15",
+        "framer-motion": "^12.29.0",
+        "lucide-react": "^0.473.0",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "tailwindcss": "^4.0.15",
+        "vite": "^6.4.2",
+      },
+      "devDependencies": {
+        "@types/react": "19.2.7",
+        "@types/react-dom": "19.2.3",
+        "@vitejs/plugin-react": "^4.3.4",
+        "typescript": "catalog:",
+      },
+    },
     "packages/backend": {
       "name": "@yumipos/backend",
       "version": "1.0.0",
@@ -1181,6 +1200,8 @@
     "@yumipos/pos": ["@yumipos/pos@workspace:apps/pos"],
 
     "@yumipos/web-shared": ["@yumipos/web-shared@workspace:packages/yumipos-web-shared"],
+
+    "@yumme/group-landing": ["@yumme/group-landing@workspace:apps/yumme"],
 
     "@zxing/browser": ["@zxing/browser@0.2.1", "", { "optionalDependencies": { "@zxing/text-encoding": "^0.9.0" }, "peerDependencies": { "@zxing/library": "^0.23.0" } }, ""],
 

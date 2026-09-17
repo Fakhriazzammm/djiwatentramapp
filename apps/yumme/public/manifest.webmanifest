@@ -1,0 +1,11 @@
+{
+  "name": "Yumme Group",
+  "short_name": "Yumme",
+  "description": "Yumme Group membangun, mengoperasikan, dan mengembangkan bisnis F&B modern.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8f7",
+  "theme_color": "#14202b",
+  "lang": "id",
+  "icons": []
+}
