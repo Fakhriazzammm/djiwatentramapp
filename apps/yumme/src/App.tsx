@@ -148,11 +148,13 @@ function App() {
               <div className="proof-highlight-brand"><span className="proof-highlight-mark"><b>D</b><i>T</i></span><span><strong>Djiwa Tentram</strong><small>Brand cafe & resto Yumme Group</small></span></div>
               <div className="proof-highlight-copy"><span className="eyebrow">CONTOH YANG SUDAH BERJALAN</span><p>Kami membangun dan menjalankan Djiwa Tentram sendiri — dari outlet, team, sistem customer, sampai marketing. Inilah contoh nyata cara kerja Yumme.</p></div>
             </div>
-            <div className="proof-metrics" aria-label="Snapshot data operasional Djiwa Tentram">
+            <div className="proof-metrics" aria-label="Snapshot data operasional dan akuisisi pelanggan Djiwa Tentram">
               <div><strong>46</strong><span>menu aktif</span></div>
               <div><strong>14</strong><span>kategori menu</span></div>
               <div><strong>16</strong><span>team aktif</span></div>
               <div><strong>4.460</strong><span>transaksi paid/selesai</span></div>
+              <div><strong>226</strong><span>profil pelanggan</span></div>
+              <div><strong>143</strong><span>pelanggan dengan transaksi</span></div>
             </div>
             <div className="proof-highlight-foot"><span>Snapshot data operasional · 17 September 2026</span><span>Angka dapat berubah mengikuti aktivitas bisnis.</span></div>
           </div>
