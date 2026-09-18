@@ -1,4 +1,6 @@
-import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-react";
+import { useState } from "react";
+import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice, getActiveHappyHourBanner, isDjiwaPayCampaignActive } from "@/lib/utils/pricing";
@@ -20,6 +22,40 @@ function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
 			decoding="async"
 			fallback={<PackageSearch className="h-7 w-7" strokeWidth={1.8} />}
 		/>
+	);
+}
+
+function ProductImageButton({ src, alt, isSold }: { src?: string | null; alt: string; isSold: boolean }) {
+	const [isOpen, setIsOpen] = useState(false);
+	const [zoom, setZoom] = useState(1);
+	const closeViewer = () => {
+		setIsOpen(false);
+		setZoom(1);
+	};
+	return (
+		<>
+			<button type="button" aria-label={`Lihat gambar ${alt}`} disabled={!src} className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-[12px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97] disabled:cursor-default" onClick={() => setIsOpen(true)}>
+				<ProductImage src={src} alt={alt} />
+				{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
+			</button>
+			{isOpen && src && typeof document !== "undefined" ? createPortal(
+				<div className="fixed inset-0 z-[2000] flex flex-col bg-slate-950/95 p-4 text-white" role="dialog" aria-modal="true" aria-label={`Gambar ${alt}`} onClick={closeViewer}>
+					<div className="flex items-center justify-between gap-3">
+						<p className="min-w-0 truncate text-sm font-bold">{alt}</p>
+						<button type="button" aria-label="Tutup gambar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 transition-transform active:scale-[.97]" onClick={closeViewer}><X className="h-5 w-5" /></button>
+					</div>
+					<div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden py-4" onClick={(event) => event.stopPropagation()}>
+						<img src={src} alt={alt} className="max-h-full max-w-full select-none object-contain transition-transform duration-200 ease-out" style={{ transform: `scale(${zoom})` }} draggable={false} />
+					</div>
+					<div className="flex items-center justify-center gap-2 pb-[env(safe-area-inset-bottom)]">
+						<button type="button" aria-label="Perkecil gambar" disabled={zoom <= 1} className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 disabled:opacity-40" onClick={() => setZoom((value) => Math.max(1, value - 0.5))}><ZoomOut className="h-5 w-5" /></button>
+						<button type="button" aria-label="Reset ukuran gambar" className="rounded-full bg-white/10 px-4 py-2.5 text-xs font-bold" onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
+						<button type="button" aria-label="Perbesar gambar" disabled={zoom >= 3} className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 disabled:opacity-40" onClick={() => setZoom((value) => Math.min(3, value + 0.5))}><ZoomIn className="h-5 w-5" /></button>
+					</div>
+				</div>,
+				document.body,
+			) : null}
+		</>
 	);
 }
 export interface MenuSectionProps {
@@ -216,10 +252,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const hasNutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value: unknown) => Number.isFinite(Number(value)) && Number(value) >= 0);
 								return (
 									<article key={product._id} className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
-										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-[12px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
-											<ProductImage src={product.image} alt={product.name} />
-											{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
-										</button>
+										<ProductImageButton src={product.image} alt={product.name} isSold={isSold} />
 										<div className="min-w-0 flex-1 py-0">
 											<div className="flex min-h-full flex-col gap-1">
 											<div>
