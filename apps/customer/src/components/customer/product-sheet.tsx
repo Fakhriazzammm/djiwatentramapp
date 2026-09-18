@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Minus, PackageSearch, Plus, X } from "lucide-react";
+import { Check, Info, Minus, PackageSearch, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import { ImageWithPlaceholder } from "./image-with-placeholder";
@@ -41,6 +41,19 @@ export function ProductSheet({
 		const option = group?.options.find((entry) => entry.name === optionName);
 		return sum + (option?.price ?? 0);
 	}, 0);
+	const nutrition = product.nutrition && typeof product.nutrition === "object" && product.nutrition.status !== "rejected"
+		? product.nutrition as {
+				caloriesKcal: number;
+				proteinG: number;
+				carbohydratesG: number;
+				fatG: number;
+				servingSize: string;
+				status: "draft" | "reviewed" | "approved";
+				notes?: string | null;
+		  }
+		: null;
+	const nutritionIsEstimate = nutrition?.status === "draft";
+	const nutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value) => Number.isFinite(Number(value)) && Number(value) >= 0);
 	const unitPrice = pricing.finalPrice + variantPrice;
 
 	return (
@@ -78,6 +91,34 @@ export function ProductSheet({
 					<div className="min-w-0">
 						<h3 className="font-display text-xl font-black leading-tight tracking-tight">{product.name}</h3>
 						{product.description ? <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{product.description}</p> : null}
+						<section className="mt-3 rounded-2xl border border-border/80 bg-muted/25 p-3" aria-labelledby="product-nutrition-title">
+							<div className="flex items-center justify-between gap-2">
+								<div className="flex min-w-0 items-center gap-1.5">
+									<Info className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+									<h4 id="product-nutrition-title" className="truncate text-xs font-black">Informasi gizi</h4>
+								</div>
+								{nutritionIsEstimate ? <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">Perkiraan</span> : null}
+							</div>
+							{nutrition && nutritionValues ? (
+								<>
+									<p className="mt-1 text-[10px] text-muted-foreground">Per porsi · {nutrition.servingSize}</p>
+									<div className="mt-2 grid grid-cols-2 gap-1.5">
+										{[
+											["Kalori", `${nutrition.caloriesKcal} kkal`],
+											["Protein", `${nutrition.proteinG} g`],
+											["Karbohidrat", `${nutrition.carbohydratesG} g`],
+											["Lemak", `${nutrition.fatG} g`],
+										].map(([label, value]) => (
+												<div key={label} className="rounded-xl bg-background px-2.5 py-2">
+													<p className="text-[10px] text-muted-foreground">{label}</p>
+													<p className="mt-0.5 text-xs font-black text-foreground">{value}</p>
+												</div>
+											))}
+									</div>
+									{nutrition.notes ? <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{nutrition.notes}</p> : null}
+								</>
+							) : <p className="mt-2 text-[11px] text-muted-foreground">Informasi gizi belum tersedia.</p>}
+						</section>
 					</div>
 					<div className="shrink-0 text-right">
 						<p className="text-lg font-black text-primary" aria-live="polite">{currency(unitPrice)}</p>

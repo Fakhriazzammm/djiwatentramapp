@@ -26,6 +26,20 @@ function useGlobalRefreshTrigger() {
 
 type SiteSettingsRecord = Record<string, any>;
 type CategoryRecord = Record<string, any>;
+export type ProductNutrition = {
+	caloriesKcal: number;
+	proteinG: number;
+	carbohydratesG: number;
+	fatG: number;
+	servingSize: string;
+	source: string;
+	confidence: "low" | "medium" | "high";
+	status: "draft" | "reviewed" | "approved" | "rejected";
+	notes?: string | null;
+	reviewedAt?: string | null;
+	reviewedBy?: string | null;
+};
+
 type ProductRecord = Record<string, any>;
 type DiscountRecord = Record<string, any>;
 type OrderRecord = Record<string, any>;
@@ -319,6 +333,39 @@ function safeNum(value: unknown) {
 	return Number.isFinite(number) ? number : 0;
 }
 
+function normalizeProductNutrition(value: unknown): ProductNutrition | null {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+	const raw = value as Record<string, unknown>;
+	const caloriesKcal = Number(raw.caloriesKcal);
+	const proteinG = Number(raw.proteinG);
+	const carbohydratesG = Number(raw.carbohydratesG);
+	const fatG = Number(raw.fatG);
+	const servingSize = typeof raw.servingSize === "string" ? raw.servingSize.trim() : "";
+	const source = typeof raw.source === "string" ? raw.source.trim() : "";
+	const confidence = raw.confidence;
+	const status = raw.status;
+	if (
+		![caloriesKcal, proteinG, carbohydratesG, fatG].every((item) => Number.isFinite(item) && item >= 0) ||
+		!servingSize ||
+		!source ||
+		!(["low", "medium", "high"] as const).includes(confidence as "low" | "medium" | "high") ||
+		!(["draft", "reviewed", "approved", "rejected"] as const).includes(status as "draft" | "reviewed" | "approved" | "rejected")
+	) return null;
+	return {
+		caloriesKcal,
+		proteinG,
+		carbohydratesG,
+		fatG,
+		servingSize,
+		source,
+		confidence: confidence as ProductNutrition["confidence"],
+		status: status as ProductNutrition["status"],
+		notes: typeof raw.notes === "string" ? raw.notes : null,
+		reviewedAt: typeof raw.reviewedAt === "string" ? raw.reviewedAt : null,
+		reviewedBy: typeof raw.reviewedBy === "string" ? raw.reviewedBy : null,
+	};
+}
+
 function deriveTotalItemsSoldFromSummary(summary: any): number {
 	const direct = safeNum(summary?.totalItemsSold);
 	if (direct > 0) return direct;
@@ -534,6 +581,7 @@ async function fetchProducts() {
 				? null
 				: Number(row.menuNumber),
 		variations: row.variations,
+		nutrition: normalizeProductNutrition(row.nutrition),
 	})) as ProductRecord[];
 }
 
@@ -583,6 +631,7 @@ async function fetchAllProducts() {
 				? null
 				: Number(row.menuNumber),
 		variations: row.variations,
+		nutrition: normalizeProductNutrition(row.nutrition),
 	})) as ProductRecord[];
 }
 
