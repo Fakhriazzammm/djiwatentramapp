@@ -218,13 +218,15 @@ export function renderMenuSection(props: MenuSectionProps) {
 									<article key={product._id} className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-[12px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
 											<ProductImage src={product.image} alt={product.name} />
-											{product.menuNumber != null ? <span className="absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}
 											{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
-											{isDjiwaPayEligible ? <span className="absolute bottom-1.5 left-1.5 rounded-full bg-[#2563eb] px-1.5 py-0.5 text-[9px] font-black text-white shadow">Djiwa Pay 50%</span> : pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 										</button>
 										<div className="min-w-0 flex-1 py-0">
 											<div className="flex min-h-full flex-col gap-1">
 											<div>
+												<div className="mb-0.5 flex min-h-4 items-center gap-1.5">
+													{product.menuNumber != null ? <span className="shrink-0 text-[9px] font-bold text-muted-foreground">#{product.menuNumber}</span> : null}
+													{isDjiwaPayEligible ? <span className="rounded-full bg-[#2563eb]/10 px-1.5 py-0.5 text-[9px] font-black leading-none text-[#2563eb]">Djiwa Pay 50%</span> : pricing.isPromo ? <span className="rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none" style={{ background: pricing.isHappyHour ? '#f59e0b1a' : '#ef44441a', color: pricing.isHappyHour ? '#b45309' : '#dc2626' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
+												</div>
 												<p className="break-words text-[13px] font-black leading-tight">{product.name}</p>
 												{product.description ? <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{product.description}</p> : <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Siap dipesan di meja Anda.</p>}
 												{hasNutritionValues ? <div className="mt-1 flex items-center gap-3 border-y border-primary/10 py-1"><p className="shrink-0 text-[10px] font-black text-primary">Gizi</p><div className="grid min-w-0 flex-1 grid-cols-4 gap-1">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbo", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`]].map(([label, value]) => <div key={label} className="min-w-0"><p className="truncate text-[9px] leading-tight text-muted-foreground">{label}</p><p className="truncate text-[10px] font-black leading-tight text-foreground">{value}</p></div>)}</div></div> : null}
