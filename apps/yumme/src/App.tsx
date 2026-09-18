@@ -7,7 +7,6 @@ import {
   Code2,
   Handshake,
   Menu,
-  Settings2,
   Store,
   Users,
   X,
@@ -27,6 +26,7 @@ type Package = {
 type Offer = {
   number: string;
   slug: string;
+  aliases?: string[];
   title: string;
   text: string;
   detail: string;
@@ -40,39 +40,25 @@ type Offer = {
 const offers: Offer[] = [
   {
     number: "01",
-    slug: "operasional",
-    title: "Operasional outlet dan kontrol biaya",
-    text: "Kurangi kebocoran dan tahu kondisi outlet setiap hari.",
-    detail: "Kami membantu merapikan SOP, shift, stok, HPP, dan laporan agar operasional outlet lebih mudah dikontrol.",
-    outcome: "Pemilik tahu apa yang terjadi di outlet dan bisa mengambil keputusan tanpa menunggu rekap manual.",
-    items: ["SOP dan pembagian kerja", "Stok, HPP, dan biaya", "Laporan outlet yang mudah dibaca"],
-    icon: Settings2,
-    tone: "blue",
-    packages: [
-      { slug: "audit-operasional-outlet", name: "Audit operasional outlet", price: "Rp7,5 juta", note: "satu kali pekerjaan", items: ["Cek SOP, shift, dan alur kerja", "Cek stok, HPP, dan biaya", "Daftar masalah dan prioritas"] },
-      { slug: "sistem-kontrol-outlet", aliases: ["sistem-kasir-stok-hpp"], name: "Sistem kontrol outlet", price: "Rp18 juta", note: "satu kali pekerjaan", items: ["SOP kerja dan tutup kas", "Kontrol stok dan HPP", "Laporan operasional dasar"] },
-      { slug: "pendampingan-operasional", aliases: ["pendampingan-kontrol-outlet"], name: "Pendampingan operasional", price: "Rp12 juta", note: "per bulan", items: ["Review laporan mingguan", "Pendampingan supervisor", "Tindak lanjut masalah outlet"] },
-    ],
-  },
-  {
-    number: "02",
-    slug: "sistem",
-    title: "Menu online, pesan, dan bayar",
-    text: "Buat pelanggan lebih mudah memesan dan bantu tim bekerja lebih cepat.",
-    detail: "Kami membuat menu online, pemesanan, pembayaran, dan integrasi kasir yang mudah dipakai pelanggan dan tim outlet.",
-    outcome: "Pelanggan lebih cepat memesan. Pesanan masuk lebih rapi dan tim tidak perlu mencatat ulang.",
-    items: ["Menu online dan pemesanan", "Pembayaran dan status pesanan", "Integrasi kasir dan laporan"],
+    slug: "it",
+    aliases: ["operasional", "sistem"],
+    title: "Sistem IT untuk bisnis F&B",
+    text: "Buat pesanan, kasir, stok, dan laporan bekerja dalam satu alur.",
+    detail: "Kami membangun sistem digital yang membantu pelanggan memesan, tim bekerja, dan pemilik melihat kondisi bisnis.",
+    outcome: "Pekerjaan lebih cepat, data lebih rapi, dan keputusan bisnis tidak lagi menunggu rekap manual.",
+    items: ["Menu, pesanan, dan pembayaran", "Kasir, stok, dan HPP", "Dashboard dan laporan bisnis"],
     icon: Code2,
     tone: "sage",
     packages: [
       { slug: "menu-online-dan-website", name: "Menu online dan website", price: "Rp12 juta", note: "satu kali pekerjaan", items: ["Menu dan informasi usaha", "Tampilan untuk pelanggan", "Kontak atau pemesanan"] },
       { slug: "sistem-pesan-dan-bayar", name: "Sistem pesan dan bayar", price: "Rp35 juta", note: "mulai dari", items: ["Menu dan keranjang", "Pembayaran dan status pesanan", "Riwayat pesanan pelanggan"] },
-      { slug: "integrasi-kasir-dan-dashboard", name: "Integrasi kasir dan dashboard", price: "Rp20 juta", note: "mulai dari", items: ["Pesanan masuk ke kasir", "Akses untuk setiap tim", "Laporan penjualan dasar"] },
+      { slug: "sistem-bisnis-terintegrasi", aliases: ["integrasi-kasir-dan-dashboard"], name: "Sistem bisnis terintegrasi", price: "Rp20 juta", note: "mulai dari", items: ["Pesanan masuk ke kasir", "Stok dan laporan terhubung", "Akses untuk setiap tim"] },
     ],
   },
   {
-    number: "03",
-    slug: "akuisisi",
+    number: "02",
+    slug: "marketing",
+    aliases: ["akuisisi"],
     title: "Marketing dan akuisisi pelanggan",
     text: "Datangkan pelanggan baru dengan promosi yang terarah dan bisa diukur.",
     detail: "Kami membantu menentukan target pasar, membuat pesan promosi, memilih kanal, lalu mengukur pelanggan dan penjualan yang dihasilkan.",
@@ -176,7 +162,7 @@ const packageDetails: PackageDetail[] = [
     metrics: ["Pesanan masuk", "Pesanan berhasil dibayar", "Pesanan yang selesai tanpa koreksi manual"],
   },
   {
-    packageSlug: "integrasi-kasir-dan-dashboard",
+    packageSlug: "sistem-bisnis-terintegrasi",
     promise: "Buat pesanan pelanggan masuk ke tim dan laporan tanpa dicatat ulang.",
     audience: "Untuk bisnis yang sudah punya kasir atau pesanan online, tetapi datanya belum terhubung.",
     problem: "Tim menyalin pesanan secara manual. Pemilik sulit melihat penjualan dari semua kanal.",
@@ -371,7 +357,7 @@ function LandingPage() {
             <div className="hero-copy">
               <span className="eyebrow eyebrow-dot"><span className="status-dot" /> Partner untuk bisnis F&B</span>
               <h1>Bisnis F&B yang lebih <em>rapi, kuat,</em> dan siap tumbuh.</h1>
-              <p className="hero-lede">Yumme Group membantu pemilik cafe, resto, dan coffeeshop menata operasional, membuat sistem yang berguna, dan mendapatkan pelanggan baru.</p>
+              <p className="hero-lede">Yumme Group membantu pemilik cafe, resto, dan coffeeshop membangun sistem IT yang berguna dan marketing yang mendatangkan pelanggan.</p>
               <div className="hero-actions">
                 <a className="button button-primary" href="#kontak">Bahas bisnis Anda <ArrowUpRight size={17} /></a>
                 <a className="button button-secondary" href="#layanan">Lihat cara kami membantu <ChevronRight size={17} /></a>
@@ -431,7 +417,7 @@ function LandingPage() {
             <form className="contact-form" onSubmit={handleSubmit}>
               <div className="form-row"><label>Nama<input name="name" required placeholder="Nama Anda" /></label><label>Nama bisnis<input name="business" required placeholder="Nama bisnis" /></label></div>
               <label>Email / WhatsApp<input name="contact" required placeholder="email atau nomor WhatsApp" /></label>
-              <label>Yang ingin dibantu<select name="need" defaultValue=""><option value="" disabled>Pilih salah satu</option><option>Operasional outlet</option><option>Website atau aplikasi</option><option>SDM dan SOP</option><option>Program pelanggan dan promosi</option><option>Belum yakin, ingin konsultasi</option></select></label>
+              <label>Yang ingin dibantu<select name="need" defaultValue=""><option value="" disabled>Pilih salah satu</option><option>Sistem IT untuk bisnis F&B</option><option>Marketing dan akuisisi pelanggan</option><option>Belum yakin, ingin konsultasi</option></select></label>
               <label>Ceritakan singkat<textarea name="message" rows={3} placeholder="Apa yang sedang ingin dirapikan atau dikembangkan?"></textarea></label>
               {submitted && <div className="form-honesty" role="status"><Check size={17} /> Terima kasih. Formulir Anda sudah diterima di halaman ini, tetapi belum dikirim ke server.</div>}
               <button className="button button-light" type="submit">Kirim formulir <ArrowUpRight size={17} /></button>
@@ -449,7 +435,7 @@ function LandingPage() {
 function App() {
   const path = window.location.pathname.replace(/\/$/, "");
   const segments = path.split("/").filter(Boolean);
-  const offer = offers.find((item) => path === `/layanan/${item.slug}` || segments[0] === "layanan" && segments[1] === item.slug);
+  const offer = offers.find((item) => path === `/layanan/${item.slug}` || segments[0] === "layanan" && (segments[1] === item.slug || item.aliases?.includes(segments[1])));
   const pkg = offer?.packages.find((item) => item.slug === segments[2] || item.aliases?.includes(segments[2]));
   const detail = pkg ? packageDetails.find((item) => item.packageSlug === pkg.slug) : undefined;
   return offer && pkg && detail ? <PackagePage offer={offer} pkg={pkg} detail={detail} /> : offer ? <ServicePage offer={offer} /> : <LandingPage />;
