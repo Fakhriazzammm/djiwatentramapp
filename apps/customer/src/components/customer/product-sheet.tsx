@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Info, Minus, PackageSearch, Plus, X } from "lucide-react";
+import { Check, Info, Minus, PackageSearch, Plus, ShoppingCart, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import { ImageWithPlaceholder } from "./image-with-placeholder";
@@ -80,16 +80,16 @@ export function ProductSheet({
 					<X className="h-4 w-4" />
 				</button>
 				{product.menuNumber != null ? (
-					<span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white">
+					<span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white">
 						#{product.menuNumber}
 					</span>
 				) : null}
+				{pricing.isPromo ? <span className="absolute bottom-3 right-3 rounded-full bg-[#2563eb] px-2.5 py-1 text-[11px] font-black text-white shadow">Promo aktif</span> : null}
 			</div>
 
 			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 overscroll-contain">
-				<div className="flex items-start justify-between gap-3">
-					<div className="min-w-0">
-						<h3 className="font-display text-xl font-black leading-tight tracking-tight">{product.name}</h3>
+				<div className="min-w-0">
+					<h3 className="font-display text-xl font-black leading-tight tracking-tight">{product.name}</h3>
 						{product.description ? <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{product.description}</p> : null}
 						<section className="mt-3 rounded-2xl border border-border/80 bg-muted/25 p-3" aria-labelledby="product-nutrition-title">
 							<div className="flex items-center justify-between gap-2">
@@ -102,7 +102,7 @@ export function ProductSheet({
 							{nutrition && nutritionValues ? (
 								<>
 									<p className="mt-1 text-[10px] text-muted-foreground">Per porsi · {nutrition.servingSize}</p>
-									<div className="mt-2 grid grid-cols-2 gap-1.5">
+									<div className="mt-2 grid grid-cols-4 gap-1.5">
 										{[
 											["Kalori", `${nutrition.caloriesKcal} kkal`],
 											["Protein", `${nutrition.proteinG} g`],
@@ -110,7 +110,7 @@ export function ProductSheet({
 											["Lemak", `${nutrition.fatG} g`],
 										].map(([label, value]) => (
 												<div key={label} className="rounded-xl bg-background px-2.5 py-2">
-													<p className="text-[10px] text-muted-foreground">{label}</p>
+													<p className="text-[11px] text-muted-foreground">{label}</p>
 													<p className="mt-0.5 text-xs font-black text-foreground">{value}</p>
 												</div>
 											))}
@@ -120,11 +120,6 @@ export function ProductSheet({
 							) : <p className="mt-2 text-[11px] text-muted-foreground">Informasi gizi belum tersedia.</p>}
 						</section>
 					</div>
-					<div className="shrink-0 text-right">
-						<p className="text-lg font-black text-primary" aria-live="polite">{currency(unitPrice)}</p>
-						{pricing.isPromo ? <p className="text-xs font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice + variantPrice)}</p> : null}
-					</div>
-				</div>
 
 				{groups.length > 0 ? (
 					<div className="mt-5 space-y-4">
@@ -165,6 +160,10 @@ export function ProductSheet({
 
 			<footer className="shrink-0 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
 				<div className="flex items-center gap-2.5">
+					<div className="min-w-0 flex-1">
+						<p className="text-xl font-black leading-none text-primary" aria-live="polite">{currency(unitPrice)}</p>
+						{pricing.isPromo ? <p className="mt-1 text-xs font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice + variantPrice)}</p> : null}
+					</div>
 					<div className="flex h-12 shrink-0 items-center gap-1 rounded-[14px] border border-border bg-background p-1">
 						<button type="button" className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Kurangi jumlah" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
 							<Minus className="h-4 w-4" />
@@ -176,7 +175,7 @@ export function ProductSheet({
 					</div>
 					<button
 						type="button"
-						className="flex min-h-12 min-w-0 flex-1 items-center justify-between gap-2 rounded-[14px] bg-primary px-3.5 py-3 text-sm font-black text-primary-foreground shadow-sm transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+						className="flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-[14px] bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-sm transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 						onClick={() => onAdd({
 							productId: product._id,
 							name: product.name,
@@ -189,8 +188,8 @@ export function ProductSheet({
 							menuNumber: product.menuNumber,
 						})}
 					>
-						<span className="truncate">Tambah ke keranjang</span>
-						<span className="shrink-0">{currency(unitPrice * quantity)}</span>
+						<ShoppingCart className="h-4 w-4" aria-hidden="true" />
+						<span>Tambah</span>
 					</button>
 				</div>
 			</footer>
