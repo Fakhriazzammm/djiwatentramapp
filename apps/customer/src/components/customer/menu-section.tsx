@@ -223,13 +223,13 @@ export function renderMenuSection(props: MenuSectionProps) {
 											{isDjiwaPayEligible ? <span className="absolute bottom-1.5 left-1.5 rounded-full bg-[#2563eb] px-1.5 py-0.5 text-[9px] font-black text-white shadow">Djiwa Pay 50%</span> : pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 										</button>
 										<div className="min-w-0 flex-1 self-stretch py-0.5">
-											<div className="flex min-h-full flex-col justify-between gap-1.5">
-												<div>
-													<p className="break-words text-sm font-black leading-tight">{product.name}</p>
-													{product.description ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Siap dipesan di meja Anda.</p>}
-													{hasNutritionValues ? <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-primary">Perkiraan gizi:</span> {nutrition.caloriesKcal} kkal · Protein {nutrition.proteinG} g · Karbohidrat {nutrition.carbohydratesG} g · Lemak {nutrition.fatG} g</p> : null}
-												</div>
-												<div className="flex items-end justify-between gap-2">
+											<div className="flex min-h-full flex-col gap-2">
+											<div>
+												<p className="break-words text-sm font-black leading-tight">{product.name}</p>
+												{product.description ? <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Siap dipesan di meja Anda.</p>}
+												{hasNutritionValues ? <div className="mt-2 rounded-xl border border-primary/10 bg-primary/[0.04] p-2"><div className="flex items-center justify-between gap-2"><p className="text-[10px] font-black text-primary">Perkiraan gizi</p><span className="text-[9px] font-semibold text-muted-foreground">per porsi</span></div><div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1.5">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbohidrat", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`]].map(([label, value]) => <div key={label} className="flex min-w-0 items-baseline justify-between gap-1"><span className="truncate text-[9px] text-muted-foreground">{label}</span><span className="shrink-0 text-[10px] font-black text-foreground">{value}</span></div>)}</div></div> : null}
+											</div>
+											<div className="flex items-end justify-between gap-2">
 													<div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>
 													{hasVariations ? <button type="button" disabled={isSold} className="min-h-11 rounded-[14px] border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-black text-primary transition-transform duration-[180ms] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={() => props.handleProductSelect(product)}>{quantity > 0 ? `${quantity} di cart` : 'Pilih opsi'}</button> : <div className="flex min-h-11 items-center gap-1 rounded-[14px] border border-border bg-background p-1">
 														{quantity > 0 ? <button type="button" disabled={isSold} aria-label={`Kurangi ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-muted-foreground transition-transform active:scale-[.97] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => props.updateCartQuantity(product._id, undefined, -1)}><Minus className="h-3.5 w-3.5" /></button> : null}
