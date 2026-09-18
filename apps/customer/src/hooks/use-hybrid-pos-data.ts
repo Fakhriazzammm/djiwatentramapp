@@ -30,6 +30,7 @@ export type ProductNutrition = {
 	caloriesKcal: number;
 	proteinG: number;
 	carbohydratesG: number;
+	sugarG: number | null;
 	fatG: number;
 	servingSize: string;
 	source: string;
@@ -339,6 +340,8 @@ function normalizeProductNutrition(value: unknown): ProductNutrition | null {
 	const caloriesKcal = Number(raw.caloriesKcal);
 	const proteinG = Number(raw.proteinG);
 	const carbohydratesG = Number(raw.carbohydratesG);
+	const sugarValue = Number(raw.sugarG);
+	const sugarG = Number.isFinite(sugarValue) && sugarValue >= 0 ? sugarValue : null;
 	const fatG = Number(raw.fatG);
 	const servingSize = typeof raw.servingSize === "string" ? raw.servingSize.trim() : "";
 	const source = typeof raw.source === "string" ? raw.source.trim() : "";
@@ -355,6 +358,7 @@ function normalizeProductNutrition(value: unknown): ProductNutrition | null {
 		caloriesKcal,
 		proteinG,
 		carbohydratesG,
+		sugarG,
 		fatG,
 		servingSize,
 		source,

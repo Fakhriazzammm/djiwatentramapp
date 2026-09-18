@@ -46,6 +46,7 @@ export function ProductSheet({
 				caloriesKcal: number;
 				proteinG: number;
 				carbohydratesG: number;
+				sugarG?: number | null;
 				fatG: number;
 				servingSize: string;
 				status: "draft" | "reviewed" | "approved";
@@ -102,12 +103,13 @@ export function ProductSheet({
 							{nutrition && nutritionValues ? (
 								<>
 									<p className="mt-1 text-[10px] text-muted-foreground">Per porsi · {nutrition.servingSize}</p>
-									<div className="mt-2 grid grid-cols-4 gap-1.5">
+									<div className="mt-2 grid grid-cols-5 gap-1.5">
 										{[
 											["Kalori", `${nutrition.caloriesKcal} kkal`],
 											["Protein", `${nutrition.proteinG} g`],
 											["Karbohidrat", `${nutrition.carbohydratesG} g`],
 											["Lemak", `${nutrition.fatG} g`],
+											["Gula", `${nutrition.sugarG ?? "-"} g`],
 										].map(([label, value]) => (
 												<div key={label} className="rounded-xl bg-background px-2.5 py-2">
 													<p className="text-[11px] text-muted-foreground">{label}</p>
