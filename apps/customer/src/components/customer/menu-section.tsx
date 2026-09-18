@@ -212,6 +212,8 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
 								const isSold = product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0);
 								const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
+								const nutrition = product.nutrition && typeof product.nutrition === "object" && product.nutrition.status !== "rejected" ? product.nutrition : null;
+								const hasNutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value: unknown) => Number.isFinite(Number(value)) && Number(value) >= 0);
 								return (
 									<article key={product._id} className="flex items-center gap-3 rounded-[24px] border border-border/80 bg-card p-2.5 shadow-[0_4px_20px_rgba(9,9,11,0.05)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[18px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
@@ -225,6 +227,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 												<div>
 													<p className="break-words text-sm font-black leading-tight">{product.name}</p>
 													{product.description ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Siap dipesan di meja Anda.</p>}
+													{hasNutritionValues ? <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-primary">Perkiraan gizi:</span> {nutrition.caloriesKcal} kkal · Protein {nutrition.proteinG} g · Karbohidrat {nutrition.carbohydratesG} g · Lemak {nutrition.fatG} g</p> : null}
 												</div>
 												<div className="flex items-end justify-between gap-2">
 													<div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>
