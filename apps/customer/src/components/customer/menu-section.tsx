@@ -97,7 +97,8 @@ export interface MenuSectionProps {
 
 export function renderMenuSection(props: MenuSectionProps) {
 	const happyHourBanner = getActiveHappyHourBanner(props.discounts);
-	const djiwaPayCampaignActive = props.discounts?.some((discount) => isDjiwaPayCampaignActive(discount)) ?? false;
+	const activeDjiwaPayPromo = props.discounts?.find((discount) => isDjiwaPayCampaignActive(discount));
+	const djiwaPayCampaignActive = Boolean(activeDjiwaPayPromo);
 	const isCodeFeedbackError = /belum unik|tidak|gagal|error/i.test(props.codeFeedback);
 
 	return (
@@ -107,6 +108,14 @@ export function renderMenuSection(props: MenuSectionProps) {
 					<div className="flex items-center justify-between gap-2">
 						<div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-700">Happy Hour {happyHourBanner.sessionLabel}</p><p className="mt-0.5 truncate text-sm font-black">{happyHourBanner.priceLabel}</p></div>
 						<p className="shrink-0 text-[10px] font-bold text-indigo-700">{happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p>
+					</div>
+				</div>
+			) : null}
+			{activeDjiwaPayPromo ? (
+				<div data-banner-variant="djiwa-pay" className="rounded-2xl border border-blue-200/70 bg-blue-50 px-3 py-2.5 text-blue-950">
+					<div className="flex items-center justify-between gap-2">
+						<div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Promo Djiwa Pay</p><p className="mt-0.5 truncate text-sm font-black">Diskon 50% · Menu Rp30.000 jadi Rp15.000</p></div>
+						<p className="shrink-0 text-[10px] font-bold text-blue-700">Berlaku 08:00–21:00 WIB</p>
 					</div>
 				</div>
 			) : null}
