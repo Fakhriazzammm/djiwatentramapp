@@ -215,19 +215,19 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const nutrition = product.nutrition && typeof product.nutrition === "object" && product.nutrition.status !== "rejected" ? product.nutrition : null;
 								const hasNutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value: unknown) => Number.isFinite(Number(value)) && Number(value) >= 0);
 								return (
-									<article key={product._id} className="flex items-start gap-2.5 rounded-[18px] border border-border/80 bg-card p-2 shadow-[0_3px_14px_rgba(9,9,11,0.045)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
-										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
+									<article key={product._id} className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
+										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-[12px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
 											<ProductImage src={product.image} alt={product.name} />
 											{product.menuNumber != null ? <span className="absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">#{product.menuNumber}</span> : null}
 											{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
 											{isDjiwaPayEligible ? <span className="absolute bottom-1.5 left-1.5 rounded-full bg-[#2563eb] px-1.5 py-0.5 text-[9px] font-black text-white shadow">Djiwa Pay 50%</span> : pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 										</button>
 										<div className="min-w-0 flex-1 py-0">
-											<div className="flex min-h-full flex-col gap-2">
+											<div className="flex min-h-full flex-col gap-1">
 											<div>
-												<p className="break-words text-sm font-black leading-tight">{product.name}</p>
-												{product.description ? <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Siap dipesan di meja Anda.</p>}
-												{hasNutritionValues ? <div className="mt-1.5 rounded-lg border border-primary/10 bg-primary/[0.04] px-1.5 py-1.5"><div className="flex items-center justify-between gap-1"><p className="text-[9px] font-black text-primary">Perkiraan gizi</p><span className="text-[8px] font-semibold text-muted-foreground">per porsi</span></div><div className="mt-1 grid grid-cols-4 gap-1">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbohidrat", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`]].map(([label, value]) => <div key={label} className="min-w-0"><p className="truncate text-[8px] leading-tight text-muted-foreground">{label}</p><p className="mt-0.5 truncate text-[9px] font-black leading-tight text-foreground">{value}</p></div>)}</div></div> : null}
+												<p className="break-words text-[13px] font-black leading-tight">{product.name}</p>
+												{product.description ? <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{product.description}</p> : <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Siap dipesan di meja Anda.</p>}
+												{hasNutritionValues ? <div className="mt-1 flex items-center gap-1.5 border-y border-primary/10 py-1"><p className="shrink-0 text-[10px] font-black text-primary">Gizi</p><div className="grid min-w-0 flex-1 grid-cols-4 gap-1">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbo", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`]].map(([label, value]) => <div key={label} className="min-w-0"><p className="truncate text-[9px] leading-tight text-muted-foreground">{label}</p><p className="truncate text-[10px] font-black leading-tight text-foreground">{value}</p></div>)}</div></div> : null}
 											</div>
 											<div className="flex items-end justify-between gap-2">
 													<div><p className="text-base font-black leading-none text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>
