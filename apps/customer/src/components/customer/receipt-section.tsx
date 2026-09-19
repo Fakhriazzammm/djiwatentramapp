@@ -58,7 +58,7 @@ function CashierPaymentTimer({ createdAt, onExpire }: { createdAt: unknown; onEx
 		<div className={cn("rounded-2xl border px-3 py-2.5 text-center", remainingMs > 0 ? "border-amber-200 bg-amber-50 text-amber-950" : "border-red-200 bg-red-50 text-red-950")} role="timer" aria-live="polite">
 			<p className="text-[10px] font-black uppercase tracking-[0.14em]">Batas pembayaran ke kasir</p>
 			<p className="mt-0.5 text-2xl font-black tabular-nums tracking-[0.12em]">{remainingMs > 0 ? `${minutes}:${seconds}` : "00:00"}</p>
-			<p className="mt-0.5 text-[10px] leading-tight">Bayar dalam 5 menit agar pesanan diproses Bar &amp; Kitchen.</p>
+			<p className="mt-0.5 text-[10px] leading-tight">{remainingMs > 0 ? "Bayar dalam 5 menit agar pesanan diproses Bar & Kitchen." : "Batas pembayaran telah lewat. Pesanan dibatalkan dan tidak diproses Bar & Kitchen."}</p>
 		</div>
 	);
 }
@@ -138,7 +138,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const hasPersistedTotals = [persistedTaxBase, persistedRawTotal, persistedRounding, persistedTotal].every(Number.isFinite);
 
 	return (
-		<div className="space-y-2 px-2 py-2 pb-32">
+		<div className="space-y-2 px-2 py-2 pb-[calc(11rem+env(safe-area-inset-bottom))]">
 			{currentStepLabel ? (
 				<div className="rounded-3xl border border-border bg-card p-3.5 shadow-sm">
 					<div className="flex items-center justify-between">

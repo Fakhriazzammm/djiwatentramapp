@@ -440,7 +440,7 @@ function OrderPage() {
 	}, [customer, paymentChoice, total]);
 
 	useEffect(() => {
-		if (!search.orderId || receipt) return;
+		if (!search.orderId || receipt?.orderId === search.orderId) return;
 		setReceipt({
 			orderId: search.orderId as Id<"orders">,
 			fallbackReference: `SELF-${String(search.orderId).slice(-4).toUpperCase()}`,
@@ -450,7 +450,7 @@ function OrderPage() {
 			cartSnapshot: [],
 		});
 		setStep("receipt");
-	}, [search.orderId, receipt]);
+	}, [search.orderId, receipt?.orderId, setReceipt, setStep]);
 
 	useEffect(() => {
 		if (!receipt || !currentOrder) return;
@@ -465,11 +465,14 @@ function OrderPage() {
 		const isCashierPayment = paymentReceiptKind === "cashier_pending" || normalizedPaymentMethod === "cash" || normalizedPaymentMethod.includes("cashier") || normalizedPaymentMethod.includes("tunai");
 		const isWalletPayment = normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa");
 		const resolvedPaymentChoice = isCashierPayment ? "cashier" : isWalletPayment ? "wallet" : "mayar";
+		const isExpiredOrder = ["cancelled", "expired"].includes(String(currentOrder.status).toLowerCase());
 		const resolvedMode = currentOrder.status === "paid" || currentOrder.status === "completed"
 			? "paid"
-			: isCashierPayment
-				? "cashier_pending"
-				: "mayar_pending";
+			: receipt.mode === "cashier_expired" || isExpiredOrder
+				? "cashier_expired"
+				: isCashierPayment
+					? "cashier_pending"
+					: "mayar_pending";
 		if (receipt.paymentChoice !== resolvedPaymentChoice || receipt.mode !== resolvedMode) {
 			setReceipt((value) => value ? { ...value, paymentChoice: resolvedPaymentChoice, mode: resolvedMode } : value);
 		}
