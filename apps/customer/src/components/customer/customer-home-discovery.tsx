@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Clock, MapPin, Phone, UtensilsCrossed } from "lucide-react";
-import { useHybridBestSellers, useHybridProducts, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridBestSellers, useHybridAllProducts, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
 import { CustomerDiscoverySkeleton } from "@/components/customer/customer-states";
 import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
@@ -15,7 +15,7 @@ export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscovery
   const reduceMotion = useReducedMotion();
   const carouselRef = useRef<HTMLDivElement>(null);
   const [carouselPaused, setCarouselPaused] = useState(false);
-  const products = useHybridProducts();
+  const products = useHybridAllProducts();
   const bestSellers = useHybridBestSellers();
   const siteSettings = useHybridSiteSettings();
 
@@ -31,7 +31,8 @@ export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscovery
       productId: bestSeller.productId,
       name: product?.name || bestSeller.productName,
       image: typeof product?.image === "string" && /^https?:\/\//.test(product.image) ? product.image : null,
-      price: Number(product?.price ?? 0),
+      price: product?.price != null && Number.isFinite(Number(product.price)) ? Number(product.price) : null,
+      isAvailable: product?.isAvailable !== false,
       menuNumber: product?.menuNumber != null ? Number(product.menuNumber) : null,
       totalSold: bestSeller.totalSold,
     };
@@ -95,9 +96,10 @@ export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscovery
               <motion.button key={product.productId} type="button" data-carousel-card onClick={onMenu} className="min-w-[176px] snap-start overflow-hidden rounded-[20px] border border-border bg-card text-left shadow-sm transition-shadow hover:shadow-md" whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
                 <div className="relative h-24 w-full bg-muted animate-pulse">
                   {product.image ? <><img src={product.image} alt={product.name} className="h-full w-full object-cover" onLoad={(event) => event.currentTarget.parentElement?.classList.remove("animate-pulse")} onError={(event) => { event.currentTarget.parentElement?.classList.remove("animate-pulse"); event.currentTarget.style.display = "none"; event.currentTarget.nextElementSibling?.removeAttribute("hidden"); }} /><div hidden data-image-fallback className="flex h-full items-center justify-center text-muted-foreground"><UtensilsCrossed className="h-5 w-5" aria-hidden="true" /></div></> : <div className="flex h-full items-center justify-center text-muted-foreground"><UtensilsCrossed className="h-5 w-5" aria-hidden="true" /></div>}
+                  {!product.isAvailable ? <span className="absolute inset-x-2 bottom-2 rounded-full bg-slate-950/75 px-2 py-1 text-center text-[10px] font-black text-white">Tidak tersedia</span> : null}
                   {product.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-bold text-white">#{product.menuNumber}</span> : null}
                 </div>
-                <div className="space-y-1 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><p className="text-sm font-black text-primary">{currency(product.price)}</p><p className="text-[10px] font-semibold text-muted-foreground">Terjual {product.totalSold.toLocaleString("id-ID")}x</p></div>
+                <div className="space-y-1 p-2.5"><p className="break-words text-xs font-black leading-snug">{product.name}</p><p className="text-sm font-black text-primary">{product.price != null ? currency(product.price) : "Harga belum tersedia"}</p><p className="text-[10px] font-semibold text-muted-foreground">Terjual {product.totalSold.toLocaleString("id-ID")}x</p></div>
               </motion.button>
             ))}
           </div>

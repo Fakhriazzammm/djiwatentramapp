@@ -2,7 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Clock, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
-import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridAllProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { ImageWithPlaceholder } from "@/components/customer/image-with-placeholder";
@@ -36,7 +36,7 @@ function BrandCustomerIndex() {
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 
 	// ── Data tambahan landing: best seller + info toko ──────────
-	const products = useHybridProducts();
+	const products = useHybridAllProducts();
 	const bestSellers = useHybridBestSellers();
 	const siteSettings = useHybridSiteSettings();
 	const logoUrl = siteSettings?.logoUrl || import.meta.env.VITE_BRAND_LOGO_URL || CUSTOMER_LOGO_FALLBACK;
@@ -54,7 +54,8 @@ function BrandCustomerIndex() {
 				productId: b.productId,
 				name: product?.name || b.productName,
 				image: typeof product?.image === "string" && /^https?:\/\//.test(product.image) ? product.image : null,
-				price: Number(product?.price ?? 0),
+				price: product?.price != null && Number.isFinite(Number(product.price)) ? Number(product.price) : null,
+				isAvailable: product?.isAvailable !== false,
 				menuNumber: product?.menuNumber != null ? Number(product.menuNumber) : null,
 				totalSold: b.totalSold,
 			};
@@ -216,11 +217,12 @@ function BrandCustomerIndex() {
 												>
 													<div className="relative h-24 w-full bg-muted">
 														<ImageWithPlaceholder src={p.image ?? ""} alt={p.name} containerClassName="h-full w-full" className="object-cover" loading="lazy" decoding="async" fallback={<UtensilsCrossed aria-hidden="true" className="h-5 w-5" strokeWidth={2} />} />
+														{!p.isAvailable ? <span className="absolute inset-x-2 bottom-2 rounded-full bg-slate-950/75 px-2 py-1 text-center text-[10px] font-black text-white">Tidak tersedia</span> : null}
 														{p.menuNumber != null ? <span className="absolute left-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-bold text-white shadow">#{p.menuNumber}</span> : null}
 													</div>
 													<div className="space-y-1 p-2.5">
 														<p className="break-words text-xs font-black leading-snug">{p.name}</p>
-														<p className="text-sm font-black text-primary">{currency(p.price)}</p>
+														<p className="text-sm font-black text-primary">{p.price != null ? currency(p.price) : "Harga belum tersedia"}</p>
 														<p className="text-[10px] font-semibold text-muted-foreground">Terjual {p.totalSold.toLocaleString("id-ID")}x</p>
 													</div>
 												</button>
