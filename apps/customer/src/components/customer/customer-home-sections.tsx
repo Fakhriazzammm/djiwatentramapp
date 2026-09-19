@@ -94,18 +94,18 @@ export function CustomerHomeServiceGrid({
         </div>
         <span className="text-[10px] font-semibold text-muted-foreground">Pilih layanan</span>
       </div>
-      <div className="grid grid-cols-4 gap-x-2 gap-y-3 rounded-[24px] border border-border/70 bg-card/70 px-2.5 py-3 shadow-sm">
+      <div className="grid grid-cols-4 gap-x-1.5 gap-y-2 rounded-[20px] border border-border/70 bg-card/70 px-2 py-2 shadow-sm">
         {items.map((item) => (
           <button
             key={item.label}
             type="button"
             onClick={item.onClick}
-            className="group relative flex min-h-[88px] min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2 transition-transform duration-[180ms] active:scale-[.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="group relative flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[16px] px-0.5 py-1.5 transition-transform duration-[180ms] active:scale-[.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             aria-label={item.label}
           >
             {item.badge ? <span className="absolute left-0.5 top-0.5 z-10 max-w-[calc(100%-4px)] truncate rounded-full bg-[#0d2d54] px-1.5 py-0.5 text-[8px] font-black leading-tight text-white shadow-sm">{item.badge}</span> : null}
-            <span className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-primary/5 transition-transform duration-[180ms] group-active:scale-95">
-              {item.assetSrc ? <img src={item.assetSrc} alt="" className="h-12 w-12 object-contain" loading="lazy" /> : item.icon ? <Djiwa3DIcon name={item.icon} size="sm" alt="" className="h-12 w-12 object-contain" /> : null}
+            <span className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-primary/5 transition-transform duration-[180ms] group-active:scale-95">
+              {item.assetSrc ? <img src={item.assetSrc} alt="" className="h-10 w-10 object-contain" loading="lazy" /> : item.icon ? <Djiwa3DIcon name={item.icon} size="sm" alt="" className="h-10 w-10 object-contain" /> : null}
             </span>
             <span className="max-w-full truncate text-center text-[10px] font-bold leading-tight text-foreground">{item.label}</span>
           </button>
