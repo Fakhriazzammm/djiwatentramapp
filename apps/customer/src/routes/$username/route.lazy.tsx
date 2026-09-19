@@ -266,16 +266,8 @@ function MemberHomePage() {
 						eyebrow={greetingWord()}
 						title={displayName}
 						action={
-							<div className="flex items-center gap-1.5">
-								<button
-									type="button"
-									onClick={() => navigate({ to: "/$username/riwayat", params: { username } })}
-									aria-label="Buka riwayat pesanan"
-									className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
-								>
-									<Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />
-								</button>
-								<button
+						<div className="flex items-center gap-1.5">
+							<button
 									type="button"
 									onClick={() => navigate({ to: "/$username/profile", params: { username } })}
 									aria-label="Member Djiwa Tentram — Kartu member berlaku sampai Desember 2026. Buka profil."
