@@ -100,16 +100,29 @@ export function renderMenuSection(props: MenuSectionProps) {
 	const activeDjiwaPayPromo = props.discounts?.find((discount) => isDjiwaPayCampaignActive(discount));
 	const djiwaPayCampaignActive = Boolean(activeDjiwaPayPromo);
 	const isCodeFeedbackError = /belum unik|tidak|gagal|error/i.test(props.codeFeedback);
-	const rootCategories = props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden");
+	const categoryDisplayPriority = (category: Doc<"categories"> | null) => {
+		const name = String(category?.name ?? "").trim().toLowerCase();
+		if (name.includes("makanan")) return 0;
+		if (name.includes("minuman")) return 1;
+		return 2;
+	};
+	const rootCategories = props.orderedCategories
+		.filter((category) => !category.parentId && category.track !== "hidden")
+		.sort((a, b) => categoryDisplayPriority(a) - categoryDisplayPriority(b));
 	const categoryById = new Map(props.orderedCategories.map((category) => [String(category._id), category]));
 	const rootCategoryForProduct = (product: Doc<"products">) => {
 		const category = categoryById.get(String(product.categoryId));
 		if (!category) return null;
 		return category.parentId ? categoryById.get(String(category.parentId)) ?? category : category;
 	};
+	const catalogProducts = [...props.filteredProducts].sort((a, b) => {
+		const aRoot = rootCategoryForProduct(a);
+		const bRoot = rootCategoryForProduct(b);
+		return categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
+	});
 	const firstProductIndexByRootCategory = new Map<string, number>();
 	const firstProductIndexByCategory = new Map<string, number>();
-	props.filteredProducts.forEach((product, index) => {
+	catalogProducts.forEach((product, index) => {
 		const category = categoryById.get(String(product.categoryId));
 		const rootCategory = rootCategoryForProduct(product);
 		if (rootCategory && !firstProductIndexByRootCategory.has(String(rootCategory._id))) firstProductIndexByRootCategory.set(String(rootCategory._id), index);
@@ -225,7 +238,6 @@ export function renderMenuSection(props: MenuSectionProps) {
 							</div>
 						</div>
 						{(() => {
-							const rootCategories = props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden");
 							const activeRoot = rootCategories.find((category) =>
 								category._id === props.activeCategoryId ||
 								props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId)
@@ -268,7 +280,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 					) : (
 						<div className="space-y-2.5">
 							{props.filteredProducts.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-10 text-center"><PackageSearch aria-hidden="true" className="h-7 w-7 text-muted-foreground" strokeWidth={2} /><p className="mt-3 font-display text-sm font-bold">Menu belum tersedia</p><p className="mt-1 text-xs text-muted-foreground">Pilih kategori lain atau coba lagi sebentar.</p></div> : null}
-							{props.filteredProducts.map((product, index) => {
+							{catalogProducts.map((product, index) => {
 								const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
 								const isDjiwaPayEligible = djiwaPayCampaignActive && Number(product.price) === 30000;
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
