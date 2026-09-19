@@ -406,6 +406,11 @@ function OrderPage() {
 		const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-category-section]"));
 		if (!sections.length) return;
 		const observer = new IntersectionObserver((entries) => {
+			const scrollRoot = menuScrollRef.current;
+			if (scrollRoot && scrollRoot.scrollTop <= 48) {
+				if (activeCategoryId !== null) setActiveCategoryId(null);
+				return;
+			}
 			const visible = entries
 				.filter((entry) => entry.isIntersecting)
 				.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
