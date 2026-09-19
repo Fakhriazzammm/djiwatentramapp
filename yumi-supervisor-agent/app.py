@@ -1188,7 +1188,9 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
     if arrival_time:
         lines.append(f"🕒 JAM KEDATANGAN: {arrival_time}")
     if payment_note:
-        lines.append(f"⚠️ {payment_note}")
+        payment_upper = payment_note.upper()
+        payment_icon = "⚠️" if "BELUM LUNAS" in payment_upper else "✅" if "LUNAS" in payment_upper else "⚠️"
+        lines.append(f"{payment_icon} {payment_note}")
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
@@ -1303,7 +1305,9 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
     if arrival_time:
         lines.append(f"🕒 JAM KEDATANGAN: {arrival_time}")
     if payment_note:
-        lines.append(f"⚠️ {payment_note}")
+        payment_upper = payment_note.upper()
+        payment_icon = "⚠️" if "BELUM LUNAS" in payment_upper else "✅" if "LUNAS" in payment_upper else "⚠️"
+        lines.append(f"{payment_icon} {payment_note}")
     lines.extend([
         "────────────",
         f"🆔 {order_no}",
@@ -1727,6 +1731,73 @@ async def _seed_existing_order_notifications() -> bool:
 
 # ── Cashier payment update notification ──
 
+async def _send_missing_paid_operational_notifications(app, row: dict) -> bool:
+    """Send paid cashier orders to Bar/Kitchen only when no old message exists."""
+    order_no = _display_order_no(row)
+    items = row.get("items") or []
+    food_items = await _get_food_items(items)
+    bev_items = await _get_beverage_items(items)
+    if not food_items and not bev_items:
+        return True
+
+    order_type = str(row.get("orderType") or "dine_in")
+    daily_no = row.get("daily_receipt_no")
+    receipt_kind = row.get("receipt_kind") or order_type
+    kind_label = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}.get(str(receipt_kind), str(receipt_kind).upper())
+    struk_line = f"STRUK NO. {daily_no} - {kind_label}" if daily_no else None
+    ts_ms = int(float(row.get("_creationTime") or row.get("createdAt") or 0))
+    customer = row.get("customerName") or "Pelanggan"
+    source_label = _source_label(row) or "Tidak diketahui"
+    paid_note = "LUNAS — DJIWA APP - BAYAR TUNAI DI KASIR"
+    common = {
+        "order_no": order_no,
+        "customer": customer,
+        "order_type": order_type,
+        "ts_ms": ts_ms,
+        "struk_line": struk_line,
+        "guest_count": row.get("guestCount"),
+        "notes": str(row.get("notes") or "").strip(),
+        "discount_amount": row.get("discountAmount") or 0,
+        "voucher_id": row.get("voucherId"),
+        "free_refill": row.get("freeRefillSelected"),
+        "source_label": source_label,
+        "arrival_time": row.get("arrivalTime"),
+        "payment_note": paid_note,
+        "table_number": row.get("tableNumber"),
+    }
+    results = []
+
+    if food_items:
+        key = f"{order_no}|kitchen"
+        existing = _active_orders.get(key)
+        if existing and existing.get("message_id"):
+            results.append(True)
+        elif key in _channel_sent:
+            results.append(True)
+        else:
+            sent = await _send_kitchen_notification(app, food_items=food_items, **common)
+            results.append(sent)
+            if sent:
+                _channel_sent.add(key)
+                _save_channel_sent()
+
+    if bev_items:
+        key = f"{order_no}|barista"
+        existing = _active_orders.get(key)
+        if existing and existing.get("message_id"):
+            results.append(True)
+        elif key in _channel_sent:
+            results.append(True)
+        else:
+            sent = await _send_barista_notification(app, bev_items=bev_items, payment_label=None, **common)
+            results.append(sent)
+            if sent:
+                _channel_sent.add(key)
+                _save_channel_sent()
+
+    return all(results)
+
+
 async def _send_cashier_payment_update(app, row: dict):
     """Edit production messages and send one settlement update to Transactions."""
     order_no = _display_order_no(row)
@@ -1751,6 +1822,8 @@ async def _send_cashier_payment_update(app, row: dict):
         f"👥 Kasir: {cashier}",
     ])
     operational_ok = await _mark_operational_message_paid(order_no)
+    paid_operational_ok = await _send_missing_paid_operational_notifications(app, row)
+    operational_ok = operational_ok and paid_operational_ok
     transaction_key = f"{order_no}|paid-transaction"
     transaction_ok = transaction_key in _channel_sent
     if not transaction_ok:
@@ -2396,23 +2469,30 @@ async def _check_new_orders(app):
             if isinstance(item, dict):
                 item.setdefault("paymentMethod", payment_label)
 
-        # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
         bev_items = await _get_beverage_items(items)
         logger.info("DEBUG classification for %s: food=%d bev=%d (of %d total items)",
                      order_no, len(food_items), len(bev_items), len(items) if items else 0)
 
-        # Dedupe per channel: a timeout in one destination must not replay
-        # messages already accepted by the other destinations.
+        # Pembayaran tunai di kasir belum boleh masuk produksi.
+        # Pending cashier hanya tampil di POS + grup transaksi.
+        is_cashier_pending = (
+            row.get("source") == "customer_self_service"
+            and row.get("paymentReceiptKind") == "cashier_pending"
+            and row.get("status") == "pending"
+        )
+
+        # ── Kitchen/Bar notification ──
+        # Untuk cashier_pending, channel operasional ditunda sampai paid.
         channel_results = []
-        if food_items:
+        if not is_cashier_pending and food_items:
             channel_key = f"{order_no}|kitchen"
             sent = True if channel_key in _channel_sent else await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, row.get("tableNumber"))
             channel_results.append(sent)
             if sent:
                 _channel_sent.add(channel_key)
                 _save_channel_sent()
-        if bev_items:
+        if not is_cashier_pending and bev_items:
             channel_key = f"{order_no}|barista"
             sent = True if channel_key in _channel_sent else await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, None, row.get("tableNumber"))
             channel_results.append(sent)
