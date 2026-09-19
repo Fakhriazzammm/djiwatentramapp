@@ -2240,21 +2240,24 @@ async def _check_new_orders(app):
             max_creation_time = ts
         if ts <= _startup_event_cutoff_ms:
             continue
-        # Order cashier customer yang sudah dibayar mendapat satu notifikasi
-        # pembaruan, bukan notifikasi order baru kedua.
+        # Order cashier customer yang sudah dibayar selalu masuk jalur settlement.
+        # Jangan bergantung pada _reported_order_nos: bila delivery awal gagal di
+        # satu channel, fallback ke jalur order baru akan mengirim ulang detail order.
+        # Settlement hanya boleh mengedit pesan lama / mengirim satu update paid.
         is_cashier_paid = (
             row.get("source") == "customer_self_service"
-            and row.get("paymentReceiptKind") == "cashier_pending"
+            and row.get("paymentReceiptKind") in ("cashier_pending", "cashier")
             and row.get("status") in ("paid", "completed")
         )
-        if order_no in _reported_order_nos:
-            if is_cashier_paid and order_no not in _cashier_paid_update_nos:
+        if is_cashier_paid:
+            if order_no not in _cashier_paid_update_nos:
                 retry_at = _settlement_retry_not_before.get(order_no, 0)
                 if now_ms < retry_at:
                     continue
                 settlement_ok = await _send_cashier_payment_update(app, row)
                 if settlement_ok:
                     _cashier_paid_update_nos.add(order_no)
+                    _reported_order_nos.add(order_no)
                     _settlement_retry_not_before.pop(order_no, None)
                     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
                 else:
@@ -2263,6 +2266,9 @@ async def _check_new_orders(app):
                     # give Telegram a real cooldown before the next attempt.
                     _settlement_retry_not_before[order_no] = now_ms + 5 * 60_000
                     logger.warning("Settlement delivery incomplete for %s; retry after 5m", order_no)
+            continue
+
+        if order_no in _reported_order_nos:
             continue
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
