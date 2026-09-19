@@ -48,7 +48,7 @@ export type CommunityCommentPage = {
 
 export class CommunityClientError extends Error {}
 
-const API_BASE = (import.meta.env.VITE_CUSTOMER_COMMUNITY_API_URL?.trim() || "/z9").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_CUSTOMER_COMMUNITY_API_URL?.trim() || "/api/customer-community").replace(/\/$/, "");
 
 function proxyPath(value: string | null): string | null {
   if (!value) return null;
@@ -65,8 +65,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const timeout = window.setTimeout(() => controller.abort(), 15_000);
   try {
     const response = await fetch(`${API_BASE}${path}`, { credentials: "include", signal: init?.signal ?? controller.signal, ...init });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload?.error) throw new CommunityClientError(payload?.error || `Komunitas gagal dimuat (HTTP ${response.status}).`);
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+      ? await response.json().catch(() => null) as { error?: string } | null
+      : null;
+    if (!payload) throw new CommunityClientError("Endpoint Komunitas tidak mengembalikan JSON. Periksa proxy API Komunitas.");
+    if (!response.ok || payload.error) throw new CommunityClientError(payload.error || `Komunitas gagal dimuat (HTTP ${response.status}).`);
     return payload as T;
   } catch (reason) {
     if (reason instanceof DOMException && reason.name === "AbortError") throw new CommunityClientError("Koneksi Komunitas timeout. Coba lagi.");
