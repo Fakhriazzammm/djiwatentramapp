@@ -248,22 +248,13 @@ function OrderPage() {
 		[products]
 	);
 	const filteredProducts = useMemo(() => {
-		const categoryFiltered = !activeCategoryId
-			? orderedProducts
-			: (() => {
-					const validCategoryIds = new Set<Id<"categories">>([activeCategoryId]);
-					for (const category of orderedCategories) {
-						if (category.parentId === activeCategoryId) validCategoryIds.add(category._id);
-					}
-					return orderedProducts.filter((product) => validCategoryIds.has(product.categoryId));
-			  })();
 		const query = catalogQuery.trim().toLowerCase();
-		if (!query) return categoryFiltered;
-		return categoryFiltered.filter((product) =>
+		if (!query) return orderedProducts;
+		return orderedProducts.filter((product) =>
 			product.name.toLowerCase().includes(query) ||
 			String(product.menuNumber ?? "").includes(query),
 		);
-	}, [activeCategoryId, catalogQuery, orderedCategories, orderedProducts]);
+	}, [catalogQuery, orderedProducts]);
 	const menuNumberIndex = useMemo(() => {
 		const lookup = new Map<string, (typeof orderedProducts)[number]>();
 		const duplicates = new Set<string>();
@@ -408,6 +399,29 @@ function OrderPage() {
 			setStep("table");
 		}
 	}, [step, tableNumber]);
+
+	useEffect(() => {
+		if (step !== "menu" || menuMode !== "catalog" || typeof document === "undefined") return;
+		const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-category-section]"));
+		if (!sections.length) return;
+		const observer = new IntersectionObserver((entries) => {
+			const visible = entries
+				.filter((entry) => entry.isIntersecting)
+				.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+			if (!visible) return;
+			const categoryId = visible.target.getAttribute("data-category-section");
+			if (categoryId && categoryId !== String(activeCategoryId ?? "")) setActiveCategoryId(categoryId as Id<"categories">);
+		}, { rootMargin: "-96px 0px -55% 0px", threshold: 0.01 });
+		sections.forEach((section) => observer.observe(section));
+		return () => observer.disconnect();
+	}, [activeCategoryId, menuMode, setActiveCategoryId, step]);
+
+	useEffect(() => {
+		if (step !== "menu" || menuMode !== "catalog" || !activeCategoryId || typeof document === "undefined") return;
+		const chip = Array.from(document.querySelectorAll<HTMLElement>("[data-category-chip]"))
+			.find((element) => element.dataset.categoryChip === String(activeCategoryId));
+		chip?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+	}, [activeCategoryId, menuMode, step]);
 
 	// ── Side effects ────────────────────────────────────────────
 

@@ -100,6 +100,24 @@ export function renderMenuSection(props: MenuSectionProps) {
 	const activeDjiwaPayPromo = props.discounts?.find((discount) => isDjiwaPayCampaignActive(discount));
 	const djiwaPayCampaignActive = Boolean(activeDjiwaPayPromo);
 	const isCodeFeedbackError = /belum unik|tidak|gagal|error/i.test(props.codeFeedback);
+	const rootCategories = props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden");
+	const categoryById = new Map(props.orderedCategories.map((category) => [String(category._id), category]));
+	const rootCategoryForProduct = (product: Doc<"products">) => {
+		const category = categoryById.get(String(product.categoryId));
+		if (!category) return null;
+		return category.parentId ? categoryById.get(String(category.parentId)) ?? category : category;
+	};
+	const firstProductIndexByCategory = new Map<string, number>();
+	props.filteredProducts.forEach((product, index) => {
+		const category = rootCategoryForProduct(product);
+		if (category && !firstProductIndexByCategory.has(String(category._id))) firstProductIndexByCategory.set(String(category._id), index);
+	});
+	const scrollToCategory = (categoryId: Id<"categories">) => {
+		props.setActiveCategoryId(categoryId);
+		window.requestAnimationFrame(() => {
+			document.querySelector<HTMLElement>(`[data-category-section="${String(categoryId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+		});
+	};
 
 	return (
 		<div className="space-y-3 px-3 py-3">
@@ -175,7 +193,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
 				<div className="space-y-3">
-					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+					<div className="sticky top-0 z-20 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
 						<div className="mt-3 relative">
 							<Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -191,7 +209,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							<div aria-label="Kategori menu" className="flex gap-1.5 overflow-x-auto pb-1 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 							{props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden").map((category) => {
 								const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
-								return <button type="button" key={category._id} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild)} onClick={() => props.setActiveCategoryId(category._id)}>{category.name}</button>;
+								return <button type="button" data-category-chip={String(category._id)} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild)} onClick={() => scrollToCategory(category._id)}>{category.name}</button>;
 							})}
 							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
 							</div>
@@ -209,9 +227,9 @@ export function renderMenuSection(props: MenuSectionProps) {
 							return (
 								<div className="mt-2 rounded-[14px] bg-muted/40 p-1.5">
 									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-										<button type="button" className={chipClassName(props.activeCategoryId === activeRoot._id)} onClick={() => props.setActiveCategoryId(activeRoot._id)}>Semua {activeRoot.name}</button>
+										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
 										{subcategories.map((subcategory) => (
-											<button type="button" key={subcategory._id} className={chipClassName(props.activeCategoryId === subcategory._id)} onClick={() => props.setActiveCategoryId(subcategory._id)}>{subcategory.name}</button>
+											<button type="button" key={subcategory._id} data-category-chip={String(subcategory._id)} className={chipClassName(props.activeCategoryId === subcategory._id)} onClick={() => scrollToCategory(activeRoot._id)}>{subcategory.name}</button>
 										))}
 									</div>
 								</div>
@@ -240,7 +258,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 					) : (
 						<div className="space-y-2.5">
 							{props.filteredProducts.length === 0 ? <div className="flex flex-col items-center rounded-3xl border border-dashed border-border px-4 py-10 text-center"><PackageSearch aria-hidden="true" className="h-7 w-7 text-muted-foreground" strokeWidth={2} /><p className="mt-3 font-display text-sm font-bold">Menu belum tersedia</p><p className="mt-1 text-xs text-muted-foreground">Pilih kategori lain atau coba lagi sebentar.</p></div> : null}
-							{props.filteredProducts.map((product) => {
+							{props.filteredProducts.map((product, index) => {
 								const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
 								const isDjiwaPayEligible = djiwaPayCampaignActive && Number(product.price) === 30000;
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
@@ -248,8 +266,13 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 								const nutrition = product.nutrition && typeof product.nutrition === "object" && product.nutrition.status !== "rejected" ? product.nutrition : null;
 								const hasNutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value: unknown) => Number.isFinite(Number(value)) && Number(value) >= 0);
+								const rootCategory = rootCategoryForProduct(product);
+								const rootCategoryId = rootCategory ? String(rootCategory._id) : "uncategorized";
+								const showCategoryHeading = rootCategory && firstProductIndexByCategory.get(rootCategoryId) === index;
 								return (
-									<article key={product._id} className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
+									<div key={product._id}>
+										{showCategoryHeading ? <div data-category-section={rootCategoryId} className="scroll-mt-2 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
+										<article className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<ProductImageButton src={product.image} alt={product.name} isSold={isSold} />
 										<div className="min-w-0 flex-1 py-0">
 											<div className="flex min-h-full flex-col gap-1">
@@ -273,6 +296,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 											</div>
 										</div>
 									</article>
+									</div>
 								);
 							})}
 						</div>
