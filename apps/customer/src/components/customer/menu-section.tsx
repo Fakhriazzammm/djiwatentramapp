@@ -200,24 +200,24 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
 				<div className="space-y-3">
-					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
-						<div className="mt-3 relative">
-							<Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+						<div className="flex items-center gap-1.5"><Grid2X2 className="h-3.5 w-3.5 text-primary" /><h3 className="text-xs font-black">Katalog produk</h3></div>
+						<div className="relative mt-2">
+							<Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 							<input
 								aria-label="Cari menu"
-								className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2 pl-9 pr-3 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								className="min-h-10 w-full rounded-xl border border-border bg-background py-1.5 pl-8 pr-2.5 text-[11px] font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 								placeholder="Cari nama atau nomor menu"
 								value={props.catalogQuery}
 								onChange={(event) => props.setCatalogQuery(event.target.value)}
 							/>
 						</div>
-						<div className="relative mt-3">
-							<div aria-label="Kategori menu" className="flex gap-1.5 overflow-x-auto pb-1 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null)} onClick={() => scrollToCategory(null)}>Semua</button>
+						<div className="relative mt-2">
+							<div aria-label="Kategori menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null, true)} onClick={() => scrollToCategory(null)}>Semua</button>
 							{rootCategories.map((category) => {
 								const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
-								return <button key={category._id} type="button" data-category-chip={String(category._id)} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild)} onClick={() => scrollToCategory(category._id)}>{category.name}</button>;
+								return <button key={category._id} type="button" data-category-chip={String(category._id)} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild, true)} onClick={() => scrollToCategory(category._id)}>{category.name}</button>;
 							})}
 							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
 							</div>
@@ -233,11 +233,11 @@ export function renderMenuSection(props: MenuSectionProps) {
 								: [];
 							if (!subcategories.length) return null;
 							return (
-								<div className="mt-2 rounded-[14px] bg-muted/40 p-1.5">
+								<div className="mt-1 rounded-xl bg-muted/40 p-1">
 									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
+										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id, true)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
 										{subcategories.map((subcategory) => (
-											<button type="button" key={subcategory._id} data-category-chip={String(subcategory._id)} className={chipClassName(props.activeCategoryId === subcategory._id)} onClick={() => scrollToCategory(subcategory._id)}>{subcategory.name}</button>
+											<button type="button" key={subcategory._id} data-category-chip={String(subcategory._id)} className={chipClassName(props.activeCategoryId === subcategory._id, true)} onClick={() => scrollToCategory(subcategory._id)}>{subcategory.name}</button>
 										))}
 									</div>
 								</div>

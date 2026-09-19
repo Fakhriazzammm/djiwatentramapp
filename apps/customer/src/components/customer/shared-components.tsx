@@ -11,9 +11,9 @@ export function BadgePill({ label }: { label: string }) {
 	return <span className="rounded-full bg-white/12 px-2 py-0.5 text-[10px] font-semibold text-white/85 backdrop-blur">{label}</span>;
 }
 
-export function chipClassName(active: boolean) {
+export function chipClassName(active: boolean, compact = false) {
 	return cn(
-		"min-h-11 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-all",
+		compact ? "min-h-9 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold transition-all" : "min-h-11 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-all",
 		active ? "bg-primary text-primary-foreground shadow-sm" : "border border-border bg-background text-muted-foreground"
 	);
 }
