@@ -107,9 +107,12 @@ export function renderMenuSection(props: MenuSectionProps) {
 		if (!category) return null;
 		return category.parentId ? categoryById.get(String(category.parentId)) ?? category : category;
 	};
+	const firstProductIndexByRootCategory = new Map<string, number>();
 	const firstProductIndexByCategory = new Map<string, number>();
 	props.filteredProducts.forEach((product, index) => {
-		const category = rootCategoryForProduct(product);
+		const category = categoryById.get(String(product.categoryId));
+		const rootCategory = rootCategoryForProduct(product);
+		if (rootCategory && !firstProductIndexByRootCategory.has(String(rootCategory._id))) firstProductIndexByRootCategory.set(String(rootCategory._id), index);
 		if (category && !firstProductIndexByCategory.has(String(category._id))) firstProductIndexByCategory.set(String(category._id), index);
 	});
 	const scrollToCategory = (categoryId: Id<"categories"> | null) => {
@@ -197,7 +200,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
 				<div className="space-y-3">
-					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+					<div data-category-catalog className="-mx-1 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
 						<div className="mt-3 relative">
 							<Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -234,7 +237,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
 										{subcategories.map((subcategory) => (
-											<button type="button" key={subcategory._id} data-category-chip={String(subcategory._id)} className={chipClassName(props.activeCategoryId === subcategory._id)} onClick={() => scrollToCategory(activeRoot._id)}>{subcategory.name}</button>
+											<button type="button" key={subcategory._id} data-category-chip={String(subcategory._id)} className={chipClassName(props.activeCategoryId === subcategory._id)} onClick={() => scrollToCategory(subcategory._id)}>{subcategory.name}</button>
 										))}
 									</div>
 								</div>
@@ -273,10 +276,13 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const hasNutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value: unknown) => Number.isFinite(Number(value)) && Number(value) >= 0);
 								const rootCategory = rootCategoryForProduct(product);
 								const rootCategoryId = rootCategory ? String(rootCategory._id) : "uncategorized";
-								const showCategoryHeading = rootCategory && firstProductIndexByCategory.get(rootCategoryId) === index;
+								const productCategory = categoryById.get(String(product.categoryId));
+								const showRootCategoryHeading = rootCategory && firstProductIndexByRootCategory.get(rootCategoryId) === index;
+								const showSubcategoryHeading = productCategory?.parentId && firstProductIndexByCategory.get(String(productCategory._id)) === index;
 								return (
 									<div key={product._id}>
-										{showCategoryHeading ? <div data-category-section={rootCategoryId} className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
+										{showRootCategoryHeading ? <div data-category-section={rootCategoryId} className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
+										{showSubcategoryHeading ? <div data-category-section={String(productCategory._id)} className="scroll-mt-28 pt-3"><h5 className="px-1 text-xs font-black text-primary">{productCategory.name}</h5><div className="mt-1 h-px w-full bg-primary/15" /></div> : null}
 										<article className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<ProductImageButton src={product.image} alt={product.name} isSold={isSold} />
 										<div className="min-w-0 flex-1 py-0">
