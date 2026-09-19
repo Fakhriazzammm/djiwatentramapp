@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { LogIn, ShieldCheck } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
@@ -54,12 +55,34 @@ function MemberHomePage() {
 	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
 	const { setCart } = useOrderContext();
+	const { orders: customerOrders } = useCustomerOrders();
 	const siteSettings = useHybridSiteSettings();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 	const [showProfileCompletion, setShowProfileCompletion] = useState(false);
 	const [confirmedProfileSourceId, setConfirmedProfileSourceId] = useState<string | null>(null);
+	const [notificationSeenAt, setNotificationSeenAt] = useState<number>(() => {
+		try {
+			const stored = Number(localStorage.getItem("djiwa-customer-notif-seen"));
+			return Number.isFinite(stored) && stored > 0 ? stored : Date.now();
+		} catch {
+			return Date.now();
+		}
+	});
+	const unreadNotificationCount = isAuthenticated && customer
+		? customerOrders.filter((order) => order.createdAt > notificationSeenAt).length
+		: 0;
+
+	useEffect(() => {
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key !== "djiwa-customer-notif-seen") return;
+			const next = Number(event.newValue);
+			if (Number.isFinite(next) && next > 0) setNotificationSeenAt(next);
+		};
+		window.addEventListener("storage", handleStorage);
+		return () => window.removeEventListener("storage", handleStorage);
+	}, []);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
@@ -274,9 +297,10 @@ function MemberHomePage() {
 									type="button"
 									onClick={() => navigate({ to: "/$username/notifikasi", params: { username } })}
 									aria-label="Buka notifikasi"
-									className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
+									className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97] ${unreadNotificationCount > 0 ? "animate-djiwa-notification-bell" : ""}`}
 								>
 									<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />
+									{unreadNotificationCount > 0 ? <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-red-500 px-1 text-[9px] font-black leading-none text-white" aria-label={`${unreadNotificationCount} notifikasi belum dibaca`}>{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span> : null}
 								</button>
 							</div>
 						}
