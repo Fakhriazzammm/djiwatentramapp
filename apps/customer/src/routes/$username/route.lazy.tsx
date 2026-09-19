@@ -236,7 +236,7 @@ function MemberHomePage() {
 							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
 							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
-							onNotifications={() => navigate({ to: "/$username/notifikasi", params: { username } })}
+							onMerchandise={() => window.location.assign(`https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu`)}
 							onBooking={() => window.location.assign("https://booking.yumme.id/")}
 							onProfile={() => navigate({ to: "/$username/profile", params: { username } })}
 						/>
@@ -287,6 +287,14 @@ function MemberHomePage() {
 										<span className="mt-0.5 block text-[9px] font-semibold text-blue-100/90">s/d Des 2026</span>
 									</span>
 								</button>
+								<button
+									type="button"
+									onClick={() => navigate({ to: "/$username/notifikasi", params: { username } })}
+									aria-label="Buka notifikasi"
+									className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
+								>
+									<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />
+								</button>
 							</div>
 						}
 					/>
@@ -302,7 +310,7 @@ function MemberHomePage() {
 							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
 							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
-							onNotifications={() => navigate({ to: "/$username/notifikasi", params: { username } })}
+							onMerchandise={() => window.location.assign(`https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu`)}
 							onBooking={() => window.location.assign("https://booking.yumme.id/")}
 							onProfile={() => navigate({ to: "/$username/profile", params: { username } })}
 						/>

@@ -61,7 +61,7 @@ export function CustomerHomeServiceGrid({
   onWallet,
   onHistory,
   onCommunity,
-  onNotifications,
+  onMerchandise,
   onBooking,
   onProfile,
 }: {
@@ -70,17 +70,17 @@ export function CustomerHomeServiceGrid({
   onWallet: () => void;
   onHistory: () => void;
   onCommunity: () => void;
-  onNotifications: () => void;
+  onMerchandise: () => void;
   onBooking: () => void;
   onProfile: () => void;
 }) {
-  const items: Array<{ label: string; badge?: string; icon: Djiwa3DIconName; onClick: () => void }> = [
+  const items: Array<{ label: string; badge?: string; icon?: Djiwa3DIconName; assetSrc?: string; onClick: () => void }> = [
     { label: "Pesan Menu", badge: "Favorit", icon: "customer-food-ordering", onClick: onOrder },
     { label: "Promo", badge: "50%", icon: "promo-voucher", onClick: onPromo },
     { label: "Djiwa Pay", badge: "+Rp1.000", icon: "payment-wallet", onClick: onWallet },
     { label: "Riwayat", icon: "navigation-history", onClick: onHistory },
     { label: "Komunitas", icon: "navigation-community", onClick: onCommunity },
-    { label: "Notifikasi", icon: "notifications-alerts", onClick: onNotifications },
+    { label: "Merchandise", badge: "Baru", assetSrc: "/assets/djiwa-3d-merchandise-v1.webp", onClick: onMerchandise },
     { label: "Booking", badge: "Acara", icon: "restaurant-cafe", onClick: onBooking },
     { label: "Profil", icon: "navigation-profile", onClick: onProfile },
   ];
@@ -105,7 +105,7 @@ export function CustomerHomeServiceGrid({
           >
             {item.badge ? <span className="absolute left-0.5 top-0.5 z-10 max-w-[calc(100%-4px)] truncate rounded-full bg-[#0d2d54] px-1.5 py-0.5 text-[8px] font-black leading-tight text-white shadow-sm">{item.badge}</span> : null}
             <span className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-primary/5 transition-transform duration-[180ms] group-active:scale-95">
-              <Djiwa3DIcon name={item.icon} size="sm" alt="" className="h-12 w-12 object-contain" />
+              {item.assetSrc ? <img src={item.assetSrc} alt="" className="h-12 w-12 object-contain" loading="lazy" /> : item.icon ? <Djiwa3DIcon name={item.icon} size="sm" alt="" className="h-12 w-12 object-contain" /> : null}
             </span>
             <span className="max-w-full truncate text-center text-[10px] font-bold leading-tight text-foreground">{item.label}</span>
           </button>
