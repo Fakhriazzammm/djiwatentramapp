@@ -1114,8 +1114,9 @@ function OrderPage() {
 				{/* ── Bottom bar ──────────────────────────────────── */}
 				{step !== "table" && step !== "party" && step !== "refill" && step !== "review" && step !== "payment" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
-						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
+						<div className="app-card grid grid-cols-5 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep("menu")} />
+							<BottomButton label="Riwayat" icon={<Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => navigate({ to: "/$username/riwayat", params: { username } })} />
 							<BottomButton label="Keranjang" icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
 							<BottomButton label="Staff" icon={<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setServiceOpen(true)} />
 							<BottomButton label={receipt ? "Struk" : "Review"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : "review")} primary disabled={!receipt && !cart.length} />
