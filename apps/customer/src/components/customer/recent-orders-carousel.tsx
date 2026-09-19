@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
-import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
+import { useHybridAllProducts } from "@/hooks/use-hybrid-pos-data";
 import { useOrderContext } from "@/hooks/use-order-context";
 import type { CartItem } from "@/components/customer/types";
 import { currency } from "@/components/customer/types";
@@ -14,7 +14,7 @@ type RecentProduct = { productId: string; name: string; quantity: number; varian
 export function RecentOrdersCarousel({ username }: { username: string }) {
   const navigate = useNavigate();
   const { orders, isLoading } = useCustomerOrders();
-  const products = useHybridProducts();
+  const products = useHybridAllProducts();
   const { setCart } = useOrderContext();
   const productMap = useMemo(() => {
     const map = new Map<string, Record<string, any>>();
