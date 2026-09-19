@@ -20,16 +20,16 @@ export function StoryAvatar({ story, own = false, onClick }: Props) {
       type="button"
       onClick={onClick}
       aria-label={own ? "Cerita Anda" : `Buka Story ${story?.ownerLabel ?? "customer"}`}
-      className="group flex w-[72px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl p-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex w-[60px] shrink-0 snap-start flex-col items-center gap-1 rounded-2xl p-0.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className={`relative h-16 w-16 rounded-full p-[2.5px] ${ringClass}`} style={ringStyle}>
+      <span className={`relative h-14 w-14 rounded-full p-[2.5px] ${ringClass}`} style={ringStyle}>
         <span className={`flex h-full w-full items-center justify-center overflow-hidden rounded-full ${innerBorder} bg-muted text-primary`}>
           {story?.ownerPhotoUrl ? (
             <img src={story.ownerPhotoUrl} alt="" className="h-full w-full object-cover" />
           ) : own && story?.mediaUrl ? (
             <img src={story.mediaUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-lg font-black">
+            <span className="text-base font-black">
               {own ? <Plus aria-hidden="true" /> : story?.ownerLabel.slice(0, 1).toUpperCase()}
             </span>
           )}
@@ -56,7 +56,7 @@ export function StoryAvatar({ story, own = false, onClick }: Props) {
           </span>
         ) : null}
       </span>
-      <span className="max-w-full truncate text-[11px] font-bold text-foreground">{label}</span>
+      <span className="max-w-full truncate text-[10px] font-bold text-foreground">{label}</span>
       {own && story && (story.viewerCount ?? 0) > 0 ? (
         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-black text-foreground">
           <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

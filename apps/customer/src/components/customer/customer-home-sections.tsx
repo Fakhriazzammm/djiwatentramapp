@@ -44,12 +44,12 @@ export function CustomerGreeting({ name }: { name: string }) {
 
 export function CustomerWalletSummary({ customer, onTopup }: { customer: CustomerUser; onTopup: () => void }) {
   return (
-    <section className="rounded-3xl border border-border bg-card p-3.5 shadow-sm" aria-labelledby="djiwa-pay-summary-title">
+    <section className="rounded-2xl border border-border bg-card p-2.5 shadow-sm" aria-labelledby="djiwa-pay-summary-title">
       <h2 id="djiwa-pay-summary-title" className="sr-only">Ringkasan Djiwa Pay</h2>
       <div className="grid grid-cols-[1.25fr_1fr_1fr] divide-x divide-border/70">
-        <div className="pr-2.5"><div className="flex items-center gap-1.5 text-muted-foreground"><Wallet className="h-3.5 w-3.5 text-primary" aria-hidden="true" /><p className="text-[10px] font-bold">Saldo</p></div><p className="mt-1 text-base font-black tracking-tight">{currency(Number(customer.walletBalance ?? 0))}</p><button type="button" onClick={onTopup} className="mt-1 min-h-8 text-[10px] font-black text-primary">Top up saldo</button></div>
-        <div className="px-2.5"><p className="text-[10px] font-bold text-muted-foreground">Benefit</p><p className="mt-1 text-base font-black tracking-tight text-primary">50%</p><p className="mt-1 text-[10px] leading-tight text-muted-foreground">hemat menu Rp30.000</p></div>
-        <div className="pl-2.5"><p className="text-[10px] font-bold text-muted-foreground">Reward</p><p className="mt-1 text-base font-black tracking-tight text-primary">+Rp1.000</p><p className="mt-1 text-[10px] leading-tight text-muted-foreground">tiap transaksi berhasil</p></div>
+        <div className="pr-2"><div className="flex items-center gap-1 text-muted-foreground"><Wallet className="h-3 w-3 text-primary" aria-hidden="true" /><p className="text-[9px] font-bold">Saldo</p></div><p className="mt-0.5 text-sm font-black tracking-tight">{currency(Number(customer.walletBalance ?? 0))}</p><button type="button" onClick={onTopup} className="mt-0.5 min-h-7 text-[9px] font-black text-primary">Top up saldo</button></div>
+        <div className="px-2"><p className="text-[9px] font-bold text-muted-foreground">Benefit</p><p className="mt-0.5 text-sm font-black tracking-tight text-primary">50%</p><p className="mt-0.5 text-[9px] leading-tight text-muted-foreground">hemat menu Rp30.000</p></div>
+        <div className="pl-2"><p className="text-[9px] font-bold text-muted-foreground">Reward</p><p className="mt-0.5 text-sm font-black tracking-tight text-primary">+Rp1.000</p><p className="mt-0.5 text-[9px] leading-tight text-muted-foreground">tiap transaksi berhasil</p></div>
       </div>
     </section>
   );
