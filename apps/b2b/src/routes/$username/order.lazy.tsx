@@ -433,11 +433,20 @@ function OrderPage() {
 
 	useEffect(() => {
 		if (!receipt || !currentOrder) return;
-		if (
-			(currentOrder.status === "paid" || currentOrder.status === "completed") &&
-			receipt.mode !== "paid"
-		) {
-			setReceipt((value) => (value ? { ...value, mode: "paid" } : value));
+		const normalizedPaymentMethod = String(
+			(currentOrder as any).paymentMethod ??
+			(currentOrder as any).payment_method ??
+			(currentOrder as any).paymentChoice ??
+			(currentOrder as any).payment_choice ??
+			""
+		).toLowerCase();
+		const paymentReceiptKind = String((currentOrder as any).paymentReceiptKind ?? (currentOrder as any).payment_receipt_kind ?? "").toLowerCase();
+		const isCashierPayment = paymentReceiptKind === "cashier_pending" || normalizedPaymentMethod === "cash" || normalizedPaymentMethod.includes("cashier") || normalizedPaymentMethod.includes("tunai");
+		const isWalletPayment = normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa");
+		const resolvedPaymentChoice = isCashierPayment ? "cashier" : isWalletPayment ? "wallet" : "mayar";
+		const resolvedMode = currentOrder.status === "paid" || currentOrder.status === "completed" ? "paid" : isCashierPayment ? "cashier_pending" : "mayar_pending";
+		if (receipt.paymentChoice !== resolvedPaymentChoice || receipt.mode !== resolvedMode) {
+			setReceipt((value) => value ? { ...value, paymentChoice: resolvedPaymentChoice, mode: resolvedMode } : value);
 		}
 	}, [currentOrder, receipt]);
 
