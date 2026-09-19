@@ -11,7 +11,7 @@ import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/cust
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
-import { CustomerHomeActions, CustomerHomeHeader, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
+import { CustomerHomeHeader, CustomerHomeServiceGrid, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
@@ -230,7 +230,16 @@ function MemberHomePage() {
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
-						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} />
+						<CustomerHomeServiceGrid
+							onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
+							onPromo={() => navigate({ to: "/$username/promo", params: { username } })}
+							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
+							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
+							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
+							onNotifications={() => navigate({ to: "/$username/notifikasi", params: { username } })}
+							onBooking={() => window.location.assign("https://booking.yumme.id/")}
+							onProfile={() => navigate({ to: "/$username/profile", params: { username } })}
+						/>
 						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
 					</main>
 				</div>
@@ -287,9 +296,18 @@ function MemberHomePage() {
 						<CustomerStoryRail />
 						<MerchandisePromoBanner href={`https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu`} />
 						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
+						<CustomerHomeServiceGrid
+							onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
+							onPromo={() => navigate({ to: "/$username/promo", params: { username } })}
+							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
+							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
+							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
+							onNotifications={() => navigate({ to: "/$username/notifikasi", params: { username } })}
+							onBooking={() => window.location.assign("https://booking.yumme.id/")}
+							onProfile={() => navigate({ to: "/$username/profile", params: { username } })}
+						/>
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
-						<CustomerHomeActions onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} />
 						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} b2bHref={b2bChannelHref} />
 					</main>
 				</div>

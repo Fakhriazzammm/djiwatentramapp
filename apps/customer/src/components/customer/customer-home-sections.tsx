@@ -1,4 +1,5 @@
 import { BadgePercent, ChevronRight, Loader2, Wallet } from "lucide-react";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import type { ReactNode } from "react";
 import type { CustomerUser } from "@/hooks/use-customer-auth";
 import { currency } from "@/components/customer/types";
@@ -49,6 +50,66 @@ export function CustomerWalletSummary({ customer, onTopup }: { customer: Custome
         <div className="pr-2.5"><div className="flex items-center gap-1.5 text-muted-foreground"><Wallet className="h-3.5 w-3.5 text-primary" aria-hidden="true" /><p className="text-[10px] font-bold">Saldo</p></div><p className="mt-1 text-base font-black tracking-tight">{currency(Number(customer.walletBalance ?? 0))}</p><button type="button" onClick={onTopup} className="mt-1 min-h-8 text-[10px] font-black text-primary">Top up saldo</button></div>
         <div className="px-2.5"><p className="text-[10px] font-bold text-muted-foreground">Benefit</p><p className="mt-1 text-base font-black tracking-tight text-primary">50%</p><p className="mt-1 text-[10px] leading-tight text-muted-foreground">hemat menu Rp30.000</p></div>
         <div className="pl-2.5"><p className="text-[10px] font-bold text-muted-foreground">Reward</p><p className="mt-1 text-base font-black tracking-tight text-primary">+Rp1.000</p><p className="mt-1 text-[10px] leading-tight text-muted-foreground">tiap transaksi berhasil</p></div>
+      </div>
+    </section>
+  );
+}
+
+export function CustomerHomeServiceGrid({
+  onOrder,
+  onPromo,
+  onWallet,
+  onHistory,
+  onCommunity,
+  onNotifications,
+  onBooking,
+  onProfile,
+}: {
+  onOrder: () => void;
+  onPromo: () => void;
+  onWallet: () => void;
+  onHistory: () => void;
+  onCommunity: () => void;
+  onNotifications: () => void;
+  onBooking: () => void;
+  onProfile: () => void;
+}) {
+  const items: Array<{ label: string; badge?: string; icon: Djiwa3DIconName; onClick: () => void }> = [
+    { label: "Pesan Menu", badge: "Favorit", icon: "customer-food-ordering", onClick: onOrder },
+    { label: "Promo", badge: "50%", icon: "promo-voucher", onClick: onPromo },
+    { label: "Djiwa Pay", badge: "+Rp1.000", icon: "payment-wallet", onClick: onWallet },
+    { label: "Riwayat", icon: "navigation-history", onClick: onHistory },
+    { label: "Komunitas", icon: "navigation-community", onClick: onCommunity },
+    { label: "Notifikasi", icon: "notifications-alerts", onClick: onNotifications },
+    { label: "Booking", badge: "Acara", icon: "restaurant-cafe", onClick: onBooking },
+    { label: "Profil", icon: "navigation-profile", onClick: onProfile },
+  ];
+
+  return (
+    <section aria-labelledby="customer-services-title">
+      <div className="mb-2 flex items-end justify-between gap-3 px-0.5">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Layanan Djiwa</p>
+          <h2 id="customer-services-title" className="mt-0.5 text-sm font-black text-foreground">Mau melakukan apa?</h2>
+        </div>
+        <span className="text-[10px] font-semibold text-muted-foreground">Pilih layanan</span>
+      </div>
+      <div className="grid grid-cols-4 gap-x-2 gap-y-3 rounded-[24px] border border-border/70 bg-card/70 px-2.5 py-3 shadow-sm">
+        {items.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={item.onClick}
+            className="group relative flex min-h-[88px] min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2 transition-transform duration-[180ms] active:scale-[.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            aria-label={item.label}
+          >
+            {item.badge ? <span className="absolute left-0.5 top-0.5 z-10 max-w-[calc(100%-4px)] truncate rounded-full bg-[#0d2d54] px-1.5 py-0.5 text-[8px] font-black leading-tight text-white shadow-sm">{item.badge}</span> : null}
+            <span className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-primary/5 transition-transform duration-[180ms] group-active:scale-95">
+              <Djiwa3DIcon name={item.icon} size="sm" alt="" className="h-12 w-12 object-contain" />
+            </span>
+            <span className="max-w-full truncate text-center text-[10px] font-bold leading-tight text-foreground">{item.label}</span>
+          </button>
+        ))}
       </div>
     </section>
   );
