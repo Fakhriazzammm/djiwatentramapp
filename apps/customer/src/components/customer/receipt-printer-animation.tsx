@@ -12,6 +12,7 @@ type ReceiptPrinterAnimationProps = {
   paymentLabel: string;
   statusLabel: string;
   finalStage?: ReceiptPrinterStage;
+  variant?: "paid" | "cashier-ticket";
   children: ReactNode;
 };
 
@@ -25,8 +26,30 @@ const toothPoints = Array.from({ length: toothCount * 2 }, (_, index) => {
 const receiptClipPath = `polygon(0 0, 100% 0, 100% calc(100% - ${toothDepth}px), ${toothPoints})`;
 const paperFeedKeyframes = ["translateY(-92%)", "translateY(-68%)", "translateY(-40%)", "translateY(0%)"];
 
-export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, statusLabel, finalStage = "complete", children }: ReceiptPrinterAnimationProps) {
+export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, statusLabel, finalStage = "complete", variant = "paid", children }: ReceiptPrinterAnimationProps) {
   const reduceMotion = useReducedMotion();
+  const isCashierTicket = variant === "cashier-ticket";
+  const accent = isCashierTicket ? {
+    shell: "border-amber-200 bg-amber-50 shadow-[0_20px_36px_-20px_rgba(146,64,14,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]",
+    mark: "bg-amber-600 text-white",
+    badge: "border-amber-200 bg-white/80 text-amber-800",
+    terminal: "border-amber-300 bg-amber-950 text-amber-50",
+    terminalMuted: "text-amber-200",
+    terminalText: "text-amber-50",
+    terminalBorder: "border-amber-800",
+    paper: "bg-amber-50",
+    bar: "bg-amber-950",
+  } : {
+    shell: "border-border bg-muted/70 shadow-[0_20px_36px_-20px_rgba(9,9,11,0.35),inset_0_1px_0_rgba(255,255,255,0.35)]",
+    mark: "bg-primary text-primary-foreground",
+    badge: "border-border bg-background/80 text-muted-foreground",
+    terminal: "border-border bg-zinc-900 text-zinc-100",
+    terminalMuted: "text-zinc-400",
+    terminalText: "text-zinc-100",
+    terminalBorder: "border-zinc-700",
+    paper: "bg-white",
+    bar: "bg-zinc-900",
+  };
   const paperRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<ReceiptPrinterStage>(reduceMotion ? finalStage : "processing");
 
@@ -64,18 +87,18 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
 
   return (
     <section aria-label="Status pembuatan struk" className="mx-auto mb-3 w-full max-w-sm">
-      <div className="relative isolate overflow-visible rounded-[24px] border border-border bg-muted/70 p-3 pb-7 shadow-[0_20px_36px_-20px_rgba(9,9,11,0.35),inset_0_1px_0_rgba(255,255,255,0.35)]">
+      <div className={cn("relative isolate overflow-visible rounded-[24px] border p-3 pb-7", accent.shell)}>
         <div className="relative z-10 flex h-10 items-start justify-between px-1">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary text-[10px] font-black text-primary-foreground">D</div>
-          <div className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground">Djiwa Tentram</div>
+          <div className={cn("flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-black", accent.mark)}>{isCashierTicket ? "T" : "D"}</div>
+          <div className={cn("rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em]", accent.badge)}>{isCashierTicket ? "Tiket Pembayaran" : "Djiwa Tentram"}</div>
         </div>
 
-        <div className="relative z-10 overflow-hidden rounded-[14px] border border-border bg-zinc-900 p-3 text-zinc-100 shadow-inner">
+        <div className={cn("relative z-10 overflow-hidden rounded-[14px] border p-3 shadow-inner", accent.terminal)}>
           <div className="space-y-2 font-mono text-[10px]">
-            <div className="flex items-center justify-between gap-2 text-zinc-400"><span>ORDER</span><span className="truncate font-bold text-zinc-100">{orderReference}</span></div>
-            <div className="flex items-center justify-between gap-2 text-zinc-400"><span>PAYMENT</span><span className="font-bold text-zinc-100">{paymentLabel}</span></div>
-            <div className="flex items-center justify-between gap-2 border-t border-zinc-700 pt-2 text-zinc-400"><span>TOTAL</span><span className="font-black text-zinc-100">{currency(total)}</span></div>
-            <div className="flex items-center gap-2 pt-1 text-zinc-400"><AnimatePresence initial={false} mode="wait"><motion.span key={isComplete ? "complete" : "working"} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.16 }} aria-hidden="true">{isComplete ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <LoaderCircle className="h-4 w-4 animate-spin text-zinc-400 motion-reduce:animate-none" />}</motion.span></AnimatePresence><span aria-live="polite">{statusText}</span></div>
+            <div className={cn("flex items-center justify-between gap-2", accent.terminalMuted)}><span>ORDER</span><span className={cn("truncate font-bold", accent.terminalText)}>{orderReference}</span></div>
+            <div className={cn("flex items-center justify-between gap-2", accent.terminalMuted)}><span>PAYMENT</span><span className={cn("font-bold", accent.terminalText)}>{paymentLabel}</span></div>
+            <div className={cn("flex items-center justify-between gap-2 border-t pt-2", accent.terminalMuted, accent.terminalBorder)}><span>{isCashierTicket ? "TOTAL BAYAR" : "TOTAL"}</span><span className={cn("font-black", accent.terminalText)}>{currency(total)}</span></div>
+            <div className={cn("flex items-center gap-2 pt-1", accent.terminalMuted)}><AnimatePresence initial={false} mode="wait"><motion.span key={isComplete ? "complete" : "working"} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.16 }} aria-hidden="true">{isComplete ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <LoaderCircle className="h-4 w-4 animate-spin text-zinc-400 motion-reduce:animate-none" />}</motion.span></AnimatePresence><span aria-live="polite">{statusText}</span></div>
           </div>
         </div>
 
@@ -83,7 +106,7 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
           <motion.div
             ref={paperRef}
             animate={{ opacity: 1, transform: stage === "processing" && !reduceMotion ? "translateY(-92%)" : stage === "printing" && !reduceMotion ? paperFeedKeyframes : "translateY(0%)" }}
-            className="relative min-h-[46rem] bg-white px-3 py-4 font-mono text-zinc-900 shadow-[0_8px_24px_rgba(9,9,11,0.16)]"
+            className={cn("relative min-h-[46rem] px-3 py-4 font-mono text-zinc-900 shadow-[0_8px_24px_rgba(9,9,11,0.16)]", accent.paper)}
             data-receipt-export-root="true"
             initial={false}
             transition={{ opacity: { duration: 0.18 }, transform: { duration: reduceMotion ? 0 : stage === "printing" ? 2.4 : 0.35, ease: stage === "printing" ? "linear" : [0.23, 1, 0.32, 1] } }}
@@ -93,7 +116,7 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
           </motion.div>
         </div>
 
-        <div aria-hidden="true" className="absolute inset-x-6 top-[10.6rem] z-40 h-2 rounded bg-zinc-900 shadow-inner" />
+        <div className={cn("absolute inset-x-6 top-[10.6rem] z-40 h-2 rounded shadow-inner", accent.bar)} />
       </div>
     </section>
   );
