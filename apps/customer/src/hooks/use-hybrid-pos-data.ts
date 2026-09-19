@@ -2124,16 +2124,10 @@ export function useHybridCategories(refreshTrigger?: number) {
 }
 
 export function useHybridActiveDiscounts(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue(
-		"active-discounts",
-		fetchActiveDiscounts,
-		[],
-		{
-			cacheKey: "customer:active-discounts",
-			cacheTtlMs: 300_000,
-			...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
-		}
-	);
+	const supabaseData = useSupabaseValue("active-discounts", fetchActiveDiscounts, [], {
+		refreshMs: 30_000,
+		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
+	});
 	return supabaseData as DiscountRecord[] | undefined;
 }
 
@@ -2175,8 +2169,7 @@ export function useHybridLowStockItems(refreshTrigger?: number) {
 export function useHybridProducts(categoryId?: string | null, refreshTrigger?: number) {
 	const categories = useHybridCategories(refreshTrigger);
 	const supabaseData = useSupabaseValue("products", fetchProducts, [], {
-		cacheKey: "customer:products",
-		cacheTtlMs: 600_000,
+		refreshMs: 30_000,
 		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
 	});
 

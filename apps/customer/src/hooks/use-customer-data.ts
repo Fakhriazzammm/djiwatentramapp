@@ -129,8 +129,8 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 		{
 			realtimeSchemas: ["pos"],
 			onRealtimeUpdate: options?.onRealtimeUpdate,
-			cacheKey: sourceId ? `customer:orders:${sourceId}` : undefined,
-			cacheTtlMs: 300_000,
+			cacheKey: undefined,
+			cacheTtlMs: 0,
 		},
 	);
 
