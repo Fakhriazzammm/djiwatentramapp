@@ -119,7 +119,7 @@ export function DjiwaPayOfferCard({ isMember, onAction }: { isMember: boolean; o
   return (
     <section className="overflow-hidden rounded-3xl border border-primary/30 bg-[#0d2d54] shadow-sm" aria-labelledby="djiwa-pay-offer-title">
       <div className="relative h-[158px] overflow-hidden">
-        <img src="/djiwa-pay-20-banner.png" alt="Promo Djiwa Pay hemat 50 persen" className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.78] saturate-[0.72] hue-rotate-[52deg]" />
+        <img src="/djiwa-pay-20-banner.webp" alt="Promo Djiwa Pay hemat 50 persen" className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.78] saturate-[0.72] hue-rotate-[52deg]" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0d2d54]/95 via-[#0d2d54]/65 to-[#0d2d54]/10" />
         <div className="relative flex h-full max-w-[72%] flex-col justify-center px-4 text-white">
           <div className="flex items-center gap-1.5 text-blue-100"><BadgePercent className="h-3.5 w-3.5" aria-hidden="true" /><p className="text-[9px] font-black uppercase tracking-[0.16em]">Special offer</p></div>
