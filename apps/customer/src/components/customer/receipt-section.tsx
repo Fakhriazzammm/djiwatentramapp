@@ -6,7 +6,7 @@ import { currency } from "./types";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { BarcodeLines, ReceiptTotalsBreakdown } from "./shared-components";
 import { ReceiptActions } from "./split-bill-sheet";
-import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
+import { PaymentDocumentAnimation } from "./payment-document-animation";
 
 // Status lifecycle order — live tracker di struk
 const STATUS_STEPS = [
@@ -55,6 +55,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	}) || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
+	const isCashierTicket = props.receipt.paymentChoice === "cashier" && mode !== "paid";
 	const cartSnapshotItems = (props.cartSnapshot ?? []).map((item: CartItem) => ({
 		productId: item.productId,
 		productName: item.name,
@@ -88,7 +89,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const currentStepIndex = getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
 	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS Mayar" : "Bayar di Kasir";
-	const printerStatusLabel = mode === "paid" ? "Pembayaran berhasil" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Struk siap ditunjukkan ke kasir";
+	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
 	// Do not reconstruct historical totals from item prices. Show this breakdown
 	// only when the backend stored the authoritative tax calculation.
 	const persistedTaxBase = Number(props.currentOrder?.taxBaseAmount ?? props.currentOrder?.tax_base_amount);
@@ -99,7 +100,8 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-32">
-			<ReceiptPrinterAnimation
+			<PaymentDocumentAnimation
+				isCashierTicket={isCashierTicket}
 				orderReference={orderReference}
 				total={props.currentOrder?.totalAmount ?? props.total}
 				paymentLabel={paymentLabel}
@@ -141,7 +143,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					<BarcodeLines value={orderReference} />
 					</div>
 					</div>
-					</ReceiptPrinterAnimation>
+					</PaymentDocumentAnimation>
 			{/* ── Live status tracker ─────────────────────────── */}
 			{!props.actionsHidden ? <ReceiptActions items={exportItems} storeName={props.storeName} orderReference={orderReference} payment={paymentLabel} status={unifiedStatusLabel} total={Number(props.currentOrder?.totalAmount ?? props.total)} onRetryPayment={canRetryPayment ? props.onRetryPayment : undefined} retryPaymentLabel="Buat link pembayaran baru" retryingPayment={props.retryingPayment} /> : null}
 				{currentStepLabel ? (
