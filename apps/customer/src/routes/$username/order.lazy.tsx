@@ -65,6 +65,7 @@ function OrderPage() {
 	const search = Route.useSearch();
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
 	const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0);
+	const menuScrollRef = useRef<HTMLElement | null>(null);
 	const checkoutRequestKeyRef = useRef<string | null>(null);
 
 	const siteSettings = useHybridSiteSettings();
@@ -411,7 +412,7 @@ function OrderPage() {
 			if (!visible) return;
 			const categoryId = visible.target.getAttribute("data-category-section");
 			if (categoryId && categoryId !== String(activeCategoryId ?? "")) setActiveCategoryId(categoryId as Id<"categories">);
-		}, { rootMargin: "-96px 0px -55% 0px", threshold: 0.01 });
+		}, { root: menuScrollRef.current, rootMargin: "-96px 0px -55% 0px", threshold: 0.01 });
 		sections.forEach((section) => observer.observe(section));
 		return () => observer.disconnect();
 	}, [activeCategoryId, menuMode, setActiveCategoryId, step]);
@@ -1021,6 +1022,7 @@ function OrderPage() {
 				/>
 
 				<main
+					ref={menuScrollRef}
 					className={
 						step === "menu"
 							? "flex-1 overflow-y-auto pb-safe-with-nav"
