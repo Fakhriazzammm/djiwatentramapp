@@ -41,6 +41,10 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
   const [likePending, setLikePending] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
   const [likeSuccess, setLikeSuccess] = useState(false);
+  useEffect(() => {
+    setLiked(post.likedByMe);
+    setLikeCount(post.likeCount);
+  }, [post.id, post.likedByMe, post.likeCount]);
   const isOwner = currentSourceId === post.author.sourceId;
   const displayName = post.author.username ? `@${post.author.username}` : post.author.name;
 

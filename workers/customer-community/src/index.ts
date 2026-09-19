@@ -63,7 +63,7 @@ function preflight(request: Request, env: Env) {
   if (!origin) return json({ error: "Origin tidak diizinkan." }, 403);
   return json({ ok: true }, 200, origin, {
     "Access-Control-Allow-Headers": "Content-Type, X-Requested-With",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Max-Age": "600",
   });
 }
@@ -323,7 +323,7 @@ export default {
       if (parts[0] === "posts" && parts[1] && parts[2] === "like" && request.method === "POST") {
         const post = await db<Array<{ id: string }>>(env, "customer_community_posts", {}, `select=id&id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
         if (!post[0]) return json({ error: "Postingan tidak tersedia." }, 404, origin);
-        await db(env, "customer_community_post_likes", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify({ post_id: parts[1], customer_source_id: user.id }) });
+        await db(env, "customer_community_post_likes", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify({ post_id: parts[1], customer_source_id: user.id }) }, "on_conflict=post_id,customer_source_id");
         const likes = await db<Array<{ post_id: string }>>(env, "customer_community_post_likes", {}, `select=post_id&post_id=eq.${encodeURIComponent(parts[1])}`);
         return json({ data: { liked: true, likeCount: likes.length } }, 200, origin);
       }

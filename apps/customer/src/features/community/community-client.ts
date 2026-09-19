@@ -64,7 +64,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 15_000);
   try {
-    const response = await fetch(`${API_BASE}${path}`, { credentials: "include", signal: init?.signal ?? controller.signal, ...init });
+    const response = await fetch(`${API_BASE}${path}`, { ...init, credentials: "include", signal: init?.signal ?? controller.signal });
     const contentType = response.headers.get("content-type") || "";
     const payload = contentType.includes("application/json")
       ? await response.json().catch(() => null) as { error?: string } | null
