@@ -200,7 +200,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
 				<div className="space-y-3">
-					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+					<div className="-mx-1 rounded-xl border border-border bg-card/95 p-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-3.5 w-3.5 text-primary" /><h3 className="text-xs font-black">Katalog produk</h3></div>
 						<div className="relative mt-2">
 							<Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -212,14 +212,16 @@ export function renderMenuSection(props: MenuSectionProps) {
 								onChange={(event) => props.setCatalogQuery(event.target.value)}
 							/>
 						</div>
-						<div className="relative mt-2">
+					</div>
+					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85">
+						<div className="relative">
 							<div aria-label="Kategori menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null, true)} onClick={() => scrollToCategory(null)}>Semua</button>
-							{rootCategories.map((category) => {
-								const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
-								return <button key={category._id} type="button" data-category-chip={String(category._id)} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild, true)} onClick={() => scrollToCategory(category._id)}>{category.name}</button>;
-							})}
-							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
+								{rootCategories.map((category) => {
+									const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
+									return <button key={category._id} type="button" data-category-chip={String(category._id)} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild, true)} onClick={() => scrollToCategory(category._id)}>{category.name}</button>;
+								})}
+								{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
 							</div>
 						</div>
 						{(() => {
