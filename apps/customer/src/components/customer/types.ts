@@ -52,7 +52,7 @@ export type CartItem = {
 export type ReceiptState = {
 	orderId: Id<"orders">;
 	fallbackReference: string;
-	mode: "cashier_pending" | "mayar_pending" | "paid";
+	mode: "cashier_pending" | "cashier_expired" | "mayar_pending" | "paid";
 	paymentChoice: PaymentChoice;
 	invoiceId?: string;
 	invoiceUrl?: string;

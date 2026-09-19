@@ -1,4 +1,5 @@
 import { CheckCircle2, Wallet } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
@@ -25,6 +26,42 @@ function getStatusStepIndex(status?: string) {
 	return idx;
 }
 
+function getCreatedAtMs(value: unknown) {
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	const parsed = Date.parse(String(value ?? ""));
+	return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
+function CashierPaymentTimer({ createdAt, onExpire }: { createdAt: unknown; onExpire: () => void }) {
+	const expiredRef = useRef(false);
+	const deadline = getCreatedAtMs(createdAt) + 5 * 60 * 1000;
+	const [remainingMs, setRemainingMs] = useState(() => Math.max(0, deadline - Date.now()));
+
+	useEffect(() => {
+		const tick = () => {
+			const next = Math.max(0, deadline - Date.now());
+			setRemainingMs(next);
+			if (next === 0 && !expiredRef.current) {
+				expiredRef.current = true;
+				onExpire();
+			}
+		};
+		tick();
+		const timer = window.setInterval(tick, 1000);
+		return () => window.clearInterval(timer);
+	}, [deadline, onExpire]);
+
+	const totalSeconds = Math.ceil(remainingMs / 1000);
+	const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+	const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+	return (
+		<div className={cn("rounded-2xl border px-3 py-2.5 text-center", remainingMs > 0 ? "border-amber-200 bg-amber-50 text-amber-950" : "border-red-200 bg-red-50 text-red-950")} role="timer" aria-live="polite">
+			<p className="text-[10px] font-black uppercase tracking-[0.14em]">Batas pembayaran ke kasir</p>
+			<p className="mt-0.5 text-2xl font-black tabular-nums tracking-[0.12em]">{remainingMs > 0 ? `${minutes}:${seconds}` : "00:00"}</p>
+			<p className="mt-0.5 text-[10px] leading-tight">Bayar dalam 5 menit agar pesanan diproses Bar &amp; Kitchen.</p>
+		</div>
+	);
+}
 export interface ReceiptSectionProps {
 	cartSnapshot: CartItem[];
 	currentOrder: Doc<"orders"> | undefined;
@@ -36,6 +73,7 @@ export interface ReceiptSectionProps {
 	retryPaymentLabel: string;
 	retryingPayment: boolean;
 	onHome: () => void;
+	onCashierPaymentExpired?: () => void;
 	actionsHidden?: boolean;
 	receipt: ReceiptState;
 	storeName: string;
@@ -55,7 +93,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	}) || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
-	const isCashierTicket = props.receipt.paymentChoice === "cashier" && mode !== "paid";
+	const isCashierTicket = props.receipt.paymentChoice === "cashier" && mode === "cashier_pending";
 	const cartSnapshotItems = (props.cartSnapshot ?? []).map((item: CartItem) => ({
 		productId: item.productId,
 		productName: item.name,
@@ -77,10 +115,10 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const orderType = props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
 	const customerNotes = props.currentOrder?.notes || "-";
 
-	const unifiedStatusLabel = orderStatus === "paid" ? "LUNAS"
+	const unifiedStatusLabel = mode === "cashier_expired" ? "DIBATALKAN" : orderStatus === "paid" ? "LUNAS"
 		: orderStatus === "completed" ? "SELESAI"
 		: "OPEN BILL";
-	const unifiedStatusColor = orderStatus === "paid" ? "text-blue-600"
+	const unifiedStatusColor = mode === "cashier_expired" ? "text-red-600" : orderStatus === "paid" ? "text-blue-600"
 		: orderStatus === "completed" ? "text-emerald-600"
 		: "text-amber-600";
 	const normalizedPaymentMethod = String(props.currentOrder?.paymentMethod ?? (props.currentOrder as any)?.payment_method ?? props.receipt.paymentChoice).toLowerCase();
@@ -89,7 +127,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const currentStepIndex = getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
 	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS Mayar" : "Bayar di Kasir";
-	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
+	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
 	// Do not reconstruct historical totals from item prices. Show this breakdown
 	// only when the backend stored the authoritative tax calculation.
 	const persistedTaxBase = Number(props.currentOrder?.taxBaseAmount ?? props.currentOrder?.tax_base_amount);
@@ -127,8 +165,9 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					<p className="mt-2.5 text-center text-[10px] text-muted-foreground/70">Pembaruan otomatis — pesananmu sedang {currentStepLabel.toLowerCase()}.</p>
 				</div>
 			) : null}
+			{isCashierTicket ? <CashierPaymentTimer createdAt={props.currentOrder?.createdAt} onExpire={() => props.onCashierPaymentExpired?.()} /> : props.receipt.mode === "cashier_expired" ? <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-red-950"><p className="text-[10px] font-black uppercase tracking-[0.14em]">Pembayaran kedaluwarsa</p><p className="mt-0.5 text-[10px] leading-tight">Order dibatalkan karena tidak dibayar dalam 5 menit. Silakan gunakan Pesan lagi.</p></div> : null}
 			<PaymentDocumentAnimation
-				isCashierTicket={isCashierTicket}
+				isCashierTicket={isCashierTicket || mode === "cashier_expired"}
 				orderReference={orderReference}
 				total={props.currentOrder?.totalAmount ?? props.total}
 				paymentLabel={paymentLabel}
@@ -137,8 +176,8 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
 				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 5 · Selesai / Struk</p>
-				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
-				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice pembayaran sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
+				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : "Tunjukkan ke kasir"}</h2>
+				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran sebelum waktu habis." : mode === "cashier_expired" ? "Batas 5 menit pembayaran telah lewat. Pesanan dibatalkan dan tidak diproses Bar & Kitchen. Silakan pesan ulang." : mode === "mayar_pending" ? "Invoice pembayaran sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
 				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
 					{hasPersistedTotals ? <ReceiptTotalsBreakdown rawTotal={persistedRawTotal} taxBase={persistedTaxBase} taxAmount={Number(props.currentOrder?.taxAmount ?? 0)} taxRate={Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0)} taxEnabled={Number(props.currentOrder?.taxAmount ?? 0) > 0 || Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0} serviceChargeAmount={Number(props.currentOrder?.serviceChargeAmount ?? 0)} roundingAdjustment={persistedRounding} total={persistedTotal} /> : null}
 					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
