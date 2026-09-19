@@ -200,7 +200,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
 				<div className="space-y-3">
-					<div data-category-catalog className="-mx-1 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
 						<div className="mt-3 relative">
 							<Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
