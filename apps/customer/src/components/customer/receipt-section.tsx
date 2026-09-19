@@ -100,6 +100,33 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-32">
+			{currentStepLabel ? (
+				<div className="rounded-3xl border border-border bg-card p-3.5 shadow-sm">
+					<div className="flex items-center justify-between">
+						<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Status pesanan</p>
+						<p className={cn("text-xs font-black", unifiedStatusColor)}>{currentStepLabel}</p>
+					</div>
+					<div className="mt-3 flex items-center">
+						{STATUS_STEPS.map((step, index) => {
+							const reached = index <= currentStepIndex;
+							const isLast = index === STATUS_STEPS.length - 1;
+							return (
+								<div key={step.key} className="flex flex-1 flex-col items-center">
+									<div className="flex w-full items-center">
+										<div className={cn("h-0.5 flex-1", index === 0 ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
+										<div className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black transition-colors", reached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/60")}>
+											{reached ? <CheckCircle2 className="h-3 w-3" /> : index + 1}
+										</div>
+										<div className={cn("h-0.5 flex-1", isLast ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
+									</div>
+									<p className={cn("mt-1.5 text-[9px] font-bold leading-tight", reached ? "text-foreground" : "text-muted-foreground/60")}>{step.label}</p>
+								</div>
+							);
+						})}
+					</div>
+					<p className="mt-2.5 text-center text-[10px] text-muted-foreground/70">Pembaruan otomatis — pesananmu sedang {currentStepLabel.toLowerCase()}.</p>
+				</div>
+			) : null}
 			<PaymentDocumentAnimation
 				isCashierTicket={isCashierTicket}
 				orderReference={orderReference}
@@ -146,33 +173,6 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					</PaymentDocumentAnimation>
 			{/* ── Live status tracker ─────────────────────────── */}
 			{!props.actionsHidden ? <ReceiptActions items={exportItems} storeName={props.storeName} orderReference={orderReference} payment={paymentLabel} status={unifiedStatusLabel} total={Number(props.currentOrder?.totalAmount ?? props.total)} onRetryPayment={canRetryPayment ? props.onRetryPayment : undefined} retryPaymentLabel="Buat link pembayaran baru" retryingPayment={props.retryingPayment} /> : null}
-				{currentStepLabel ? (
-					<div className="mt-3 rounded-3xl border border-border bg-card p-3.5 shadow-sm">
-						<div className="flex items-center justify-between">
-							<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Status pesanan</p>
-							<p className={cn("text-xs font-black", unifiedStatusColor)}>{currentStepLabel}</p>
-						</div>
-						<div className="mt-3 flex items-center">
-							{STATUS_STEPS.map((step, index) => {
-								const reached = index <= currentStepIndex;
-								const isLast = index === STATUS_STEPS.length - 1;
-								return (
-									<div key={step.key} className="flex flex-1 flex-col items-center">
-										<div className="flex w-full items-center">
-											<div className={cn("h-0.5 flex-1", index === 0 ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
-											<div className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black transition-colors", reached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/60")}>
-												{reached ? <CheckCircle2 className="h-3 w-3" /> : index + 1}
-											</div>
-											<div className={cn("h-0.5 flex-1", isLast ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
-										</div>
-										<p className={cn("mt-1.5 text-[9px] font-bold leading-tight", reached ? "text-foreground" : "text-muted-foreground/60")}>{step.label}</p>
-									</div>
-								);
-							})}
-						</div>
-						<p className="mt-2.5 text-center text-[10px] text-muted-foreground/70">Pembaruan otomatis — pesananmu sedang {currentStepLabel.toLowerCase()}.</p>
-					</div>
-				) : null}
 			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div><button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/20 bg-primary/5 px-2.5 py-2.5 text-[10px] font-black text-primary shadow-sm" onClick={props.onHome}>Kembali ke Home</button>
 		</div>
 	);
