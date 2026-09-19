@@ -112,9 +112,13 @@ export function renderMenuSection(props: MenuSectionProps) {
 		const category = rootCategoryForProduct(product);
 		if (category && !firstProductIndexByCategory.has(String(category._id))) firstProductIndexByCategory.set(String(category._id), index);
 	});
-	const scrollToCategory = (categoryId: Id<"categories">) => {
+	const scrollToCategory = (categoryId: Id<"categories"> | null) => {
 		props.setActiveCategoryId(categoryId);
 		window.requestAnimationFrame(() => {
+			if (!categoryId) {
+				document.querySelector<HTMLElement>("[data-category-catalog]")?.scrollIntoView({ behavior: "smooth", block: "start" });
+				return;
+			}
 			document.querySelector<HTMLElement>(`[data-category-section="${String(categoryId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 		});
 	};
@@ -193,7 +197,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
 				<div className="space-y-3">
-					<div className="sticky top-0 z-20 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 text-primary" /><h3 className="text-sm font-black">Katalog produk</h3></div>
 						<div className="mt-3 relative">
 							<Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -207,9 +211,10 @@ export function renderMenuSection(props: MenuSectionProps) {
 						</div>
 						<div className="relative mt-3">
 							<div aria-label="Kategori menu" className="flex gap-1.5 overflow-x-auto pb-1 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-							{props.orderedCategories.filter((category) => !category.parentId && category.track !== "hidden").map((category) => {
+								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null)} onClick={() => scrollToCategory(null)}>Semua</button>
+							{rootCategories.map((category) => {
 								const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
-								return <button type="button" data-category-chip={String(category._id)} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild)} onClick={() => scrollToCategory(category._id)}>{category.name}</button>;
+								return <button key={category._id} type="button" data-category-chip={String(category._id)} className={chipClassName(props.activeCategoryId === category._id || hasActiveChild)} onClick={() => scrollToCategory(category._id)}>{category.name}</button>;
 							})}
 							{props.isMenuLoading ? <span className="whitespace-nowrap rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground">memuat...</span> : null}
 							</div>
@@ -271,7 +276,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const showCategoryHeading = rootCategory && firstProductIndexByCategory.get(rootCategoryId) === index;
 								return (
 									<div key={product._id}>
-										{showCategoryHeading ? <div data-category-section={rootCategoryId} className="scroll-mt-2 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
+										{showCategoryHeading ? <div data-category-section={rootCategoryId} className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
 										<article className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<ProductImageButton src={product.image} alt={product.name} isSold={isSold} />
 										<div className="min-w-0 flex-1 py-0">
