@@ -33,9 +33,11 @@ p { color: var(--muted); line-height: 1.6; }
 
 .app-shell { width: min(100%, 520px); min-height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; background: var(--surface-muted); box-shadow: 0 0 60px rgba(15,23,42,.06); }
 .topbar { width: 100%; padding: calc(14px + env(safe-area-inset-top)) 18px 12px; display: flex; align-items: center; justify-content: space-between; }
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand-mark { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; color: var(--booking-accent); background: var(--booking-accent-soft); box-shadow: none; }
-.brand strong { display: block; font-size: 14px; letter-spacing: -.02em; }
+.brand { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.brand-mark, .brand-logo { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 14px; display: grid; place-items: center; color: var(--booking-accent); background: var(--booking-accent-soft); box-shadow: none; }
+.brand-logo { display: block; object-fit: cover; }
+.brand > div:last-child { min-width: 0; }
+.brand strong { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; letter-spacing: -.02em; }
 .brand span { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
 .icon-button { width: 44px; height: 44px; border-radius: 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); box-shadow: 0 5px 18px rgba(15,23,42,.05); transition: transform 180ms var(--ease-ios); }
 .icon-button:active, .button:active, .date-card:active, .add-button:active, .stepper button:active, .quantity-control button:active { transform: scale(.97); }
@@ -211,7 +213,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .review-edit { margin-top: 12px; }
 .menu-shell .topbar { padding: calc(14px + env(safe-area-inset-top)) 18px 18px; background: linear-gradient(135deg, #f8fcff 0%, #e4f5ff 100%); }
 .menu-shell .brand { gap: 12px; }
-.menu-shell .brand-mark { width: 52px; height: 52px; border-radius: 20px; }
+.menu-shell .brand-mark, .menu-shell .brand-logo { width: 52px; height: 52px; flex-basis: 52px; border-radius: 20px; }
 .menu-shell .brand strong { font-size: 18px; }
 .menu-shell .brand span { font-size: 13px; }
 .menu-back-button { width: 48px; height: 48px; flex: 0 0 48px; display: grid; place-items: center; border-radius: 50%; color: var(--ink); background: rgba(255,255,255,.88); }
