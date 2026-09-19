@@ -18,6 +18,19 @@ const fmtDate = (ms: number | null | undefined) => {
 	return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 };
 
+const DAY_LABELS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+const fmtDays = (days: unknown) => {
+	if (!Array.isArray(days) || days.length === 0 || days.length >= 7) return "Setiap hari";
+	const labels = days.map((day) => DAY_LABELS[Number(day)]).filter(Boolean);
+	return labels.length > 0 ? labels.join(", ") : "Setiap hari";
+};
+
+const fmtTime = (time: unknown) => {
+	const value = String(time ?? "").trim();
+	return /^\\d{2}:\\d{2}$/.test(value) ? value : null;
+};
+
 function discountValueLabel(discount: Record<string, any>): string {
 	const value = Number(discount.value ?? 0);
 	const type = String(discount.type ?? "").toLowerCase();
@@ -84,6 +97,12 @@ function PromoPage() {
 								const validUntil = fmtDate(promo.endDate);
 								const minOrder = promo.minOrderValue ? Number(promo.minOrderValue) : null;
 								const isDjiwaPayCampaign = promo.code === "DJIWA-PAY-50-SEPTEMBER-2026";
+								const startTime = fmtTime(promo.startTime) || (isDjiwaPayCampaign ? "08:00" : null);
+								const endTime = fmtTime(promo.endTime) || (isDjiwaPayCampaign ? "21:00" : null);
+								const hasSchedule = Boolean(startTime && endTime);
+								const targetLabel = promo.targetType === "ALL" ? "Semua menu" : "Menu pilihan sesuai promo";
+								const maxDiscount = Number(promo.maxDiscount ?? promo.maxDiscountAmount ?? 0);
+								const paymentRule = isDjiwaPayCampaign ? "Khusus pembayaran Djiwa Pay" : promo.paymentMethod ? String(promo.paymentMethod) : Array.isArray(promo.paymentMethods) && promo.paymentMethods.length > 0 ? promo.paymentMethods.join(", ") : null;
 								return (
 									<div key={String(promo._id)} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
 										<div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 to-primary/5 px-3 py-3">
@@ -110,6 +129,19 @@ function PromoPage() {
 												) : null}
 											</div>
 										) : null}
+										<div className="border-t border-border bg-muted/20 px-3 py-3">
+											<p className="text-[10px] font-black uppercase tracking-[0.12em] text-foreground">Syarat & ketentuan</p>
+											<ul className="mt-2 space-y-1.5 text-[10px] leading-relaxed text-muted-foreground">
+												{validUntil ? <li><span className="font-bold text-foreground">Periode:</span> berlaku s/d {validUntil}</li> : null}
+												{hasSchedule ? <li><span className="font-bold text-foreground">Jam promo:</span> {startTime}–{endTime} WIB</li> : null}
+												<li><span className="font-bold text-foreground">Hari:</span> {fmtDays(promo.days)}</li>
+												<li><span className="font-bold text-foreground">Berlaku untuk:</span> {targetLabel}</li>
+												{paymentRule ? <li><span className="font-bold text-foreground">Pembayaran:</span> {paymentRule}</li> : null}
+												{minOrder ? <li><span className="font-bold text-foreground">Minimum order:</span> {currency(minOrder)}</li> : null}
+												{maxDiscount > 0 ? <li><span className="font-bold text-foreground">Maksimal potongan:</span> {currency(maxDiscount)}</li> : null}
+											</ul>
+											<div className="mt-2.5 rounded-xl bg-background px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Cara menggunakan:</span> salin kode jika tersedia, tekan “Gunakan promo”, lalu pilih menu dan metode pembayaran yang sesuai saat checkout.</div>
+										</div>
 										<button type="button" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-border px-3 py-2.5 text-xs font-black text-primary hover:bg-primary/5">Gunakan promo <ArrowLeft className="h-3.5 w-3.5 rotate-180" /></button>
 									</div>
 								);
