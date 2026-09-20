@@ -212,7 +212,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 			) : null}
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
-				<div className="space-y-3">
+				<div className="relative space-y-3">
 					<div data-menu-catalog-top className="-mx-1 rounded-xl border border-border bg-card/95 p-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-3.5 w-3.5 text-primary" /><h3 className="text-xs font-black">Katalog produk</h3></div>
 						<div className="relative mt-2">
@@ -226,7 +226,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							/>
 						</div>
 					</div>
-					<div data-category-catalog className="sticky top-0 z-30 -mx-1 rounded-xl border border-border bg-card/95 p-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85">
+					<div data-category-catalog className="sticky top-0 z-40 isolate self-start -mx-1 w-full rounded-xl border border-border bg-card p-1.5 shadow-[0_6px_16px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-card/95" style={{ position: "sticky", top: 0, zIndex: 40 }}>
 						<div className="relative">
 							<div aria-label="Kategori menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null, true)} onClick={() => scrollToCategory(null)}>Semua</button>
