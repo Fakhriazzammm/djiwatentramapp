@@ -100,6 +100,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 	const activeDjiwaPayPromo = props.discounts?.find((discount) => isDjiwaPayCampaignActive(discount));
 	const djiwaPayCampaignActive = Boolean(activeDjiwaPayPromo);
 	const isCodeFeedbackError = /belum unik|tidak|gagal|error/i.test(props.codeFeedback);
+	const [isDjiwaPayPromoOpen, setIsDjiwaPayPromoOpen] = useState(false);
 	const categoryDisplayPriority = (category: Doc<"categories"> | null) => {
 		const name = String(category?.name ?? "").trim().toLowerCase();
 		if (name.includes("makanan")) return 0;
@@ -150,11 +151,12 @@ export function renderMenuSection(props: MenuSectionProps) {
 				</div>
 			) : null}
 			{activeDjiwaPayPromo ? (
-				<div data-banner-variant="djiwa-pay" className="rounded-2xl border border-blue-200/70 bg-blue-50 px-3 py-2.5 text-blue-950">
-					<div className="flex items-center justify-between gap-2">
-						<div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Promo Djiwa Pay</p><p className="mt-0.5 truncate text-sm font-black">Diskon 50% · Menu Rp30.000 jadi Rp15.000</p></div>
-						<p className="shrink-0 text-[10px] font-bold text-blue-700">Berlaku 08:00–21:00 WIB</p>
-					</div>
+				<div data-banner-variant="djiwa-pay" className="rounded-xl border border-blue-200/70 bg-blue-50 text-blue-950">
+					<button type="button" aria-expanded={isDjiwaPayPromoOpen} aria-controls="djiwa-pay-promo-detail" className="flex min-h-10 w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left" onClick={() => setIsDjiwaPayPromoOpen((open) => !open)}>
+						<span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Promo Djiwa Pay · Diskon 50%</span>
+						<span className="shrink-0 text-[10px] font-black text-blue-700">{isDjiwaPayPromoOpen ? "Tutup" : "Detail"}</span>
+					</button>
+					{isDjiwaPayPromoOpen ? <div id="djiwa-pay-promo-detail" className="border-t border-blue-200/70 px-2.5 py-2 text-[10px] font-bold text-blue-800"><div className="flex items-center justify-between gap-2"><span>Menu Rp30.000 jadi Rp15.000</span><span className="shrink-0">08:00–21:00 WIB</span></div></div> : null}
 				</div>
 			) : null}
 			<div className="flex items-center justify-between gap-3 px-1 text-[11px] font-bold text-muted-foreground" aria-label="Ringkasan pesanan">
@@ -167,7 +169,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 				<button type="button" role="tab" aria-selected={props.menuMode === "number"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("number")}>Kode menu</button>
 				<button type="button" role="tab" aria-selected={props.menuMode === "catalog"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("catalog")}>Katalog</button>
 			</div>
-			<p className="px-1 text-xs text-muted-foreground">{props.menuMode === "number" ? "Masukkan nomor yang tertera di menu meja." : "Pilih makanan dan minuman dari katalog."}</p>
+			<p className="sr-only">{props.menuMode === "number" ? "Masukkan nomor yang tertera di menu meja." : "Pilih makanan dan minuman dari katalog."}</p>
 
 			{props.menuMode === "number" && props.config.enableMenuNumberEntry ? (
 				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
