@@ -1016,8 +1016,8 @@ function OrderPage() {
 	};
 
 	return (
-		<div className="app-page min-h-app">
-			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
+		<div className="app-page h-app min-h-app overflow-hidden">
+			<div className="app-shell mx-auto flex h-app max-h-app min-h-app max-w-md flex-col bg-background">
 				{/* ── Sticky header ──────────────────────────────── */}
 				<CustomerHeader
 					eyebrow={step.toUpperCase()}
