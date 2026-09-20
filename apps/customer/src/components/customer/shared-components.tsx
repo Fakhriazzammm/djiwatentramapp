@@ -13,7 +13,7 @@ export function BadgePill({ label }: { label: string }) {
 
 export function chipClassName(active: boolean, compact = false) {
 	return cn(
-		compact ? "min-h-9 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold transition-all" : "min-h-11 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-all",
+		compact ? "min-h-10 whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-bold leading-none transition-all" : "min-h-11 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-all",
 		active ? "bg-primary text-primary-foreground shadow-sm" : "border border-border bg-background text-muted-foreground"
 	);
 }

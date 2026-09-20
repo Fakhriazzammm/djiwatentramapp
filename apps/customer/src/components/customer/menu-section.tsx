@@ -213,20 +213,20 @@ export function renderMenuSection(props: MenuSectionProps) {
 
 			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
 				<div className="relative space-y-3">
-					<div data-menu-catalog-top className="-mx-1 rounded-xl border border-border bg-card/95 p-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-						<div className="flex items-center gap-1.5"><Grid2X2 className="h-3.5 w-3.5 text-primary" /><h3 className="text-xs font-black">Katalog produk</h3></div>
-						<div className="relative mt-2">
+					<div data-menu-catalog-top className="-mx-1 rounded-xl border border-border bg-card/95 p-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+						<div className="flex items-center gap-1"><Grid2X2 className="h-3 w-3 text-primary" /><h3 className="text-[10px] font-black">Katalog produk</h3></div>
+						<div className="relative mt-1.5">
 							<Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 							<input
 								aria-label="Cari menu"
-								className="min-h-10 w-full rounded-xl border border-border bg-background py-1.5 pl-8 pr-2.5 text-[11px] font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								className="min-h-9 w-full rounded-lg border border-border bg-background py-1 pl-7 pr-2 text-[10px] font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
 								placeholder="Cari nama atau nomor menu"
 								value={props.catalogQuery}
 								onChange={(event) => props.setCatalogQuery(event.target.value)}
 							/>
 						</div>
 					</div>
-					<div data-category-catalog className="sticky top-0 z-40 isolate self-start -mx-1 w-full rounded-xl border border-border bg-card p-1.5 shadow-[0_6px_16px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-card/95" style={{ position: "sticky", top: 0, zIndex: 40 }}>
+					<div data-category-catalog className="sticky top-0 z-40 isolate self-start -mx-1 w-full rounded-xl border border-border bg-card p-1 shadow-[0_6px_16px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-card/95" style={{ position: "sticky", top: 0, zIndex: 40 }}>
 						<div className="relative">
 							<div aria-label="Kategori menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null, true)} onClick={() => scrollToCategory(null)}>Semua</button>
@@ -247,7 +247,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 								: [];
 							if (!subcategories.length) return null;
 							return (
-								<div className="mt-1 rounded-xl bg-muted/40 p-1">
+								<div className="mt-0.5 rounded-lg bg-muted/40 p-0.5">
 									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id, true)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
 										{subcategories.map((subcategory) => (
