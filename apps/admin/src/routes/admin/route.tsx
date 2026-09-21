@@ -724,12 +724,12 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					)}
 
 					{/* BOOKING */}
-					<SidebarSection isCollapsed={isCollapsed} label="BOOKING" />
+					{isCollapsed && <SidebarSection isCollapsed={isCollapsed} label="BOOKING" />}
 					{isCollapsed ? (
 						<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Dashboard Booking" to="/admin/booking" permission="orders:view" />
 					) : (
 						<>
-							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnBookingPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsBookingOpen(!isBookingOpen)} type="button">
+							<button className={`mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnBookingPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsBookingOpen(!isBookingOpen)} type="button">
 								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><CalendarDays /></span>
 								<span className="flex-1 truncate text-left">Booking</span>
 								<motion.span animate={{ rotate: isBookingOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
