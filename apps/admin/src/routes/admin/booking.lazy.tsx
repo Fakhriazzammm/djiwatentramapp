@@ -75,8 +75,12 @@ function formatDate(dateStr: string) {
 	return `${d} ${MONTH_NAMES[m - 1]} ${y}`;
 }
 
+function toDateInput(date: Date) {
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function todayStr() {
-	return new Date().toISOString().split("T")[0];
+	return toDateInput(new Date());
 }
 
 function getRangeDates(range: string): { start: string; end: string } {
@@ -86,6 +90,10 @@ function getRangeDates(range: string): { start: string; end: string } {
 
 	switch (range) {
 		case "today":
+			break;
+		case "tomorrow":
+			start.setDate(now.getDate() + 1);
+			end.setDate(now.getDate() + 1);
 			break;
 		case "yesterday":
 			start.setDate(now.getDate() - 1);
@@ -335,7 +343,7 @@ function OrderRow({
 		paymentStatus?: string
 	) => void;
 	onEdit: (order: any) => void;
-	onDelete: (id: Id<"bookingOrders">) => void;
+	onDelete: (id: Id<"bookingOrders">, paymentStatus?: string) => void;
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const [timelineState, setTimelineState] = useState<{ loading: boolean; timeline: any[]; deliveries: any[] }>({ loading: false, timeline: [], deliveries: [] });
@@ -407,8 +415,8 @@ function OrderRow({
 						</button>
 						<button
 							className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
-							onClick={() => onDelete(order._id)}
-							title="Hapus Booking"
+							onClick={() => onDelete(order._id, order.paymentStatus)}
+							title={order.paymentStatus === "paid" ? "Batalkan Booking" : "Hapus Booking"}
 						>
 							<Trash2 className="h-3.5 w-3.5" />
 						</button>
@@ -712,7 +720,19 @@ function BookingSettingsPage() {
 		}
 	};
 
-	const handleDeleteBooking = async (id: Id<"bookingOrders">) => {
+	const handleDeleteBooking = async (id: Id<"bookingOrders">, paymentStatus?: string) => {
+		if (paymentStatus === "paid") {
+			if (!confirm("Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?")) return;
+			const tid = toast.loading("Membatalkan booking...");
+			try {
+				await updateBookingStatus({ id, bookingStatus: "cancelled" as any });
+				toast.success("Booking dibatalkan dan histori tetap tersimpan", { id: tid });
+				triggerHybridRefresh();
+			} catch {
+				toast.error("Gagal membatalkan booking", { id: tid });
+			}
+			return;
+		}
 		if (!confirm("Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.")) return;
 		
 		const tid = toast.loading("Menghapus booking...");
@@ -942,6 +962,10 @@ function BookingSettingsPage() {
 			guests: orders.reduce((sum: number, order: any) => sum + Number(order.guestCount ?? 0), 0),
 			pendingPayment: orders.filter((order: any) => order.paymentStatus !== "paid").length,
 			paid: orders.filter((order: any) => order.paymentStatus === "paid").length,
+			confirmed: orders.filter((order: any) => order.bookingStatus === "confirmed").length,
+			arrived: orders.filter((order: any) => order.bookingStatus === "arrived" || order.bookingStatus === "seated").length,
+			completed: orders.filter((order: any) => order.bookingStatus === "completed").length,
+			cancelled: orders.filter((order: any) => order.bookingStatus === "cancelled" || order.bookingStatus === "no_show").length,
 		};
 	}, [allOrders]);
 
@@ -1002,12 +1026,16 @@ function BookingSettingsPage() {
 			</nav>
 
 			{(activeTab === "calendar" || activeTab === "orders") && (
-				<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+				<div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
 					{[
-						["Total booking", bookingStats.total, "text-foreground"],
-						["Total tamu", bookingStats.guests, "text-emerald-700"],
+						["Booking", bookingStats.total, "text-foreground"],
+						["Tamu", bookingStats.guests, "text-emerald-700"],
 						["Belum lunas", bookingStats.pendingPayment, "text-amber-700"],
-						["Sudah lunas", bookingStats.paid, "text-primary"],
+						["Lunas", bookingStats.paid, "text-primary"],
+						["Confirmed", bookingStats.confirmed, "text-blue-700"],
+						["Tiba", bookingStats.arrived, "text-cyan-700"],
+						["Selesai", bookingStats.completed, "text-green-700"],
+						["Batal", bookingStats.cancelled, "text-red-700"],
 					].map(([label, value, tone]) => (
 						<div className="rounded-[20px] border border-border/70 bg-card px-3 py-3 shadow-sm" key={label}>
 							<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
@@ -1126,6 +1154,7 @@ function BookingSettingsPage() {
 								>
 									<option value="custom">Kustom</option>
 									<option value="today">Hari Ini</option>
+									<option value="tomorrow">Besok</option>
 									<option value="yesterday">Kemarin</option>
 									<option value="this_week">Minggu Ini</option>
 									<option value="last_week">Minggu Lalu</option>
