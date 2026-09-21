@@ -1,5 +1,4 @@
-﻿import { createLazyFileRoute, useSearch } from "@tanstack/react-router";
-import { BookingOverviewPage } from "./booking/-components/BookingOverviewPage";
+﻿import { createLazyFileRoute, Outlet, useSearch } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {
 	Calendar,
@@ -59,8 +58,12 @@ import {
 	useHybridUpdateBookingStatus,
 } from "@/hooks/use-hybrid-write-actions";
 
+function BookingRouteShell() {
+	return <Outlet />;
+}
+
 export const Route = createLazyFileRoute("/admin/booking")({
-	component: BookingOverviewPage,
+	component: BookingRouteShell,
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

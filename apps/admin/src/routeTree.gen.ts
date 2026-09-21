@@ -53,6 +53,7 @@ import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/ro
 import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
 import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
+import { Route as AdminBookingIndexRouteImport } from './routes/admin/booking/index'
 import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai.$registrationNumber'
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe/view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
@@ -349,6 +350,13 @@ const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminFinanceRouteRoute,
 } as any)
+const AdminBookingIndexRoute = AdminBookingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminBookingRoute,
+} as any).lazy(() =>
+  import('./routes/admin/booking/index.lazy').then((d) => d.Route),
+)
 const RegisterSelesaiRegistrationNumberRoute =
   RegisterSelesaiRegistrationNumberRouteImport.update({
     id: '/selesai/$registrationNumber',
@@ -688,6 +696,7 @@ export interface FileRoutesByFullPath {
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
+  '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
@@ -717,7 +726,6 @@ export interface FileRoutesByTo {
   '/laporan': typeof LaporanLazyRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
-  '/admin/booking': typeof AdminBookingRouteWithChildren
   '/admin/community': typeof AdminCommunityRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -759,6 +767,7 @@ export interface FileRoutesByTo {
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
+  '/admin/booking': typeof AdminBookingIndexRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
@@ -837,6 +846,7 @@ export interface FileRoutesById {
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
+  '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
@@ -917,6 +927,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
     | '/register/selesai/$registrationNumber'
+    | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
@@ -946,7 +957,6 @@ export interface FileRouteTypes {
     | '/laporan'
     | '/admin/ai-chat'
     | '/admin/bar'
-    | '/admin/booking'
     | '/admin/community'
     | '/admin/customer-service'
     | '/admin/customers'
@@ -988,6 +998,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
     | '/register/selesai/$registrationNumber'
+    | '/admin/booking'
     | '/admin/finance'
     | '/admin/operational-team'
     | '/admin/recipe'
@@ -1065,6 +1076,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
     | '/register/selesai/$registrationNumber'
+    | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
@@ -1403,6 +1415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceIndexRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/booking/': {
+      id: '/admin/booking/'
+      path: '/'
+      fullPath: '/admin/booking/'
+      preLoaderRoute: typeof AdminBookingIndexRouteImport
+      parentRoute: typeof AdminBookingRoute
+    }
     '/register/selesai/$registrationNumber': {
       id: '/register/selesai/$registrationNumber'
       path: '/selesai/$registrationNumber'
@@ -1676,6 +1695,7 @@ interface AdminBookingRouteChildren {
   AdminBookingCapacityRoute: typeof AdminBookingCapacityRoute
   AdminBookingOrdersRoute: typeof AdminBookingOrdersRoute
   AdminBookingSettingsRoute: typeof AdminBookingSettingsRouteWithChildren
+  AdminBookingIndexRoute: typeof AdminBookingIndexRoute
 }
 
 const AdminBookingRouteChildren: AdminBookingRouteChildren = {
@@ -1683,6 +1703,7 @@ const AdminBookingRouteChildren: AdminBookingRouteChildren = {
   AdminBookingCapacityRoute: AdminBookingCapacityRoute,
   AdminBookingOrdersRoute: AdminBookingOrdersRoute,
   AdminBookingSettingsRoute: AdminBookingSettingsRouteWithChildren,
+  AdminBookingIndexRoute: AdminBookingIndexRoute,
 }
 
 const AdminBookingRouteWithChildren = AdminBookingRoute._addFileChildren(
