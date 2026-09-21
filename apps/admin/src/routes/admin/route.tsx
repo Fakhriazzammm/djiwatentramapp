@@ -32,6 +32,7 @@ import {
 	Percent,
 	ShieldAlert,
 	Settings,
+	Smartphone,
 	Sparkles,
 	User,
 	UserPlus,
@@ -101,6 +102,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/customer-service": "Layanan Customer",
 	"/admin/minigames": "Mini Games",
 	"/admin/customers": "Pelanggan",
+	"/admin/djiwa-app": "Dashboard",
 	"/admin/kol": "KOL",
 };
 
@@ -136,6 +138,7 @@ const MORE_MENU_PATHS = [
 	"/admin/customer-service",
 	"/admin/minigames",
 	"/admin/customers",
+	"/admin/djiwa-app",
 	"/admin/kol",
 	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
@@ -184,11 +187,17 @@ const QUICK_MENU_SECTIONS = [
 		],
 	},
 	{
+		label: "Djiwa App",
+		items: [
+			{ to: "/admin/djiwa-app", icon: LayoutDashboard, label: "Dashboard", permission: "analytics:view" },
+			{ to: "/admin/customers", icon: Users, label: "Pelanggan" },
+		],
+	},
+	{
 		label: "Marketing",
 		items: [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
-			{ to: "/admin/customers", icon: Users, label: "Pelanggan" },
 			{ to: "/admin/kol", icon: Users, label: "KOL" },
 			{ to: "/admin/operational-team/rekrutmen", icon: FileText, label: "Rekrutmen", permission: "users:manage" },
 		],
@@ -218,6 +227,11 @@ const FINANCE_PATHS = [
 	"/admin/finance/transactions",
 	"/admin/finance/accounting",
 	"/admin/finance/expenses",
+];
+
+const DJIWA_APP_PATHS = [
+	"/admin/djiwa-app",
+	"/admin/customers",
 ];
 
 const OPERATIONAL_TEAM_PATHS = [
@@ -324,6 +338,19 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 		if (isOnOperationalTeamPath) setIsOperationalTeamOpen(true);
 	}, [isOnOperationalTeamPath]);
 
+	const isOnDjiwaAppPath = DJIWA_APP_PATHS.some((p) => location.pathname.startsWith(p));
+	const [isDjiwaAppOpen, setIsDjiwaAppOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-djiwa-app-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnDjiwaAppPath;
+	});
+
+	useEffect(() => {
+		if (isOnDjiwaAppPath) setIsDjiwaAppOpen(true);
+	}, [isOnDjiwaAppPath]);
+
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
 	}, [isCollapsed]);
@@ -335,6 +362,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	useEffect(() => {
 		localStorage.setItem("admin-operational-team-open", String(isOperationalTeamOpen));
 	}, [isOperationalTeamOpen]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-djiwa-app-open", String(isDjiwaAppOpen));
+	}, [isDjiwaAppOpen]);
 
 	useEffect(() => {
 		if (isFromHomeEntry) {
@@ -667,6 +698,31 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 										</div>
 									</motion.div>
 								)}
+							</AnimatePresence>
+						</>
+					)}
+
+					{/* DJIWA APP */}
+					<SidebarSection isCollapsed={isCollapsed} label="Djiwa App" />
+					{isCollapsed ? (
+						<>
+							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/djiwa-app" permission="analytics:view" />
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Pelanggan" to="/admin/customers" />
+						</>
+					) : (
+						<>
+							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnDjiwaAppPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsDjiwaAppOpen(!isDjiwaAppOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><Smartphone /></span>
+								<span className="flex-1 truncate text-left">Djiwa App</span>
+								<motion.span animate={{ rotate: isDjiwaAppOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>
+								{isDjiwaAppOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
+									<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+										<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/djiwa-app" permission="analytics:view" />
+										<DesktopSubNavLink icon={<Users />} label="Pelanggan" to="/admin/customers" />
+									</div>
+								</motion.div>}
 							</AnimatePresence>
 						</>
 					)}

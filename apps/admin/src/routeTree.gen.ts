@@ -41,6 +41,7 @@ import { Route as AdminKolRouteImport } from './routes/admin/kol'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
+import { Route as AdminDjiwaAppRouteImport } from './routes/admin/djiwa-app'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
@@ -268,6 +269,13 @@ const AdminForecastingRoute = AdminForecastingRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/forecasting.lazy').then((d) => d.Route),
+)
+const AdminDjiwaAppRoute = AdminDjiwaAppRouteImport.update({
+  id: '/djiwa-app',
+  path: '/djiwa-app',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/djiwa-app.lazy').then((d) => d.Route),
 )
 const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
   id: '/discounts',
@@ -589,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
+  '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
@@ -657,6 +666,7 @@ export interface FileRoutesByTo {
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
+  '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
@@ -724,6 +734,7 @@ export interface FileRoutesById {
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
+  '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
@@ -797,6 +808,7 @@ export interface FileRouteTypes {
     | '/admin/customer-service'
     | '/admin/customers'
     | '/admin/discounts'
+    | '/admin/djiwa-app'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
@@ -865,6 +877,7 @@ export interface FileRouteTypes {
     | '/admin/customer-service'
     | '/admin/customers'
     | '/admin/discounts'
+    | '/admin/djiwa-app'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
@@ -931,6 +944,7 @@ export interface FileRouteTypes {
     | '/admin/customer-service'
     | '/admin/customers'
     | '/admin/discounts'
+    | '/admin/djiwa-app'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
@@ -1217,6 +1231,13 @@ declare module '@tanstack/react-router' {
       path: '/forecasting'
       fullPath: '/admin/forecasting'
       preLoaderRoute: typeof AdminForecastingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/djiwa-app': {
+      id: '/admin/djiwa-app'
+      path: '/djiwa-app'
+      fullPath: '/admin/djiwa-app'
+      preLoaderRoute: typeof AdminDjiwaAppRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/discounts': {
@@ -1659,6 +1680,7 @@ interface AdminRouteRouteChildren {
   AdminCustomerServiceRoute: typeof AdminCustomerServiceRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
+  AdminDjiwaAppRoute: typeof AdminDjiwaAppRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
@@ -1686,6 +1708,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCustomerServiceRoute: AdminCustomerServiceRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
+  AdminDjiwaAppRoute: AdminDjiwaAppRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,
