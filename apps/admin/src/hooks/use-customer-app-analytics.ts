@@ -65,9 +65,17 @@ function money(value: unknown) {
 	return Number(value ?? 0) || 0;
 }
 
+function toDate(value: unknown) {
+	if (value === null || value === undefined || value === "") return null;
+	if (typeof value === "number") return new Date(value);
+	if (typeof value === "string" && /^\d+(\.\d+)?$/.test(value.trim())) return new Date(Number(value));
+	const date = new Date(String(value));
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function dateKey(value: unknown) {
-	const date = value ? new Date(String(value)) : null;
-	return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : "";
+	const date = toDate(value);
+	return date ? date.toISOString().slice(0, 10) : "";
 }
 
 function displayDateKey(value: string) {
@@ -80,10 +88,10 @@ function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[
 	const startTime = start.getTime();
 	const endTime = end.getTime();
 	const inPeriod = (value: unknown) => {
-		const time = value ? new Date(String(value)).getTime() : 0;
+		const date = toDate(value);
+		const time = date?.getTime() ?? 0;
 		return time >= startTime && time <= endTime;
 	};
-	const customerMap = new Map(customers.map((customer) => [String(customer.source_id), customer]));
 	const appOrders = new Map<string, OrderRow>();
 	for (const order of orders) {
 		if (!isCustomerAppOrder(order) || !isSettled(order) || !inPeriod(order.createdAt ?? order.created_at)) continue;
@@ -159,10 +167,13 @@ export function useCustomerAppAnalytics(period: CustomerAnalyticsPeriod) {
 	const bounds = useMemo(() => periodBounds(period), [period]);
 	const load = useCallback(async () => {
 		const supabase = createClient();
-		const [{ data: customers, error: customersError }, { data: orders, error: ordersError }] = await Promise.all([
+		const [{ data: customers, error: customersError }, ordersPageOne, ordersPageTwo] = await Promise.all([
 			supabase.from("pos_customers_view").select("*").order("total_spent", { ascending: false }),
-			supabase.from("pos_orders").select("*").order("createdAt", { ascending: false }).limit(2000),
+			supabase.from("pos_orders").select("*").order("createdAt", { ascending: false }).range(0, 999),
+			supabase.from("pos_orders").select("*").order("createdAt", { ascending: false }).range(1000, 1999),
 		]);
+		const ordersError = ordersPageOne.error ?? ordersPageTwo.error;
+		const orders = [...(ordersPageOne.data ?? []), ...(ordersPageTwo.data ?? [])];
 		if (customersError) throw customersError;
 		if (ordersError) throw ordersError;
 		return buildAnalytics(period, (customers ?? []) as CustomerRow[], (orders ?? []) as OrderRow[]);
