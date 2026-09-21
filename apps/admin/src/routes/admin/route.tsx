@@ -190,7 +190,11 @@ const QUICK_MENU_SECTIONS = [
 	{
 		label: "BOOKING",
 		items: [
-			{ to: "/admin/booking", icon: CalendarDays, label: "Monitoring Booking", permission: "orders:view" },
+			{ to: "/admin/booking", icon: LayoutDashboard, label: "Dashboard", permission: "orders:view" },
+			{ to: "/admin/booking/calendar", icon: CalendarDays, label: "Kalender", permission: "orders:view" },
+			{ to: "/admin/booking/orders", icon: List, label: "Data Booking", permission: "orders:view" },
+			{ to: "/admin/booking/capacity", icon: Gauge, label: "Kapasitas", permission: "orders:view" },
+			{ to: "/admin/booking/settings", icon: Settings, label: "Konfigurasi", permission: "orders:view" },
 		],
 	},
 	{
@@ -738,9 +742,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								{isBookingOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
 									<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
 										<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/booking" permission="orders:view" />
-										<DesktopSubNavLink icon={<List />} label="Data Booking" to="/admin/booking?tab=orders" permission="orders:view" />
-										<DesktopSubNavLink icon={<CalendarDays />} label="Kalender" to="/admin/booking?tab=calendar" permission="orders:view" />
-										<DesktopSubNavLink icon={<Gauge />} label="Kapasitas" to="/admin/booking?tab=capacity" permission="orders:view" />
+										<DesktopSubNavLink icon={<List />} label="Data Booking" to="/admin/booking/orders" permission="orders:view" />
+										<DesktopSubNavLink icon={<CalendarDays />} label="Kalender" to="/admin/booking/calendar" permission="orders:view" />
+										<DesktopSubNavLink icon={<Gauge />} label="Kapasitas" to="/admin/booking/capacity" permission="orders:view" />
+										<DesktopSubNavLink icon={<Settings />} label="Konfigurasi" to="/admin/booking/settings" permission="orders:view" />
 									</div>
 								</motion.div>}
 							</AnimatePresence>

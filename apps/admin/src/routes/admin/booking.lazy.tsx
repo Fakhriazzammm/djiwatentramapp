@@ -1,4 +1,5 @@
 ﻿import { createLazyFileRoute, useSearch } from "@tanstack/react-router";
+import { BookingOverviewPage } from "./booking/-components/BookingOverviewPage";
 import type { Id } from "@/types/backend-compat";
 import {
 	Calendar,
@@ -59,7 +60,7 @@ import {
 } from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/admin/booking")({
-	component: BookingSettingsPage,
+	component: BookingOverviewPage,
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -570,9 +571,11 @@ function OrderRow({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-function BookingSettingsPage() {
+export type BookingWorkspaceTab = "calendar" | "orders" | "capacity" | "general" | "products" | "form";
+
+export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspaceTab } = {}) {
 	const routeSearch = useSearch({ from: "/admin/booking" }) as { tab?: string };
-	const requestedTab = routeSearch.tab;
+	const requestedTab = routeSearch.tab ?? forcedTab;
 	const settings = useHybridBookingSettings("booking");
 	const updateSettings = useHybridUpdateBookingSettings();
 	const allProducts = useHybridAllProducts();
@@ -629,6 +632,7 @@ function BookingSettingsPage() {
 	const [activeTab, setActiveTab] = useState<
 		"calendar" | "orders" | "capacity" | "general" | "products" | "form"
 	>(() => {
+		if (forcedTab) return forcedTab;
 		if (typeof window !== "undefined") {
 			const tab = new URLSearchParams(window.location.search).get("tab");
 			if (tab === "orders" || tab === "calendar" || tab === "capacity") return tab;
