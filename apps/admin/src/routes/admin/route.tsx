@@ -22,9 +22,11 @@ import {
 	FileBarChart,
 	FileText,
 	FileSignature,
+	Gauge,
 	Gamepad2,
 	Grid3X3,
 	LayoutDashboard,
+	List,
 	LogOut,
 	Monitor,
 	MoreHorizontal,
@@ -179,11 +181,16 @@ const QUICK_MENU_SECTIONS = [
 	{
 		label: "Operasional",
 		items: [
-			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
 			{ to: "/admin/operational-team/karyawan", icon: Users, label: "Karyawan", permission: "users:manage" },
+		],
+	},
+	{
+		label: "BOOKING",
+		items: [
+			{ to: "/admin/booking", icon: CalendarDays, label: "Monitoring Booking", permission: "orders:view" },
 		],
 	},
 	{
@@ -455,13 +462,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						permission="analytics:view"
 					/>
 					<DesktopNavLink
-						icon={<Calendar />}
-						isCollapsed={isCollapsed}
-						label="Booking"
-						to="/admin/booking"
-						permission="orders:view"
-					/>
-					<DesktopNavLink
 						icon={<ClipboardList />}
 						isCollapsed={isCollapsed}
 						label="Pesanan"
@@ -700,6 +700,19 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								)}
 							</AnimatePresence>
 						</>
+					)}
+
+					{/* BOOKING */}
+					<SidebarSection isCollapsed={isCollapsed} label="BOOKING" />
+					{isCollapsed ? (
+						<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Dashboard Booking" to="/admin/booking" permission="orders:view" />
+					) : (
+						<div className="space-y-0.5">
+							<DesktopSubNavLink icon={<LayoutDashboard />} label="Dashboard" to="/admin/booking" permission="orders:view" />
+							<DesktopSubNavLink icon={<List />} label="Data Booking" to="/admin/booking?tab=orders" permission="orders:view" />
+							<DesktopSubNavLink icon={<CalendarDays />} label="Kalender" to="/admin/booking?tab=calendar" permission="orders:view" />
+							<DesktopSubNavLink icon={<Gauge />} label="Kapasitas" to="/admin/booking?tab=capacity" permission="orders:view" />
+						</div>
 					)}
 
 					{/* DJIWA APP */}

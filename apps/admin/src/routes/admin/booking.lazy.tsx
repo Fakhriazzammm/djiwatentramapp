@@ -626,8 +626,27 @@ function BookingSettingsPage() {
 	});
 	const [activeTab, setActiveTab] = useState<
 		"calendar" | "orders" | "capacity" | "general" | "products" | "form"
-	>("calendar");
+	>(() => {
+		if (typeof window !== "undefined") {
+			const tab = new URLSearchParams(window.location.search).get("tab");
+			if (tab === "orders" || tab === "calendar" || tab === "capacity") return tab;
+		}
+		return "calendar";
+	});
 	const [isSaving, setIsSaving] = useState(false);
+
+	useEffect(() => {
+		const tab = new URLSearchParams(window.location.search).get("tab");
+		if (tab === "orders" || tab === "calendar" || tab === "capacity") setActiveTab(tab);
+	}, []);
+
+	const handleTabChange = (tab: "calendar" | "orders" | "capacity") => {
+		setActiveTab(tab);
+		const url = new URL(window.location.href);
+		if (tab === "calendar") url.searchParams.delete("tab");
+		else url.searchParams.set("tab", tab);
+		window.history.replaceState({}, "", url);
+	};
 
 	const yearMonth = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
 	const summary = useHybridBookingMonthSummary("booking", yearMonth);
@@ -1016,7 +1035,7 @@ function BookingSettingsPage() {
 							activeTab === tab.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
 						}`}
 						key={tab.id}
-						onClick={() => setActiveTab(tab.id)}
+						onClick={() => handleTabChange(tab.id)}
 						type="button"
 					>
 						<tab.icon className="h-4 w-4" />
