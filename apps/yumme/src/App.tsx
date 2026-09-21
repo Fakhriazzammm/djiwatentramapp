@@ -50,7 +50,7 @@ const offers: Offer[] = [
     icon: Code2,
     tone: "sage",
     packages: [
-      { slug: "menu-online-dan-website", name: "Menu online dan website", price: "Rp12 juta", note: "satu kali pekerjaan", items: ["Menu dan informasi usaha", "Tampilan untuk pelanggan", "Kontak atau pemesanan"] },
+      { slug: "fitur-digital-sesuai-kebutuhan", aliases: ["menu-online-dan-website"], name: "Fitur digital sesuai kebutuhan", price: "Rp5 juta / fitur", note: "satu kali pekerjaan", items: ["Satu fokus sistem utama", "Satu alur kerja yang jelas", "Siap dipakai sesuai kebutuhan bisnis"] },
       { slug: "sistem-pesan-dan-bayar", name: "Sistem pesan dan bayar", price: "Rp35 juta", note: "mulai dari", items: ["Menu dan keranjang", "Pembayaran dan status pesanan", "Riwayat pesanan pelanggan"] },
       { slug: "sistem-bisnis-terintegrasi", aliases: ["integrasi-kasir-dan-dashboard"], name: "Sistem bisnis terintegrasi", price: "Rp20 juta", note: "mulai dari", items: ["Pesanan masuk ke kasir", "Stok dan laporan terhubung", "Akses untuk setiap tim"] },
     ],
@@ -132,19 +132,19 @@ const packageDetails: PackageDetail[] = [
     metrics: ["Masalah yang selesai", "Kepatuhan SOP", "Kondisi stok dan biaya"],
   },
   {
-    packageSlug: "menu-online-dan-website",
-    promise: "Buat pelanggan bisa melihat menu dan menghubungi bisnis Anda dengan mudah.",
-    audience: "Untuk cafe atau resto yang belum punya menu online dan halaman bisnis yang rapi.",
-    problem: "Pelanggan sulit melihat menu, lokasi, jam buka, atau cara memesan dari satu tempat.",
-    duration: "2–4 minggu",
+    packageSlug: "fitur-digital-sesuai-kebutuhan",
+    promise: "Selesaikan satu kebutuhan digital yang paling penting untuk bisnis Anda.",
+    audience: "Untuk bisnis F&B yang ingin membangun satu fitur atau satu sistem fokus tanpa mengambil paket lengkap.",
+    problem: "Ada satu proses penting yang masih manual, belum rapi, atau belum tersedia untuk pelanggan dan tim.",
+    duration: "Menyesuaikan fokus fitur",
     steps: [
-      { title: "Kumpulkan informasi", text: "Kami menata menu, harga, foto, lokasi, jam buka, dan informasi penting lainnya." },
-      { title: "Susun halaman", text: "Kami membuat halaman yang mudah dibaca pelanggan dari ponsel." },
-      { title: "Pasang kontak atau pemesanan", text: "Kami menghubungkan tombol WhatsApp, formulir, atau alur pemesanan sesuai kebutuhan." },
-      { title: "Uji dan serahkan", text: "Kami mengecek tampilan di ponsel lalu menyerahkan halaman yang siap dipakai." },
+      { title: "Tentukan satu fokus", text: "Kami menyepakati satu fitur atau satu sistem utama yang paling berguna untuk bisnis Anda." },
+      { title: "Susun alur kerja", text: "Kami memetakan kebutuhan pengguna, informasi, dan alur kerja yang harus berjalan." },
+      { title: "Bangun fitur", text: "Kami mengerjakan fokus yang disepakati sampai bisa digunakan sesuai kebutuhan bisnis." },
+      { title: "Uji dan serahkan", text: "Kami mengecek alur utama bersama Anda lalu menyerahkan fitur yang siap dipakai." },
     ],
-    deliverables: ["Menu online", "Halaman informasi bisnis", "Tombol kontak atau pemesanan", "Tampilan mobile yang siap dipakai"],
-    metrics: ["Halaman yang selesai", "Informasi menu yang tampil", "Kontak atau pemesanan masuk"],
+    deliverables: ["Satu fitur atau sistem fokus", "Alur kerja utama", "Tampilan yang siap digunakan", "Serah-terima dan panduan dasar"],
+    metrics: ["Fokus fitur yang selesai", "Alur utama yang berjalan", "Kesiapan penggunaan oleh tim atau pelanggan"],
   },
   {
     packageSlug: "sistem-pesan-dan-bayar",
@@ -272,9 +272,9 @@ function ServicePage({ offer }: { offer: Offer }) {
         </section>
         <section className="section-pad pricing-section">
           <div className="container">
-            <div className="section-heading"><div><span className="eyebrow">PILIH PAKETNYA</span><h2>Pilih bantuan yang paling Anda butuhkan.</h2></div><p>Harga di bawah adalah harga mulai. Harga final menyesuaikan ukuran bisnis, jumlah outlet, dan kebutuhan Anda.</p></div>
-            <div className="pricing-grid">{offer.packages.map((pkg, index) => <article className={`pricing-card${index === 1 ? " pricing-card-featured" : ""}`} key={pkg.name}><div className="pricing-card-top"><span>0{index + 1}</span><span>{pkg.note}</span></div><h3>{pkg.name}</h3><strong>{pkg.price}</strong><ul>{pkg.items.map((item) => <li key={item}><Check size={15} />{item}</li>)}</ul><a className="pricing-link" href={`/layanan/${offer.slug}/${pkg.slug}`}>Bahas paket ini <ArrowUpRight size={15} /></a></article>)}</div>
-            <p className="pricing-note">* Harga belum termasuk iklan, biaya KOL, domain, hosting, biaya pembayaran online, atau sambungan ke layanan lain. Harga final ditentukan setelah kebutuhan disepakati.</p>
+            <div className="section-heading"><div><span className="eyebrow">{offer.slug === "it" ? "PILIH FOKUS SISTEMNYA" : "PILIH PAKETNYA"}</span><h2>{offer.slug === "it" ? "Mulai dari satu kebutuhan yang paling penting." : "Pilih bantuan yang paling Anda butuhkan."}</h2></div><p>{offer.slug === "it" ? "Bagian 01 tersedia sebagai satu fitur atau satu fokus sistem dengan harga Rp5 juta untuk satu kali pekerjaan." : "Harga di bawah adalah harga mulai. Harga final menyesuaikan ukuran bisnis, jumlah outlet, dan kebutuhan Anda."}</p></div>
+            <div className="pricing-grid">{offer.packages.map((pkg, index) => <article className={`pricing-card${index === 1 ? " pricing-card-featured" : ""}`} key={pkg.name}><div className="pricing-card-top"><span>0{index + 1}</span><span>{pkg.note}</span></div><h3>{pkg.name}</h3><strong>{pkg.price}</strong><ul>{pkg.items.map((item) => <li key={item}><Check size={15} />{item}</li>)}</ul><a className="pricing-link" href={`/layanan/${offer.slug}/${pkg.slug}`}>{offer.slug === "it" ? "Bahas fitur ini" : "Bahas paket ini"} <ArrowUpRight size={15} /></a></article>)}</div>
+            <p className="pricing-note">* Untuk bagian 01, Rp5 juta berlaku untuk satu fitur atau satu fokus sistem dalam satu kali pekerjaan. Biaya domain, hosting, layanan pihak ketiga, dan pekerjaan tambahan di luar scope disepakati terpisah.</p>
           </div>
         </section>
         <section className="service-process section-pad"><div className="container process-grid"><div><span className="eyebrow">CARA KERJA</span><h2>Kita mulai dari masalah yang paling penting.</h2></div><div className="process-steps"><div><b>01</b><span><strong>Ceritakan</strong><small>Anda menjelaskan kondisi bisnis dan masalah yang sedang dihadapi.</small></span></div><div><b>02</b><span><strong>Susun solusi</strong><small>Kami memilih pekerjaan yang paling penting dan sesuai anggaran.</small></span></div><div><b>03</b><span><strong>Kerjakan bersama</strong><small>Kami membantu menjalankan solusi sampai bisa dipakai tim.</small></span></div></div></div></section>
@@ -292,7 +292,7 @@ function PackagePage({ offer, pkg, detail }: { offer: Offer; pkg: Package; detai
       <main>
         <section className={`package-hero ${offer.tone}`}>
           <div className="container package-hero-grid">
-            <div><a className="back-link" href={`/layanan/${offer.slug}`}><ChevronRight size={16} className="back-link-icon" /> Kembali ke layanan</a><span className="package-label">PAKET {pkg.price.toUpperCase()} · {pkg.note.toUpperCase()}</span><h1>{pkg.name}</h1><p className="package-promise">{detail.promise}</p><a className="button button-primary" href="/#kontak">Bahas paket ini <ArrowUpRight size={17} /></a></div>
+            <div><a className="back-link" href={`/layanan/${offer.slug}`}><ChevronRight size={16} className="back-link-icon" /> Kembali ke layanan</a><span className="package-label">{offer.slug === "it" ? "FITUR" : "PAKET"} {pkg.price.toUpperCase()} · {pkg.note.toUpperCase()}</span><h1>{pkg.name}</h1><p className="package-promise">{detail.promise}</p><a className="button button-primary" href="/#kontak">{offer.slug === "it" ? "Bahas fitur ini" : "Bahas paket ini"} <ArrowUpRight size={17} /></a></div>
             <div className="package-price-card"><span>INVESTASI</span><strong>{pkg.price}</strong><small>{pkg.note}. Harga final mengikuti ukuran bisnis dan kebutuhan implementasi.</small><div><Check size={16} /> Durasi awal: {detail.duration}</div></div>
           </div>
         </section>
