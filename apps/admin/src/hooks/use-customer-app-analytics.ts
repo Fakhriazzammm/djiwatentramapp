@@ -2,7 +2,19 @@ import { useCallback, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "./use-supabase-live-value";
 
-export type CustomerAnalyticsPeriod = "today" | "7d" | "30d" | "month";
+export type CustomerAnalyticsPeriod =
+	| "today"
+	| "yesterday"
+	| "this_week"
+	| "last_week"
+	| "this_month"
+	| "last_month"
+	| "this_3_months"
+	| "last_3_months"
+	| "this_6_months"
+	| "last_6_months"
+	| "this_year"
+	| "last_year";
 
 type CustomerRow = Record<string, any>;
 type OrderRow = Record<string, any>;
@@ -31,21 +43,68 @@ export type CustomerAnalytics = {
 };
 
 function periodBounds(period: CustomerAnalyticsPeriod) {
-	const end = new Date();
-	const start = new Date(end);
-	if (period === "today") {
-		start.setHours(0, 0, 0, 0);
-	} else if (period === "7d") {
-		start.setDate(start.getDate() - 6);
-		start.setHours(0, 0, 0, 0);
-	} else if (period === "30d") {
-		start.setDate(start.getDate() - 29);
-		start.setHours(0, 0, 0, 0);
-	} else {
-		start.setDate(1);
-		start.setHours(0, 0, 0, 0);
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const day = 24 * 60 * 60 * 1000;
+	const startOfWeek = new Date(today);
+	const mondayOffset = (today.getDay() + 6) % 7;
+	startOfWeek.setDate(today.getDate() - mondayOffset);
+	const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+	const startOfYear = new Date(today.getFullYear(), 0, 1);
+	let start: Date;
+	let endExclusive: Date;
+
+	switch (period) {
+		case "today":
+			start = today;
+			endExclusive = new Date(today.getTime() + day);
+			break;
+		case "yesterday":
+			start = new Date(today.getTime() - day);
+			endExclusive = today;
+			break;
+		case "this_week":
+			start = startOfWeek;
+			endExclusive = new Date(startOfWeek.getTime() + 7 * day);
+			break;
+		case "last_week":
+			start = new Date(startOfWeek.getTime() - 7 * day);
+			endExclusive = startOfWeek;
+			break;
+		case "this_month":
+			start = startOfMonth;
+			endExclusive = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+			break;
+		case "last_month":
+			start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+			endExclusive = startOfMonth;
+			break;
+		case "this_3_months":
+			start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+			endExclusive = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+			break;
+		case "last_3_months":
+			start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+			endExclusive = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+			break;
+		case "this_6_months":
+			start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+			endExclusive = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+			break;
+		case "last_6_months":
+			start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+			endExclusive = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+			break;
+		case "this_year":
+			start = startOfYear;
+			endExclusive = new Date(today.getFullYear() + 1, 0, 1);
+			break;
+		case "last_year":
+			start = new Date(today.getFullYear() - 1, 0, 1);
+			endExclusive = startOfYear;
+			break;
 	}
-	return { start, end };
+	return { start, endExclusive };
 }
 
 function isSettled(order: OrderRow) {
@@ -75,7 +134,11 @@ function toDate(value: unknown) {
 
 function dateKey(value: unknown) {
 	const date = toDate(value);
-	return date ? date.toISOString().slice(0, 10) : "";
+	if (!date) return "";
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 }
 
 function displayDateKey(value: string) {
@@ -84,13 +147,13 @@ function displayDateKey(value: string) {
 }
 
 function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[], orders: OrderRow[]): CustomerAnalytics {
-	const { start, end } = periodBounds(period);
+	const { start, endExclusive } = periodBounds(period);
 	const startTime = start.getTime();
-	const endTime = end.getTime();
+	const endTime = endExclusive.getTime();
 	const inPeriod = (value: unknown) => {
 		const date = toDate(value);
 		const time = date?.getTime() ?? 0;
-		return time >= startTime && time <= endTime;
+		return time >= startTime && time < endTime;
 	};
 	const appOrders = new Map<string, OrderRow>();
 	for (const order of orders) {
@@ -118,8 +181,8 @@ function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[
 		}
 	}
 	const trend: CustomerAnalytics["trend"] = [];
-	for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
-		const key = cursor.toISOString().slice(0, 10);
+	for (const cursor = new Date(start); cursor < endExclusive; cursor.setDate(cursor.getDate() + 1)) {
+		const key = dateKey(cursor);
 		const current = trendMap.get(key) ?? { orders: 0, spending: 0 };
 		trend.push({ label: displayDateKey(key), ...current });
 	}
@@ -148,7 +211,18 @@ function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[
 		.slice(0, 8);
 	return {
 		period,
-		periodLabel: period === "today" ? "Hari ini" : period === "7d" ? "7 hari terakhir" : period === "30d" ? "30 hari terakhir" : "Bulan ini",
+		periodLabel:
+			period === "today" ? "Hari ini" :
+			period === "yesterday" ? "Kemarin" :
+			period === "this_week" ? "Minggu ini" :
+			period === "last_week" ? "Minggu kemarin" :
+			period === "this_month" ? "Bulan ini" :
+			period === "last_month" ? "Bulan kemarin" :
+			period === "this_3_months" ? "3 bulan ini" :
+			period === "last_3_months" ? "3 bulan lalu" :
+			period === "this_6_months" ? "6 bulan ini" :
+			period === "last_6_months" ? "6 bulan lalu" :
+			period === "this_year" ? "Tahun ini" : "Tahun lalu",
 		activeCustomers: customers.length,
 		newCustomers,
 		activeInPeriod,
@@ -167,13 +241,15 @@ export function useCustomerAppAnalytics(period: CustomerAnalyticsPeriod) {
 	const bounds = useMemo(() => periodBounds(period), [period]);
 	const load = useCallback(async () => {
 		const supabase = createClient();
-		const [{ data: customers, error: customersError }, ordersPageOne, ordersPageTwo] = await Promise.all([
+		const orderRequests = Array.from({ length: 10 }, (_, page) =>
+			supabase.from("pos_orders").select("*").order("createdAt", { ascending: false }).range(page * 1000, page * 1000 + 999),
+		);
+		const [{ data: customers, error: customersError }, ...orderPages] = await Promise.all([
 			supabase.from("pos_customers_view").select("*").order("total_spent", { ascending: false }),
-			supabase.from("pos_orders").select("*").order("createdAt", { ascending: false }).range(0, 999),
-			supabase.from("pos_orders").select("*").order("createdAt", { ascending: false }).range(1000, 1999),
+			...orderRequests,
 		]);
-		const ordersError = ordersPageOne.error ?? ordersPageTwo.error;
-		const orders = [...(ordersPageOne.data ?? []), ...(ordersPageTwo.data ?? [])];
+		const ordersError = orderPages.find((page) => page.error)?.error;
+		const orders = orderPages.flatMap((page) => page.data ?? []);
 		if (customersError) throw customersError;
 		if (ordersError) throw ordersError;
 		return buildAnalytics(period, (customers ?? []) as CustomerRow[], (orders ?? []) as OrderRow[]);

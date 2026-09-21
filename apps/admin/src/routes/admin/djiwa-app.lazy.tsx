@@ -20,9 +20,17 @@ function formatDate(value: string | null) {
 
 const periods: Array<{ value: CustomerAnalyticsPeriod; label: string }> = [
 	{ value: "today", label: "Hari ini" },
-	{ value: "7d", label: "7 hari" },
-	{ value: "30d", label: "30 hari" },
-	{ value: "month", label: "Bulan ini" },
+	{ value: "yesterday", label: "Kemarin" },
+	{ value: "this_week", label: "Minggu ini" },
+	{ value: "last_week", label: "Minggu kemarin" },
+	{ value: "this_month", label: "Bulan ini" },
+	{ value: "last_month", label: "Bulan kemarin" },
+	{ value: "this_3_months", label: "3 bulan ini" },
+	{ value: "last_3_months", label: "3 bulan lalu" },
+	{ value: "this_6_months", label: "6 bulan ini" },
+	{ value: "last_6_months", label: "6 bulan lalu" },
+	{ value: "this_year", label: "Tahun ini" },
+	{ value: "last_year", label: "Tahun lalu" },
 ];
 
 function MetricCard({ label, value, hint, icon: Icon, tone = "azure" }: { label: string; value: string | number; hint: string; icon: typeof Users; tone?: "azure" | "violet" | "cyan" }) {
@@ -39,7 +47,7 @@ function DashboardSkeleton() {
 }
 
 function DjiwaAppDashboard() {
-	const [period, setPeriod] = useState<CustomerAnalyticsPeriod>("7d");
+	const [period, setPeriod] = useState<CustomerAnalyticsPeriod>("this_week");
 	const { data, isLoading, isError, refresh } = useCustomerAppAnalytics(period);
 	if (isLoading) return <DashboardSkeleton />;
 	if (isError || !data) return <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900"><p className="font-black">Dashboard belum dapat memuat data.</p><p className="mt-1 text-sm">Coba muat ulang untuk mengambil data Customer App terbaru.</p><button type="button" onClick={refresh} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-rose-600 px-4 text-xs font-black text-white"><RefreshCw className="h-4 w-4" /> Coba lagi</button></div>;
