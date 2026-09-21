@@ -540,7 +540,7 @@ function OrderRow({
 								Selesaikan
 							</button>
 						)}
-						{order.bookingStatus !== "cancelled" && (
+						{["pending", "confirmed", "arrived"].includes(order.bookingStatus) && (
 							<button
 								className="rounded-lg bg-red-500 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:brightness-110 active:scale-95"
 								onClick={() => onUpdateStatus(order._id, "cancelled")}
@@ -736,6 +736,10 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 		bookingStatus?: string,
 		paymentStatus?: string
 	) => {
+		if (bookingStatus === "cancelled" && !["pending", "confirmed", "arrived"].includes(String(allOrders?.find((order: any) => order._id === id)?.bookingStatus))) {
+			toast.error("Booking hanya dapat dibatalkan saat pending, confirmed, atau arrived");
+			return;
+		}
 		try {
 			await updateBookingStatus({
 				id,
@@ -822,6 +826,26 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 			if (usage && Number(capTables) > 0 && Number(usage.bookedTables ?? 0) > Number(capTables)) {
 				toast.error(`Kapasitas meja tidak boleh lebih kecil dari ${usage.bookedTables} meja yang sudah booking`);
 				return;
+			}
+		}
+		if (isBulk) {
+			const start = new Date(`${capDate}T00:00:00Z`);
+			const end = new Date(`${capEndDate}T00:00:00Z`);
+			if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+				toast.error("Rentang tanggal tidak valid");
+				return;
+			}
+			for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+				const date = cursor.toISOString().slice(0, 10);
+				const usage = summary?.[date];
+				if (usage && Number(capPeople) > 0 && Number(usage.bookedPeople ?? 0) > Number(capPeople)) {
+					toast.error(`Kapasitas tamu ${formatDate(date)} tidak boleh lebih kecil dari ${usage.bookedPeople} tamu yang sudah booking`);
+					return;
+				}
+				if (usage && Number(capTables) > 0 && Number(usage.bookedTables ?? 0) > Number(capTables)) {
+					toast.error(`Kapasitas meja ${formatDate(date)} tidak boleh lebih kecil dari ${usage.bookedTables} meja yang sudah booking`);
+					return;
+				}
 			}
 		}
 		setIsSavingCap(true);
@@ -1644,6 +1668,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 								</Label>
 								<Input
 									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									disabled={editingOrder?.paymentStatus === "paid" || editingOrder?.paymentStatus === "verified"}
 									id="edit-amount"
 									min="0"
 									onChange={(e) => setEditFormData({ ...editFormData, totalAmount: e.target.value })}
