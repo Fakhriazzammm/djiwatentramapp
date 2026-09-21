@@ -746,12 +746,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					<DesktopNavLink
 						icon={<Users />}
 						isCollapsed={isCollapsed}
-						label="Pelanggan"
-						to="/admin/customers"
-					/>
-					<DesktopNavLink
-						icon={<Users />}
-						isCollapsed={isCollapsed}
 						label="KOL"
 						to="/admin/kol"
 					/>
