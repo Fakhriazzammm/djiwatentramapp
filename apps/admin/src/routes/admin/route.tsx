@@ -727,8 +727,8 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						</>
 					)}
 
-					{/* BOOKING */}
-					{isCollapsed && <SidebarSection isCollapsed={isCollapsed} label="BOOKING" />}
+					{/* BOOKING APP */}
+					<SidebarSection isCollapsed={isCollapsed} label="BOOKING APP" />
 					{isCollapsed ? (
 						<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Dashboard Booking" to="/admin/booking" permission="orders:view" />
 					) : (
