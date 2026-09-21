@@ -241,11 +241,22 @@ export function useCustomerAppAnalytics(period: CustomerAnalyticsPeriod) {
 	const bounds = useMemo(() => periodBounds(period), [period]);
 	const load = useCallback(async () => {
 		const supabase = createClient();
-		const orderRequests = Array.from({ length: 10 }, (_, page) =>
-			supabase.from("pos_orders").select("*").order("createdAt", { ascending: false }).range(page * 1000, page * 1000 + 999),
+		const { start, endExclusive } = periodBounds(period);
+		const startMs = start.getTime();
+		const endMs = endExclusive.getTime();
+		const customerColumns = "source_id,name,email,phone,last_active_at,created_at,djiwaapp_visit_count,wallet_balance";
+		const orderColumns = "_id,orderNumber,status,source,orderChannel,createdAt,totalAmount,customerSourceId,items";
+		const orderRequests = Array.from({ length: 3 }, (_, page) =>
+			supabase
+				.from("pos_orders")
+				.select(orderColumns)
+				.gte("createdAt", startMs)
+				.lt("createdAt", endMs)
+				.order("createdAt", { ascending: false })
+				.range(page * 1000, page * 1000 + 999),
 		);
 		const [{ data: customers, error: customersError }, ...orderPages] = await Promise.all([
-			supabase.from("pos_customers_view").select("*").order("total_spent", { ascending: false }),
+			supabase.from("pos_customers_view").select(customerColumns).order("total_spent", { ascending: false }),
 			...orderRequests,
 		]);
 		const ordersError = orderPages.find((page) => page.error)?.error;
