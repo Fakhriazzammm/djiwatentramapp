@@ -241,6 +241,10 @@ const DJIWA_APP_PATHS = [
 	"/admin/customers",
 ];
 
+const BOOKING_PATHS = [
+	"/admin/booking",
+];
+
 const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
@@ -358,6 +362,19 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 		if (isOnDjiwaAppPath) setIsDjiwaAppOpen(true);
 	}, [isOnDjiwaAppPath]);
 
+	const isOnBookingPath = BOOKING_PATHS.some((p) => location.pathname.startsWith(p));
+	const [isBookingOpen, setIsBookingOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-booking-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnBookingPath;
+	});
+
+	useEffect(() => {
+		if (isOnBookingPath) setIsBookingOpen(true);
+	}, [isOnBookingPath]);
+
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
 	}, [isCollapsed]);
@@ -373,6 +390,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	useEffect(() => {
 		localStorage.setItem("admin-djiwa-app-open", String(isDjiwaAppOpen));
 	}, [isDjiwaAppOpen]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-booking-open", String(isBookingOpen));
+	}, [isBookingOpen]);
 
 	useEffect(() => {
 		if (isFromHomeEntry) {
@@ -707,12 +728,23 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					{isCollapsed ? (
 						<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Dashboard Booking" to="/admin/booking" permission="orders:view" />
 					) : (
-						<div className="space-y-0.5">
-							<DesktopSubNavLink icon={<LayoutDashboard />} label="Dashboard" to="/admin/booking" permission="orders:view" />
-							<DesktopSubNavLink icon={<List />} label="Data Booking" to="/admin/booking?tab=orders" permission="orders:view" />
-							<DesktopSubNavLink icon={<CalendarDays />} label="Kalender" to="/admin/booking?tab=calendar" permission="orders:view" />
-							<DesktopSubNavLink icon={<Gauge />} label="Kapasitas" to="/admin/booking?tab=capacity" permission="orders:view" />
-						</div>
+						<>
+							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnBookingPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsBookingOpen(!isBookingOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><CalendarDays /></span>
+								<span className="flex-1 truncate text-left">Booking</span>
+								<motion.span animate={{ rotate: isBookingOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>
+								{isBookingOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
+									<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+										<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/booking" permission="orders:view" />
+										<DesktopSubNavLink icon={<List />} label="Data Booking" to="/admin/booking?tab=orders" permission="orders:view" />
+										<DesktopSubNavLink icon={<CalendarDays />} label="Kalender" to="/admin/booking?tab=calendar" permission="orders:view" />
+										<DesktopSubNavLink icon={<Gauge />} label="Kapasitas" to="/admin/booking?tab=capacity" permission="orders:view" />
+									</div>
+								</motion.div>}
+							</AnimatePresence>
+						</>
 					)}
 
 					{/* DJIWA APP */}

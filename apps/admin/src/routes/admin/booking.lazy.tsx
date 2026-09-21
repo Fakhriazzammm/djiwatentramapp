@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute, useSearch } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {
 	Calendar,
@@ -571,6 +571,8 @@ function OrderRow({
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 function BookingSettingsPage() {
+	const routeSearch = useSearch({ from: "/admin/booking" }) as { tab?: string };
+	const requestedTab = routeSearch.tab;
 	const settings = useHybridBookingSettings("booking");
 	const updateSettings = useHybridUpdateBookingSettings();
 	const allProducts = useHybridAllProducts();
@@ -636,9 +638,12 @@ function BookingSettingsPage() {
 	const [isSaving, setIsSaving] = useState(false);
 
 	useEffect(() => {
-		const tab = new URLSearchParams(window.location.search).get("tab");
-		if (tab === "orders" || tab === "calendar" || tab === "capacity") setActiveTab(tab);
-	}, []);
+		if (requestedTab === "orders" || requestedTab === "calendar" || requestedTab === "capacity") {
+			setActiveTab(requestedTab);
+		} else if (!requestedTab) {
+			setActiveTab("calendar");
+		}
+	}, [requestedTab]);
 
 	const handleTabChange = (tab: "calendar" | "orders" | "capacity") => {
 		setActiveTab(tab);
