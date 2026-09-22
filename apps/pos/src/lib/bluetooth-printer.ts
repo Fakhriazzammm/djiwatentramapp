@@ -177,6 +177,7 @@ export class BluetoothPrinterService {
 	private device: BluetoothDevice | null = null;
 	private server: BluetoothRemoteGATTServer | null = null;
 	private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
+	private writeCharacteristics: BluetoothRemoteGATTCharacteristic[] = [];
 	private autoConnectPromise: Promise<string | null> | null = null;
 	private lastAutoConnectAttemptAt = 0;
 	private lastPrintedPayload:
@@ -349,6 +350,7 @@ export class BluetoothPrinterService {
 			this.device = null;
 			this.server = null;
 			this.characteristic = null;
+			this.writeCharacteristics = [];
 			return null;
 		}
 	}
@@ -408,6 +410,15 @@ export class BluetoothPrinterService {
 			null;
 
 		if (writeCharacteristic) {
+			this.writeCharacteristics = [
+				writeCharacteristic,
+				...writeCandidates.filter((candidate) => candidate !== writeCharacteristic),
+			];
+		} else {
+			this.writeCharacteristics = [];
+		}
+
+		if (writeCharacteristic) {
 			console.log(
 				'✅ [BluetoothPrinter] Selected write char:',
 				writeCharacteristic.uuid,
@@ -428,6 +439,7 @@ export class BluetoothPrinterService {
 			console.warn("Bluetooth printer disconnected.");
 			this.server = null;
 			this.characteristic = null;
+			this.writeCharacteristics = [];
 			setTimeout(() => {
 				void this.autoReconnectIfNeeded(0);
 			}, 600);
@@ -443,6 +455,7 @@ export class BluetoothPrinterService {
 		this.device = null;
 		this.server = null;
 		this.characteristic = null;
+		this.writeCharacteristics = [];
 	}
 
 	isConnected(): boolean {
@@ -498,29 +511,48 @@ export class BluetoothPrinterService {
 	}
 
 	private async writeBuffer(buffer: Uint8Array) {
-		console.log(`📤 [BluetoothPrinter] writeBuffer: mengirim ${buffer.length} bytes dalam chunk 20-byte...`);
-		if (!this.characteristic) {
-			throw new Error("Printer tidak terhubung.");
-		}
-
+		console.log(`📤 [BluetoothPrinter] writeBuffer: mengirim ${buffer.length} bytes...`);
 		const chunkSize = 20;
 		let bytesSent = 0;
 
 		for (let i = 0; i < buffer.length; i += chunkSize) {
 			const chunk = buffer.slice(i, i + chunkSize);
 			let attempts = 0;
+			let candidateIndex = 0;
+			let lastError: unknown;
 			let sent = false;
 
-			while (!sent && attempts < 3) {
+			while (!sent && attempts < 4) {
+				if (!this.isConnected()) {
+					await this.autoReconnectIfNeeded(0);
+				}
+
+				const candidates = [
+					this.characteristic,
+					...this.writeCharacteristics,
+				].filter(
+					(candidate, index, all): candidate is BluetoothRemoteGATTCharacteristic =>
+						candidate !== null && all.indexOf(candidate) === index
+				);
+				const characteristic = candidates[candidateIndex];
+				if (!characteristic || !this.isConnected()) {
+					throw new Error(
+						"Printer terputus saat mengirim data. Pastikan printer menyala dan tidak terhubung ke perangkat lain."
+					);
+				}
+
 				try {
-					const mode = getCharacteristicWriteMode(this.characteristic);
+					const mode = getCharacteristicWriteMode(characteristic);
+					console.debug(
+						`[BluetoothPrinter] write chunk offset=${i} size=${chunk.length} uuid=${characteristic.uuid} mode=${mode}`
+					);
 					if (mode === "writeWithoutResponse") {
-						await this.characteristic.writeValueWithoutResponse(chunk);
+						await characteristic.writeValueWithoutResponse(chunk);
 					} else if (mode === "write") {
-						if (typeof this.characteristic.writeValueWithResponse === "function") {
-							await this.characteristic.writeValueWithResponse(chunk);
+						if (typeof characteristic.writeValueWithResponse === "function") {
+							await characteristic.writeValueWithResponse(chunk);
 						} else {
-							await this.characteristic.writeValue(chunk);
+							await characteristic.writeValue(chunk);
 						}
 					} else {
 						throw new Error("Characteristic printer tidak mendukung mode tulis.");
@@ -528,16 +560,33 @@ export class BluetoothPrinterService {
 					sent = true;
 					bytesSent += chunk.length;
 				} catch (error) {
+					lastError = error;
 					attempts++;
-					if (attempts >= 3) {
-						console.error(`❌ [BluetoothPrinter] Gagal kirim chunk di offset ${i} setelah 3x retry:`, error);
-						throw error;
+					console.warn(
+						`⚠️ [BluetoothPrinter] Gagal chunk offset ${i}, attempt ${attempts}:`,
+						error
+					);
+					const errorText = error instanceof Error ? error.message : String(error);
+					if (/gatt|disconnect|networkerror/i.test(errorText)) {
+						this.server = null;
+						this.characteristic = null;
+						this.writeCharacteristics = [];
 					}
-					console.warn(`⚠️ [BluetoothPrinter] Retry chunk offset ${i}, attempt ${attempts}`);
-					await new Promise((resolve) => setTimeout(resolve, 150));
+					candidateIndex = (candidateIndex + 1) % Math.max(candidates.length, 1);
+					if (attempts < 4) {
+						await new Promise((resolve) => setTimeout(resolve, 150));
+						if (!this.isConnected()) {
+							await this.autoReconnectIfNeeded(0);
+							candidateIndex = 0;
+						}
+					}
 				}
 			}
 
+			if (!sent) {
+				const detail = lastError instanceof Error ? ` ${lastError.message}` : "";
+				throw new Error(`Gagal mengirim data ke printer setelah beberapa percobaan.${detail}`);
+			}
 			await new Promise((resolve) => setTimeout(resolve, 10));
 		}
 		console.log(`✅ [BluetoothPrinter] writeBuffer selesai: ${bytesSent}/${buffer.length} bytes terkirim`);
