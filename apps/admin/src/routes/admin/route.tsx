@@ -34,8 +34,10 @@ import {
 	Percent,
 	ShieldAlert,
 	Settings,
+	ShoppingBag,
 	Smartphone,
 	Sparkles,
+	Truck,
 	User,
 	UserPlus,
 	Users,
@@ -82,6 +84,9 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
 	"/admin/order-mie-yamin": "Order Mie Yamin",
+	"/admin/order-mie-yamin/orders": "Pesanan Mie Yamin",
+	"/admin/order-mie-yamin/delivery": "Pengiriman Mie Yamin",
+	"/admin/order-mie-yamin/settings": "Konfigurasi Mie Yamin",
 	"/admin/discounts": "Promosi",
 	"/admin/ai-chat": "Djiwa Tentram AI",
 	"/admin/settings": "Pengaturan",
@@ -126,6 +131,9 @@ const BOTTOM_NAV_ITEMS = [
 // Pages that belong to "Lainnya" menu
 const MORE_MENU_PATHS = [
 	"/admin/order-mie-yamin",
+	"/admin/order-mie-yamin/orders",
+	"/admin/order-mie-yamin/delivery",
+	"/admin/order-mie-yamin/settings",
 	"/admin/products",
 	"/admin/recipe",
 	"/admin/recipe/hpp",
@@ -249,6 +257,10 @@ const BOOKING_PATHS = [
 	"/admin/booking",
 ];
 
+const ORDER_MIE_YAMIN_PATHS = [
+	"/admin/order-mie-yamin",
+];
+
 const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
@@ -367,6 +379,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	}, [isOnDjiwaAppPath]);
 
 	const isOnBookingPath = BOOKING_PATHS.some((p) => location.pathname.startsWith(p));
+	const isOnOrderMieYaminPath = ORDER_MIE_YAMIN_PATHS.some((p) => location.pathname.startsWith(p));
 	const [isBookingOpen, setIsBookingOpen] = useState(() => {
 		if (typeof window !== "undefined") {
 			const saved = localStorage.getItem("admin-booking-open");
@@ -378,6 +391,18 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	useEffect(() => {
 		if (isOnBookingPath) setIsBookingOpen(true);
 	}, [isOnBookingPath]);
+
+	const [isOrderMieYaminOpen, setIsOrderMieYaminOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-order-mie-yamin-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnOrderMieYaminPath;
+	});
+
+	useEffect(() => {
+		if (isOnOrderMieYaminPath) setIsOrderMieYaminOpen(true);
+	}, [isOnOrderMieYaminPath]);
 
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
@@ -398,6 +423,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	useEffect(() => {
 		localStorage.setItem("admin-booking-open", String(isBookingOpen));
 	}, [isBookingOpen]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-order-mie-yamin-open", String(isOrderMieYaminOpen));
+	}, [isOrderMieYaminOpen]);
 
 	useEffect(() => {
 		if (isFromHomeEntry) {
@@ -491,13 +520,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						isCollapsed={isCollapsed}
 						label="Pesanan"
 						to="/admin/orders"
-						permission="orders:view"
-					/>
-					<DesktopNavLink
-						icon={<ClipboardList />}
-						isCollapsed={isCollapsed}
-						label="Order Mie Yamin"
-						to="/admin/order-mie-yamin"
 						permission="orders:view"
 					/>
 					<DesktopNavLink
@@ -746,6 +768,30 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 										<DesktopSubNavLink icon={<CalendarDays />} label="Kalender" to="/admin/booking/calendar" permission="orders:view" />
 										<DesktopSubNavLink icon={<Gauge />} label="Kapasitas" to="/admin/booking/capacity" permission="orders:view" />
 										<DesktopSubNavLink icon={<Settings />} label="Konfigurasi" to="/admin/booking/settings" permission="orders:view" />
+									</div>
+								</motion.div>}
+							</AnimatePresence>
+						</>
+					)}
+
+					{/* ORDER MIE YAMIN APP */}
+					<SidebarSection isCollapsed={isCollapsed} label="ORDER MIE YAMIN APP" />
+					{isCollapsed ? (
+						<DesktopNavLink icon={<ShoppingBag />} isCollapsed={isCollapsed} label="Dashboard Mie Yamin" to="/admin/order-mie-yamin" permission="orders:view" />
+					) : (
+						<>
+							<button className={`mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnOrderMieYaminPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsOrderMieYaminOpen(!isOrderMieYaminOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><ShoppingBag /></span>
+								<span className="flex-1 truncate text-left">Order Mie Yamin</span>
+								<motion.span animate={{ rotate: isOrderMieYaminOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>
+								{isOrderMieYaminOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
+									<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+										<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/order-mie-yamin" permission="orders:view" />
+										<DesktopSubNavLink icon={<List />} label="Pesanan" to="/admin/order-mie-yamin/orders" permission="orders:view" />
+										<DesktopSubNavLink icon={<Truck />} label="Pengiriman" to="/admin/order-mie-yamin/delivery" permission="orders:view" />
+										<DesktopSubNavLink icon={<Settings />} label="Konfigurasi" to="/admin/order-mie-yamin/settings" permission="orders:view" />
 									</div>
 								</motion.div>}
 							</AnimatePresence>

@@ -51,6 +51,7 @@ import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
 import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
+import { Route as AdminOrderMieYaminIndexRouteImport } from './routes/admin/order-mie-yamin/index'
 import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
 import { Route as AdminBookingIndexRouteImport } from './routes/admin/booking/index'
@@ -58,6 +59,9 @@ import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe/view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminRecipeBaseRouteImport } from './routes/admin/recipe/base'
+import { Route as AdminOrderMieYaminSettingsRouteImport } from './routes/admin/order-mie-yamin/settings'
+import { Route as AdminOrderMieYaminOrdersRouteImport } from './routes/admin/order-mie-yamin/orders'
+import { Route as AdminOrderMieYaminDeliveryRouteImport } from './routes/admin/order-mie-yamin/delivery'
 import { Route as AdminOperationalTeamRekrutmenRouteImport } from './routes/admin/operational-team/rekrutmen'
 import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
 import { Route as AdminOperationalTeamPayrollRouteImport } from './routes/admin/operational-team/payroll'
@@ -337,6 +341,13 @@ const AdminRecipeIndexRoute = AdminRecipeIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRecipeRoute,
 } as any)
+const AdminOrderMieYaminIndexRoute = AdminOrderMieYaminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminOrderMieYaminRoute,
+} as any).lazy(() =>
+  import('./routes/admin/order-mie-yamin/index.lazy').then((d) => d.Route),
+)
 const AdminOperationalTeamIndexRoute =
   AdminOperationalTeamIndexRouteImport.update({
     id: '/',
@@ -388,6 +399,30 @@ const AdminRecipeBaseRoute = AdminRecipeBaseRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/recipe/base.lazy').then((d) => d.Route),
 )
+const AdminOrderMieYaminSettingsRoute =
+  AdminOrderMieYaminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AdminOrderMieYaminRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/order-mie-yamin/settings.lazy').then((d) => d.Route),
+  )
+const AdminOrderMieYaminOrdersRoute =
+  AdminOrderMieYaminOrdersRouteImport.update({
+    id: '/orders',
+    path: '/orders',
+    getParentRoute: () => AdminOrderMieYaminRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/order-mie-yamin/orders.lazy').then((d) => d.Route),
+  )
+const AdminOrderMieYaminDeliveryRoute =
+  AdminOrderMieYaminDeliveryRouteImport.update({
+    id: '/delivery',
+    path: '/delivery',
+    getParentRoute: () => AdminOrderMieYaminRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/order-mie-yamin/delivery.lazy').then((d) => d.Route),
+  )
 const AdminOperationalTeamRekrutmenRoute =
   AdminOperationalTeamRekrutmenRouteImport.update({
     id: '/rekrutmen',
@@ -664,7 +699,7 @@ export interface FileRoutesByFullPath {
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
-  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
+  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
@@ -692,6 +727,9 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRouteWithChildren
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/operational-team/rekrutmen': typeof AdminOperationalTeamRekrutmenRoute
+  '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
+  '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
+  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -699,6 +737,7 @@ export interface FileRoutesByFullPath {
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
+  '/admin/order-mie-yamin/': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRouteRouteWithChildren
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
@@ -738,7 +777,6 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
-  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
@@ -763,6 +801,9 @@ export interface FileRoutesByTo {
   '/admin/operational-team/karyawan': typeof AdminOperationalTeamKaryawanRouteWithChildren
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/operational-team/rekrutmen': typeof AdminOperationalTeamRekrutmenRoute
+  '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
+  '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
+  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -770,6 +811,7 @@ export interface FileRoutesByTo {
   '/admin/booking': typeof AdminBookingIndexRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
+  '/admin/order-mie-yamin': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
@@ -814,7 +856,7 @@ export interface FileRoutesById {
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
-  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRoute
+  '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
@@ -842,6 +884,9 @@ export interface FileRoutesById {
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRouteWithChildren
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/operational-team/rekrutmen': typeof AdminOperationalTeamRekrutmenRoute
+  '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
+  '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
+  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -849,6 +894,7 @@ export interface FileRoutesById {
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
+  '/admin/order-mie-yamin/': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRouteRouteWithChildren
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
@@ -923,6 +969,9 @@ export interface FileRouteTypes {
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/operational-team/rekrutmen'
+    | '/admin/order-mie-yamin/delivery'
+    | '/admin/order-mie-yamin/orders'
+    | '/admin/order-mie-yamin/settings'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -930,6 +979,7 @@ export interface FileRouteTypes {
     | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/operational-team/'
+    | '/admin/order-mie-yamin/'
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
     | '/admin/booking/settings/form'
@@ -969,7 +1019,6 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
-    | '/admin/order-mie-yamin'
     | '/admin/orders'
     | '/admin/pos-notifications'
     | '/admin/products'
@@ -994,6 +1043,9 @@ export interface FileRouteTypes {
     | '/admin/operational-team/karyawan'
     | '/admin/operational-team/register'
     | '/admin/operational-team/rekrutmen'
+    | '/admin/order-mie-yamin/delivery'
+    | '/admin/order-mie-yamin/orders'
+    | '/admin/order-mie-yamin/settings'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -1001,6 +1053,7 @@ export interface FileRouteTypes {
     | '/admin/booking'
     | '/admin/finance'
     | '/admin/operational-team'
+    | '/admin/order-mie-yamin'
     | '/admin/recipe'
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
@@ -1072,6 +1125,9 @@ export interface FileRouteTypes {
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/operational-team/rekrutmen'
+    | '/admin/order-mie-yamin/delivery'
+    | '/admin/order-mie-yamin/orders'
+    | '/admin/order-mie-yamin/settings'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -1079,6 +1135,7 @@ export interface FileRouteTypes {
     | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/operational-team/'
+    | '/admin/order-mie-yamin/'
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
     | '/admin/booking/settings/form'
@@ -1401,6 +1458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRecipeIndexRouteImport
       parentRoute: typeof AdminRecipeRoute
     }
+    '/admin/order-mie-yamin/': {
+      id: '/admin/order-mie-yamin/'
+      path: '/'
+      fullPath: '/admin/order-mie-yamin/'
+      preLoaderRoute: typeof AdminOrderMieYaminIndexRouteImport
+      parentRoute: typeof AdminOrderMieYaminRoute
+    }
     '/admin/operational-team/': {
       id: '/admin/operational-team/'
       path: '/'
@@ -1449,6 +1513,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/recipe/base'
       preLoaderRoute: typeof AdminRecipeBaseRouteImport
       parentRoute: typeof AdminRecipeRoute
+    }
+    '/admin/order-mie-yamin/settings': {
+      id: '/admin/order-mie-yamin/settings'
+      path: '/settings'
+      fullPath: '/admin/order-mie-yamin/settings'
+      preLoaderRoute: typeof AdminOrderMieYaminSettingsRouteImport
+      parentRoute: typeof AdminOrderMieYaminRoute
+    }
+    '/admin/order-mie-yamin/orders': {
+      id: '/admin/order-mie-yamin/orders'
+      path: '/orders'
+      fullPath: '/admin/order-mie-yamin/orders'
+      preLoaderRoute: typeof AdminOrderMieYaminOrdersRouteImport
+      parentRoute: typeof AdminOrderMieYaminRoute
+    }
+    '/admin/order-mie-yamin/delivery': {
+      id: '/admin/order-mie-yamin/delivery'
+      path: '/delivery'
+      fullPath: '/admin/order-mie-yamin/delivery'
+      preLoaderRoute: typeof AdminOrderMieYaminDeliveryRouteImport
+      parentRoute: typeof AdminOrderMieYaminRoute
     }
     '/admin/operational-team/rekrutmen': {
       id: '/admin/operational-team/rekrutmen'
@@ -1833,6 +1918,23 @@ const AdminOperationalTeamRouteChildren: AdminOperationalTeamRouteChildren = {
 const AdminOperationalTeamRouteWithChildren =
   AdminOperationalTeamRoute._addFileChildren(AdminOperationalTeamRouteChildren)
 
+interface AdminOrderMieYaminRouteChildren {
+  AdminOrderMieYaminDeliveryRoute: typeof AdminOrderMieYaminDeliveryRoute
+  AdminOrderMieYaminOrdersRoute: typeof AdminOrderMieYaminOrdersRoute
+  AdminOrderMieYaminSettingsRoute: typeof AdminOrderMieYaminSettingsRoute
+  AdminOrderMieYaminIndexRoute: typeof AdminOrderMieYaminIndexRoute
+}
+
+const AdminOrderMieYaminRouteChildren: AdminOrderMieYaminRouteChildren = {
+  AdminOrderMieYaminDeliveryRoute: AdminOrderMieYaminDeliveryRoute,
+  AdminOrderMieYaminOrdersRoute: AdminOrderMieYaminOrdersRoute,
+  AdminOrderMieYaminSettingsRoute: AdminOrderMieYaminSettingsRoute,
+  AdminOrderMieYaminIndexRoute: AdminOrderMieYaminIndexRoute,
+}
+
+const AdminOrderMieYaminRouteWithChildren =
+  AdminOrderMieYaminRoute._addFileChildren(AdminOrderMieYaminRouteChildren)
+
 interface AdminRecipeRouteChildren {
   AdminRecipeBaseRoute: typeof AdminRecipeBaseRoute
   AdminRecipeHppRoute: typeof AdminRecipeHppRoute
@@ -1869,7 +1971,7 @@ interface AdminRouteRouteChildren {
   AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRouteWithChildren
-  AdminOrderMieYaminRoute: typeof AdminOrderMieYaminRoute
+  AdminOrderMieYaminRoute: typeof AdminOrderMieYaminRouteWithChildren
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminPosNotificationsRoute: typeof AdminPosNotificationsRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -1897,7 +1999,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminMinigamesRoute: AdminMinigamesRoute,
   AdminOnboardingRoute: AdminOnboardingRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRouteWithChildren,
-  AdminOrderMieYaminRoute: AdminOrderMieYaminRoute,
+  AdminOrderMieYaminRoute: AdminOrderMieYaminRouteWithChildren,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminPosNotificationsRoute: AdminPosNotificationsRoute,
   AdminProductsRoute: AdminProductsRoute,

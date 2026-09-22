@@ -1,4 +1,4 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { createLazyFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Bike, Bell, Check, ChevronDown, Copy, ExternalLink, FileDown, Mail, PackageCheck, RefreshCw, Save, Search, Settings2, ShoppingBag, Trash2, Truck, X } from "lucide-react";
 import { toast } from "sonner";
@@ -11,8 +11,14 @@ import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createLazyFileRoute("/admin/order-mie-yamin")({
-  component: AdminMieYamin,
+  component: OrderMieYaminRouteShell,
 });
+
+export function OrderMieYaminRouteShell() {
+  return <Outlet />;
+}
+
+export type MieYaminWorkspaceTab = "orders" | "pricing" | "delivery" | "notifications";
 
 type MieYaminSettings = {
   noodlePricePerKg: number;
@@ -151,10 +157,10 @@ function AdminMieYaminOrders() {
     <Sheet open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}><SheetContent className="w-full overflow-y-auto sm:max-w-lg"><SheetHeader><SheetTitle>Detail Order Mie Yamin</SheetTitle><SheetDescription>{selectedOrder ? `#${selectedOrder.orderNumber ?? selectedOrder.displayId ?? "-"}` : ""}</SheetDescription></SheetHeader>{selectedOrder ? <div className="space-y-4 p-4"><div className="rounded-2xl bg-muted/50 p-4"><p className="text-lg font-black">{selectedOrder.customerName ?? "-"}</p><p className="mt-1 text-sm text-muted-foreground">{selectedOrder.deliveryContactPhone ?? selectedOrder.customerPhone ?? "-"}</p><p className="mt-3 text-xl font-black text-primary">{orderTotal(selectedOrder.totalAmount)}</p></div><div className="grid gap-3 sm:grid-cols-2"><div><p className="text-[11px] font-bold uppercase text-muted-foreground">Pembayaran</p><p className="mt-1 font-bold">{selectedOrder.status === "paid" || selectedOrder.status === "completed" ? "Pembayaran diterima" : "Menunggu pembayaran"}</p></div><div><p className="text-[11px] font-bold uppercase text-muted-foreground">Pengiriman</p><select disabled={updatingId === String(selectedOrder._id)} value={String(selectedOrder.deliveryStatus ?? selectedOrder.delivery_status ?? "")} onChange={(e) => updateStatus(selectedOrder, e.target.value as MieYaminDeliveryStatus)} className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-bold">{MIE_YAMIN_DELIVERY_STATUSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div></div><div><p className="text-[11px] font-bold uppercase text-muted-foreground">Produk</p><div className="mt-2 space-y-2">{(selectedOrder.items ?? []).map((item: any) => <div key={`${item.productName}-${item.variant}`} className="flex justify-between gap-3 rounded-xl border border-border p-3 text-sm"><span>{item.quantity}× {item.productName}<span className="block text-xs text-muted-foreground">{item.variant ?? ""}</span></span><b>{orderTotal(Number(item.price || 0) * Number(item.quantity || 0))}</b></div>)}</div></div><div className="space-y-3 rounded-2xl border border-border p-4 text-sm"><div><p className="text-[11px] font-bold uppercase text-muted-foreground">Jadwal kirim</p><p className="mt-1">{selectedOrder.deliveryDate ? orderDate(selectedOrder.deliveryDate) : "Belum dipilih"} · {selectedOrder.deliveryProvider ?? "Kurir belum dipilih"}</p></div><div><p className="text-[11px] font-bold uppercase text-muted-foreground">Alamat</p><p className="mt-1 whitespace-pre-wrap">{selectedOrder.deliveryAddress ?? "-"}</p></div>{selectedOrder.deliveryNotes ? <div><p className="text-[11px] font-bold uppercase text-muted-foreground">Catatan</p><p className="mt-1 whitespace-pre-wrap">{selectedOrder.deliveryNotes}</p></div> : null}</div><div className="grid grid-cols-2 gap-2"><Button variant="outline" onClick={() => copy(String(selectedOrder.orderNumber ?? selectedOrder.displayId ?? ""), "Nomor order")} className="h-11 gap-2"><Copy className="h-4 w-4" />Copy order</Button><Button variant="outline" onClick={() => copy(String(selectedOrder.deliveryContactPhone ?? selectedOrder.customerPhone ?? ""), "Nomor WhatsApp")} className="h-11 gap-2"><Copy className="h-4 w-4" />Copy WhatsApp</Button>{selectedOrder.paymentGateway?.invoiceUrl || selectedOrder.payment_gateway?.invoice_url ? <a href={selectedOrder.paymentGateway?.invoiceUrl || selectedOrder.payment_gateway?.invoice_url} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border text-sm font-bold transition hover:bg-muted"><ExternalLink className="h-4 w-4" />Buka invoice</a> : null}{(selectedOrder.deliveryContactPhone || selectedOrder.customerPhone) ? <a href={`https://wa.me/${String(selectedOrder.deliveryContactPhone ?? selectedOrder.customerPhone).replace(/\D/g, "").replace(/^0/, "62")}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"><ExternalLink className="h-4 w-4" />Chat WhatsApp</a> : null}</div></div> : null}</SheetContent></Sheet><ConfirmationModal isOpen={deleteConfirmation !== null} onClose={() => !isDeleting && setDeleteConfirmation(null)} onConfirm={confirmBulkDelete} title="Hapus order terpilih?" subtitle="Tindakan ini tidak dapat dibatalkan." message={`${deleteConfirmation?.length ?? 0} order akan dihapus secara aman beserta data anak yang terkait. Pastikan order yang dipilih sudah benar.`} confirmText={isDeleting ? "Menghapus..." : "Hapus order"} loading={isDeleting} /></section>;
 }
 
-function AdminMieYamin() {
+export function AdminMieYamin({ forcedTab }: { forcedTab?: MieYaminWorkspaceTab } = {}) {
   const siteSettings = useHybridSiteSettings() as any;
   const updateSiteSettings = useHybridUpdateSiteSettings();
-  const [activeTab, setActiveTab] = useState<"orders" | "pricing" | "delivery" | "notifications">("orders");
+  const [activeTab, setActiveTab] = useState<MieYaminWorkspaceTab>(forcedTab ?? "orders");
   const [form, setForm] = useState<MieYaminSettings>(DEFAULTS);
   const [saving, setSaving] = useState(false);
 
@@ -221,13 +227,13 @@ function AdminMieYamin() {
         </Button> : <div className="flex items-center gap-2 text-xs text-muted-foreground"><PackageCheck className="h-4 w-4 text-emerald-600" /> Workspace operasional</div>}
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm md:grid-cols-4">
+      {!forcedTab ? <div className="grid gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm md:grid-cols-4">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" onClick={() => setActiveTab(id)} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition ${activeTab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
             <Icon className="h-4 w-4" /> {label}
           </button>
         ))}
-      </div>
+      </div> : null}
 
       {activeTab === "orders" ? <AdminMieYaminOrders /> : null}
 
