@@ -78,6 +78,7 @@ import { Route as AdminFinanceExpensesRouteRouteImport } from './routes/admin/fi
 import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
 import { Route as AdminOperationalTeamPayrollIndexRouteImport } from './routes/admin/operational-team/payroll/index'
 import { Route as AdminOperationalTeamAttendanceIndexRouteImport } from './routes/admin/operational-team/attendance.index'
+import { Route as AdminOrderMieYaminSettingsNotificationsRouteImport } from './routes/admin/order-mie-yamin/settings/notifications'
 import { Route as AdminOperationalTeamRegisterRiwayatRouteImport } from './routes/admin/operational-team/register/riwayat'
 import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
 import { Route as AdminOperationalTeamPayrollSlipRouteImport } from './routes/admin/operational-team/payroll/slip'
@@ -549,6 +550,16 @@ const AdminOperationalTeamAttendanceIndexRoute =
       (d) => d.Route,
     ),
   )
+const AdminOrderMieYaminSettingsNotificationsRoute =
+  AdminOrderMieYaminSettingsNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AdminOrderMieYaminSettingsRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/order-mie-yamin/settings/notifications.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AdminOperationalTeamRegisterRiwayatRoute =
   AdminOperationalTeamRegisterRiwayatRouteImport.update({
     id: '/riwayat',
@@ -729,7 +740,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/rekrutmen': typeof AdminOperationalTeamRekrutmenRoute
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
-  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRoute
+  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -748,6 +759,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/payroll/slip': typeof AdminOperationalTeamPayrollSlipRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
+  '/admin/order-mie-yamin/settings/notifications': typeof AdminOrderMieYaminSettingsNotificationsRoute
   '/admin/operational-team/attendance/': typeof AdminOperationalTeamAttendanceIndexRoute
   '/admin/operational-team/payroll/': typeof AdminOperationalTeamPayrollIndexRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -803,7 +815,7 @@ export interface FileRoutesByTo {
   '/admin/operational-team/rekrutmen': typeof AdminOperationalTeamRekrutmenRoute
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
-  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRoute
+  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -821,6 +833,7 @@ export interface FileRoutesByTo {
   '/admin/operational-team/payroll/slip': typeof AdminOperationalTeamPayrollSlipRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
+  '/admin/order-mie-yamin/settings/notifications': typeof AdminOrderMieYaminSettingsNotificationsRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceIndexRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollIndexRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -886,7 +899,7 @@ export interface FileRoutesById {
   '/admin/operational-team/rekrutmen': typeof AdminOperationalTeamRekrutmenRoute
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
-  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRoute
+  '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -905,6 +918,7 @@ export interface FileRoutesById {
   '/admin/operational-team/payroll/slip': typeof AdminOperationalTeamPayrollSlipRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
+  '/admin/order-mie-yamin/settings/notifications': typeof AdminOrderMieYaminSettingsNotificationsRoute
   '/admin/operational-team/attendance/': typeof AdminOperationalTeamAttendanceIndexRoute
   '/admin/operational-team/payroll/': typeof AdminOperationalTeamPayrollIndexRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -990,6 +1004,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/payroll/slip'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
+    | '/admin/order-mie-yamin/settings/notifications'
     | '/admin/operational-team/attendance/'
     | '/admin/operational-team/payroll/'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1063,6 +1078,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/payroll/slip'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
+    | '/admin/order-mie-yamin/settings/notifications'
     | '/admin/operational-team/attendance'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1146,6 +1162,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/payroll/slip'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
+    | '/admin/order-mie-yamin/settings/notifications'
     | '/admin/operational-team/attendance/'
     | '/admin/operational-team/payroll/'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1647,6 +1664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamAttendanceIndexRouteImport
       parentRoute: typeof AdminOperationalTeamAttendanceRoute
     }
+    '/admin/order-mie-yamin/settings/notifications': {
+      id: '/admin/order-mie-yamin/settings/notifications'
+      path: '/notifications'
+      fullPath: '/admin/order-mie-yamin/settings/notifications'
+      preLoaderRoute: typeof AdminOrderMieYaminSettingsNotificationsRouteImport
+      parentRoute: typeof AdminOrderMieYaminSettingsRoute
+    }
     '/admin/operational-team/register/riwayat': {
       id: '/admin/operational-team/register/riwayat'
       path: '/riwayat'
@@ -1918,17 +1942,32 @@ const AdminOperationalTeamRouteChildren: AdminOperationalTeamRouteChildren = {
 const AdminOperationalTeamRouteWithChildren =
   AdminOperationalTeamRoute._addFileChildren(AdminOperationalTeamRouteChildren)
 
+interface AdminOrderMieYaminSettingsRouteChildren {
+  AdminOrderMieYaminSettingsNotificationsRoute: typeof AdminOrderMieYaminSettingsNotificationsRoute
+}
+
+const AdminOrderMieYaminSettingsRouteChildren: AdminOrderMieYaminSettingsRouteChildren =
+  {
+    AdminOrderMieYaminSettingsNotificationsRoute:
+      AdminOrderMieYaminSettingsNotificationsRoute,
+  }
+
+const AdminOrderMieYaminSettingsRouteWithChildren =
+  AdminOrderMieYaminSettingsRoute._addFileChildren(
+    AdminOrderMieYaminSettingsRouteChildren,
+  )
+
 interface AdminOrderMieYaminRouteChildren {
   AdminOrderMieYaminDeliveryRoute: typeof AdminOrderMieYaminDeliveryRoute
   AdminOrderMieYaminOrdersRoute: typeof AdminOrderMieYaminOrdersRoute
-  AdminOrderMieYaminSettingsRoute: typeof AdminOrderMieYaminSettingsRoute
+  AdminOrderMieYaminSettingsRoute: typeof AdminOrderMieYaminSettingsRouteWithChildren
   AdminOrderMieYaminIndexRoute: typeof AdminOrderMieYaminIndexRoute
 }
 
 const AdminOrderMieYaminRouteChildren: AdminOrderMieYaminRouteChildren = {
   AdminOrderMieYaminDeliveryRoute: AdminOrderMieYaminDeliveryRoute,
   AdminOrderMieYaminOrdersRoute: AdminOrderMieYaminOrdersRoute,
-  AdminOrderMieYaminSettingsRoute: AdminOrderMieYaminSettingsRoute,
+  AdminOrderMieYaminSettingsRoute: AdminOrderMieYaminSettingsRouteWithChildren,
   AdminOrderMieYaminIndexRoute: AdminOrderMieYaminIndexRoute,
 }
 

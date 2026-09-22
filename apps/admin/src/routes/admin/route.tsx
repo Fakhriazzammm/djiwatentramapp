@@ -87,6 +87,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/order-mie-yamin/orders": "Pesanan Mie Yamin",
 	"/admin/order-mie-yamin/delivery": "Pengiriman Mie Yamin",
 	"/admin/order-mie-yamin/settings": "Konfigurasi Mie Yamin",
+	"/admin/order-mie-yamin/settings/notifications": "Notifikasi Mie Yamin",
 	"/admin/discounts": "Promosi",
 	"/admin/ai-chat": "Djiwa Tentram AI",
 	"/admin/settings": "Pengaturan",
@@ -134,6 +135,7 @@ const MORE_MENU_PATHS = [
 	"/admin/order-mie-yamin/orders",
 	"/admin/order-mie-yamin/delivery",
 	"/admin/order-mie-yamin/settings",
+	"/admin/order-mie-yamin/settings/notifications",
 	"/admin/products",
 	"/admin/recipe",
 	"/admin/recipe/hpp",
@@ -792,6 +794,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 										<DesktopSubNavLink icon={<List />} label="Pesanan" to="/admin/order-mie-yamin/orders" permission="orders:view" />
 										<DesktopSubNavLink icon={<Truck />} label="Pengiriman" to="/admin/order-mie-yamin/delivery" permission="orders:view" />
 										<DesktopSubNavLink icon={<Settings />} label="Konfigurasi" to="/admin/order-mie-yamin/settings" permission="orders:view" />
+										<DesktopSubNavLink icon={<Bell />} label="Notifikasi" to="/admin/order-mie-yamin/settings/notifications" permission="orders:view" />
 									</div>
 								</motion.div>}
 							</AnimatePresence>
