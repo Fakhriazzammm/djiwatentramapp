@@ -1020,10 +1020,10 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 				<div>
 					<p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Workspace operasional</p>
 					<h2 className="font-display text-2xl font-black tracking-tight text-foreground md:text-3xl">
-						Manajemen Booking
+						{activeTab === "orders" ? "Semua Booking" : "Manajemen Booking"}
 					</h2>
 					<p className="mt-1 max-w-xl text-sm text-muted-foreground">
-						Kelola reservasi, kapasitas, dan status customer dari satu tempat.
+						{activeTab === "orders" ? "Cari, filter, dan tindak lanjuti reservasi tanpa berpindah konteks." : "Kelola reservasi, kapasitas, dan status customer dari satu tempat."}
 					</p>
 				</div>
 				<div className="flex gap-2">
@@ -1050,7 +1050,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 			</div>
 
 
-			{(activeTab === "calendar" || activeTab === "orders") && (
+			{activeTab === "calendar" && (
 				<div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
 					{[
 						["Booking", bookingStats.total, "text-foreground"],
@@ -1141,11 +1141,11 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 				</div>
 			)}
 
-			{/* ── ORDERS TAB ── */}
+			{/* ── SEMUA BOOKING ── */}
 			{activeTab === "orders" && (
 				<div className="space-y-4">
 					<div className="flex items-end justify-between gap-3">
-						<div><p className="text-sm font-bold text-foreground">Daftar Booking</p><p className="text-xs text-muted-foreground">{formatDate(startDate)}{startDate !== endDate ? ` – ${formatDate(endDate)}` : ""}</p></div>
+						<div><p className="text-sm font-bold text-foreground">Reservasi</p><p className="text-xs text-muted-foreground">{formatDate(startDate)}{startDate !== endDate ? ` – ${formatDate(endDate)}` : ""}</p></div>
 					</div>
 					{/* Toolbar */}
 					<div className="grid gap-3 rounded-[20px] border border-border/70 bg-card p-3 shadow-sm lg:grid-cols-[minmax(220px,1.5fr)_140px_260px_minmax(190px,auto)] lg:items-end">
