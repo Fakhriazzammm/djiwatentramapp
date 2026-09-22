@@ -85,6 +85,7 @@ import { Route as AdminOperationalTeamPayrollSlipRouteImport } from './routes/ad
 import { Route as AdminOperationalTeamKaryawanDataRouteImport } from './routes/admin/operational-team/karyawan/data'
 import { Route as AdminOperationalTeamAttendancePengaturanRouteImport } from './routes/admin/operational-team/attendance/pengaturan'
 import { Route as AdminOperationalTeamAttendanceJadwalRouteImport } from './routes/admin/operational-team/attendance/jadwal'
+import { Route as AdminBookingSettingsOptionsRouteImport } from './routes/admin/booking/settings/options'
 import { Route as AdminBookingSettingsMenuRouteImport } from './routes/admin/booking/settings/menu'
 import { Route as AdminBookingSettingsFormRouteImport } from './routes/admin/booking/settings/form'
 import { Route as AdminOperationalTeamRegisterContractRouteRouteImport } from './routes/admin/operational-team/register/contract/route'
@@ -620,6 +621,14 @@ const AdminOperationalTeamAttendanceJadwalRoute =
       (d) => d.Route,
     ),
   )
+const AdminBookingSettingsOptionsRoute =
+  AdminBookingSettingsOptionsRouteImport.update({
+    id: '/options',
+    path: '/options',
+    getParentRoute: () => AdminBookingSettingsRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/booking/settings/options.lazy').then((d) => d.Route),
+  )
 const AdminBookingSettingsMenuRoute =
   AdminBookingSettingsMenuRouteImport.update({
     id: '/menu',
@@ -753,6 +762,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRouteRouteWithChildren
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
+  '/admin/booking/settings/options': typeof AdminBookingSettingsOptionsRoute
   '/admin/operational-team/attendance/jadwal': typeof AdminOperationalTeamAttendanceJadwalRoute
   '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/karyawan/data': typeof AdminOperationalTeamKaryawanDataRoute
@@ -827,6 +837,7 @@ export interface FileRoutesByTo {
   '/admin/recipe': typeof AdminRecipeIndexRoute
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
+  '/admin/booking/settings/options': typeof AdminBookingSettingsOptionsRoute
   '/admin/operational-team/attendance/jadwal': typeof AdminOperationalTeamAttendanceJadwalRoute
   '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/karyawan/data': typeof AdminOperationalTeamKaryawanDataRoute
@@ -912,6 +923,7 @@ export interface FileRoutesById {
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRouteRouteWithChildren
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
+  '/admin/booking/settings/options': typeof AdminBookingSettingsOptionsRoute
   '/admin/operational-team/attendance/jadwal': typeof AdminOperationalTeamAttendanceJadwalRoute
   '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/karyawan/data': typeof AdminOperationalTeamKaryawanDataRoute
@@ -998,6 +1010,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register/contract'
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
+    | '/admin/booking/settings/options'
     | '/admin/operational-team/attendance/jadwal'
     | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/karyawan/data'
@@ -1072,6 +1085,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
+    | '/admin/booking/settings/options'
     | '/admin/operational-team/attendance/jadwal'
     | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/karyawan/data'
@@ -1156,6 +1170,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register/contract'
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
+    | '/admin/booking/settings/options'
     | '/admin/operational-team/attendance/jadwal'
     | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/karyawan/data'
@@ -1713,6 +1728,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamAttendanceJadwalRouteImport
       parentRoute: typeof AdminOperationalTeamAttendanceRoute
     }
+    '/admin/booking/settings/options': {
+      id: '/admin/booking/settings/options'
+      path: '/options'
+      fullPath: '/admin/booking/settings/options'
+      preLoaderRoute: typeof AdminBookingSettingsOptionsRouteImport
+      parentRoute: typeof AdminBookingSettingsRoute
+    }
     '/admin/booking/settings/menu': {
       id: '/admin/booking/settings/menu'
       path: '/menu'
@@ -1789,11 +1811,13 @@ const AdminFinanceRouteRouteWithChildren =
 interface AdminBookingSettingsRouteChildren {
   AdminBookingSettingsFormRoute: typeof AdminBookingSettingsFormRoute
   AdminBookingSettingsMenuRoute: typeof AdminBookingSettingsMenuRoute
+  AdminBookingSettingsOptionsRoute: typeof AdminBookingSettingsOptionsRoute
 }
 
 const AdminBookingSettingsRouteChildren: AdminBookingSettingsRouteChildren = {
   AdminBookingSettingsFormRoute: AdminBookingSettingsFormRoute,
   AdminBookingSettingsMenuRoute: AdminBookingSettingsMenuRoute,
+  AdminBookingSettingsOptionsRoute: AdminBookingSettingsOptionsRoute,
 }
 
 const AdminBookingSettingsRouteWithChildren =
