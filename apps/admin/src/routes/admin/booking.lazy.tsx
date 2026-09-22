@@ -1,12 +1,10 @@
 ﻿import { createLazyFileRoute, Outlet, useSearch } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {
-	Calendar,
 	Check,
 	ChevronLeft,
 	ChevronRight,
 	Link as LinkIcon,
-	List,
 	Loader2,
 	Save,
 	Search,
@@ -652,13 +650,6 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 		}
 	}, [requestedTab]);
 
-	const handleTabChange = (tab: "calendar" | "orders" | "capacity") => {
-		setActiveTab(tab);
-		const url = new URL(window.location.href);
-		if (tab === "calendar") url.searchParams.delete("tab");
-		else url.searchParams.set("tab", tab);
-		window.history.replaceState({}, "", url);
-	};
 
 	const yearMonth = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
 	const summary = useHybridBookingMonthSummary("booking", yearMonth);
@@ -977,11 +968,6 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 		}
 	};
 
-	const tabs = [
-		{ id: "calendar", label: "Kalender", icon: Calendar },
-		{ id: "orders", label: "Booking", icon: List },
-		{ id: "capacity", label: "Kapasitas", icon: Users },
-	] as const;
 
 	const filteredOrders = useMemo(() => {
 		if (!allOrders) return [];
@@ -1063,22 +1049,6 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 				</div>
 			</div>
 
-			{/* Primary navigation */}
-			<nav aria-label="Navigasi booking" className="no-scrollbar flex gap-1 overflow-x-auto rounded-[20px] border border-border/70 bg-card p-1 shadow-sm">
-				{tabs.map((tab) => (
-					<button
-						className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-black transition-all md:flex-1 md:justify-center md:px-4 md:text-sm ${
-							activeTab === tab.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-						}`}
-						key={tab.id}
-						onClick={() => handleTabChange(tab.id)}
-						type="button"
-					>
-						<tab.icon className="h-4 w-4" />
-						{tab.label}
-					</button>
-				))}
-			</nav>
 
 			{(activeTab === "calendar" || activeTab === "orders") && (
 				<div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
