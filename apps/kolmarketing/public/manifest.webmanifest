@@ -1,0 +1,9 @@
+{
+  "name": "Djiwa Tentram KOL Marketing",
+  "short_name": "KOL Marketing",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#f5f7fb",
+  "background_color": "#f5f7fb"
+}

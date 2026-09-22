@@ -219,7 +219,6 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
-			{ to: "/admin/kol", icon: Users, label: "KOL" },
 			{ to: "/admin/operational-team/rekrutmen", icon: FileText, label: "Rekrutmen", permission: "users:manage" },
 		],
 	},
@@ -846,12 +845,16 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						to="/admin/minigames"
 						permission="products:manage"
 					/>
-					<DesktopNavLink
-						icon={<Users />}
-						isCollapsed={isCollapsed}
-						label="KOL"
-						to="/admin/kol"
-					/>
+					<a
+						href="https://kolmarketing.yumme.id/dashboard"
+						target="_blank"
+						rel="noopener noreferrer"
+						className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all hover:bg-muted hover:text-foreground ${isCollapsed ? "justify-center px-0" : "text-muted-foreground"}`}
+						title={isCollapsed ? "KOL Marketing" : undefined}
+					>
+						<Users className="h-5 w-5 shrink-0" />
+						{!isCollapsed && <span className="truncate">KOL Marketing</span>}
+					</a>
 				</nav>
 
 				{/* Footer: User Profile + Pengaturan + Keluar */}
