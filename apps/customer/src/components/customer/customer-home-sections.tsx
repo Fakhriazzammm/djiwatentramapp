@@ -82,7 +82,7 @@ export function CustomerHomeServiceGrid({
     { label: "Komunitas", icon: "navigation-community", onClick: onCommunity },
     { label: "Merchandise", badge: "Baru", assetSrc: "/assets/djiwa-3d-merchandise-v1.webp", onClick: onMerchandise },
     { label: "Booking", badge: "Acara", icon: "restaurant-cafe", onClick: onBooking },
-    { label: "Djiwa Run", badge: "Baru", icon: "navigation-tracking", onClick: onDjiwaRun },
+    { label: "Djiwa Run", badge: "Baru", icon: "djiwa-run", onClick: onDjiwaRun },
   ];
 
   return (
