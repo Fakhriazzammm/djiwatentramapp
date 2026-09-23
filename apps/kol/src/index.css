@@ -4,7 +4,11 @@
 *{box-sizing:border-box}body{margin:0;min-width:320px}button,input,textarea,select{font:inherit}button{cursor:pointer}.display{font-family:"Plus Jakarta Sans",system-ui,sans-serif}.safe-bottom{padding-bottom:calc(16px + env(safe-area-inset-bottom))}.focus-ring:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}.input{display:block;width:100%;min-height:48px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:0 14px;color:#17181c;outline:none;transition:border-color 180ms var(--ease),box-shadow 180ms var(--ease)}.input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px #dbeafe}.input::placeholder{color:#9ca3af}.press{transition:transform 180ms var(--ease),background 180ms var(--ease)}.press:active{transform:scale(.97)}.sheet{animation:sheet-in 320ms var(--ease)}@keyframes sheet-in{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 /* Creator Portal design contract: calm iOS-like surfaces, one primary action, clear states. */
-.kol-portal{--portal-blue:#2563eb;--portal-violet:#7c3aed;--portal-surface:#fff;--portal-bg:#f7f8fb}
+.kol-public-shell main,.kol-public-shell>main{letter-spacing:-.01em}
+.kol-public-shell section,.kol-public-shell>main{border-color:rgba(226,232,240,.78)}
+.kol-public-shell .bg-white{box-shadow:0 10px 30px rgba(15,23,42,.055)}
+.kol-public-shell button:not(:disabled),.kol-public-shell a{transition:transform 180ms var(--ease),box-shadow 180ms var(--ease),background 180ms var(--ease)}
+.kol-public-shell button:not(:disabled):active,.kol-public-shell a:active{transform:scale(.98)}
 .kol-portal main{letter-spacing:-.01em}
 .kol-portal article,.kol-portal aside{border:1px solid rgba(226,232,240,.78);box-shadow:0 8px 24px rgba(15,23,42,.045)}
 .kol-portal nav{box-shadow:0 6px 18px rgba(15,23,42,.04)}
