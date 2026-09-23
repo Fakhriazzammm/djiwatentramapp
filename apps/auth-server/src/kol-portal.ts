@@ -38,6 +38,67 @@ function validUrl(value: unknown) {
   }
 }
 
+
+
+type TimelineType = "text" | "portfolio" | "campaign" | "achievement";
+const TIMELINE_TYPES: TimelineType[] = ["text", "portfolio", "campaign", "achievement"];
+const REPORT_REASONS = ["spam", "privacy", "misleading", "harassment", "other"] as const;
+
+type TimelineCursor = { publishedAt: string; id: number };
+function encodeTimelineCursor(cursor: TimelineCursor) {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+function decodeTimelineCursor(value: string | undefined): TimelineCursor | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (typeof parsed?.publishedAt !== "string" || !Number.isSafeInteger(parsed?.id) || parsed.id < 1) return null;
+    const date = new Date(parsed.publishedAt);
+    if (Number.isNaN(date.getTime())) return null;
+    return { publishedAt: date.toISOString(), id: parsed.id };
+  } catch { return null; }
+}
+function boundedLimit(value: string | undefined) {
+  const parsed = value === undefined ? 20 : Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 50) : null;
+}
+function timelineType(value: string | undefined) {
+  return !value || value === "all" ? null : TIMELINE_TYPES.includes(value as TimelineType) ? value : undefined;
+}
+function safeTimelineItem(row: any) {
+  return {
+    id: Number(row.id), type: row.post_type, title: row.title, body: row.body || "",
+    mediaUrl: row.media_url ?? null, thumbnailUrl: row.thumbnail_url ?? null,
+    publishedAt: row.published_at, pinnedAt: row.pinned_at ?? null,
+    creator: { username: row.username, displayName: row.display_name, avatarUrl: row.avatar_url ?? null, category: row.category ?? null, location: row.location ?? null },
+    source: row.source_entity_type && row.source_entity_id ? { type: row.source_entity_type, id: String(row.source_entity_id) } : null,
+  };
+}
+function safeCreator(row: any) {
+  return { id: row.source_id, username: row.username ?? row.slug, displayName: row.display_name ?? row.name, avatarUrl: row.avatar_url ?? null, category: row.category ?? null, location: row.location ?? null, bio: row.bio ?? null, availability: row.public_availability && row.public_availability !== "not_set" ? { status: row.public_availability, label: row.availability_label ?? null } : null, portfolioCount: Number(row.portfolio_count ?? 0) };
+}
+
+/** Inserts one explicitly approved source event; callers must perform source gates first. */
+export async function ensurePublicTimelineEvent(poolOrClient: DbPool, input: { kolId: string; type: Exclude<TimelineType, "text">; title: string; body?: string; mediaUrl?: string | null; thumbnailUrl?: string | null; sourceEntityType: string; sourceEntityId: string; publishedAt?: string | null }) {
+  if (!input.kolId || !["portfolio", "campaign", "achievement"].includes(input.type) || !input.sourceEntityType || !input.sourceEntityId) throw new Error("INVALID_PUBLIC_TIMELINE_SOURCE");
+  const result = await poolOrClient.query(
+    `insert into pos.kol_public_posts(kol_id,post_type,title,body,media_url,thumbnail_url,source_entity_type,source_entity_id,visibility,moderation_status,published_at)
+     values($1,$2,$3,$4,$5,$6,$7,$8,'published','approved',coalesce($9,now()))
+     on conflict (kol_id,post_type,source_entity_type,source_entity_id) do nothing returning id`,
+    [input.kolId, input.type, input.title.trim().slice(0, 160), (input.body ?? "").slice(0, 5000), input.mediaUrl ?? null, input.thumbnailUrl ?? null, input.sourceEntityType, input.sourceEntityId, input.publishedAt ?? null],
+  );
+  return result.rows[0]?.id ?? null;
+}
+
+function timelineQuery(where: string, orderCursor: string, typeClause: string) {
+  return `select pp.id, pp.post_type, pp.title, pp.body, pp.media_url, pp.thumbnail_url, pp.source_entity_type, pp.source_entity_id, pp.published_at, pp.pinned_at,
+      c.username, c.avatar_url, c.location, c.category, p.display_name
+    from pos.kol_public_posts pp join pos.kol_creators c on c.source_id=pp.kol_id
+    join pos.kol_profiles p on p.kol_id=c.source_id and p.is_public=true
+    where c.status <> 'Rejected' and pp.visibility='published' and pp.moderation_status='approved' ${where} ${typeClause} ${orderCursor}
+    order by pp.published_at desc, pp.id desc limit $LIMIT`;
+}
+
 export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPool) {
   app.post("/api/kol/portal/intake", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -305,6 +366,97 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     if (!result.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
     const row = result.rows[0];
     const payload = row.data && typeof row.data === "object" ? row.data : {};
-    return json(c, { success: true, data: { id: row.id, name: row.name, username: row.username, avatar_url: row.avatar_url, location: row.location, category: row.category, bio: row.bio, platforms: Array.isArray(payload.platforms) ? payload.platforms.map((p: any) => ({ ...p, profile_url: p.profileUrl })) : [], portfolio: Array.isArray(payload.portfolio) ? payload.portfolio.map((p: any) => ({ ...p, content_url: p.contentUrl, thumbnail_url: p.thumbnailUrl, published_at: p.publishedAt })) : [], badges: payload.badges ?? [], badge_names: Array.isArray(payload.badges) ? payload.badges.map((b: any) => b.name) : [] } });
+    return json(c, { success: true, data: { id: row.id, name: row.name, username: row.username, avatar_url: row.avatar_url, location: row.location, category: row.category, bio: row.bio, public_availability: row.public_availability ?? "not_set", availability_label: row.availability_label ?? null, platforms: Array.isArray(payload.platforms) ? payload.platforms.map((p: any) => ({ ...p, profile_url: p.profileUrl })) : [], portfolio: Array.isArray(payload.portfolio) ? payload.portfolio.map((p: any) => ({ ...p, content_url: p.contentUrl, thumbnail_url: p.thumbnailUrl, published_at: p.publishedAt })) : [], badges: payload.badges ?? [], badge_names: Array.isArray(payload.badges) ? payload.badges.map((b: any) => b.name) : [] } });
   });
+
+  app.get("/api/kol/portal/timeline", async (c) => {
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const limit = boundedLimit(c.req.query("limit"));
+    const type = timelineType(c.req.query("type"));
+    const cursor = decodeTimelineCursor(c.req.query("before"));
+    if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
+    if (timelineType(c.req.query("type")) === undefined) return json(c, { success: false, error: "INVALID_TYPE" }, 400);
+    if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
+    const values: unknown[] = [];
+    const filters: string[] = [];
+    if (cursor) { values.push(cursor.publishedAt, cursor.id); filters.push(`and (pp.published_at,pp.id) < ($${values.length - 1},$${values.length})`); }
+    if (type) { values.push(type); filters.push(`and pp.post_type=$${values.length}`); }
+    values.push(limit + 1); const result = await pool.query(timelineQuery(filters.join(" "), "", "") .replace("$LIMIT", `$${values.length}`), values);
+    const rows = result.rows.slice(0, limit); const next = result.rows.length > limit ? rows[rows.length - 1] : null;
+    return json(c, { success: true, data: { items: rows.map(safeTimelineItem), nextCursor: next ? encodeTimelineCursor({ publishedAt: new Date(next.published_at).toISOString(), id: Number(next.id) }) : null, hasMore: Boolean(next) } });
+  });
+
+  app.get("/api/kol/public/:username/timeline", async (c) => {
+    const username = c.req.param("username").trim().toLowerCase();
+    const limit = boundedLimit(c.req.query("limit")); const type = timelineType(c.req.query("type")); const cursor = decodeTimelineCursor(c.req.query("before"));
+    if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
+    if (type === undefined) return json(c, { success: false, error: "INVALID_TYPE" }, 400);
+    if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
+    const profile = await pool.query(`select c.source_id from pos.kol_creators c join pos.kol_profiles p on p.kol_id=c.source_id where lower(coalesce(p.slug,c.username))=lower($1) and p.is_public=true limit 1`, [username]);
+    if (!profile.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
+    const values: unknown[] = [profile.rows[0].source_id]; const filters = ["and pp.kol_id=$1"];
+    if (cursor) { values.push(cursor.publishedAt, cursor.id); filters.push(`and (pp.published_at,pp.id) < ($${values.length - 1},$${values.length})`); }
+    if (type) { values.push(type); filters.push(`and pp.post_type=$${values.length}`); }
+    values.push(limit + 1); const result = await pool.query(timelineQuery(filters.join(" "), "", "").replace("$LIMIT", `$${values.length}`), values);
+    const rows = result.rows.slice(0, limit); const next = result.rows.length > limit ? rows[rows.length - 1] : null;
+    return json(c, { success: true, data: { items: rows.map(safeTimelineItem), nextCursor: next ? encodeTimelineCursor({ publishedAt: new Date(next.published_at).toISOString(), id: Number(next.id) }) : null, hasMore: Boolean(next) } });
+  });
+
+  app.get("/api/kol/portal/discovery", async (c) => {
+    const current = await context(c, auth, pool); if (current.error) return current.error;
+    return creatorDiscovery(c, pool, true);
+  });
+  app.get("/api/kol/public/creators", async (c) => creatorDiscovery(c, pool, false));
+  async function creatorDiscovery(c: any, db: DbPool, authenticated: boolean) {
+    const limit = boundedLimit(c.req.query("limit")); if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
+    const cursor = decodeTimelineCursor(c.req.query("before")); if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
+    const values: unknown[] = []; const filters = ["p.is_public=true"];
+    const category = c.req.query("category"), location = c.req.query("location"), availability = c.req.query("availability"), q = c.req.query("q");
+    if (category) { values.push(category.slice(0, 80)); filters.push(`c.category=$${values.length}`); }
+    if (location) { values.push(`%${location.slice(0, 80)}%`); filters.push(`c.location ilike $${values.length}`); }
+    if (availability && ["open", "selective", "unavailable", "not_set"].includes(availability)) { values.push(availability); filters.push(`p.public_availability=$${values.length}`); }
+    if (q && q.trim().length >= 2) { values.push(`%${q.trim().slice(0, 80)}%`); filters.push(`(p.display_name ilike $${values.length} or p.slug ilike $${values.length} or p.bio ilike $${values.length} or c.category ilike $${values.length})`); }
+    if (c.req.query("hasPortfolio") === "true") filters.push("exists(select 1 from pos.kol_portfolio_items pi where pi.kol_id=c.source_id and pi.review_status='approved' and pi.is_public=true)");
+    if (cursor) { values.push(cursor.publishedAt); filters.push(`c.created_at < $${values.length}`); }
+    values.push(limit + 1);
+    const result = await db.query(`select c.source_id,c.name,c.username,c.avatar_url,c.category,c.location,p.slug,p.display_name,p.bio,p.public_availability,p.availability_label,c.created_at,
+      (select count(*) from pos.kol_portfolio_items pi where pi.kol_id=c.source_id and pi.review_status='approved' and pi.is_public=true) portfolio_count
+      from pos.kol_creators c join pos.kol_profiles p on p.kol_id=c.source_id where ${filters.join(" and ")} order by c.created_at desc,c.source_id desc limit $${values.length}`, values);
+    const rows = result.rows.slice(0, limit), next = result.rows.length > limit ? rows[rows.length - 1] : null;
+    return json(c, { success: true, data: { items: rows.map(safeCreator), nextCursor: next ? encodeTimelineCursor({ publishedAt: new Date(next.created_at).toISOString(), id: Number(next.id ?? 1) }) : null, hasMore: Boolean(next) } });
+  }
+
+  app.get("/api/kol/portal/campaign-discovery", async (c) => {
+    const current = await context(c, auth, pool); if (current.error) return current.error;
+    const limit = boundedLimit(c.req.query("limit")); if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
+    const cursor = decodeTimelineCursor(c.req.query("before")); if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
+    const values: unknown[] = []; let where = "where c.status in ('published','closed') and c.public_highlight=true";
+    if (cursor) { values.push(cursor.publishedAt, cursor.id); where += ` and (coalesce(c.start_date,c.created_at::date),c.id) < ($1::date,$2)`; }
+    values.push(limit + 1);
+    const result = await pool.query(`select c.id,c.title,c.description,c.status,c.start_date,c.end_date,c.created_at from pos.kol_campaigns c ${where} order by coalesce(c.start_date,c.created_at::date) desc,c.id desc limit $${values.length}`, values);
+    const rows = result.rows.slice(0, limit); const next = result.rows.length > limit ? rows[rows.length - 1] : null;
+    return json(c, { success: true, data: { items: rows.map((r: any) => ({ id: r.id, title: r.title, description: r.description ?? null, status: r.status, startDate: r.start_date, endDate: r.end_date })), nextCursor: next ? encodeTimelineCursor({ publishedAt: new Date(next.start_date ?? next.created_at).toISOString(), id: Number(next.id) }) : null, hasMore: Boolean(next) } });
+  });
+
+  app.post("/api/kol/portal/timeline", async (c) => {
+    const current = await context(c, auth, pool); if (current.error) return current.error;
+    const body = await c.req.json().catch(() => ({})); const type = body.type;
+    const title = typeof body.title === "string" ? body.title.trim() : ""; const text = typeof body.body === "string" ? body.body.trim() : "";
+    if (type !== "text" || title.length < 2 || title.length > 160 || text.length < 1 || text.length > 5000 || (body.mediaUrl != null && !validUrl(body.mediaUrl)) || (body.thumbnailUrl != null && !validUrl(body.thumbnailUrl))) return json(c, { success: false, error: "INVALID_TIMELINE_POST" }, 400);
+    const result = await pool.query(`insert into pos.kol_public_posts(kol_id,post_type,title,body,media_url,thumbnail_url,visibility,moderation_status) values($1,'text',$2,$3,$4,$5,'pending','pending') returning id,post_type,title,body,media_url,thumbnail_url,visibility,moderation_status,created_at`, [current.kol.source_id,title,text,body.mediaUrl ?? null,body.thumbnailUrl ?? null]);
+    return json(c, { success: true, data: result.rows[0] }, 201);
+  });
+  app.patch("/api/kol/portal/timeline/:id", async (c) => {
+    const current = await context(c, auth, pool); if (current.error) return current.error; const id = Number(c.req.param("id")); const body = await c.req.json().catch(() => ({}));
+    if (!Number.isInteger(id) || (body.title !== undefined && (typeof body.title !== "string" || body.title.trim().length < 2 || body.title.trim().length > 160)) || (body.body !== undefined && (typeof body.body !== "string" || body.body.trim().length > 5000)) || (body.mediaUrl !== undefined && body.mediaUrl !== null && !validUrl(body.mediaUrl)) || (body.thumbnailUrl !== undefined && body.thumbnailUrl !== null && !validUrl(body.thumbnailUrl))) return json(c, { success: false, error: "INVALID_TIMELINE_POST" }, 400);
+    const result = await pool.query(`update pos.kol_public_posts set title=coalesce($1,title),body=coalesce($2,body),media_url=coalesce($3,media_url),thumbnail_url=coalesce($4,thumbnail_url),visibility='pending',moderation_status='pending',published_at=null,updated_at=now() where id=$5 and kol_id=$6 and post_type='text' returning id,title,body,media_url,thumbnail_url,visibility,moderation_status,updated_at`, [typeof body.title === "string" ? body.title.trim() : null,typeof body.body === "string" ? body.body.trim() : null,body.mediaUrl ?? null,body.thumbnailUrl ?? null,id,current.kol.source_id]);
+    if (!result.rows[0]) return json(c, { success: false, error: "TIMELINE_POST_NOT_FOUND" }, 404); return json(c, { success: true, data: result.rows[0] });
+  });
+  app.delete("/api/kol/portal/timeline/:id", async (c) => { const current = await context(c, auth, pool); if (current.error) return current.error; const result = await pool.query(`update pos.kol_public_posts set visibility='hidden',moderation_status='hidden',updated_at=now() where id=$1 and kol_id=$2 returning id`, [Number(c.req.param("id")),current.kol.source_id]); if (!result.rows[0]) return json(c,{success:false,error:"TIMELINE_POST_NOT_FOUND"},404); return json(c,{success:true,data:result.rows[0]}); });
+  app.post("/api/kol/portal/timeline/:id/report", async (c) => { const current = await context(c, auth, pool); if (current.error) return current.error; const body=await c.req.json().catch(()=>({})); if (!REPORT_REASONS.includes(body.reason)) return json(c,{success:false,error:"INVALID_REPORT"},400); const id=Number(c.req.param("id")); const post=await pool.query(`select kol_id from pos.kol_public_posts where id=$1 and visibility='published' and moderation_status='approved'`,[id]); if (!post.rows[0]) return json(c,{success:false,error:"TIMELINE_POST_NOT_FOUND"},404); if(post.rows[0].kol_id===current.kol.source_id) return json(c,{success:false,error:"CANNOT_REPORT_OWN_POST"},400); const result=await pool.query(`insert into pos.kol_public_post_reports(post_id,reporter_kol_id,reason,note) values($1,$2,$3,$4) on conflict(post_id,reporter_kol_id) do update set reason=excluded.reason,note=excluded.note returning id,post_id,reason,status,created_at`,[id,current.kol.source_id,body.reason,typeof body.note==='string'?body.note.trim().slice(0,1000):null]); return json(c,{success:true,data:result.rows[0]},201); });
+
+  app.patch("/api/kol/portal/profile/public-settings", async (c) => { const current=await context(c,auth,pool); if(current.error)return current.error; const body=await c.req.json().catch(()=>({})); if(!["not_set","open","selective","unavailable"].includes(body.publicAvailability)) return json(c,{success:false,error:"INVALID_PUBLIC_AVAILABILITY"},400); const result=await pool.query(`update pos.kol_profiles set public_availability=$1,availability_label=$2,updated_at=now() where kol_id=$3 returning public_availability,availability_label,is_public`,[body.publicAvailability,typeof body.availabilityLabel==='string'?body.availabilityLabel.trim().slice(0,120)||null:null,current.kol.source_id]); if(!result.rows[0])return json(c,{success:false,error:"KOL_PROFILE_NOT_LINKED"},409); return json(c,{success:true,data:result.rows[0]}); });
+  app.patch("/api/kol/portal/portfolio/:id/pin", async (c) => { const current=await context(c,auth,pool); if(current.error)return current.error; const id=Number(c.req.param("id")); const body=await c.req.json().catch(()=>({})); const order=body.pinnedOrder===null?null:Number(body.pinnedOrder); if(!Number.isInteger(id)||!(order===null||(order>=1&&order<=3)))return json(c,{success:false,error:"INVALID_PIN_ORDER"},400); const client=await pool.connect(); try { await client.query("begin"); const item=await client.query(`select id from pos.kol_portfolio_items where id=$1 and kol_id=$2 and review_status='approved' and is_public=true for update`,[id,current.kol.source_id]); if(!item.rows[0]){await client.query("rollback");return json(c,{success:false,error:"PORTFOLIO_NOT_PUBLIC"},404);} if(order!==null){await client.query(`update pos.kol_portfolio_items set pinned_order=null where kol_id=$1 and pinned_order=$2`,[current.kol.source_id,order]); const count=await client.query(`select count(*)::int as n from pos.kol_portfolio_items where kol_id=$1 and pinned_order is not null and id<>$2`,[current.kol.source_id,id]); if(Number(count.rows[0].n)>=3){await client.query("rollback");return json(c,{success:false,error:"PIN_LIMIT_REACHED"},409);}} const result=await client.query(`update pos.kol_portfolio_items set pinned_order=$1,updated_at=now() where id=$2 and kol_id=$3 returning id,pinned_order`,[order,id,current.kol.source_id]); await client.query("commit"); return json(c,{success:true,data:result.rows[0]}); } catch(error){await client.query("rollback");throw error;} finally{client.release();} });
+
 }
