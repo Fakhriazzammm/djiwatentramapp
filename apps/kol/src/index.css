@@ -2,3 +2,17 @@
 @import "tailwindcss";
 :root{font-family:Geist,system-ui,sans-serif;color:#17181c;background:#f5f5f7;font-synthesis:none;--blue:#2f80ed;--ink:#17181c;--muted:#6b7280;--line:#e5e7eb;--ease:cubic-bezier(.32,.72,0,1)}
 *{box-sizing:border-box}body{margin:0;min-width:320px}button,input,textarea,select{font:inherit}button{cursor:pointer}.display{font-family:"Plus Jakarta Sans",system-ui,sans-serif}.safe-bottom{padding-bottom:calc(16px + env(safe-area-inset-bottom))}.focus-ring:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}.input{display:block;width:100%;min-height:48px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:0 14px;color:#17181c;outline:none;transition:border-color 180ms var(--ease),box-shadow 180ms var(--ease)}.input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px #dbeafe}.input::placeholder{color:#9ca3af}.press{transition:transform 180ms var(--ease),background 180ms var(--ease)}.press:active{transform:scale(.97)}.sheet{animation:sheet-in 320ms var(--ease)}@keyframes sheet-in{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Creator Portal design contract: calm iOS-like surfaces, one primary action, clear states. */
+.kol-portal{--portal-blue:#2563eb;--portal-violet:#7c3aed;--portal-surface:#fff;--portal-bg:#f7f8fb}
+.kol-portal main{letter-spacing:-.01em}
+.kol-portal article,.kol-portal aside{border:1px solid rgba(226,232,240,.78);box-shadow:0 8px 24px rgba(15,23,42,.045)}
+.kol-portal nav{box-shadow:0 6px 18px rgba(15,23,42,.04)}
+.kol-portal button,.kol-portal a{transition:transform 180ms var(--ease),box-shadow 180ms var(--ease),background 180ms var(--ease),border-color 180ms var(--ease)}
+.kol-portal button:not(:disabled):active,.kol-portal a:active{transform:scale(.98)}
+.kol-portal button:focus-visible,.kol-portal a:focus-visible{outline:3px solid #bfdbfe;outline-offset:2px}
+.kol-portal .bg-gray-50{background:#f8fafc}
+.kol-portal .bg-blue-50{background:#eff6ff}
+.kol-portal .bg-violet-50{background:#f5f3ff}
+.kol-portal .bg-emerald-50{background:#ecfdf5}
+@media(max-width:640px){.kol-portal{padding-left:16px;padding-right:16px}.kol-portal section{border-radius:24px}.kol-portal h1{letter-spacing:-.035em}.kol-portal nav button{min-height:52px}.kol-portal article,.kol-portal aside{box-shadow:0 5px 18px rgba(15,23,42,.04)}}
