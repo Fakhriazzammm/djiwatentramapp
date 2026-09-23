@@ -509,13 +509,9 @@ function AdminCustomers() {
 										</p>
 									)}
 									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-										<span className={`rounded-md px-1.5 py-0.5 font-bold ${retentionTone(retentionSegment(c))}`}>{retentionSegment(c)}</span>
-										<span className="rounded-md bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700">{marketingPriority(c)}</span>
-									</div>
-									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
 										<span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
 												<Wallet className="h-3 w-3" /> {formatRupiah(c.wallet_balance || 0)}
-											</span>
+										</span>
 										<span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-blue-700">
 											<ShoppingBag className="h-3 w-3" />
 											{c.total_orders} order DjiwaApp
@@ -537,6 +533,10 @@ function AdminCustomers() {
 									<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
 										<Clock className="h-3 w-3" />
 										Tidak aktif selama: <span className="font-bold text-foreground">{formatInactiveDays(c)}</span>
+									</div>
+									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+										<span className={`rounded-md px-1.5 py-0.5 font-bold ${retentionTone(retentionSegment(c))}`}>{retentionSegment(c)}</span>
+										<span className="rounded-md bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700">{marketingPriority(c)}</span>
 									</div>
 									<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
 										<CircleDot className={`h-3 w-3 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} />
@@ -566,18 +566,18 @@ function AdminCustomers() {
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Nama" sortKey="name" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Email" sortKey="email" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Telepon" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap px-2.5 py-2">Status</th>
+								<th className="whitespace-nowrap px-2.5 py-2">Exp Member</th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2 text-right"><SortableHeader label="Saldo" sortKey="wallet_balance" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
-								<th className="whitespace-nowrap px-2.5 py-2 text-center"><SortableHeader label="Order DjiwaApp" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
 								<th className="whitespace-nowrap px-2.5 py-2 text-center"><SortableHeader label="Kunjungan DjiwaApp" sortKey="djiwaapp_visit_count" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
-								<th className="whitespace-nowrap px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
+								<th className="whitespace-nowrap px-2.5 py-2 text-center"><SortableHeader label="Order DjiwaApp" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Tidak Aktif Selama" sortKey="inactive_days" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2">Status</th>
+								<th className="whitespace-nowrap px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Segmen Retensi" sortKey="retention_segment" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Prioritas Marketing" sortKey="marketing_priority" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2">Exp Member</th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
@@ -612,38 +612,22 @@ function AdminCustomers() {
 										<td className="px-2.5 py-2 align-middle text-muted-foreground whitespace-nowrap">
 											{c.phone || "-"}
 										</td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-semibold text-emerald-700">
-											{formatRupiah(c.wallet_balance || 0)}
-										</td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">
-											{c.total_orders}
-										</td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">
-											{c.djiwaapp_visit_count ?? 0}
-										</td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-medium">
-											{formatRupiah(c.total_spent)}
-										</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
-											{formatDate(c.last_order_at, true)}
-										</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
-											{formatDate(c.last_active_at, true)}
-										</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] font-semibold tabular-nums whitespace-nowrap"><span className={daysSinceCustomerActivity(c) !== null && (daysSinceCustomerActivity(c) ?? 0) > 30 ? "text-rose-700" : "text-muted-foreground"}>{formatInactiveDays(c)}</span></td>
 										<td className="px-2.5 py-2 align-middle whitespace-nowrap">
 											<span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${customerPresence(c) === "online" ? "bg-emerald-50 text-emerald-700" : customerPresence(c) === "offline" ? "bg-slate-100 text-slate-600" : "bg-muted text-muted-foreground"}`}>
 												<CircleDot className={`h-2.5 w-2.5 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} /> {presenceLabel(c)}
 											</span>
 										</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatMembershipExpiry(c.membership_expires_at)}</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatDate(c.created_at)}</td>
+										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-semibold text-emerald-700">{formatRupiah(c.wallet_balance || 0)}</td>
+										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">{c.djiwaapp_visit_count ?? 0}</td>
+										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">{c.total_orders}</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatDate(c.last_order_at, true)}</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatDate(c.last_active_at, true)}</td>
+										<td className="px-2.5 py-2 align-middle text-[10px] font-semibold tabular-nums whitespace-nowrap"><span className={daysSinceCustomerActivity(c) !== null && (daysSinceCustomerActivity(c) ?? 0) > 30 ? "text-rose-700" : "text-muted-foreground"}>{formatInactiveDays(c)}</span></td>
+										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-medium">{formatRupiah(c.total_spent)}</td>
 										<td className="px-2.5 py-2 align-middle whitespace-nowrap"><span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${retentionTone(retentionSegment(c))}`}>{retentionSegment(c)}</span></td>
 										<td className="px-2.5 py-2 align-middle whitespace-nowrap text-[10px] font-semibold text-violet-700">{marketingPriority(c)}</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
-											{formatMembershipExpiry(c.membership_expires_at)}
-										</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
-											{formatDate(c.created_at)}
-										</td>
 									</tr>
 								))
 							)}
