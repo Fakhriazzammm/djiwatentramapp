@@ -68,7 +68,7 @@ app.use(
   cors({
     origin: ["https://kolmarketing.yumme.id", "http://localhost:3010"],
     allowHeaders: ["Accept", "Content-Type", "Authorization"],
-    allowMethods: ["POST", "GET", "OPTIONS"],
+    allowMethods: ["POST", "GET", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   }),
 );
