@@ -14,7 +14,7 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 printf 'Building %s…\n' "$DOMAIN"
 bun run --cwd apps/kol build
 
-for marker in "Ceritakan tentang dirimu" "Navigasi Creator Portal" "Langkah berikutnya"; do
+for marker in "Ceritakan tentang dirimu" "Navigasi Creator Portal" "Creator Network" "Bagikan update"; do
   if ! python3 - "$marker" <<'PY'
 import sys
 from pathlib import Path
