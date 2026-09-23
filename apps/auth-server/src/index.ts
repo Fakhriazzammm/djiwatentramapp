@@ -17,6 +17,7 @@ const customerOrigins = [
   "https://b2b.yumme.id",
   "https://ordermieyamin.yumme.id",
   "https://500kopitasik.yumme.id",
+  "https://kolmarketing.yumme.id",
   "http://localhost:5173",
 ];
 const stickerRateLimit = new Map<string, number[]>();
@@ -58,6 +59,13 @@ app.use(
 // Better Auth handler (customer)
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
+});
+
+app.post("/api/kol/claim", async (c) => {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  await pool.query(`UPDATE public."user" SET user_type = 'kol' WHERE id = $1`, [session.user.id]);
+  return privateJson({ success: true, userType: "kol", userId: session.user.id });
 });
 
 // ── Better Auth KARYAWAN (staff) ──────────────────────────────────

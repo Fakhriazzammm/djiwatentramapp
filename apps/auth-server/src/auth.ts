@@ -20,7 +20,9 @@ export const auth = betterAuth({
     "https://b2b.yumme.id",
     "https://ordermieyamin.yumme.id",
     "https://500kopitasik.yumme.id",
+    "https://kolmarketing.yumme.id",
     "http://localhost:5173",
+    "http://localhost:3010",
   ],
   // Share the central customer session across Djiwa App subdomains.
   advanced: {
