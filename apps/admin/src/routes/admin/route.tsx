@@ -845,16 +845,13 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						to="/admin/minigames"
 						permission="products:manage"
 					/>
-					<a
-						href="https://kolmarketing.yumme.id/dashboard"
-						target="_blank"
-						rel="noopener noreferrer"
-						className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all hover:bg-muted hover:text-foreground ${isCollapsed ? "justify-center px-0" : "text-muted-foreground"}`}
-						title={isCollapsed ? "KOL Marketing" : undefined}
-					>
-						<Users className="h-5 w-5 shrink-0" />
-						{!isCollapsed && <span className="truncate">KOL Marketing</span>}
-					</a>
+					<DesktopNavLink
+						icon={<Users />}
+						isCollapsed={isCollapsed}
+						label="KOL Marketing"
+						to="/admin/kol"
+						permission="analytics:view"
+					/>
 				</nav>
 
 				{/* Footer: User Profile + Pengaturan + Keluar */}
