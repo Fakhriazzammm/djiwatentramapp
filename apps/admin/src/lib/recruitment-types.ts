@@ -6,6 +6,7 @@ export const RECRUITMENT_STATUSES = [
   "Interview Completed",
   "Offer",
   "Hired",
+  "Selesai",
   "Rejected",
   "Withdrawn",
 ] as const;
@@ -76,6 +77,23 @@ export interface RecruitmentOnboardingItem {
   task_key?: string | null;
   due_date?: string | null;
   [key: string]: unknown;
+}
+
+export interface RecruitmentPipelineCard extends RecruitmentCandidate {
+  sourceStatus?: string | null;
+  latestInterview?: RecruitmentInterview | null;
+  onboardingProgress?: { completed: number; total: number; overdue: number; nextTask?: string | null } | null;
+}
+
+export interface RecruitmentPipelineResponse {
+  cards: RecruitmentPipelineCard[];
+  [key: string]: unknown;
+}
+
+export interface RecruitmentStatusTransition {
+  id: string;
+  fromStatus?: string | null;
+  toStatus: string;
 }
 
 export interface RecruitmentDashboard {

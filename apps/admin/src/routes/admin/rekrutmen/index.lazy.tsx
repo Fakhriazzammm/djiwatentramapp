@@ -1,3 +1,3 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { RecruitmentDashboardPage } from "@/components/rekrutmen/route-pages";
-export const Route = createLazyFileRoute("/admin/rekrutmen/")({ component: RecruitmentDashboardPage });
+import { RecruitmentPipelinePage } from "@/components/rekrutmen/pipeline-page";
+export const Route = createLazyFileRoute("/admin/rekrutmen/")({ component: RecruitmentPipelinePage });

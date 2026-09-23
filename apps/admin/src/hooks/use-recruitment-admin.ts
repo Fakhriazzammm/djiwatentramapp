@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { recruitmentApi, recruitmentRequest } from "@/lib/recruitment-api";
-import type { RecruitmentCandidate, RecruitmentDashboard, RecruitmentInterview, RecruitmentOnboardingItem, RecruitmentPosition, RecruitmentReport } from "@/lib/recruitment-types";
+import type { RecruitmentCandidate, RecruitmentDashboard, RecruitmentInterview, RecruitmentOnboardingItem, RecruitmentPipelineCard, RecruitmentPosition, RecruitmentReport } from "@/lib/recruitment-types";
 
 type AsyncState<T> = { data: T | null; loading: boolean; error: string | null; reload: () => void };
 
@@ -24,6 +24,7 @@ function useRecruitmentQuery<T>(load: (token?: string) => Promise<T>, enabled = 
 
 export function useRecruitmentDashboard() { return useRecruitmentQuery<RecruitmentDashboard>(useCallback((token?: string) => recruitmentApi.dashboard(token), [])); }
 export function useRecruitmentCandidates() { return useRecruitmentQuery<RecruitmentCandidate[] | { data: RecruitmentCandidate[] }>(useCallback((token?: string) => recruitmentApi.candidates(token), [])); }
+export function useRecruitmentPipeline() { return useRecruitmentQuery<RecruitmentPipelineCard[] | { data: RecruitmentPipelineCard[] }>(useCallback((token?: string) => recruitmentApi.pipeline(token), [])); }
 export function useRecruitmentPositions() { return useRecruitmentQuery<RecruitmentPosition[] | { data: RecruitmentPosition[] }>(useCallback((token?: string) => recruitmentApi.positions(token), [])); }
 export function useRecruitmentInterviews() { return useRecruitmentQuery<RecruitmentInterview[] | { data: RecruitmentInterview[] }>(useCallback((token?: string) => recruitmentApi.interviews(token), [])); }
 export function useRecruitmentOnboarding() { return useRecruitmentQuery<RecruitmentOnboardingItem[] | { data: RecruitmentOnboardingItem[] }>(useCallback((token?: string) => recruitmentApi.onboarding(token), [])); }

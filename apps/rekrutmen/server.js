@@ -618,6 +618,57 @@ app.post("/api/rekrutmen/positions", validateRecruitmentAdmin, (req, res) => {
   }
 });
 
+function pipelineStatus(status) {
+  return status === "Applied" ? "Application Received" : status || "Application Received";
+}
+
+app.get("/api/rekrutmen/pipeline", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const candidates = queryAdminRows(`${candidateSelect("ORDER BY created_at DESC NULLS LAST")}`).map((row) => ({ ...candidateSummary(row), id: row.id, nama_lengkap: row.nama_lengkap || "", jenis_kelamin: row.jenis_kelamin || "", tanggal_lahir: row.tanggal_lahir || null, sosial_media: row.sosial_media || "", airtable_id: row.airtable_id || "", email: row.email || "", nomor_telepon: row.nomor_telepon || "", posisi_dilamar: row.posisi_dilamar || "", tipe_kerja: row.tipe_kerja || "", notes: row.notes || "", status: pipelineStatus(row.status), sourceStatus: row.status || "Application Received", application_date: row.application_date || null, created_at: row.created_at || null, cv_url: row.cv_url || "" }));
+    const interviews = queryAdminRows("SELECT row_to_json(t)::text FROM (SELECT * FROM pos.recruitment_interviews ORDER BY scheduled_at ASC NULLS LAST, created_at DESC) t");
+    const onboarding = queryAdminRows("SELECT row_to_json(t)::text FROM (SELECT * FROM pos.recruitment_onboarding_tasks ORDER BY due_date ASC NULLS LAST, created_at ASC) t");
+    const interviewByCandidate = new Map();
+    for (const interview of interviews) {
+      const current = interviewByCandidate.get(interview.candidate_id);
+      if (!current || new Date(interview.scheduled_at || "9999-12-31").getTime() < new Date(current.scheduled_at || "9999-12-31").getTime()) interviewByCandidate.set(interview.candidate_id, interview);
+    }
+    const onboardingByCandidate = new Map();
+    for (const task of onboarding) {
+      const entry = onboardingByCandidate.get(task.candidate_id) || { completed: 0, total: 0, overdue: 0, nextTask: null };
+      entry.total += 1;
+      if (task.status === "completed" || task.status === "skipped") entry.completed += 1;
+      if (task.due_date && task.status !== "completed" && task.status !== "skipped" && new Date(`${task.due_date}T23:59:59+07:00`) < new Date()) entry.overdue += 1;
+      if (!entry.nextTask && task.status !== "completed" && task.status !== "skipped") entry.nextTask = task.label;
+      onboardingByCandidate.set(task.candidate_id, entry);
+    }
+    const data = candidates.map((candidate) => ({ ...candidate, latestInterview: interviewByCandidate.get(candidate.id) || null, onboardingProgress: onboardingByCandidate.get(candidate.id) || null }));
+    adminEnvelope(res, data, { total: data.length, generatedAt: new Date().toISOString() });
+  } catch (e) { adminError(res, 503, "BACKEND_UNAVAILABLE", "Pipeline recruitment tidak dapat dimuat"); }
+});
+
+app.post("/api/rekrutmen/candidates/:id/status-transition", validateRecruitmentAdmin, (req, res) => {
+  const id = requireUuid(req, res, "Kandidat");
+  if (!id) return;
+  try {
+    const allowed = ["Application Received", "Screening", "Interview Scheduled", "Interview Completed", "Offer", "Hired", "Onboarding", "Selesai", "Rejected", "Withdrawn"];
+    const toStatus = String(req.body?.toStatus || "").trim();
+    const expectedStatus = String(req.body?.expectedStatus || "").trim();
+    const note = String(req.body?.reason || "").trim().slice(0, 1000);
+    if (!allowed.includes(toStatus)) return adminError(res, 400, "INVALID_STATUS", "Status pipeline tidak valid");
+    const current = queryAdminRows(`SELECT json_build_object('id',id,'status',status)::text FROM pos.${TABLE} WHERE id=${sqlLiteral(id)} LIMIT 1`)[0];
+    if (!current) return adminError(res, 404, "NOT_FOUND", "Kandidat tidak ditemukan");
+    if (toStatus === "Interview Scheduled") {
+      const scheduled = queryAdminRows(`SELECT json_build_object('scheduled',EXISTS(SELECT 1 FROM pos.recruitment_interviews WHERE candidate_id=${sqlLiteral(id)} AND scheduled_at IS NOT NULL AND status <> 'Cancelled'))::text`)[0]?.scheduled;
+      if (scheduled !== true && scheduled !== "true") return adminError(res, 400, "INTERVIEW_SCHEDULE_REQUIRED", "Jadwal interview wajib dibuat sebelum kandidat masuk tahap Interview Scheduled");
+    }
+    const expectedCondition = expectedStatus === "Application Received" ? `(status=${sqlLiteral(expectedStatus)} OR status='Applied')` : `status=${sqlLiteral(expectedStatus || current.status)}`;
+    const sql = `WITH current_row AS (SELECT id,status FROM pos.${TABLE} WHERE id=${sqlLiteral(id)} AND ${expectedCondition} FOR UPDATE), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(toStatus)},updated_at=NOW() FROM current_row WHERE c.id=current_row.id RETURNING c.id,current_row.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,${sqlLiteral(note)},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},'{}'::jsonb FROM updated RETURNING candidate_id) SELECT json_build_object('id',updated.id,'fromStatus',updated.from_status,'toStatus',updated.to_status)::text FROM updated JOIN history ON history.candidate_id=updated.id`;
+    const row = runAdminMutation(sql)[0];
+    if (!row) return adminError(res, 409, "STATUS_CONFLICT", "Status kandidat sudah berubah atau tidak sesuai dengan kondisi terakhir");
+    adminEnvelope(res, row, { resource: "candidate-status-transition" });
+  } catch (e) { adminError(res, 503, "BACKEND_UNAVAILABLE", "Status kandidat tidak dapat disimpan"); }
+});
+
 app.patch("/api/rekrutmen/positions/:id", validateRecruitmentAdmin, (req, res) => {
   const id = requireUuid(req, res, "Posisi");
   if (!id) return;
