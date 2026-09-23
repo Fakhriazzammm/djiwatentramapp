@@ -9,7 +9,7 @@
 .kol-public-shell .bg-white{box-shadow:0 10px 30px rgba(15,23,42,.055)}
 .kol-public-shell button:not(:disabled),.kol-public-shell a{transition:transform 180ms var(--ease),box-shadow 180ms var(--ease),background 180ms var(--ease)}
 .kol-public-shell button:not(:disabled):active,.kol-public-shell a:active{transform:scale(.98)}
-.kol-portal main{letter-spacing:-.01em}
+.kol-portal{padding-bottom:calc(112px + env(safe-area-inset-bottom));overflow-x:hidden}.kol-portal main{letter-spacing:-.01em}.kol-portal nav[aria-label="Navigasi Creator Portal"]{padding-bottom:max(.75rem,env(safe-area-inset-bottom))}@media(min-width:641px){.kol-portal{padding-bottom:40px}}
 .kol-portal article,.kol-portal aside{border:1px solid rgba(226,232,240,.78);box-shadow:0 8px 24px rgba(15,23,42,.045)}
 .kol-portal nav{box-shadow:0 6px 18px rgba(15,23,42,.04)}
 .kol-portal button,.kol-portal a{transition:transform 180ms var(--ease),box-shadow 180ms var(--ease),background 180ms var(--ease),border-color 180ms var(--ease)}
