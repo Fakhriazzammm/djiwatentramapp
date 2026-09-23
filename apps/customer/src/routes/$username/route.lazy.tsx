@@ -252,7 +252,7 @@ function MemberHomePage() {
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
 							onMerchandise={() => window.location.assign(`https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu`)}
 							onBooking={() => window.location.assign("https://booking.yumme.id/")}
-							onProfile={() => navigate({ to: "/$username/profile", params: { username } })}
+							onDjiwaRun={() => navigate({ to: "/$username/run", params: { username } })}
 						/>
 						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
 					</main>
@@ -318,7 +318,7 @@ function MemberHomePage() {
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
 							onMerchandise={() => window.location.assign(`https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu`)}
 							onBooking={() => window.location.assign("https://booking.yumme.id/")}
-							onProfile={() => navigate({ to: "/$username/profile", params: { username } })}
+							onDjiwaRun={() => navigate({ to: "/$username/run", params: { username } })}
 						/>
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />

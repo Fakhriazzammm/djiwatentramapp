@@ -97,6 +97,7 @@ case "$APP" in
 	customer)
 		deploy_app "customer" "djiwatentram.yumme.id"
 		deploy_edge_function "customer-auth"
+		deploy_edge_function "djiwa-run"
 		;;
 	admin|web)
 		# `web` dipertahankan sebagai alias legacy, tetapi sumber Admin selalu apps/admin.
@@ -108,6 +109,7 @@ case "$APP" in
 		deploy_app "customer" "djiwatentram.yumme.id"
 		deploy_app "admin" "admindjiwatentram.yumme.id"
 		deploy_edge_function "customer-auth"
+		deploy_edge_function "djiwa-run"
 		;;
 esac
 

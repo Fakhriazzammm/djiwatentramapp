@@ -63,7 +63,7 @@ export function CustomerHomeServiceGrid({
   onCommunity,
   onMerchandise,
   onBooking,
-  onProfile,
+  onDjiwaRun,
 }: {
   onOrder: () => void;
   onPromo: () => void;
@@ -72,7 +72,7 @@ export function CustomerHomeServiceGrid({
   onCommunity: () => void;
   onMerchandise: () => void;
   onBooking: () => void;
-  onProfile: () => void;
+  onDjiwaRun: () => void;
 }) {
   const items: Array<{ label: string; badge?: string; icon?: Djiwa3DIconName; assetSrc?: string; onClick: () => void }> = [
     { label: "Pesan Menu", badge: "Favorit", icon: "customer-food-ordering", onClick: onOrder },
@@ -82,7 +82,7 @@ export function CustomerHomeServiceGrid({
     { label: "Komunitas", icon: "navigation-community", onClick: onCommunity },
     { label: "Merchandise", badge: "Baru", assetSrc: "/assets/djiwa-3d-merchandise-v1.webp", onClick: onMerchandise },
     { label: "Booking", badge: "Acara", icon: "restaurant-cafe", onClick: onBooking },
-    { label: "Profil", icon: "navigation-profile", onClick: onProfile },
+    { label: "Djiwa Run", badge: "Baru", icon: "navigation-tracking", onClick: onDjiwaRun },
   ];
 
   return (

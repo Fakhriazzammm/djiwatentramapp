@@ -44,6 +44,7 @@ import { Route as AdminKolRouteImport } from './routes/admin/kol'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
+import { Route as AdminDjiwaRunRouteImport } from './routes/admin/djiwa-run'
 import { Route as AdminDjiwaAppRouteImport } from './routes/admin/djiwa-app'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
@@ -306,6 +307,13 @@ const AdminForecastingRoute = AdminForecastingRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/forecasting.lazy').then((d) => d.Route),
+)
+const AdminDjiwaRunRoute = AdminDjiwaRunRouteImport.update({
+  id: '/djiwa-run',
+  path: '/djiwa-run',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/djiwa-run.lazy').then((d) => d.Route),
 )
 const AdminDjiwaAppRoute = AdminDjiwaAppRouteImport.update({
   id: '/djiwa-app',
@@ -735,6 +743,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
+  '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
@@ -819,6 +828,7 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
+  '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
@@ -902,6 +912,7 @@ export interface FileRoutesById {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
+  '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
@@ -992,6 +1003,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/djiwa-app'
+    | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
@@ -1076,6 +1088,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/djiwa-app'
+    | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
@@ -1158,6 +1171,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/discounts'
     | '/admin/djiwa-app'
+    | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/kitchen'
@@ -1481,6 +1495,13 @@ declare module '@tanstack/react-router' {
       path: '/forecasting'
       fullPath: '/admin/forecasting'
       preLoaderRoute: typeof AdminForecastingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/djiwa-run': {
+      id: '/admin/djiwa-run'
+      path: '/djiwa-run'
+      fullPath: '/admin/djiwa-run'
+      preLoaderRoute: typeof AdminDjiwaRunRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/djiwa-app': {
@@ -2089,6 +2110,7 @@ interface AdminRouteRouteChildren {
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminDjiwaAppRoute: typeof AdminDjiwaAppRoute
+  AdminDjiwaRunRoute: typeof AdminDjiwaRunRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
@@ -2120,6 +2142,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminDjiwaAppRoute: AdminDjiwaAppRoute,
+  AdminDjiwaRunRoute: AdminDjiwaRunRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,

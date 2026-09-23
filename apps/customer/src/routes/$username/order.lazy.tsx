@@ -52,6 +52,7 @@ import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
+import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeDjiwaRunCheckoutReward } from "@/lib/djiwa-run-client";
 
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
@@ -222,6 +223,7 @@ function OrderPage() {
 	const storeName = brandSettings?.title || siteSettings?.storeName || "Ordering";
 	const canUseMayar = Boolean(siteSettings?.mayarEnabled && mayarConfig?.configured);
 	const canUseWallet = Boolean(isAuthenticated && customer && customer.walletStatus !== "blocked");
+	const selectedRunRewardId = paymentChoice === "wallet" ? (search.runRewardId ?? null) : null;
 	const upsellEnabled = siteSettings?.upsellEnabled === true;
 	const upsellMaxRecommendations = Number(siteSettings?.upsellMaxRecommendations);
 	const upsellTitle = typeof siteSettings?.upsellTitle === "string" ? siteSettings.upsellTitle.trim() : "";
@@ -804,7 +806,11 @@ function OrderPage() {
 				});
 				let walletHoldId: string | null = null;
 				let walletCaptured = false;
+				let runReservation: { rewardId: string; reservationId: string; amount: number } | null = null;
 				try {
+					if (selectedRunRewardId) {
+						runReservation = await reserveDjiwaRunCheckoutReward({ customerSourceId: customer.sourceId, customerEmail: customer.email, rewardId: selectedRunRewardId, orderId: String(orderId), idempotencyKey: `${checkoutRequestKeyRef.current}:run-reserve` });
+					}
 					const holdResponse = await invokeEdgeFunction<{ result?: { ok?: boolean; hold_id?: string; available_balance?: number; required?: number } }>("customer-wallet", {
 						action: "hold",
 						sourceId: customer.sourceId,
@@ -828,6 +834,9 @@ function OrderPage() {
 						idempotencyKey: checkoutRequestKeyRef.current,
 					});
 					walletCaptured = true;
+					if (runReservation) {
+						await finalizeDjiwaRunCheckoutReward({ customerSourceId: customer.sourceId, customerEmail: customer.email, rewardId: runReservation.rewardId, orderId: String(orderId), reservationId: runReservation.reservationId, idempotencyKey: `${checkoutRequestKeyRef.current}:run-finalize` });
+					}
 					if (!isAuthenticated) rememberGuestOrder(String(orderId));
 					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, dessertLater, cartSnapshot: cart });
 				} catch (error) {
@@ -840,6 +849,9 @@ function OrderPage() {
 							idempotencyKey: `${checkoutRequestKeyRef.current}:release`,
 							reason: "Checkout Djiwa Pay gagal, saldo dikembalikan",
 						}).catch(() => undefined);
+					}
+					if (runReservation && !walletCaptured) {
+						await releaseDjiwaRunCheckoutReward({ customerSourceId: customer.sourceId, customerEmail: customer.email, rewardId: runReservation.rewardId, orderId: String(orderId), reservationId: runReservation.reservationId, idempotencyKey: `${checkoutRequestKeyRef.current}:run-release`, reason: "Checkout Djiwa Pay gagal, reward dikembalikan" }).catch(() => undefined);
 					}
 					await updateOrderStatus({ id: orderId, status: "cancelled" }).catch(() => undefined);
 					throw error;
