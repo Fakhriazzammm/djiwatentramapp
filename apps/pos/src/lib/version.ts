@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.188",
+	semantic: "0.2.189",
 	// Git/deploy commit hash (short)
-	commitHash: "3884867",
-	message: "fix(pos): make bulk availability updates atomic",
+	commitHash: "3bca633",
+	message: "chore(pos): publish atomic bulk release metadata",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): make bulk availability updates atomic",
+	commitMessage: "chore(pos): publish atomic bulk release metadata",
 	// Build timestamp
 	buildDate: "2026-09-23",
 	// Full version string for display
