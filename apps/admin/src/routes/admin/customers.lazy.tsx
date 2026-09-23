@@ -90,6 +90,48 @@ function presenceLabel(customer: Customer) {
 	return status === "online" ? "Sedang aktif" : status === "offline" ? "Offline" : "Belum pernah aktif";
 }
 
+type RetentionSegment = "Belum Aktif" | "Aktif" | "Perlu Diingatkan" | "Belum Kembali" | "Berisiko Hilang";
+const RETENTION_ORDER: RetentionSegment[] = ["Belum Aktif", "Aktif", "Perlu Diingatkan", "Belum Kembali", "Berisiko Hilang"];
+
+function latestCustomerActivity(customer: Customer) {
+	const timestamps = [customer.last_active_at, customer.last_order_at]
+		.map((value) => value ? new Date(value).getTime() : 0)
+		.filter((value) => Number.isFinite(value) && value > 0);
+	return timestamps.length ? Math.max(...timestamps) : 0;
+}
+
+function daysSinceCustomerActivity(customer: Customer) {
+	const latest = latestCustomerActivity(customer);
+	return latest ? Math.max(0, Math.floor((Date.now() - latest) / 86400000)) : null;
+}
+
+function retentionSegment(customer: Customer): RetentionSegment {
+	const days = daysSinceCustomerActivity(customer);
+	if (days === null) return "Belum Aktif";
+	if (days <= 14) return "Aktif";
+	if (days <= 30) return "Perlu Diingatkan";
+	if (days <= 60) return "Belum Kembali";
+	return "Berisiko Hilang";
+}
+
+function marketingPriority(customer: Customer) {
+	switch (retentionSegment(customer)) {
+		case "Belum Aktif": return "Onboarding member";
+		case "Aktif": return "Pantau";
+		case "Perlu Diingatkan": return "Promo kunjungan ulang";
+		case "Belum Kembali": return "Kirim voucher member";
+		case "Berisiko Hilang": return "Prioritas reaktivasi";
+	}
+}
+
+function retentionTone(segment: RetentionSegment) {
+	if (segment === "Aktif") return "bg-emerald-50 text-emerald-700";
+	if (segment === "Perlu Diingatkan") return "bg-amber-50 text-amber-700";
+	if (segment === "Belum Kembali") return "bg-orange-50 text-orange-700";
+	if (segment === "Berisiko Hilang") return "bg-rose-50 text-rose-700";
+	return "bg-slate-100 text-slate-600";
+}
+
 function normalizeCustomerName(value: unknown) {
 	return String(value ?? "")
 		.trim()
@@ -113,11 +155,13 @@ function customerMatchesOrder(customer: Customer, order: any) {
 	return normalizeCustomerName(customer.name) !== "" && normalizeCustomerName(customer.name) === normalizeCustomerName(order.customerName ?? order.customer_name);
 }
 
-type CustomerSortKey = "name" | "email" | "phone" | "wallet_balance" | "total_orders" | "djiwaapp_visit_count" | "total_spent" | "last_order_at" | "last_active_at" | "created_at";
+type CustomerSortKey = "name" | "email" | "phone" | "wallet_balance" | "total_orders" | "djiwaapp_visit_count" | "total_spent" | "last_order_at" | "last_active_at" | "retention_segment" | "marketing_priority" | "created_at";
 type SortDirection = "asc" | "desc";
 
 function customerSortValue(customer: Customer, key: CustomerSortKey): string | number {
 	if (key === "name" || key === "email" || key === "phone") return String(customer[key] ?? "").toLowerCase();
+	if (key === "retention_segment") return RETENTION_ORDER.indexOf(retentionSegment(customer));
+	if (key === "marketing_priority") return `${RETENTION_ORDER.indexOf(retentionSegment(customer))}-${marketingPriority(customer)}`;
 	if (key === "last_order_at" || key === "last_active_at" || key === "created_at") return customer[key] ? new Date(customer[key] as string).getTime() : 0;
 	return Number(customer[key] ?? 0);
 }
@@ -459,6 +503,10 @@ function AdminCustomers() {
 										</p>
 									)}
 									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+										<span className={`rounded-md px-1.5 py-0.5 font-bold ${retentionTone(retentionSegment(c))}`}>{retentionSegment(c)}</span>
+										<span className="rounded-md bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700">{marketingPriority(c)}</span>
+									</div>
+									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
 										<span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
 												<Wallet className="h-3 w-3" /> {formatRupiah(c.wallet_balance || 0)}
 											</span>
@@ -515,6 +563,8 @@ function AdminCustomers() {
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2">Status</th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Segmen Retensi" sortKey="retention_segment" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Prioritas Marketing" sortKey="marketing_priority" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 								<th className="whitespace-nowrap px-2.5 py-2">Exp Member</th>
 								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
 							</tr>
@@ -524,7 +574,7 @@ function AdminCustomers() {
 								<tr>
 									<td
 										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={13}
+										colSpan={15}
 									>
 										Belum ada pelanggan.
 									</td>
@@ -574,6 +624,8 @@ function AdminCustomers() {
 												<CircleDot className={`h-2.5 w-2.5 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} /> {presenceLabel(c)}
 											</span>
 										</td>
+										<td className="px-2.5 py-2 align-middle whitespace-nowrap"><span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${retentionTone(retentionSegment(c))}`}>{retentionSegment(c)}</span></td>
+										<td className="px-2.5 py-2 align-middle whitespace-nowrap text-[10px] font-semibold text-violet-700">{marketingPriority(c)}</td>
 										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
 											{formatMembershipExpiry(c.membership_expires_at)}
 										</td>
