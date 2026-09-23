@@ -2541,6 +2541,22 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		}
 	}, []);
 
+	const captureStockSnapshot = useCallback(async (shiftId: string, phase: "opening" | "closing") => {
+		try {
+			const { data, error } = await createClient().schema("pos").rpc("capture_shift_product_availability_snapshot", {
+				p_shift_source_id: shiftId,
+				p_phase: phase,
+				p_captured_by_user_id: currentUser?._id ?? null,
+				p_captured_at: Date.now(),
+			});
+			if (error) throw error;
+			return Array.isArray(data) ? data[0] : data;
+		} catch (error) {
+			console.error(`[stock-report] gagal menyimpan snapshot ${phase}:`, error);
+			return null;
+		}
+	}, [currentUser?._id]);
+
 	const handleEndShift = async () => {
 		if (shiftTimeGate.blocked) {
 			setSubmitError(null);
@@ -2608,6 +2624,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				cashBreakdown: breakdown as any,
 				notes,
 			});
+			await captureStockSnapshot(String(shiftStatus.shiftInfo.shiftId), "closing");
 			playShiftSound(`close:${String(shiftStatus.shiftInfo.shiftId)}`, "/sounds/cashier-shift-open.mp3");
 			
 			const shiftInfo = result?.shift;
@@ -2814,7 +2831,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				const statusLabel = ONLINE_FOOD_STATUS_OPTIONS.find((option) => option.value === item.status)?.label ?? item.status;
 				return `${label}: ${statusLabel}${item.note.trim() ? ` — ${item.note.trim()}` : ""}`;
 			}).join("\n");
-			await startShift({
+			const openedShiftId = await startShift({
 				cashierName: cashierName.trim(),
 				cashierUserId: cashier?._id ?? null,
 				shiftName: shiftName.trim(),
@@ -2825,6 +2842,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				onlineFoodChecklist,
 				openRequestId: openRequestId ?? undefined,
 			});
+			await captureStockSnapshot(String(openedShiftId), "opening");
 			playShiftSound(`open:${openRequestId ?? `${cashierName.trim()}:${shiftName.trim()}`}`, "/sounds/cashier-shift-open.mp3");
 			setShowStartConfirm(false);
 			setShowStartChecklist(false);

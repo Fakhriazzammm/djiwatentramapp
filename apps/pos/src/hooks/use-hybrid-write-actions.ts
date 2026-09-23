@@ -604,11 +604,27 @@ export function useHybridCreateProduct() {
 
 export function useHybridUpdateProduct() {
 	const fallback = useMutation(api.products.updateProduct);
+	const { user: currentUser } = useYumiAuth();
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id produk wajib diisi");
+			const availabilityOnly = args?.isAvailable !== undefined &&
+				Object.keys(args ?? {}).every((key) => ["id", "isAvailable", "sourceActionId"].includes(key));
+			if (availabilityOnly) {
+				const { data, error } = await createClient().schema("pos").rpc("update_product_availability_with_event", {
+					p_product_source_id: id,
+					p_new_is_available: Boolean(args.isAvailable),
+					p_changed_by_user_id: currentUser?._id ?? null,
+					p_changed_by_name: currentUser?.name ?? null,
+					p_shift_source_id: null,
+					p_source: "pos_menu_stock",
+					p_source_action_id: args.sourceActionId ?? makeSourceId("availability"),
+				});
+				if (error) throw error;
+				return Array.isArray(data) ? data[0] : data;
+			}
 			const updates: Record<string, unknown> = {};
 			if (args?.categoryId !== undefined) updates.category_source_id = args.categoryId ?? null;
 			if (args?.name !== undefined) updates.name = String(args.name ?? "").trim() || "Produk";
@@ -632,7 +648,7 @@ export function useHybridUpdateProduct() {
 				.eq("source_id", id);
 			if (error) throw error;
 		},
-		[fallback]
+		[fallback, currentUser?._id, currentUser?.name]
 	);
 }
 
@@ -841,7 +857,8 @@ export function useHybridBulkUpdateProducts() {
 			if (!hasSupabaseConfig) return fallback(args);
 			const ids = Array.isArray(args?.ids) ? args.ids : [];
 			const updates = args?.updates ?? {};
-			await Promise.all(ids.map((id: string) => updateProduct({ id, ...updates })));
+			const sourceActionId = updates.isAvailable === undefined ? undefined : makeSourceId("availability-bulk");
+			await Promise.all(ids.map((id: string) => updateProduct({ id, ...updates, ...(sourceActionId ? { sourceActionId } : {}) })));
 			return { updatedCount: ids.length };
 		},
 		[fallback, updateProduct]

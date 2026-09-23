@@ -908,6 +908,174 @@ async def _notify_stock_update():
 
 
 
+# ── POS menu availability and shift snapshot notifications ─────────
+
+_STOCK_EVENT_LOCK = asyncio.Lock()
+_STOCK_EVENT_CURSOR: int | None = None
+_STOCK_SNAPSHOT_CURSOR: int | None = None
+
+
+def _service_headers():
+    key = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY
+    return {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+
+
+async def _stock_rpc(name: str, payload: dict):
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/{name}",
+            headers=_service_headers(),
+            json=payload,
+        )
+        response.raise_for_status()
+        return response.json()
+
+
+async def _claim_stock_delivery(dedupe_key: str, notification_type: str, source_event_id: str) -> bool:
+    result = await _stock_rpc("claim_stock_notification", {
+        "p_dedupe_key": dedupe_key,
+        "p_notification_type": notification_type,
+        "p_source_event_id": source_event_id,
+        "p_chat_id": str(STOCK_GROUP_ID),
+    })
+    return bool(result is True or (isinstance(result, list) and result and result[0] is True))
+
+
+async def _mark_stock_delivery(dedupe_key: str, status: str, message_id: str | None = None):
+    await _stock_rpc("mark_stock_notification", {
+        "p_dedupe_key": dedupe_key,
+        "p_status": status,
+        "p_message_id": message_id,
+    })
+
+
+async def _send_stock_message(text: str, dedupe_key: str, notification_type: str, source_event_id: str):
+    if not await _claim_stock_delivery(dedupe_key, notification_type, source_event_id):
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={"chat_id": STOCK_GROUP_ID, "text": text},
+            )
+            body = response.json()
+            if response.status_code >= 400 or not body.get("ok"):
+                raise RuntimeError(f"Telegram delivery failed: {response.status_code} {body}")
+        message_id = str((body.get("result") or {}).get("message_id") or "") or None
+        await _mark_stock_delivery(dedupe_key, "sent", message_id)
+        return True
+    except Exception as error:
+        logger.warning("POS stock notification failed (%s): %s", dedupe_key, error)
+        try:
+            await _mark_stock_delivery(dedupe_key, "failed", str(error)[:500])
+        except Exception as mark_error:
+            logger.warning("POS stock delivery status update failed: %s", mark_error)
+        return False
+
+
+async def _process_pos_stock_events():
+    global _STOCK_EVENT_CURSOR, _STOCK_SNAPSHOT_CURSOR
+    headers = _service_headers()
+    async with httpx.AsyncClient(timeout=15) as client:
+        if _STOCK_EVENT_CURSOR is None:
+            response = await client.get(
+                f"{SUPABASE_URL}/rest/v1/pos_product_availability_events?select=event_id&order=event_id.desc&limit=1",
+                headers=headers,
+            )
+            response.raise_for_status()
+            rows = response.json()
+            _STOCK_EVENT_CURSOR = int(rows[0]["event_id"]) if rows else 0
+        if _STOCK_SNAPSHOT_CURSOR is None:
+            response = await client.get(
+                f"{SUPABASE_URL}/rest/v1/pos_shift_product_availability_snapshots?select=snapshot_id&order=snapshot_id.desc&limit=1",
+                headers=headers,
+            )
+            response.raise_for_status()
+            rows = response.json()
+            _STOCK_SNAPSHOT_CURSOR = int(rows[0]["snapshot_id"]) if rows else 0
+
+        response = await client.get(
+            f"{SUPABASE_URL}/rest/v1/pos_product_availability_events",
+            params={
+                "select": "*",
+                "event_id": f"gt.{_STOCK_EVENT_CURSOR}",
+                "order": "event_id.asc",
+                "limit": "25",
+            },
+            headers=headers,
+        )
+        response.raise_for_status()
+        events = response.json()
+
+        for event in events:
+            event_id = int(event["event_id"])
+            state = "ON / SIAP DIJUAL" if event.get("new_is_available") else "OFF / SOLD"
+            previous = "ON" if event.get("previous_is_available") else "OFF"
+            quantity = event.get("quantity_snapshot")
+            text = "\n".join([
+                "🟢 MENU DIAKTIFKAN" if event.get("new_is_available") else "🔴 MENU DINONAKTIFKAN",
+                "",
+                f"Produk: {event.get('product_name_snapshot') or '-'}",
+                f"Kode: #{event.get('menu_number_snapshot')}" if event.get("menu_number_snapshot") is not None else "Kode: -",
+                f"Status: {previous} → {state}",
+                f"Stok: {quantity if quantity is not None else '-'}",
+                f"Kasir: {event.get('changed_by_name_snapshot') or '-'}",
+                "Sumber: POS",
+            ])
+            await _send_stock_message(text, f"availability:{event_id}", "availability_change", str(event_id))
+            _STOCK_EVENT_CURSOR = event_id
+
+        response = await client.get(
+            f"{SUPABASE_URL}/rest/v1/pos_shift_product_availability_snapshots",
+            params={
+                "select": "*",
+                "snapshot_id": f"gt.{_STOCK_SNAPSHOT_CURSOR}",
+                "order": "snapshot_id.asc",
+                "limit": "2000",
+            },
+            headers=headers,
+        )
+        response.raise_for_status()
+        snapshots = response.json()
+
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for snapshot in snapshots:
+        groups.setdefault((str(snapshot["shift_source_id"]), str(snapshot["phase"])), []).append(snapshot)
+    for (shift_id, phase), rows in groups.items():
+        on_rows = [row for row in rows if row.get("is_available")]
+        off_rows = [row for row in rows if not row.get("is_available")]
+        lines = [
+            f"📦 REPORT MENU SHIFT {'BUKA' if phase == 'opening' else 'TUTUP'}",
+            "",
+            f"Shift ID: {shift_id}",
+            f"Total menu: {len(rows)}",
+            f"🟢 ON / SIAP DIJUAL: {len(on_rows)}",
+            f"🔴 OFF / SOLD: {len(off_rows)}",
+            "",
+            "🔴 DAFTAR OFF",
+        ]
+        lines.extend(
+            f"• {row.get('product_name_snapshot') or '-'}" +
+            (f" (#{row.get('menu_number_snapshot')})" if row.get("menu_number_snapshot") is not None else "")
+            for row in off_rows[:20]
+        )
+        if len(off_rows) > 20:
+            lines.append(f"• ...dan {len(off_rows) - 20} menu lainnya")
+        await _send_stock_message("\n".join(lines), f"shift-stock:{shift_id}:{phase}", "shift_stock_report", f"{shift_id}:{phase}")
+        _STOCK_SNAPSHOT_CURSOR = max(int(row["snapshot_id"]) for row in rows)
+
+
+async def _monitor_pos_stock_events():
+    await asyncio.sleep(10)
+    while True:
+        async with _STOCK_EVENT_LOCK:
+            try:
+                await _process_pos_stock_events()
+            except Exception as error:
+                logger.warning("POS stock event monitor failed: %s", error)
+        await asyncio.sleep(15)
+
+
 
 # ── Stock Reaction: AI Match ─────────────────────────────────────
 
@@ -1599,6 +1767,7 @@ async def main():
             await _notify_stock_update()
 
     asyncio.ensure_future(_scheduled_stock_report())
+    asyncio.ensure_future(_monitor_pos_stock_events())
     asyncio.ensure_future(_monitor_stock_changes())
     asyncio.ensure_future(_monitor_completed_orders())
     asyncio.ensure_future(_cleanup_stock_reaction_history())
