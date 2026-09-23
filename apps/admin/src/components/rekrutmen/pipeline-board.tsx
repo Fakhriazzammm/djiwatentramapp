@@ -1,7 +1,7 @@
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { CalendarClock, CheckCircle2, FileText, GripVertical, Loader2, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RECRUITMENT_STATUSES, type RecruitmentPipelineCard } from "@/lib/recruitment-types";
 
 export const PIPELINE_COLUMNS = [
@@ -40,6 +40,7 @@ export function RecruitmentPipelineBoard({ candidates, loading, onOpenCandidate,
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  useEffect(() => setItems(candidates), [candidates]);
   const grouped = useMemo(() => PIPELINE_COLUMNS.reduce<Record<string, RecruitmentPipelineCard[]>>((result, status) => { result[status] = items.filter((candidate) => normalizeStatus(candidate.status) === status); return result; }, {}), [items]);
   const active = activeId ? items.find((candidate) => candidate.id === activeId) : null;
   const requestTransition = async (candidate: RecruitmentPipelineCard, toStatus: string, reason?: string) => {
