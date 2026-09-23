@@ -63,9 +63,42 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 
 app.post("/api/kol/claim", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
-  await pool.query(`UPDATE public."user" SET user_type = 'kol' WHERE id = $1`, [session.user.id]);
-  return privateJson({ success: true, userType: "kol", userId: session.user.id });
+  const email = session?.user?.email?.trim().toLowerCase();
+  if (!session?.user?.id || !email) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`UPDATE public."user" SET user_type = 'kol' WHERE id = $1`, [session.user.id]);
+    const matches = await client.query(
+      `SELECT c.source_id, c.name, c.username, c.status
+         FROM pos.kol_creators c
+         JOIN pos.kol_private_contacts p ON p.kol_id = c.source_id
+        WHERE lower(btrim(p.email)) = $1
+        FOR UPDATE OF c`,
+      [email],
+    );
+    if (matches.rows.length === 1) {
+      const match = matches.rows[0];
+      await client.query(
+        `UPDATE pos.kol_creators SET auth_user_id = $1, updated_at = now()
+          WHERE source_id = $2 AND (auth_user_id IS NULL OR auth_user_id = $1)`,
+        [session.user.id, match.source_id],
+      );
+      await client.query("COMMIT");
+      return privateJson({ success: true, userType: "kol", userId: session.user.id, linked: true, ambiguous: false, profile: match });
+    }
+    await client.query("COMMIT");
+    return privateJson({ success: true, userType: "kol", userId: session.user.id, linked: false, ambiguous: matches.rows.length > 1, profile: null });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    if ((error as { code?: string }).code === "23505") {
+      return privateJson({ success: true, userType: "kol", userId: session.user.id, linked: false, ambiguous: true, profile: null });
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 // ── Better Auth KARYAWAN (staff) ──────────────────────────────────
