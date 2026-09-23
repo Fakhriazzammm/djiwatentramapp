@@ -61,6 +61,17 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
 });
 
+// CORS — authenticated KOL profile/claim requests from kolmarketing.
+app.use(
+  "/api/kol/*",
+  cors({
+    origin: ["https://kolmarketing.yumme.id", "http://localhost:3010"],
+    allowHeaders: ["Accept", "Content-Type", "Authorization"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    credentials: true,
+  }),
+);
+
 app.post("/api/kol/claim", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   const email = session?.user?.email?.trim().toLowerCase();
