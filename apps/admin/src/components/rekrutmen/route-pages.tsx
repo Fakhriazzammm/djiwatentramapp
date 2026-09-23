@@ -25,6 +25,7 @@ export function RecruitmentDashboardPage() {
 
 export function CandidatesPage() {
   const query = useRecruitmentCandidates();
+  const mutate = useRecruitmentMutation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
@@ -55,6 +56,10 @@ export function CandidatesPage() {
     });
   }, [allCandidates, positionFilter, search, sortBy, sortDirection, statusFilter]);
   const handleSort = (key: string) => { if (sortBy === key) setSortDirection((value) => value === "asc" ? "desc" : "asc"); else { setSortBy(key); setSortDirection("asc"); } };
+  const handleStatusChange = async (candidate: RecruitmentCandidate, status: string) => {
+    await mutate(`/candidates/${encodeURIComponent(candidate.id)}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    await query.reload();
+  };
   const runExport = async (kind: "csv" | "xlsx" | "pdf") => {
     if (!candidates.length) return;
     setExporting(kind); setExportError(null);
@@ -69,7 +74,7 @@ export function CandidatesPage() {
     <select aria-label="Filter status" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="">Semua status</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
     <select aria-label="Filter posisi" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setPositionFilter(event.target.value)} value={positionFilter}><option value="">Semua posisi</option>{positions.map((position) => <option key={position} value={position}>{position}</option>)}</select>
     <span className="text-xs text-slate-500">{candidates.length} dari {allCandidates.length} kandidat</span>
-  </RecruitmentToolbar>{exportError && <p className="text-sm text-rose-600" role="alert">{exportError}</p>}<CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /></PageState></RecruitmentShell>;
+  </RecruitmentToolbar>{exportError && <p className="text-sm text-rose-600" role="alert">{exportError}</p>}<CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} onStatusChange={handleStatusChange} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /></PageState></RecruitmentShell>;
 }
 
 function DataTable({ children, headers }: { children: ReactNode; headers: string[] }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="w-full min-w-[640px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div>; }
