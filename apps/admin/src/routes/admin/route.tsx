@@ -111,7 +111,10 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/minigames": "Mini Games",
 	"/admin/customers": "Pelanggan",
 	"/admin/djiwa-app": "Dashboard",
-	"/admin/kol": "KOL",
+	"/admin/kol": "KOL Marketing · Dashboard",
+	"/admin/kol-data": "Data KOL",
+	"/admin/kol-collaborations": "Kolaborasi KOL",
+	"/admin/kol-reports": "Laporan KOL",
 };
 
 // Bottom nav items (Djiwa Tentram AI at center index 2)
@@ -152,6 +155,9 @@ const MORE_MENU_PATHS = [
 	"/admin/customers",
 	"/admin/djiwa-app",
 	"/admin/kol",
+	"/admin/kol-data",
+	"/admin/kol-collaborations",
+	"/admin/kol-reports",
 	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
 	"/admin/operational-team/attendance",
@@ -252,6 +258,13 @@ const FINANCE_PATHS = [
 const DJIWA_APP_PATHS = [
 	"/admin/djiwa-app",
 	"/admin/customers",
+];
+
+const KOL_MARKETING_PATHS = [
+	"/admin/kol",
+	"/admin/kol-data",
+	"/admin/kol-collaborations",
+	"/admin/kol-reports",
 ];
 
 const BOOKING_PATHS = [
@@ -392,6 +405,23 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 		}
 		return isOnBookingPath;
 	});
+
+	const isOnKolMarketingPath = KOL_MARKETING_PATHS.some((p) => location.pathname.startsWith(p));
+	const [isKolMarketingOpen, setIsKolMarketingOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-kol-marketing-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnKolMarketingPath;
+	});
+
+	useEffect(() => {
+		if (isOnKolMarketingPath) setIsKolMarketingOpen(true);
+	}, [isOnKolMarketingPath]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-kol-marketing-open", String(isKolMarketingOpen));
+	}, [isKolMarketingOpen]);
 
 	useEffect(() => {
 		if (isOnBookingPath) setIsBookingOpen(true);
@@ -829,29 +859,35 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						</>
 					)}
 
+					{/* KOL MARKETING APP */}
+					<SidebarSection isCollapsed={isCollapsed} label="KOL MARKETING APP" />
+					{isCollapsed ? (
+						<>
+							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/kol" permission="analytics:view" />
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Data KOL" to="/admin/kol-data" permission="analytics:view" />
+							<DesktopNavLink icon={<Sparkles />} isCollapsed={isCollapsed} label="Kolaborasi" to="/admin/kol-collaborations" permission="analytics:view" />
+							<DesktopNavLink icon={<BarChart3 />} isCollapsed={isCollapsed} label="Laporan" to="/admin/kol-reports" permission="analytics:view" />
+						</>
+					) : (
+						<>
+							<button className={`mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnKolMarketingPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsKolMarketingOpen(!isKolMarketingOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><Sparkles /></span><span className="flex-1 truncate text-left">KOL Marketing</span><motion.span animate={{ rotate: isKolMarketingOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>
+								{isKolMarketingOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}><div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+									<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/kol" permission="analytics:view" />
+									<DesktopSubNavLink icon={<Users />} label="Data KOL" to="/admin/kol-data" permission="analytics:view" />
+									<DesktopSubNavLink icon={<Sparkles />} label="Kolaborasi" to="/admin/kol-collaborations" permission="analytics:view" />
+									<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/kol-reports" permission="analytics:view" />
+								</div></motion.div>}
+							</AnimatePresence>
+						</>
+					)}
+
 					{/* MARKETING */}
 					<SidebarSection isCollapsed={isCollapsed} label="Marketing" />
-					<DesktopNavLink
-						icon={<Percent />}
-						isCollapsed={isCollapsed}
-						label="Promosi"
-						to="/admin/discounts"
-						permission="products:manage"
-					/>
-					<DesktopNavLink
-						icon={<Gamepad2 />}
-						isCollapsed={isCollapsed}
-						label="Mini Games"
-						to="/admin/minigames"
-						permission="products:manage"
-					/>
-					<DesktopNavLink
-						icon={<Users />}
-						isCollapsed={isCollapsed}
-						label="KOL Marketing"
-						to="/admin/kol"
-						permission="analytics:view"
-					/>
+					<DesktopNavLink icon={<Percent />} isCollapsed={isCollapsed} label="Promosi" to="/admin/discounts" permission="products:manage" />
+					<DesktopNavLink icon={<Gamepad2 />} isCollapsed={isCollapsed} label="Mini Games" to="/admin/minigames" permission="products:manage" />
 				</nav>
 
 				{/* Footer: User Profile + Pengaturan + Keluar */}

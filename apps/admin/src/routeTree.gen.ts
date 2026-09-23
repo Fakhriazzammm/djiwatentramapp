@@ -37,6 +37,9 @@ import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operati
 import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminKolReportsRouteImport } from './routes/admin/kol-reports'
+import { Route as AdminKolDataRouteImport } from './routes/admin/kol-data'
+import { Route as AdminKolCollaborationsRouteImport } from './routes/admin/kol-collaborations'
 import { Route as AdminKolRouteImport } from './routes/admin/kol'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
@@ -259,6 +262,27 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin.login.lazy').then((d) => d.Route))
+const AdminKolReportsRoute = AdminKolReportsRouteImport.update({
+  id: '/kol-reports',
+  path: '/kol-reports',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-reports.lazy').then((d) => d.Route),
+)
+const AdminKolDataRoute = AdminKolDataRouteImport.update({
+  id: '/kol-data',
+  path: '/kol-data',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-data.lazy').then((d) => d.Route),
+)
+const AdminKolCollaborationsRoute = AdminKolCollaborationsRouteImport.update({
+  id: '/kol-collaborations',
+  path: '/kol-collaborations',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-collaborations.lazy').then((d) => d.Route),
+)
 const AdminKolRoute = AdminKolRouteImport.update({
   id: '/kol',
   path: '/kol',
@@ -715,6 +739,9 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
+  '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
+  '/admin/kol-data': typeof AdminKolDataRoute
+  '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
@@ -796,6 +823,9 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
+  '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
+  '/admin/kol-data': typeof AdminKolDataRoute
+  '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
@@ -876,6 +906,9 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
+  '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
+  '/admin/kol-data': typeof AdminKolDataRoute
+  '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
@@ -963,6 +996,9 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/kol'
+    | '/admin/kol-collaborations'
+    | '/admin/kol-data'
+    | '/admin/kol-reports'
     | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
@@ -1044,6 +1080,9 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/kol'
+    | '/admin/kol-collaborations'
+    | '/admin/kol-data'
+    | '/admin/kol-reports'
     | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
@@ -1123,6 +1162,9 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/kol'
+    | '/admin/kol-collaborations'
+    | '/admin/kol-data'
+    | '/admin/kol-reports'
     | '/admin/login'
     | '/admin/minigames'
     | '/admin/onboarding'
@@ -1390,6 +1432,27 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-reports': {
+      id: '/admin/kol-reports'
+      path: '/kol-reports'
+      fullPath: '/admin/kol-reports'
+      preLoaderRoute: typeof AdminKolReportsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-data': {
+      id: '/admin/kol-data'
+      path: '/kol-data'
+      fullPath: '/admin/kol-data'
+      preLoaderRoute: typeof AdminKolDataRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-collaborations': {
+      id: '/admin/kol-collaborations'
+      path: '/kol-collaborations'
+      fullPath: '/admin/kol-collaborations'
+      preLoaderRoute: typeof AdminKolCollaborationsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/kol': {
@@ -2030,6 +2093,9 @@ interface AdminRouteRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminKolRoute: typeof AdminKolRoute
+  AdminKolCollaborationsRoute: typeof AdminKolCollaborationsRoute
+  AdminKolDataRoute: typeof AdminKolDataRoute
+  AdminKolReportsRoute: typeof AdminKolReportsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminOnboardingRoute: typeof AdminOnboardingRoute
@@ -2058,6 +2124,9 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminKolRoute: AdminKolRoute,
+  AdminKolCollaborationsRoute: AdminKolCollaborationsRoute,
+  AdminKolDataRoute: AdminKolDataRoute,
+  AdminKolReportsRoute: AdminKolReportsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminMinigamesRoute: AdminMinigamesRoute,
   AdminOnboardingRoute: AdminOnboardingRoute,
