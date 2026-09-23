@@ -363,7 +363,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   app.get("/api/kol/public/creators", async (c) => creatorDiscovery(c, pool, false));
 
   app.get("/api/kol/public/:username", async (c) => {
-    const username = c.req.param("username").trim().toLowerCase();
+    const username = c.req.param("username").trim().toLowerCase().replace(/^@/, "");
     const result = await pool.query(`select * from public.pos_kol_public_profiles where lower(username)=lower($1) limit 1`, [username]);
     if (!result.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
     const row = result.rows[0];
@@ -390,7 +390,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   });
 
   app.get("/api/kol/public/:username/timeline", async (c) => {
-    const username = c.req.param("username").trim().toLowerCase();
+    const username = c.req.param("username").trim().toLowerCase().replace(/^@/, "");
     const limit = boundedLimit(c.req.query("limit")); const type = timelineType(c.req.query("type")); const cursor = decodeTimelineCursor(c.req.query("before"));
     if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
     if (type === undefined) return json(c, { success: false, error: "INVALID_TYPE" }, 400);
