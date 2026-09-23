@@ -315,7 +315,6 @@ const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/register/onboarding",
 	"/admin/operational-team/register/contract",
 	"/admin/operational-team/register/riwayat",
-	"/admin/operational-team/rekrutmen",
 	];
 
 export function AdminRouteLayout() {
@@ -660,7 +659,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 							<DesktopNavLink icon={<FileSignature />} isCollapsed={isCollapsed} label="Kontrak" to="/admin/operational-team/register/contract" permission="users:manage" />
 							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
-							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Rekrutmen" to="/admin/operational-team/rekrutmen" permission="users:manage" />
 						</>
 					) : (
 						<>
@@ -687,7 +685,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 										<DesktopSubNavLink icon={<FileSignature />} label="Kontrak Kerja" to="/admin/operational-team/register/contract" permission="users:manage" />
 										<DesktopSubNavLink icon={<FileText />} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
-									<DesktopSubNavLink icon={<FileText />} label="Rekrutmen" to="/admin/operational-team/rekrutmen" permission="users:manage" />
 										</div>
 									</motion.div>
 								)}
