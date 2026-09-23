@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.168",
+	semantic: "0.2.184",
 	// Git/deploy commit hash (short)
-	commitHash: "197f0cb",
-	message: "feat(admin): split KOL marketing into dedicated section",
+	commitHash: "cfb0f4e",
+	message: "fix(admin): load KOL data for admin-level roles",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): split KOL marketing into dedicated section",
+	commitMessage: "fix(admin): load KOL data for admin-level roles",
 	// Build timestamp
 	buildDate: "2026-09-23",
 	// Full version string for display
