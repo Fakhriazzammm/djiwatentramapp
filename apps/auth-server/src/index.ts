@@ -82,6 +82,17 @@ app.post("/api/kol/claim", async (c) => {
   try {
     await client.query("BEGIN");
     await client.query(`UPDATE public."user" SET user_type = 'kol' WHERE id = $1`, [session.user.id]);
+    const owned = await client.query(
+      `SELECT c.source_id, c.name, c.username, c.status
+         FROM pos.kol_creators c
+        WHERE c.auth_user_id = $1
+        LIMIT 1`,
+      [session.user.id],
+    );
+    if (owned.rows.length === 1) {
+      await client.query("COMMIT");
+      return privateJson({ success: true, userType: "kol", userId: session.user.id, linked: true, ambiguous: false, profile: owned.rows[0] });
+    }
     const matches = await client.query(
       `SELECT c.source_id, c.name, c.username, c.status
          FROM pos.kol_creators c
