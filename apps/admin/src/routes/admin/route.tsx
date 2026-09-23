@@ -296,6 +296,15 @@ const ORDER_MIE_YAMIN_PATHS = [
 	"/admin/order-mie-yamin",
 ];
 
+const REKRUTMEN_PATHS = [
+	"/admin/rekrutmen",
+	"/admin/rekrutmen/candidates",
+	"/admin/rekrutmen/positions",
+	"/admin/rekrutmen/interviews",
+	"/admin/rekrutmen/onboarding",
+	"/admin/rekrutmen/reports",
+];
+
 const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
@@ -423,6 +432,19 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 		return isOnBookingPath;
 	});
 
+	const isOnRecruitmentPath = REKRUTMEN_PATHS.some((p) => location.pathname.startsWith(p));
+	const [isRecruitmentOpen, setIsRecruitmentOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-rekrutmen-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnRecruitmentPath;
+	});
+
+	useEffect(() => {
+		if (isOnRecruitmentPath) setIsRecruitmentOpen(true);
+	}, [isOnRecruitmentPath]);
+
 	const isOnKolMarketingPath = KOL_MARKETING_PATHS.some((p) => location.pathname.startsWith(p));
 	const [isKolMarketingOpen, setIsKolMarketingOpen] = useState(() => {
 		if (typeof window !== "undefined") {
@@ -435,6 +457,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	useEffect(() => {
 		if (isOnKolMarketingPath) setIsKolMarketingOpen(true);
 	}, [isOnKolMarketingPath]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-rekrutmen-open", String(isRecruitmentOpen));
+	}, [isRecruitmentOpen]);
 
 	useEffect(() => {
 		localStorage.setItem("admin-kol-marketing-open", String(isKolMarketingOpen));
@@ -888,14 +914,25 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							<DesktopNavLink icon={<BarChart3 />} isCollapsed={isCollapsed} label="Laporan" to="/admin/rekrutmen/reports" permission="users:manage" />
 						</>
 					) : (
-						<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
-							<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/rekrutmen" permission="users:manage" />
-							<DesktopSubNavLink icon={<Users />} label="Kandidat" to="/admin/rekrutmen/candidates" permission="users:manage" />
-							<DesktopSubNavLink icon={<FileText />} label="Posisi Lowongan" to="/admin/rekrutmen/positions" permission="users:manage" />
-							<DesktopSubNavLink icon={<CalendarDays />} label="Interview" to="/admin/rekrutmen/interviews" permission="users:manage" />
-							<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/rekrutmen/onboarding" permission="users:manage" />
-							<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/rekrutmen/reports" permission="users:manage" />
-						</div>
+						<>
+							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnRecruitmentPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsRecruitmentOpen(!isRecruitmentOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><Users /></span>
+								<span className="flex-1 truncate text-left">Recruitment App</span>
+								<motion.span animate={{ rotate: isRecruitmentOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>
+								{isRecruitmentOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
+									<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+										<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/rekrutmen" permission="users:manage" />
+										<DesktopSubNavLink icon={<Users />} label="Kandidat" to="/admin/rekrutmen/candidates" permission="users:manage" />
+										<DesktopSubNavLink icon={<FileText />} label="Posisi Lowongan" to="/admin/rekrutmen/positions" permission="users:manage" />
+										<DesktopSubNavLink icon={<CalendarDays />} label="Interview" to="/admin/rekrutmen/interviews" permission="users:manage" />
+										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/rekrutmen/onboarding" permission="users:manage" />
+										<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/rekrutmen/reports" permission="users:manage" />
+									</div>
+								</motion.div>}
+							</AnimatePresence>
+						</>
 					)}
 
 					{/* KOL MARKETING APP */}
