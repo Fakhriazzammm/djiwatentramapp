@@ -15,7 +15,7 @@ async function context(c: any, auth: AuthApi, pool: DbPool) {
   const email = session?.user?.email?.trim().toLowerCase();
   if (!userId || !email) return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
   const result = await pool.query(
-    `select c.source_id, c.name, c.username, c.avatar_url, c.location, c.category, c.status,
+    `select c.source_id, c.name, c.username, c.avatar_url, c.location, c.category, c.status, c.public_reason, c.application_data,
             p.display_name, p.slug, p.bio, p.is_public
        from pos.kol_creators c
        left join pos.kol_profiles p on p.kol_id = c.source_id
@@ -89,6 +89,16 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     } finally {
       client.release();
     }
+  });
+
+  app.get("/api/kol/portal/intake", async (c) => {
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const [platforms, contacts] = await Promise.all([
+      pool.query(`select platform, username, profile_url, followers from pos.kol_platforms where kol_id = $1 order by created_at asc limit 1`, [current.kol.source_id]),
+      pool.query(`select email, whatsapp from pos.kol_private_contacts where kol_id = $1 limit 1`, [current.kol.source_id]),
+    ]);
+    return json(c, { success: true, data: { name: current.kol.name, location: current.kol.location, category: current.kol.category, reason: current.kol.public_reason || "", applicationData: current.kol.application_data || {}, platform: platforms.rows[0] || null, contact: contacts.rows[0] || null } });
   });
 
   app.get("/api/kol/portal/profile", async (c) => {
