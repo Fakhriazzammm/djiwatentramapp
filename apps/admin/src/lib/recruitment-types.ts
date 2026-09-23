@@ -16,6 +16,10 @@ export type RecruitmentResource = "dashboard" | "candidates" | "positions" | "in
 export interface RecruitmentCandidate {
   id: string;
   nama_lengkap: string;
+  jenis_kelamin?: string | null;
+  tanggal_lahir?: string | null;
+  sosial_media?: string | null;
+  airtable_id?: string | null;
   email?: string | null;
   nomor_telepon?: string | null;
   posisi_dilamar?: string | null;

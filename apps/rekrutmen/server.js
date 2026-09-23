@@ -489,14 +489,16 @@ function runAdminMutation(sql) {
 function candidateSummary(row) {
   return {
     id: row.id,
+    airtableId: row.airtable_id || "",
     name: row.nama_lengkap || "",
     gender: row.jenis_kelamin || "",
     birthDate: row.tanggal_lahir || null,
     email: row.email || "",
     phone: row.nomor_telepon || "",
-    social: row.sosial_media || "",
+    socialMedia: row.sosial_media || "",
     position: row.posisi_dilamar || "",
     workType: row.tipe_kerja || "",
+    notes: row.notes || "",
     status: row.status || "Application Received",
     applicationDate: row.application_date || null,
     createdAt: row.created_at || null,
@@ -509,7 +511,7 @@ function candidateDetail(row) {
 }
 
 function candidateSelect(extra = "") {
-  return `SELECT json_build_object('id',id,'nama_lengkap',nama_lengkap,'jenis_kelamin',jenis_kelamin,'tanggal_lahir',tanggal_lahir,'email',email,'nomor_telepon',nomor_telepon,'sosial_media',sosial_media,'posisi_dilamar',posisi_dilamar,'tipe_kerja',tipe_kerja,'notes',notes,'status',status,'application_date',application_date,'created_at',created_at,'cv_url',cv_url)::text FROM pos.${TABLE} ${extra}`;
+  return `SELECT json_build_object('id',id,'airtable_id',airtable_id,'nama_lengkap',nama_lengkap,'jenis_kelamin',jenis_kelamin,'tanggal_lahir',tanggal_lahir,'email',email,'nomor_telepon',nomor_telepon,'sosial_media',sosial_media,'posisi_dilamar',posisi_dilamar,'tipe_kerja',tipe_kerja,'notes',notes,'status',status,'application_date',application_date,'created_at',created_at,'cv_url',cv_url)::text FROM pos.${TABLE} ${extra}`;
 }
 
 function requireUuid(req, res, label) {

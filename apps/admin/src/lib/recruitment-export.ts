@@ -1,13 +1,20 @@
 import type { RecruitmentCandidate } from "@/lib/recruitment-types";
 
 type ExportRow = {
+  ID: string;
+  "Airtable ID": string;
   Kandidat: string;
+  "Jenis kelamin": string;
+  "Tanggal lahir": string;
   Email: string;
   "Nomor telepon": string;
+  "Sosial media": string;
   Posisi: string;
   "Tipe kerja": string;
+  Catatan: string;
   Status: string;
   "Tanggal melamar": string;
+  "Dibuat pada": string;
   CV: string;
 };
 
@@ -16,13 +23,20 @@ const dateStamp = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakar
 
 export function recruitmentExportRows(candidates: RecruitmentCandidate[]): ExportRow[] {
   return candidates.map((candidate) => ({
+    ID: text(candidate.id),
+    "Airtable ID": text(candidate.airtable_id),
     Kandidat: text(candidate.nama_lengkap),
+    "Jenis kelamin": text(candidate.jenis_kelamin),
+    "Tanggal lahir": text(candidate.tanggal_lahir),
     Email: text(candidate.email),
     "Nomor telepon": text(candidate.nomor_telepon),
+    "Sosial media": text(candidate.sosial_media),
     Posisi: text(candidate.posisi_dilamar),
     "Tipe kerja": text(candidate.tipe_kerja),
+    Catatan: text(candidate.notes),
     Status: text(candidate.status),
     "Tanggal melamar": text(candidate.application_date),
+    "Dibuat pada": text(candidate.created_at),
     CV: candidate.cv_url ? "Tersedia" : "Tidak tersedia",
   }));
 }

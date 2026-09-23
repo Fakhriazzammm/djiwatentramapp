@@ -5,12 +5,12 @@ import type { RecruitmentCandidate, RecruitmentInterview, RecruitmentOnboardingI
 import { CandidateDetailSheet, CandidateTable, EmptyState, KpiStrip, PageState, PipelineBoard, RecruitmentShell, RecruitmentToolbar, RefreshButton, SectionCard, StatusBadge } from "@/components/rekrutmen";
 import { exportRecruitmentCsv, exportRecruitmentPdf, exportRecruitmentSpreadsheet } from "@/lib/recruitment-export";
 
-type ApiCandidate = RecruitmentCandidate & { name?: string; phone?: string; position?: string; workType?: string; applicationDate?: string; cvUrl?: string; createdAt?: string };
+type ApiCandidate = RecruitmentCandidate & { name?: string; phone?: string; position?: string; workType?: string; applicationDate?: string; cvUrl?: string; createdAt?: string; gender?: string; birthDate?: string; socialMedia?: string; airtableId?: string };
 type ApiPosition = RecruitmentPosition & { isOpen?: boolean; sortOrder?: number };
 const value = (row: Record<string, unknown>, ...keys: string[]) => keys.map((key) => row[key]).find((item) => item !== undefined && item !== null && item !== "") as string | number | undefined;
 
 function normalizeCandidate(row: ApiCandidate): RecruitmentCandidate {
-  return { ...row, nama_lengkap: String(value(row, "nama_lengkap", "name") ?? ""), email: String(value(row, "email") ?? ""), nomor_telepon: String(value(row, "nomor_telepon", "phone") ?? ""), posisi_dilamar: String(value(row, "posisi_dilamar", "position") ?? ""), tipe_kerja: String(value(row, "tipe_kerja", "workType") ?? ""), application_date: String(value(row, "application_date", "applicationDate") ?? ""), cv_url: String(value(row, "cv_url", "cvUrl") ?? ""), created_at: String(value(row, "created_at", "createdAt") ?? "") };
+  return { ...row, airtable_id: String(value(row, "airtable_id", "airtableId") ?? ""), jenis_kelamin: String(value(row, "jenis_kelamin", "gender") ?? ""), tanggal_lahir: String(value(row, "tanggal_lahir", "birthDate") ?? ""), sosial_media: String(value(row, "sosial_media", "socialMedia") ?? ""), nama_lengkap: String(value(row, "nama_lengkap", "name") ?? ""), email: String(value(row, "email") ?? ""), nomor_telepon: String(value(row, "nomor_telepon", "phone") ?? ""), posisi_dilamar: String(value(row, "posisi_dilamar", "position") ?? ""), tipe_kerja: String(value(row, "tipe_kerja", "workType") ?? ""), application_date: String(value(row, "application_date", "applicationDate") ?? ""), cv_url: String(value(row, "cv_url", "cvUrl") ?? ""), created_at: String(value(row, "created_at", "createdAt") ?? "") };
 }
 
 export function RecruitmentDashboardPage() {
