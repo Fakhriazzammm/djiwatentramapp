@@ -77,6 +77,12 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
         `insert into pos.kol_platforms(kol_id,platform,username,username_normalized,profile_url,followers) values($1,$2,$3,$4,$5,$6)`,
         [sourceId, platform, username, username, profileUrl, Math.max(0, Number(body.platforms?.[0]?.followers) || 0)],
       );
+      await client.query(
+        `insert into pos.kol_profiles(kol_id, display_name, slug, is_public)
+         values ($1, $2, $3, false)
+         on conflict (kol_id) do nothing`,
+        [sourceId, name, username],
+      );
       const contactEmail = typeof body.email === "string" ? body.email.trim().slice(0, 160) || null : null;
       const whatsapp = typeof body.whatsapp === "string" ? body.whatsapp.trim().slice(0, 40) || null : null;
       if (contactEmail || whatsapp) await client.query(`insert into pos.kol_private_contacts(kol_id,email,whatsapp) values($1,$2,$3)`, [sourceId, contactEmail, whatsapp]);
