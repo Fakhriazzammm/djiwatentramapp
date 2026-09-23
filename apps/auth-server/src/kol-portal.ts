@@ -39,6 +39,58 @@ function validUrl(value: unknown) {
 }
 
 export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPool) {
+  app.post("/api/kol/portal/intake", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    const userId = session?.user?.id;
+    if (!userId) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
+    const body = await c.req.json().catch(() => ({}));
+    const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+    const location = typeof body.location === "string" ? body.location.trim().slice(0, 120) : "";
+    const category = typeof body.category === "string" ? body.category : "";
+    const username = typeof body.username === "string" ? body.username.trim().toLowerCase().replace(/^@/, "").replace(/[^a-z0-9._-]+/g, "") : "";
+    const platform = typeof body.platforms?.[0]?.platform === "string" ? body.platforms[0].platform : "";
+    const profileUrl = typeof body.platforms?.[0]?.profileUrl === "string" ? body.platforms[0].profileUrl.trim() : "";
+    const allowedCategories = ["Food & Beverage", "Coffee", "Lifestyle", "Travel", "Fashion", "Beauty", "Entertainment", "Other"];
+    const allowedPlatforms = ["TikTok", "Instagram", "YouTube", "Threads", "Other"];
+    if (name.length < 2 || location.length < 2 || !allowedCategories.includes(category) || !username || !allowedPlatforms.includes(platform) || !validUrl(profileUrl)) {
+      return json(c, { success: false, error: "INVALID_KOL_INTAKE" }, 400);
+    }
+    const client = await pool.connect();
+    const sourceId = `kol_${crypto.randomUUID().replace(/-/g, "")}`;
+    try {
+      await client.query("BEGIN");
+      const duplicate = await client.query(
+        `select c.source_id from pos.kol_creators c join pos.kol_platforms p on p.kol_id = c.source_id
+          where p.platform = $1 and p.username_normalized = $2 limit 1`,
+        [platform, username],
+      );
+      if (duplicate.rows[0]) {
+        await client.query("ROLLBACK");
+        return json(c, { success: true, duplicate: true, creatorId: duplicate.rows[0].source_id });
+      }
+      await client.query(
+        `insert into pos.kol_creators(source_id,name,username,username_normalized,location,category,status,public_reason,application_data,auth_user_id)
+         values($1,$2,$3,$4,$5,$6,'Potential',$7,$8,$9)`,
+        [sourceId, name, `@${username}`, username, location, category, String(body.reason ?? "").slice(0, 1000), JSON.stringify({ nickname: String(body.nickname ?? "").slice(0, 120), averageViews: Number(body.averageViews) || 0, contentTypes: Array.isArray(body.contentTypes) ? body.contentTypes.slice(0, 20) : [], collaboration: String(body.collaboration ?? "").slice(0, 120), visitDate: String(body.visitDate ?? "").slice(0, 20), visitTime: String(body.visitTime ?? "").slice(0, 10), barter: String(body.barter ?? "").slice(0, 120), profileUrl }), userId],
+      );
+      await client.query(
+        `insert into pos.kol_platforms(kol_id,platform,username,username_normalized,profile_url,followers) values($1,$2,$3,$4,$5,$6)`,
+        [sourceId, platform, username, username, profileUrl, Math.max(0, Number(body.platforms?.[0]?.followers) || 0)],
+      );
+      const contactEmail = typeof body.email === "string" ? body.email.trim().slice(0, 160) || null : null;
+      const whatsapp = typeof body.whatsapp === "string" ? body.whatsapp.trim().slice(0, 40) || null : null;
+      if (contactEmail || whatsapp) await client.query(`insert into pos.kol_private_contacts(kol_id,email,whatsapp) values($1,$2,$3)`, [sourceId, contactEmail, whatsapp]);
+      await client.query("COMMIT");
+      return json(c, { success: true, creator: { id: sourceId, name, username: `@${username}`, location, category, status: "Potential" } }, 201);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      if ((error as { code?: string }).code === "23505") return json(c, { success: true, duplicate: true }, 200);
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   app.get("/api/kol/portal/profile", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;
