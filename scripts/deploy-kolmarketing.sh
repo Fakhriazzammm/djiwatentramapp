@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy dedicated KOL Marketing workspace to kolmarketing.yumme.id.
+# Deploy public KOL creator intake to kolmarketing.yumme.id.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,14 +12,14 @@ BACKUP_ROOT="/var/backups/$DOMAIN"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 printf 'Building %s…\n' "$DOMAIN"
-bun run --cwd apps/kolmarketing build
+bun run --cwd apps/kol build
 
-for marker in "KOL Marketing" "/functions/v1/kol-public"; do
+for marker in "Ceritakan tentang dirimu" "Pendaftaran sudah diterima"; do
   if ! python3 - "$marker" <<'PY'
 import sys
 from pathlib import Path
 needle = sys.argv[1]
-print(any(needle in p.read_text(errors="ignore") for p in Path("apps/kolmarketing/dist/assets").glob("*.js")))
+print(any(needle in p.read_text(errors="ignore") for p in Path("apps/kol/dist/assets").glob("*.js")))
 PY
   then
     printf 'Artifact guard failed: %s\n' "$marker" >&2
@@ -35,7 +35,7 @@ fi
 sudo mkdir -p "$BACKUP_ROOT/$STAMP" "$WEBROOT"
 sudo cp -a "$WEBROOT/." "$BACKUP_ROOT/$STAMP/" 2>/dev/null || true
 sudo find "$WEBROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-sudo cp -a apps/kolmarketing/dist/. "$WEBROOT/"
+sudo cp -a apps/kol/dist/. "$WEBROOT/"
 sudo chown -R www-data:www-data "$WEBROOT"
 
 if [[ ! -e "$ENABLED" ]]; then
