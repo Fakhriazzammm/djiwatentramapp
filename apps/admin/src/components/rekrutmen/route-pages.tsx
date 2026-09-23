@@ -1,8 +1,9 @@
-import { CalendarDays, FileBarChart, UsersRound } from "lucide-react";
+import { CalendarDays, Download, FileBarChart, FileSpreadsheet, FileText, UsersRound } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useRecruitmentCandidates, useRecruitmentDashboard, useRecruitmentInterviews, useRecruitmentMutation, useRecruitmentOnboarding, useRecruitmentPositions, useRecruitmentReports, listData } from "@/hooks/use-recruitment-admin";
 import type { RecruitmentCandidate, RecruitmentInterview, RecruitmentOnboardingItem, RecruitmentPosition } from "@/lib/recruitment-types";
 import { CandidateDetailSheet, CandidateTable, EmptyState, KpiStrip, PageState, PipelineBoard, RecruitmentShell, RecruitmentToolbar, RefreshButton, SectionCard, StatusBadge } from "@/components/rekrutmen";
+import { exportRecruitmentCsv, exportRecruitmentPdf, exportRecruitmentSpreadsheet } from "@/lib/recruitment-export";
 
 type ApiCandidate = RecruitmentCandidate & { name?: string; phone?: string; position?: string; workType?: string; applicationDate?: string; cvUrl?: string; createdAt?: string };
 type ApiPosition = RecruitmentPosition & { isOpen?: boolean; sortOrder?: number };
@@ -30,6 +31,8 @@ export function CandidatesPage() {
   const [sortBy, setSortBy] = useState("applicationDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selected, setSelected] = useState<RecruitmentCandidate | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const allCandidates = useMemo(() => listData<ApiCandidate>(query.data).map(normalizeCandidate), [query.data]);
   const statuses = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.status).filter(Boolean))).sort(), [allCandidates]);
   const positions = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.posisi_dilamar).filter(Boolean))).sort(), [allCandidates]);
@@ -52,11 +55,21 @@ export function CandidatesPage() {
     });
   }, [allCandidates, positionFilter, search, sortBy, sortDirection, statusFilter]);
   const handleSort = (key: string) => { if (sortBy === key) setSortDirection((value) => value === "asc" ? "desc" : "asc"); else { setSortBy(key); setSortDirection("asc"); } };
-  return <RecruitmentShell title="Kandidat" description="Review kandidat dari endpoint recruitment yang terproteksi." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}><RecruitmentToolbar search={search} onSearch={setSearch}>
+  const runExport = async (kind: "csv" | "xlsx" | "pdf") => {
+    if (!candidates.length) return;
+    setExporting(kind); setExportError(null);
+    try { if (kind === "csv") exportRecruitmentCsv(candidates); else if (kind === "xlsx") await exportRecruitmentSpreadsheet(candidates); else await exportRecruitmentPdf(candidates); }
+    catch (reason) { setExportError(reason instanceof Error ? reason.message : "Export gagal dibuat"); }
+    finally { setExporting(null); }
+  };
+  return <RecruitmentShell title="Kandidat" description="Review kandidat dari endpoint recruitment yang terproteksi." actions={<RefreshButton onClick={query.reload} loading={query.loading || Boolean(exporting)} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}><RecruitmentToolbar search={search} onSearch={setSearch}>
+    <button type="button" disabled={!candidates.length || Boolean(exporting)} onClick={() => runExport("xlsx")} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50" title="Spreadsheet Excel"><FileSpreadsheet className="h-4 w-4" />Excel</button>
+    <button type="button" disabled={!candidates.length || Boolean(exporting)} onClick={() => runExport("csv")} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" title="CSV kompatibel Excel"><Download className="h-4 w-4" />CSV</button>
+    <button type="button" disabled={!candidates.length || Boolean(exporting)} onClick={() => runExport("pdf")} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" title="PDF untuk dibagikan atau dicetak"><FileText className="h-4 w-4" />PDF</button>
     <select aria-label="Filter status" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="">Semua status</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
     <select aria-label="Filter posisi" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setPositionFilter(event.target.value)} value={positionFilter}><option value="">Semua posisi</option>{positions.map((position) => <option key={position} value={position}>{position}</option>)}</select>
     <span className="text-xs text-slate-500">{candidates.length} dari {allCandidates.length} kandidat</span>
-  </RecruitmentToolbar><CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /></PageState></RecruitmentShell>;
+  </RecruitmentToolbar>{exportError && <p className="text-sm text-rose-600" role="alert">{exportError}</p>}<CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /></PageState></RecruitmentShell>;
 }
 
 function DataTable({ children, headers }: { children: ReactNode; headers: string[] }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="w-full min-w-[640px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div>; }
