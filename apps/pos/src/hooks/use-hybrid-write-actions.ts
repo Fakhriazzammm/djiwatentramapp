@@ -852,16 +852,38 @@ export function useHybridDeleteProduct() {
 export function useHybridBulkUpdateProducts() {
 	const fallback = useMutation(api.products.bulkUpdateProducts);
 	const updateProduct = useHybridUpdateProduct();
+	const { user: currentUser } = useYumiAuth();
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			const ids = Array.isArray(args?.ids) ? args.ids : [];
+			const ids = Array.isArray(args?.ids)
+				? args.ids.map((id: unknown) => String(id ?? "").trim()).filter(Boolean)
+				: [];
 			const updates = args?.updates ?? {};
-			const sourceActionId = updates.isAvailable === undefined ? undefined : makeSourceId("availability-bulk");
-			await Promise.all(ids.map((id: string) => updateProduct({ id, ...updates, ...(sourceActionId ? { sourceActionId } : {}) })));
+			const availabilityOnly = updates?.isAvailable !== undefined &&
+				Object.keys(updates).every((key) => key === "isAvailable");
+			if (availabilityOnly) {
+				const { data, error } = await createClient().schema("pos").rpc("update_products_availability_with_events", {
+					p_product_source_ids: ids,
+					p_new_is_available: Boolean(updates.isAvailable),
+					p_changed_by_user_id: currentUser?._id ?? null,
+					p_changed_by_name: currentUser?.name ?? null,
+					p_shift_source_id: null,
+					p_source: "pos_menu_stock_bulk",
+					p_source_action_id: makeSourceId("availability-bulk"),
+				});
+				if (error) throw error;
+				const result = Array.isArray(data) ? data[0] : data;
+				return {
+					updatedCount: Number(result?.updated_count ?? ids.length),
+					changedCount: Number(result?.changed_count ?? 0),
+					eventCount: Number(result?.event_count ?? 0),
+				};
+			}
+			await Promise.all(ids.map((id: string) => updateProduct({ id, ...updates })));
 			return { updatedCount: ids.length };
 		},
-		[fallback, updateProduct]
+		[fallback, updateProduct, currentUser?._id, currentUser?.name]
 	);
 }
 
