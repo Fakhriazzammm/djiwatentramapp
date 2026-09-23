@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { auth, pool } from "./auth.js";
 import { staffAuth } from "./staff-auth.js";
+import { registerKolPortalRoutes } from "./kol-portal.js";
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -111,6 +112,8 @@ app.post("/api/kol/claim", async (c) => {
     client.release();
   }
 });
+
+registerKolPortalRoutes(app, auth, pool);
 
 // ── Better Auth KARYAWAN (staff) ──────────────────────────────────
 const staffOrigins = [
