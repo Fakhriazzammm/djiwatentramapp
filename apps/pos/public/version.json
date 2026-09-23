@@ -1,7 +1,7 @@
 {
-  "version": "0.2.186",
-  "commitHash": "59b6c62",
-  "message": "feat(pos): notify stock availability and shift menu reports",
+  "version": "0.2.188",
+  "commitHash": "3884867",
+  "message": "fix(pos): make bulk availability updates atomic",
   "buildDate": "2026-09-23",
-  "generatedAt": "2026-09-23T13:24:04.238Z"
+  "generatedAt": "2026-09-23T13:47:55.887Z"
 }
