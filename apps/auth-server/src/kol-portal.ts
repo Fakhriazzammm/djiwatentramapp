@@ -52,7 +52,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const profileUrl = typeof body.platforms?.[0]?.profileUrl === "string" ? body.platforms[0].profileUrl.trim() : "";
     const allowedCategories = ["Food & Beverage", "Coffee", "Lifestyle", "Travel", "Fashion", "Beauty", "Entertainment", "Other"];
     const allowedPlatforms = ["TikTok", "Instagram", "YouTube", "Threads", "Other"];
-    if (name.length < 2 || location.length < 2 || !allowedCategories.includes(category) || !username || !allowedPlatforms.includes(platform) || !validUrl(profileUrl)) {
+    if (name.length < 2 || location.length < 2 || !allowedCategories.includes(category) || !username || !allowedPlatforms.includes(platform) || (profileUrl && !validUrl(profileUrl))) {
       return json(c, { success: false, error: "INVALID_KOL_INTAKE" }, 400);
     }
     const client = await pool.connect();
