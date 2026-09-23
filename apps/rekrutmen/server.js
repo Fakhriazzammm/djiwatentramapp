@@ -264,7 +264,7 @@ app.post("/api/recruitment-status", (req, res) => {
     if (!email || !phone) return res.status(400).json({ error: "Email dan nomor WhatsApp wajib diisi" });
     const sql = `SELECT json_build_object('name', nama_lengkap, 'position', posisi_dilamar, 'work_type', tipe_kerja, 'application_date', application_date, 'created_at', created_at, 'status', status)::text FROM pos.${TABLE} WHERE lower(trim(email)) = lower(trim(${esc(email)})) AND regexp_replace(nomor_telepon, '[^0-9]', '', 'g') = regexp_replace(${esc(phone)}, '[^0-9]', '', 'g') ORDER BY created_at DESC LIMIT 20`;
     const raw = psql(sql);
-    const rows = raw ? raw.split("\\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+    const rows = raw ? raw.split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
     return res.json({ applications: rows });
   } catch (e) {
     console.error("Recruitment status lookup failed:", e.message);
@@ -285,7 +285,7 @@ app.get("/api/recruitment-stats", async (req, res) => {
                      ) s)
     )::text`);
     if (!raw) return res.json({ positions: 0, applicants: 0, byPosition: [] });
-    return res.json(JSON.parse(raw.trim().split("\\n").filter(Boolean)[0]));
+    return res.json(JSON.parse(raw.trim().split("\n").filter(Boolean)[0]));
   } catch (e) {
     console.error("Recruitment stats failed:", e.message);
     return res.status(500).json({ error: "Statistik belum dapat dimuat" });
@@ -474,7 +474,7 @@ function uuidOrNull(value) {
 
 function queryAdminRows(sql) {
   const raw = psql(sql);
-  return raw ? raw.split("\\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+  return raw ? raw.split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
 }
 
 function runAdminMutation(sql) {
@@ -547,7 +547,7 @@ app.get("/api/rekrutmen/candidates.csv", validateRecruitmentAdmin, (req, res) =>
   try {
     const rows = queryAdminRows(`${candidateSelect("ORDER BY created_at DESC NULLS LAST")}`);
     const cols = ["id","name","email","phone","position","workType","status","applicationDate","createdAt"];
-    const csv = [cols.join(","), ...rows.map((r) => { const v = candidateSummary(r); return cols.map((c) => `"${String(v[c] ?? "").replace(/"/g, '""')}"`).join(","); })].join("\\n");
+    const csv = [cols.join(","), ...rows.map((r) => { const v = candidateSummary(r); return cols.map((c) => `"${String(v[c] ?? "").replace(/"/g, '""')}"`).join(","); })].join("\n");
     res.type("text/csv").set("Content-Disposition", 'attachment; filename="recruitment-candidates.csv"').send(csv);
   } catch (e) { adminError(res, 503, "BACKEND_UNAVAILABLE", "CSV kandidat tidak dapat dibuat"); }
 });
