@@ -25,9 +25,38 @@ export function RecruitmentDashboardPage() {
 export function CandidatesPage() {
   const query = useRecruitmentCandidates();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [positionFilter, setPositionFilter] = useState("");
+  const [sortBy, setSortBy] = useState("applicationDate");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selected, setSelected] = useState<RecruitmentCandidate | null>(null);
-  const candidates = useMemo(() => listData<ApiCandidate>(query.data).map(normalizeCandidate).filter((candidate) => `${candidate.nama_lengkap} ${candidate.email ?? ""} ${candidate.posisi_dilamar ?? ""}`.toLowerCase().includes(search.toLowerCase())), [query.data, search]);
-  return <RecruitmentShell title="Kandidat" description="Review kandidat dari endpoint recruitment yang terproteksi." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}><RecruitmentToolbar search={search} onSearch={setSearch} /><CandidateTable candidates={candidates} onSelect={setSelected} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /></PageState></RecruitmentShell>;
+  const allCandidates = useMemo(() => listData<ApiCandidate>(query.data).map(normalizeCandidate), [query.data]);
+  const statuses = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.status).filter(Boolean))).sort(), [allCandidates]);
+  const positions = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.posisi_dilamar).filter(Boolean))).sort(), [allCandidates]);
+  const candidates = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    return [...allCandidates].filter((candidate) => {
+      const haystack = `${candidate.nama_lengkap} ${candidate.email ?? ""} ${candidate.posisi_dilamar ?? ""}`.toLowerCase();
+      return (!keyword || haystack.includes(keyword)) && (!statusFilter || candidate.status === statusFilter) && (!positionFilter || candidate.posisi_dilamar === positionFilter);
+    }).sort((a, b) => {
+      const values: Record<string, (candidate: RecruitmentCandidate) => string> = {
+        name: (candidate) => candidate.nama_lengkap || "",
+        position: (candidate) => candidate.posisi_dilamar || "",
+        status: (candidate) => candidate.status || "",
+        phone: (candidate) => candidate.nomor_telepon || "",
+        applicationDate: (candidate) => candidate.application_date || "",
+      };
+      const left = values[sortBy]?.(a) ?? "";
+      const right = values[sortBy]?.(b) ?? "";
+      return left.localeCompare(right, "id", { numeric: true }) * (sortDirection === "asc" ? 1 : -1);
+    });
+  }, [allCandidates, positionFilter, search, sortBy, sortDirection, statusFilter]);
+  const handleSort = (key: string) => { if (sortBy === key) setSortDirection((value) => value === "asc" ? "desc" : "asc"); else { setSortBy(key); setSortDirection("asc"); } };
+  return <RecruitmentShell title="Kandidat" description="Review kandidat dari endpoint recruitment yang terproteksi." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}><RecruitmentToolbar search={search} onSearch={setSearch}>
+    <select aria-label="Filter status" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="">Semua status</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
+    <select aria-label="Filter posisi" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setPositionFilter(event.target.value)} value={positionFilter}><option value="">Semua posisi</option>{positions.map((position) => <option key={position} value={position}>{position}</option>)}</select>
+    <span className="text-xs text-slate-500">{candidates.length} dari {allCandidates.length} kandidat</span>
+  </RecruitmentToolbar><CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /></PageState></RecruitmentShell>;
 }
 
 function DataTable({ children, headers }: { children: ReactNode; headers: string[] }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="w-full min-w-[640px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div>; }
