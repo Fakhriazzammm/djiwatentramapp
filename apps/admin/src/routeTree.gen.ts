@@ -28,6 +28,7 @@ import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminRekrutmenRouteImport } from './routes/admin/rekrutmen'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminPosNotificationsRouteImport } from './routes/admin/pos-notifications'
@@ -54,12 +55,18 @@ import { Route as AdminBookingRouteImport } from './routes/admin/booking'
 import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
+import { Route as AdminRekrutmenIndexRouteImport } from './routes/admin/rekrutmen/index'
 import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
 import { Route as AdminOrderMieYaminIndexRouteImport } from './routes/admin/order-mie-yamin/index'
 import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
 import { Route as AdminBookingIndexRouteImport } from './routes/admin/booking/index'
 import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai.$registrationNumber'
+import { Route as AdminRekrutmenReportsRouteImport } from './routes/admin/rekrutmen/reports'
+import { Route as AdminRekrutmenPositionsRouteImport } from './routes/admin/rekrutmen/positions'
+import { Route as AdminRekrutmenOnboardingRouteImport } from './routes/admin/rekrutmen/onboarding'
+import { Route as AdminRekrutmenInterviewsRouteImport } from './routes/admin/rekrutmen/interviews'
+import { Route as AdminRekrutmenCandidatesRouteImport } from './routes/admin/rekrutmen/candidates'
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe/view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminRecipeBaseRouteImport } from './routes/admin/recipe/base'
@@ -205,6 +212,13 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/settings.lazy').then((d) => d.Route),
+)
+const AdminRekrutmenRoute = AdminRekrutmenRouteImport.update({
+  id: '/rekrutmen',
+  path: '/rekrutmen',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/rekrutmen.lazy').then((d) => d.Route),
 )
 const AdminRecipeRoute = AdminRecipeRouteImport.update({
   id: '/recipe',
@@ -370,6 +384,13 @@ const AdminFinanceRouteRoute = AdminFinanceRouteRouteImport.update({
   path: '/finance',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminRekrutmenIndexRoute = AdminRekrutmenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRekrutmenRoute,
+} as any).lazy(() =>
+  import('./routes/admin/rekrutmen/index.lazy').then((d) => d.Route),
+)
 const AdminRecipeIndexRoute = AdminRecipeIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -411,6 +432,44 @@ const RegisterSelesaiRegistrationNumberRoute =
     import('./routes/register.selesai.$registrationNumber.lazy').then(
       (d) => d.Route,
     ),
+  )
+const AdminRekrutmenReportsRoute = AdminRekrutmenReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRekrutmenRoute,
+} as any).lazy(() =>
+  import('./routes/admin/rekrutmen/reports.lazy').then((d) => d.Route),
+)
+const AdminRekrutmenPositionsRoute = AdminRekrutmenPositionsRouteImport.update({
+  id: '/positions',
+  path: '/positions',
+  getParentRoute: () => AdminRekrutmenRoute,
+} as any).lazy(() =>
+  import('./routes/admin/rekrutmen/positions.lazy').then((d) => d.Route),
+)
+const AdminRekrutmenOnboardingRoute =
+  AdminRekrutmenOnboardingRouteImport.update({
+    id: '/onboarding',
+    path: '/onboarding',
+    getParentRoute: () => AdminRekrutmenRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/rekrutmen/onboarding.lazy').then((d) => d.Route),
+  )
+const AdminRekrutmenInterviewsRoute =
+  AdminRekrutmenInterviewsRouteImport.update({
+    id: '/interviews',
+    path: '/interviews',
+    getParentRoute: () => AdminRekrutmenRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/rekrutmen/interviews.lazy').then((d) => d.Route),
+  )
+const AdminRekrutmenCandidatesRoute =
+  AdminRekrutmenCandidatesRouteImport.update({
+    id: '/candidates',
+    path: '/candidates',
+    getParentRoute: () => AdminRekrutmenRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/rekrutmen/candidates.lazy').then((d) => d.Route),
   )
 const AdminRecipeViewRoute = AdminRecipeViewRouteImport.update({
   id: '/view',
@@ -760,6 +819,7 @@ export interface FileRoutesByFullPath {
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
+  '/admin/rekrutmen': typeof AdminRekrutmenRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
@@ -789,12 +849,18 @@ export interface FileRoutesByFullPath {
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
+  '/admin/rekrutmen/candidates': typeof AdminRekrutmenCandidatesRoute
+  '/admin/rekrutmen/interviews': typeof AdminRekrutmenInterviewsRoute
+  '/admin/rekrutmen/onboarding': typeof AdminRekrutmenOnboardingRoute
+  '/admin/rekrutmen/positions': typeof AdminRekrutmenPositionsRoute
+  '/admin/rekrutmen/reports': typeof AdminRekrutmenReportsRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/order-mie-yamin/': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/rekrutmen/': typeof AdminRekrutmenIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRouteRouteWithChildren
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
@@ -869,12 +935,18 @@ export interface FileRoutesByTo {
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
+  '/admin/rekrutmen/candidates': typeof AdminRekrutmenCandidatesRoute
+  '/admin/rekrutmen/interviews': typeof AdminRekrutmenInterviewsRoute
+  '/admin/rekrutmen/onboarding': typeof AdminRekrutmenOnboardingRoute
+  '/admin/rekrutmen/positions': typeof AdminRekrutmenPositionsRoute
+  '/admin/rekrutmen/reports': typeof AdminRekrutmenReportsRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/booking': typeof AdminBookingIndexRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
+  '/admin/rekrutmen': typeof AdminRekrutmenIndexRoute
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
   '/admin/booking/settings/options': typeof AdminBookingSettingsOptionsRoute
@@ -929,6 +1001,7 @@ export interface FileRoutesById {
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
+  '/admin/rekrutmen': typeof AdminRekrutmenRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
@@ -958,12 +1031,18 @@ export interface FileRoutesById {
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
+  '/admin/rekrutmen/candidates': typeof AdminRekrutmenCandidatesRoute
+  '/admin/rekrutmen/interviews': typeof AdminRekrutmenInterviewsRoute
+  '/admin/rekrutmen/onboarding': typeof AdminRekrutmenOnboardingRoute
+  '/admin/rekrutmen/positions': typeof AdminRekrutmenPositionsRoute
+  '/admin/rekrutmen/reports': typeof AdminRekrutmenReportsRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/order-mie-yamin/': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/rekrutmen/': typeof AdminRekrutmenIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRouteRouteWithChildren
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
@@ -1020,6 +1099,7 @@ export interface FileRouteTypes {
     | '/admin/pos-notifications'
     | '/admin/products'
     | '/admin/recipe'
+    | '/admin/rekrutmen'
     | '/admin/settings'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
@@ -1049,12 +1129,18 @@ export interface FileRouteTypes {
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
+    | '/admin/rekrutmen/candidates'
+    | '/admin/rekrutmen/interviews'
+    | '/admin/rekrutmen/onboarding'
+    | '/admin/rekrutmen/positions'
+    | '/admin/rekrutmen/reports'
     | '/register/selesai/$registrationNumber'
     | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/order-mie-yamin/'
     | '/admin/recipe/'
+    | '/admin/rekrutmen/'
     | '/admin/operational-team/register/contract'
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
@@ -1129,12 +1215,18 @@ export interface FileRouteTypes {
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
+    | '/admin/rekrutmen/candidates'
+    | '/admin/rekrutmen/interviews'
+    | '/admin/rekrutmen/onboarding'
+    | '/admin/rekrutmen/positions'
+    | '/admin/rekrutmen/reports'
     | '/register/selesai/$registrationNumber'
     | '/admin/booking'
     | '/admin/finance'
     | '/admin/operational-team'
     | '/admin/order-mie-yamin'
     | '/admin/recipe'
+    | '/admin/rekrutmen'
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
     | '/admin/booking/settings/options'
@@ -1188,6 +1280,7 @@ export interface FileRouteTypes {
     | '/admin/pos-notifications'
     | '/admin/products'
     | '/admin/recipe'
+    | '/admin/rekrutmen'
     | '/admin/settings'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
@@ -1217,12 +1310,18 @@ export interface FileRouteTypes {
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
+    | '/admin/rekrutmen/candidates'
+    | '/admin/rekrutmen/interviews'
+    | '/admin/rekrutmen/onboarding'
+    | '/admin/rekrutmen/positions'
+    | '/admin/rekrutmen/reports'
     | '/register/selesai/$registrationNumber'
     | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/order-mie-yamin/'
     | '/admin/recipe/'
+    | '/admin/rekrutmen/'
     | '/admin/operational-team/register/contract'
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
@@ -1383,6 +1482,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/rekrutmen': {
+      id: '/admin/rekrutmen'
+      path: '/rekrutmen'
+      fullPath: '/admin/rekrutmen'
+      preLoaderRoute: typeof AdminRekrutmenRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/recipe': {
@@ -1567,6 +1673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/rekrutmen/': {
+      id: '/admin/rekrutmen/'
+      path: '/'
+      fullPath: '/admin/rekrutmen/'
+      preLoaderRoute: typeof AdminRekrutmenIndexRouteImport
+      parentRoute: typeof AdminRekrutmenRoute
+    }
     '/admin/recipe/': {
       id: '/admin/recipe/'
       path: '/'
@@ -1608,6 +1721,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/register/selesai/$registrationNumber'
       preLoaderRoute: typeof RegisterSelesaiRegistrationNumberRouteImport
       parentRoute: typeof RegisterRoute
+    }
+    '/admin/rekrutmen/reports': {
+      id: '/admin/rekrutmen/reports'
+      path: '/reports'
+      fullPath: '/admin/rekrutmen/reports'
+      preLoaderRoute: typeof AdminRekrutmenReportsRouteImport
+      parentRoute: typeof AdminRekrutmenRoute
+    }
+    '/admin/rekrutmen/positions': {
+      id: '/admin/rekrutmen/positions'
+      path: '/positions'
+      fullPath: '/admin/rekrutmen/positions'
+      preLoaderRoute: typeof AdminRekrutmenPositionsRouteImport
+      parentRoute: typeof AdminRekrutmenRoute
+    }
+    '/admin/rekrutmen/onboarding': {
+      id: '/admin/rekrutmen/onboarding'
+      path: '/onboarding'
+      fullPath: '/admin/rekrutmen/onboarding'
+      preLoaderRoute: typeof AdminRekrutmenOnboardingRouteImport
+      parentRoute: typeof AdminRekrutmenRoute
+    }
+    '/admin/rekrutmen/interviews': {
+      id: '/admin/rekrutmen/interviews'
+      path: '/interviews'
+      fullPath: '/admin/rekrutmen/interviews'
+      preLoaderRoute: typeof AdminRekrutmenInterviewsRouteImport
+      parentRoute: typeof AdminRekrutmenRoute
+    }
+    '/admin/rekrutmen/candidates': {
+      id: '/admin/rekrutmen/candidates'
+      path: '/candidates'
+      fullPath: '/admin/rekrutmen/candidates'
+      preLoaderRoute: typeof AdminRekrutmenCandidatesRouteImport
+      parentRoute: typeof AdminRekrutmenRoute
     }
     '/admin/recipe/view': {
       id: '/admin/recipe/view'
@@ -2100,6 +2248,28 @@ const AdminRecipeRouteWithChildren = AdminRecipeRoute._addFileChildren(
   AdminRecipeRouteChildren,
 )
 
+interface AdminRekrutmenRouteChildren {
+  AdminRekrutmenCandidatesRoute: typeof AdminRekrutmenCandidatesRoute
+  AdminRekrutmenInterviewsRoute: typeof AdminRekrutmenInterviewsRoute
+  AdminRekrutmenOnboardingRoute: typeof AdminRekrutmenOnboardingRoute
+  AdminRekrutmenPositionsRoute: typeof AdminRekrutmenPositionsRoute
+  AdminRekrutmenReportsRoute: typeof AdminRekrutmenReportsRoute
+  AdminRekrutmenIndexRoute: typeof AdminRekrutmenIndexRoute
+}
+
+const AdminRekrutmenRouteChildren: AdminRekrutmenRouteChildren = {
+  AdminRekrutmenCandidatesRoute: AdminRekrutmenCandidatesRoute,
+  AdminRekrutmenInterviewsRoute: AdminRekrutmenInterviewsRoute,
+  AdminRekrutmenOnboardingRoute: AdminRekrutmenOnboardingRoute,
+  AdminRekrutmenPositionsRoute: AdminRekrutmenPositionsRoute,
+  AdminRekrutmenReportsRoute: AdminRekrutmenReportsRoute,
+  AdminRekrutmenIndexRoute: AdminRekrutmenIndexRoute,
+}
+
+const AdminRekrutmenRouteWithChildren = AdminRekrutmenRoute._addFileChildren(
+  AdminRekrutmenRouteChildren,
+)
+
 interface AdminRouteRouteChildren {
   AdminFinanceRouteRoute: typeof AdminFinanceRouteRouteWithChildren
   AdminAiChatRoute: typeof AdminAiChatRoute
@@ -2127,6 +2297,7 @@ interface AdminRouteRouteChildren {
   AdminPosNotificationsRoute: typeof AdminPosNotificationsRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
+  AdminRekrutmenRoute: typeof AdminRekrutmenRouteWithChildren
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStockOverviewRoute: typeof AdminStockOverviewRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -2159,6 +2330,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminPosNotificationsRoute: AdminPosNotificationsRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminRecipeRoute: AdminRecipeRouteWithChildren,
+  AdminRekrutmenRoute: AdminRekrutmenRouteWithChildren,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStockOverviewRoute: AdminStockOverviewRoute,
   AdminIndexRoute: AdminIndexRoute,

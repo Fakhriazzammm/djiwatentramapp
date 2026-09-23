@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import {
   Search,
@@ -30,8 +30,16 @@ import "@/styles/rekrutmen-admin.css";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 export const Route = createLazyFileRoute("/admin/operational-team/rekrutmen")({
-  component: AdminRekrutmen,
+  component: LegacyRekrutmenRedirect,
 });
+
+function LegacyRekrutmenRedirect() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    void navigate({ to: "/admin/rekrutmen" });
+  }, [navigate]);
+  return null;
+}
 
 const TAB_CONFIG = {
   candidates: {

@@ -103,6 +103,13 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/operational-team/karyawan/data": "Data Karyawan",
 	"/admin/operational-team/register/riwayat": "Riwayat Kontrak",
 	"/admin/operational-team/rekrutmen": "Rekrutmen",
+	"/admin/rekrutmen": "Rekrutmen · Dashboard",
+	"/admin/rekrutmen/": "Rekrutmen · Dashboard",
+	"/admin/rekrutmen/candidates": "Rekrutmen · Kandidat",
+	"/admin/rekrutmen/positions": "Rekrutmen · Posisi Lowongan",
+	"/admin/rekrutmen/interviews": "Rekrutmen · Interview",
+	"/admin/rekrutmen/onboarding": "Rekrutmen · Onboarding",
+	"/admin/rekrutmen/reports": "Rekrutmen · Laporan",
 		"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
 	"/admin/kitchen": "Dapur",
@@ -221,11 +228,21 @@ const QUICK_MENU_SECTIONS = [
 		],
 	},
 	{
+		label: "REKRUTMEN APP",
+		items: [
+			{ to: "/admin/rekrutmen", icon: LayoutDashboard, label: "Dashboard", permission: "users:manage" },
+			{ to: "/admin/rekrutmen/candidates", icon: Users, label: "Kandidat", permission: "users:manage" },
+			{ to: "/admin/rekrutmen/positions", icon: FileText, label: "Posisi Lowongan", permission: "users:manage" },
+			{ to: "/admin/rekrutmen/interviews", icon: CalendarDays, label: "Interview", permission: "users:manage" },
+			{ to: "/admin/rekrutmen/onboarding", icon: ClipboardList, label: "Onboarding", permission: "users:manage" },
+			{ to: "/admin/rekrutmen/reports", icon: BarChart3, label: "Laporan", permission: "users:manage" },
+		],
+	},
+	{
 		label: "Marketing",
 		items: [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
-			{ to: "/admin/operational-team/rekrutmen", icon: FileText, label: "Rekrutmen", permission: "users:manage" },
 		],
 	},
 	{
@@ -857,6 +874,28 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								</motion.div>}
 							</AnimatePresence>
 						</>
+					)}
+
+					{/* REKRUTMEN APP */}
+					<SidebarSection isCollapsed={isCollapsed} label="REKRUTMEN APP" />
+					{isCollapsed ? (
+						<>
+							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/rekrutmen" permission="users:manage" />
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Kandidat" to="/admin/rekrutmen/candidates" permission="users:manage" />
+							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Posisi Lowongan" to="/admin/rekrutmen/positions" permission="users:manage" />
+							<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Interview" to="/admin/rekrutmen/interviews" permission="users:manage" />
+							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/rekrutmen/onboarding" permission="users:manage" />
+							<DesktopNavLink icon={<BarChart3 />} isCollapsed={isCollapsed} label="Laporan" to="/admin/rekrutmen/reports" permission="users:manage" />
+						</>
+					) : (
+						<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+							<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/rekrutmen" permission="users:manage" />
+							<DesktopSubNavLink icon={<Users />} label="Kandidat" to="/admin/rekrutmen/candidates" permission="users:manage" />
+							<DesktopSubNavLink icon={<FileText />} label="Posisi Lowongan" to="/admin/rekrutmen/positions" permission="users:manage" />
+							<DesktopSubNavLink icon={<CalendarDays />} label="Interview" to="/admin/rekrutmen/interviews" permission="users:manage" />
+							<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/rekrutmen/onboarding" permission="users:manage" />
+							<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/rekrutmen/reports" permission="users:manage" />
+						</div>
 					)}
 
 					{/* KOL MARKETING APP */}

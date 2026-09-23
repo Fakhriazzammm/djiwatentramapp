@@ -71,8 +71,13 @@ function psql(sql) {
 
 async function validateRecruitmentAdmin(req, res, next) {
   const headerToken = req.get("x-yumi-session") || req.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const standardized = req.path.startsWith("/api/rekrutmen/");
+  const authError = (status, code, message) => {
+    if (standardized) return res.status(status).json({ error: { code, message }, data: null, meta: {} });
+    return res.status(status).json({ error: message });
+  };
   if (!headerToken || !SUPABASE_URL || !SUPABASE_SKEY) {
-    return res.status(401).json({ error: "Authentication diperlukan" });
+    return authError(401, "AUTH_REQUIRED", "Authentication diperlukan");
   }
 
   try {
@@ -85,7 +90,7 @@ async function validateRecruitmentAdmin(req, res, next) {
       },
       body: JSON.stringify({ action: "validateSession", token: headerToken }),
     });
-    if (!authRes.ok) return res.status(401).json({ error: "Sesi tidak valid" });
+    if (!authRes.ok) return authError(401, "AUTH_INVALID", "Sesi tidak valid");
     const payload = await authRes.json();
     const session = payload?.session;
     const roleName = String(session?.role?.name || "").trim().toLowerCase();
@@ -95,13 +100,13 @@ async function validateRecruitmentAdmin(req, res, next) {
     const allowedName = ["admin", "administrator", "owner", "superadmin", "super admin", "manager"].includes(roleName);
     const allowedPermission = permissions.includes("users:manage");
     if (!session || (!allowedName && !allowedPermission)) {
-      return res.status(403).json({ error: "Akses admin diperlukan" });
+      return authError(403, "ADMIN_REQUIRED", "Akses admin diperlukan");
     }
     res.locals.recruitmentAdmin = session.user;
     return next();
   } catch (error) {
     console.error("Recruitment auth validation failed:", error.message);
-    return res.status(503).json({ error: "Layanan autentikasi tidak tersedia" });
+    return authError(503, "AUTH_UNAVAILABLE", "Layanan autentikasi tidak tersedia");
   }
 }
 
@@ -438,6 +443,263 @@ app.get("/api/table/Interviews", validateRecruitmentAdmin, (req, res) => {
 app.get("/api/table/:name", validateRecruitmentAdmin, (req, res) => { res.status(404).json({ error: "Read model recruitment tidak tersedia" }); });
 app.post("/api/table/:name", (req, res) => { res.status(400).json({ error: "Table not supported" }); });
 app.patch("/api/table/:name/:id", validateRecruitmentAdmin, (req, res) => { res.status(400).json({ error: "Table not supported" }); });
+
+// ── Standardized recruitment admin contract ──
+// New admin resources use { data, meta } and the same session middleware.
+function adminEnvelope(res, data, meta = {}) {
+  return res.json({ data, meta });
+}
+
+function adminError(res, status, code, message) {
+  return res.status(status).json({ error: { code, message }, data: null, meta: {} });
+}
+
+function pageParams(req) {
+  const page = Math.max(1, Math.min(100000, Number.parseInt(req.query.page, 10) || 1));
+  const pageSize = Math.max(1, Math.min(100, Number.parseInt(req.query.pageSize || req.query.limit, 10) || 25));
+  return { page, pageSize, offset: (page - 1) * pageSize };
+}
+
+function sqlLiteral(value) {
+  if (value === null || value === undefined) return "NULL";
+  return "'" + String(value).replace(/'/g, "''") + "'";
+}
+
+function uuidOrNull(value) {
+  const id = String(value || "");
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ? id : null;
+}
+
+function queryAdminRows(sql) {
+  const raw = psql(sql);
+  return raw ? raw.split("\\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+}
+
+function runAdminMutation(sql) {
+  return queryAdminRows(sql);
+}
+
+function candidateSummary(row) {
+  return {
+    id: row.id,
+    name: row.nama_lengkap || "",
+    gender: row.jenis_kelamin || "",
+    birthDate: row.tanggal_lahir || null,
+    email: row.email || "",
+    phone: row.nomor_telepon || "",
+    social: row.sosial_media || "",
+    position: row.posisi_dilamar || "",
+    workType: row.tipe_kerja || "",
+    status: row.status || "Application Received",
+    applicationDate: row.application_date || null,
+    createdAt: row.created_at || null,
+  };
+}
+
+function candidateDetail(row) {
+  return { ...candidateSummary(row), notes: row.notes || "", cvUrl: row.cv_url || "" };
+}
+
+function candidateSelect(extra = "") {
+  return `SELECT json_build_object('id',id,'nama_lengkap',nama_lengkap,'jenis_kelamin',jenis_kelamin,'tanggal_lahir',tanggal_lahir,'email',email,'nomor_telepon',nomor_telepon,'sosial_media',sosial_media,'posisi_dilamar',posisi_dilamar,'tipe_kerja',tipe_kerja,'notes',notes,'status',status,'application_date',application_date,'created_at',created_at,'cv_url',cv_url)::text FROM pos.${TABLE} ${extra}`;
+}
+
+function requireUuid(req, res, label) {
+  const id = uuidOrNull(req.params.id);
+  if (!id) {
+    adminError(res, 400, "INVALID_ID", `${label} ID tidak valid`);
+    return null;
+  }
+  return id;
+}
+
+app.get("/api/rekrutmen/dashboard", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const row = queryAdminRows(`SELECT json_build_object(
+      'totalCandidates',(SELECT COUNT(*) FROM pos.${TABLE}),
+      'openPositions',(SELECT COUNT(*) FROM pos.recruitment_positions WHERE is_open = true),
+      'totalPositions',(SELECT COUNT(*) FROM pos.recruitment_positions),
+      'statusCounts',(SELECT COALESCE(json_object_agg(status,cnt),'{}'::json) FROM (SELECT COALESCE(status,'Unknown') status,COUNT(*) cnt FROM pos.${TABLE} GROUP BY status) s),
+      'positionCounts',(SELECT COALESCE(json_object_agg(position,cnt),'{}'::json) FROM (SELECT COALESCE(posisi_dilamar,'Unknown') position,COUNT(*) cnt FROM pos.${TABLE} GROUP BY posisi_dilamar) s)
+    )::text`)[0] || {};
+    adminEnvelope(res, row, { generatedAt: new Date().toISOString() });
+  } catch (e) {
+    adminError(res, 503, "BACKEND_UNAVAILABLE", "Dashboard recruitment tidak dapat dimuat");
+  }
+});
+
+app.get("/api/rekrutmen/candidates", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const { page, pageSize, offset } = pageParams(req);
+    const filter = String(req.query.status || "").trim();
+    const where = filter ? `WHERE status = ${sqlLiteral(filter)}` : "";
+    const rows = queryAdminRows(`${candidateSelect(`${where} ORDER BY created_at DESC NULLS LAST LIMIT ${pageSize} OFFSET ${offset}`)}`);
+    const total = Number(queryAdminRows(`SELECT json_build_object('count',COUNT(*) )::text FROM pos.${TABLE} ${where}`)[0]?.count || 0);
+    adminEnvelope(res, rows.map(candidateSummary), { page, pageSize, total, hasMore: offset + rows.length < total });
+  } catch (e) {
+    adminError(res, 503, "BACKEND_UNAVAILABLE", "Daftar kandidat tidak dapat dimuat");
+  }
+});
+
+app.get("/api/rekrutmen/candidates.csv", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const rows = queryAdminRows(`${candidateSelect("ORDER BY created_at DESC NULLS LAST")}`);
+    const cols = ["id","name","email","phone","position","workType","status","applicationDate","createdAt"];
+    const csv = [cols.join(","), ...rows.map((r) => { const v = candidateSummary(r); return cols.map((c) => `"${String(v[c] ?? "").replace(/"/g, '""')}"`).join(","); })].join("\\n");
+    res.type("text/csv").set("Content-Disposition", 'attachment; filename="recruitment-candidates.csv"').send(csv);
+  } catch (e) { adminError(res, 503, "BACKEND_UNAVAILABLE", "CSV kandidat tidak dapat dibuat"); }
+});
+
+app.get("/api/rekrutmen/candidates/:id", validateRecruitmentAdmin, (req, res) => {
+  const id = requireUuid(req, res, "Kandidat");
+  if (!id) return;
+  try {
+    const row = queryAdminRows(`${candidateSelect(`WHERE id = ${sqlLiteral(id)} LIMIT 1`)}`)[0];
+    if (!row) return adminError(res, 404, "NOT_FOUND", "Kandidat tidak ditemukan");
+    adminEnvelope(res, candidateDetail(row), { resource: "candidate" });
+  } catch (e) {
+    adminError(res, 503, "BACKEND_UNAVAILABLE", "Detail kandidat tidak dapat dimuat");
+  }
+});
+
+app.patch("/api/rekrutmen/candidates/:id", validateRecruitmentAdmin, (req, res) => {
+  const id = requireUuid(req, res, "Kandidat");
+  if (!id) return;
+  try {
+    const body = req.body || {};
+    const sets = [];
+    if (Object.hasOwn(body, "status")) {
+      const status = String(body.status || "").trim();
+      if (!status || status.length > 80) return adminError(res, 400, "INVALID_STATUS", "Status tidak valid");
+      sets.push(`status = ${sqlLiteral(status)}`);
+    }
+    if (Object.hasOwn(body, "notes")) sets.push(`notes = ${body.notes == null ? "NULL" : sqlLiteral(String(body.notes).slice(0, 10000))}`);
+    if (!sets.length) return adminError(res, 400, "NO_FIELDS", "Tidak ada field yang dapat diubah");
+    sets.push("updated_at = NOW()");
+    const row = runAdminMutation(`UPDATE pos.${TABLE} SET ${sets.join(", ")} WHERE id = ${sqlLiteral(id)} RETURNING json_build_object('id',id,'status',status,'notes',notes)::text`)[0];
+    if (!row) return adminError(res, 404, "NOT_FOUND", "Kandidat tidak ditemukan");
+    adminEnvelope(res, row, { resource: "candidate" });
+  } catch (e) {
+    adminError(res, 503, "BACKEND_UNAVAILABLE", "Kandidat tidak dapat diubah");
+  }
+});
+
+app.get("/api/rekrutmen/positions", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const { page, pageSize, offset } = pageParams(req);
+    const rows = queryAdminRows(`SELECT json_build_object('id',id,'title',title,'icon',icon,'summary',summary,'types',types,'tags',tags,'isOpen',is_open,'sortOrder',sort_order)::text FROM pos.recruitment_positions ORDER BY sort_order ASC NULLS LAST,title ASC LIMIT ${pageSize} OFFSET ${offset}`);
+    const total = Number(queryAdminRows("SELECT json_build_object('count',COUNT(*))::text FROM pos.recruitment_positions")[0]?.count || 0);
+    adminEnvelope(res, rows, { page, pageSize, total, hasMore: offset + rows.length < total });
+  } catch (e) {
+    adminError(res, 503, "TABLE_UNAVAILABLE", "Tabel posisi recruitment belum tersedia");
+  }
+});
+
+app.post("/api/rekrutmen/positions", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const b = req.body || {};
+    const title = String(b.title || "").trim();
+    if (!title || title.length > 160) return adminError(res, 400, "INVALID_TITLE", "Title posisi wajib diisi");
+    const bool = typeof b.isOpen === "boolean" ? b.isOpen : true;
+    const row = runAdminMutation(`INSERT INTO pos.recruitment_positions (title,icon,summary,types,tags,is_open,sort_order) VALUES (${sqlLiteral(title)},${sqlLiteral(b.icon || "")},${sqlLiteral(b.summary || "")},${sqlLiteral(JSON.stringify(Array.isArray(b.types) ? b.types : []))}::jsonb,${sqlLiteral(JSON.stringify(Array.isArray(b.tags) ? b.tags : []))}::jsonb,${bool},${Number.isFinite(Number(b.sortOrder)) ? Math.trunc(Number(b.sortOrder)) : 0}) RETURNING json_build_object('id',id,'title',title,'icon',icon,'summary',summary,'types',types,'tags',tags,'isOpen',is_open,'sortOrder',sort_order)::text`)[0];
+    adminEnvelope(res, row, { resource: "position" });
+  } catch (e) {
+    adminError(res, 503, "TABLE_UNAVAILABLE", "Posisi tidak dapat dibuat; periksa schema recruitment");
+  }
+});
+
+app.patch("/api/rekrutmen/positions/:id", validateRecruitmentAdmin, (req, res) => {
+  const id = requireUuid(req, res, "Posisi");
+  if (!id) return;
+  try {
+    const b = req.body || {}; const sets = [];
+    if (Object.hasOwn(b, "title")) { const v = String(b.title || "").trim(); if (!v || v.length > 160) return adminError(res, 400, "INVALID_TITLE", "Title posisi tidak valid"); sets.push(`title=${sqlLiteral(v)}`); }
+    if (Object.hasOwn(b, "icon")) sets.push(`icon=${sqlLiteral(b.icon || "")}`);
+    if (Object.hasOwn(b, "summary")) sets.push(`summary=${sqlLiteral(b.summary || "")}`);
+    if (Object.hasOwn(b, "types")) sets.push(`types=${sqlLiteral(JSON.stringify(Array.isArray(b.types) ? b.types : []))}::jsonb`);
+    if (Object.hasOwn(b, "tags")) sets.push(`tags=${sqlLiteral(JSON.stringify(Array.isArray(b.tags) ? b.tags : []))}::jsonb`);
+    if (Object.hasOwn(b, "isOpen")) { if (typeof b.isOpen !== "boolean") return adminError(res, 400, "INVALID_IS_OPEN", "isOpen harus boolean"); sets.push(`is_open=${b.isOpen}`); }
+    if (Object.hasOwn(b, "sortOrder")) sets.push(`sort_order=${Math.trunc(Number(b.sortOrder) || 0)}`);
+    if (!sets.length) return adminError(res, 400, "NO_FIELDS", "Tidak ada field yang dapat diubah");
+    const row = runAdminMutation(`UPDATE pos.recruitment_positions SET ${sets.join(",")} WHERE id=${sqlLiteral(id)} RETURNING json_build_object('id',id,'title',title,'icon',icon,'summary',summary,'types',types,'tags',tags,'isOpen',is_open,'sortOrder',sort_order)::text`)[0];
+    if (!row) return adminError(res, 404, "NOT_FOUND", "Posisi tidak ditemukan");
+    adminEnvelope(res, row, { resource: "position" });
+  } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", "Posisi tidak dapat diubah; periksa schema recruitment"); }
+});
+
+app.delete("/api/rekrutmen/positions/:id", validateRecruitmentAdmin, (req, res) => {
+  const id = requireUuid(req, res, "Posisi");
+  if (!id) return;
+  try {
+    const row = runAdminMutation(`DELETE FROM pos.recruitment_positions WHERE id=${sqlLiteral(id)} RETURNING json_build_object('id',id)::text`)[0];
+    if (!row) return adminError(res, 404, "NOT_FOUND", "Posisi tidak ditemukan");
+    adminEnvelope(res, row, { resource: "position" });
+  } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", "Posisi tidak dapat dihapus; periksa schema recruitment"); }
+});
+
+function tableResource(table, label) {
+  return (req, res) => {
+    try {
+      const { page, pageSize, offset } = pageParams(req);
+      const rows = queryAdminRows(`SELECT row_to_json(t)::text FROM (SELECT * FROM ${table} ORDER BY created_at DESC NULLS LAST LIMIT ${pageSize} OFFSET ${offset}) t`);
+      const total = Number(queryAdminRows(`SELECT json_build_object('count',COUNT(*))::text FROM ${table}`)[0]?.count || 0);
+      adminEnvelope(res, rows, { page, pageSize, total, hasMore: offset + rows.length < total, resource: label });
+    } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", `Tabel ${label} belum tersedia di schema recruitment`); }
+  };
+}
+
+app.get("/api/rekrutmen/interviews", validateRecruitmentAdmin, tableResource("pos.recruitment_interviews", "interviews"));
+app.get("/api/rekrutmen/onboarding", validateRecruitmentAdmin, tableResource("pos.recruitment_onboarding_tasks", "onboarding-tasks"));
+app.get("/api/rekrutmen/reports", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const row = queryAdminRows(`SELECT json_build_object('byStatus',(SELECT COALESCE(json_agg(x),'[]'::json) FROM (SELECT COALESCE(status,'Unknown') status,COUNT(*) count FROM pos.${TABLE} GROUP BY status ORDER BY count DESC) x),'byPosition',(SELECT COALESCE(json_agg(x),'[]'::json) FROM (SELECT COALESCE(posisi_dilamar,'Unknown') position,COUNT(*) count FROM pos.${TABLE} GROUP BY posisi_dilamar ORDER BY count DESC) x))::text`)[0] || {};
+    adminEnvelope(res, row, { generatedAt: new Date().toISOString() });
+  } catch (e) { adminError(res, 503, "BACKEND_UNAVAILABLE", "Laporan recruitment tidak dapat dimuat"); }
+});
+
+app.post("/api/rekrutmen/interviews", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const b = req.body || {};
+    const candidateId = uuidOrNull(b.candidateId || b.candidate_id);
+    if (!candidateId) return adminError(res, 400, "INVALID_CANDIDATE_ID", "candidateId wajib berupa UUID");
+    const status = String(b.status || "Scheduled");
+    const allowed = ["Scheduled", "Rescheduled", "Completed", "Passed", "Failed", "Cancelled"];
+    if (!allowed.includes(status)) return adminError(res, 400, "INVALID_STATUS", "Status interview tidak valid");
+    const row = runAdminMutation(`INSERT INTO pos.recruitment_interviews (candidate_id,scheduled_at,timezone,interviewer_user_id,location,meeting_url,status,notes,feedback,result,created_by,metadata) VALUES (${sqlLiteral(candidateId)},${sqlLiteral(b.scheduledAt || b.scheduled_at)},${sqlLiteral(b.timezone || "Asia/Jakarta")},${sqlLiteral(uuidOrNull(b.interviewerUserId || b.interviewer_user_id))},${sqlLiteral(b.location || "")},${sqlLiteral(b.meetingUrl || b.meeting_url || "")},${sqlLiteral(status)},${sqlLiteral(b.notes || "")},${sqlLiteral(b.feedback || "")},${sqlLiteral(b.result || "")},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},${sqlLiteral(JSON.stringify(b.metadata || {}))}::jsonb) RETURNING row_to_json(recruitment_interviews)::text`)[0];
+    adminEnvelope(res, row, { resource: "interview" });
+  } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", "Interview belum tersedia di schema recruitment"); }
+});
+
+app.patch("/api/rekrutmen/interviews/:id", validateRecruitmentAdmin, (req, res) => {
+  const id = requireUuid(req, res, "Interview");
+  if (!id) return;
+  try {
+    const b = req.body || {}; const sets = [];
+    const textFields = { scheduledAt: "scheduled_at", timezone: "timezone", interviewerUserId: "interviewer_user_id", location: "location", meetingUrl: "meeting_url", notes: "notes", feedback: "feedback", result: "result" };
+    for (const [input, column] of Object.entries(textFields)) if (Object.hasOwn(b, input)) sets.push(`${column}=${input === "interviewerUserId" ? sqlLiteral(uuidOrNull(b[input])) : sqlLiteral(b[input])}`);
+    if (Object.hasOwn(b, "status")) { const allowed = ["Scheduled", "Rescheduled", "Completed", "Passed", "Failed", "Cancelled"]; if (!allowed.includes(String(b.status))) return adminError(res, 400, "INVALID_STATUS", "Status interview tidak valid"); sets.push(`status=${sqlLiteral(b.status)}`); }
+    if (Object.hasOwn(b, "metadata")) sets.push(`metadata=${sqlLiteral(JSON.stringify(b.metadata || {}))}::jsonb`);
+    if (!sets.length) return adminError(res, 400, "NO_FIELDS", "Tidak ada field yang dapat diubah");
+    sets.push("updated_at=NOW()");
+    const row = runAdminMutation(`UPDATE pos.recruitment_interviews SET ${sets.join(",")} WHERE id=${sqlLiteral(id)} RETURNING row_to_json(recruitment_interviews)::text`)[0];
+    if (!row) return adminError(res, 404, "NOT_FOUND", "Interview tidak ditemukan");
+    adminEnvelope(res, row, { resource: "interview" });
+  } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", "Interview tidak dapat diubah; periksa schema recruitment"); }
+});
+
+app.patch("/api/rekrutmen/onboarding/:id/tasks", validateRecruitmentAdmin, (req, res) => {
+  const id = requireUuid(req, res, "Task onboarding");
+  if (!id) return;
+  try {
+    const status = String(req.body?.status || "");
+    const allowed = ["pending", "in_progress", "completed", "skipped", "cancelled"];
+    if (!allowed.includes(status)) return adminError(res, 400, "INVALID_STATUS", "Status task onboarding tidak valid");
+    const completedAt = status === "completed" ? "NOW()" : "NULL";
+    const row = runAdminMutation(`UPDATE pos.recruitment_onboarding_tasks SET status=${sqlLiteral(status)},completed_at=${completedAt},updated_at=NOW() WHERE id=${sqlLiteral(id)} RETURNING row_to_json(recruitment_onboarding_tasks)::text`)[0];
+    if (!row) return adminError(res, 404, "NOT_FOUND", "Task onboarding tidak ditemukan");
+    adminEnvelope(res, row, { resource: "onboarding-task" });
+  } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", "Task onboarding belum tersedia di schema recruitment"); }
+});
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Rekrutmen UI at http://localhost:" + PORT);
