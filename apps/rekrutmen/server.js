@@ -458,7 +458,7 @@ function adminError(res, status, code, message) {
 
 function pageParams(req) {
   const page = Math.max(1, Math.min(100000, Number.parseInt(req.query.page, 10) || 1));
-  const pageSize = Math.max(1, Math.min(100, Number.parseInt(req.query.pageSize || req.query.limit, 10) || 25));
+  const pageSize = Math.max(1, Math.min(500, Number.parseInt(req.query.pageSize || req.query.limit, 10) || 25));
   return { page, pageSize, offset: (page - 1) * pageSize };
 }
 
@@ -473,8 +473,13 @@ function uuidOrNull(value) {
 }
 
 function queryAdminRows(sql) {
-  const raw = psql(sql);
-  return raw ? raw.split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+  const raw = psql(sql).trim();
+  if (!raw) return [];
+  try {
+    return [JSON.parse(raw)];
+  } catch {
+    return raw.split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  }
 }
 
 function runAdminMutation(sql) {
@@ -495,6 +500,7 @@ function candidateSummary(row) {
     status: row.status || "Application Received",
     applicationDate: row.application_date || null,
     createdAt: row.created_at || null,
+    cvUrl: row.cv_url || "",
   };
 }
 

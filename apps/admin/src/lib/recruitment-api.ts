@@ -34,7 +34,7 @@ export async function recruitmentRequest<T>(path: string, init: RequestInit = {}
 
 export const recruitmentApi = {
   dashboard: (token?: string) => recruitmentRequest<RecruitmentDashboard>("/dashboard", {}, token),
-  candidates: (token?: string) => recruitmentRequest<RecruitmentCandidate[] | RecruitmentEnvelope<RecruitmentCandidate[]>>("/candidates", {}, token),
+  candidates: (token?: string) => recruitmentRequest<RecruitmentCandidate[] | RecruitmentEnvelope<RecruitmentCandidate[]>>("/candidates?pageSize=500", {}, token),
   candidate: (id: string, token?: string) => recruitmentRequest<RecruitmentCandidate>(`/candidates/${encodeURIComponent(id)}`, {}, token),
   positions: (token?: string) => recruitmentRequest<RecruitmentPosition[] | RecruitmentEnvelope<RecruitmentPosition[]>>("/positions", {}, token),
   updatePosition: (id: string, payload: Partial<Pick<RecruitmentPosition, "title" | "icon" | "summary" | "types" | "tags">> & { isOpen?: boolean; sortOrder?: number }, token?: string) => recruitmentRequest<RecruitmentPosition>(`/positions/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) }, token),

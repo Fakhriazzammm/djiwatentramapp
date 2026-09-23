@@ -46,11 +46,10 @@ export function PositionsPage() {
   };
   return <RecruitmentShell title="Posisi lowongan" description="Pantau posisi yang dipublikasikan dan status ketersediaannya." actions={<RefreshButton onClick={query.reload} loading={query.loading || Boolean(saving)} />}>
     <PageState loading={query.loading} error={query.error} onRetry={query.reload}>
-      {positions.length ? <DataTable headers={["Posisi", "Ringkasan", "Status", "Urutan", "Simpan"]}>
+      {positions.length ? <DataTable headers={["Posisi", "Ringkasan", "Status", "Urutan"]}>
         {positions.map((position) => {
           const open = position.isOpen ?? position.is_open;
           const order = position.sortOrder ?? position.sort_order ?? 0;
-          const isSaving = saving === position.id;
           return <tr key={position.id}>
             <td className="px-4 py-3 font-medium">{position.title}</td>
             <td className="px-4 py-3 text-slate-500">{position.summary || "—"}</td>
@@ -62,7 +61,6 @@ export function PositionsPage() {
             <td className="px-4 py-3">
               <input aria-label={`Urutan ${position.title}`} className="w-20 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" defaultValue={order} disabled={Boolean(saving)} min={0} onBlur={(event) => { const next = Number.parseInt(event.target.value, 10); if (Number.isFinite(next) && next !== order) updatePosition(position, { sortOrder: Math.max(0, next) }); }} type="number" />
             </td>
-            <td className="px-4 py-3 text-xs text-slate-500">{isSaving ? "Menyimpan…" : saveError && saving === position.id ? saveError : "Tersimpan otomatis"}</td>
           </tr>;
         })}
       </DataTable> : <EmptyState title="Belum ada posisi" description="Posisi dari /api/rekrutmen/positions akan tampil di sini." />}
