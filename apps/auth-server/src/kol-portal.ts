@@ -164,7 +164,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   app.get("/api/kol/portal/proofs", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;
-    const result = await pool.query(`select p.*, c.title as campaign_title from pos.kol_content_proofs p join pos.kol_campaign_assignments a on a.id=p.assignment_id join pos.kol_campaigns c on c.id=a.campaign_id where p.kol_id=$1 order by p.created_at desc`, [current.kol.source_id]);
+    const result = await pool.query(`select p.*, c.title as campaign_title from pos.kol_content_submissions p join pos.kol_campaign_assignments a on a.id=p.campaign_assignment_id join pos.kol_campaigns c on c.id=a.campaign_id where a.kol_id=$1 order by p.created_at desc`, [current.kol.source_id]);
     return json(c, { success: true, data: result.rows });
   });
 
@@ -175,9 +175,9 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const assignmentId = Number(body.assignmentId);
     const contentUrl = typeof body.contentUrl === "string" ? body.contentUrl.trim() : "";
     if (!Number.isInteger(assignmentId) || !validUrl(contentUrl)) return json(c, { success: false, error: "INVALID_CONTENT_PROOF" }, 400);
-    const result = await pool.query(`insert into pos.kol_content_proofs (assignment_id,kol_id,content_url,published_at,screenshot_url,insights_note,status,submitted_at) select a.id,a.kol_id,$1,$2,$3,$4,'submitted',now() from pos.kol_campaign_assignments a where a.id=$5 and a.kol_id=$6 and a.status in ('accepted','in_progress','revision_requested') returning *`, [contentUrl, typeof body.publishedAt === "string" ? body.publishedAt : null, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, typeof body.insightsNote === "string" ? body.insightsNote.trim().slice(0, 2000) : null, assignmentId, current.kol.source_id]);
+    const result = await pool.query(`insert into pos.kol_content_submissions (campaign_assignment_id,deliverable_type,content_url,published_at,insight_screenshot_url,status) select a.id,$1,$2,$3,$4,'submitted' from pos.kol_campaign_assignments a where a.id=$5 and a.kol_id=$6 and a.status in ('accepted','active') returning *`, [typeof body.deliverableType === "string" ? body.deliverableType.trim().slice(0, 120) || "content" : "content", contentUrl, typeof body.publishedAt === "string" ? body.publishedAt : null, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, assignmentId, current.kol.source_id]);
     if (!result.rows[0]) return json(c, { success: false, error: "CAMPAIGN_ASSIGNMENT_NOT_FOUND" }, 404);
-    await pool.query(`update pos.kol_campaign_assignments set status='submitted', updated_at=now() where id=$1 and kol_id=$2`, [assignmentId, current.kol.source_id]);
+    await pool.query(`update pos.kol_campaign_assignments set status='active', updated_at=now() where id=$1 and kol_id=$2`, [assignmentId, current.kol.source_id]);
     return json(c, { success: true, data: result.rows[0] }, 201);
   });
 
@@ -187,7 +187,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const body = await c.req.json().catch(() => ({}));
     const contentUrl = typeof body.contentUrl === "string" ? body.contentUrl.trim() : "";
     if (!validUrl(contentUrl)) return json(c, { success: false, error: "INVALID_CONTENT_PROOF" }, 400);
-    const result = await pool.query(`update pos.kol_content_proofs set content_url=$1, screenshot_url=coalesce($2,screenshot_url), insights_note=coalesce($3,insights_note), status='submitted', submitted_at=now(), reviewed_at=null, review_note=null, updated_at=now() where id=$4 and kol_id=$5 and status='revision_requested' returning *`, [contentUrl, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, typeof body.insightsNote === "string" ? body.insightsNote.trim().slice(0, 2000) : null, Number(c.req.param("id")), current.kol.source_id]);
+    const result = await pool.query(`update pos.kol_content_submissions p set content_url=$1, insight_screenshot_url=coalesce($2,insight_screenshot_url), status='submitted', reviewed_at=null, review_note=null, updated_at=now() from pos.kol_campaign_assignments a where p.id=$3 and p.campaign_assignment_id=a.id and a.kol_id=$4 and p.status='needs_revision' returning p.*`, [contentUrl, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, Number(c.req.param("id")), current.kol.source_id]);
     if (!result.rows[0]) return json(c, { success: false, error: "CONTENT_PROOF_NOT_FOUND" }, 404);
     return json(c, { success: true, data: result.rows[0] });
   });
@@ -235,6 +235,8 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const username = c.req.param("username").trim().toLowerCase();
     const result = await pool.query(`select * from public.pos_kol_public_profiles where lower(username)=lower($1) limit 1`, [username]);
     if (!result.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
-    return json(c, { success: true, data: result.rows[0] });
+    const row = result.rows[0];
+    const payload = row.data && typeof row.data === "object" ? row.data : {};
+    return json(c, { success: true, data: { id: row.id, name: row.name, username: row.username, avatar_url: row.avatar_url, location: row.location, category: row.category, bio: row.bio, platforms: Array.isArray(payload.platforms) ? payload.platforms.map((p: any) => ({ ...p, profile_url: p.profileUrl })) : [], portfolio: Array.isArray(payload.portfolio) ? payload.portfolio.map((p: any) => ({ ...p, content_url: p.contentUrl, thumbnail_url: p.thumbnailUrl, published_at: p.publishedAt })) : [], badges: payload.badges ?? [], badge_names: Array.isArray(payload.badges) ? payload.badges.map((b: any) => b.name) : [] } });
   });
 }
