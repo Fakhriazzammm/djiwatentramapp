@@ -1,6 +1,6 @@
 import { CalendarDays, FileBarChart, UsersRound } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { useRecruitmentCandidates, useRecruitmentDashboard, useRecruitmentInterviews, useRecruitmentOnboarding, useRecruitmentPositions, useRecruitmentReports, listData } from "@/hooks/use-recruitment-admin";
+import { useRecruitmentCandidates, useRecruitmentDashboard, useRecruitmentInterviews, useRecruitmentMutation, useRecruitmentOnboarding, useRecruitmentPositions, useRecruitmentReports, listData } from "@/hooks/use-recruitment-admin";
 import type { RecruitmentCandidate, RecruitmentInterview, RecruitmentOnboardingItem, RecruitmentPosition } from "@/lib/recruitment-types";
 import { CandidateDetailSheet, CandidateTable, EmptyState, KpiStrip, PageState, PipelineBoard, RecruitmentShell, RecruitmentToolbar, RefreshButton, SectionCard, StatusBadge } from "@/components/rekrutmen";
 
@@ -32,7 +32,44 @@ export function CandidatesPage() {
 
 function DataTable({ children, headers }: { children: ReactNode; headers: string[] }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="w-full min-w-[640px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div>; }
 
-export function PositionsPage() { const query = useRecruitmentPositions(); const positions = listData<ApiPosition>(query.data); return <RecruitmentShell title="Posisi lowongan" description="Pantau posisi yang dipublikasikan dan status ketersediaannya." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}>{positions.length ? <DataTable headers={["Posisi", "Ringkasan", "Status", "Urutan"]}>{positions.map((position) => { const open = position.isOpen ?? position.is_open; return <tr key={position.id}><td className="px-4 py-3 font-medium">{position.title}</td><td className="px-4 py-3 text-slate-500">{position.summary || "—"}</td><td className="px-4 py-3"><span className={open ? "text-emerald-600" : "text-slate-500"}>{open ? "Open" : "Closed"}</span></td><td className="px-4 py-3 text-slate-500">{position.sortOrder ?? position.sort_order ?? "—"}</td></tr>; })}</DataTable> : <EmptyState title="Belum ada posisi" description="Posisi dari /api/rekrutmen/positions akan tampil di sini." />}</PageState></RecruitmentShell>; }
+export function PositionsPage() {
+  const query = useRecruitmentPositions();
+  const mutate = useRecruitmentMutation();
+  const positions = listData<ApiPosition>(query.data);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const updatePosition = async (position: ApiPosition, payload: { isOpen?: boolean; sortOrder?: number }) => {
+    setSaving(position.id); setSaveError(null);
+    try { await mutate(`/positions/${encodeURIComponent(position.id)}`, { method: "PATCH", body: JSON.stringify(payload) }); query.reload(); }
+    catch (reason) { setSaveError(reason instanceof Error ? reason.message : "Perubahan posisi gagal disimpan"); }
+    finally { setSaving(null); }
+  };
+  return <RecruitmentShell title="Posisi lowongan" description="Pantau posisi yang dipublikasikan dan status ketersediaannya." actions={<RefreshButton onClick={query.reload} loading={query.loading || Boolean(saving)} />}>
+    <PageState loading={query.loading} error={query.error} onRetry={query.reload}>
+      {positions.length ? <DataTable headers={["Posisi", "Ringkasan", "Status", "Urutan", "Simpan"]}>
+        {positions.map((position) => {
+          const open = position.isOpen ?? position.is_open;
+          const order = position.sortOrder ?? position.sort_order ?? 0;
+          const isSaving = saving === position.id;
+          return <tr key={position.id}>
+            <td className="px-4 py-3 font-medium">{position.title}</td>
+            <td className="px-4 py-3 text-slate-500">{position.summary || "—"}</td>
+            <td className="px-4 py-3">
+              <select aria-label={`Status ${position.title}`} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm" disabled={Boolean(saving)} onChange={(event) => updatePosition(position, { isOpen: event.target.value === "open" })} value={open ? "open" : "closed"}>
+                <option value="open">Open</option><option value="closed">Closed</option>
+              </select>
+            </td>
+            <td className="px-4 py-3">
+              <input aria-label={`Urutan ${position.title}`} className="w-20 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" defaultValue={order} disabled={Boolean(saving)} min={0} onBlur={(event) => { const next = Number.parseInt(event.target.value, 10); if (Number.isFinite(next) && next !== order) updatePosition(position, { sortOrder: Math.max(0, next) }); }} type="number" />
+            </td>
+            <td className="px-4 py-3 text-xs text-slate-500">{isSaving ? "Menyimpan…" : saveError && saving === position.id ? saveError : "Tersimpan otomatis"}</td>
+          </tr>;
+        })}
+      </DataTable> : <EmptyState title="Belum ada posisi" description="Posisi dari /api/rekrutmen/positions akan tampil di sini." />}
+      {saveError && !saving ? <p className="mt-3 text-sm text-rose-600">{saveError}</p> : null}
+    </PageState>
+  </RecruitmentShell>;
+}
 
 export function InterviewsPage() { const query = useRecruitmentInterviews(); const interviews = listData<RecruitmentInterview>(query.data); return <RecruitmentShell title="Interview" description="Jadwal dan hasil interview kandidat dalam satu daftar." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}>{interviews.length ? <DataTable headers={["Kandidat", "Jadwal", "Interviewer", "Status", "Lokasi"]}>{interviews.map((item) => <tr key={item.id}><td className="px-4 py-3 font-medium">{item.candidate_name || item.candidate_id || "—"}</td><td className="px-4 py-3 text-slate-500">{item.scheduled_at ? new Date(item.scheduled_at).toLocaleString("id-ID") : "—"}</td><td className="px-4 py-3 text-slate-600">{item.interviewer_name || item.interviewer_user_id || "—"}</td><td className="px-4 py-3"><StatusBadge status={item.status} /></td><td className="px-4 py-3 text-slate-500">{item.location || item.meeting_url || "—"}</td></tr>)}</DataTable> : <EmptyState title="Belum ada interview" description="Interview dari /api/rekrutmen/interviews akan tampil di sini." />}</PageState></RecruitmentShell>; }
 
