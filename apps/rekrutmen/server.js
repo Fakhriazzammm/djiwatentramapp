@@ -51,6 +51,8 @@ async function uploadToStorage(objectPath, buffer, contentType) {
 
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
+// Legacy standalone candidate viewer is intentionally disabled; Admin SPA is the only protected viewer.
+app.get("/admin.html", (_req, res) => res.status(404).send("Not Found"));
 app.use(express.static(path.join(__dirname, "public"), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith("index.html")) {
