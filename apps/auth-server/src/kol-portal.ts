@@ -360,6 +360,8 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
   });
 
+  app.get("/api/kol/public/creators", async (c) => creatorDiscovery(c, pool, false));
+
   app.get("/api/kol/public/:username", async (c) => {
     const username = c.req.param("username").trim().toLowerCase();
     const result = await pool.query(`select * from public.pos_kol_public_profiles where lower(username)=lower($1) limit 1`, [username]);
@@ -407,7 +409,6 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const current = await context(c, auth, pool); if (current.error) return current.error;
     return creatorDiscovery(c, pool, true);
   });
-  app.get("/api/kol/public/creators", async (c) => creatorDiscovery(c, pool, false));
   async function creatorDiscovery(c: any, db: DbPool, authenticated: boolean) {
     const limit = boundedLimit(c.req.query("limit")); if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
     const cursor = decodeTimelineCursor(c.req.query("before")); if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
