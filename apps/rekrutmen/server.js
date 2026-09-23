@@ -8,6 +8,7 @@ const fs = require("fs");
 const app = express();
 const PORT = Number(process.env.PORT || 3456);
 const TABLE = "recruitment_candidates";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const UPLOAD_DIR = path.join(__dirname, "public", "uploads");
 
 // ── Supabase config (baca dari .env agent, bukan hardcode) ──
@@ -558,6 +559,29 @@ app.get("/api/rekrutmen/candidates.csv", validateRecruitmentAdmin, (req, res) =>
     const csv = [cols.join(","), ...rows.map((r) => { const v = candidateSummary(r); return cols.map((c) => `"${String(v[c] ?? "").replace(/"/g, '""')}"`).join(","); })].join("\n");
     res.type("text/csv").set("Content-Disposition", 'attachment; filename="recruitment-candidates.csv"').send(csv);
   } catch (e) { adminError(res, 503, "BACKEND_UNAVAILABLE", "CSV kandidat tidak dapat dibuat"); }
+});
+
+app.post("/api/rekrutmen/candidates/bulk", validateRecruitmentAdmin, (req, res) => {
+  try {
+    const action = String(req.body?.action || "").trim();
+    const ids = Array.from(new Set(Array.isArray(req.body?.ids) ? req.body.ids.map((value) => String(value)) : []));
+    if (!ids.length || ids.length > 200) return adminError(res, 400, "INVALID_IDS", "Pilih 1 sampai 200 kandidat");
+    if (ids.some((id) => !UUID_RE.test(id))) return adminError(res, 400, "INVALID_ID", "ID kandidat tidak valid");
+    const idList = ids.map(sqlLiteral).join(",");
+    if (action === "status") {
+      const status = String(req.body?.status || "").trim();
+      const allowed = ["Application Received", "Screening", "Interview Scheduled", "Interview Completed", "Offer", "Hired", "Onboarding", "Selesai", "Rejected", "Withdrawn"];
+      if (!allowed.includes(status)) return adminError(res, 400, "INVALID_STATUS", "Status bulk tidak valid");
+      if (status === "Interview Scheduled") return adminError(res, 400, "INTERVIEW_SCHEDULE_REQUIRED", "Bulk Interview Scheduled memerlukan jadwal interview per kandidat");
+      const row = runAdminMutation(`WITH selected AS (SELECT id,status FROM pos.${TABLE} WHERE id IN (${idList})), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(status)},updated_at=NOW() FROM selected WHERE c.id=selected.id RETURNING c.id,selected.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,'Bulk status update',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},jsonb_build_object('bulk',true) FROM updated RETURNING candidate_id) SELECT json_build_object('updated',(SELECT COUNT(*) FROM history),'ids',COALESCE((SELECT json_agg(candidate_id) FROM history),'[]'::json))::text`)[0] || { updated: 0, ids: [] };
+      return adminEnvelope(res, row, { resource: "candidate-bulk-status" });
+    }
+    if (action === "delete") {
+      const row = runAdminMutation(`WITH selected AS (SELECT id FROM pos.${TABLE} WHERE id IN (${idList})), audit AS (INSERT INTO pos.recruitment_audit_logs (entity_type,entity_id,action,actor_user_id,metadata) SELECT 'candidate',id,'bulk_delete',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},jsonb_build_object('bulk',true) FROM selected), deleted_tasks AS (DELETE FROM pos.recruitment_onboarding_tasks t USING selected WHERE t.candidate_id=selected.id), deleted_interviews AS (DELETE FROM pos.recruitment_interviews i USING selected WHERE i.candidate_id=selected.id), deleted_history AS (DELETE FROM pos.recruitment_candidate_status_history h USING selected WHERE h.candidate_id=selected.id), deleted AS (DELETE FROM pos.${TABLE} c USING selected WHERE c.id=selected.id RETURNING c.id) SELECT json_build_object('deleted',(SELECT COUNT(*) FROM deleted),'ids',COALESCE((SELECT json_agg(id) FROM deleted),'[]'::json))::text`)[0] || { deleted: 0, ids: [] };
+      return adminEnvelope(res, row, { resource: "candidate-bulk-delete" });
+    }
+    return adminError(res, 400, "INVALID_ACTION", "Aksi bulk tidak valid");
+  } catch (e) { adminError(res, 503, "BACKEND_UNAVAILABLE", "Aksi bulk kandidat gagal diproses"); }
 });
 
 app.get("/api/rekrutmen/candidates/:id", validateRecruitmentAdmin, (req, res) => {
