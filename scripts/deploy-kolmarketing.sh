@@ -14,12 +14,15 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 printf 'Building %s…\n' "$DOMAIN"
 bun run --cwd apps/kol build
 
-for marker in "Ceritakan tentang dirimu" "Pendaftaran sudah diterima"; do
+for marker in "Ceritakan tentang dirimu" "Navigasi Creator Portal" "Langkah berikutnya"; do
   if ! python3 - "$marker" <<'PY'
 import sys
 from pathlib import Path
 needle = sys.argv[1]
-print(any(needle in p.read_text(errors="ignore") for p in Path("apps/kol/dist/assets").glob("*.js")))
+found = any(needle in p.read_text(errors="ignore") for p in Path("apps/kol/dist/assets").glob("*.js"))
+if not found:
+    raise SystemExit(1)
+print(f'Artifact marker: {needle}')
 PY
   then
     printf 'Artifact guard failed: %s\n' "$marker" >&2
