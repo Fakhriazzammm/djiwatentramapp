@@ -1,6 +1,7 @@
 import { BarChart3, CheckCircle2, Clock3, Mail, Sparkles, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { isAdminLevelRole } from "@/lib/admin-access";
 
 type KolRow = { source_id: string; name: string; username: string; category: string; status: string; created_at?: string | null; application_data?: { collaboration?: string; barter?: string } | null; kol_platforms?: Array<{ platform?: string; followers?: number }> };
 const STATUSES = ["Potential", "Belum Dihubungi", "Sudah Dihubungi", "Negotiation", "Scheduled Visit", "Collaboration", "Completed", "Rejected"];
@@ -18,11 +19,12 @@ function Shell({ title, description, children }: { title: string; description: s
 }
 
 function useKols() {
-  const { token, isAdmin } = useYumiAuth();
+  const { token, isAdmin, role } = useYumiAuth();
+  const canManage = isAdmin || isAdminLevelRole(role?.name);
   const [rows, setRows] = useState<KolRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  useEffect(() => { if (!token || !isAdmin) { setLoading(false); return; } void listKols(token).then(setRows).catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data KOL.")).finally(() => setLoading(false)); }, [token, isAdmin]);
+  useEffect(() => { if (!token || !canManage) { setLoading(false); return; } void listKols(token).then(setRows).catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data KOL.")).finally(() => setLoading(false)); }, [token, canManage]);
   return { rows, loading, error };
 }
 

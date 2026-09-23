@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, BarChart3, CheckCircle2, Clock3, Layers3, Sparkles, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { isAdminLevelRole } from "@/lib/admin-access";
 
 type Platform = { platform?: string; followers?: number };
 type KolRow = { source_id: string; name: string; username: string; category: string; status: string; created_at?: string | null; kol_platforms?: Platform[] };
@@ -21,11 +22,12 @@ function MetricCard({ label, value, detail, icon: Icon, tone, to }: { label: str
 }
 
 export function KolMarketingOverview() {
-  const { token, isAdmin } = useYumiAuth();
+  const { token, isAdmin, role } = useYumiAuth();
+  const canManage = isAdmin || isAdminLevelRole(role?.name);
   const [rows, setRows] = useState<KolRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  useEffect(() => { if (!token || !isAdmin) { setLoading(false); return; } let active = true; setLoading(true); void listKols(token).then((data) => { if (active) setRows(data); }).catch((err) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat dashboard KOL."); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [token, isAdmin]);
+  useEffect(() => { if (!token || !canManage) { setLoading(false); return; } let active = true; setLoading(true); void listKols(token).then((data) => { if (active) setRows(data); }).catch((err) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat dashboard KOL."); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [token, canManage]);
   const followers = useMemo(() => rows.reduce((sum, row) => sum + Number(row.kol_platforms?.reduce((total, platform) => total + Number(platform.followers || 0), 0) || 0), 0), [rows]);
   const completed = rows.filter((row) => row.status === "Completed").length;
   const activeCollaborations = rows.filter((row) => ["Collaboration", "Scheduled Visit", "Negotiation"].includes(row.status)).length;
