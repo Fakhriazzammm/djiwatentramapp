@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.165",
+	semantic: "0.2.168",
 	// Git/deploy commit hash (short)
-	commitHash: "2282fd6",
-	message: "feat(admin): integrate cross-app KOL marketing overview",
+	commitHash: "197f0cb",
+	message: "feat(admin): split KOL marketing into dedicated section",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): integrate cross-app KOL marketing overview",
+	commitMessage: "feat(admin): split KOL marketing into dedicated section",
 	// Build timestamp
 	buildDate: "2026-09-23",
 	// Full version string for display
