@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
 	BadgeDollarSign,
+	ChevronRight,
 	CalendarDays,
 	CheckCircle2,
 	Clock3,
@@ -10,6 +11,7 @@ import {
 	Image as ImageIcon,
 	Loader2,
 	Mail,
+	MoreHorizontal,
 	Pencil,
 	Plus,
 	ReceiptText,
@@ -282,6 +284,7 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 
 	// Create shift state
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
+	const [showActionsMenu, setShowActionsMenu] = useState(false);
 	const [isCreatingShift, setIsCreatingShift] = useState(false);
 	const [createForm, setCreateForm] = useState({ shiftName: "", cashierName: "", teamMembers: "", startingCash: 0, notes: "" });
 
@@ -538,88 +541,101 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 	return (
 		<>
 		<div className="space-y-5">
-			<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-between">
+			<div className="flex items-center justify-between gap-2">
 				<button
 					type="button"
 					onClick={() => { setCreateForm({ shiftName: "", cashierName: "", teamMembers: "", startingCash: 0, notes: "" }); setShowCreateDialog(true); }}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 sm:min-w-[112px]"
+					className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-transform duration-180 active:scale-[0.97] hover:bg-primary/90"
 				>
 					<Plus className="h-3.5 w-3.5" />
-					Buka Shift
+					<span>Buka Shift</span>
 				</button>
-				<div className="flex gap-2 col-span-2 sm:ml-auto sm:flex">
-				<button
-					type="button"
-					onClick={() => void handleExport("pdf")}
-					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors duration-200 hover:bg-red-100 disabled:opacity-40 sm:min-w-[92px]"
-				>
-					<FileText className="h-3.5 w-3.5" />
-					PDF
-				</button>
-				<button
-					type="button"
-					onClick={() => void handleExport("csv")}
-					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors duration-200 hover:bg-blue-100 disabled:opacity-40 sm:min-w-[92px]"
-				>
-					<Download className="h-3.5 w-3.5" />
-					CSV
-				</button>
-				<button
-					type="button"
-					onClick={() => void handleExport("jpg")}
-					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors duration-200 hover:bg-amber-100 disabled:opacity-40 sm:min-w-[92px]"
-				>
-					<ImageIcon className="h-3.5 w-3.5" />
-					JPG
-				</button>
-				<button
-					type="button"
-					onClick={() => void handleSendFullReportEmail()}
-					disabled={isSendingFullEmail || !rows?.length}
-					className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 disabled:opacity-40 sm:col-span-1 sm:min-w-[132px]"
-				>
-					{isSendingFullEmail ? (
-						<Loader2 className="h-3.5 w-3.5 animate-spin" />
-					) : (
-						<Mail className="h-3.5 w-3.5" />
+				<div className="relative">
+					<button type="button" onClick={() => setShowActionsMenu((open) => !open)} className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Aksi laporan shift" aria-expanded={showActionsMenu}>
+						<MoreHorizontal className="h-4 w-4" />
+					</button>
+					{showActionsMenu && (
+						<div className="absolute right-0 top-12 z-20 w-52 rounded-xl border border-border bg-card p-1.5 shadow-xl">
+							{([
+								["pdf", "Export PDF", FileText],
+								["csv", "Export CSV", Download],
+								["jpg", "Export JPG", ImageIcon],
+							] as const).map(([format, label, Icon]) => (
+								<button key={format} type="button" onClick={() => { setShowActionsMenu(false); void handleExport(format); }} disabled={isExporting || !rows?.length} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-medium text-foreground hover:bg-muted disabled:opacity-40">
+									<Icon className="h-3.5 w-3.5 text-muted-foreground" />
+									{label}
+								</button>
+							))}
+							<div className="my-1 border-t border-border" />
+							<button type="button" onClick={() => { setShowActionsMenu(false); void handleSendFullReportEmail(); }} disabled={isSendingFullEmail || !rows?.length} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-medium text-foreground hover:bg-muted disabled:opacity-40">
+								{isSendingFullEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5 text-muted-foreground" />}
+								Kirim laporan lengkap
+							</button>
+						</div>
 					)}
-					Kirim Email
-				</button>
-			</div>
+				</div>
 			</div>
 
-			<div className="grid gap-3 md:grid-cols-4">
-				<SummaryCard
-					icon={Users}
-					label="Total Shift"
-					value={`${rows.length} shift`}
-					helper={`${totals.activeCount} shift aktif`}
-				/>
-				<SummaryCard
-					icon={Wallet}
-					label="Revenue Bersih"
-					value={formatCurrencyIDR(totals.totalRevenue)}
-					helper={`Bruto ${formatCurrencyIDR(totals.totalGross, true)}`}
-				/>
-				<SummaryCard
-					icon={BadgeDollarSign}
-					label="Total Potongan"
-					value={formatCurrencyIDR(totals.totalDiscount)}
-					helper={`Pengeluaran ${formatCurrencyIDR(totals.totalExpenses, true)}`}
-				/>
-				<SummaryCard
-					icon={TrendingUp}
-					label="Produk Terjual"
-					value={`${totals.totalItems} item`}
-					helper={range.label}
-				/>
+			<div className="rounded-2xl border border-border bg-card p-3 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:p-4">
+				<div className="grid grid-cols-3 divide-x divide-border">
+					<CommandMetric label="Revenue Bersih" value={formatCurrencyIDR(totals.totalRevenue, true)} helper={`Bruto ${formatCurrencyIDR(totals.totalGross, true)}`} />
+					<CommandMetric label="Shift Aktif" value={`${totals.activeCount}`} helper={`dari ${rows.length} shift`} />
+					<CommandMetric label="Produk" value={`${totals.totalItems}`} helper="item terjual" />
+				</div>
+				<div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
+					<span>Potongan {formatCurrencyIDR(totals.totalDiscount, true)}</span>
+					<span>Pengeluaran {formatCurrencyIDR(totals.totalExpenses, true)}</span>
+				</div>
 			</div>
 
-			<div className="grid gap-4 xl:grid-cols-[1.45fr_1fr]">
-				<div className="overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
+			<div className="space-y-2 lg:hidden">
+				<div className="flex items-center justify-between px-1">
+					<div>
+						<h3 className="text-sm font-bold text-foreground">Daftar Shift</h3>
+						<p className="text-[11px] text-muted-foreground">Pilih shift untuk melihat rincian</p>
+					</div>
+					<span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">{rows.length} data</span>
+				</div>
+				{rows.map((shift) => {
+					const isSelected = shift.startTime === selectedShift?.startTime;
+					const isChecked = selectedIds.has(shift.shiftId);
+					return (
+						<article
+							key={shift.shiftId}
+							onClick={() => setSelectedShiftStart(shift.startTime)}
+							className={`rounded-2xl border bg-card p-3 shadow-[0_2px_12px_rgba(15,23,42,0.035)] transition-colors active:scale-[0.99] ${isSelected ? "border-primary/50 ring-2 ring-primary/10" : "border-border"}`}
+							role="button"
+							tabIndex={0}
+							onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedShiftStart(shift.startTime); } }}
+						>
+							<div className="flex items-start gap-2">
+								<input type="checkbox" checked={isChecked} onChange={() => {}} onClick={(event) => toggleRow(shift.shiftId, event as unknown as React.MouseEvent)} className="mt-1 h-4 w-4 shrink-0 accent-primary" aria-label={`Pilih ${shift.shiftName}`} />
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center gap-2">
+										<span className={`h-2 w-2 shrink-0 rounded-full ${shift.status === "AKTIF" ? "bg-emerald-500" : "bg-slate-300"}`} />
+										<h4 className="truncate text-sm font-bold text-foreground">{shift.shiftName}</h4>
+									</div>
+									<p className="mt-0.5 truncate text-[11px] text-muted-foreground">{shift.cashierName || "Kasir"} · {formatCompactRange(shift.startTime, shift.endTime)}</p>
+								</div>
+								<ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+							</div>
+							<div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-2">
+								<div><p className="text-[10px] text-muted-foreground">Revenue</p><p className="mt-0.5 text-xs font-bold text-foreground">{formatCurrencyIDR(shift.totalRevenue, true)}</p></div>
+								<div><p className="text-[10px] text-muted-foreground">Produk</p><p className="mt-0.5 text-xs font-bold text-foreground">{shift.totalItemsSold}</p></div>
+								<div><p className="text-[10px] text-muted-foreground">Status</p><p className="mt-0.5 text-xs font-semibold text-foreground">{shift.status}</p></div>
+							</div>
+							<div className="mt-3 flex items-center justify-end gap-1 border-t border-border pt-2" onClick={(event) => event.stopPropagation()}>
+								<button type="button" onClick={(event) => openEdit(shift, event)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label="Edit shift"><Pencil className="h-3.5 w-3.5" /></button>
+								<button type="button" onClick={() => setConfirmDeleteIds([shift.shiftId])} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/10" aria-label="Hapus shift"><Trash2 className="h-3.5 w-3.5" /></button>
+								<button type="button" onClick={() => void handleSendShiftEmail(shift)} disabled={sendingShiftStart === shift.startTime} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label="Kirim email laporan"><Mail className="h-3.5 w-3.5" /></button>
+							</div>
+						</article>
+					);
+				})}
+			</div>
+
+			<div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">
+				<div className="hidden overflow-hidden rounded-2xl border border-border bg-card shadow-[0_4px_18px_rgba(15,23,42,0.04)] lg:block">
 					<div className="flex items-center justify-between border-b border-border px-4 py-3">
 						<div>
 							<h3 className="font-bold text-base">Tabel Laporan Shift</h3>
@@ -1334,6 +1350,16 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 			</div>
 		)}
 		</>
+	);
+}
+
+function CommandMetric({ label, value, helper }: { label: string; value: string; helper: string }) {
+	return (
+		<div className="min-w-0 px-2 first:pl-0 last:pr-0 sm:px-3">
+			<p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+			<p className="mt-1 truncate text-base font-bold tracking-tight text-foreground sm:text-lg">{value}</p>
+			<p className="mt-0.5 truncate text-[10px] text-muted-foreground">{helper}</p>
+		</div>
 	);
 }
 

@@ -20,30 +20,28 @@ export function ShiftReportsPage({ selectedStartTime }: { selectedStartTime?: nu
 	};
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-6 duration-500">
-			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-				<div>
-					<div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-						<Users className="h-3.5 w-3.5" />
-						Laporan Shift
+		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-4 duration-500">
+			<div className="flex items-center justify-between gap-3">
+				<div className="min-w-0">
+					<div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+						<Users className="h-3.5 w-3.5 shrink-0" />
+						<span>Laporan Shift</span>
 					</div>
-					<h1 className="mt-3 text-2xl font-bold tracking-tight text-foreground">
-						Ringkasan Keuangan per Shift
+					<h1 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+						Ringkasan Shift
 					</h1>
-					<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-						Pantau siapa yang bertugas, pemasukan shift, pengeluaran, dan
-						ringkasan produk terjual dalam satu tabel yang bisa langsung dibuka
-						detailnya.
+					<p className="mt-1 text-xs text-muted-foreground">
+						{dateRange.label}
 					</p>
+				</div>
+				<div className="shrink-0 text-right text-[11px] text-muted-foreground">
+					<div className="font-semibold text-foreground">Laporan keuangan</div>
+					<div>WIB · data aktual</div>
 				</div>
 			</div>
 
-			<div className="rounded-2xl border border-border bg-card px-4 py-3">
+			<div className="rounded-xl border border-border bg-card p-2">
 				<PeriodSelector value={period} onChange={handlePeriodChange} />
-				<p className="mt-2 text-xs text-muted-foreground">
-					Periode aktif:{" "}
-					<span className="font-semibold text-foreground">{dateRange.label}</span>
-				</p>
 			</div>
 
 			<ShiftReport range={dateRange} preferredSelectedStartTime={selectedStartTime} />
