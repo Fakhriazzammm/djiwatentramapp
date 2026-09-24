@@ -8,7 +8,7 @@ import {
 } from "../reports/-components/period-selector";
 import { ShiftReport } from "../reports/-components/shift-report";
 
-export function ShiftReportsPage() {
+export function ShiftReportsPage({ selectedStartTime }: { selectedStartTime?: number }) {
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(
 		getRangeFromPeriod("this_month"),
@@ -46,7 +46,7 @@ export function ShiftReportsPage() {
 				</p>
 			</div>
 
-			<ShiftReport range={dateRange} />
+			<ShiftReport range={dateRange} preferredSelectedStartTime={selectedStartTime} />
 		</div>
 	);
 }

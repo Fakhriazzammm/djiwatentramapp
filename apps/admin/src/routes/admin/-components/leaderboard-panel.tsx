@@ -461,7 +461,7 @@ export function LeaderboardPanel() {
 					</p>
 				</div>
 				<Link
-					to="/admin/finance/shift-reports"
+					search={{}} search={{ selectedStartTime: undefined }} to="/admin/finance/shift-reports"
 					className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary hover:bg-primary/20 transition-all"
 				>
 					Lihat Semua

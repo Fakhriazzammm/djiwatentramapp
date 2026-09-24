@@ -48,6 +48,7 @@ import {
 
 interface Props {
 	range: DateRange;
+	preferredSelectedStartTime?: number;
 }
 
 type BonusTier = { thresholdPct: number; bonusAmount: number };
@@ -225,7 +226,7 @@ function buildShiftSummaryText(shift: ShiftRow, details: any, allStaffUsers?: an
 	return lines.join("\n");
 }
 
-export function ShiftReport({ range }: Props) {
+export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 	const sendShiftReportEmail = useHybridSendShiftReportEmail();
 	const sendShiftTableReportEmail = useHybridSendShiftTableReportEmail();
 	const settings = useHybridSiteSettings();
@@ -262,7 +263,7 @@ export function ShiftReport({ range }: Props) {
 	const adminDeleteShift = useHybridAdminDeleteShift();
 	const adminBulkDeleteShifts = useHybridAdminBulkDeleteShifts();
 
-	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
+	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(preferredSelectedStartTime ?? null);
 	const [sendingShiftStart, setSendingShiftStart] = useState<number | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
 	const [isSendingFullEmail, setIsSendingFullEmail] = useState(false);
@@ -377,13 +378,18 @@ export function ShiftReport({ range }: Props) {
 			return;
 		}
 
+		if (preferredSelectedStartTime && rows.some((shift) => shift.startTime === preferredSelectedStartTime)) {
+			setSelectedShiftStart(preferredSelectedStartTime);
+			return;
+		}
+
 		if (
 			selectedShiftStart === null ||
 			!rows.some((shift) => shift.startTime === selectedShiftStart)
 		) {
 			setSelectedShiftStart(rows[0].startTime);
 		}
-	}, [rows, selectedShiftStart]);
+	}, [preferredSelectedStartTime, rows, selectedShiftStart]);
 
 	const selectedShift =
 		rows?.find((shift) => shift.startTime === selectedShiftStart) ?? rows?.[0];
