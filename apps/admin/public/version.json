@@ -1,7 +1,7 @@
 {
-  "version": "0.2.188",
-  "commitHash": "27fcd84",
-  "message": "feat(admin): add employee workspace and secure leave approval",
+  "version": "0.2.190",
+  "commitHash": "73f1c6a",
+  "message": "fix(admin): include employee workspace route wrapper",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T00:27:02.783Z"
+  "generatedAt": "2026-09-24T00:29:10.414Z"
 }

@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.188",
+	semantic: "0.2.190",
 	// Git/deploy commit hash (short)
-	commitHash: "27fcd84",
-	message: "feat(admin): add employee workspace and secure leave approval",
+	commitHash: "73f1c6a",
+	message: "fix(admin): include employee workspace route wrapper",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): add employee workspace and secure leave approval",
+	commitMessage: "fix(admin): include employee workspace route wrapper",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
