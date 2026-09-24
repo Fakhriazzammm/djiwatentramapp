@@ -1,7 +1,7 @@
 {
-  "version": "0.2.220",
-  "commitHash": "eef095a",
-  "message": "feat(admin): redesign unified orders workspace",
+  "version": "0.2.221",
+  "commitHash": "1ddb045",
+  "message": "feat(admin): add bulk visit invitation creation",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T10:14:36.098Z"
+  "generatedAt": "2026-09-24T12:51:03.504Z"
 }

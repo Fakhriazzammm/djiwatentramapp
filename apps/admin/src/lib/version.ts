@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.220",
+	semantic: "0.2.221",
 	// Git/deploy commit hash (short)
-	commitHash: "eef095a",
-	message: "feat(admin): redesign unified orders workspace",
+	commitHash: "1ddb045",
+	message: "feat(admin): add bulk visit invitation creation",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): redesign unified orders workspace",
+	commitMessage: "feat(admin): add bulk visit invitation creation",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
