@@ -1,7 +1,7 @@
 {
-  "version": "0.2.199",
-  "commitHash": "cd90d98",
-  "message": "fix(admin): remove operational dashboard entry",
+  "version": "0.2.206",
+  "commitHash": "7fa96b1",
+  "message": "feat(admin): compact operational dashboard analytics",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T00:47:59.228Z"
+  "generatedAt": "2026-09-24T02:17:39.100Z"
 }

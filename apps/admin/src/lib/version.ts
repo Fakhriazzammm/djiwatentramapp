@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.199",
+	semantic: "0.2.206",
 	// Git/deploy commit hash (short)
-	commitHash: "cd90d98",
-	message: "fix(admin): remove operational dashboard entry",
+	commitHash: "7fa96b1",
+	message: "feat(admin): compact operational dashboard analytics",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): remove operational dashboard entry",
+	commitMessage: "feat(admin): compact operational dashboard analytics",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
