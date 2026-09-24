@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrencyIDR } from "@/lib/export-utils";
-import { formatTimeWIB } from "@/lib/wib-utils";
-import { triggerHybridRefresh, useHybridDashboardStats, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
+import { formatTimeWIB, getWibDayRange } from "@/lib/wib-utils";
+import { triggerHybridRefresh, useHybridDashboardStats, useHybridOrders, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
 
 const periodItems = [
   ["today", "Hari ini"], ["yesterday", "Kemarin"], ["thisWeek", "Minggu ini"],
@@ -28,15 +28,29 @@ function TooltipContent({ active, payload, label }: any) { if (!active || !paylo
 
 export default function OperationalDecisionDashboard() {
   const stats = useHybridDashboardStats();
+  const orders = useHybridOrders();
   const shiftStatus = useHybridShiftStatus();
   const shifts = useMemo(() => shiftStatus?.allShifts?.filter(Boolean) ?? [], [shiftStatus?.allShifts]);
-  if (!stats || !shiftStatus) return <CompactSkeleton />;
+  if (!stats || !orders || !shiftStatus) return <CompactSkeleton />;
   const p = stats.periodComparisons;
   const totalOrders = Object.values(stats.orderStatusBreakdown).reduce((sum, value) => sum + value, 0);
   const openShifts = shifts.filter((shift: any) => !shift.endTime).length;
   const alertCount = stats.anomalies.length + stats.paymentReconciliation.pendingNonCashCount + stats.lowStockCount;
   const chartData = stats.revenueLast7Days.map((day) => ({ ...day, label: day.date.split(",")[0] }));
-  const topPayments = stats.todayPaymentBreakdown.slice(0, 4);
+  const todayRange = getWibDayRange(Date.now());
+  const topPayments = useMemo(() => {
+    const totals = new Map<string, { method: string; amount: number; orders: number }>();
+    for (const order of orders) {
+      if (!(order.status === "paid" || order.status === "completed")) continue;
+      if (order.createdAt < todayRange.start || order.createdAt > todayRange.end) continue;
+      const method = String(order.paymentMethod ?? "lainnya").toLowerCase();
+      const current = totals.get(method) ?? { method, amount: 0, orders: 0 };
+      current.amount += Number(order.totalAmount ?? 0);
+      current.orders += 1;
+      totals.set(method, current);
+    }
+    return [...totals.values()].sort((left, right) => right.amount - left.amount).slice(0, 4);
+  }, [orders, todayRange.end, todayRange.start]);
   const maxPayment = Math.max(...topPayments.map((item) => item.amount), 1);
   const averageOrder = p.today.orders ? p.today.revenue / p.today.orders : 0;
 
