@@ -25,8 +25,10 @@ import {
 	useHybridShiftStatus,
 } from "@/hooks/use-hybrid-pos-data";
 
+import OperationalDashboardCompact from "./-OperationalDashboardCompact";
+
 export const Route = createLazyFileRoute("/admin/")({
-	component: DashboardAdmin,
+	component: OperationalDashboardCompact,
 });
 
 export function DashboardAdmin() {

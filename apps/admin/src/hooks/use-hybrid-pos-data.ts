@@ -232,6 +232,14 @@ type DashboardStatsRecord = {
 		discount: number;
 		orders: number;
 	}>;
+	periodComparisons: {
+		today: { orders: number; revenue: number };
+		yesterday: { orders: number; revenue: number };
+		thisWeek: { orders: number; revenue: number };
+		lastWeek: { orders: number; revenue: number };
+		thisMonth: { orders: number; revenue: number };
+		lastMonth: { orders: number; revenue: number };
+	};
 	topProducts: Array<{
 		name: string;
 		count: number;
@@ -1929,6 +1937,34 @@ async function fetchDashboardStats() {
 		};
 	});
 
+	const periodRange = (start: number, end: number) => {
+		const periodOrders = orders.filter((order) => order.createdAt >= start && order.createdAt <= end);
+		const periodBookings = bookings.filter((booking) => booking.createdAt >= start && booking.createdAt <= end);
+		const validOrders = periodOrders.filter(isSettledOrderRecord);
+		const validBookings = periodBookings.filter(isSettledBookingRecord);
+		return {
+			orders: validOrders.length + validBookings.length,
+			revenue:
+				validOrders.reduce((sum, order) => sum + getOrderFinancialSnapshot(order).finalCollected, 0) +
+				validBookings.reduce((sum, booking) => sum + getBookingFinancialSnapshot(booking).finalCollected, 0),
+		};
+	};
+	const shiftedNow = new Date(now + WIB_OFFSET_MS);
+	const weekdayFromMonday = (shiftedNow.getUTCDay() + 6) % 7;
+	const todayStart = todayRange.start;
+	const thisWeekStart = todayStart - weekdayFromMonday * DAY_MS;
+	const previousWeekStart = thisWeekStart - 7 * DAY_MS;
+	const monthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), 1) - WIB_OFFSET_MS;
+	const previousMonthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth() - 1, 1) - WIB_OFFSET_MS;
+	const periodComparisons = {
+		today: periodRange(todayRange.start, todayRange.end),
+		yesterday: periodRange(todayRange.start - DAY_MS, todayRange.start - 1),
+		thisWeek: periodRange(thisWeekStart, todayRange.end),
+		lastWeek: periodRange(previousWeekStart, thisWeekStart - 1),
+		thisMonth: periodRange(monthStart, todayRange.end),
+		lastMonth: periodRange(previousMonthStart, monthStart - 1),
+	};
+
 	const topProductsMap: Record<string, { name: string; count: number; revenue: number }> = {};
 	[...orders]
 		.sort((left, right) => right.createdAt - left.createdAt)
@@ -2034,6 +2070,7 @@ async function fetchDashboardStats() {
 		todayExpense,
 		orderStatusBreakdown,
 		revenueLast7Days,
+		periodComparisons,
 		topProducts: Object.values(topProductsMap)
 			.sort((left, right) => right.count - left.count)
 			.slice(0, 10),
