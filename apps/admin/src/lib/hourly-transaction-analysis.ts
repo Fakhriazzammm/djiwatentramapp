@@ -1,4 +1,4 @@
-import { DAY_MS, getWibDayRange, WIB_TIMEZONE } from "@/lib/wib-utils";
+import { DAY_MS, getWibDayRange, WIB_OFFSET_MS, WIB_TIMEZONE } from "@/lib/wib-utils";
 
 export const SETTLED_ORDER_STATUSES = new Set(["paid", "completed"]);
 
@@ -53,6 +53,19 @@ export function getHourlyAnalysisRange(period: HourlyPeriod, referenceTime = Dat
 		start: today.start - (days - 1) * DAY_MS,
 		end: today.end,
 	};
+}
+
+export function getHourlyAnalysisDateRange(dateKey: string) {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
+	const [year, month, day] = dateKey.split("-").map(Number);
+	const utcDate = new Date(Date.UTC(year, month - 1, day));
+	if (
+		utcDate.getUTCFullYear() !== year ||
+		utcDate.getUTCMonth() !== month - 1 ||
+		utcDate.getUTCDate() !== day
+	) return null;
+	const start = utcDate.getTime() - WIB_OFFSET_MS;
+	return { start, end: start + DAY_MS - 1 };
 }
 
 export function aggregateHourlySales(

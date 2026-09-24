@@ -4,6 +4,7 @@ import {
 	getPeakPoint,
 	getPeakRange,
 	getQuietPoint,
+	getHourlyAnalysisDateRange,
 	getHourlyAnalysisRange,
 } from "../hourly-transaction-analysis";
 
@@ -35,6 +36,15 @@ describe("hourly transaction analysis", () => {
 		expect(getPeakPoint(result.points, "revenue")?.hour).toBe(12);
 		expect(getQuietPoint(result.points)?.hour).toBe(11);
 		expect(getPeakRange(result.points)).toEqual({ startHour: 11, endHour: 12 });
+	});
+
+	it("creates bounded WIB range for a selected calendar date and rejects invalid dates", () => {
+		const range = getHourlyAnalysisDateRange("2026-09-24");
+		if (!range) throw new Error("expected valid date range");
+		expect(range.end - range.start + 1).toBe(24 * 60 * 60 * 1000);
+		expect(new Date(range.start).toISOString()).toBe("2026-09-23T17:00:00.000Z");
+		expect(getHourlyAnalysisDateRange("2026-02-30")).toBe(null);
+		expect(getHourlyAnalysisDateRange("not-a-date")).toBe(null);
 	});
 
 	it("creates WIB bounded ranges for today, seven days, and thirty days", () => {

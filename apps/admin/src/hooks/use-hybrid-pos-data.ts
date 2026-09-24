@@ -3,6 +3,7 @@ import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import {
 	aggregateHourlySales,
+	getHourlyAnalysisDateRange,
 	getHourlyAnalysisRange,
 	type HourlyPeriod,
 	type HourlySalesInsight,
@@ -2161,12 +2162,13 @@ export function useHybridOrders(options?: { status?: string; limit?: number; ref
 	return supabaseData as OrderRecord[] | undefined;
 }
 
-export function useHybridHourlySales(period: HourlyPeriod = "7d", refreshTrigger?: number): HourlySalesInsight | null | undefined {
-	const range = getHourlyAnalysisRange(period);
+export function useHybridHourlySales(period: HourlyPeriod = "7d", refreshTrigger?: number, dateKey?: string): HourlySalesInsight | null | undefined {
+	const range = dateKey ? (getHourlyAnalysisDateRange(dateKey) ?? getHourlyAnalysisRange(period)) : getHourlyAnalysisRange(period);
+	const scopeKey = dateKey ? `date:${dateKey}` : `period:${period}`;
 	const supabaseData = useSupabaseValue(
-		`hourly-transactions:${period}:${range.start}:${range.end}`,
+		`hourly-transactions:${scopeKey}:${range.start}:${range.end}`,
 		async () => aggregateHourlySales(await fetchHourlyTransactions(range), range),
-		[period, range.start, range.end],
+		[scopeKey, range.start, range.end],
 		refreshTrigger !== undefined
 			? { refreshTrigger, tables: ["orders"] }
 			: { tables: ["orders"] },
