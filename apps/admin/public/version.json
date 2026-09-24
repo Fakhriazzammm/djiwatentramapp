@@ -1,7 +1,7 @@
 {
-  "version": "0.2.196",
-  "commitHash": "3342f81",
-  "message": "fix(admin): move dashboard above collapsible operations",
+  "version": "0.2.199",
+  "commitHash": "cd90d98",
+  "message": "fix(admin): remove operational dashboard entry",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T00:39:15.381Z"
+  "generatedAt": "2026-09-24T00:47:59.228Z"
 }
