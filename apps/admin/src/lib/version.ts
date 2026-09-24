@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.227",
+	semantic: "0.2.220",
 	// Git/deploy commit hash (short)
-	commitHash: "759145ee",
-	message: "fix(admin): regenerate cohesive blue 3d nav icons",
+	commitHash: "eef095a",
+	message: "feat(admin): redesign unified orders workspace",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): regenerate cohesive blue 3d nav icons",
+	commitMessage: "feat(admin): redesign unified orders workspace",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display

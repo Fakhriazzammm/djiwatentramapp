@@ -1,7 +1,7 @@
 {
-  "version": "0.2.227",
-  "commitHash": "759145ee",
-  "message": "fix(admin): regenerate cohesive blue 3d nav icons",
+  "version": "0.2.220",
+  "commitHash": "eef095a",
+  "message": "feat(admin): redesign unified orders workspace",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T06:22:56.687Z"
+  "generatedAt": "2026-09-24T10:14:36.098Z"
 }
