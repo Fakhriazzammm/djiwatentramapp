@@ -686,7 +686,7 @@ function AdminOrders() {
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-1.5 duration-300 md:gap-3">
+		<div className="fade-in slide-in-from-bottom-4 flex min-w-0 max-w-full animate-in flex-col gap-1.5 overflow-x-hidden duration-300 md:gap-3">
 			<div className="p-1 md:rounded-xl md:border md:border-border md:bg-card md:p-3 md:shadow-sm">
 				<div className="flex items-center justify-between gap-2 md:flex-row md:items-end">
 					<div>
@@ -698,7 +698,7 @@ function AdminOrders() {
 						</p>
 					</div>
 					<Button aria-label="Refresh data pesanan" className="h-9 w-9 shrink-0 rounded-xl md:h-10 md:w-10" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button>
-					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
+					<div className="hidden flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:flex md:gap-2 md:text-[11px]">
 						<span className="rounded-md bg-muted px-2 py-1">
 							{totalFiltered} pesanan
 						</span>
@@ -715,7 +715,7 @@ function AdminOrders() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-4 gap-1.5 md:gap-3">
+			<div className="grid min-w-0 grid-cols-4 gap-1.5 md:gap-3">
 				{[["Total", String(totalFiltered), "bg-primary/10"], ["Nilai", compactRupiah(filteredRevenue), "bg-emerald-50"], ["Open", String(pendingCount), "bg-amber-50"], ["Selesai", String(completedCount), "bg-blue-50"]].map(([label, value, tone]) => (
 					<div className="rounded-2xl border border-border/70 bg-card px-2 py-2 shadow-sm md:rounded-[20px] md:p-4" key={label}>
 						<div className="mb-1 flex items-center justify-between gap-1"><p className="truncate text-[8px] font-bold uppercase tracking-wide text-muted-foreground md:text-[10px]">{label}</p><span className={`h-2 w-2 rounded-full ${tone}`} /></div>
@@ -899,7 +899,7 @@ function AdminOrders() {
 						value={searchQuery}
 					/>
 				</div>
-				<div className="grid grid-cols-2 gap-2">
+				<div className="grid min-w-0 grid-cols-2 gap-2">
 					<Select
 						onValueChange={(val: string | null) => val && setStatusFilter(val)}
 						value={statusFilter}
@@ -955,7 +955,7 @@ function AdminOrders() {
 			</div>
 
 			<div>
-				<div className="space-y-2 pb-32 md:hidden">
+				<div className="min-w-0 space-y-1.5 overflow-x-hidden pb-32 md:hidden">
 					{filteredOrders?.length === 0 ? (
 						<div className="flex flex-col items-center rounded-[20px] border border-dashed border-border bg-card px-4 py-12 text-center">
 							<ShoppingBag className="mb-3 h-9 w-9 text-muted-foreground/40" />
@@ -967,7 +967,7 @@ function AdminOrders() {
 						filteredOrders?.map((order: Order) => {
 							return (
 								<Button
-									className="h-auto w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors active:bg-muted/40"
+									className="h-auto min-w-0 w-full overflow-hidden rounded-xl border border-border/70 bg-card px-2.5 py-2 text-left shadow-sm transition-colors active:bg-muted/40"
 									key={order._id}
 									onClick={() => {
 										setSelectedOrder(order as any);
@@ -976,34 +976,23 @@ function AdminOrders() {
 									type="button"
 									variant="ghost"
 								>
-									<div className="flex items-start justify-between gap-3">
-										<div className="min-w-0 flex-1">
-											<div className="flex items-start justify-between gap-2">
-												<p className="min-w-0 truncate font-semibold text-[15px] text-foreground">
-													{order.customerName || "Pelanggan Umum"}
-												</p>
-												<p className="shrink-0 font-semibold text-[15px] tabular-nums">{formatrupiah(order.totalAmount)}</p>
+										<div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
+											<div className="min-w-0">
+												<p className="truncate font-semibold text-[13px] leading-4 text-foreground">{order.customerName || "Pelanggan Umum"}</p>
+												<p className="truncate text-[10px] leading-4 text-muted-foreground">{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })} <span aria-hidden="true">·</span> {resolveOrderChannel(order).label}{order.customer_source_id ? " · Member" : ""}</p>
 											</div>
-											<div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-												<span className="truncate">{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })}</span>
-												<span aria-hidden="true">·</span>
-												<span className="shrink-0">{resolveOrderChannel(order).label}</span>
-												{order.customer_source_id && <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Member</span>}
+											<div className="flex min-w-0 items-center justify-end gap-1">
+												<p className="whitespace-nowrap font-semibold text-[13px] leading-4 tabular-nums">{formatrupiah(order.totalAmount)}</p>
+												<ChevronDown className="h-3.5 w-3.5 shrink-0 -rotate-90 text-muted-foreground/60" />
 											</div>
-											<div className="mt-2 flex items-center gap-1.5">
-												<span className="max-w-[52%] truncate font-mono text-[10px] text-muted-foreground">
-													{order.type === "booking" ? "BK-" : "#"}{order.displayId}
-												</span>
-												<span className="text-[10px] text-muted-foreground">·</span>
-												<span className="text-[10px] text-muted-foreground tabular-nums">{format(order.createdAt, "dd MMM, HH:mm", { locale: id })}</span>
+											<div className="col-span-2 flex min-w-0 items-center justify-between gap-2 border-t border-border/60 pt-1">
+												<p className="min-w-0 truncate font-mono text-[9px] leading-3 text-muted-foreground">{order.type === "booking" ? "BK-" : "#"}{order.displayId} <span aria-hidden="true">·</span> {format(order.createdAt, "dd MMM, HH:mm", { locale: id })}</p>
+												<div className="flex shrink-0 items-center gap-1">
+													<Badge className="rounded-full px-1.5 py-0 text-[9px] leading-4" variant={order.status === "pending" ? "warning" : order.status === "cancelled" ? "destructive" : "info"}>{getPaymentLabel(order)}</Badge>
+													<Badge className="rounded-full px-1.5 py-0 text-[9px] leading-4" variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
+												</div>
 											</div>
 										</div>
-										<div className="flex shrink-0 flex-col items-end gap-2">
-										<Badge className="rounded-full px-2 py-0.5 text-[10px]" variant={order.status === "pending" ? "warning" : order.status === "cancelled" ? "destructive" : "info"}>{getPaymentLabel(order)}</Badge>
-										<Badge className="rounded-full px-2 py-0.5 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
-										<ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground/60" />
-										</div>
-									</div>
 								</Button>
 							);
 						})
