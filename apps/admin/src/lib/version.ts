@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.222",
+	semantic: "0.2.223",
 	// Git/deploy commit hash (short)
-	commitHash: "a60e5c5d",
-	message: "fix(admin): use volumetric yumi ai icon",
+	commitHash: "e37e8f63",
+	message: "feat(admin): compact mobile orders experience",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): use volumetric yumi ai icon",
+	commitMessage: "feat(admin): compact mobile orders experience",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
