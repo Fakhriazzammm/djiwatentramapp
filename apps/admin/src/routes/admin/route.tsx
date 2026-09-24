@@ -100,7 +100,6 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/karyawan/kehadiran/pengaturan": "Karyawan · Pengaturan Kehadiran",
 	"/admin/karyawan/payroll": "Karyawan · Payroll",
 	"/admin/karyawan/payroll/slip": "Karyawan · Slip Gaji",
-	"/admin/karyawan/onboarding": "Karyawan · Onboarding",
 	"/admin/karyawan/onboarding/kontrak": "Karyawan · Kontrak",
 	"/admin/karyawan/cuti-izin": "Karyawan · Cuti & Izin",
 	"/admin/karyawan/laporan": "Karyawan · Laporan",
@@ -182,7 +181,6 @@ const MORE_MENU_PATHS = [
 	"/admin/karyawan/data",
 	"/admin/karyawan/kehadiran",
 	"/admin/karyawan/payroll",
-	"/admin/karyawan/onboarding",
 	"/admin/karyawan/onboarding/kontrak",
 	"/admin/karyawan/cuti-izin",
 	"/admin/karyawan/laporan",
@@ -258,7 +256,6 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/karyawan/data", icon: Users, label: "Data Karyawan", permission: "users:manage" },
 			{ to: "/admin/karyawan/kehadiran", icon: FileBarChart, label: "Kehadiran", permission: "users:manage" },
 			{ to: "/admin/karyawan/payroll", icon: Wallet, label: "Payroll", permission: "users:manage" },
-			{ to: "/admin/karyawan/onboarding", icon: ClipboardList, label: "Onboarding", permission: "users:manage" },
 			{ to: "/admin/karyawan/onboarding/kontrak", icon: FileSignature, label: "Dokumen & Kontrak", permission: "users:manage" },
 			{ to: "/admin/karyawan/cuti-izin", icon: CalendarDays, label: "Cuti & Izin", permission: "users:manage" },
 			{ to: "/admin/karyawan/laporan", icon: BarChart3, label: "Laporan", permission: "users:manage" },
@@ -340,7 +337,6 @@ const KARYAWAN_PATHS = [
 	"/admin/karyawan/kehadiran/pengaturan",
 	"/admin/karyawan/payroll",
 	"/admin/karyawan/payroll/slip",
-	"/admin/karyawan/onboarding",
 	"/admin/karyawan/onboarding/kontrak",
 	"/admin/karyawan/cuti-izin",
 	"/admin/karyawan/laporan",
@@ -761,7 +757,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 											<DesktopSubNavLink icon={<FileBarChart />} label="Kehadiran" to="/admin/karyawan/kehadiran" permission="users:manage" />
 											<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/karyawan/kehadiran/jadwal" permission="users:manage" />
 											<DesktopSubNavLink icon={<Wallet />} label="Payroll" to="/admin/karyawan/payroll" permission="users:manage" />
-											<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/karyawan/onboarding" permission="users:manage" />
 											<DesktopSubNavLink icon={<FileSignature />} label="Dokumen & Kontrak" to="/admin/karyawan/onboarding/kontrak" permission="users:manage" />
 											<DesktopSubNavLink icon={<CalendarDays />} label="Cuti & Izin" to="/admin/karyawan/cuti-izin" permission="users:manage" />
 											<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/karyawan/laporan" permission="users:manage" />

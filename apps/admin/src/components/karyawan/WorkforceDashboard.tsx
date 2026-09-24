@@ -175,7 +175,6 @@ export default function WorkforceDashboard() {
     incomplete: [...derived.checkInByUserDay.keys()].filter((key) => !derived.checkOuts.some((row) => `${String(row.userId ?? row.user_id ?? "")}:${dateKey(Number(row.timestamp ?? 0))}` === key)).length,
     openShifts: schedules.filter((row) => ["scheduled", "confirmed"].includes(String(row.status)) && String(row.date).slice(0, 10) <= dateKey(now)).length,
     pendingLeave: 0,
-    onboarding: 0,
   }), [derived.checkInByUserDay, derived.checkOuts, schedules]);
   const avgHours = activeUsers.length ? derived.workedHours / activeUsers.length : 0;
   const payrollRows = payroll?.rows ?? [];
