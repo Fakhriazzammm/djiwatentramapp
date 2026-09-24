@@ -967,7 +967,7 @@ function AdminOrders() {
 						filteredOrders?.map((order: Order) => {
 							return (
 								<Button
-									className="h-auto min-w-0 w-full overflow-hidden rounded-xl border border-border/70 bg-card px-2.5 py-2 text-left shadow-sm transition-colors active:bg-muted/40"
+									className="h-auto min-w-0 w-full overflow-hidden rounded-xl border border-border/70 bg-card px-2 py-1.5 text-left shadow-sm transition-colors active:bg-muted/40"
 									key={order._id}
 									onClick={() => {
 										setSelectedOrder(order as any);
@@ -976,7 +976,7 @@ function AdminOrders() {
 									type="button"
 									variant="ghost"
 								>
-										<div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
+										<div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-1.5 gap-y-1">
 											<div className="min-w-0">
 												<p className="truncate font-semibold text-[13px] leading-4 text-foreground">{order.customerName || "Pelanggan Umum"}</p>
 												<p className="truncate text-[10px] leading-4 text-muted-foreground">{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })} <span aria-hidden="true">·</span> {resolveOrderChannel(order).label}{order.customer_source_id ? " · Member" : ""}</p>
