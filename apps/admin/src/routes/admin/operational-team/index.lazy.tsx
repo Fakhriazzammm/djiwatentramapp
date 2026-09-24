@@ -1,8 +1,7 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import OperationalDashboard from "./-components/OperationalDashboard";
+import { createLazyFileRoute, Navigate } from "@tanstack/react-router";
 
 function OperationalTeamIndexPage() {
-	return <OperationalDashboard />;
+	return <Navigate replace to="/admin/karyawan" />;
 }
 
 export const Route = createLazyFileRoute("/admin/operational-team/")({
