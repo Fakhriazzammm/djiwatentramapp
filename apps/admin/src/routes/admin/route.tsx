@@ -142,7 +142,7 @@ const BOTTOM_NAV_ITEMS = [
 	{
 		to: "/admin/ai-chat",
 		icon: Sparkles,
-		label: "Yumi",
+		label: "Yumi AI",
 		exact: true,
 		isCenter: true,
 	},
@@ -1352,7 +1352,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
 							if (!hasPermission) return null;
 
-							const isCenter = index === 2; // AI Chat at center
 							const isMore = "isMore" in item && item.isMore;
 
 							const isActive = isMore
@@ -1362,37 +1361,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								: item.exact
 									? location.pathname === item.to
 									: location.pathname.startsWith(item.to);
-
-							// Center AI button - Circular FAB style (Instagram/Tinder)
-							if (isCenter) {
-								return (
-									<Link
-										className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1 transition-transform active:scale-[.96]"
-										key={item.to}
-										to={item.to}
-									>
-										{/* FAB Container */}
-										<div className="relative">
-
-											{/* Main FAB */}
-											<div
-												className={`relative flex h-8 w-12 items-center justify-center rounded-[14px] transition-all duration-200 ${isActive
-																									? "bg-[#eaf3ff] text-[#007aff]"
-																									: "text-[#8e8e93] group-hover:bg-[#f5f5f7]"
-																							}`}
-											>
-												<img alt="" className="h-7 w-7 object-contain" src="/assets/mobile-nav/yumi-ai-3d.png" />
-											</div>
-											{/* Label below FAB */}
-											<span
-												className={`text-[10px] font-semibold leading-tight ${isActive ? "text-[#007aff]" : "text-[#8e8e93]"}`}
-											>
-												AI
-											</span>
-										</div>
-									</Link>
-								);
-							}
 
 							// Lainnya button - opens quick menu sheet
 							if (isMore) {
@@ -1433,7 +1401,11 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 												: "text-[#8e8e93] group-hover:bg-[#f5f5f7]"
 											}`}
 									>
-										<item.icon className="h-4 w-4" />
+										{item.to === "/admin/ai-chat" ? (
+											<img alt="" className="h-7 w-7 object-contain" src="/assets/mobile-nav/yumi-ai-3d.png" />
+										) : (
+											<item.icon className="h-4 w-4" />
+										)}
 									</div>
 									<span
 										className={`text-[10px] font-semibold leading-tight ${isActive ? "text-[#007aff]" : "text-[#8e8e93]"}`}

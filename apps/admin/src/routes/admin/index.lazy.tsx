@@ -31,6 +31,9 @@ export const Route = createLazyFileRoute("/admin/")({
 	component: OperationalDecisionDashboard,
 });
 
+// The domain root (/) must use the same current decision dashboard as /admin/.
+// Keep DashboardAdmin exported for legacy imports, but do not mount it at root.
+
 export function DashboardAdmin() {
 	const stats = useHybridDashboardStats();
 	const shiftStatus = useHybridShiftStatus();
