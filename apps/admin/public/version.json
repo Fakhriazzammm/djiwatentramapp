@@ -1,7 +1,7 @@
 {
-  "version": "0.2.190",
-  "commitHash": "73f1c6a",
-  "message": "fix(admin): include employee workspace route wrapper",
+  "version": "0.2.191",
+  "commitHash": "558686c",
+  "message": "refactor(kol): focus creator network on feed",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T00:29:10.414Z"
+  "generatedAt": "2026-09-24T00:31:47.135Z"
 }

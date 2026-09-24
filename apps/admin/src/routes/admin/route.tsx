@@ -92,8 +92,8 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/ai-chat": "Djiwa Tentram AI",
 	"/admin/settings": "Pengaturan",
 	"/admin/operational-team": "Tim Operasional",
-	"/admin/karyawan": "Karyawan · Dashboard",
-	"/admin/karyawan/": "Karyawan · Dashboard",
+	"/admin/karyawan": "Karyawan · Ringkasan Karyawan",
+	"/admin/karyawan/": "Karyawan · Ringkasan Karyawan",
 	"/admin/karyawan/data": "Karyawan · Data Karyawan",
 	"/admin/karyawan/kehadiran": "Karyawan · Kehadiran",
 	"/admin/karyawan/kehadiran/jadwal": "Karyawan · Jadwal",
@@ -254,7 +254,7 @@ const QUICK_MENU_SECTIONS = [
 	{
 		label: "KARYAWAN APP",
 		items: [
-			{ to: "/admin/karyawan", icon: LayoutDashboard, label: "Dashboard", permission: "users:manage" },
+			{ to: "/admin/karyawan", icon: LayoutDashboard, label: "Ringkasan Karyawan", permission: "users:manage" },
 			{ to: "/admin/karyawan/data", icon: Users, label: "Data Karyawan", permission: "users:manage" },
 			{ to: "/admin/karyawan/kehadiran", icon: FileBarChart, label: "Kehadiran", permission: "users:manage" },
 			{ to: "/admin/karyawan/payroll", icon: Wallet, label: "Payroll", permission: "users:manage" },
@@ -718,7 +718,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								{isKaryawanOpen && (
 									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
 										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
-											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/karyawan" permission="users:manage" />
+											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Ringkasan Karyawan" to="/admin/karyawan" permission="users:manage" />
 											<DesktopSubNavLink icon={<Users />} label="Data Karyawan" to="/admin/karyawan/data" permission="users:manage" />
 											<DesktopSubNavLink icon={<FileBarChart />} label="Kehadiran" to="/admin/karyawan/kehadiran" permission="users:manage" />
 											<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/karyawan/kehadiran/jadwal" permission="users:manage" />
