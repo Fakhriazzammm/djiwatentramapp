@@ -1,7 +1,7 @@
 {
-  "version": "0.2.193",
-  "commitHash": "abfa3ea",
-  "message": "fix(admin): clarify employee dashboard label",
+  "version": "0.2.196",
+  "commitHash": "3342f81",
+  "message": "fix(admin): move dashboard above collapsible operations",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T00:33:03.553Z"
+  "generatedAt": "2026-09-24T00:39:15.381Z"
 }

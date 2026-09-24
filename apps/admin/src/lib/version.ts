@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.193",
+	semantic: "0.2.196",
 	// Git/deploy commit hash (short)
-	commitHash: "abfa3ea",
-	message: "fix(admin): clarify employee dashboard label",
+	commitHash: "3342f81",
+	message: "fix(admin): move dashboard above collapsible operations",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): clarify employee dashboard label",
+	commitMessage: "fix(admin): move dashboard above collapsible operations",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
