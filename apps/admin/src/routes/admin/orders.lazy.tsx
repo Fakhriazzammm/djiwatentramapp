@@ -24,6 +24,7 @@ import {
 	Eye,
 	Filter,
 	Loader2,
+	RefreshCw,
 	Search,
 	ShoppingBag,
 	Star,
@@ -291,7 +292,7 @@ function AdminOrders() {
 		const orders = (allOrders || []).map((o: any) => ({
 			...o,
 			type: "regular",
-			businessCategory: o.businessUnit === "ordermieyamin" || o.business_unit === "ordermieyamin"
+			businessCategory: o.businessCategory ?? (o.businessUnit === "ordermieyamin" || o.business_unit === "ordermieyamin")
 				? "mieyamin"
 				: o.brandSlug === "b2b" || o.brand_slug === "b2b" || o.businessUnit === "b2b" || o.business_unit === "b2b"
 					? "b2b"
@@ -335,11 +336,8 @@ function AdminOrders() {
 		const matchesBusiness = businessFilter === "all" || order.businessCategory === businessFilter;
 		const matchesStatus =
 			statusFilter === "all" || order.status === statusFilter;
-		const matchesSearch =
-			order.displayId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			(order.customerName || "")
-				.toLowerCase()
-				.includes(searchQuery.toLowerCase());
+		const normalizedSearch = searchQuery.trim().toLowerCase();
+		const matchesSearch = !normalizedSearch || [order.displayId, order.orderNumber, order.bookingCode, order.customerName, order.customerPhone, order.paymentMethod, resolveOrderChannel(order).label].some((value) => String(value || "").toLowerCase().includes(normalizedSearch));
 		const activeDateRange = getQuickDateRange(quickDateFilter);
 		const matchesQuickDate =
 			!activeDateRange ||
@@ -349,6 +347,11 @@ function AdminOrders() {
 	});
 
 	const totalFiltered = filteredOrders?.length || 0;
+	const filteredRevenue = (filteredOrders ?? []).reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
+	const pendingCount = (filteredOrders ?? []).filter((order: any) => order.status === "pending").length;
+	const completedCount = (filteredOrders ?? []).filter((order: any) => order.status === "completed").length;
+	const activeFilterCount = [searchQuery.trim(), statusFilter !== "all" ? statusFilter : "", businessFilter !== "all" ? businessFilter : "", quickDateFilter !== "all" ? quickDateFilter : ""].filter(Boolean).length;
+	const resetFilters = () => { setSearchQuery(""); setStatusFilter("all"); setBusinessFilter("all"); setQuickDateFilter("all"); setSelectedOrderIds(new Set()); };
 	const activeQuickDateLabel =
 		quickDateFilter === "all"
 			? "Semua tanggal"
@@ -679,6 +682,7 @@ function AdminOrders() {
 							Pantau pembayaran, tracking, dan aktivitas order.
 						</p>
 					</div>
+					<Button aria-label="Refresh data pesanan" className="h-10 w-10 shrink-0 rounded-xl" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button>
 					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
 						<span className="rounded-md bg-muted px-2 py-1">
 							{totalFiltered} pesanan
@@ -691,8 +695,18 @@ function AdminOrders() {
 								? "Semua status"
 								: getStatusLabel(statusFilter)}
 						</span>
+						{activeFilterCount > 0 && <span className="rounded-md bg-primary/10 px-2 py-1 font-semibold text-primary">{activeFilterCount} filter aktif</span>}
 					</div>
 				</div>
+			</div>
+
+			<div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+				{[["Total pesanan", String(totalFiltered), "bg-primary/10"], ["Nilai transaksi", formatrupiah(filteredRevenue), "bg-emerald-50"], ["Open bill", String(pendingCount), "bg-amber-50"], ["Selesai", String(completedCount), "bg-blue-50"]].map(([label, value, tone]) => (
+					<div className="rounded-[20px] border border-border/70 bg-card p-3.5 shadow-sm md:p-4" key={label}>
+						<div className="mb-3 flex items-center justify-between gap-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><span className={`h-2 w-2 rounded-full ${tone}`} /></div>
+						<p className="font-display text-lg font-bold tracking-tight md:text-xl">{value}</p>
+					</div>
+				))}
 			</div>
 
 			{hppCogs && hppCogs.matchedOrders > 0 && (
@@ -838,6 +852,7 @@ function AdminOrders() {
 						))}
 					</div>
 				</div>
+				{activeFilterCount > 0 && <Button className="h-8 rounded-full px-3 text-xs" onClick={resetFilters} size="sm" variant="ghost"><XCircle className="mr-1.5 h-3.5 w-3.5" />Reset filter</Button>}
 				{selectedOrderIds.size > 0 && (
 					<div className="flex flex-wrap items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2">
 						<div className="flex items-center gap-2 text-xs">
@@ -856,20 +871,6 @@ function AdminOrders() {
 			</div>
 
 			<div className="space-y-2 pb-1 md:hidden">
-				<div className="flex items-end justify-between gap-3 px-1">
-					<div>
-						<p className="font-display font-semibold text-[22px] tracking-tight">Pesanan</p>
-						<p className="text-[11px] text-muted-foreground">{totalFiltered} pesanan · {activeQuickDateLabel}</p>
-					</div>
-					<button
-						aria-label="Buka filter status pesanan"
-						className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors active:scale-95 active:bg-muted"
-						onClick={() => document.getElementById("orders-status-filter-mobile")?.click()}
-						type="button"
-					>
-						<Filter className="h-4 w-4" />
-					</button>
-				</div>
 				<div className="relative">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
@@ -912,7 +913,7 @@ function AdminOrders() {
 					<div className="flex w-max gap-1.5">
 						{[{ value: "all" as QuickDateFilter, label: "Semua" }, ...quickDateFilterOptions.map((option) => ({
 							...option,
-							label: option.label.replace("Minggu ", "").replace("Bulan ", ""),
+							label: option.label,
 						}))].map((option) => (
 							<Button
 								aria-selected={quickDateFilter === option.value}
@@ -927,15 +928,17 @@ function AdminOrders() {
 						))}
 					</div>
 				</div>
+				{activeFilterCount > 0 && <Button className="h-9 w-full rounded-xl text-xs" onClick={resetFilters} size="sm" variant="ghost"><XCircle className="mr-1.5 h-3.5 w-3.5" />Reset semua filter ({activeFilterCount})</Button>}
 			</div>
 
 			<div>
-				<div className="space-y-2 pb-24 md:hidden">
+				<div className="space-y-2 pb-32 md:hidden">
 					{filteredOrders?.length === 0 ? (
 						<div className="flex flex-col items-center rounded-[20px] border border-dashed border-border bg-card px-4 py-12 text-center">
 							<ShoppingBag className="mb-3 h-9 w-9 text-muted-foreground/40" />
 							<p className="font-display text-base font-bold text-foreground">Tidak ada pesanan ditemukan</p>
 							<p className="mt-1 text-sm text-muted-foreground">Coba ubah pencarian, status, atau periode tanggal.</p>
+							{activeFilterCount > 0 && <Button className="mt-4 rounded-xl" onClick={resetFilters} size="sm" variant="outline">Reset filter</Button>}
 						</div>
 					) : (
 						filteredOrders?.map((order: Order) => {
@@ -973,10 +976,9 @@ function AdminOrders() {
 											</div>
 										</div>
 										<div className="flex shrink-0 flex-col items-end gap-2">
-											<Badge className="rounded-full px-2 py-0.5 text-[10px]" variant={getStatusBadgeVariant(order.status)}>
-												{getStatusLabel(order.status)}
-											</Badge>
-											<ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground/60" />
+										<Badge className="rounded-full px-2 py-0.5 text-[10px]" variant={order.status === "pending" ? "warning" : order.status === "cancelled" ? "destructive" : "info"}>{getPaymentLabel(order)}</Badge>
+										<Badge className="rounded-full px-2 py-0.5 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
+										<ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground/60" />
 										</div>
 									</div>
 								</Button>
@@ -1012,7 +1014,7 @@ function AdminOrders() {
 											className="h-44 text-center text-muted-foreground text-sm"
 											colSpan={11}
 										>
-											Tidak ada pesanan yang cocok dengan filter.
+											Tidak ada pesanan yang cocok dengan filter.{activeFilterCount > 0 && <Button className="mt-3 rounded-xl" onClick={resetFilters} size="sm" variant="outline">Reset filter</Button>}
 										</td>
 									</tr>
 								) : (
@@ -1124,6 +1126,7 @@ function AdminOrders() {
 															<div className="min-w-[120px] space-y-1.5">
 																<div className="flex items-center gap-2">
 																	<Badge className="rounded-md px-1.5 py-0 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getPaymentLabel(order)}</Badge>
+											<Badge className="rounded-full px-1.5 py-0 text-[10px]" variant={getStatusBadgeVariant(order.status)}>{getStatusLabel(order.status)}</Badge>
 																</div>
 																{(["Mie Yamin", "B2B"] as string[]).includes(resolveOrderChannel(order).label) && (
 																	<div className="flex items-center justify-between gap-2">
@@ -1265,6 +1268,13 @@ function AdminOrders() {
 											</div>
 										</CardContent>
 									</Card>
+
+									<div className="grid grid-cols-2 gap-2 rounded-2xl border border-border/70 bg-muted/20 p-3">
+										<div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber transaksi</p><p className="mt-1 text-sm font-semibold">{resolveOrderChannel(selectedOrder).label}</p></div>
+										<div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pembayaran</p><p className="mt-1 text-sm font-semibold">{formatPaymentLabel({ source: selectedOrder.source, paymentMethod: selectedOrder.paymentMethod, paymentReceiptKind: selectedOrder.paymentReceiptKind, paymentGateway: selectedOrder.paymentGateway })}</p></div>
+										{selectedOrder.orderNumber && <div><p className="text-[10px] text-muted-foreground">Nomor transaksi</p><p className="font-mono text-xs">{selectedOrder.orderNumber}</p></div>}
+										{(selectedOrder as any).bookingCode && <div className="text-right"><p className="text-[10px] text-muted-foreground">Kode booking</p><p className="font-mono text-xs">{(selectedOrder as any).bookingCode}</p></div>}
+									</div>
 
 									{(selectedOrder as any).type === "booking" && (
 										<Card className="border-blue-200 bg-blue-50/60 shadow-none">
