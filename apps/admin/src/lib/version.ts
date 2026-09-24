@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.220",
+	semantic: "0.2.225",
 	// Git/deploy commit hash (short)
-	commitHash: "b756de1",
-	message: "feat(customer): add djiwa run hero illustration",
+	commitHash: "9f3cf1e3",
+	message: "fix(admin): switch mobile nav to warm 3d palette",
 	// Commit subject for the update prompt
-	commitMessage: "feat(customer): add djiwa run hero illustration",
+	commitMessage: "fix(admin): switch mobile nav to warm 3d palette",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display

@@ -1,7 +1,7 @@
 {
-  "version": "0.2.220",
-  "commitHash": "b756de1",
-  "message": "feat(customer): add djiwa run hero illustration",
+  "version": "0.2.225",
+  "commitHash": "9f3cf1e3",
+  "message": "fix(admin): switch mobile nav to warm 3d palette",
   "buildDate": "2026-09-24",
   "generatedAt": "2026-09-24T06:22:56.687Z"
 }
