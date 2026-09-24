@@ -935,9 +935,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	}, [dismissTaskMutation]);
 
 	const isPOS = mode === "pos";
-	const mobileBottomMenuOffset = isPOS
-		? ""
-		: "mb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:mb-0";
+	// AI is an immersive route; the admin shell hides global mobile navigation,
+	// so the composer must not reserve a second bottom-nav offset.
+	const mobileBottomMenuOffset = "";
 
 	const TAB_ITEMS = [
 		{ id: "chat", label: "Chat", icon: Bot },

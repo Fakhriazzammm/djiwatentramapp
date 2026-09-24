@@ -715,7 +715,7 @@ function AdminOrders() {
 				</div>
 			</div>
 
-			<div className="grid min-w-0 grid-cols-4 gap-1.5 md:gap-3">
+			<div className="grid min-w-0 grid-cols-2 gap-1.5 sm:grid-cols-4 md:gap-3">
 				{[["Total", String(totalFiltered), "bg-primary/10"], ["Nilai", compactRupiah(filteredRevenue), "bg-emerald-50"], ["Open", String(pendingCount), "bg-amber-50"], ["Selesai", String(completedCount), "bg-blue-50"]].map(([label, value, tone]) => (
 					<div className="rounded-2xl border border-border/70 bg-card px-2 py-2 shadow-sm md:rounded-[20px] md:p-4" key={label}>
 						<div className="mb-1 flex items-center justify-between gap-1"><p className="truncate text-[8px] font-bold uppercase tracking-wide text-muted-foreground md:text-[10px]">{label}</p><span className={`h-2 w-2 rounded-full ${tone}`} /></div>
@@ -955,7 +955,7 @@ function AdminOrders() {
 			</div>
 
 			<div>
-				<div className="min-w-0 space-y-1.5 overflow-x-hidden pb-32 md:hidden">
+				<div className="min-w-0 space-y-1.5 overflow-x-hidden rounded-2xl border border-border/70 bg-card p-2 pb-32 shadow-sm md:hidden">
 					{filteredOrders?.length === 0 ? (
 						<div className="flex flex-col items-center rounded-[20px] border border-dashed border-border bg-card px-4 py-12 text-center">
 							<ShoppingBag className="mb-3 h-9 w-9 text-muted-foreground/40" />

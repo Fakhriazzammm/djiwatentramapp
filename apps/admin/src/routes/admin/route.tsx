@@ -1144,7 +1144,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 			{/* === MAIN CONTENT === */}
 			<main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
 				{/* Mobile Header */}
-				<header className="flex h-14 shrink-0 items-center justify-between border-border border-b bg-card/95 px-4 backdrop-blur-sm md:px-4">
+				<header className={isAIChat ? "hidden" : "flex h-14 shrink-0 items-center justify-between border-border border-b bg-card/95 px-4 backdrop-blur-sm md:px-4"}>
 					{/* Mobile: Show page title + store brand */}
 					<div className="flex items-center gap-3">
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
@@ -1346,7 +1346,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 			)}
 
 			{/* === MOBILE BOTTOM NAVIGATION === */}
-			{!isHomeEntryMode && !isOperational && (
+			{!isHomeEntryMode && !isOperational && !isAIChat && (
 				<nav aria-label="Navigasi utama admin" className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-[#e5e5ea] border-t bg-white/95 shadow-[0_-8px_28px_rgba(0,0,0,.06)] backdrop-blur-xl md:hidden">
 					<div className="mx-auto grid w-full max-w-md grid-cols-5 items-end gap-1 px-1 pb-1 pt-2">
 						{BOTTOM_NAV_ITEMS.map((item, index) => {

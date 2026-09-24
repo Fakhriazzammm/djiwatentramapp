@@ -195,11 +195,11 @@ export function FinanceDashboard() {
 							<p className="mb-1 text-[11px] font-semibold text-slate-500">Ringkasan Harian</p>
 							<div className="space-y-0.5">
 								{hppCogs.dailySummary.slice(0, 7).map((day: any) => (
-									<div key={day.date} className="flex items-center justify-between rounded border border-slate-100 px-2 py-1 text-[11px]">
+									<div key={day.date} className="flex min-w-0 flex-col gap-1 rounded border border-slate-100 px-2 py-1.5 text-[11px] sm:flex-row sm:items-center sm:justify-between">
 										<span className="font-medium text-slate-600">
 											{new Date(day.date).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })}
 										</span>
-										<div className="flex items-center gap-3">
+										<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 sm:justify-end">
 											<span className="text-slate-400">{day.orders} pesanan</span>
 											<span>Rev: {fmt(day.revenue)}</span>
 											<span className="text-orange-600">COGS: {fmt(day.cogs)}</span>
