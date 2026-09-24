@@ -1,7 +1,7 @@
 {
-  "version": "0.2.221",
-  "commitHash": "dc431d5c",
-  "message": "fix(admin): mount current dashboard and mobile nav",
+  "version": "0.2.222",
+  "commitHash": "a60e5c5d",
+  "message": "fix(admin): use volumetric yumi ai icon",
   "buildDate": "2026-09-24",
   "generatedAt": "2026-09-24T04:53:31.578Z"
 }
