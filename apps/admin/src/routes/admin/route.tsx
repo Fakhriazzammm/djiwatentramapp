@@ -732,6 +732,8 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						</>
 					)}
 
+					{/* KARYAWAN - Section */}
+					<SidebarSection isCollapsed={isCollapsed} label="Karyawan" />
 					{/* KARYAWAN APP - Collapsible */}
 					{isCollapsed ? (
 						<>
