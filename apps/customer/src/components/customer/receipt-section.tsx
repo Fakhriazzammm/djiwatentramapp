@@ -94,7 +94,12 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
 	const isExpired = mode === "cashier_expired" || String(orderStatus ?? "").toLowerCase() === "cancelled" || String(orderStatus ?? "").toLowerCase() === "expired";
-	const isCashierTicket = props.receipt.paymentChoice === "cashier" && mode === "cashier_pending";
+	// The refreshed order is authoritative; receipt state can still contain the
+	// pre-settlement choice while the order read is catching up.
+	const normalizedPaymentMethod = String(props.currentOrder?.paymentMethod ?? (props.currentOrder as any)?.payment_method ?? props.receipt.paymentChoice).toLowerCase();
+	const isWalletPayment = normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa");
+	const isCashierPayment = normalizedPaymentMethod === "cash" || normalizedPaymentMethod.includes("cashier") || normalizedPaymentMethod.includes("tunai");
+	const isCashierTicket = isCashierPayment && mode === "cashier_pending";
 	const cartSnapshotItems = (props.cartSnapshot ?? []).map((item: CartItem) => ({
 		productId: item.productId,
 		productName: item.name,
@@ -122,13 +127,15 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const unifiedStatusColor = mode === "cashier_expired" ? "text-red-600" : orderStatus === "paid" ? "text-blue-600"
 		: orderStatus === "completed" ? "text-emerald-600"
 		: "text-amber-600";
-	const normalizedPaymentMethod = String(props.currentOrder?.paymentMethod ?? (props.currentOrder as any)?.payment_method ?? props.receipt.paymentChoice).toLowerCase();
-	const canRetryPayment = mode !== "paid" && (normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa") || normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar") || props.receipt.paymentChoice === "mayar");
+	const isQrisPayment = normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar");
+	const canRetryPayment = mode !== "paid" && (isWalletPayment || isQrisPayment || isCashierPayment);
 
 	const currentStepIndex = isExpired ? -1 : getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
-	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS Mayar" : "Bayar di Kasir";
-	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
+	const paymentLabel = isWalletPayment ? "Djiwa Pay" : isQrisPayment ? "QRIS" : "Bayar di Kasir";
+	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isQrisPayment ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
+	const receiptTitle = mode === "paid" ? "Struk lunas" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isCashierTicket ? "Tunjukkan ke kasir" : isQrisPayment ? "Lanjutkan pembayaran QRIS" : "Pembayaran Djiwa Pay";
+	const receiptDescription = mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran sebelum waktu habis." : mode === "cashier_expired" ? "Batas 5 menit pembayaran telah lewat. Pesanan dibatalkan dan tidak diproses Bar & Kitchen. Silakan pesan ulang." : mode === "mayar_pending" ? "Invoice QRIS sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : mode === "paid" ? "Pembayaran sudah diterima. Pesanan akan diproses restoran." : isWalletPayment ? "Pembayaran Djiwa Pay sedang diproses. Kamu tidak perlu menunjukkan layar ini ke kasir." : "Menyiapkan pembayaran.";
 	// Do not reconstruct historical totals from item prices. Show this breakdown
 	// only when the backend stored the authoritative tax calculation.
 	const persistedTaxBase = Number(props.currentOrder?.taxBaseAmount ?? props.currentOrder?.tax_base_amount);
@@ -177,9 +184,9 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
 				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{isExpired ? "Order dibatalkan" : "Step 5 · Selesai / Struk"}</p>
-				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : "Tunjukkan ke kasir"}</h2>
-				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran sebelum waktu habis." : mode === "cashier_expired" ? "Batas 5 menit pembayaran telah lewat. Pesanan dibatalkan dan tidak diproses Bar & Kitchen. Silakan pesan ulang." : mode === "mayar_pending" ? "Invoice pembayaran sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
-				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{receiptTitle}</h2>
+				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{receiptDescription}</p>
+				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{paymentLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
 					{hasPersistedTotals ? <ReceiptTotalsBreakdown rawTotal={persistedRawTotal} taxBase={persistedTaxBase} taxAmount={Number(props.currentOrder?.taxAmount ?? 0)} taxRate={Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0)} taxEnabled={Number(props.currentOrder?.taxAmount ?? 0) > 0 || Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0} serviceChargeAmount={Number(props.currentOrder?.serviceChargeAmount ?? 0)} roundingAdjustment={persistedRounding} total={persistedTotal} /> : null}
 					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
 						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>
