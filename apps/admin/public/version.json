@@ -1,7 +1,7 @@
 {
-  "version": "0.2.219",
-  "commitHash": "dd13e5b",
-  "message": "feat(admin): redesign mobile bottom navigation",
+  "version": "0.2.221",
+  "commitHash": "dc431d5c",
+  "message": "fix(admin): mount current dashboard and mobile nav",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T04:12:30.636Z"
+  "generatedAt": "2026-09-24T04:53:31.578Z"
 }
