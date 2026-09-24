@@ -285,6 +285,7 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 	// Create shift state
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
 	const [showActionsMenu, setShowActionsMenu] = useState(false);
+	const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 	const [isCreatingShift, setIsCreatingShift] = useState(false);
 	const [createForm, setCreateForm] = useState({ shiftName: "", cashierName: "", teamMembers: "", startingCash: 0, notes: "" });
 
@@ -602,7 +603,7 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 					return (
 						<article
 							key={shift.shiftId}
-							onClick={() => setSelectedShiftStart(shift.startTime)}
+							onClick={() => { setSelectedShiftStart(shift.startTime); setMobileDetailOpen(true); }}
 							className={`rounded-2xl border bg-card p-3 shadow-[0_2px_12px_rgba(15,23,42,0.035)] transition-colors active:scale-[0.99] ${isSelected ? "border-primary/50 ring-2 ring-primary/10" : "border-border"}`}
 							role="button"
 							tabIndex={0}
@@ -893,18 +894,15 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 										: "Klik tabel di kiri untuk membuka detail laporan."}
 								</p>
 							</div>
-							<button
-								type="button"
-								onClick={async () => {
-									if (!summaryText) return;
-									await navigator.clipboard.writeText(summaryText);
-									toast.success("Ringkasan shift berhasil disalin");
-								}}
-								className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-muted"
-							>
-								<Copy className="h-3.5 w-3.5" />
-								Salin
-							</button>
+							<div className="flex items-center gap-1.5">
+								<button type="button" onClick={() => setMobileDetailOpen(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground hover:bg-muted lg:hidden" aria-label="Tutup detail shift">
+									<X className="h-4 w-4" />
+								</button>
+								<button type="button" onClick={async () => { if (!summaryText) return; await navigator.clipboard.writeText(summaryText); toast.success("Ringkasan shift berhasil disalin"); }} className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-muted">
+									<Copy className="h-3.5 w-3.5" />
+									Salin
+								</button>
+							</div>
 						</div>
 
 						{selectedShift ? (
