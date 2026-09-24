@@ -1,7 +1,7 @@
 {
-  "version": "0.2.223",
-  "commitHash": "e37e8f63",
-  "message": "feat(admin): compact mobile orders experience",
+  "version": "0.2.224",
+  "commitHash": "c4f687ba",
+  "message": "feat(admin): add 3d mobile navigation icon family",
   "buildDate": "2026-09-24",
   "generatedAt": "2026-09-24T04:53:31.578Z"
 }
