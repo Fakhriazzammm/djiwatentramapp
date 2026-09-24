@@ -27,6 +27,7 @@ import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$usernam
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
+import { Route as AdminShiftClosingRouteImport } from './routes/admin/shift-closing'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRekrutmenRouteImport } from './routes/admin/rekrutmen'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
@@ -221,6 +222,11 @@ const AdminStockOverviewRoute = AdminStockOverviewRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/stock-overview.lazy').then((d) => d.Route),
 )
+const AdminShiftClosingRoute = AdminShiftClosingRouteImport.update({
+  id: '/shift-closing',
+  path: '/shift-closing',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -957,6 +963,7 @@ export interface FileRoutesByFullPath {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/rekrutmen': typeof AdminRekrutmenRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
@@ -1059,6 +1066,7 @@ export interface FileRoutesByTo {
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
@@ -1165,6 +1173,7 @@ export interface FileRoutesById {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/rekrutmen': typeof AdminRekrutmenRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
@@ -1278,6 +1287,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/rekrutmen'
     | '/admin/settings'
+    | '/admin/shift-closing'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
     | '/home/$section'
@@ -1380,6 +1390,7 @@ export interface FileRouteTypes {
     | '/admin/pos-notifications'
     | '/admin/products'
     | '/admin/settings'
+    | '/admin/shift-closing'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
     | '/home/$section'
@@ -1485,6 +1496,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/rekrutmen'
     | '/admin/settings'
+    | '/admin/shift-closing'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
     | '/home/$section'
@@ -1692,6 +1704,13 @@ declare module '@tanstack/react-router' {
       path: '/stock-overview'
       fullPath: '/admin/stock-overview'
       preLoaderRoute: typeof AdminStockOverviewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/shift-closing': {
+      id: '/admin/shift-closing'
+      path: '/shift-closing'
+      fullPath: '/admin/shift-closing'
+      preLoaderRoute: typeof AdminShiftClosingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/settings': {
@@ -2694,6 +2713,7 @@ interface AdminRouteRouteChildren {
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
   AdminRekrutmenRoute: typeof AdminRekrutmenRouteWithChildren
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminShiftClosingRoute: typeof AdminShiftClosingRoute
   AdminStockOverviewRoute: typeof AdminStockOverviewRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -2728,6 +2748,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRecipeRoute: AdminRecipeRouteWithChildren,
   AdminRekrutmenRoute: AdminRekrutmenRouteWithChildren,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminShiftClosingRoute: AdminShiftClosingRoute,
   AdminStockOverviewRoute: AdminStockOverviewRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
