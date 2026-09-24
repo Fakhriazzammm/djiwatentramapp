@@ -6,6 +6,8 @@ import {
 	getQuietPoint,
 	getHourlyAnalysisDateRange,
 	getHourlyAnalysisRange,
+	getPreviousHourlyAnalysisRange,
+	MAX_CUSTOM_RANGE_DAYS,
 } from "../hourly-transaction-analysis";
 
 const wib = (iso: string) => new Date(iso).getTime();
@@ -59,6 +61,19 @@ describe("hourly transaction analysis", () => {
 		expect(new Date(range.start).toISOString()).toBe("2026-09-23T17:00:00.000Z");
 		expect(getHourlyAnalysisDateRange("2026-02-30")).toBe(null);
 		expect(getHourlyAnalysisDateRange("not-a-date")).toBe(null);
+	});
+
+	it("validates custom ranges and derives the previous WIB window", () => {
+		const range = getHourlyAnalysisDateRange("2026-09-01", "2026-09-24");
+		if (!range) throw new Error("expected valid custom range");
+		expect(range.days).toBe(24);
+		expect(getHourlyAnalysisDateRange("2026-09-24", "2026-09-01")).toBe(null);
+		expect(getHourlyAnalysisDateRange("2026-09-01", "2026-10-02")).toBe(null);
+		expect(range.days <= MAX_CUSTOM_RANGE_DAYS).toBe(true);
+
+		const previous = getPreviousHourlyAnalysisRange(range);
+		expect(previous.days).toBe(24);
+		expect(previous.end + 1).toBe(range.start - range.days * 24 * 60 * 60 * 1000 + range.days * 24 * 60 * 60 * 1000);
 	});
 
 	it("creates WIB bounded ranges for today, seven days, and thirty days", () => {

@@ -2162,9 +2162,23 @@ export function useHybridOrders(options?: { status?: string; limit?: number; ref
 	return supabaseData as OrderRecord[] | undefined;
 }
 
-export function useHybridHourlySales(period: HourlyPeriod = "7d", refreshTrigger?: number, dateKey?: string): HourlySalesInsight | null | undefined {
-	const range = dateKey ? (getHourlyAnalysisDateRange(dateKey) ?? getHourlyAnalysisRange(period)) : getHourlyAnalysisRange(period);
-	const scopeKey = dateKey ? `date:${dateKey}` : `period:${period}`;
+export function useHybridHourlySales(
+	period: HourlyPeriod = "7d",
+	refreshTrigger?: number,
+	dateKey?: string,
+	dates?: { startDate: string; endDate: string },
+): HourlySalesInsight | null | undefined {
+	const customRange = dates
+		? getHourlyAnalysisDateRange(dates.startDate, dates.endDate)
+		: dateKey
+			? getHourlyAnalysisDateRange(dateKey)
+			: null;
+	const range = customRange ?? getHourlyAnalysisRange(period);
+	const scopeKey = dates
+		? `range:${dates.startDate}:${dates.endDate}`
+		: dateKey
+			? `date:${dateKey}`
+			: `period:${period}`;
 	const supabaseData = useSupabaseValue(
 		`hourly-transactions:${scopeKey}:${range.start}:${range.end}`,
 		async () => aggregateHourlySales(await fetchHourlyTransactions(range), range),
@@ -2175,6 +2189,7 @@ export function useHybridHourlySales(period: HourlyPeriod = "7d", refreshTrigger
 	);
 	return supabaseData as HourlySalesInsight | null | undefined;
 }
+
 
 export function useHybridInventory(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("inventory", fetchInventory, [], 

@@ -21,10 +21,14 @@ export type HourlySalesInsight = {
 	totalSettledOrders: number;
 	totalSettledRevenue: number;
 	isSparse: boolean;
+	confidence: HourlyConfidence;
 };
 
 export type HourlyMetric = "orders" | "revenue";
 export type HourlyPeriod = "today" | "7d" | "30d";
+export type HourlyConfidence = "insufficient" | "daily" | "medium" | "high";
+export type HourlyDateRange = { start: number; end: number; startDate: string; endDate: string; days: number };
+export const MAX_CUSTOM_RANGE_DAYS = 31;
 
 const hourFormatter = new Intl.DateTimeFormat("en-US", {
 	timeZone: WIB_TIMEZONE,
@@ -55,7 +59,7 @@ export function getHourlyAnalysisRange(period: HourlyPeriod, referenceTime = Dat
 	};
 }
 
-export function getHourlyAnalysisDateRange(dateKey: string) {
+function parseDateKey(dateKey: string) {
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
 	const [year, month, day] = dateKey.split("-").map(Number);
 	const utcDate = new Date(Date.UTC(year, month - 1, day));
@@ -64,8 +68,30 @@ export function getHourlyAnalysisDateRange(dateKey: string) {
 		utcDate.getUTCMonth() !== month - 1 ||
 		utcDate.getUTCDate() !== day
 	) return null;
-	const start = utcDate.getTime() - WIB_OFFSET_MS;
-	return { start, end: start + DAY_MS - 1 };
+	return utcDate;
+}
+
+export function getHourlyAnalysisDateRange(startDate: string, endDate = startDate): HourlyDateRange | null {
+	const startUtc = parseDateKey(startDate);
+	const endUtc = parseDateKey(endDate);
+	if (!startUtc || !endUtc) return null;
+	const start = startUtc.getTime() - WIB_OFFSET_MS;
+	const end = endUtc.getTime() - WIB_OFFSET_MS + DAY_MS - 1;
+	const days = Math.round((end - start + 1) / DAY_MS);
+	if (days < 1 || days > MAX_CUSTOM_RANGE_DAYS) return null;
+	return { start, end, startDate, endDate, days };
+}
+
+export function getPreviousHourlyAnalysisRange(range: HourlyDateRange): HourlyDateRange {
+	const start = range.start - range.days * DAY_MS;
+	const end = range.start - 1;
+	return {
+		start,
+		end,
+		startDate: getWibDateKey(start),
+		endDate: getWibDateKey(end),
+		days: range.days,
+	};
 }
 
 export function aggregateHourlySales(
@@ -111,6 +137,14 @@ export function aggregateHourlySales(
 		// cannot contain two calendar days. For multi-day periods, coverage
 		// across at least two days remains a useful confidence signal.
 		isSparse: totalSettledOrders < 3 || (!isSingleDayRange && sampleDates.size < 2),
+		confidence:
+			totalSettledOrders < 3
+				? "insufficient"
+				: isSingleDayRange
+					? "daily"
+					: sampleDates.size >= 7
+						? "high"
+						: "medium",
 	};
 }
 
