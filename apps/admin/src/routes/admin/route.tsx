@@ -1346,8 +1346,8 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 
 			{/* === MOBILE BOTTOM NAVIGATION === */}
 			{!isHomeEntryMode && !isOperational && (
-				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
-					<div className="flex items-stretch px-2">
+				<nav aria-label="Navigasi utama admin" className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-[#e5e5ea] border-t bg-white/95 shadow-[0_-8px_28px_rgba(0,0,0,.06)] backdrop-blur-xl md:hidden">
+					<div className="mx-auto grid w-full max-w-md grid-cols-5 items-end gap-1 px-1 pb-1 pt-2">
 						{BOTTOM_NAV_ITEMS.map((item, index) => {
 							const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
 							if (!hasPermission) return null;
@@ -1367,37 +1367,25 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							if (isCenter) {
 								return (
 									<Link
-										className="relative -top-4 flex flex-1 justify-center transition-transform active:scale-95"
+										className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1 transition-transform active:scale-[.96]"
 										key={item.to}
 										to={item.to}
 									>
 										{/* FAB Container */}
 										<div className="relative">
-											{/* Glow effect */}
-											<div
-												className={`absolute inset-0 rounded-full transition-all duration-300 ${isActive
-														? "animate-pulse bg-primary/40 blur-md"
-														: "bg-primary/20 blur-sm"
-													}`}
-												style={{ width: 56, height: 56 }}
-											/>
+
 											{/* Main FAB */}
 											<div
-												className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${isActive
-														? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
-														: "bg-primary shadow-lg shadow-primary/30"
-													}`}
+												className={`relative flex h-8 w-12 items-center justify-center rounded-[14px] transition-all duration-200 ${isActive
+																									? "bg-[#eaf3ff] text-[#007aff]"
+																									: "text-[#8e8e93] group-hover:bg-[#f5f5f7]"
+																							}`}
 											>
-												{isActive ? (
-													<Sparkles className="h-6 w-6 animate-spin-slow text-white" />
-												) : (
-													<Sparkles className="h-6 w-6 text-white" />
-												)}
+												<img alt="" className="h-7 w-7 object-contain" src="/assets/mobile-nav/yumi-ai-3d.png" />
 											</div>
 											{/* Label below FAB */}
 											<span
-												className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${isActive ? "text-primary" : "text-muted-foreground"
-													}`}
+												className={`text-[10px] font-semibold leading-tight ${isActive ? "text-[#007aff]" : "text-[#8e8e93]"}`}
 											>
 												AI
 											</span>
@@ -1410,24 +1398,21 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							if (isMore) {
 								return (
 									<button
-										className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+										className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1 transition-transform active:scale-[.96]"
 										key="lainnya"
 										onClick={() => setIsQuickMenuOpen(true)}
 										type="button"
 									>
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive || isQuickMenuOpen
-													? "bg-primary text-primary-foreground shadow-sm"
-													: "text-muted-foreground"
+											className={`flex h-8 w-12 items-center justify-center rounded-[14px] transition-all ${isActive || isQuickMenuOpen
+													? "bg-[#eaf3ff] text-[#007aff]"
+													: "text-[#8e8e93] group-hover:bg-[#f5f5f7]"
 												}`}
 										>
 											<item.icon className="h-4 w-4" />
 										</div>
 										<span
-											className={`font-medium text-[11px] leading-tight ${isActive || isQuickMenuOpen
-													? "text-primary"
-													: "text-muted-foreground"
-												}`}
+											className={`text-[10px] font-semibold leading-tight ${isActive || isQuickMenuOpen ? "text-[#007aff]" : "text-[#8e8e93]"}`}
 										>
 											{item.label}
 										</span>
@@ -1438,21 +1423,20 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							// Regular navigation items
 							return (
 								<Link
-									className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+									className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1 transition-transform active:scale-[.96]"
 									key={item.to}
 									to={item.to}
 								>
 									<div
-										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive
-												? "bg-primary text-primary-foreground shadow-sm"
-												: "text-muted-foreground"
+										className={`flex h-8 w-12 items-center justify-center rounded-[14px] transition-all ${isActive
+												? "bg-[#eaf3ff] text-[#007aff]"
+												: "text-[#8e8e93] group-hover:bg-[#f5f5f7]"
 											}`}
 									>
 										<item.icon className="h-4 w-4" />
 									</div>
 									<span
-										className={`font-medium text-[11px] leading-tight ${isActive ? "text-primary" : "text-muted-foreground"
-											}`}
+										className={`text-[10px] font-semibold leading-tight ${isActive ? "text-[#007aff]" : "text-[#8e8e93]"}`}
 									>
 										{item.label}
 									</span>
