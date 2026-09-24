@@ -10,7 +10,8 @@
 .kol-public-shell button:not(:disabled),.kol-public-shell a{transition:transform 180ms var(--ease),box-shadow 180ms var(--ease),background 180ms var(--ease)}
 .kol-public-shell button:not(:disabled):active,.kol-public-shell a:active{transform:scale(.98)}
 .kol-portal{padding-bottom:calc(112px + env(safe-area-inset-bottom));overflow-x:hidden}.kol-portal main{letter-spacing:-.01em}.kol-portal nav[aria-label="Navigasi Creator Portal"]{padding-bottom:max(.75rem,env(safe-area-inset-bottom))}@media(min-width:641px){.kol-portal{padding-bottom:40px}}
-.kol-portal article,.kol-portal aside{border:1px solid rgba(226,232,240,.78);box-shadow:0 8px 24px rgba(15,23,42,.045)}
+.kol-portal article{border:1px solid rgba(226,232,240,.78);box-shadow:0 8px 24px rgba(15,23,42,.045)}
+.kol-portal aside{border:0;box-shadow:none}
 .kol-portal nav{box-shadow:0 6px 18px rgba(15,23,42,.04)}
 .kol-portal button,.kol-portal a{transition:transform 180ms var(--ease),box-shadow 180ms var(--ease),background 180ms var(--ease),border-color 180ms var(--ease)}
 .kol-portal button:not(:disabled):active,.kol-portal a:active{transform:scale(.98)}
@@ -19,4 +20,4 @@
 .kol-portal .bg-blue-50{background:#eff6ff}
 .kol-portal .bg-violet-50{background:#f5f3ff}
 .kol-portal .bg-emerald-50{background:#ecfdf5}
-@media(max-width:640px){.kol-portal{padding-left:16px;padding-right:16px}.kol-portal section{border-radius:24px}.kol-portal h1{letter-spacing:-.035em}.kol-portal nav button{min-height:52px}.kol-portal article,.kol-portal aside{box-shadow:0 5px 18px rgba(15,23,42,.04)}}
+@media(max-width:640px){.kol-portal{padding-left:16px;padding-right:16px}.kol-portal section{border-radius:24px}.kol-portal h1{letter-spacing:-.035em}.kol-portal nav button{min-height:52px}.kol-portal article{box-shadow:0 5px 18px rgba(15,23,42,.04)}}
