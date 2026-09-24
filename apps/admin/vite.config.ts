@@ -12,7 +12,7 @@ export default defineConfig({
 		TanStackRouterVite(),
 		tailwindcss(),
 		VitePWA({
-			registerType: "autoUpdate",
+			registerType: "prompt",
 			includeAssets: ["logo.png", "vite.svg"],
 			manifest: {
 				name: adminPwaSettings.name,

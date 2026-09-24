@@ -13,6 +13,7 @@ import {
 import {
 	APP_UPDATE_EVENT,
 	applyAppUpdate,
+	checkForAppUpdate,
 	getLatestUpdateInfo,
 	type AppUpdateInfo,
 } from "@/lib/app-update";
@@ -92,6 +93,10 @@ export function AppUpdatePrompt() {
 		if (existingInfo) {
 			showOrScheduleReminder(existingInfo);
 		}
+
+		// Re-check after the listener is attached so the initial async poll
+		// cannot finish before this component is ready to receive its event.
+		void checkForAppUpdate();
 
 		return () => {
 			clearReminderTimer();

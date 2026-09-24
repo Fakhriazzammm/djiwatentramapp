@@ -15,6 +15,11 @@ export type AppUpdateInfo = {
 
 let latestUpdateInfo: AppUpdateInfo | null = null;
 let applyingUpdate = false;
+let pwaUpdateSW: ((reloadPage?: boolean) => Promise<void>) | null = null;
+
+export function setPwaUpdateHandler(updateSW: (reloadPage?: boolean) => Promise<void>) {
+	pwaUpdateSW = updateSW;
+}
 
 function normalizeVersionValue(value: unknown) {
 	return typeof value === "string" ? value.trim() : "";
@@ -141,6 +146,11 @@ export async function applyAppUpdate() {
 	}
 
 	try {
+		// Activate waiting SW through vite-plugin-pwa when available.
+		if (pwaUpdateSW) {
+			await pwaUpdateSW(true).catch(() => undefined);
+		}
+
 		// 1. Activate waiting SW (jika ada) — biar SW baru bisa ambil alih
 		if ("serviceWorker" in navigator) {
 			const registrations = await navigator.serviceWorker.getRegistrations();

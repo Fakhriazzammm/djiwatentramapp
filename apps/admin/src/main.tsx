@@ -7,7 +7,7 @@ import { CartProvider } from "@/context/cart-context";
 import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppUpdatePrompt } from "@/components/app-update-prompt";
-import { startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
+import { startAppUpdatePolling, checkForAppUpdate, notifyAppUpdateAvailable, setPwaUpdateHandler } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 import { installNumberInputBehavior } from "@yumipos/web-shared";
@@ -31,10 +31,27 @@ declare module "@tanstack/react-router" {
 // Hermes: trigger Vercel rebuild — contract+payslip live
 const rootElement = document.getElementById("root")!;
 
-// registerType: "autoUpdate" di vite.config.ts — SW auto-aktifasi + reload.
-// JANGAN kasih onNeedRefresh karena itu masukkin "prompt mode" yang bikin
-// SW stuck di "waiting" dan loop. Biarkan autoUpdate urus semuanya.
-registerSW();
+// Register service worker in prompt mode so users see the update dialog first.
+const updateSW = registerSW({
+	immediate: true,
+	onNeedRefresh() {
+		void fetch(`/version.json?t=${Date.now()}`, {
+			cache: "no-store",
+			headers: { "Cache-Control": "no-cache" },
+		})
+			.then((response) => (response.ok ? response.json() : null))
+			.then((payload) => {
+				if (!payload) return;
+				notifyAppUpdateAvailable({
+					latestVersion: payload.version,
+					latestCommit: payload.commitHash ?? payload.commit,
+					latestMessage: payload.message ?? payload.commitMessage,
+					buildDate: payload.buildDate,
+				});
+			});
+	},
+});
+setPwaUpdateHandler(updateSW);
 startAppUpdatePolling();
 
 // Force check on visibility change — panggil checkForAppUpdate langsung,
