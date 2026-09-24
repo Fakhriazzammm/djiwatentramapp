@@ -976,7 +976,10 @@ function AdminOrders() {
 									type="button"
 									variant="ghost"
 								>
-										<div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_1.5rem] items-start gap-x-1.5 gap-y-1">
+										<div className="grid w-full min-w-0 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-x-1.5 gap-y-1">
+											<div className="row-span-2 flex h-full items-center justify-center border-r border-border/60 pr-1">
+												<span aria-label={`Urutan transaksi ${orderIndex + 1}`} className="flex h-5 w-5 items-center justify-center rounded-lg bg-muted text-[9px] font-semibold tabular-nums text-muted-foreground">#{orderIndex + 1}</span>
+											</div>
 											<div className="min-w-0">
 												<p className="truncate font-semibold text-[13px] leading-4 text-foreground">{order.customerName || "Pelanggan Umum"}</p>
 												<p className="truncate text-[10px] leading-4 text-muted-foreground">{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })} <span aria-hidden="true">·</span> {resolveOrderChannel(order).label}{order.customer_source_id ? " · Member" : ""}</p>
@@ -985,10 +988,8 @@ function AdminOrders() {
 												<p className="whitespace-nowrap font-semibold text-[13px] leading-4 tabular-nums">{formatrupiah(order.totalAmount)}</p>
 												<ChevronDown className="h-3.5 w-3.5 shrink-0 -rotate-90 text-muted-foreground/60" />
 											</div>
-											<div className="row-span-2 flex h-full items-center justify-center border-l border-border/60 pl-1">
-												<span aria-label={`Urutan transaksi ${orderIndex + 1}`} className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[9px] font-semibold tabular-nums text-muted-foreground">#{orderIndex + 1}</span>
-											</div>
-											<div className="col-span-2 flex min-w-0 items-center justify-between gap-2 border-t border-border/60 pt-1">
+
+											<div className="col-start-2 col-span-2 flex min-w-0 items-center justify-between gap-2 border-t border-border/60 pt-1">
 												<p className="min-w-0 truncate font-mono text-[9px] leading-3 text-muted-foreground">{order.type === "booking" ? "BK-" : "#"}{order.displayId} <span aria-hidden="true">·</span> {format(order.createdAt, "dd MMM, HH:mm", { locale: id })}</p>
 												<div className="flex shrink-0 items-center gap-1">
 													<Badge className="rounded-full px-1.5 py-0 text-[9px] leading-4" variant={order.status === "pending" ? "warning" : order.status === "cancelled" ? "destructive" : "info"}>{getPaymentLabel(order)}</Badge>
