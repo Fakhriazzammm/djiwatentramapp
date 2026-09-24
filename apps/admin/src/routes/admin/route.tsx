@@ -137,18 +137,18 @@ const PAGE_TITLES: Record<string, string> = {
 
 // Bottom nav items (Djiwa Tentram AI at center index 2)
 const BOTTOM_NAV_ITEMS = [
-	{ to: "/admin", icon: LayoutDashboard, asset: "/assets/mobile-nav/dashboard-3d.png", label: "Dasbor", exact: true, permission: "analytics:view" },
-	{ to: "/admin/orders", icon: ClipboardList, asset: "/assets/mobile-nav/orders-3d.png", label: "Pesanan", permission: "orders:view" },
+	{ to: "/admin", icon: LayoutDashboard, asset: "/assets/mobile-nav/dashboard-3d.png?v=0.2.228", label: "Dasbor", exact: true, permission: "analytics:view" },
+	{ to: "/admin/orders", icon: ClipboardList, asset: "/assets/mobile-nav/orders-3d.png?v=0.2.228", label: "Pesanan", permission: "orders:view" },
 	{
 		to: "/admin/ai-chat",
 		icon: Sparkles,
-		asset: "/assets/mobile-nav/yumi-ai-3d.png",
+		asset: "/assets/mobile-nav/yumi-ai-3d.png?v=0.2.228",
 		label: "Yumi AI",
 		exact: true,
 		isCenter: true,
 	},
-	{ to: "/admin/finance", icon: Wallet, asset: "/assets/mobile-nav/finance-3d.png", label: "Keuangan", permission: "finance:view" },
-	{ to: "", icon: MoreHorizontal, asset: "/assets/mobile-nav/more-3d.png", label: "Lainnya", isMore: true },
+	{ to: "/admin/finance", icon: Wallet, asset: "/assets/mobile-nav/finance-3d.png?v=0.2.228", label: "Keuangan", permission: "finance:view" },
+	{ to: "", icon: MoreHorizontal, asset: "/assets/mobile-nav/more-3d.png?v=0.2.228", label: "Lainnya", isMore: true },
 ];
 
 // Pages that belong to "Lainnya" menu
