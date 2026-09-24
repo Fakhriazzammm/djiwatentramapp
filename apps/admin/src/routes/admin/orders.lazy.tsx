@@ -126,6 +126,7 @@ type QuickDateFilter =
 	| "lastMonth";
 
 type BusinessFilter = "all" | "pos" | "mieyamin" | "b2b" | "booking";
+type SortFilter = "newest" | "oldest" | "amountHigh" | "amountLow";
 
 type OrderChannel = {
 	label: string;
@@ -207,6 +208,12 @@ const quickDateFilterOptions: Array<{
 	{ value: "lastMonth", label: "Bulan Kemarin" },
 ];
 
+function compactRupiah(amount: number) {
+	if (amount >= 1_000_000) return `Rp${(amount / 1_000_000).toFixed(1).replace(".0", "")} jt`;
+	if (amount >= 1_000) return `Rp${Math.round(amount / 1_000)} rb`;
+	return `Rp${Math.round(amount).toLocaleString("id-ID")}`;
+}
+
 function AdminOrders() {
 	const allOrders = useHybridOrders();
 	const allBookingOrders = useHybridBookingOrders({ slug: "booking" });
@@ -232,6 +239,7 @@ function AdminOrders() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [quickDateFilter, setQuickDateFilter] =
 		useState<QuickDateFilter>("all");
+	const [sortFilter, setSortFilter] = useState<SortFilter>("newest");
 	const [isDetailOpen, setIsDetailOpen] = useState(false);
 	const [hasAppliedFocus, setHasAppliedFocus] = useState(false);
 	const [showMobileOverview, setShowMobileOverview] = useState(false);
@@ -344,6 +352,13 @@ function AdminOrders() {
 			(order.createdAt >= activeDateRange.start &&
 				order.createdAt <= activeDateRange.end);
 		return matchesBusiness && matchesStatus && matchesSearch && matchesQuickDate;
+	}).sort((a: any, b: any) => {
+		switch (sortFilter) {
+			case "oldest": return a.date - b.date;
+			case "amountHigh": return Number(b.totalAmount || 0) - Number(a.totalAmount || 0);
+			case "amountLow": return Number(a.totalAmount || 0) - Number(b.totalAmount || 0);
+			default: return b.date - a.date;
+		}
 	});
 
 	const totalFiltered = filteredOrders?.length || 0;
@@ -351,7 +366,7 @@ function AdminOrders() {
 	const pendingCount = (filteredOrders ?? []).filter((order: any) => order.status === "pending").length;
 	const completedCount = (filteredOrders ?? []).filter((order: any) => order.status === "completed").length;
 	const activeFilterCount = [searchQuery.trim(), statusFilter !== "all" ? statusFilter : "", businessFilter !== "all" ? businessFilter : "", quickDateFilter !== "all" ? quickDateFilter : ""].filter(Boolean).length;
-	const resetFilters = () => { setSearchQuery(""); setStatusFilter("all"); setBusinessFilter("all"); setQuickDateFilter("all"); setSelectedOrderIds(new Set()); };
+	const resetFilters = () => { setSearchQuery(""); setStatusFilter("all"); setBusinessFilter("all"); setQuickDateFilter("all"); setSortFilter("newest"); setSelectedOrderIds(new Set()); };
 	const activeQuickDateLabel =
 		quickDateFilter === "all"
 			? "Semua tanggal"
@@ -671,18 +686,18 @@ function AdminOrders() {
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-3 duration-500 md:gap-3">
+		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-1.5 duration-300 md:gap-3">
 			<div className="p-1 md:rounded-xl md:border md:border-border md:bg-card md:p-3 md:shadow-sm">
-				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+				<div className="flex items-center justify-between gap-2 md:flex-row md:items-end">
 					<div>
-						<h1 className="font-display text-xl font-bold tracking-tight md:text-2xl">
+						<h1 className="font-display text-lg font-bold tracking-tight md:text-2xl">
 							Pesanan
 						</h1>
-						<p className="hidden text-muted-foreground text-xs md:block">
-							Pantau pembayaran, tracking, dan aktivitas order.
+						<p className="text-[10px] text-muted-foreground md:text-xs">
+							{totalFiltered} transaksi · {activeQuickDateLabel}
 						</p>
 					</div>
-					<Button aria-label="Refresh data pesanan" className="h-10 w-10 shrink-0 rounded-xl" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button>
+					<Button aria-label="Refresh data pesanan" className="h-9 w-9 shrink-0 rounded-xl md:h-10 md:w-10" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button>
 					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
 						<span className="rounded-md bg-muted px-2 py-1">
 							{totalFiltered} pesanan
@@ -700,11 +715,11 @@ function AdminOrders() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
-				{[["Total pesanan", String(totalFiltered), "bg-primary/10"], ["Nilai transaksi", formatrupiah(filteredRevenue), "bg-emerald-50"], ["Open bill", String(pendingCount), "bg-amber-50"], ["Selesai", String(completedCount), "bg-blue-50"]].map(([label, value, tone]) => (
-					<div className="rounded-[20px] border border-border/70 bg-card p-3.5 shadow-sm md:p-4" key={label}>
-						<div className="mb-3 flex items-center justify-between gap-2"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p><span className={`h-2 w-2 rounded-full ${tone}`} /></div>
-						<p className="font-display text-lg font-bold tracking-tight md:text-xl">{value}</p>
+			<div className="grid grid-cols-4 gap-1.5 md:gap-3">
+				{[["Total", String(totalFiltered), "bg-primary/10"], ["Nilai", compactRupiah(filteredRevenue), "bg-emerald-50"], ["Open", String(pendingCount), "bg-amber-50"], ["Selesai", String(completedCount), "bg-blue-50"]].map(([label, value, tone]) => (
+					<div className="rounded-2xl border border-border/70 bg-card px-2 py-2 shadow-sm md:rounded-[20px] md:p-4" key={label}>
+						<div className="mb-1 flex items-center justify-between gap-1"><p className="truncate text-[8px] font-bold uppercase tracking-wide text-muted-foreground md:text-[10px]">{label}</p><span className={`h-2 w-2 rounded-full ${tone}`} /></div>
+						<p className="truncate font-display text-sm font-bold tracking-tight md:text-xl">{value}</p>
 					</div>
 				))}
 			</div>
@@ -740,9 +755,9 @@ function AdminOrders() {
 						</div>
 					</div>
 
-					<div className="rounded-xl border border-border bg-card p-2.5 shadow-sm md:hidden">
+					<div className="rounded-xl border border-border bg-card px-2 py-1 shadow-sm md:hidden">
 						<Button
-							className="h-auto w-full justify-between rounded-md px-1 py-1 text-left"
+							className="h-7 w-full justify-between rounded-md px-1 py-0 text-left"
 							onClick={() => setShowMobileOverview((prev) => !prev)}
 							type="button"
 							variant="ghost"
@@ -826,6 +841,10 @@ function AdminOrders() {
 						</div>
 					</div>
 				</div>
+				<Select value={sortFilter} onValueChange={(value: string | null) => value && setSortFilter(value as SortFilter)}>
+					<SelectTrigger className="h-8 w-full max-w-[220px] rounded-xl text-xs" size="sm"><SelectValue placeholder="Urutkan" /></SelectTrigger>
+					<SelectContent><SelectItem value="newest">Terbaru</SelectItem><SelectItem value="oldest">Terlama</SelectItem><SelectItem value="amountHigh">Nominal terbesar</SelectItem><SelectItem value="amountLow">Nominal terkecil</SelectItem></SelectContent>
+				</Select>
 
 				<div className="-mx-1 overflow-x-auto">
 					<div className="flex w-max min-w-full gap-1.5 px-1">
@@ -874,7 +893,7 @@ function AdminOrders() {
 				<div className="relative">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
-						className="h-11 rounded-xl border-border bg-card pl-10 text-sm shadow-sm"
+						className="h-9 rounded-xl border-border bg-card pl-9 text-xs shadow-sm"
 						onChange={(e) => setSearchQuery(e.target.value)}
 						placeholder="Cari pesanan atau pelanggan"
 						value={searchQuery}
@@ -885,7 +904,7 @@ function AdminOrders() {
 						onValueChange={(val: string | null) => val && setStatusFilter(val)}
 						value={statusFilter}
 					>
-						<SelectTrigger id="orders-status-filter-mobile" className="h-10 min-w-0 rounded-xl bg-card text-xs shadow-sm" size="sm">
+						<SelectTrigger id="orders-status-filter-mobile" className="h-8 min-w-0 rounded-xl bg-card text-[11px] shadow-sm" size="sm">
 							<SelectValue className="truncate" placeholder="Status" />
 						</SelectTrigger>
 						<SelectContent>
@@ -897,7 +916,7 @@ function AdminOrders() {
 						</SelectContent>
 					</Select>
 					<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
-						<SelectTrigger className="h-10 min-w-0 rounded-xl bg-card text-xs shadow-sm" size="sm">
+						<SelectTrigger className="h-8 min-w-0 rounded-xl bg-card text-[11px] shadow-sm" size="sm">
 							<SelectValue className="truncate" placeholder="Bisnis" />
 						</SelectTrigger>
 						<SelectContent>
@@ -909,6 +928,10 @@ function AdminOrders() {
 						</SelectContent>
 					</Select>
 				</div>
+				<Select value={sortFilter} onValueChange={(value: string | null) => value && setSortFilter(value as SortFilter)}>
+					<SelectTrigger className="h-8 w-full rounded-xl bg-card text-[11px] shadow-sm" size="sm"><SelectValue placeholder="Urutkan" /></SelectTrigger>
+					<SelectContent><SelectItem value="newest">Terbaru</SelectItem><SelectItem value="oldest">Terlama</SelectItem><SelectItem value="amountHigh">Nominal terbesar</SelectItem><SelectItem value="amountLow">Nominal terkecil</SelectItem></SelectContent>
+				</Select>
 				<div className="-mx-1 overflow-x-auto px-1 pb-0.5" role="tablist" aria-label="Periode pesanan">
 					<div className="flex w-max gap-1.5">
 						{[{ value: "all" as QuickDateFilter, label: "Semua" }, ...quickDateFilterOptions.map((option) => ({
@@ -917,7 +940,7 @@ function AdminOrders() {
 						}))].map((option) => (
 							<Button
 								aria-selected={quickDateFilter === option.value}
-								className="h-8 rounded-full px-3 text-[11px]"
+								className="h-7 rounded-full px-2.5 text-[10px]"
 								key={option.value}
 								onClick={() => setQuickDateFilter(option.value)}
 								size="sm"
