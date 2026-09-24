@@ -1,7 +1,7 @@
 {
-  "version": "0.2.225",
-  "commitHash": "9f3cf1e3",
-  "message": "fix(admin): switch mobile nav to warm 3d palette",
+  "version": "0.2.226",
+  "commitHash": "3886e065",
+  "message": "fix(admin): align nav icons with customer blue palette",
   "buildDate": "2026-09-24",
   "generatedAt": "2026-09-24T06:22:56.687Z"
 }
