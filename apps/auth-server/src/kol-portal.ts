@@ -1,5 +1,7 @@
 import type { Hono } from "hono";
 
+import { createHash } from "node:crypto";
+
 type DbPool = { connect: () => Promise<any>; query: (text: string, values?: unknown[]) => Promise<any> };
 type AuthApi = { api: { getSession: (input: { headers: Headers }) => Promise<any> } };
 
@@ -7,6 +9,25 @@ type AppLike = Hono<any>;
 
 function json(c: any, body: unknown, status = 200) {
   return c.json(body, status, { "Cache-Control": "no-store" });
+}
+
+const INVITE_TOKEN_MAX_LENGTH = 512;
+function inviteToken(value: unknown) {
+  return typeof value === "string" && value.length > 0 && value.length <= INVITE_TOKEN_MAX_LENGTH ? value : null;
+}
+function inviteTokenHash(rawToken: string) {
+  return createHash("sha256").update(rawToken, "utf8").digest("hex");
+}
+function inviteSafeContext(row: any) {
+  return {
+    id: row.source_id,
+    name: row.name,
+    username: publicUsername(row.username),
+    avatarUrl: row.avatar_url ?? null,
+    location: row.location,
+    category: row.category,
+    status: row.status,
+  };
 }
 
 async function context(c: any, auth: AuthApi, pool: DbPool) {
@@ -26,6 +47,14 @@ async function context(c: any, auth: AuthApi, pool: DbPool) {
   const kol = result.rows[0];
   if (!kol) return { error: json(c, { success: false, error: "KOL_PROFILE_NOT_LINKED" }, 409) };
   return { userId, email, kol };
+}
+
+function isBookingDateFromTomorrow(value: string) {
+  const todayWib = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+  todayWib.setHours(0, 0, 0, 0);
+  todayWib.setDate(todayWib.getDate() + 1);
+  const minimum = `${todayWib.getFullYear()}-${String(todayWib.getMonth() + 1).padStart(2, "0")}-${String(todayWib.getDate()).padStart(2, "0")}`;
+  return value >= minimum;
 }
 
 function validUrl(value: unknown) {
@@ -101,6 +130,107 @@ function timelineQuery(where: string, orderCursor: string, typeClause: string) {
 }
 
 export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPool) {
+  // Invite routes deliberately select only public creator fields. Raw invite tokens never enter SQL.
+  const inviteLookup = async (rawToken: string, db = pool) => {
+    const result = await db.query(
+      `select c.source_id, c.name, c.username, c.avatar_url, c.location, c.category, c.status,
+              i.id as invite_id, i.status as invite_status
+         from pos.kol_visit_invitations i
+         join pos.kol_creators c on c.source_id = i.kol_id
+        where i.token_hash = $1
+          and i.expires_at > now()
+          and i.revoked_at is null
+          and i.status not in ('expired','revoked','confirmed','needs_review')
+        limit 1`,
+      [inviteTokenHash(rawToken)],
+    );
+    return result.rows[0] ?? null;
+  };
+
+  const inviteResponse = (c: any, row: any) => {
+    if (!row) return json(c, { success: false, error: "INVITE_NOT_FOUND" }, 404);
+    return json(c, { success: true, data: { inviteId: row.invite_id, creator: inviteSafeContext(row) } });
+  };
+
+  app.get(["/api/kol/invite/context", "/api/kol/invites/:token"], async (c) => {
+    const token = inviteToken(c.req.query("token") || c.req.param("token"));
+    if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
+    return inviteResponse(c, await inviteLookup(token));
+  });
+
+  app.post("/api/kol/invite/open", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const token = inviteToken(body.token);
+    if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
+    const row = await inviteLookup(token);
+    if (!row) return json(c, { success: false, error: "INVITE_NOT_FOUND" }, 404);
+    await pool.query(`update pos.kol_visit_invitations set status = case when status = 'created' then 'opened' else status end, opened_at = coalesce(opened_at, now()) where id = $1`, [row.invite_id]);
+    return inviteResponse(c, row);
+  });
+
+  app.post(["/api/kol/invite/claim", "/api/kol/invites/:token/claim"], async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    const userId = session?.user?.id;
+    const email = session?.user?.email?.trim().toLowerCase();
+    if (!userId || !email) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
+    const body = await c.req.json().catch(() => ({}));
+    const token = inviteToken(body.token || c.req.param("token"));
+    if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
+
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const invite = await inviteLookup(token, client);
+      if (!invite) { await client.query("rollback"); return json(c, { success: false, error: "INVITE_NOT_FOUND" }, 404); }
+      const owned = await client.query(`select source_id, name, username, avatar_url, location, category, status from pos.kol_creators where auth_user_id = $1 for update`, [userId]);
+      if (owned.rows.length > 0) { await client.query("rollback"); return json(c, { success: false, error: "ALREADY_LINKED" }, 409); }
+      const matches = await client.query(
+        `select c.source_id, c.name, c.username, c.avatar_url, c.location, c.category, c.status, c.auth_user_id
+           from pos.kol_creators c join pos.kol_private_contacts p on p.kol_id = c.source_id
+          where lower(btrim(p.email)) = $1
+          for update of c`,
+        [email],
+      );
+      if (matches.rows.length !== 1) {
+        await client.query("rollback");
+        return json(c, { success: false, error: matches.rows.length > 1 ? "AMBIGUOUS_EMAIL_MATCH" : "EMAIL_MATCH_NOT_FOUND" }, matches.rows.length > 1 ? 409 : 404);
+      }
+      const match = matches.rows[0];
+      if (match.source_id !== invite.source_id) { await client.query("rollback"); return json(c, { success: false, error: "EMAIL_MATCH_NOT_FOUND" }, 404); }
+      if (match.auth_user_id && match.auth_user_id !== userId) { await client.query("rollback"); return json(c, { success: false, error: "ALREADY_LINKED" }, 409); }
+      const linked = await client.query(`update pos.kol_creators set auth_user_id = $1, updated_at = now() where source_id = $2 and auth_user_id is null returning source_id, name, username, avatar_url, location, category, status`, [userId, invite.source_id]);
+      if (!linked.rows[0]) { await client.query("rollback"); return json(c, { success: false, error: "ALREADY_LINKED" }, 409); }
+      await client.query(`update pos.kol_visit_invitations set status = 'linked', linked_at = coalesce(linked_at, now()), linked_auth_user_id = $1 where id = $2`, [userId, invite.invite_id]);
+      await client.query("commit");
+      return json(c, { success: true, data: { creator: inviteSafeContext(linked.rows[0]) } });
+    } catch (error: any) {
+      await client.query("rollback");
+      if (error?.code === "23505") return json(c, { success: false, error: "ALREADY_LINKED" }, 409);
+      throw error;
+    } finally { client.release(); }
+  });
+
+  app.post(["/api/kol/invite/booking", "/api/kol/invites/:token/booking"], async (c) => {
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const body = await c.req.json().catch(() => ({}));
+    const token = inviteToken(body.token || c.req.param("token"));
+    const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
+    if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    const invite = await inviteLookup(token);
+    if (!invite) return json(c, { success: false, error: "INVITE_NOT_FOUND" }, 404);
+    if (invite.source_id !== current.kol.source_id) return json(c, { success: false, error: "INVITE_NOT_LINKED" }, 403);
+    const result = await pool.query(`select * from pos.kol_request_invited_visit_booking($1,$2,$3,$4)`, [invite.invite_id, date, typeof body.visitNote === "string" ? body.visitNote.trim().slice(0, 500) : null, current.userId]).catch((error: any) => ({ error }));
+    if ((result as any).error) {
+      const error = (result as any).error;
+      if (error?.code === "23505") return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
+      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","INVITATION_NOT_VALID"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" ? 409 : 400);
+      throw error;
+    }
+    return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
+  });
+
   app.post("/api/kol/portal/intake", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     const userId = session?.user?.id;
@@ -350,7 +480,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     if (current.error) return current.error;
     const body = await c.req.json().catch(() => ({}));
     const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
     const result = await pool.query(`select * from pos.kol_request_visit_booking($1,$2,$3)`, [current.kol.source_id, date, typeof body.visitNote === "string" ? body.visitNote.trim().slice(0, 500) : null]).catch((error: any) => ({ error }));
     if ((result as any).error) {
       const error = (result as any).error;

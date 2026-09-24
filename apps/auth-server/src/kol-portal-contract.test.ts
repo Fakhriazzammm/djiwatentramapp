@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { CAMPAIGN_STATUSES, KOL_PLATFORMS, SUBMISSION_STATUSES, VISIT_ACTIVE_STATUSES, VISIT_RELEASE_STATUSES, isValidKolUrl, normalizeKolSlug } from "./kol-portal-contract";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 
 describe("KOL Creator Portal contracts", () => {
   it("normalizes public slugs deterministically", () => {
@@ -53,5 +54,37 @@ describe("KOL Creator Portal contracts", () => {
     expect(publicView).not.toContain("kol_private_contacts");
     expect(publicView).not.toContain("whatsapp");
     expect(publicView).not.toContain("email");
+  });
+
+  it("keeps invite token handling hashed and private", () => {
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    expect(source).toContain("i.token_hash = $1");
+    expect(source).toContain("createHash(\"sha256\")");
+    expect(source).toContain("i.expires_at > now()");
+    expect(source).toContain("i.revoked_at is null");
+    expect(source).not.toContain("select p.email");
+    const token = "kol-invite-contract-token";
+    expect(createHash("sha256").update(token, "utf8").digest("hex")).toHaveLength(64);
+  });
+
+  it("covers the invite authorization and resolution error contract", () => {
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    for (const route of ["/api/kol/invite/context", "/api/kol/invite/open", "/api/kol/invite/claim", "/api/kol/invite/booking"]) expect(source).toContain(route);
+    for (const error of ["UNAUTHORIZED", "EMAIL_MATCH_NOT_FOUND", "AMBIGUOUS_EMAIL_MATCH", "ALREADY_LINKED", "INVITE_NOT_FOUND", "INVITE_NOT_LINKED", "DATE_ALREADY_BOOKED"]) expect(source).toContain(error);
+    expect(source).toContain("where source_id = $2 and auth_user_id is null");
+    expect(source).toContain("pos.kol_request_visit_booking");
+    expect(source).toContain("invite.source_id");
+    expect(source).not.toContain("body.kolId");
+  });
+
+  it("only returns the safe invite creator context", () => {
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    const start = source.indexOf("function inviteSafeContext");
+    const end = source.indexOf("async function context", start);
+    const safe = source.slice(start, end);
+    expect(safe).not.toContain("email");
+    expect(safe).not.toContain("whatsapp");
+    expect(safe).not.toContain("application_data");
+    expect(safe).not.toContain("manager_");
   });
 });
