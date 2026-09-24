@@ -152,7 +152,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     return json(c, { success: true, data: { inviteId: row.invite_id, creator: inviteSafeContext(row) } });
   };
 
-  app.get(["/api/kol/invite/context", "/api/kol/invites/:token"], async (c) => {
+  app.get("/api/kol/invites/:token", async (c) => {
     const token = inviteToken(c.req.query("token") || c.req.param("token"));
     if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
     return inviteResponse(c, await inviteLookup(token));
@@ -168,7 +168,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     return inviteResponse(c, row);
   });
 
-  app.post(["/api/kol/invite/claim", "/api/kol/invites/:token/claim"], async (c) => {
+  app.post("/api/kol/invites/:token/claim", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     const userId = session?.user?.id;
     const email = session?.user?.email?.trim().toLowerCase();
@@ -210,7 +210,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     } finally { client.release(); }
   });
 
-  app.post(["/api/kol/invite/booking", "/api/kol/invites/:token/booking"], async (c) => {
+  app.post("/api/kol/invites/:token/booking", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;
     const body = await c.req.json().catch(() => ({}));

@@ -69,7 +69,7 @@ describe("KOL Creator Portal contracts", () => {
 
   it("covers the invite authorization and resolution error contract", () => {
     const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
-    for (const route of ["/api/kol/invite/context", "/api/kol/invite/open", "/api/kol/invite/claim", "/api/kol/invite/booking"]) expect(source).toContain(route);
+    for (const route of ["/api/kol/invites/:token", "/api/kol/invite/open", "/api/kol/invites/:token/claim", "/api/kol/invites/:token/booking"]) expect(source).toContain(route);
     for (const error of ["UNAUTHORIZED", "EMAIL_MATCH_NOT_FOUND", "AMBIGUOUS_EMAIL_MATCH", "ALREADY_LINKED", "INVITE_NOT_FOUND", "INVITE_NOT_LINKED", "DATE_ALREADY_BOOKED"]) expect(source).toContain(error);
     expect(source).toContain("where source_id = $2 and auth_user_id is null");
     expect(source).toContain("pos.kol_request_visit_booking");
