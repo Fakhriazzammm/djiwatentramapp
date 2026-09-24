@@ -31,25 +31,19 @@ export default function OperationalDecisionDashboard() {
   const orders = useHybridOrders();
   const shiftStatus = useHybridShiftStatus();
   const shifts = useMemo(() => shiftStatus?.allShifts?.filter(Boolean) ?? [], [shiftStatus?.allShifts]);
-  if (!stats || !orders || !shiftStatus) return <CompactSkeleton />;
-  const p = stats.periodComparisons;
   const todayRange = getWibDayRange(Date.now());
   const todayOrderStatus = useMemo(() => {
     const result = { pending: 0, paid: 0, completed: 0, cancelled: 0 };
-    for (const order of orders) {
+    for (const order of orders ?? []) {
       if (order.createdAt < todayRange.start || order.createdAt > todayRange.end) continue;
       const status = String(order.status ?? "").toLowerCase();
       if (status in result) result[status as keyof typeof result] += 1;
     }
     return result;
   }, [orders, todayRange.end, todayRange.start]);
-  const totalOrders = Object.values(todayOrderStatus).reduce((sum, value) => sum + value, 0);
-  const openShifts = shifts.filter((shift: any) => !shift.endTime).length;
-  const alertCount = stats.anomalies.length + stats.paymentReconciliation.pendingNonCashCount + stats.lowStockCount;
-  const chartData = stats.revenueLast7Days.map((day) => ({ ...day, label: day.date.split(",")[0] }));
   const topPayments = useMemo(() => {
     const totals = new Map<string, { method: string; amount: number; orders: number }>();
-    for (const order of orders) {
+    for (const order of orders ?? []) {
       if (!(order.status === "paid" || order.status === "completed")) continue;
       if (order.createdAt < todayRange.start || order.createdAt > todayRange.end) continue;
       const method = String(order.paymentMethod ?? "lainnya").toLowerCase();
@@ -60,6 +54,12 @@ export default function OperationalDecisionDashboard() {
     }
     return [...totals.values()].sort((left, right) => right.amount - left.amount).slice(0, 4);
   }, [orders, todayRange.end, todayRange.start]);
+  if (!stats || !orders || !shiftStatus) return <CompactSkeleton />;
+  const p = stats.periodComparisons;
+  const totalOrders = Object.values(todayOrderStatus).reduce((sum, value) => sum + value, 0);
+  const openShifts = shifts.filter((shift: any) => !shift.endTime).length;
+  const alertCount = stats.anomalies.length + stats.paymentReconciliation.pendingNonCashCount + stats.lowStockCount;
+  const chartData = stats.revenueLast7Days.map((day) => ({ ...day, label: day.date.split(",")[0] }));
   const maxPayment = Math.max(...topPayments.map((item) => item.amount), 1);
   const averageOrder = p.today.orders ? p.today.revenue / p.today.orders : 0;
 
