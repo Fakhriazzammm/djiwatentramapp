@@ -365,8 +365,12 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   app.get("/api/kol/public/:username", async (c) => {
     const username = c.req.param("username").trim().toLowerCase().replace(/^@/, "");
     const result = await pool.query(`select * from public.pos_kol_public_profiles where lower(username)=lower($1) limit 1`, [username]);
-    if (!result.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
-    const row = result.rows[0];
+    let row = result.rows[0];
+    if (!row) {
+      const fallback = await pool.query(`select source_id as id,name,username,avatar_url,location,category,null::text as bio from pos.kol_creators where status <> 'Rejected' and lower(regexp_replace(username,'^@',''))=lower($1) limit 1`, [username]);
+      row = fallback.rows[0];
+    }
+    if (!row) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
     const payload = row.data && typeof row.data === "object" ? row.data : {};
     return json(c, { success: true, data: { id: row.id, name: row.name, username: row.username, avatar_url: row.avatar_url, location: row.location, category: row.category, bio: row.bio, public_availability: row.public_availability ?? "not_set", availability_label: row.availability_label ?? null, platforms: Array.isArray(payload.platforms) ? payload.platforms.map((p: any) => ({ ...p, profile_url: p.profileUrl })) : [], portfolio: Array.isArray(payload.portfolio) ? payload.portfolio.map((p: any) => ({ ...p, content_url: p.contentUrl, thumbnail_url: p.thumbnailUrl, published_at: p.publishedAt })) : [], badges: payload.badges ?? [], badge_names: Array.isArray(payload.badges) ? payload.badges.map((b: any) => b.name) : [] } });
   });
@@ -412,18 +416,18 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   async function creatorDiscovery(c: any, db: DbPool, authenticated: boolean) {
     const limit = boundedLimit(c.req.query("limit")); if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
     const cursor = decodeTimelineCursor(c.req.query("before")); if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
-    const values: unknown[] = []; const filters = ["p.is_public=true"];
+    const values: unknown[] = []; const filters = ["c.status <> 'Rejected'"];
     const category = c.req.query("category"), location = c.req.query("location"), availability = c.req.query("availability"), q = c.req.query("q");
     if (category) { values.push(category.slice(0, 80)); filters.push(`c.category=$${values.length}`); }
     if (location) { values.push(`%${location.slice(0, 80)}%`); filters.push(`c.location ilike $${values.length}`); }
-    if (availability && ["open", "selective", "unavailable", "not_set"].includes(availability)) { values.push(availability); filters.push(`p.public_availability=$${values.length}`); }
-    if (q && q.trim().length >= 2) { values.push(`%${q.trim().slice(0, 80)}%`); filters.push(`(p.display_name ilike $${values.length} or p.slug ilike $${values.length} or p.bio ilike $${values.length} or c.category ilike $${values.length})`); }
+    if (availability && ["open", "selective", "unavailable", "not_set"].includes(availability)) { values.push(availability); filters.push(`coalesce(p.public_availability,'not_set')=$${values.length}`); }
+    if (q && q.trim().length >= 2) { values.push(`%${q.trim().slice(0, 80)}%`); filters.push(`(coalesce(p.display_name,c.name) ilike $${values.length} or coalesce(p.slug,c.username) ilike $${values.length} or coalesce(p.bio,'') ilike $${values.length} or c.category ilike $${values.length})`); }
     if (c.req.query("hasPortfolio") === "true") filters.push("exists(select 1 from pos.kol_portfolio_items pi where pi.kol_id=c.source_id and pi.review_status='approved' and pi.is_public=true)");
     if (cursor) { values.push(cursor.publishedAt); filters.push(`c.created_at < $${values.length}`); }
     values.push(limit + 1);
     const result = await db.query(`select c.source_id,c.name,c.username,c.avatar_url,c.category,c.location,p.slug,p.display_name,p.bio,p.public_availability,p.availability_label,c.created_at,
       (select count(*) from pos.kol_portfolio_items pi where pi.kol_id=c.source_id and pi.review_status='approved' and pi.is_public=true) portfolio_count
-      from pos.kol_creators c join pos.kol_profiles p on p.kol_id=c.source_id where ${filters.join(" and ")} order by c.created_at desc,c.source_id desc limit $${values.length}`, values);
+      from pos.kol_creators c left join pos.kol_profiles p on p.kol_id=c.source_id where ${filters.join(" and ")} order by c.created_at desc,c.source_id desc limit $${values.length}`, values);
     const rows = result.rows.slice(0, limit), next = result.rows.length > limit ? rows[rows.length - 1] : null;
     return json(c, { success: true, data: { items: rows.map(safeCreator), nextCursor: next ? encodeTimelineCursor({ publishedAt: new Date(next.created_at).toISOString(), id: Number(next.id ?? 1) }) : null, hasMore: Boolean(next) } });
   }
