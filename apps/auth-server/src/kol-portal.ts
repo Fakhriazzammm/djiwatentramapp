@@ -16,7 +16,7 @@ async function context(c: any, auth: AuthApi, pool: DbPool) {
   if (!userId || !email) return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
   const result = await pool.query(
     `select c.source_id, c.name, c.username, c.avatar_url, c.location, c.category, c.status, c.public_reason, c.application_data,
-            p.display_name, p.slug, p.bio, p.is_public
+            p.display_name, p.slug, p.bio, p.is_public, p.public_availability, p.availability_label
        from pos.kol_creators c
        left join pos.kol_profiles p on p.kol_id = c.source_id
       where c.auth_user_id = $1
