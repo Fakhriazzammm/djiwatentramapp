@@ -1026,9 +1026,9 @@ function AttendanceJadwalPage() {
       // Duplicate default: selalu buat baru di target
       withSaveToast(
         () => handleSave({
-          userId: targetUserId ?? schedule.userId,
-          date: targetDate,
-          shiftName: schedule.shiftName,
+          userId: targetUserId ?? schedule.userId ?? "",
+          date: targetDate ?? "",
+          shiftName: schedule.shiftName ?? "",
           startTime: schedule.startTime ?? undefined,
           endTime: schedule.endTime ?? undefined,
         }),

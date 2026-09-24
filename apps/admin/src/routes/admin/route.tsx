@@ -92,6 +92,18 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/ai-chat": "Djiwa Tentram AI",
 	"/admin/settings": "Pengaturan",
 	"/admin/operational-team": "Tim Operasional",
+	"/admin/karyawan": "Karyawan · Dashboard",
+	"/admin/karyawan/": "Karyawan · Dashboard",
+	"/admin/karyawan/data": "Karyawan · Data Karyawan",
+	"/admin/karyawan/kehadiran": "Karyawan · Kehadiran",
+	"/admin/karyawan/kehadiran/jadwal": "Karyawan · Jadwal",
+	"/admin/karyawan/kehadiran/pengaturan": "Karyawan · Pengaturan Kehadiran",
+	"/admin/karyawan/payroll": "Karyawan · Payroll",
+	"/admin/karyawan/payroll/slip": "Karyawan · Slip Gaji",
+	"/admin/karyawan/onboarding": "Karyawan · Onboarding",
+	"/admin/karyawan/onboarding/kontrak": "Karyawan · Kontrak",
+	"/admin/karyawan/cuti-izin": "Karyawan · Cuti & Izin",
+	"/admin/karyawan/laporan": "Karyawan · Laporan",
 	"/admin/operational-team/attendance": "Absensi",
 	"/admin/operational-team/payroll": "Gaji & Role",
 	"/admin/operational-team/payroll/slip": "Slip Gaji",
@@ -165,13 +177,15 @@ const MORE_MENU_PATHS = [
 	"/admin/kol-data",
 	"/admin/kol-collaborations",
 	"/admin/kol-reports",
-	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
-	"/admin/operational-team/attendance",
-	"/admin/operational-team/payroll",
-	"/admin/operational-team/register",
-	"/admin/operational-team/register/onboarding",
-	"/admin/operational-team/register/contract",
+	"/admin/karyawan",
+	"/admin/karyawan/data",
+	"/admin/karyawan/kehadiran",
+	"/admin/karyawan/payroll",
+	"/admin/karyawan/onboarding",
+	"/admin/karyawan/onboarding/kontrak",
+	"/admin/karyawan/cuti-izin",
+	"/admin/karyawan/laporan",
 	"/admin/settings",
 ];
 
@@ -207,7 +221,6 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
-			{ to: "/admin/operational-team/karyawan", icon: Users, label: "Karyawan", permission: "users:manage" },
 		],
 	},
 	{
@@ -236,6 +249,19 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/rekrutmen/interviews", icon: CalendarDays, label: "Interview", permission: "users:manage" },
 			{ to: "/admin/rekrutmen/onboarding", icon: ClipboardList, label: "Onboarding", permission: "users:manage" },
 			{ to: "/admin/rekrutmen/reports", icon: BarChart3, label: "Laporan", permission: "users:manage" },
+		],
+	},
+	{
+		label: "KARYAWAN APP",
+		items: [
+			{ to: "/admin/karyawan", icon: LayoutDashboard, label: "Dashboard", permission: "users:manage" },
+			{ to: "/admin/karyawan/data", icon: Users, label: "Data Karyawan", permission: "users:manage" },
+			{ to: "/admin/karyawan/kehadiran", icon: FileBarChart, label: "Kehadiran", permission: "users:manage" },
+			{ to: "/admin/karyawan/payroll", icon: Wallet, label: "Payroll", permission: "users:manage" },
+			{ to: "/admin/karyawan/onboarding", icon: ClipboardList, label: "Onboarding", permission: "users:manage" },
+			{ to: "/admin/karyawan/onboarding/kontrak", icon: FileSignature, label: "Dokumen & Kontrak", permission: "users:manage" },
+			{ to: "/admin/karyawan/cuti-izin", icon: CalendarDays, label: "Cuti & Izin", permission: "users:manage" },
+			{ to: "/admin/karyawan/laporan", icon: BarChart3, label: "Laporan", permission: "users:manage" },
 		],
 	},
 	{
@@ -305,17 +331,23 @@ const REKRUTMEN_PATHS = [
 	"/admin/rekrutmen/reports",
 ];
 
+const KARYAWAN_PATHS = [
+	"/admin/karyawan",
+	"/admin/karyawan/data",
+	"/admin/karyawan/kehadiran",
+	"/admin/karyawan/kehadiran/jadwal",
+	"/admin/karyawan/kehadiran/pengaturan",
+	"/admin/karyawan/payroll",
+	"/admin/karyawan/payroll/slip",
+	"/admin/karyawan/onboarding",
+	"/admin/karyawan/onboarding/kontrak",
+	"/admin/karyawan/cuti-izin",
+	"/admin/karyawan/laporan",
+];
+
 const OPERATIONAL_TEAM_PATHS = [
-	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
-	"/admin/operational-team/attendance",
-	"/admin/operational-team/payroll",
-	"/admin/operational-team/payroll/slip",
-	"/admin/operational-team/register",
-	"/admin/operational-team/register/onboarding",
-	"/admin/operational-team/register/contract",
-	"/admin/operational-team/register/riwayat",
-	];
+];
 
 export function AdminRouteLayout() {
 	return <AdminLayout />;
@@ -392,6 +424,23 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	useEffect(() => {
 		if (isOnFinancePath) setIsFinanceOpen(true);
 	}, [isOnFinancePath]);
+
+	const isOnKaryawanPath = KARYAWAN_PATHS.some((p) => location.pathname.startsWith(p));
+	const [isKaryawanOpen, setIsKaryawanOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-karyawan-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnKaryawanPath;
+	});
+
+	useEffect(() => {
+		if (isOnKaryawanPath) setIsKaryawanOpen(true);
+	}, [isOnKaryawanPath]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-karyawan-open", String(isKaryawanOpen));
+	}, [isKaryawanOpen]);
 
 	const isOnOperationalTeamPath = OPERATIONAL_TEAM_PATHS.some((p) =>
 		location.pathname.startsWith(p),
@@ -646,45 +695,38 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />
 					<DesktopNavLink icon={<Beer />} isCollapsed={isCollapsed} label="Bar" to="/admin/bar" />
 					<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
+
+					<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
+
+					{/* KARYAWAN APP - Collapsible */}
 					{isCollapsed ? (
 						<>
-							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
-							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
-							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
-							<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
-							<DesktopNavLink icon={<Settings />} isCollapsed={isCollapsed} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
-							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
-							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Slip Gaji" to="/admin/operational-team/payroll/slip" permission="users:manage" />
-							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
-							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
-							<DesktopNavLink icon={<FileSignature />} isCollapsed={isCollapsed} label="Kontrak" to="/admin/operational-team/register/contract" permission="users:manage" />
-							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Karyawan" to="/admin/karyawan" permission="users:manage" />
+							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Kehadiran" to="/admin/karyawan/kehadiran" permission="users:manage" />
+							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Payroll" to="/admin/karyawan/payroll" permission="users:manage" />
+							<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Cuti & Izin" to="/admin/karyawan/cuti-izin" permission="users:manage" />
+							<DesktopNavLink icon={<BarChart3 />} isCollapsed={isCollapsed} label="Laporan" to="/admin/karyawan/laporan" permission="users:manage" />
 						</>
 					) : (
 						<>
-							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${
-								isOnOperationalTeamPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-							}`} onClick={() => setIsOperationalTeamOpen(!isOperationalTeamOpen)} type="button">
+							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnKaryawanPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsKaryawanOpen(!isKaryawanOpen)} type="button">
 								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><Users /></span>
-								<span className="flex-1 truncate text-left">Tim Operasional</span>
-								<motion.span animate={{ rotate: isOperationalTeamOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+								<span className="flex-1 truncate text-left">KARYAWAN APP</span>
+								<motion.span animate={{ rotate: isKaryawanOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
 							</button>
 							<AnimatePresence initial={false}>
-								{isOperationalTeamOpen && (
+								{isKaryawanOpen && (
 									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
 										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
-											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
-											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
-											<DesktopSubNavLink icon={<FileText />} label="Data Karyawan" to="/admin/operational-team/karyawan/data" permission="users:manage" />
-											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
-										<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
-										<DesktopSubNavLink icon={<Settings />} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
-											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
-										<DesktopSubNavLink icon={<FileText />} label="Slip Gaji" to="/admin/operational-team/payroll/slip" permission="users:manage" />
-										<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />
-										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
-										<DesktopSubNavLink icon={<FileSignature />} label="Kontrak Kerja" to="/admin/operational-team/register/contract" permission="users:manage" />
-										<DesktopSubNavLink icon={<FileText />} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
+											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/karyawan" permission="users:manage" />
+											<DesktopSubNavLink icon={<Users />} label="Data Karyawan" to="/admin/karyawan/data" permission="users:manage" />
+											<DesktopSubNavLink icon={<FileBarChart />} label="Kehadiran" to="/admin/karyawan/kehadiran" permission="users:manage" />
+											<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/karyawan/kehadiran/jadwal" permission="users:manage" />
+											<DesktopSubNavLink icon={<Wallet />} label="Payroll" to="/admin/karyawan/payroll" permission="users:manage" />
+											<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/karyawan/onboarding" permission="users:manage" />
+											<DesktopSubNavLink icon={<FileSignature />} label="Dokumen & Kontrak" to="/admin/karyawan/onboarding/kontrak" permission="users:manage" />
+											<DesktopSubNavLink icon={<CalendarDays />} label="Cuti & Izin" to="/admin/karyawan/cuti-izin" permission="users:manage" />
+											<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/karyawan/laporan" permission="users:manage" />
 										</div>
 									</motion.div>
 								)}

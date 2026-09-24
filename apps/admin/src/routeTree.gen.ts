@@ -43,6 +43,7 @@ import { Route as AdminKolDataRouteImport } from './routes/admin/kol-data'
 import { Route as AdminKolCollaborationsRouteImport } from './routes/admin/kol-collaborations'
 import { Route as AdminKolRouteImport } from './routes/admin/kol'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
+import { Route as AdminKaryawanRouteImport } from './routes/admin/karyawan'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDjiwaRunRouteImport } from './routes/admin/djiwa-run'
@@ -59,6 +60,7 @@ import { Route as AdminRekrutmenIndexRouteImport } from './routes/admin/rekrutme
 import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
 import { Route as AdminOrderMieYaminIndexRouteImport } from './routes/admin/order-mie-yamin/index'
 import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
+import { Route as AdminKaryawanIndexRouteImport } from './routes/admin/karyawan/index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
 import { Route as AdminBookingIndexRouteImport } from './routes/admin/booking/index'
 import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai.$registrationNumber'
@@ -78,6 +80,12 @@ import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin
 import { Route as AdminOperationalTeamPayrollRouteImport } from './routes/admin/operational-team/payroll'
 import { Route as AdminOperationalTeamKaryawanRouteImport } from './routes/admin/operational-team/karyawan'
 import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/admin/operational-team/attendance'
+import { Route as AdminKaryawanPayrollRouteImport } from './routes/admin/karyawan/payroll'
+import { Route as AdminKaryawanOnboardingRouteImport } from './routes/admin/karyawan/onboarding'
+import { Route as AdminKaryawanLaporanRouteImport } from './routes/admin/karyawan/laporan'
+import { Route as AdminKaryawanKehadiranRouteImport } from './routes/admin/karyawan/kehadiran'
+import { Route as AdminKaryawanDataRouteImport } from './routes/admin/karyawan/data'
+import { Route as AdminKaryawanCutiIzinRouteImport } from './routes/admin/karyawan/cuti-izin'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminBookingSettingsRouteImport } from './routes/admin/booking/settings'
 import { Route as AdminBookingOrdersRouteImport } from './routes/admin/booking/orders'
@@ -89,6 +97,9 @@ import { Route as AdminFinanceExpensesRouteRouteImport } from './routes/admin/fi
 import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
 import { Route as AdminOperationalTeamPayrollIndexRouteImport } from './routes/admin/operational-team/payroll/index'
 import { Route as AdminOperationalTeamAttendanceIndexRouteImport } from './routes/admin/operational-team/attendance.index'
+import { Route as AdminKaryawanPayrollIndexRouteImport } from './routes/admin/karyawan/payroll/index'
+import { Route as AdminKaryawanOnboardingIndexRouteImport } from './routes/admin/karyawan/onboarding/index'
+import { Route as AdminKaryawanKehadiranIndexRouteImport } from './routes/admin/karyawan/kehadiran/index'
 import { Route as AdminOrderMieYaminSettingsNotificationsRouteImport } from './routes/admin/order-mie-yamin/settings/notifications'
 import { Route as AdminOperationalTeamRegisterRiwayatRouteImport } from './routes/admin/operational-team/register/riwayat'
 import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
@@ -96,6 +107,10 @@ import { Route as AdminOperationalTeamPayrollSlipRouteImport } from './routes/ad
 import { Route as AdminOperationalTeamKaryawanDataRouteImport } from './routes/admin/operational-team/karyawan/data'
 import { Route as AdminOperationalTeamAttendancePengaturanRouteImport } from './routes/admin/operational-team/attendance/pengaturan'
 import { Route as AdminOperationalTeamAttendanceJadwalRouteImport } from './routes/admin/operational-team/attendance/jadwal'
+import { Route as AdminKaryawanPayrollSlipRouteImport } from './routes/admin/karyawan/payroll/slip'
+import { Route as AdminKaryawanOnboardingKontrakRouteImport } from './routes/admin/karyawan/onboarding/kontrak'
+import { Route as AdminKaryawanKehadiranPengaturanRouteImport } from './routes/admin/karyawan/kehadiran/pengaturan'
+import { Route as AdminKaryawanKehadiranJadwalRouteImport } from './routes/admin/karyawan/kehadiran/jadwal'
 import { Route as AdminBookingSettingsOptionsRouteImport } from './routes/admin/booking/settings/options'
 import { Route as AdminBookingSettingsMenuRouteImport } from './routes/admin/booking/settings/menu'
 import { Route as AdminBookingSettingsFormRouteImport } from './routes/admin/booking/settings/form'
@@ -308,6 +323,13 @@ const AdminKitchenRoute = AdminKitchenRouteImport.update({
   path: '/kitchen',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/kitchen.lazy').then((d) => d.Route))
+const AdminKaryawanRoute = AdminKaryawanRouteImport.update({
+  id: '/karyawan',
+  path: '/karyawan',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan.lazy').then((d) => d.Route),
+)
 const AdminInventoryRoute = AdminInventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
@@ -411,6 +433,13 @@ const AdminOperationalTeamIndexRoute =
   } as any).lazy(() =>
     import('./routes/admin/operational-team/index.lazy').then((d) => d.Route),
   )
+const AdminKaryawanIndexRoute = AdminKaryawanIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminKaryawanRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan/index.lazy').then((d) => d.Route),
+)
 const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -564,6 +593,48 @@ const AdminOperationalTeamAttendanceRoute =
       (d) => d.Route,
     ),
   )
+const AdminKaryawanPayrollRoute = AdminKaryawanPayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => AdminKaryawanRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan/payroll.lazy').then((d) => d.Route),
+)
+const AdminKaryawanOnboardingRoute = AdminKaryawanOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AdminKaryawanRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan/onboarding.lazy').then((d) => d.Route),
+)
+const AdminKaryawanLaporanRoute = AdminKaryawanLaporanRouteImport.update({
+  id: '/laporan',
+  path: '/laporan',
+  getParentRoute: () => AdminKaryawanRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan/laporan.lazy').then((d) => d.Route),
+)
+const AdminKaryawanKehadiranRoute = AdminKaryawanKehadiranRouteImport.update({
+  id: '/kehadiran',
+  path: '/kehadiran',
+  getParentRoute: () => AdminKaryawanRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan/kehadiran.lazy').then((d) => d.Route),
+)
+const AdminKaryawanDataRoute = AdminKaryawanDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => AdminKaryawanRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan/data.lazy').then((d) => d.Route),
+)
+const AdminKaryawanCutiIzinRoute = AdminKaryawanCutiIzinRouteImport.update({
+  id: '/cuti-izin',
+  path: '/cuti-izin',
+  getParentRoute: () => AdminKaryawanRoute,
+} as any).lazy(() =>
+  import('./routes/admin/karyawan/cuti-izin.lazy').then((d) => d.Route),
+)
 const AdminFinanceShiftReportsRoute =
   AdminFinanceShiftReportsRouteImport.update({
     id: '/shift-reports',
@@ -642,6 +713,32 @@ const AdminOperationalTeamAttendanceIndexRoute =
       (d) => d.Route,
     ),
   )
+const AdminKaryawanPayrollIndexRoute =
+  AdminKaryawanPayrollIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminKaryawanPayrollRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/karyawan/payroll/index.lazy').then((d) => d.Route),
+  )
+const AdminKaryawanOnboardingIndexRoute =
+  AdminKaryawanOnboardingIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminKaryawanOnboardingRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/karyawan/onboarding/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminKaryawanKehadiranIndexRoute =
+  AdminKaryawanKehadiranIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminKaryawanKehadiranRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/karyawan/kehadiran/index.lazy').then((d) => d.Route),
+  )
 const AdminOrderMieYaminSettingsNotificationsRoute =
   AdminOrderMieYaminSettingsNotificationsRouteImport.update({
     id: '/notifications',
@@ -709,6 +806,44 @@ const AdminOperationalTeamAttendanceJadwalRoute =
     getParentRoute: () => AdminOperationalTeamAttendanceRoute,
   } as any).lazy(() =>
     import('./routes/admin/operational-team/attendance/jadwal.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminKaryawanPayrollSlipRoute =
+  AdminKaryawanPayrollSlipRouteImport.update({
+    id: '/slip',
+    path: '/slip',
+    getParentRoute: () => AdminKaryawanPayrollRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/karyawan/payroll/slip.lazy').then((d) => d.Route),
+  )
+const AdminKaryawanOnboardingKontrakRoute =
+  AdminKaryawanOnboardingKontrakRouteImport.update({
+    id: '/kontrak',
+    path: '/kontrak',
+    getParentRoute: () => AdminKaryawanOnboardingRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/karyawan/onboarding/kontrak.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminKaryawanKehadiranPengaturanRoute =
+  AdminKaryawanKehadiranPengaturanRouteImport.update({
+    id: '/pengaturan',
+    path: '/pengaturan',
+    getParentRoute: () => AdminKaryawanKehadiranRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/karyawan/kehadiran/pengaturan.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminKaryawanKehadiranJadwalRoute =
+  AdminKaryawanKehadiranJadwalRouteImport.update({
+    id: '/jadwal',
+    path: '/jadwal',
+    getParentRoute: () => AdminKaryawanKehadiranRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/karyawan/kehadiran/jadwal.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -805,6 +940,7 @@ export interface FileRoutesByFullPath {
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/karyawan': typeof AdminKaryawanRouteWithChildren
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
   '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
@@ -838,6 +974,12 @@ export interface FileRoutesByFullPath {
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
+  '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
+  '/admin/karyawan/data': typeof AdminKaryawanDataRoute
+  '/admin/karyawan/kehadiran': typeof AdminKaryawanKehadiranRouteWithChildren
+  '/admin/karyawan/laporan': typeof AdminKaryawanLaporanRoute
+  '/admin/karyawan/onboarding': typeof AdminKaryawanOnboardingRouteWithChildren
+  '/admin/karyawan/payroll': typeof AdminKaryawanPayrollRouteWithChildren
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRouteWithChildren
   '/admin/operational-team/karyawan': typeof AdminOperationalTeamKaryawanRouteWithChildren
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRouteWithChildren
@@ -857,6 +999,7 @@ export interface FileRoutesByFullPath {
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
+  '/admin/karyawan/': typeof AdminKaryawanIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/order-mie-yamin/': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
@@ -865,6 +1008,10 @@ export interface FileRoutesByFullPath {
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
   '/admin/booking/settings/options': typeof AdminBookingSettingsOptionsRoute
+  '/admin/karyawan/kehadiran/jadwal': typeof AdminKaryawanKehadiranJadwalRoute
+  '/admin/karyawan/kehadiran/pengaturan': typeof AdminKaryawanKehadiranPengaturanRoute
+  '/admin/karyawan/onboarding/kontrak': typeof AdminKaryawanOnboardingKontrakRoute
+  '/admin/karyawan/payroll/slip': typeof AdminKaryawanPayrollSlipRoute
   '/admin/operational-team/attendance/jadwal': typeof AdminOperationalTeamAttendanceJadwalRoute
   '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/karyawan/data': typeof AdminOperationalTeamKaryawanDataRoute
@@ -872,6 +1019,9 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
   '/admin/order-mie-yamin/settings/notifications': typeof AdminOrderMieYaminSettingsNotificationsRoute
+  '/admin/karyawan/kehadiran/': typeof AdminKaryawanKehadiranIndexRoute
+  '/admin/karyawan/onboarding/': typeof AdminKaryawanOnboardingIndexRoute
+  '/admin/karyawan/payroll/': typeof AdminKaryawanPayrollIndexRoute
   '/admin/operational-team/attendance/': typeof AdminOperationalTeamAttendanceIndexRoute
   '/admin/operational-team/payroll/': typeof AdminOperationalTeamPayrollIndexRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -926,6 +1076,9 @@ export interface FileRoutesByTo {
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
+  '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
+  '/admin/karyawan/data': typeof AdminKaryawanDataRoute
+  '/admin/karyawan/laporan': typeof AdminKaryawanLaporanRoute
   '/admin/operational-team/karyawan': typeof AdminOperationalTeamKaryawanRouteWithChildren
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/operational-team/rekrutmen': typeof AdminOperationalTeamRekrutmenRoute
@@ -943,6 +1096,7 @@ export interface FileRoutesByTo {
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/booking': typeof AdminBookingIndexRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
+  '/admin/karyawan': typeof AdminKaryawanIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
@@ -950,6 +1104,10 @@ export interface FileRoutesByTo {
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
   '/admin/booking/settings/options': typeof AdminBookingSettingsOptionsRoute
+  '/admin/karyawan/kehadiran/jadwal': typeof AdminKaryawanKehadiranJadwalRoute
+  '/admin/karyawan/kehadiran/pengaturan': typeof AdminKaryawanKehadiranPengaturanRoute
+  '/admin/karyawan/onboarding/kontrak': typeof AdminKaryawanOnboardingKontrakRoute
+  '/admin/karyawan/payroll/slip': typeof AdminKaryawanPayrollSlipRoute
   '/admin/operational-team/attendance/jadwal': typeof AdminOperationalTeamAttendanceJadwalRoute
   '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/karyawan/data': typeof AdminOperationalTeamKaryawanDataRoute
@@ -957,6 +1115,9 @@ export interface FileRoutesByTo {
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
   '/admin/order-mie-yamin/settings/notifications': typeof AdminOrderMieYaminSettingsNotificationsRoute
+  '/admin/karyawan/kehadiran': typeof AdminKaryawanKehadiranIndexRoute
+  '/admin/karyawan/onboarding': typeof AdminKaryawanOnboardingIndexRoute
+  '/admin/karyawan/payroll': typeof AdminKaryawanPayrollIndexRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceIndexRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollIndexRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -987,6 +1148,7 @@ export interface FileRoutesById {
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/karyawan': typeof AdminKaryawanRouteWithChildren
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
   '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
@@ -1020,6 +1182,12 @@ export interface FileRoutesById {
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
+  '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
+  '/admin/karyawan/data': typeof AdminKaryawanDataRoute
+  '/admin/karyawan/kehadiran': typeof AdminKaryawanKehadiranRouteWithChildren
+  '/admin/karyawan/laporan': typeof AdminKaryawanLaporanRoute
+  '/admin/karyawan/onboarding': typeof AdminKaryawanOnboardingRouteWithChildren
+  '/admin/karyawan/payroll': typeof AdminKaryawanPayrollRouteWithChildren
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRouteWithChildren
   '/admin/operational-team/karyawan': typeof AdminOperationalTeamKaryawanRouteWithChildren
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRouteWithChildren
@@ -1039,6 +1207,7 @@ export interface FileRoutesById {
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
+  '/admin/karyawan/': typeof AdminKaryawanIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/order-mie-yamin/': typeof AdminOrderMieYaminIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
@@ -1047,6 +1216,10 @@ export interface FileRoutesById {
   '/admin/booking/settings/form': typeof AdminBookingSettingsFormRoute
   '/admin/booking/settings/menu': typeof AdminBookingSettingsMenuRoute
   '/admin/booking/settings/options': typeof AdminBookingSettingsOptionsRoute
+  '/admin/karyawan/kehadiran/jadwal': typeof AdminKaryawanKehadiranJadwalRoute
+  '/admin/karyawan/kehadiran/pengaturan': typeof AdminKaryawanKehadiranPengaturanRoute
+  '/admin/karyawan/onboarding/kontrak': typeof AdminKaryawanOnboardingKontrakRoute
+  '/admin/karyawan/payroll/slip': typeof AdminKaryawanPayrollSlipRoute
   '/admin/operational-team/attendance/jadwal': typeof AdminOperationalTeamAttendanceJadwalRoute
   '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/karyawan/data': typeof AdminOperationalTeamKaryawanDataRoute
@@ -1054,6 +1227,9 @@ export interface FileRoutesById {
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
   '/admin/order-mie-yamin/settings/notifications': typeof AdminOrderMieYaminSettingsNotificationsRoute
+  '/admin/karyawan/kehadiran/': typeof AdminKaryawanKehadiranIndexRoute
+  '/admin/karyawan/onboarding/': typeof AdminKaryawanOnboardingIndexRoute
+  '/admin/karyawan/payroll/': typeof AdminKaryawanPayrollIndexRoute
   '/admin/operational-team/attendance/': typeof AdminOperationalTeamAttendanceIndexRoute
   '/admin/operational-team/payroll/': typeof AdminOperationalTeamPayrollIndexRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -1085,6 +1261,7 @@ export interface FileRouteTypes {
     | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
+    | '/admin/karyawan'
     | '/admin/kitchen'
     | '/admin/kol'
     | '/admin/kol-collaborations'
@@ -1118,6 +1295,12 @@ export interface FileRouteTypes {
     | '/admin/booking/orders'
     | '/admin/booking/settings'
     | '/admin/finance/shift-reports'
+    | '/admin/karyawan/cuti-izin'
+    | '/admin/karyawan/data'
+    | '/admin/karyawan/kehadiran'
+    | '/admin/karyawan/laporan'
+    | '/admin/karyawan/onboarding'
+    | '/admin/karyawan/payroll'
     | '/admin/operational-team/attendance'
     | '/admin/operational-team/karyawan'
     | '/admin/operational-team/payroll'
@@ -1137,6 +1320,7 @@ export interface FileRouteTypes {
     | '/register/selesai/$registrationNumber'
     | '/admin/booking/'
     | '/admin/finance/'
+    | '/admin/karyawan/'
     | '/admin/operational-team/'
     | '/admin/order-mie-yamin/'
     | '/admin/recipe/'
@@ -1145,6 +1329,10 @@ export interface FileRouteTypes {
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
     | '/admin/booking/settings/options'
+    | '/admin/karyawan/kehadiran/jadwal'
+    | '/admin/karyawan/kehadiran/pengaturan'
+    | '/admin/karyawan/onboarding/kontrak'
+    | '/admin/karyawan/payroll/slip'
     | '/admin/operational-team/attendance/jadwal'
     | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/karyawan/data'
@@ -1152,6 +1340,9 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
     | '/admin/order-mie-yamin/settings/notifications'
+    | '/admin/karyawan/kehadiran/'
+    | '/admin/karyawan/onboarding/'
+    | '/admin/karyawan/payroll/'
     | '/admin/operational-team/attendance/'
     | '/admin/operational-team/payroll/'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1206,6 +1397,9 @@ export interface FileRouteTypes {
     | '/admin/booking/orders'
     | '/admin/booking/settings'
     | '/admin/finance/shift-reports'
+    | '/admin/karyawan/cuti-izin'
+    | '/admin/karyawan/data'
+    | '/admin/karyawan/laporan'
     | '/admin/operational-team/karyawan'
     | '/admin/operational-team/register'
     | '/admin/operational-team/rekrutmen'
@@ -1223,6 +1417,7 @@ export interface FileRouteTypes {
     | '/register/selesai/$registrationNumber'
     | '/admin/booking'
     | '/admin/finance'
+    | '/admin/karyawan'
     | '/admin/operational-team'
     | '/admin/order-mie-yamin'
     | '/admin/recipe'
@@ -1230,6 +1425,10 @@ export interface FileRouteTypes {
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
     | '/admin/booking/settings/options'
+    | '/admin/karyawan/kehadiran/jadwal'
+    | '/admin/karyawan/kehadiran/pengaturan'
+    | '/admin/karyawan/onboarding/kontrak'
+    | '/admin/karyawan/payroll/slip'
     | '/admin/operational-team/attendance/jadwal'
     | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/karyawan/data'
@@ -1237,6 +1436,9 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
     | '/admin/order-mie-yamin/settings/notifications'
+    | '/admin/karyawan/kehadiran'
+    | '/admin/karyawan/onboarding'
+    | '/admin/karyawan/payroll'
     | '/admin/operational-team/attendance'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1266,6 +1468,7 @@ export interface FileRouteTypes {
     | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
+    | '/admin/karyawan'
     | '/admin/kitchen'
     | '/admin/kol'
     | '/admin/kol-collaborations'
@@ -1299,6 +1502,12 @@ export interface FileRouteTypes {
     | '/admin/booking/orders'
     | '/admin/booking/settings'
     | '/admin/finance/shift-reports'
+    | '/admin/karyawan/cuti-izin'
+    | '/admin/karyawan/data'
+    | '/admin/karyawan/kehadiran'
+    | '/admin/karyawan/laporan'
+    | '/admin/karyawan/onboarding'
+    | '/admin/karyawan/payroll'
     | '/admin/operational-team/attendance'
     | '/admin/operational-team/karyawan'
     | '/admin/operational-team/payroll'
@@ -1318,6 +1527,7 @@ export interface FileRouteTypes {
     | '/register/selesai/$registrationNumber'
     | '/admin/booking/'
     | '/admin/finance/'
+    | '/admin/karyawan/'
     | '/admin/operational-team/'
     | '/admin/order-mie-yamin/'
     | '/admin/recipe/'
@@ -1326,6 +1536,10 @@ export interface FileRouteTypes {
     | '/admin/booking/settings/form'
     | '/admin/booking/settings/menu'
     | '/admin/booking/settings/options'
+    | '/admin/karyawan/kehadiran/jadwal'
+    | '/admin/karyawan/kehadiran/pengaturan'
+    | '/admin/karyawan/onboarding/kontrak'
+    | '/admin/karyawan/payroll/slip'
     | '/admin/operational-team/attendance/jadwal'
     | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/karyawan/data'
@@ -1333,6 +1547,9 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
     | '/admin/order-mie-yamin/settings/notifications'
+    | '/admin/karyawan/kehadiran/'
+    | '/admin/karyawan/onboarding/'
+    | '/admin/karyawan/payroll/'
     | '/admin/operational-team/attendance/'
     | '/admin/operational-team/payroll/'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1589,6 +1806,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminKitchenRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/karyawan': {
+      id: '/admin/karyawan'
+      path: '/karyawan'
+      fullPath: '/admin/karyawan'
+      preLoaderRoute: typeof AdminKaryawanRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/inventory': {
       id: '/admin/inventory'
       path: '/inventory'
@@ -1700,6 +1924,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/operational-team/'
       preLoaderRoute: typeof AdminOperationalTeamIndexRouteImport
       parentRoute: typeof AdminOperationalTeamRoute
+    }
+    '/admin/karyawan/': {
+      id: '/admin/karyawan/'
+      path: '/'
+      fullPath: '/admin/karyawan/'
+      preLoaderRoute: typeof AdminKaryawanIndexRouteImport
+      parentRoute: typeof AdminKaryawanRoute
     }
     '/admin/finance/': {
       id: '/admin/finance/'
@@ -1834,6 +2065,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamAttendanceRouteImport
       parentRoute: typeof AdminOperationalTeamRoute
     }
+    '/admin/karyawan/payroll': {
+      id: '/admin/karyawan/payroll'
+      path: '/payroll'
+      fullPath: '/admin/karyawan/payroll'
+      preLoaderRoute: typeof AdminKaryawanPayrollRouteImport
+      parentRoute: typeof AdminKaryawanRoute
+    }
+    '/admin/karyawan/onboarding': {
+      id: '/admin/karyawan/onboarding'
+      path: '/onboarding'
+      fullPath: '/admin/karyawan/onboarding'
+      preLoaderRoute: typeof AdminKaryawanOnboardingRouteImport
+      parentRoute: typeof AdminKaryawanRoute
+    }
+    '/admin/karyawan/laporan': {
+      id: '/admin/karyawan/laporan'
+      path: '/laporan'
+      fullPath: '/admin/karyawan/laporan'
+      preLoaderRoute: typeof AdminKaryawanLaporanRouteImport
+      parentRoute: typeof AdminKaryawanRoute
+    }
+    '/admin/karyawan/kehadiran': {
+      id: '/admin/karyawan/kehadiran'
+      path: '/kehadiran'
+      fullPath: '/admin/karyawan/kehadiran'
+      preLoaderRoute: typeof AdminKaryawanKehadiranRouteImport
+      parentRoute: typeof AdminKaryawanRoute
+    }
+    '/admin/karyawan/data': {
+      id: '/admin/karyawan/data'
+      path: '/data'
+      fullPath: '/admin/karyawan/data'
+      preLoaderRoute: typeof AdminKaryawanDataRouteImport
+      parentRoute: typeof AdminKaryawanRoute
+    }
+    '/admin/karyawan/cuti-izin': {
+      id: '/admin/karyawan/cuti-izin'
+      path: '/cuti-izin'
+      fullPath: '/admin/karyawan/cuti-izin'
+      preLoaderRoute: typeof AdminKaryawanCutiIzinRouteImport
+      parentRoute: typeof AdminKaryawanRoute
+    }
     '/admin/finance/shift-reports': {
       id: '/admin/finance/shift-reports'
       path: '/shift-reports'
@@ -1911,6 +2184,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamAttendanceIndexRouteImport
       parentRoute: typeof AdminOperationalTeamAttendanceRoute
     }
+    '/admin/karyawan/payroll/': {
+      id: '/admin/karyawan/payroll/'
+      path: '/'
+      fullPath: '/admin/karyawan/payroll/'
+      preLoaderRoute: typeof AdminKaryawanPayrollIndexRouteImport
+      parentRoute: typeof AdminKaryawanPayrollRoute
+    }
+    '/admin/karyawan/onboarding/': {
+      id: '/admin/karyawan/onboarding/'
+      path: '/'
+      fullPath: '/admin/karyawan/onboarding/'
+      preLoaderRoute: typeof AdminKaryawanOnboardingIndexRouteImport
+      parentRoute: typeof AdminKaryawanOnboardingRoute
+    }
+    '/admin/karyawan/kehadiran/': {
+      id: '/admin/karyawan/kehadiran/'
+      path: '/'
+      fullPath: '/admin/karyawan/kehadiran/'
+      preLoaderRoute: typeof AdminKaryawanKehadiranIndexRouteImport
+      parentRoute: typeof AdminKaryawanKehadiranRoute
+    }
     '/admin/order-mie-yamin/settings/notifications': {
       id: '/admin/order-mie-yamin/settings/notifications'
       path: '/notifications'
@@ -1959,6 +2253,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/operational-team/attendance/jadwal'
       preLoaderRoute: typeof AdminOperationalTeamAttendanceJadwalRouteImport
       parentRoute: typeof AdminOperationalTeamAttendanceRoute
+    }
+    '/admin/karyawan/payroll/slip': {
+      id: '/admin/karyawan/payroll/slip'
+      path: '/slip'
+      fullPath: '/admin/karyawan/payroll/slip'
+      preLoaderRoute: typeof AdminKaryawanPayrollSlipRouteImport
+      parentRoute: typeof AdminKaryawanPayrollRoute
+    }
+    '/admin/karyawan/onboarding/kontrak': {
+      id: '/admin/karyawan/onboarding/kontrak'
+      path: '/kontrak'
+      fullPath: '/admin/karyawan/onboarding/kontrak'
+      preLoaderRoute: typeof AdminKaryawanOnboardingKontrakRouteImport
+      parentRoute: typeof AdminKaryawanOnboardingRoute
+    }
+    '/admin/karyawan/kehadiran/pengaturan': {
+      id: '/admin/karyawan/kehadiran/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/admin/karyawan/kehadiran/pengaturan'
+      preLoaderRoute: typeof AdminKaryawanKehadiranPengaturanRouteImport
+      parentRoute: typeof AdminKaryawanKehadiranRoute
+    }
+    '/admin/karyawan/kehadiran/jadwal': {
+      id: '/admin/karyawan/kehadiran/jadwal'
+      path: '/jadwal'
+      fullPath: '/admin/karyawan/kehadiran/jadwal'
+      preLoaderRoute: typeof AdminKaryawanKehadiranJadwalRouteImport
+      parentRoute: typeof AdminKaryawanKehadiranRoute
     }
     '/admin/booking/settings/options': {
       id: '/admin/booking/settings/options'
@@ -2073,6 +2395,78 @@ const AdminBookingRouteChildren: AdminBookingRouteChildren = {
 
 const AdminBookingRouteWithChildren = AdminBookingRoute._addFileChildren(
   AdminBookingRouteChildren,
+)
+
+interface AdminKaryawanKehadiranRouteChildren {
+  AdminKaryawanKehadiranJadwalRoute: typeof AdminKaryawanKehadiranJadwalRoute
+  AdminKaryawanKehadiranPengaturanRoute: typeof AdminKaryawanKehadiranPengaturanRoute
+  AdminKaryawanKehadiranIndexRoute: typeof AdminKaryawanKehadiranIndexRoute
+}
+
+const AdminKaryawanKehadiranRouteChildren: AdminKaryawanKehadiranRouteChildren =
+  {
+    AdminKaryawanKehadiranJadwalRoute: AdminKaryawanKehadiranJadwalRoute,
+    AdminKaryawanKehadiranPengaturanRoute:
+      AdminKaryawanKehadiranPengaturanRoute,
+    AdminKaryawanKehadiranIndexRoute: AdminKaryawanKehadiranIndexRoute,
+  }
+
+const AdminKaryawanKehadiranRouteWithChildren =
+  AdminKaryawanKehadiranRoute._addFileChildren(
+    AdminKaryawanKehadiranRouteChildren,
+  )
+
+interface AdminKaryawanOnboardingRouteChildren {
+  AdminKaryawanOnboardingKontrakRoute: typeof AdminKaryawanOnboardingKontrakRoute
+  AdminKaryawanOnboardingIndexRoute: typeof AdminKaryawanOnboardingIndexRoute
+}
+
+const AdminKaryawanOnboardingRouteChildren: AdminKaryawanOnboardingRouteChildren =
+  {
+    AdminKaryawanOnboardingKontrakRoute: AdminKaryawanOnboardingKontrakRoute,
+    AdminKaryawanOnboardingIndexRoute: AdminKaryawanOnboardingIndexRoute,
+  }
+
+const AdminKaryawanOnboardingRouteWithChildren =
+  AdminKaryawanOnboardingRoute._addFileChildren(
+    AdminKaryawanOnboardingRouteChildren,
+  )
+
+interface AdminKaryawanPayrollRouteChildren {
+  AdminKaryawanPayrollSlipRoute: typeof AdminKaryawanPayrollSlipRoute
+  AdminKaryawanPayrollIndexRoute: typeof AdminKaryawanPayrollIndexRoute
+}
+
+const AdminKaryawanPayrollRouteChildren: AdminKaryawanPayrollRouteChildren = {
+  AdminKaryawanPayrollSlipRoute: AdminKaryawanPayrollSlipRoute,
+  AdminKaryawanPayrollIndexRoute: AdminKaryawanPayrollIndexRoute,
+}
+
+const AdminKaryawanPayrollRouteWithChildren =
+  AdminKaryawanPayrollRoute._addFileChildren(AdminKaryawanPayrollRouteChildren)
+
+interface AdminKaryawanRouteChildren {
+  AdminKaryawanCutiIzinRoute: typeof AdminKaryawanCutiIzinRoute
+  AdminKaryawanDataRoute: typeof AdminKaryawanDataRoute
+  AdminKaryawanKehadiranRoute: typeof AdminKaryawanKehadiranRouteWithChildren
+  AdminKaryawanLaporanRoute: typeof AdminKaryawanLaporanRoute
+  AdminKaryawanOnboardingRoute: typeof AdminKaryawanOnboardingRouteWithChildren
+  AdminKaryawanPayrollRoute: typeof AdminKaryawanPayrollRouteWithChildren
+  AdminKaryawanIndexRoute: typeof AdminKaryawanIndexRoute
+}
+
+const AdminKaryawanRouteChildren: AdminKaryawanRouteChildren = {
+  AdminKaryawanCutiIzinRoute: AdminKaryawanCutiIzinRoute,
+  AdminKaryawanDataRoute: AdminKaryawanDataRoute,
+  AdminKaryawanKehadiranRoute: AdminKaryawanKehadiranRouteWithChildren,
+  AdminKaryawanLaporanRoute: AdminKaryawanLaporanRoute,
+  AdminKaryawanOnboardingRoute: AdminKaryawanOnboardingRouteWithChildren,
+  AdminKaryawanPayrollRoute: AdminKaryawanPayrollRouteWithChildren,
+  AdminKaryawanIndexRoute: AdminKaryawanIndexRoute,
+}
+
+const AdminKaryawanRouteWithChildren = AdminKaryawanRoute._addFileChildren(
+  AdminKaryawanRouteChildren,
 )
 
 interface AdminOperationalTeamAttendanceRouteChildren {
@@ -2283,6 +2677,7 @@ interface AdminRouteRouteChildren {
   AdminDjiwaRunRoute: typeof AdminDjiwaRunRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminKaryawanRoute: typeof AdminKaryawanRouteWithChildren
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminKolRoute: typeof AdminKolRoute
   AdminKolCollaborationsRoute: typeof AdminKolCollaborationsRoute
@@ -2316,6 +2711,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDjiwaRunRoute: AdminDjiwaRunRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminInventoryRoute: AdminInventoryRoute,
+  AdminKaryawanRoute: AdminKaryawanRouteWithChildren,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminKolRoute: AdminKolRoute,
   AdminKolCollaborationsRoute: AdminKolCollaborationsRoute,

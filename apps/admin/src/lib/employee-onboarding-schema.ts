@@ -637,7 +637,7 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{nama_karyawan}}": personal.fullName || "Karyawan",
 		"{{nik}}": personal.identityNumber || "-",
 		"{{tempat_lahir}}": personal.placeOfBirth || "-",
-		"{{tanggal_lahir}}": formatDateId(personal.birthDate),
+		"{{tanggal_lahir}}": formatDateId(personal.birthDate || ""),
 		"{{alamat}}": personal.address || "-",
 		"[ALAMAT_KARYAWAN]": personal.address || "-",
 		"[NAMA_LENGKAP_KARYAWAN]": personal.fullName || "Karyawan",

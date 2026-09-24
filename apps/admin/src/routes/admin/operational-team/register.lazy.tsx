@@ -36,7 +36,7 @@ function RegisterLanding() {
 			.from("employee_onboarding_applications")
 			.select("id", { count: "exact", head: true })
 			.in("status", ["pending", "needs_revision"])
-			.then(({ count }: { count: number }) => setPendingCount(count ?? 0));
+			.then(({ count }) => setPendingCount(count ?? 0));
 	}, []);
 
 	const templateCount = Object.keys(onboardingSettings.contractTemplatesByRoleId || {}).length;

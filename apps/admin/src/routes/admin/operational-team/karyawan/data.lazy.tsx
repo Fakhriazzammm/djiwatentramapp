@@ -169,7 +169,7 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 	);
 }
 
-function DataKaryawanPage() {
+export function DataKaryawanPage() {
 	const navigate = useNavigate();
 	const allStaff = useHybridPublicUsers();
 	const [searchQuery, setSearchQuery] = useState("");

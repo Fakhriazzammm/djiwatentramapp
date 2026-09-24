@@ -487,7 +487,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 							for (const shift of allShiftsData) {
 								const sd = new Date(shift.startTime);
 								if (sd.getFullYear() !== selectedYear || sd.getMonth() + 1 !== selectedMonth) continue;
-								const mb = shift.memberBonuses;
+								const mb = (shift as any).memberBonuses;
 								if (!Array.isArray(mb)) continue;
 								const myBonus = mb.find((b: any) => {
 									const bn = (b.name ?? "").toUpperCase().trim();
