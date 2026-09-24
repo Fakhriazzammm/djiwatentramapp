@@ -855,59 +855,76 @@ function AdminOrders() {
 				)}
 			</div>
 
-			<div className="sticky top-0 z-20 -mx-3 border-border border-y bg-background/95 px-3 py-2 backdrop-blur md:hidden">
-				<div className="space-y-2">
-					<div className="grid grid-cols-[1fr_120px] gap-2">
-						<div className="relative">
-							<Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-							<Input
-								className="h-9 pl-8 text-xs"
-								onChange={(e) => setSearchQuery(e.target.value)}
-								placeholder="Cari pesanan..."
-								value={searchQuery}
-							/>
-						</div>
-						<Select
-							onValueChange={(val: string | null) => val && setStatusFilter(val)}
-							value={statusFilter}
-						>
-							<SelectTrigger className="text-xs" size="sm">
-								<SelectValue placeholder="Status pembayaran" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">Semua status pembayaran</SelectItem>
-								<SelectItem value="pending">Open Bill</SelectItem>
-								<SelectItem value="paid">Lunas</SelectItem>
-								<SelectItem value="completed">Selesai</SelectItem>
-								<SelectItem value="cancelled">Batal</SelectItem>
-							</SelectContent>
-						</Select>
+			<div className="space-y-2 pb-1 md:hidden">
+				<div className="flex items-end justify-between gap-3 px-1">
+					<div>
+						<p className="font-display font-semibold text-[22px] tracking-tight">Pesanan</p>
+						<p className="text-[11px] text-muted-foreground">{totalFiltered} pesanan · {activeQuickDateLabel}</p>
 					</div>
-
-					<div className="-mx-1 overflow-x-auto">
-						<div className="flex w-max min-w-full gap-1 px-1">
+					<button
+						aria-label="Buka filter status pesanan"
+						className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors active:scale-95 active:bg-muted"
+						onClick={() => document.getElementById("orders-status-filter-mobile")?.click()}
+						type="button"
+					>
+						<Filter className="h-4 w-4" />
+					</button>
+				</div>
+				<div className="relative">
+					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						className="h-11 rounded-xl border-border bg-card pl-10 text-sm shadow-sm"
+						onChange={(e) => setSearchQuery(e.target.value)}
+						placeholder="Cari pesanan atau pelanggan"
+						value={searchQuery}
+					/>
+				</div>
+				<div className="grid grid-cols-2 gap-2">
+					<Select
+						onValueChange={(val: string | null) => val && setStatusFilter(val)}
+						value={statusFilter}
+					>
+						<SelectTrigger id="orders-status-filter-mobile" className="h-10 min-w-0 rounded-xl bg-card text-xs shadow-sm" size="sm">
+							<SelectValue className="truncate" placeholder="Status" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">Semua status</SelectItem>
+							<SelectItem value="pending">Open Bill</SelectItem>
+							<SelectItem value="paid">Lunas</SelectItem>
+							<SelectItem value="completed">Selesai</SelectItem>
+							<SelectItem value="cancelled">Dibatalkan</SelectItem>
+						</SelectContent>
+					</Select>
+					<Select value={businessFilter} onValueChange={(value: string | null) => value && setBusinessFilter(value as BusinessFilter)}>
+						<SelectTrigger className="h-10 min-w-0 rounded-xl bg-card text-xs shadow-sm" size="sm">
+							<SelectValue className="truncate" placeholder="Bisnis" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">Semua bisnis</SelectItem>
+							<SelectItem value="pos">POS Reguler</SelectItem>
+							<SelectItem value="mieyamin">Mie Yamin</SelectItem>
+							<SelectItem value="b2b">Djiwa B2B</SelectItem>
+							<SelectItem value="booking">Booking</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="-mx-1 overflow-x-auto px-1 pb-0.5" role="tablist" aria-label="Periode pesanan">
+					<div className="flex w-max gap-1.5">
+						{[{ value: "all" as QuickDateFilter, label: "Semua" }, ...quickDateFilterOptions.map((option) => ({
+							...option,
+							label: option.label.replace("Minggu ", "").replace("Bulan ", ""),
+						}))].map((option) => (
 							<Button
-								className="h-7 rounded-full px-2.5 text-[11px]"
-								onClick={() => setQuickDateFilter("all")}
+								aria-selected={quickDateFilter === option.value}
+								className="h-8 rounded-full px-3 text-[11px]"
+								key={option.value}
+								onClick={() => setQuickDateFilter(option.value)}
 								size="sm"
-								variant={quickDateFilter === "all" ? "default" : "outline"}
+								variant={quickDateFilter === option.value ? "default" : "outline"}
 							>
-								Semua
+								{option.label}
 							</Button>
-							{quickDateFilterOptions.map((option) => (
-								<Button
-									className="h-7 rounded-full px-2.5 text-[11px]"
-									key={option.value}
-									onClick={() => setQuickDateFilter(option.value)}
-									size="sm"
-									variant={
-										quickDateFilter === option.value ? "default" : "outline"
-									}
-								>
-									{option.label}
-								</Button>
-							))}
-						</div>
+						))}
 					</div>
 				</div>
 			</div>
@@ -922,7 +939,6 @@ function AdminOrders() {
 						</div>
 					) : (
 						filteredOrders?.map((order: Order) => {
-							const shiftMeta = getShiftMeta(order);
 							return (
 								<Button
 									className="h-auto w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors active:bg-muted/40"
@@ -935,50 +951,32 @@ function AdminOrders() {
 									variant="ghost"
 								>
 									<div className="flex items-start justify-between gap-3">
-										<div className="min-w-0 flex-1 space-y-1">
-											<div className="flex flex-wrap items-center gap-1.5">
-												<span className="font-bold font-mono text-[11px] text-primary">
-													{order.type === "booking" ? "BK-" : "#"}
-													{order.displayId}
+										<div className="min-w-0 flex-1">
+											<div className="flex items-start justify-between gap-2">
+												<p className="min-w-0 truncate font-semibold text-[15px] text-foreground">
+													{order.customerName || "Pelanggan Umum"}
+												</p>
+												<p className="shrink-0 font-semibold text-[15px] tabular-nums">{formatrupiah(order.totalAmount)}</p>
+											</div>
+											<div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+												<span className="truncate">{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })}</span>
+												<span aria-hidden="true">·</span>
+												<span className="shrink-0">{resolveOrderChannel(order).label}</span>
+												{order.customer_source_id && <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">Member</span>}
+											</div>
+											<div className="mt-2 flex items-center gap-1.5">
+												<span className="max-w-[52%] truncate font-mono text-[10px] text-muted-foreground">
+													{order.type === "booking" ? "BK-" : "#"}{order.displayId}
 												</span>
-												{order.type === "booking" && (
-													<Badge
-														className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[11px] text-blue-700"
-														variant="outline"
-													>
-														Booking
-													</Badge>
-												)}
-												<Badge
-													className="rounded-md px-1.5 py-0 font-normal text-[11px]"
-													variant={getStatusBadgeVariant(order.status)}
-												>
-													{getStatusLabel(order.status)}
-												</Badge>
-											</div>
-											<div className="text-[11px] text-muted-foreground">
-												{order.customerName || "Pelanggan Umum"}{order.customer_source_id && order.customer_source_id.trim() ? <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-black uppercase text-amber-700"><Star className="h-2.5 w-2.5" /> Member</span> : null} ·{" "}
-												{formatPaymentLabel({ source: order.source, paymentMethod: order.paymentMethod, paymentReceiptKind: order.paymentReceiptKind, paymentGateway: order.paymentGateway })}
-											</div>
-											<div className="text-[10px] text-muted-foreground">
-												{getOrderLocationLabel(order)} · {shiftMeta.shiftName}
-											</div>
-											<div className="text-[10px] text-muted-foreground">
-												Kasir: {shiftMeta.cashierName}
+												<span className="text-[10px] text-muted-foreground">·</span>
+												<span className="text-[10px] text-muted-foreground tabular-nums">{format(order.createdAt, "dd MMM, HH:mm", { locale: id })}</span>
 											</div>
 										</div>
-										<div className="shrink-0 text-right">
-											<p className="font-bold text-sm">
-												{formatrupiah(order.totalAmount)}
-											</p>
-										{order.customer_source_id && (
-											<span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0 text-[10px] font-black text-amber-700 uppercase tracking-wider">
-												<Star className="h-2.5 w-2.5 fill-amber-400" /> Member
-											</span>
-										)}
-											<p className="text-[10px] text-muted-foreground tabular-nums">
-												{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
-											</p>
+										<div className="flex shrink-0 flex-col items-end gap-2">
+											<Badge className="rounded-full px-2 py-0.5 text-[10px]" variant={getStatusBadgeVariant(order.status)}>
+												{getStatusLabel(order.status)}
+											</Badge>
+											<ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground/60" />
 										</div>
 									</div>
 								</Button>
