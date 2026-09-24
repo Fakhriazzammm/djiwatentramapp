@@ -947,7 +947,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	];
 
 	return (
-		<div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
+		<div className="relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background">
 			{/* Session History Sidebar */}
 			{!isPOS && (
 				<AnimatePresence>
@@ -991,7 +991,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			)}
 
 			{/* Header */}
-			<header className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-background shrink-0 z-20">
+			<header className="flex min-w-0 items-center justify-between border-border/50 border-b bg-card/95 px-3 py-2 backdrop-blur-sm shrink-0 z-20 md:px-4">
 				<div className="flex items-center gap-2.5">
 					{!isPOS && (
 						<Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={() => setShowSessionHistory(!showSessionHistory)} type="button">
@@ -1012,7 +1012,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				</div>
 				<div className="flex items-center gap-2">
 					{!isPOS && (
-						<div className="flex items-center gap-0.5 bg-muted/60 rounded-full p-0.5">
+						<div className="no-scrollbar flex max-w-[calc(100vw-7rem)] items-center gap-0.5 overflow-x-auto rounded-full bg-muted/60 p-0.5">
 							{TAB_ITEMS.map((item) => {
 								const Icon = item.icon;
 								return (
@@ -1020,7 +1020,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 										key={item.id}
 										onClick={() => setActiveTab(item.id as TabType)}
 										className={cn(
-											"flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all",
+											"flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
 											activeTab === item.id
 												? "bg-background shadow-sm text-foreground"
 												: "text-muted-foreground hover:text-foreground"
@@ -1028,7 +1028,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 										type="button"
 									>
 										<Icon className="h-3.5 w-3.5" />
-										<span className="hidden md:inline">{item.label}</span>
+										<span className="inline">{item.label}</span>
 									</button>
 								);
 							})}
@@ -1043,7 +1043,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			</header>
 
 			{/* Main Content */}
-			<main className="relative min-h-0 flex-1 overflow-hidden">
+			<main className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
 				<AnimatePresence mode="wait">
 					<motion.div
 						key={activeTab}

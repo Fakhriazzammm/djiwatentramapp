@@ -83,24 +83,24 @@ export function FinanceDashboard() {
 	const hppCogs = useHybridOrdersCogs({ startDate: range.startDate, endDate: range.endDate });
 
 	return (
-		<div className="space-y-4">
+		<div className="min-w-0 space-y-3 overflow-x-hidden md:space-y-4">
 			{/* ── Page identity and primary actions ───────────── */}
-			<section className="flex flex-col justify-between gap-4 rounded-[22px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:p-4">
+			<section className="flex min-w-0 flex-col justify-between gap-3 rounded-[22px] border border-border bg-card p-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:p-4">
 				<div>
 					<p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Kontrol finansial</p>
 					<h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Keuangan</h1>
 					<p className="mt-1 text-sm text-muted-foreground">Pantau arus kas, margin, dan laporan dalam satu alur.</p>
 				</div>
-				<div className="flex flex-wrap items-center gap-2">
+				<div className="flex min-w-0 flex-wrap items-center gap-1.5">
 					<Link
 						to="/admin/finance/transactions"
-						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<ListOrdered className="h-4 w-4" /> Transaksi
 					</Link>
 					<Link
 						to="/admin/finance/reports"
-						className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<FileBarChart className="h-4 w-4" /> Laporan
 					</Link>

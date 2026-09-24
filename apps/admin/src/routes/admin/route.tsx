@@ -1142,9 +1142,9 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 			</aside>
 
 			{/* === MAIN CONTENT === */}
-			<main className="flex flex-1 flex-col overflow-hidden bg-background">
+			<main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
 				{/* Mobile Header */}
-				<header className="flex h-14 shrink-0 items-center justify-between border-border border-b px-4 md:px-4">
+				<header className="flex h-14 shrink-0 items-center justify-between border-border border-b bg-card/95 px-4 backdrop-blur-sm md:px-4">
 					{/* Mobile: Show page title + store brand */}
 					<div className="flex items-center gap-3">
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
@@ -1215,7 +1215,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 
 				{/* Page Content - AI Chat and Operational views use internal scroll, others use page scroll */}
 				<div
-					className={(isAIChat || isOperational) ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto min-h-0 p-3 pb-20 md:p-4 md:pb-4"}
+					className={(isAIChat || isOperational) ? "min-w-0 flex-1 overflow-hidden" : "min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
 				>
 					{isAccessDenied ? (
 						<PermissionDenied onBack={() => navigate({ to: "/admin" })} />
