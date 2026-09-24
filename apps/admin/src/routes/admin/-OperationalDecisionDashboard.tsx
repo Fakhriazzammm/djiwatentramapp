@@ -63,7 +63,7 @@ export default function OperationalDecisionDashboard() {
   const maxPayment = Math.max(...topPayments.map((item) => item.amount), 1);
   const averageOrder = p.today.orders ? p.today.revenue / p.today.orders : 0;
 
-  return <main className="min-h-full bg-[#f5f5f7] px-3 py-3 text-[#1d1d1f] sm:px-5 sm:py-4"><div className="mx-auto max-w-[1440px] space-y-3">
+  return <main className="min-h-full bg-white px-3 py-3 text-[#1d1d1f] sm:px-5 sm:py-4"><div className="mx-auto max-w-[1440px] space-y-3">
     <header className="flex min-h-11 items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#0b2342] text-white"><BarChart3 className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-bold tracking-[-.025em] sm:text-lg">Pusat Pantau Operasional</h1><Badge className="hidden rounded-full bg-[#eaf8ef] px-2 py-0.5 text-[10px] font-semibold text-[#248a3d] sm:inline-flex">LIVE</Badge></div><p className="truncate text-[11px] text-[#6e6e73]">Djiwa Tentram Cafe &amp; Resto · keputusan berbasis data · WIB</p></div></div><Button className="h-9 shrink-0 rounded-xl bg-white px-3 text-xs text-[#1d1d1f] shadow-sm hover:bg-white/80" onClick={() => triggerHybridRefresh()} type="button" variant="outline"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Refresh</Button></header>
 
     <section aria-label="Perbandingan periode" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"><PeriodTile data={p.today} emphasis label="Hari ini" previous={p.yesterday} />{periodItems.slice(1).map(([key, label]) => <PeriodTile data={p[key as PeriodKey]} key={key} label={label} />)}</section>
