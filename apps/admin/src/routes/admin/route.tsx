@@ -69,7 +69,7 @@ export const Route = createFileRoute("/admin")({
 
 // Page title map for mobile header
 const PAGE_TITLES: Record<string, string> = {
-	"/admin": "Dasbor",
+	"/admin": "Dashboard",
 	"/admin/products": "Produk",
 	"/admin/recipe": "Resep",
 	"/admin/recipe/hpp": "HPP",
@@ -283,6 +283,7 @@ const QUICK_MENU_SECTIONS = [
 const OPERATIONAL_PATHS = [
   "/admin/kitchen",
   "/admin/bar",
+  "/admin/customer-service",
 ];
 
 // Flat list for backward compat
@@ -407,6 +408,23 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 			}
 		}
 	}, [location.pathname, isAuthenticated, isLoading, role, isAdmin]);
+
+	const isOnOperationalPath = OPERATIONAL_PATHS.some((p) => location.pathname.startsWith(p));
+	const [isOperationalOpen, setIsOperationalOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-operational-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnOperationalPath;
+	});
+
+	useEffect(() => {
+		if (isOnOperationalPath) setIsOperationalOpen(true);
+	}, [isOnOperationalPath]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-operational-open", String(isOperationalOpen));
+	}, [isOperationalOpen]);
 
 	// Auto-open finance submenu if on a finance route
 	const isOnFinancePath = FINANCE_PATHS.some((p) =>
@@ -637,7 +655,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						activeOptions={{ exact: true }}
 						icon={<LayoutDashboard />}
 						isCollapsed={isCollapsed}
-						label="Dasbor"
+						label="Dashboard"
 						to="/admin"
 						permission="analytics:view"
 					/>
@@ -690,13 +708,33 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						to="/admin/stock-overview"
 						permission="inventory:manage"
 					/>
-					{/* OPERASIONAL */}
-					<SidebarSection isCollapsed={isCollapsed} label="Operasional" />
-					<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />
-					<DesktopNavLink icon={<Beer />} isCollapsed={isCollapsed} label="Bar" to="/admin/bar" />
-					<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
-
-					<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
+					{/* OPERASIONAL - Collapsible */}
+					{isCollapsed ? (
+						<>
+							<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />
+							<DesktopNavLink icon={<Beer />} isCollapsed={isCollapsed} label="Bar" to="/admin/bar" />
+							<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
+						</>
+					) : (
+						<>
+							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnOperationalPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsOperationalOpen(!isOperationalOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><LayoutDashboard /></span>
+								<span className="flex-1 truncate text-left">OPERASIONAL</span>
+								<motion.span animate={{ rotate: isOperationalOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>
+								{isOperationalOpen && (
+									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
+										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+											<DesktopSubNavLink icon={<ChefHat />} label="Dapur" to="/admin/kitchen" />
+											<DesktopSubNavLink icon={<Beer />} label="Bar" to="/admin/bar" />
+											<DesktopSubNavLink icon={<Bell />} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
+						</>
+					)}
 
 					{/* KARYAWAN APP - Collapsible */}
 					{isCollapsed ? (
