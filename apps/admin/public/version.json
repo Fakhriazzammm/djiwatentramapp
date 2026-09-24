@@ -1,7 +1,7 @@
 {
-  "version": "0.2.212",
-  "commitHash": "f34dc3d",
-  "message": "fix(admin): scope order status to today",
+  "version": "0.2.213",
+  "commitHash": "883cd64",
+  "message": "fix(admin): remove infrastructure label from dashboard",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T02:48:21.961Z"
+  "generatedAt": "2026-09-24T03:06:16.250Z"
 }

@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.212",
+	semantic: "0.2.213",
 	// Git/deploy commit hash (short)
-	commitHash: "f34dc3d",
-	message: "fix(admin): scope order status to today",
+	commitHash: "883cd64",
+	message: "fix(admin): remove infrastructure label from dashboard",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): scope order status to today",
+	commitMessage: "fix(admin): remove infrastructure label from dashboard",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
