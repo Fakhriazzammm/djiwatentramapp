@@ -1,7 +1,7 @@
 {
-  "version": "0.2.206",
-  "commitHash": "7fa96b1",
-  "message": "feat(admin): compact operational dashboard analytics",
+  "version": "0.2.209",
+  "commitHash": "bec478e",
+  "message": "fix(admin): derive live payment mix safely",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T02:17:39.100Z"
+  "generatedAt": "2026-09-24T02:31:53.480Z"
 }

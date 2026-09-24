@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.206",
+	semantic: "0.2.209",
 	// Git/deploy commit hash (short)
-	commitHash: "7fa96b1",
-	message: "feat(admin): compact operational dashboard analytics",
+	commitHash: "bec478e",
+	message: "fix(admin): derive live payment mix safely",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): compact operational dashboard analytics",
+	commitMessage: "fix(admin): derive live payment mix safely",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
