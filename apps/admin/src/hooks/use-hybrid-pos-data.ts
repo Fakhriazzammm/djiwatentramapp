@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import {
+	aggregateHourlySales,
+	getHourlyAnalysisRange,
+	type HourlyPeriod,
+	type HourlySalesInsight,
+} from "@/lib/hourly-transaction-analysis";
 
 // Global refresh — call triggerHybridRefresh() after any write to
 // instantly refresh ALL hybrid data hooks across the entire app.
@@ -851,6 +857,23 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 			  }))
 			: [],
 	})) as OrderRecord[];
+}
+
+async function fetchHourlyTransactions(range: { start: number; end: number }) {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_orders")
+		.select("_id,createdAt,status,totalAmount")
+		.gte("createdAt", range.start)
+		.lte("createdAt", range.end)
+		.order("createdAt", { ascending: true });
+
+	if (error) throw error;
+	return (data ?? []).map((row: any) => ({
+		createdAt: Number(row.createdAt ?? 0),
+		status: row.status ?? null,
+		totalAmount: Number(row.totalAmount ?? 0),
+	}));
 }
 
 async function fetchInventory() {
@@ -2136,6 +2159,19 @@ export function useHybridOrders(options?: { status?: string; limit?: number; ref
 			: { tables: ['orders', 'order_items'] }
 	);
 	return supabaseData as OrderRecord[] | undefined;
+}
+
+export function useHybridHourlySales(period: HourlyPeriod = "7d", refreshTrigger?: number): HourlySalesInsight | null | undefined {
+	const range = getHourlyAnalysisRange(period);
+	const supabaseData = useSupabaseValue(
+		`hourly-transactions:${period}:${range.start}:${range.end}`,
+		async () => aggregateHourlySales(await fetchHourlyTransactions(range), range),
+		[period, range.start, range.end],
+		refreshTrigger !== undefined
+			? { refreshTrigger, tables: ["orders"] }
+			: { tables: ["orders"] },
+	);
+	return supabaseData as HourlySalesInsight | null | undefined;
 }
 
 export function useHybridInventory(refreshTrigger?: number) {
