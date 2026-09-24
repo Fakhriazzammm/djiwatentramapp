@@ -98,12 +98,19 @@ export function aggregateHourlySales(
 		sampleDates.add(getWibDateKey(timestamp));
 	}
 
+	const isSingleDayRange = range
+		? range.end - range.start + 1 <= DAY_MS
+		: sampleDates.size <= 1;
+
 	return {
 		points,
 		sampleDays: sampleDates.size,
 		totalSettledOrders,
 		totalSettledRevenue,
-		isSparse: totalSettledOrders < 3 || sampleDates.size < 2,
+		// A one-day filter should not be marked sparse merely because it
+		// cannot contain two calendar days. For multi-day periods, coverage
+		// across at least two days remains a useful confidence signal.
+		isSparse: totalSettledOrders < 3 || (!isSingleDayRange && sampleDates.size < 2),
 	};
 }
 

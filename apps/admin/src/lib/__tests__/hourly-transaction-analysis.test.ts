@@ -26,6 +26,21 @@ describe("hourly transaction analysis", () => {
 		expect(result.sampleDays).toBe(1);
 	});
 
+	it("does not mark a sufficiently populated single-day filter as sparse", () => {
+		const result = aggregateHourlySales(
+			Array.from({ length: 29 }, (_, index) => ({
+				createdAt: wib(`2026-09-24T${String(5 + (index % 10)).padStart(2, "0")}:00:00.000Z`),
+				status: "paid",
+				totalAmount: 50_000,
+			})),
+			getHourlyAnalysisDateRange("2026-09-24") ?? undefined,
+		);
+
+		expect(result.totalSettledOrders).toBe(29);
+		expect(result.sampleDays).toBe(1);
+		expect(result.isSparse).toBe(false);
+	});
+
 	it("returns peak, quiet, and contiguous active range without selecting empty hours as quiet", () => {
 		const result = aggregateHourlySales([
 			{ createdAt: wib("2026-09-24T04:00:00.000Z"), status: "paid", totalAmount: 100_000 },
@@ -37,7 +52,6 @@ describe("hourly transaction analysis", () => {
 		expect(getQuietPoint(result.points)?.hour).toBe(11);
 		expect(getPeakRange(result.points)).toEqual({ startHour: 11, endHour: 12 });
 	});
-
 	it("creates bounded WIB range for a selected calendar date and rejects invalid dates", () => {
 		const range = getHourlyAnalysisDateRange("2026-09-24");
 		if (!range) throw new Error("expected valid date range");
