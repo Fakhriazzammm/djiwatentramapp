@@ -1,7 +1,7 @@
 {
-  "version": "0.2.191",
-  "commitHash": "558686c",
-  "message": "refactor(kol): focus creator network on feed",
+  "version": "0.2.193",
+  "commitHash": "abfa3ea",
+  "message": "fix(admin): clarify employee dashboard label",
   "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T00:31:47.135Z"
+  "generatedAt": "2026-09-24T00:33:03.553Z"
 }

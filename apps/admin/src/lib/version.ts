@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.191",
+	semantic: "0.2.193",
 	// Git/deploy commit hash (short)
-	commitHash: "558686c",
-	message: "refactor(kol): focus creator network on feed",
+	commitHash: "abfa3ea",
+	message: "fix(admin): clarify employee dashboard label",
 	// Commit subject for the update prompt
-	commitMessage: "refactor(kol): focus creator network on feed",
+	commitMessage: "fix(admin): clarify employee dashboard label",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
