@@ -65,17 +65,18 @@ function boundedLimit(value: string | undefined) {
 function timelineType(value: string | undefined) {
   return !value || value === "all" ? null : TIMELINE_TYPES.includes(value as TimelineType) ? value : undefined;
 }
+const publicUsername = (value: unknown) => String(value ?? "").trim().replace(/^@+/, "");
 function safeTimelineItem(row: any) {
   return {
     id: Number(row.id), type: row.post_type, title: row.title, body: row.body || "",
     mediaUrl: row.media_url ?? null, thumbnailUrl: row.thumbnail_url ?? null,
     publishedAt: row.published_at, pinnedAt: row.pinned_at ?? null,
-    creator: { username: row.username, displayName: row.display_name, avatarUrl: row.avatar_url ?? null, category: row.category ?? null, location: row.location ?? null },
+    creator: { username: publicUsername(row.username), displayName: row.display_name, avatarUrl: row.avatar_url ?? null, category: row.category ?? null, location: row.location ?? null },
     source: row.source_entity_type && row.source_entity_id ? { type: row.source_entity_type, id: String(row.source_entity_id) } : null,
   };
 }
 function safeCreator(row: any) {
-  return { id: row.source_id, username: row.username ?? row.slug, displayName: row.display_name ?? row.name, avatarUrl: row.avatar_url ?? null, category: row.category ?? null, location: row.location ?? null, bio: row.bio ?? null, availability: row.public_availability && row.public_availability !== "not_set" ? { status: row.public_availability, label: row.availability_label ?? null } : null, portfolioCount: Number(row.portfolio_count ?? 0) };
+  return { id: row.source_id, username: publicUsername(row.username ?? row.slug), displayName: row.display_name ?? row.name, avatarUrl: row.avatar_url ?? null, category: row.category ?? null, location: row.location ?? null, bio: row.bio ?? null, availability: row.public_availability && row.public_availability !== "not_set" ? { status: row.public_availability, label: row.availability_label ?? null } : null, portfolioCount: Number(row.portfolio_count ?? 0) };
 }
 
 /** Inserts one explicitly approved source event; callers must perform source gates first. */
@@ -372,7 +373,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     }
     if (!row) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
     const payload = row.data && typeof row.data === "object" ? row.data : {};
-    return json(c, { success: true, data: { id: row.id, name: row.name, username: row.username, avatar_url: row.avatar_url, location: row.location, category: row.category, bio: row.bio, public_availability: row.public_availability ?? "not_set", availability_label: row.availability_label ?? null, platforms: Array.isArray(payload.platforms) ? payload.platforms.map((p: any) => ({ ...p, profile_url: p.profileUrl })) : [], portfolio: Array.isArray(payload.portfolio) ? payload.portfolio.map((p: any) => ({ ...p, content_url: p.contentUrl, thumbnail_url: p.thumbnailUrl, published_at: p.publishedAt })) : [], badges: payload.badges ?? [], badge_names: Array.isArray(payload.badges) ? payload.badges.map((b: any) => b.name) : [] } });
+    return json(c, { success: true, data: { id: row.id, name: row.name, username: publicUsername(row.username), avatar_url: row.avatar_url, location: row.location, category: row.category, bio: row.bio, public_availability: row.public_availability ?? "not_set", availability_label: row.availability_label ?? null, platforms: Array.isArray(payload.platforms) ? payload.platforms.map((p: any) => ({ ...p, profile_url: p.profileUrl })) : [], portfolio: Array.isArray(payload.portfolio) ? payload.portfolio.map((p: any) => ({ ...p, content_url: p.contentUrl, thumbnail_url: p.thumbnailUrl, published_at: p.publishedAt })) : [], badges: payload.badges ?? [], badge_names: Array.isArray(payload.badges) ? payload.badges.map((b: any) => b.name) : [] } });
   });
 
   app.get("/api/kol/portal/timeline", async (c) => {
