@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.210",
+	semantic: "0.2.212",
 	// Git/deploy commit hash (short)
-	commitHash: "40ed4d8",
-	message: "fix(admin): mount decision dashboard route",
+	commitHash: "f34dc3d",
+	message: "fix(admin): scope order status to today",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): mount decision dashboard route",
+	commitMessage: "fix(admin): scope order status to today",
 	// Build timestamp
 	buildDate: "2026-09-24",
 	// Full version string for display
