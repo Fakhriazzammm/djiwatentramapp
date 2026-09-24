@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import EmployeeDashboard from "@/components/karyawan/EmployeeDashboard";
+import WorkforceDashboard from "@/components/karyawan/WorkforceDashboard";
 
 export const Route = createLazyFileRoute("/admin/karyawan/")({
-  component: EmployeeDashboard,
+  component: WorkforceDashboard,
 });
