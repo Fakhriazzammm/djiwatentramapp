@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { ArrowDown, ArrowUp, ArrowUpDown, CircleDot, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet, Download, FileSpreadsheet, FileText, Mail, Contact } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CircleDot, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
@@ -15,9 +15,7 @@ import * as XLSX from "xlsx";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuItem,
 	DropdownMenuLabel,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -588,23 +586,20 @@ function AdminCustomers() {
 								</button>
 							)}
 						/>
-						<DropdownMenuContent align="end" className="w-56">
-							<DropdownMenuLabel className="text-[11px]">Export {selectedCustomers.length ? `${selectedCustomers.length} dipilih` : `${sortedCustomers.length} terlihat`}</DropdownMenuLabel>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "xlsx")}><Mail className="mr-2 h-4 w-4" /><span>Email · Excel</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "csv")}><Mail className="mr-2 h-4 w-4" /><span>Email · CSV</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "vcf")}><Mail className="mr-2 h-4 w-4" /><span>Email · VCF</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "pdf")}><Mail className="mr-2 h-4 w-4" /><span>Email · PDF</span></DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "xlsx")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · Excel</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "csv")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · CSV</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "vcf")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · VCF</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "pdf")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · PDF</span></DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "xlsx")}><FileSpreadsheet className="mr-2 h-4 w-4" /><span>Semua data · Excel</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "csv")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · CSV</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "vcf")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · VCF</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "pdf")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · PDF</span></DropdownMenuItem>
+						<DropdownMenuContent align="end" side="bottom" sideOffset={6} className="w-[276px] p-2">
+							<DropdownMenuLabel className="px-2 py-1 text-[11px]">Export {selectedCustomers.length ? `${selectedCustomers.length} dipilih` : `${sortedCustomers.length} terlihat`}</DropdownMenuLabel>
+							<div className="space-y-1.5">
+								{(["email", "phone", "full"] as const).map((mode) => (
+									<div key={mode} className="rounded-lg bg-muted/40 px-2 py-1.5">
+										<p className="mb-1 text-[10px] font-bold text-muted-foreground">{mode === "email" ? "Email" : mode === "phone" ? "Nomor telepon" : "Semua data"}</p>
+										<div className="grid grid-cols-4 gap-1">
+											{(["xlsx", "csv", "vcf", "pdf"] as const).map((formatType) => (
+												<button key={formatType} type="button" onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, mode, formatType)} className="h-7 rounded-md border border-border bg-background px-1 text-[10px] font-bold uppercase text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{formatType === "xlsx" ? "Excel" : formatType}</button>
+											))}
+										</div>
+									</div>
+								))}
+							</div>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
