@@ -407,7 +407,7 @@ function AdminDiscountsPage() {
 	}, [discounts, getPromoStatus]);
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 min-h-app animate-in bg-[#f6f8fb] duration-500">
+		<div className="fade-in slide-in-from-bottom-4 min-h-app animate-in bg-white duration-500">
 			{/* Header Section */}
 			<div className="mb-4 md:mb-8">
 				<div className="mb-4 flex flex-wrap items-start justify-between gap-3 md:mb-6 md:gap-4">
