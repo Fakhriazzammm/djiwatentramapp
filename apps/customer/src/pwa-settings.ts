@@ -9,6 +9,6 @@ export const customerPwaSettings = {
 	"background_color": "#ffffff",
 	"start_url": "/djiwatentram",
 	"orientation": "portrait",
-	"icon192": "/pwa-app-192.png",
-	"icon512": "/pwa-app-512.png"
+	"icon192": "/pwa-djiwa-192.png",
+	"icon512": "/pwa-djiwa-512.png"
 };

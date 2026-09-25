@@ -49,8 +49,8 @@ const DEFAULT_CUSTOMER = {
 	background_color: "#ffffff",
 	start_url: "/djiwatentram",
 	orientation: "portrait",
-	icon192: "/pwa-app-192.png",
-	icon512: "/pwa-app-512.png",
+	icon192: "/pwa-djiwa-192.png",
+	icon512: "/pwa-djiwa-512.png",
 };
 
 async function main() {
@@ -81,7 +81,14 @@ async function main() {
 				posPwa = { ...DEFAULT_POS, ...raw.posPwa, orientation: "portrait" };
 			}
 			if (raw?.customerPwa) {
-				customerPwa = { ...DEFAULT_CUSTOMER, ...raw.customerPwa };
+				// Customer PWA selalu memakai identitas Djiwa Tentram yang dibundel.
+				// Setting database lama tidak boleh mengganti ikon brand resmi.
+				customerPwa = {
+					...DEFAULT_CUSTOMER,
+					...raw.customerPwa,
+					icon192: DEFAULT_CUSTOMER.icon192,
+					icon512: DEFAULT_CUSTOMER.icon512,
+				};
 			}
 			console.log("✓ PWA settings fetched from Supabase");
 		} catch (err) {
