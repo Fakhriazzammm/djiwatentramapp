@@ -29,6 +29,10 @@ export function useSupabaseLiveValue<T>(
 			return;
 		}
 
+		// Do not keep rendering the previous period while a new range is loading.
+		// Without this reset, switching 7d → 30d can look unchanged until the
+		// request completes, and stale PWA/client state makes the symptom worse.
+		setData(undefined);
 		const supabase = createClient();
 		const schemas = options?.realtimeSchemas?.length
 			? options.realtimeSchemas

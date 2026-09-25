@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	getHourlyAnalysisDateRange,
+	getHourlyAnalysisRange,
 	getPeakPoint,
 	getPeakRange,
 	getPreviousHourlyAnalysisRange,
@@ -112,6 +113,7 @@ export default function HourlyTransactionAnalysis() {
 	const dateKey = filterMode === "date" && selectedDate ? selectedDate : undefined;
 	const insight = useHybridHourlySales(period, undefined, dateKey, filterMode === "range" && customRange ? { startDate: customRange.startDate, endDate: customRange.endDate } : undefined);
 	const previousRange = customRange ? getPreviousHourlyAnalysisRange(customRange) : null;
+	const analysisRange = customRange ?? getHourlyAnalysisRange(period);
 	const comparison = useHybridHourlySales("today", undefined, undefined, previousRange ? { startDate: previousRange.startDate, endDate: previousRange.endDate } : undefined);
 	const peak = useMemo(() => insight ? getPeakPoint(insight.points, metric) : null, [insight, metric]);
 	const quiet = useMemo(() => insight ? getQuietPoint(insight.points) : null, [insight]);
@@ -128,7 +130,7 @@ export default function HourlyTransactionAnalysis() {
 	const chartTitle = metric === "orders" ? "Order settled per jam" : "Revenue settled per jam";
 	const metricUnit = metric === "orders" ? "Jumlah order" : "Revenue (Rp)";
 	const peakContribution = peak && insight?.totalSettledOrders ? metric === "orders" ? (peak.orderCount / insight.totalSettledOrders) * 100 : insight.totalSettledRevenue ? (peak.revenue / insight.totalSettledRevenue) * 100 : 0 : 0;
-	const dateLabel = customRange ? customRange.startDate === customRange.endDate ? formatDateWIB(customRange.start) : `${formatDateWIB(customRange.start)} – ${formatDateWIB(customRange.end)}` : null;
+	const dateLabel = `${formatDateWIB(analysisRange.start)} – ${formatDateWIB(analysisRange.end)}`;
 	const rangeError = filterMode === "range" && rangeStart && rangeEnd && !customRange;
 	const comparisonDelta = insight && comparison && metric === "orders" ? insight.totalSettledOrders - comparison.totalSettledOrders : insight && comparison ? insight.totalSettledRevenue - comparison.totalSettledRevenue : null;
 
