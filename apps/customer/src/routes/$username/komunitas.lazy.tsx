@@ -87,7 +87,6 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
             <button type="button" className="flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-110 hover:text-[#3156a3]" aria-label="Buka komentar postingan" onClick={() => onOpen(post)}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{post.commentCount}</span></button>
           </div>
           {likeError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{likeError}</p> : null}
-          {likeSuccess ? <p role="status" className="mt-2 text-xs font-semibold text-emerald-600">{liked ? "Suka tersimpan" : "Suka dibatalkan"}</p> : null}
         </div>
       </div>
     </article>
