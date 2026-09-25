@@ -586,7 +586,7 @@ function AdminCustomers() {
 								</button>
 							)}
 						/>
-						<DropdownMenuContent align="end" side="bottom" sideOffset={6} className="w-[276px] p-2">
+						<DropdownMenuContent align="end" side="bottom" sideOffset={6} style={{ zIndex: 9999 }} className="z-[9999] w-[276px] p-2">
 							<DropdownMenuLabel className="px-2 py-1 text-[11px]">Export {selectedCustomers.length ? `${selectedCustomers.length} dipilih` : `${sortedCustomers.length} terlihat`}</DropdownMenuLabel>
 							<div className="space-y-1.5">
 								{(["email", "phone", "full"] as const).map((mode) => (
