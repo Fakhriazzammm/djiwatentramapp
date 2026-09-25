@@ -3,9 +3,6 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-const DISMISSED_UNTIL_KEY = "__pwa_install_prompt_dismissed_until__";
-const DISMISS_FOR_MS = 7 * 24 * 60 * 60 * 1000;
-
 type InstallPlatform = "android" | "ios";
 
 type BeforeInstallPromptEvent = Event & {
@@ -27,19 +24,14 @@ function isIosDevice() {
 		(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
-function isDismissed() {
-	if (typeof window === "undefined") return true;
-	const dismissedUntil = Number(window.localStorage.getItem(DISMISSED_UNTIL_KEY) || 0);
-	return dismissedUntil > Date.now();
-}
-
 export function PwaInstallPrompt() {
 	const [platform, setPlatform] = useState<InstallPlatform | null>(null);
 	const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 	const [isInstalling, setIsInstalling] = useState(false);
+	const [isMinimized, setIsMinimized] = useState(false);
 
 	useEffect(() => {
-		if (isStandaloneMode() || isDismissed()) return;
+		if (isStandaloneMode()) return;
 
 		const handleBeforeInstallPrompt = (event: Event) => {
 			event.preventDefault();
@@ -50,7 +42,7 @@ export function PwaInstallPrompt() {
 		const handleAppInstalled = () => {
 			setPlatform(null);
 			setDeferredPrompt(null);
-			window.localStorage.removeItem(DISMISSED_UNTIL_KEY);
+			setIsMinimized(false);
 		};
 
 		window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -74,11 +66,9 @@ export function PwaInstallPrompt() {
 	if (!platform) return null;
 
 	const dismiss = () => {
-		window.localStorage.setItem(
-			DISMISSED_UNTIL_KEY,
-			String(Date.now() + DISMISS_FOR_MS),
-		);
-		setPlatform(null);
+		// Keep a quiet launcher visible so the suggestion remains available
+		// until installation, without covering the user's workspace.
+		setIsMinimized(true);
 	};
 
 	const installAndroid = async () => {
@@ -86,13 +76,32 @@ export function PwaInstallPrompt() {
 		setIsInstalling(true);
 		try {
 			await deferredPrompt.prompt();
-			await deferredPrompt.userChoice;
-			setPlatform(null);
-			setDeferredPrompt(null);
+			const choice = await deferredPrompt.userChoice;
+			if (choice.outcome === "accepted") {
+				setPlatform(null);
+				setDeferredPrompt(null);
+			} else {
+				setIsMinimized(true);
+			}
 		} finally {
 			setIsInstalling(false);
 		}
 	};
+
+	if (isMinimized) {
+		return (
+			<button
+				type="button"
+				className="fixed bottom-4 right-3 z-[70] inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background/95 px-4 text-xs font-semibold text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:bottom-5 sm:right-5"
+				style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
+				onClick={() => setIsMinimized(false)}
+				aria-label="Buka pemasangan aplikasi"
+			>
+				<Download className="h-4 w-4 text-primary" aria-hidden="true" />
+				Pasang app
+			</button>
+		);
+	}
 
 	return (
 		<div
