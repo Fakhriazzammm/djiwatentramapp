@@ -47,8 +47,11 @@ export function getAppVersionInfo() {
 }
 `;
 
-// Write to all apps that use version.ts (skip dirs that don't exist)
-const appDirs = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan", "apps/ordermieyamin", "apps/booking", "apps/linkbio", "apps/merchandise"];
+// A package build runs with that app as cwd. Only update the current app so
+// building one app cannot make every other app report a false update.
+const allAppDirs = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan", "apps/ordermieyamin", "apps/booking", "apps/linkbio", "apps/merchandise"];
+const cwdRelative = resolve(process.cwd()).startsWith(`${rootDir}/apps/`) ? resolve(process.cwd()).slice(rootDir.length + 1) : "";
+const appDirs = cwdRelative && allAppDirs.includes(cwdRelative) ? [cwdRelative] : allAppDirs;
 for (const dir of appDirs) {
 	const targetPath = resolve(rootDir, `${dir}/src/lib/version.ts`);
 	try {

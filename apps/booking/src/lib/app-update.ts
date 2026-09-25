@@ -4,6 +4,7 @@ export const APP_UPDATE_EVENT = "djiwa:booking-update-available";
 
 type UpdateHandler = (reloadPage?: boolean) => Promise<void> | void;
 let updateSW: UpdateHandler | undefined;
+let latestUpdateInfo: AppUpdateInfo | null = null;
 
 export function setAppUpdateHandler(handler: UpdateHandler | undefined) {
   updateSW = handler;
@@ -20,6 +21,7 @@ export type AppUpdateInfo = {
 
 export function notifyAppUpdateAvailable(info?: AppUpdateInfo) {
   if (typeof window === "undefined") return;
+  latestUpdateInfo = info ?? null;
   window.dispatchEvent(new CustomEvent(APP_UPDATE_EVENT, { detail: info }));
 }
 
@@ -31,6 +33,10 @@ export async function checkForAppUpdate() {
     const payload = await response.json() as { version?: string; commitHash?: string; commit?: string; message?: string; commitMessage?: string; buildDate?: string };
     const latestVersion = payload.version?.trim() || "";
     const latestCommit = (payload.commitHash ?? payload.commit ?? "").trim();
+    const latestBuildKey = `${latestVersion}:${latestCommit}`;
+    const appliedBuildKey = localStorage.getItem("__app_update_applied_build__");
+    if (appliedBuildKey === latestBuildKey) return null;
+    if (appliedBuildKey) localStorage.removeItem("__app_update_applied_build__");
     if ((!latestVersion || latestVersion === APP_VERSION.semantic) && (!latestCommit || latestCommit === APP_VERSION.commitHash)) return null;
     const info = { currentVersion: APP_VERSION.semantic, latestVersion, currentCommit: APP_VERSION.commitHash, latestCommit, latestMessage: (payload.message ?? payload.commitMessage)?.trim() || undefined, buildDate: payload.buildDate };
     notifyAppUpdateAvailable(info);
@@ -48,6 +54,7 @@ export function startAppUpdatePolling(intervalMs = 60_000) {
 }
 
 export async function applyAppUpdate() {
+  if (latestUpdateInfo) localStorage.setItem("__app_update_applied_build__", `${latestUpdateInfo.latestVersion}:${latestUpdateInfo.latestCommit}`);
   if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(registrations.map(async (registration) => {

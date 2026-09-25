@@ -116,7 +116,8 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
-	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
+	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion &&
+		latestUpdateInfo.currentCommit === latestUpdateInfo.latestCommit) {
 		sessionStorage.setItem("__app_update_inflight__", "1");
 		if ("serviceWorker" in navigator) {
 			navigator.serviceWorker.getRegistrations().then((regs) => {

@@ -51,10 +51,9 @@ export async function checkForAppUpdate() {
 	// SessionStorage survive refresh jadi flag ini mencegah dialog
 	// muncul kembali saat bundle baru belum ter-download.
 	const INFLIGHT_KEY = "__app_update_inflight__";
-	const APPLIED_VERSION_KEY = "__app_update_applied_version__";
+	const APPLIED_VERSION_KEY = "__app_update_applied_build__";
 
 	// Flag versi yang sudah diterapkan diverifikasi setelah payload terbaru berhasil dibaca.
-	const storedAppliedVersion = localStorage.getItem(APPLIED_VERSION_KEY);
 
 	if (sessionStorage.getItem(INFLIGHT_KEY) === "1") {
 		sessionStorage.removeItem(INFLIGHT_KEY);
@@ -74,10 +73,11 @@ export async function checkForAppUpdate() {
 
 		const payload = await response.json();
 		const latestVersion = normalizeVersionValue(payload?.version);
-		if (storedAppliedVersion) {
-			if (latestVersion && latestVersion === storedAppliedVersion) return null;
-			localStorage.removeItem(APPLIED_VERSION_KEY);
-		}
+		const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
+		const latestBuildKey = `${latestVersion}:${latestCommit}`;
+		const storedAppliedBuild = localStorage.getItem(APPLIED_VERSION_KEY);
+		if (storedAppliedBuild === latestBuildKey) return null;
+		if (storedAppliedBuild) localStorage.removeItem(APPLIED_VERSION_KEY);
 		if (!isNewerBuild(payload)) return null;
 
 		const updateInfo: AppUpdateInfo = {
@@ -119,7 +119,8 @@ export async function applyAppUpdate() {
 	// Jika versi sama — update palsu (misal commit-only rebuild di Vercel).
 	// Set inflight flag biar polling skip 1x, reset state, dan close dialog.
 	// JANGAN reload — tidak ada update baru.
-	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion) {
+	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion &&
+		latestUpdateInfo.currentCommit === latestUpdateInfo.latestCommit) {
 		sessionStorage.setItem("__app_update_inflight__", "1");
 		if ("serviceWorker" in navigator) {
 			navigator.serviceWorker.getRegistrations().then((regs) => {
