@@ -7,6 +7,7 @@ import { CartProvider } from "@/context/cart-context";
 import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppUpdatePrompt } from "@/components/app-update-prompt";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { startAppUpdatePolling, checkForAppUpdate, notifyAppUpdateAvailable, setPwaUpdateHandler } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
@@ -83,6 +84,7 @@ if (!rootElement.innerHTML) {
 					<CartProvider>
 						<RouterProvider router={router} />
 						<AppUpdatePrompt />
+						<PwaInstallPrompt />
 						<Toaster richColors />
 					</CartProvider>
 				</AppDataProvider>
