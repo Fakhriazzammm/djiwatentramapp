@@ -107,7 +107,7 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 						animate={{ opacity: 1, y: 0, scale: 1 }}
 						exit={reduceMotion ? undefined : { opacity: 0, y: -4, scale: 0.98 }}
 						transition={spring}
-						className="absolute right-0 top-12 z-[1200] w-[min(340px,calc(100vw-24px))] overflow-hidden rounded-xl border border-border bg-card shadow-[0_18px_48px_rgba(9,9,11,0.16)]"
+						className="absolute left-1/2 right-auto top-12 z-[1200] w-[min(340px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-card shadow-[0_18px_48px_rgba(9,9,11,0.16)] sm:left-auto sm:right-0 sm:translate-x-0"
 					>
 						<div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
 							<div><p className="text-xs font-black">Notifikasi</p><p className="text-[10px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
