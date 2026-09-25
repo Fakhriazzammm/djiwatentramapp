@@ -274,8 +274,8 @@ function exportCustomers(customers: Customer[], mode: "email" | "phone" | "full"
 	if (formatType === "vcf") {
 		const cards = sourceCustomers.map((customer) => [
 			"BEGIN:VCARD", "VERSION:3.0", `FN:${customerVcardValue(customer.name ?? "Tanpa Nama")}`,
-			customer.email ? `EMAIL:${customerVcardValue(customer.email)}` : "",
-			customer.phone ? `TEL;TYPE=CELL:${customerVcardValue(customer.phone)}` : "", "END:VCARD",
+			customer.email && mode !== "phone" ? `EMAIL:${customerVcardValue(customer.email)}` : "",
+			customer.phone && mode !== "email" ? `TEL;TYPE=CELL:${customerVcardValue(customer.phone)}` : "", "END:VCARD",
 		].filter(Boolean).join("\\r\\n")).join("\\r\\n");
 		if (!cards) { toast.error("Tidak ada email atau nomor telepon untuk diexport"); return; }
 		downloadText(cards, `djiwa-pelanggan-${suffix}-${stamp}.vcf`, "text/vcard;charset=utf-8");
@@ -593,11 +593,17 @@ function AdminCustomers() {
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "xlsx")}><Mail className="mr-2 h-4 w-4" /><span>Email · Excel</span></DropdownMenuItem>
 							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "csv")}><Mail className="mr-2 h-4 w-4" /><span>Email · CSV</span></DropdownMenuItem>
-							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "vcf")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · VCF</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "vcf")}><Mail className="mr-2 h-4 w-4" /><span>Email · VCF</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "pdf")}><Mail className="mr-2 h-4 w-4" /><span>Email · PDF</span></DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "xlsx")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · Excel</span></DropdownMenuItem>
 							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "csv")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · CSV</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "vcf")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · VCF</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "pdf")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · PDF</span></DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "xlsx")}><FileSpreadsheet className="mr-2 h-4 w-4" /><span>Semua data · Excel</span></DropdownMenuItem>
 							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "csv")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · CSV</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "vcf")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · VCF</span></DropdownMenuItem>
 							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "pdf")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · PDF</span></DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
