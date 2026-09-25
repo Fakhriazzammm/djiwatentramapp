@@ -95,7 +95,7 @@ export function PwaInstallPrompt() {
 
 	return (
 		<div
-			className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[70] mx-auto max-w-md rounded-[22px] border border-border/70 bg-background/95 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:right-5"
+			className="fixed inset-x-3 bottom-[calc(8rem+env(safe-area-inset-bottom))] z-[70] mx-auto max-w-md rounded-[22px] border border-border/70 bg-background/95 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:right-5"
 			role="dialog"
 			aria-label="Pasang aplikasi Djiwa Tentram Admin"
 			aria-live="polite"
