@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.228",
+	semantic: "0.2.224",
 	// Git/deploy commit hash (short)
-	commitHash: "c5182c3",
-	message: "feat(admin): add targeted notification center",
+	commitHash: "00fa1e7",
+	message: "fix(admin): prevent false update prompt loop",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): add targeted notification center",
+	commitMessage: "fix(admin): prevent false update prompt loop",
 	// Build timestamp
 	buildDate: "2026-09-25",
 	// Full version string for display

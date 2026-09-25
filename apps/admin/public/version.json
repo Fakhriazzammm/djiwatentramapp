@@ -1,7 +1,7 @@
 {
-  "version": "0.2.228",
-  "commitHash": "c5182c3",
-  "message": "feat(admin): add targeted notification center",
+  "version": "0.2.224",
+  "commitHash": "00fa1e7",
+  "message": "fix(admin): prevent false update prompt loop",
   "buildDate": "2026-09-25",
-  "generatedAt": "2026-09-25T17:30:00.000Z"
+  "generatedAt": "2026-09-25T11:24:42.053Z"
 }
