@@ -69,6 +69,7 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 		closePopup,
 	} = useAdminNotifications();
 	const [isOpen, setIsOpen] = useState(false);
+	const [iconFailed, setIconFailed] = useState(false);
 
 	const openNotification = async (notification: AdminNotification) => {
 		if (!notification.isRead) await markRead(notification.id).catch(() => toast.error("Notifikasi gagal ditandai"));
@@ -92,7 +93,7 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 					transition={unreadCount > 0 && !reduceMotion ? { duration: 0.7, delay: 0.15 } : spring}
 					className="flex h-7 w-7 items-center justify-center"
 				>
-					<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-6 w-6 object-contain" />
+					{iconFailed ? <Bell aria-hidden="true" className="h-5 w-5 text-primary" /> : <Djiwa3DIcon name="notifications-alerts" size="micro" alt="" onError={() => setIconFailed(true)} className="h-6 w-6 object-contain" />}
 				</motion.span>
 				{unreadCount > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-black leading-none text-white ring-2 ring-card">{unreadCount > 9 ? "9+" : unreadCount}</span>}
 			</motion.button>
