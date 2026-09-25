@@ -14,6 +14,7 @@ import {
 	Check,
 	Clock,
 	Copy,
+	Download,
 	Edit,
 	EyeOff,
 	Filter,
@@ -345,6 +346,19 @@ function AdminDiscountsPage() {
 		toast.success("Kode diskon disalin!");
 	};
 
+	const exportFilteredCsv = () => {
+		const header = ["Nama", "Kode", "Tipe", "Nilai", "Status", "Mulai", "Berakhir", "Jam", "Cakupan"];
+		const rows = filteredDiscounts.map((d: any) => [d.name, d.code || "", d.type, d.value, getPromoStatus(d).label, d.startDate ? new Date(d.startDate).toLocaleDateString("id-ID") : "", d.endDate ? new Date(d.endDate).toLocaleDateString("id-ID") : "", d.startTime && d.endTime ? `${d.startTime}-${d.endTime} WIB` : "", d.targetType === "ALL" ? "Semua produk" : d.targetType]);
+		const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
+		const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = `promosi-${new Date().toISOString().slice(0, 10)}.csv`;
+		anchor.click();
+		URL.revokeObjectURL(url);
+		toast.success(`${rows.length} promosi diekspor`);
+	};
+
 	// Filter and search logic
 	const filteredDiscounts = useMemo(() => {
 		if (!discounts) {
@@ -443,6 +457,7 @@ function AdminDiscountsPage() {
 							/>
 							{loadingAi ? "Menganalisis..." : "Bantu buat promo"}
 						</button>
+						<button type="button" onClick={exportFilteredCsv} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-700 text-sm shadow-sm transition hover:bg-slate-50 active:scale-95"><Download className="h-4 w-4" />Ekspor CSV</button>
 						<button
 							className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground text-sm shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95"
 							onClick={() => {
