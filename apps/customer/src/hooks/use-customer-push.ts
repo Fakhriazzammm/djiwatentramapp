@@ -1,8 +1,28 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 export type CustomerPushState = "unsupported" | "default" | "denied" | "ready" | "subscribed";
+
+const AUTO_ENABLE_ATTEMPTED_KEY = "djiwa-customer-push-auto-attempted";
+const AUTO_ENABLE_DISABLED_KEY = "djiwa-customer-push-auto-disabled";
+
+function hasLocalFlag(key: string) {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setLocalFlag(key: string, value: boolean) {
+  try {
+    if (value) localStorage.setItem(key, "1");
+    else localStorage.removeItem(key);
+  } catch {
+    // localStorage may be unavailable in private browsing; push still works manually.
+  }
+}
 
 function base64ToUint8Array(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -18,6 +38,7 @@ export function useCustomerPush() {
   const { isAuthenticated } = useCustomerAuth();
   const [state, setState] = useState<CustomerPushState>("unsupported");
   const [busy, setBusy] = useState(false);
+  const autoEnableAttemptedRef = useRef(false);
   const supported = typeof window !== "undefined"
     && "Notification" in window
     && "serviceWorker" in navigator
@@ -69,6 +90,8 @@ export function useCustomerPush() {
       });
       if (!response.ok) throw new Error("Pendaftaran notifikasi gagal");
       setState("subscribed");
+      setLocalFlag(AUTO_ENABLE_DISABLED_KEY, false);
+      setLocalFlag(AUTO_ENABLE_ATTEMPTED_KEY, true);
       toast.success("Notifikasi pesanan diaktifkan.");
       return true;
     } catch (error) {
@@ -83,6 +106,8 @@ export function useCustomerPush() {
 
   const disable = useCallback(async () => {
     if (!supported) return;
+    setLocalFlag(AUTO_ENABLE_DISABLED_KEY, true);
+    setLocalFlag(AUTO_ENABLE_ATTEMPTED_KEY, true);
     setBusy(true);
     try {
       const registration = await getRegistration();
@@ -104,6 +129,15 @@ export function useCustomerPush() {
       setBusy(false);
     }
   }, [getRegistration, supported]);
+
+  useEffect(() => {
+    if (!supported || !publicKey || !isAuthenticated || autoEnableAttemptedRef.current) return;
+    if (hasLocalFlag(AUTO_ENABLE_DISABLED_KEY) || hasLocalFlag(AUTO_ENABLE_ATTEMPTED_KEY)) return;
+    if (Notification.permission === "denied") return;
+    autoEnableAttemptedRef.current = true;
+    setLocalFlag(AUTO_ENABLE_ATTEMPTED_KEY, true);
+    void enable();
+  }, [enable, isAuthenticated, publicKey, supported]);
 
   return { state, busy, supported: supported && Boolean(publicKey), enable, disable, refresh };
 }
