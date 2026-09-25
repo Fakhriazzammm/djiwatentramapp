@@ -57,6 +57,7 @@ export function useAdminNotifications() {
 	const seenIdsRef = useRef<Set<string>>(new Set());
 	const popupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const requestRef = useRef(false);
+	const hasLoadedRef = useRef(false);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -73,12 +74,17 @@ export function useAdminNotifications() {
 		requestRef.current = true;
 		if (!silent) setIsLoadingNotifications(true);
 		try {
+			// Sinkronisasi bounded dari order existing. Jika sync gagal, list tetap
+			// dijalankan agar notifikasi yang sudah tersimpan tetap terlihat.
+			await notificationRequest(token, { action: "sync_recent" }).catch(() => undefined);
 			const result = await notificationRequest<NotificationResponse>(token, { action: "list" });
 			const next = (result.notifications ?? [])
 				.filter((notification) => notification.is_active && (!notification.expires_at || Date.parse(notification.expires_at) > Date.now()))
 				.sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
 			const unread = next.filter((notification) => !notification.isRead);
-			const newUnread = unread.filter((notification) => !seenIdsRef.current.has(notification.id));
+			const newUnread = hasLoadedRef.current
+				? unread.filter((notification) => !seenIdsRef.current.has(notification.id))
+				: [];
 			next.forEach((notification) => seenIdsRef.current.add(notification.id));
 			if (typeof window !== "undefined") {
 				const recentSeen = Array.from(seenIdsRef.current).slice(-200);
@@ -90,6 +96,7 @@ export function useAdminNotifications() {
 				popupTimerRef.current = setTimeout(() => setPopupNotification(null), 6500);
 			}
 			setNotifications(next);
+			hasLoadedRef.current = true;
 			setError(null);
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : "Notifikasi gagal dimuat");
