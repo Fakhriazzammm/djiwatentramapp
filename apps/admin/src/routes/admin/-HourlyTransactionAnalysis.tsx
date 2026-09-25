@@ -93,7 +93,7 @@ function ConfidenceBadge({ confidence }: { confidence: HourlyConfidence }) {
 }
 
 function HourlyLoading() {
-	return <section aria-label="Memuat analisa jam operasional" className="rounded-[20px] border border-black/[.04] bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,.035)]"><div className="flex items-center justify-between"><Skeleton className="h-5 w-44 rounded-lg" /><Skeleton className="h-8 w-32 rounded-lg" /></div><Skeleton className="mt-3 h-[150px] rounded-xl" /><div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><Skeleton className="h-16 rounded-xl" /><Skeleton className="h-16 rounded-xl" /><Skeleton className="h-16 rounded-xl" /></div></section>;
+	return <section aria-label="Memuat analisa jam operasional" className="rounded-[20px] border border-black/[.08] bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,.045)]"><div className="flex items-center justify-between"><Skeleton className="h-5 w-44 rounded-lg" /><Skeleton className="h-8 w-32 rounded-lg" /></div><Skeleton className="mt-3 h-[150px] rounded-xl" /><div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><Skeleton className="h-16 rounded-xl" /><Skeleton className="h-16 rounded-xl" /><Skeleton className="h-16 rounded-xl" /></div></section>;
 }
 
 export default function HourlyTransactionAnalysis() {
@@ -140,7 +140,7 @@ export default function HourlyTransactionAnalysis() {
 	}
 
 	return (
-		<section aria-label="Analisa jam operasional" className="rounded-[20px] border border-black/[.04] bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,.035)]">
+		<section aria-label="Analisa jam operasional" className="rounded-[20px] border border-black/[.08] bg-white p-4 shadow-[0_4px_16px_rgba(0,0,0,.045)]">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="flex min-w-0 items-start gap-2.5">
 					<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#eaf3ff] text-[#007aff]"><BarChart3 className="h-4 w-4" /></span>
