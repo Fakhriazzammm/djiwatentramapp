@@ -931,11 +931,7 @@ function TargetStatusCell({
 	target: number;
 }) {
 	if (!hasTarget) {
-		return (
-			<div className="whitespace-nowrap text-xs text-muted-foreground">
-				Belum ada target
-			</div>
-		);
+		return <div className="min-w-[96px] whitespace-nowrap text-center text-[11px] text-muted-foreground">—</div>;
 	}
 
 	return (
@@ -961,18 +957,21 @@ function TargetBadge({
 }) {
 	return (
 		<div
-			className={`rounded-md border px-1.5 py-1 text-[11px] leading-3 ${
+			className={`min-w-[118px] rounded-lg border px-2 py-1.5 text-[10px] leading-tight ${
 				met
 					? "border-emerald-200 bg-emerald-50 text-emerald-700"
 					: "border-rose-200 bg-rose-50 text-rose-700"
 			}`}
 		>
-			<div className="flex items-center justify-between gap-1.5 font-bold">
-				<span>{label}</span>
-				<span>{met ? "Tercapai" : "Belum"}</span>
+			<div className="flex items-center justify-between gap-2 whitespace-nowrap font-bold">
+				<span className="inline-flex items-center gap-1">
+					<span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/70 text-[10px]">{met ? "✓" : "!"}</span>
+					{met ? "Tercapai" : "Belum"}
+				</span>
+				<span className="tabular-nums">{target > 0 ? `${Math.min(100, Math.round((current / target) * 100))}%` : "—"}</span>
 			</div>
-			<div className="mt-0.5 text-[10px] font-medium opacity-90">
-				{formatCurrencyIDR(current, true)} / {formatCurrencyIDR(target, true)}
+			<div className="mt-1 whitespace-nowrap border-t border-current/10 pt-1 text-[10px] font-semibold tabular-nums">
+				{formatCurrencyIDR(current, true)} <span className="font-normal opacity-60">/</span> {formatCurrencyIDR(target, true)}
 			</div>
 		</div>
 	);
