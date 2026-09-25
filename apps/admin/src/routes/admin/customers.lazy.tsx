@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { ArrowDown, ArrowUp, ArrowUpDown, CircleDot, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CircleDot, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet, Download, FileSpreadsheet, FileText, Mail, Contact } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
@@ -9,6 +9,17 @@ import { invokeEdgeFunction } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createLazyFileRoute("/admin/customers")({
 	component: AdminCustomers,
@@ -192,6 +203,106 @@ function CustomerAvatar({ customer }: { customer: Customer }) {
 			<User className="h-3.5 w-3.5" />
 		</div>
 	);
+}
+
+function downloadText(content: string, filename: string, type = "text/plain;charset=utf-8") {
+	const url = URL.createObjectURL(new Blob([content], { type }));
+	const anchor = document.createElement("a");
+	anchor.href = url;
+	anchor.download = filename;
+	document.body.appendChild(anchor);
+	anchor.click();
+	anchor.remove();
+	URL.revokeObjectURL(url);
+}
+
+function customerExportRows(customers: Customer[], mode: "email" | "phone" | "full") {
+	return customers.map((customer) => mode === "email" ? {
+		Email: customer.email ?? "",
+		Nama: customer.name ?? "",
+	} : mode === "phone" ? {
+		Telepon: customer.phone ?? "",
+		Nama: customer.name ?? "",
+	} : {
+		Nama: customer.name ?? "",
+		Email: customer.email ?? "",
+		Telepon: customer.phone ?? "",
+		Status: presenceLabel(customer),
+		"Tanggal Bergabung": formatDate(customer.created_at),
+		"Exp Member": formatMembershipExpiry(customer.membership_expires_at),
+		Saldo: customer.wallet_balance || 0,
+		"Saldo Ditahan": customer.wallet_held_balance || 0,
+		"Total Order": customer.total_orders,
+		"Total Spending": customer.total_spent,
+		Kunjungan: customer.djiwaapp_visit_count ?? 0,
+		"Terakhir Order": formatDate(customer.last_order_at, true),
+		"Terakhir Aktif": formatDate(customer.last_active_at, true),
+		"Segmen Retensi": retentionSegment(customer),
+		"Prioritas Marketing": marketingPriority(customer),
+		Nickname: customer.nickname ?? "",
+		"Tanggal Lahir": formatDate(customer.birth_date),
+		Gender: customer.gender ?? "",
+		Alamat: customer.address ?? "",
+		Kota: customer.city ?? "",
+		Provinsi: customer.province ?? "",
+		"Kode Pos": customer.postal_code ?? "",
+		"Marketing Consent": customer.marketing_consent === null ? "" : customer.marketing_consent ? "Ya" : "Tidak",
+	});
+}
+
+function escapeCsvCell(value: unknown) {
+	return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function customerVcardValue(value: string) {
+	return value.replace(/[\\,;\n]/g, (match) => match === "\\" ? "\\\\" : match === "\n" ? "\\n" : `\\${match}`);
+}
+
+function exportCustomers(customers: Customer[], mode: "email" | "phone" | "full", formatType: "xlsx" | "csv" | "vcf" | "pdf") {
+	if (customers.length === 0) {
+		toast.error("Tidak ada customer untuk diexport");
+		return;
+	}
+	const sourceCustomers = mode === "email" ? customers.filter((customer) => customer.email) : mode === "phone" ? customers.filter((customer) => customer.phone) : customers;
+	if (sourceCustomers.length === 0) {
+		toast.error(mode === "email" ? "Tidak ada email customer" : mode === "phone" ? "Tidak ada nomor telepon customer" : "Tidak ada customer untuk diexport");
+		return;
+	}
+	const stamp = new Date().toISOString().slice(0, 10);
+	const suffix = mode === "full" ? "semua" : mode;
+	const rows = customerExportRows(sourceCustomers, mode);
+	if (formatType === "vcf") {
+		const cards = sourceCustomers.map((customer) => [
+			"BEGIN:VCARD", "VERSION:3.0", `FN:${customerVcardValue(customer.name ?? "Tanpa Nama")}`,
+			customer.email ? `EMAIL:${customerVcardValue(customer.email)}` : "",
+			customer.phone ? `TEL;TYPE=CELL:${customerVcardValue(customer.phone)}` : "", "END:VCARD",
+		].filter(Boolean).join("\\r\\n")).join("\\r\\n");
+		if (!cards) { toast.error("Tidak ada email atau nomor telepon untuk diexport"); return; }
+		downloadText(cards, `djiwa-pelanggan-${suffix}-${stamp}.vcf`, "text/vcard;charset=utf-8");
+		toast.success(`${sourceCustomers.length} customer diexport sebagai VCF`);
+		return;
+	}
+	if (formatType === "csv") {
+		const headers = Object.keys(rows[0] ?? {});
+		const csv = "\\uFEFF" + [headers, ...rows.map((row) => headers.map((header) => row[header as keyof typeof row]))].map((line) => line.map(escapeCsvCell).join(";")).join("\\r\\n");
+		downloadText(csv, `djiwa-pelanggan-${suffix}-${stamp}.csv`, "text/csv;charset=utf-8");
+	} else if (formatType === "xlsx") {
+		const sheet = XLSX.utils.json_to_sheet(rows);
+		sheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: Object.keys(rows[0] ?? {}).length - 1 } }) };
+		sheet["!freeze"] = { xSplit: 0, ySplit: 1 };
+		sheet["!cols"] = Object.keys(rows[0] ?? {}).map((header) => ({ wch: Math.min(28, Math.max(14, header.length + 3)) }));
+		const workbook = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(workbook, sheet, "Pelanggan");
+		XLSX.writeFile(workbook, `djiwa-pelanggan-${suffix}-${stamp}.xlsx`);
+	} else {
+		const doc = new jsPDF({ orientation: "landscape" });
+		doc.setFontSize(15); doc.text("Djiwa Tentram — Data Pelanggan", 14, 16);
+		doc.setFontSize(9); doc.setTextColor(100); doc.text(`${customers.length} customer · ${mode === "full" ? "Semua data" : mode === "email" ? "Email" : "Nomor telepon"}`, 14, 23); doc.setTextColor(0);
+		const headers = Object.keys(rows[0] ?? {});
+		autoTable(doc, { startY: 29, head: [headers], body: rows.map((row) => headers.map((header) => String(row[header as keyof typeof row] ?? ""))), styles: { fontSize: mode === "full" ? 5.5 : 8, cellPadding: 2 }, headStyles: { fillColor: [26, 93, 198] }, horizontalPageBreak: true, horizontalPageBreakRepeat: 0 });
+		doc.save(`djiwa-pelanggan-${suffix}-${stamp}.pdf`);
+	}
+	toast.success(`${sourceCustomers.length} customer diexport sebagai ${formatType.toUpperCase()}`);
 }
 
 function AdminCustomers() {
@@ -458,14 +569,38 @@ function AdminCustomers() {
 
 			{/* Search */}
 			<div className="rounded-xl border border-border bg-card p-2.5 shadow-sm">
-				<div className="relative">
-					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-					<Input
-						className="h-9 pl-9 text-sm"
-						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="Cari nama, email, atau telepon..."
-						value={searchQuery}
-					/>
+				<div className="flex items-center gap-2">
+					<div className="relative min-w-0 flex-1">
+						<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							className="h-9 pl-9 text-sm"
+							onChange={(e) => setSearchQuery(e.target.value)}
+							placeholder="Cari nama, email, atau telepon..."
+							value={searchQuery}
+						/>
+					</div>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={(props) => (
+								<button {...props} type="button" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Buka menu export customer">
+									<Download className="h-3.5 w-3.5 text-primary" />
+									<span className="hidden sm:inline">Export</span>
+								</button>
+							)}
+						/>
+						<DropdownMenuContent align="end" className="w-56">
+							<DropdownMenuLabel className="text-[11px]">Export {selectedCustomers.length ? `${selectedCustomers.length} dipilih` : `${sortedCustomers.length} terlihat`}</DropdownMenuLabel>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "xlsx")}><Mail className="mr-2 h-4 w-4" /><span>Email · Excel</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "email", "csv")}><Mail className="mr-2 h-4 w-4" /><span>Email · CSV</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "vcf")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · VCF</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "phone", "csv")}><Contact className="mr-2 h-4 w-4" /><span>Telepon · CSV</span></DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "xlsx")}><FileSpreadsheet className="mr-2 h-4 w-4" /><span>Semua data · Excel</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "csv")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · CSV</span></DropdownMenuItem>
+							<DropdownMenuItem onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, "full", "pdf")}><FileText className="mr-2 h-4 w-4" /><span>Semua data · PDF</span></DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
 
