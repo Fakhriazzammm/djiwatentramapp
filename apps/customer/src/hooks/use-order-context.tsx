@@ -146,7 +146,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	const [freeRefillOptIn, setFreeRefillOptIn] = useState<boolean | null>(null);
 
 	// Menu
-	const [menuMode, setMenuMode] = useState<MenuMode>("number");
+	const [menuMode, setMenuMode] = useState<MenuMode>("catalog");
 	const [activeCategoryId, setActiveCategoryId] = useState<Id<"categories"> | null>(null);
 	const [manualCode, setManualCode] = useState("");
 	const [codeFeedback, setCodeFeedback] = useState("");

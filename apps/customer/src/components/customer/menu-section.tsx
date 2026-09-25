@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Barcode, Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -165,55 +165,9 @@ export function renderMenuSection(props: MenuSectionProps) {
 			</div>
 			{props.freeRefillCharge > 0 ? <p className="px-1 text-[11px] font-bold text-emerald-700">Free refill · {currency(props.freeRefillCharge)}</p> : null}
 
-			<div className="grid grid-cols-2 gap-2 rounded-[18px] border border-border bg-card p-1.5 shadow-sm" role="tablist" aria-label="Mode pemilihan menu">
-				<button type="button" role="tab" aria-selected={props.menuMode === "number"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "number" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("number")}>Kode menu</button>
-				<button type="button" role="tab" aria-selected={props.menuMode === "catalog"} className={cn("min-h-11 rounded-[14px] px-3 py-2 text-xs font-black transition-all duration-[180ms] active:scale-[.97]", props.menuMode === "catalog" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/60")} onClick={() => props.setMenuMode("catalog")}>Katalog</button>
-			</div>
-			<p className="sr-only">{props.menuMode === "number" ? "Masukkan nomor yang tertera di menu meja." : "Pilih makanan dan minuman dari katalog."}</p>
+			<p className="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Katalog menu</p>
 
-			{props.menuMode === "number" && props.config.enableMenuNumberEntry ? (
-				<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-					<div className="flex items-center justify-between gap-2">
-						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: props.themeColor }}>Mode cepat</p><h3 className="text-sm font-black">Input nomor produk</h3></div>
-						{props.config.enableBarcodeScan ? <button type="button" className="flex min-h-11 items-center gap-1.5 rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-bold text-primary" onClick={() => props.setScannerOpen(true)}><Barcode className="h-3.5 w-3.5" />Scan</button> : null}
-					</div>
-					<div className="mt-3 rounded-xl border border-border bg-background px-3 py-3 shadow-inner">
-						<div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><input className="w-full bg-transparent text-xl font-black tracking-[0.25em] outline-none placeholder:text-base placeholder:font-semibold placeholder:tracking-normal" inputMode="numeric" placeholder="Ketik nomor menu" value={props.manualCode} onChange={(event) => props.setManualCode(event.target.value.replace(/\D/g, ""))} /></div>
-					</div>
-					{props.codeFeedback ? <p role={isCodeFeedbackError ? "alert" : "status"} className={cn("mt-2.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold", isCodeFeedbackError ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700")}>{props.codeFeedback}</p> : <p className="mt-2.5 text-xs text-muted-foreground">Masukkan nomor produk lengkap untuk mencari menu.</p>}
-					{props.pendingNumberProduct ? (
-						<div className="mt-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
-							<p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Konfirmasi Produk</p>
-							<div className="mt-1 flex items-start justify-between gap-3">
-								<div className="min-w-0">
-									<p className="truncate text-sm font-black text-foreground">{props.pendingNumberProduct.name}</p>
-									<p className="mt-0.5 text-xs text-muted-foreground">Nomor {props.pendingNumberProduct.menuNumber ?? props.manualCode}</p>
-								</div>
-								<p className="shrink-0 text-sm font-black text-primary">{currency(calculateEffectivePrice({ _id: props.pendingNumberProduct._id, price: props.pendingNumberProduct.price, categoryId: props.pendingNumberProduct.categoryId }, props.discounts).finalPrice)}</p>
-							</div>
-							<div className="mt-3 flex items-center justify-between gap-2">
-								<div className="flex items-center gap-1 rounded-xl border border-border bg-background p-1">
-									<button type="button" aria-label="Kurangi jumlah" className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted" onClick={() => props.setPendingNumberQuantity(Math.max(1, props.pendingNumberQuantity - 1))}><Minus className="h-4 w-4" /></button>
-									<span className="min-w-8 text-center text-sm font-black">{props.pendingNumberQuantity}</span>
-									<button type="button" aria-label="Tambah jumlah" className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground" onClick={() => props.setPendingNumberQuantity(props.pendingNumberQuantity + 1)}><Plus className="h-4 w-4" /></button>
-								</div>
-								<div className="flex items-center gap-1.5">
-									<button type="button" className="min-h-11 rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground" onClick={props.cancelPendingNumberProduct}>Batal</button>
-									<button type="button" className="min-h-11 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground" onClick={props.approvePendingNumberProduct}>Tambah ke keranjang</button>
-								</div>
-							</div>
-						</div>
-					) : null}
-					<div className="mt-3 grid grid-cols-3 gap-2">
-						{["1","2","3","4","5","6","7","8","9"].map((digit) => <button type="button" key={digit} className="rounded-xl border border-border bg-background px-3 py-3 text-xl font-black shadow-sm" onClick={() => props.setManualCode(`${props.manualCode}${digit}`)}>{digit}</button>)}
-						<button type="button" className="rounded-xl border border-border bg-background px-3 py-3 text-xs font-black shadow-sm" onClick={() => props.setManualCode("")}>Clear</button>
-						<button type="button" className="rounded-xl border border-border bg-background px-3 py-3 text-xl font-black shadow-sm" onClick={() => props.setManualCode(`${props.manualCode}0`)}>0</button>
-						<button type="button" className="rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={() => props.setManualCode(props.manualCode.slice(0, -1))}>Delete</button>
-					</div>
-				</div>
-			) : null}
-
-			{props.menuMode === "catalog" && props.config.enableCatalogBrowsing ? (
+			{props.config.enableCatalogBrowsing ? (
 				<div className="relative space-y-3">
 					<div data-menu-catalog-top className="-mx-1 rounded-xl border border-border bg-card/95 p-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
 						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 shrink-0 text-primary" /><h3 className="text-sm font-black leading-tight">Katalog produk</h3></div>
