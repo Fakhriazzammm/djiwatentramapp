@@ -1,0 +1,30 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+@import "@yumipos/web-shared/theme.css";
+
+:root {
+  --investor-ink: #102033;
+  --investor-navy: #0d1b2a;
+  --investor-navy-soft: #172a3d;
+  --investor-gold: #d4b46a;
+  --investor-gold-light: #f1e5bf;
+  --investor-line: #e7ebf0;
+  --investor-muted: #657184;
+}
+
+html { scroll-behavior: smooth; }
+body { margin: 0; color: var(--investor-ink); background: #f7f9fc; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+::selection { background: #e8d9ac; color: var(--investor-navy); }
+
+.investor-page { min-height: 100vh; overflow-x: clip; }
+.investor-nav { backdrop-filter: saturate(180%) blur(16px); background: rgb(255 255 255 / 88%); }
+.investor-display { font-family: var(--font-display); letter-spacing: -0.04em; }
+.investor-panel { border: 1px solid rgb(226 232 240 / 78%); background: #fff; border-radius: 22px; box-shadow: 0 12px 32px rgb(15 23 42 / 5%); }
+.investor-focus:focus-visible { outline: 3px solid rgb(212 180 106 / 80%); outline-offset: 3px; }
+.investor-grid {
+  background-image: linear-gradient(rgb(255 255 255 / 4%) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 4%) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

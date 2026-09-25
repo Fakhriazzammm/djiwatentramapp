@@ -4,6 +4,7 @@ import { serve } from "@hono/node-server";
 import { auth, pool } from "./auth.js";
 import { staffAuth } from "./staff-auth.js";
 import { registerKolPortalRoutes } from "./kol-portal.js";
+import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js";
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -61,6 +62,27 @@ app.use(
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
 });
+
+// Investor auth/data-room boundary. This origin list is intentionally narrower than customer CORS.
+app.use(
+  "/api/investor-auth/*",
+  cors({
+    origin: ["https://investor.yumme.id", "http://localhost:5173", "http://localhost:5174", "http://localhost:3011"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    credentials: true,
+  }),
+);
+app.use(
+  "/api/investor/*",
+  cors({
+    origin: ["https://investor.yumme.id", "http://localhost:5173", "http://localhost:5174", "http://localhost:3011"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    credentials: true,
+  }),
+);
+registerInvestorPortalRoutes(app, investorAuth, pool);
 
 // CORS — authenticated KOL profile/claim requests from kolmarketing.
 app.use(

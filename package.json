@@ -39,7 +39,9 @@
     "ocr:dev": "cd packages/ocr-service && python main.py",
     "ocr:install": "cd packages/ocr-service && pip install -r requirements.txt",
     "build:kolmarketing": "node scripts/update-version.mjs && node scripts/write-version-manifest.mjs && turbo build --filter=@yumipos/kolmarketing",
-    "dev:kolmarketing": "turbo dev --filter=@yumipos/kolmarketing"
+    "dev:kolmarketing": "turbo dev --filter=@yumipos/kolmarketing",
+    "build:investor": "turbo build --filter=@yumipos/investor",
+    "dev:investor": "turbo dev --filter=@yumipos/investor"
   },
   "dependencies": {
     "@yumipos/env": "workspace:*",
