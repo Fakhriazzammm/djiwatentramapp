@@ -90,8 +90,17 @@ async function dispatchWebPush(notification: any) {
   const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
   const vapidSubject = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@yumme.id";
   if (!vapidPublicKey || !vapidPrivateKey || !notification?.id) return;
-  const subscriptions = await dbGet("pos_notification_push_subscriptions", { select: "id,endpoint,p256dh,auth,user_id,target_role,target_branch_id", is_active: "eq.true", limit: "500" });
-  const targets = (subscriptions ?? []).filter((item: any) => (!notification.target_user_id || notification.target_user_id === item.user_id) && (!notification.target_role || notification.target_role === item.target_role) && (!notification.target_branch_id || notification.target_branch_id === item.target_branch_id));
+  const subscriptions = await dbGet("pos_notification_push_subscriptions", { select: "id,endpoint,p256dh,auth,user_id,customer_id,app_scope,target_role,target_branch_id", is_active: "eq.true", limit: "500" });
+  const targets = (subscriptions ?? []).filter((item: any) => {
+    const customerScope = item.app_scope === "customer";
+    const scopeMatches = !customerScope || Boolean(notification.target_user_id);
+    const ownerMatches = !notification.target_user_id
+      || notification.target_user_id === item.user_id
+      || notification.target_user_id === item.customer_id;
+    const roleMatches = !notification.target_role || notification.target_role === item.target_role;
+    const branchMatches = !notification.target_branch_id || notification.target_branch_id === item.target_branch_id;
+    return scopeMatches && ownerMatches && roleMatches && branchMatches;
+  });
   if (!targets.length) return;
   // @ts-ignore Deno resolves the npm package at Edge Function runtime.
   const webpush = await import("npm:web-push@3.6.7");

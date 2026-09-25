@@ -7,6 +7,7 @@ import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { currency } from "@/components/customer/types";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
+import { CustomerPushActivation } from "@/components/customer/customer-push-activation";
 
 export const Route = createLazyFileRoute("/$username/notifikasi")({
 	component: NotifikasiPage,
@@ -100,6 +101,7 @@ function NotifikasiPage() {
 				<CustomerHeader title="Notifikasi" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
 
 				<main className="px-3 py-4">
+					<CustomerPushActivation />
 					{authLoading ? (
 						<CustomerSectionSkeleton label="Memeriksa akun" />
 					) : !isAuthenticated ? (

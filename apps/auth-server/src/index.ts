@@ -647,6 +647,72 @@ app.get("/api/customer/orders", async (c) => {
   return privateJson({ success: true, orders: result.rows });
 });
 
+// Customer Web Push subscriptions are owned by the Better Auth identity.
+// The browser never sends a customer_id; it is taken from the verified cookie session.
+app.post("/api/customer/push/subscribe", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as {
+    endpoint?: unknown;
+    keys?: { p256dh?: unknown; auth?: unknown };
+    userAgent?: unknown;
+  };
+  const endpoint = String(body.endpoint ?? "").trim();
+  const p256dh = String(body.keys?.p256dh ?? "").trim();
+  const authKey = String(body.keys?.auth ?? "").trim();
+  if (!endpoint.startsWith("https://") || endpoint.length > 2048 || !p256dh || !authKey) {
+    return privateJson({ success: false, error: "INVALID_SUBSCRIPTION" }, 400);
+  }
+  await pool.query(
+    `INSERT INTO public.pos_notification_push_subscriptions
+      (endpoint, p256dh, auth, user_id, customer_id, app_scope, user_agent, is_active, last_seen_at, last_error, updated_at)
+     VALUES ($1, $2, $3, NULL, $4, 'customer', $5, true, now(), NULL, now())
+     ON CONFLICT (endpoint) DO UPDATE SET
+       p256dh = EXCLUDED.p256dh,
+       auth = EXCLUDED.auth,
+       user_id = NULL,
+       customer_id = EXCLUDED.customer_id,
+       app_scope = 'customer',
+       user_agent = EXCLUDED.user_agent,
+       is_active = true,
+       last_seen_at = now(),
+       last_error = NULL,
+       updated_at = now()`,
+    [endpoint, p256dh, authKey, session.user.id, String(body.userAgent ?? "").slice(0, 1000) || null],
+  );
+  return privateJson({ success: true });
+});
+
+app.post("/api/customer/push/unsubscribe", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { endpoint?: unknown };
+  const endpoint = String(body.endpoint ?? "").trim();
+  if (!endpoint) return privateJson({ success: false, error: "ENDPOINT_REQUIRED" }, 400);
+  await pool.query(
+    `UPDATE public.pos_notification_push_subscriptions
+        SET is_active = false, updated_at = now()
+      WHERE endpoint = $1 AND customer_id = $2 AND app_scope = 'customer'`,
+    [endpoint, session.user.id],
+  );
+  return privateJson({ success: true });
+});
+
+app.post("/api/customer/push/status", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { endpoint?: unknown };
+  const endpoint = String(body.endpoint ?? "").trim();
+  if (!endpoint) return privateJson({ success: true, subscribed: false });
+  const result = await pool.query(
+    `SELECT 1 FROM public.pos_notification_push_subscriptions
+      WHERE endpoint = $1 AND customer_id = $2 AND app_scope = 'customer' AND is_active = true
+      LIMIT 1`,
+    [endpoint, session.user.id],
+  );
+  return privateJson({ success: true, subscribed: result.rowCount > 0 });
+});
+
 app.post("/api/customer/guest-orders", async (c) => {
   const body = await c.req.json().catch(() => ({})) as { orderIds?: unknown };
   const orderIds = Array.isArray(body.orderIds)

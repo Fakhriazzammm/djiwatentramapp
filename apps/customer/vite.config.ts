@@ -37,6 +37,7 @@ export default defineConfig({
 				],
 			},
 			workbox: {
+				importScripts: ["/push-sw.js"],
 				navigateFallback: "/index.html",
 				// Jangan sajikan SPA (index.html) untuk navigasi ke /api/* —
 				// biarkan lewat ke nginx→better-auth (mis. callback OAuth Google).
