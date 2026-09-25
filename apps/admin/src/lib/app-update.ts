@@ -83,8 +83,14 @@ export async function checkForAppUpdate() {
 		const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
 		const latestBuildKey = `${latestVersion}:${latestCommit}`;
 		const storedAppliedBuild = localStorage.getItem(APPLIED_VERSION_KEY);
-		if (storedAppliedBuild === latestBuildKey) return null;
-		if (storedAppliedBuild) localStorage.removeItem(APPLIED_VERSION_KEY);
+		const currentBuildKey = `${APP_VERSION.semantic}:${APP_VERSION.commitHash}`;
+		const bundleIsCurrent = currentBuildKey === latestBuildKey;
+
+		// Jangan suppress popup hanya karena key pernah tersimpan. Tab bisa
+		// masih menjalankan bundle lama setelah reload/SW gagal mengambil build baru.
+		// Popup harus tetap muncul selama bundle aktif belum sama dengan version.json.
+		if (storedAppliedBuild === latestBuildKey && bundleIsCurrent) return null;
+		if (storedAppliedBuild && bundleIsCurrent) localStorage.removeItem(APPLIED_VERSION_KEY);
 		if (!isNewerBuild(payload)) return null;
 
 		const updateInfo: AppUpdateInfo = {
