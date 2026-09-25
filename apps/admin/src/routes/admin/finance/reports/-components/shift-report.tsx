@@ -34,7 +34,6 @@ import {
 	useHybridAdminBulkDeleteShifts,
 	useHybridAdminDeleteShift,
 	useHybridAdminUpdateShift,
-	useHybridSendShiftReportEmail,
 	useHybridSendShiftTableReportEmail,
 	useHybridStartShift,
 } from "@/hooks/use-hybrid-write-actions";
@@ -231,7 +230,6 @@ function buildShiftSummaryText(shift: ShiftRow, details: any, allStaffUsers?: an
 }
 
 export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
-	const sendShiftReportEmail = useHybridSendShiftReportEmail();
 	const sendShiftTableReportEmail = useHybridSendShiftTableReportEmail();
 	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Toko";
@@ -255,7 +253,6 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 	const adminBulkDeleteShifts = useHybridAdminBulkDeleteShifts();
 
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(preferredSelectedStartTime ?? null);
-	const [sendingShiftStart, setSendingShiftStart] = useState<number | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
 	const [isSendingFullEmail, setIsSendingFullEmail] = useState(false);
 
@@ -461,26 +458,6 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 			? buildShiftSummaryText(selectedShift, details, allStaffUsers)
 			: "";
 
-	const handleSendShiftEmail = async (shift: ShiftRow) => {
-		try {
-			setSendingShiftStart(shift.startTime);
-			await sendShiftReportEmail({
-				startTime: shift.startTime,
-				endTime: shift.endTime,
-			});
-			toast.success(`Email laporan ${shift.shiftName} berhasil dikirim`);
-		} catch (error) {
-			console.error(error);
-			const message =
-				error instanceof Error
-					? error.message
-					: "Gagal mengirim email laporan shift.";
-			toast.error(message);
-		} finally {
-			setSendingShiftStart(null);
-		}
-	};
-
 	const handleExport = async (format: "pdf" | "csv" | "jpg") => {
 		if (!rows?.length) return;
 		setIsExporting(true);
@@ -616,7 +593,7 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 				<div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
 					<div className="flex items-center justify-between border-b border-border px-3 py-2.5"><div className="flex items-center gap-2"><input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-3.5 w-3.5 accent-primary" aria-label="Pilih semua shift" /><span className="text-xs font-bold">Pilih semua</span></div></div>
 					<div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-xs"><thead className="bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-3 py-2 text-left">Shift</th><th className="px-3 py-2 text-left">Kasir</th><th className="px-3 py-2 text-right">Net</th><th className="px-3 py-2 text-center">Target</th><th className="px-3 py-2 text-right">Produk</th><th className="px-3 py-2 text-right">Pengeluaran</th><th className="px-3 py-2 text-right">Aksi</th></tr></thead><tbody>
-						{visibleRows.map((shift) => { const isSelected = shift.startTime === selectedShift?.startTime; return <tr key={shift.shiftId} onClick={() => setSelectedShiftStart(shift.startTime)} className={`cursor-pointer border-t border-border transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/30"}`}><td className="px-3 py-2.5"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${shift.status === "AKTIF" ? "bg-emerald-500" : "bg-slate-300"}`} /><div><div className="font-semibold">{shift.shiftName}</div><div className="text-[10px] text-muted-foreground">{formatCompactRange(shift.startTime, shift.endTime)}</div></div></div></td><td className="max-w-[130px] truncate px-3 py-2.5" title={shift.cashierName}>{shift.cashierName || "—"}</td><td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-primary">{formatCurrencyIDR(shift.totalRevenue, true)}</td><td className="px-3 py-2.5 text-center"><TargetStatusCell label="" hasTarget={!!shift.hasTarget} met={!!shift.isShiftTargetMet} current={shift.shiftCollected ?? shift.totalRevenue} target={shift.shiftTarget ?? 0} /></td><td className="px-3 py-2.5 text-right tabular-nums">{shift.totalItemsSold}</td><td className="whitespace-nowrap px-3 py-2.5 text-right text-rose-700">{formatCurrencyIDR(shift.totalExpenses, true)}</td><td className="px-3 py-2.5" onClick={(event) => event.stopPropagation()}><div className="flex justify-end gap-1"><button type="button" onClick={(event) => openEdit(shift, event)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label="Edit shift"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setConfirmDeleteIds([shift.shiftId])} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/10" aria-label="Hapus shift"><Trash2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void handleSendShiftEmail(shift)} disabled={sendingShiftStart === shift.startTime} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label="Kirim email laporan"><Mail className="h-3.5 w-3.5" /></button></div></td></tr>; })}
+						{visibleRows.map((shift) => { const isSelected = shift.startTime === selectedShift?.startTime; return <tr key={shift.shiftId} onClick={() => setSelectedShiftStart(shift.startTime)} className={`cursor-pointer border-t border-border transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/30"}`}><td className="px-3 py-2.5"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${shift.status === "AKTIF" ? "bg-emerald-500" : "bg-slate-300"}`} /><div><div className="font-semibold">{shift.shiftName}</div><div className="text-[10px] text-muted-foreground">{formatCompactRange(shift.startTime, shift.endTime)}</div></div></div></td><td className="max-w-[130px] truncate px-3 py-2.5" title={shift.cashierName}>{shift.cashierName || "—"}</td><td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-primary">{formatCurrencyIDR(shift.totalRevenue, true)}</td><td className="px-3 py-2.5 text-center"><TargetStatusCell label="" hasTarget={!!shift.hasTarget} met={!!shift.isShiftTargetMet} current={shift.shiftCollected ?? shift.totalRevenue} target={shift.shiftTarget ?? 0} /></td><td className="px-3 py-2.5 text-right tabular-nums">{shift.totalItemsSold}</td><td className="whitespace-nowrap px-3 py-2.5 text-right text-rose-700">{formatCurrencyIDR(shift.totalExpenses, true)}</td><td className="px-3 py-2.5" onClick={(event) => event.stopPropagation()}><div className="flex justify-end gap-1"><button type="button" onClick={(event) => openEdit(shift, event)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label="Edit shift"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setConfirmDeleteIds([shift.shiftId])} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/10" aria-label="Hapus shift"><Trash2 className="h-3.5 w-3.5" /></button></div></td></tr>; })}
 					</tbody></table></div>
 				</div>
 
