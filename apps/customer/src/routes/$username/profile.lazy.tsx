@@ -150,10 +150,10 @@ function ProfilePage() {
 				{!customer.email || !customer.phone ? <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-black text-amber-900">Profile belum lengkap untuk QRIS</p><p className="mt-1 text-[10px] leading-relaxed text-amber-800">Lengkapi email dan nomor WhatsApp agar invoice Mayar dapat dibuat.</p></div> : null}
 				{/* Member Card */}
 				<section className="relative isolate overflow-hidden rounded-[28px] bg-[#111d4a] text-white shadow-[0_18px_44px_rgba(15,23,42,0.18)]" aria-label="Kartu member Djiwa Tentram">
-					<ImageWithPlaceholder src="/assets/djiwa-member-card-cafe.webp" alt="" aria-hidden="true" containerClassName="pointer-events-none absolute inset-0 h-full w-full opacity-[0.82]" className="object-cover object-center" loading="eager" decoding="async" />
-					<div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(8,17,53,0.95)_0%,rgba(12,26,70,0.76)_46%,rgba(12,26,70,0.18)_100%)]" />
-					<motion.div aria-hidden="true" className="pointer-events-none absolute -inset-y-16 left-[-32%] z-10 w-1/4 rotate-[18deg] bg-gradient-to-r from-transparent via-[#f4d27a]/35 to-transparent blur-lg" animate={reduceMotion ? undefined : { x: [0, 420, 840] }} transition={reduceMotion ? undefined : { duration: 4.8, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} />
-					<div className="relative flex min-h-[238px] flex-col justify-between p-5 sm:min-h-[260px] sm:p-6">
+					<ImageWithPlaceholder src="/assets/djiwa-member-card-cafe.webp" alt="" aria-hidden="true" containerClassName="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-[0.96]" className="object-cover object-center" loading="eager" decoding="async" />
+					<div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(110deg,rgba(8,17,53,0.72)_0%,rgba(12,26,70,0.42)_46%,rgba(12,26,70,0.08)_100%)]" />
+					<motion.div aria-hidden="true" className="pointer-events-none absolute -inset-y-16 left-[-32%] z-[3] w-1/4 rotate-[18deg] bg-gradient-to-r from-transparent via-[#f4d27a]/35 to-transparent blur-lg" animate={reduceMotion ? undefined : { x: [0, 420, 840] }} transition={reduceMotion ? undefined : { duration: 4.8, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} />
+					<div className="relative z-[2] flex min-h-[238px] flex-col justify-between p-5 sm:min-h-[260px] sm:p-6">
 						<div className="flex items-start justify-between gap-3">
 							<div className="flex items-center gap-2.5">
 								<div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#f4d27a]/40 bg-[#f4d27a]/10 text-[#f4d27a] shadow-sm"><ShieldCheck className="h-5 w-5" aria-hidden="true" /></div>
