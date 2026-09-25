@@ -17,6 +17,9 @@ import {
 	Edit,
 	EyeOff,
 	Filter,
+	LayoutGrid,
+	List,
+	MoreHorizontal,
 	Plus,
 	Search,
 	Sparkles,
@@ -59,6 +62,8 @@ function AdminDiscountsPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filterStatus, setFilterStatus] = useState<string>("all");
 	const [filterType, setFilterType] = useState<string>("all");
+	const [viewMode, setViewMode] = useState<"table" | "card">("table");
+	const [showDjiwaPayRule, setShowDjiwaPayRule] = useState(true);
 
 	const djiwaPayRule = {
 		name: "Voucher Djiwa Pay 20%",
@@ -162,7 +167,7 @@ function AdminDiscountsPage() {
 
 			if (current < start) {
 				return {
-					label: "Belum mulai",
+				label: "Terjadwal",
 					class:
 						"bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
 					icon: Clock,
@@ -388,22 +393,22 @@ function AdminDiscountsPage() {
 	}, [discounts, getPromoStatus]);
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 min-h-app animate-in bg-gradient-to-br from-background via-background to-muted/20 duration-500">
+		<div className="fade-in slide-in-from-bottom-4 min-h-app animate-in bg-[#f6f8fb] duration-500">
 			{/* Header Section */}
 			<div className="mb-4 md:mb-8">
 				<div className="mb-4 flex flex-wrap items-start justify-between gap-3 md:mb-6 md:gap-4">
 					<div>
-						<h1 className="mb-1 font-bold text-xl tracking-tight md:mb-2 md:text-2xl lg:text-2xl">
-							Manajemen Diskon
+						<h1 className="mb-1 font-display font-bold text-xl tracking-tight md:mb-2 md:text-2xl lg:text-2xl">
+							Manajemen Promosi
 						</h1>
 						<p className="text-muted-foreground text-xs md:text-sm lg:text-base">
-							Kelola promosi dan voucher
+							Control center untuk diskon, voucher, Happy Hour, dan promo pembayaran
 						</p>
 						<p className="mt-1 text-[11px] font-semibold text-emerald-700">Djiwa Pay: diskon otomatis 20% · reward transaksi +Rp1.000 saldo</p>
 					</div>
 					<div className="flex flex-wrap gap-3">
 						<button
-							className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 font-semibold text-sm text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+							className="group flex items-center gap-2 rounded-xl border border-purple-200 bg-white px-4 py-2.5 font-semibold text-purple-700 text-sm shadow-sm transition-all hover:bg-purple-50 active:scale-95 disabled:opacity-50"
 							disabled={loadingAi}
 							onClick={async () => {
 								setLoadingAi(true);
@@ -436,7 +441,7 @@ function AdminDiscountsPage() {
 							<Sparkles
 								className={`h-4 w-4 ${loadingAi ? "animate-spin" : "transition-transform group-hover:rotate-12"}`}
 							/>
-							{loadingAi ? "Menganalisis..." : "Saran AI"}
+							{loadingAi ? "Menganalisis..." : "Bantu buat promo"}
 						</button>
 						<button
 							className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground text-sm shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95"
@@ -447,20 +452,14 @@ function AdminDiscountsPage() {
 							type="button"
 						>
 							<Plus className="h-4 w-4" />
-							Tambah Diskon
+							Buat Promosi
 						</button>
 					</div>
 				</div>
 
-				<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm" data-marketing-rule="djiwa-pay-20">
-					<div className="flex items-start gap-3">
-						<div className="rounded-xl bg-emerald-100 p-2 text-emerald-700"><Tag className="h-4 w-4" /></div>
-						<div className="min-w-0 flex-1">
-							<p className="text-xs font-black">{djiwaPayRule.name}</p>
-							<p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">Diskon {djiwaPayRule.value}% otomatis untuk pembayaran Djiwa Pay. Tunai/kasir dan QRIS tidak eligible. Reward transaksi: {djiwaPayRule.reward}.</p>
-						</div>
-					</div>
-				</div>
+				{showDjiwaPayRule ? <div className="mb-4 rounded-[18px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm" data-marketing-rule="djiwa-pay-20">
+					<div className="flex items-start gap-3"><div className="rounded-xl bg-emerald-100 p-2 text-emerald-700"><Tag className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-xs font-black">{djiwaPayRule.name}</p><p className="mt-0.5 text-[11px] leading-relaxed text-emerald-800">Diskon {djiwaPayRule.value}% otomatis untuk pembayaran Djiwa Pay. Tunai/kasir dan QRIS tidak eligible. Reward transaksi: {djiwaPayRule.reward}.</p></div><button type="button" onClick={() => setShowDjiwaPayRule(false)} className="rounded-lg px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100">Sembunyikan</button></div>
+				</div> : <button type="button" onClick={() => setShowDjiwaPayRule(true)} className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100"><Tag className="h-3.5 w-3.5" />Lihat aturan Djiwa Pay</button>}
 
 				{/* Statistics Cards */}
 				<div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -579,7 +578,11 @@ function AdminDiscountsPage() {
 				</AnimatePresence>
 
 				{/* Search and Filter Bar */}
-				<div className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm md:flex-row md:items-center">
+				<div className="rounded-[18px] border border-slate-200/80 bg-white p-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
+				<div className="mb-3 flex flex-wrap items-center gap-2">
+					{([["all", "Semua", stats.total], ["aktif", "Aktif", stats.active], ["terjadwal", "Terjadwal", stats.scheduled], ["kedaluwarsa", "Berakhir", stats.expired]] as Array<[string, string, number]>).map(([value, label, count]) => <button key={value} type="button" onClick={() => setFilterStatus(value)} className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${filterStatus === value ? "bg-[#1a5dc6] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{label} <span className="ml-1 opacity-70">{count}</span></button>)}
+					<span className="ml-auto text-xs text-muted-foreground">{filteredDiscounts.length} promosi ditemukan</span>
+				</div>
 					<div className="relative flex-1">
 						<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 						<input
@@ -593,7 +596,7 @@ function AdminDiscountsPage() {
 
 					<div className="flex flex-wrap gap-2">
 						<div className="flex items-center gap-2">
-							<Filter className="h-4 w-4 text-muted-foreground" />
+							<span className="text-[11px] font-semibold text-slate-500">Filter</span>
 							<select
 								className="rounded-lg border bg-background px-3 py-2 text-sm outline-none transition-all focus:ring-2 focus:ring-primary"
 								onChange={(e) => setFilterStatus(e.target.value)}
@@ -634,12 +637,16 @@ function AdminDiscountsPage() {
 								Reset
 							</button>
 						)}
+						<div className="ml-auto flex rounded-lg border bg-background p-0.5" aria-label="Tampilan daftar promosi">
+							<button type="button" aria-label="Tampilan tabel" onClick={() => setViewMode("table")} className={`rounded-md p-1.5 ${viewMode === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}><List className="h-4 w-4" /></button>
+							<button type="button" aria-label="Tampilan kartu" onClick={() => setViewMode("card")} className={`rounded-md p-1.5 ${viewMode === "card" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}><LayoutGrid className="h-4 w-4" /></button>
+						</div>
 					</div>
 				</div>
 			</div>
 
 			{/* Discounts Grid */}
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+			{viewMode === "table" ? <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.04)]"><div className="overflow-x-auto"><table className="w-full min-w-[860px] text-left text-sm"><thead className="border-b bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Promosi</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Nilai</th><th className="px-4 py-3">Periode</th><th className="px-4 py-3">Cakupan</th><th className="px-4 py-3 text-right">Aksi</th></tr></thead><tbody className="divide-y divide-slate-100">{!discounts ? <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Memuat promosi…</td></tr> : filteredDiscounts.map((d: any) => { const status = getPromoStatus(d); const StatusIcon = status.icon; return <tr key={d._id} className="transition hover:bg-slate-50/80"><td className="px-4 py-3"><div className="font-semibold text-slate-900">{d.name}</div><div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">{d.code ? <code>{d.code}</code> : <span>Tanpa kode voucher</span>}{d.isHappyHour && <span className="rounded-full bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700">Happy Hour</span>}</div></td><td className="px-4 py-3"><span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold ${status.class}`}><StatusIcon className="h-3 w-3" />{status.label}</span></td><td className="px-4 py-3 font-semibold text-[#1a5dc6]">{d.type === "PERCENTAGE" ? `${d.value}% OFF` : `Rp ${new Intl.NumberFormat("id-ID").format(Number(d.value))}`}</td><td className="px-4 py-3 text-xs text-slate-600">{d.startDate ? new Date(d.startDate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "—"}<br />{d.endDate ? new Date(d.endDate).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "—"}{d.startTime && d.endTime ? <span className="text-slate-400"> · {d.startTime}–{d.endTime} WIB</span> : null}</td><td className="px-4 py-3 text-xs text-slate-600">{d.targetType === "ALL" ? "Semua produk" : `${d.targetType === "CATEGORY" ? "Kategori" : "Produk"} · ${(d as { targetIds?: string[]; targetId?: string }).targetIds?.length || (d.targetId ? 1 : 0)} item`}</td><td className="px-4 py-3"><div className="flex justify-end gap-1"><button type="button" aria-label={`Edit ${d.name}`} onClick={() => openEdit(d)} className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-[#1a5dc6]"><Edit className="h-4 w-4" /></button><button type="button" aria-label={`Salin kode ${d.name}`} onClick={() => d.code && copyDiscountCode(d.code)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><Copy className="h-4 w-4" /></button><button type="button" aria-label={`Hapus ${d.name}`} onClick={() => handleDelete(d._id)} className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"><MoreHorizontal className="h-4 w-4" /></button></div></td></tr>; })}{discounts && filteredDiscounts.length === 0 && <tr><td colSpan={6} className="px-4 py-14 text-center text-slate-500">Tidak ada promosi yang cocok dengan filter.</td></tr>}</tbody></table></div></div> : (<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{!discounts ? (
 					Array.from({ length: 6 }).map((_, i) => (
 						<div key={i} className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
@@ -886,7 +893,7 @@ function AdminDiscountsPage() {
 						)}
 					</>
 				)}
-			</div>
+			</div>)}
 
 			{/* Modal Form */}
 			<AnimatePresence>
