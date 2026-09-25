@@ -1248,19 +1248,19 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						{/* Quick Menu Panel */}
 						<motion.div
 							animate={{ y: 0, opacity: 1 }}
-							className="fixed right-0 bottom-0 left-0 z-50 rounded-t-2xl border-border border-t bg-card px-4 pt-4 pb-6 shadow-2xl md:hidden"
+							className="fixed right-0 bottom-0 left-0 z-50 max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-t-2xl border-border border-t bg-card px-3 pt-2.5 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl md:hidden"
 							exit={{ y: "100%", opacity: 0 }}
 							initial={{ y: "100%", opacity: 0 }}
 							transition={{ type: "spring", damping: 25, stiffness: 300 }}
 						>
 							{/* Handle bar */}
-							<div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
+							<div className="mx-auto mb-2 h-1 w-8 rounded-full bg-muted" />
 
 							{/* Header */}
-							<div className="mb-4 flex items-center justify-between">
+							<div className="mb-2.5 flex items-center justify-between">
 								<h3 className="font-semibold text-foreground">Menu</h3>
 								<button
-									className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									aria-label="Tutup menu"
 									onClick={() => setIsQuickMenuOpen(false)}
 									type="button"
@@ -1270,33 +1270,33 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							</div>
 
 							{/* Grouped Quick Menu */}
-							<div className="space-y-3">
+							<div className="space-y-2">
 								{QUICK_MENU_SECTIONS.map((section) => (
 									<div key={section.label}>
-										<p className="mb-1.5 px-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+										<p className="mb-1 px-1 font-semibold text-[9px] text-muted-foreground uppercase tracking-wider">
 											{section.label}
 										</p>
-										<div className="grid grid-cols-3 gap-2">
+										<div className="grid grid-cols-3 gap-1.5">
 											{section.items.map((item) => {
 												const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
 												if (!hasPermission) return null;
 
 												return (
 													<Link
-														className="flex flex-col items-center gap-2 rounded-xl bg-muted/50 p-3 transition-colors active:bg-muted"
+														className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-lg bg-muted/50 px-1.5 py-2 transition-colors active:bg-muted"
 														key={item.to}
 														onClick={() => setIsQuickMenuOpen(false)}
 														to={item.to}
 													>
 														<div
-															className={`flex h-9 w-9 items-center justify-center rounded-md ${location.pathname === item.to
+															className={`flex h-8 w-8 items-center justify-center rounded-md ${location.pathname === item.to
 																	? "bg-primary text-primary-foreground"
 																	: "bg-background text-foreground"
 																}`}
 														>
 															<item.icon className="h-4 w-4" />
 														</div>
-														<span className="text-center font-medium text-[10px] text-foreground leading-tight">
+														<span className="line-clamp-2 text-center font-medium text-[9px] text-foreground leading-tight">
 															{item.label}
 														</span>
 													</Link>
@@ -1307,9 +1307,9 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								))}
 
 								{/* Logout button */}
-								<div className="border-border border-t pt-3">
+								<div className="border-border border-t pt-2">
 									<button
-										className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive/10 p-2.5 transition-colors active:bg-destructive/20"
+										className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-destructive/10 p-2 transition-colors active:bg-destructive/20"
 								onClick={() => {
 									setIsQuickMenuOpen(false);
 									logout();
