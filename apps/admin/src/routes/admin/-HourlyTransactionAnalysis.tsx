@@ -160,7 +160,7 @@ export default function HourlyTransactionAnalysis() {
 			</div>
 			{rangeError && <p className="mt-2 text-[10px] font-semibold text-[#b42318]">Pilih rentang maksimal {MAX_CUSTOM_RANGE_DAYS} hari dan pastikan tanggal mulai tidak melewati tanggal selesai.</p>}
 
-			{hasTransactions && <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1.25fr_1fr_1fr]">
+			{hasTransactions && <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1.25fr_1fr_1fr]">
 				<SummaryItem detail={`${peak?.orderCount ?? 0} order · ${money(peak?.revenue ?? 0)} · ${peakContribution.toFixed(1)}% dari periode`} highlight label={metric === "orders" ? "Jam ramai" : "Revenue tertinggi"} value={peak ? hourRange(peak.hour) : "—"} />
 				<SummaryItem detail={comparisonDelta === null ? "Belum ada pembanding" : `${comparisonDelta >= 0 ? "+" : ""}${formatShortMetric(comparisonDelta, metric)} vs periode sebelumnya`} label="Ringkasan periode" value={`${insight.totalSettledOrders} order`} />
 				<SummaryItem detail={quiet ? `${quiet.orderCount} order · ${money(quiet.revenue)}` : "Belum ada data"} label="Jam tersepi" value={quiet ? hourRange(quiet.hour) : "—"} />
