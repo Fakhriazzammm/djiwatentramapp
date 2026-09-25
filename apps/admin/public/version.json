@@ -1,7 +1,7 @@
 {
-  "version": "0.2.221",
-  "commitHash": "1ddb045",
-  "message": "feat(admin): add bulk visit invitation creation",
-  "buildDate": "2026-09-24",
-  "generatedAt": "2026-09-24T12:51:03.504Z"
+  "version": "0.2.228",
+  "commitHash": "c5182c3",
+  "message": "feat(admin): add targeted notification center",
+  "buildDate": "2026-09-25",
+  "generatedAt": "2026-09-25T17:30:00.000Z"
 }
