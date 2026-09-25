@@ -1,5 +1,5 @@
 import { Download, Plus, Share, Smartphone, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,7 @@ export function PwaInstallPrompt() {
 	const [platform, setPlatform] = useState<InstallPlatform | null>(null);
 	const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 	const [isInstalling, setIsInstalling] = useState(false);
-	const [isMinimized, setIsMinimized] = useState(false);
+	const reappearTimer = useRef<number | null>(null);
 
 	useEffect(() => {
 		if (isStandaloneMode()) return;
@@ -42,7 +42,7 @@ export function PwaInstallPrompt() {
 		const handleAppInstalled = () => {
 			setPlatform(null);
 			setDeferredPrompt(null);
-			setIsMinimized(false);
+			if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
 		};
 
 		window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -52,12 +52,14 @@ export function PwaInstallPrompt() {
 			const timer = window.setTimeout(() => setPlatform("ios"), 1200);
 			return () => {
 				window.clearTimeout(timer);
+				if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
 				window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 				window.removeEventListener("appinstalled", handleAppInstalled);
 			};
 		}
 
 		return () => {
+			if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
 			window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 			window.removeEventListener("appinstalled", handleAppInstalled);
 		};
@@ -66,9 +68,12 @@ export function PwaInstallPrompt() {
 	if (!platform) return null;
 
 	const dismiss = () => {
-		// Keep a quiet launcher visible so the suggestion remains available
-		// until installation, without covering the user's workspace.
-		setIsMinimized(true);
+		const dismissedPlatform = platform;
+		setPlatform(null);
+		if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
+		reappearTimer.current = window.setTimeout(() => {
+			if (!isStandaloneMode()) setPlatform(dismissedPlatform);
+		}, 60_000);
 	};
 
 	const installAndroid = async () => {
@@ -81,32 +86,16 @@ export function PwaInstallPrompt() {
 				setPlatform(null);
 				setDeferredPrompt(null);
 			} else {
-				setIsMinimized(true);
+				dismiss();
 			}
 		} finally {
 			setIsInstalling(false);
 		}
 	};
 
-	if (isMinimized) {
-		return (
-			<button
-				type="button"
-				className="fixed bottom-4 right-3 z-[70] inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background/95 px-4 text-xs font-semibold text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-transform active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:bottom-5 sm:right-5"
-				style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
-				onClick={() => setIsMinimized(false)}
-				aria-label="Buka pemasangan aplikasi"
-			>
-				<Download className="h-4 w-4 text-primary" aria-hidden="true" />
-				Pasang app
-			</button>
-		);
-	}
-
 	return (
 		<div
-			className="fixed inset-x-3 z-[70] mx-auto max-w-md rounded-[22px] border border-border/70 bg-background/95 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:right-5"
-			style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
+			className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[70] mx-auto max-w-md rounded-[22px] border border-border/70 bg-background/95 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.18)] backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:right-5"
 			role="dialog"
 			aria-label="Pasang aplikasi Djiwa Tentram Admin"
 			aria-live="polite"
