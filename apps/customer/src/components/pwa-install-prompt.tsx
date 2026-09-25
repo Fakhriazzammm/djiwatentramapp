@@ -1,13 +1,12 @@
 import { Download, Share, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const DISMISS_KEY = "djiwa-pwa-install-dismissed-until";
-const DISMISS_FOR_MS = 7 * 24 * 60 * 60 * 1000;
+const PROMPT_REAPPEAR_MS = 60 * 1000;
 
 function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
@@ -21,23 +20,16 @@ function isMobile() {
   return window.matchMedia("(max-width: 900px)").matches || /android|iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
-function wasDismissed() {
-  const until = Number(window.localStorage.getItem(DISMISS_KEY) || 0);
-  return Number.isFinite(until) && until > Date.now();
-}
-
-function dismiss() {
-  window.localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_FOR_MS));
-}
-
 export function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [ios, setIos] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  const reappearTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isMobile() || isStandalone() || wasDismissed()) return;
+    if (!isMobile() || isStandalone()) return;
 
     const showIosGuide = isIos();
     if (showIosGuide) {
@@ -54,8 +46,10 @@ export function PwaInstallPrompt() {
       window.setTimeout(() => setVisible(true), 900);
     };
     const handleInstalled = () => {
+      setInstalled(true);
       setVisible(false);
       setDeferredPrompt(null);
+      if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
@@ -63,14 +57,18 @@ export function PwaInstallPrompt() {
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
       window.removeEventListener("appinstalled", handleInstalled);
+      if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
     };
   }, []);
 
   if (!visible || isStandalone()) return null;
 
   const close = () => {
-    dismiss();
     setVisible(false);
+    if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
+    reappearTimer.current = window.setTimeout(() => {
+      if (!installed && !isStandalone()) setVisible(true);
+    }, PROMPT_REAPPEAR_MS);
   };
 
   const install = async () => {
@@ -86,7 +84,7 @@ export function PwaInstallPrompt() {
 
   return (
     <aside className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-md rounded-[22px] border border-primary/15 bg-card/95 p-3 shadow-[0_16px_50px_rgba(15,23,42,0.2)] backdrop-blur-xl" role="dialog" aria-label="Install Djiwa App">
-      <button type="button" onClick={close} aria-label="Tutup ajakan install aplikasi" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+      <button type="button" onClick={close} aria-label="Tutup sementara — ajakan install akan muncul lagi" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
       <div className="flex items-start gap-3 pr-8">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><Download className="h-5 w-5" /></div>
         <div className="min-w-0">
