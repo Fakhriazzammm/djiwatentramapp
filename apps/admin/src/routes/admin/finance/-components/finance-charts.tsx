@@ -110,7 +110,7 @@ export function PeriodComparisonCards() {
 				return (
 					<div
 						key={item.label}
-						className={`rounded-[20px] border ${item.border} ${item.bg} p-3 flex flex-col justify-between transition-colors group`}
+						className={`rounded-[20px] border ${item.border} ${item.bg} p-3.5 shadow-[0_6px_20px_rgba(15,23,42,0.035)] flex flex-col justify-between transition-colors group`}
 					>
 						<div className="flex items-center justify-between mb-1.5">
 							<div className="flex items-center gap-1.5">
@@ -138,7 +138,7 @@ export function PeriodComparisonCards() {
 						</div>
 						
 						<div className="space-y-0.5">
-							<p className={`font-bold text-xs leading-none ${isPositive ? item.colorUp : item.colorDown}`}>
+							<p className={`font-display font-bold text-sm leading-none tabular-nums ${isPositive ? item.colorUp : item.colorDown}`}>
 								{formatFull(item.curr)}
 							</p>
 							<div className="flex items-baseline justify-between gap-1 overflow-hidden">
@@ -190,9 +190,9 @@ export function TrendChart() {
 	};
 
 	return (
-		<div className="rounded-[22px] border border-border bg-card p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:p-4">
+		<div className="rounded-[22px] border border-border/80 bg-card p-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.045)] sm:p-4">
 			<div className="mb-2 flex items-center justify-between">
-				<h3 className="font-bold text-xs">Tren Keuangan</h3>
+				<div><h3 className="font-display text-sm font-bold">Tren keuangan</h3><p className="mt-0.5 text-[11px] text-muted-foreground">Pemasukan dan pengeluaran dari transaksi selesai.</p></div>
 				<div className="flex gap-1">
 					<div className="flex rounded border border-border overflow-hidden text-[11px]">
 						{(["monthly", "weekly", "daily"] as const).map((m) => (

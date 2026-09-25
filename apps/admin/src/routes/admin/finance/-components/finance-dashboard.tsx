@@ -83,13 +83,13 @@ export function FinanceDashboard() {
 	const hppCogs = useHybridOrdersCogs({ startDate: range.startDate, endDate: range.endDate });
 
 	return (
-		<div className="min-w-0 space-y-3 overflow-x-hidden md:space-y-4">
+		<div className="min-w-0 space-y-2.5 overflow-x-hidden md:space-y-3">
 			{/* ── Page identity and primary actions ───────────── */}
-			<section className="flex min-w-0 flex-col justify-between gap-3 rounded-[22px] border border-border bg-card p-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:p-4">
+			<section className="flex min-w-0 flex-col justify-between gap-2 rounded-[22px] border border-border/80 bg-card p-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.045)] sm:flex-row sm:items-center sm:p-4">
 				<div>
 					<p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Kontrol finansial</p>
-					<h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Keuangan</h1>
-					<p className="mt-1 text-sm text-muted-foreground">Pantau arus kas, margin, dan laporan dalam satu alur.</p>
+					<h1 className="mt-1 font-display text-[22px] font-bold tracking-tight text-foreground sm:text-2xl">Keuangan</h1>
+					<p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">Saldo, pemasukan, dan pengeluaran dalam satu layar.</p>
 				</div>
 				<div className="flex min-w-0 flex-wrap items-center gap-1.5">
 					<Link
@@ -108,7 +108,7 @@ export function FinanceDashboard() {
 			</section>
 
 			{/* ── Period selector ────────────────────────────── */}
-			<div aria-label="Pilih periode laporan" className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-[20px] border border-border bg-card p-1.5 shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
+			<div aria-label="Pilih periode laporan" className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-[18px] border border-border/80 bg-card p-1 shadow-[0_6px_20px_rgba(15,23,42,0.035)]">
 				{PERIODS.map((p) => (
 					<button
 						key={p.id}
@@ -127,8 +127,8 @@ export function FinanceDashboard() {
 			</div>
 
 			{/* ── Primary balance with supporting cash flow ───── */}
-			<section className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
-				<div className="rounded-[22px] border border-primary/15 bg-primary/5 p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:p-4">
+			<section className="grid gap-2 md:grid-cols-[minmax(0,1.35fr)_minmax(18rem,1fr)]">
+				<div className="rounded-[22px] border border-primary/15 bg-primary/[0.06] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.045)] sm:p-4">
 					<div className="flex items-center justify-between gap-3">
 						<div>
 							<p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Saldo bersih</p>
@@ -137,7 +137,7 @@ export function FinanceDashboard() {
 						<span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Wallet className="h-5 w-5" /></span>
 					</div>
 					{summary?.netBalance !== undefined ? (
-						<p className={`mt-4 break-words font-display text-2xl font-bold tabular-nums sm:text-3xl ${summary.netBalance >= 0 ? "text-foreground" : "text-destructive"}`}>
+						<p className={`mt-3 break-words font-display text-[26px] font-bold tabular-nums sm:text-3xl ${summary.netBalance >= 0 ? "text-foreground" : "text-destructive"}`}>
 							{fmt(summary.netBalance)}
 						</p>
 					) : (
