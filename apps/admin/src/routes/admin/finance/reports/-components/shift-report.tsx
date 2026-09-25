@@ -5,7 +5,6 @@ import {
 	CalendarDays,
 	CheckCircle2,
 	Search,
-	SlidersHorizontal,
 	Activity,
 	Clock3,
 	Copy,
@@ -238,19 +237,6 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 	const storeName = settings?.storeName || "Toko";
 	const allRows = useHybridShiftReportRows() as ShiftRow[] | undefined;
 	const allStaffUsers = useHybridStaffUsers();
-	// Derive unique roles from staff users, sorted by priority
-	// Baru=1, Chef=2, Kasir=3, Waitress=4, Manajer=5, Admin=6, other=99
-	const sortedRoles = useMemo(() => {
-		if (!allStaffUsers?.length) {
-			return ["BARISTA", "CHEF", "KASIR", "MANAGER"];
-		}
-		const priority: Record<string, number> = {
-			BARISTA: 1, CHEF: 2, KASIR: 3, WAITRESS: 4, MANAGER: 5, ADMIN: 6,
-		};
-		const unique = [...new Set(allStaffUsers.map((u: any) => u.roleName?.trim()).filter(Boolean))];
-		unique.sort((a, b) => (priority[a] ?? 99) - (priority[b] ?? 99));
-		return unique;
-	}, [allStaffUsers]);
 	const rows = useMemo(() => {
 		if (!allRows) {
 			return undefined;
@@ -571,7 +557,7 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 									{totals.activeCount > 0 ? `${totals.activeCount} aktif` : "Tidak ada shift aktif"}
 								</span>
 							</div>
-							<p className="mt-0.5 truncate text-xs text-muted-foreground">{range.label} · WIB · data aktual</p>
+							<p className="mt-0.5 truncate text-xs text-muted-foreground">Pantau shift berjalan dan pencapaian target</p>
 						</div>
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
@@ -596,9 +582,9 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 			{/* KPI strip: one row, no decorative card maze */}
 				<section className="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card sm:grid-cols-4 sm:divide-y-0">
 					<CommandMetric label="Revenue bersih" value={formatCurrencyIDR(totals.totalRevenue, true)} helper={`Bruto ${formatCurrencyIDR(totals.totalGross, true)}`} />
-					<CommandMetric label="Shift" value={`${totals.activeCount} aktif`} helper={`${rows.length} dalam periode`} />
+					<CommandMetric label="Shift" value={`${totals.activeCount} aktif`} helper={`${rows.length} shift`} />
 					<CommandMetric label="Produk terjual" value={`${totals.totalItems}`} helper={`Diskon ${formatCurrencyIDR(totals.totalDiscount, true)}`} />
-					<CommandMetric label="Pengeluaran" value={formatCurrencyIDR(totals.totalExpenses, true)} helper="Total periode" />
+					<CommandMetric label="Pengeluaran" value={formatCurrencyIDR(totals.totalExpenses, true)} helper="Periode terpilih" />
 				</section>
 
 			{/* Operational toolbar */}
@@ -607,15 +593,14 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 						<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 						<input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Cari shift, kasir, atau anggota tim..." className="h-9 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/10" aria-label="Cari shift" />
 					</div>
-					<div className="flex items-center gap-2 overflow-x-auto">
-						<div className="flex h-9 shrink-0 items-center gap-1 rounded-xl bg-muted/60 px-2 text-xs text-muted-foreground"><SlidersHorizontal className="h-3.5 w-3.5" /><span>Filter</span></div>
+					<div className="flex items-center gap-1.5 overflow-x-auto">
 						{(["SEMUA", "AKTIF", "SELESAI"] as const).map((status) => <button key={status} type="button" onClick={() => setStatusFilter(status)} className={`h-9 shrink-0 rounded-xl px-3 text-xs font-semibold transition-colors ${statusFilter === status ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>{status === "SEMUA" ? "Semua" : status === "AKTIF" ? "Aktif" : "Selesai"}</button>)}
 					</div>
 				</section>
 
 			<div className="flex items-center justify-between px-1">
-				<div><h3 className="text-sm font-bold text-foreground">Shift dalam periode</h3><p className="text-[11px] text-muted-foreground">Pilih satu baris untuk membuka detail lengkap.</p></div>
-				<div className="flex items-center gap-2"><span className="text-[11px] font-semibold text-muted-foreground">{visibleRows.length} dari {rows.length}</span>{someSelected && <button type="button" onClick={() => setConfirmDeleteIds(Array.from(selectedIds))} className="inline-flex h-8 items-center gap-1 rounded-lg bg-destructive/10 px-2.5 text-[11px] font-bold text-destructive hover:bg-destructive/20"><Trash2 className="h-3 w-3" /> Hapus {selectedIds.size}</button>}</div>
+				<div><h3 className="text-sm font-bold text-foreground">Daftar shift</h3><p className="text-[11px] text-muted-foreground">Pilih baris untuk lihat detail.</p></div>
+				<div className="flex items-center gap-2"><span className="text-[11px] font-semibold text-muted-foreground">{visibleRows.length} shift</span>{someSelected && <button type="button" onClick={() => setConfirmDeleteIds(Array.from(selectedIds))} className="inline-flex h-8 items-center gap-1 rounded-lg bg-destructive/10 px-2.5 text-[11px] font-bold text-destructive hover:bg-destructive/20"><Trash2 className="h-3 w-3" /> Hapus {selectedIds.size}</button>}</div>
 			</div>
 
 			{/* Mobile list */}
@@ -629,14 +614,14 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 			{/* Desktop monitor table + selected detail */}
 			<div className="hidden gap-3 lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(290px,.8fr)]">
 				<div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
-					<div className="flex items-center justify-between border-b border-border px-3 py-2.5"><div className="flex items-center gap-2"><input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-3.5 w-3.5 accent-primary" aria-label="Pilih semua shift" /><span className="text-xs font-bold">Monitor shift</span></div><span className="text-[10px] text-muted-foreground">Klik baris untuk detail</span></div>
+					<div className="flex items-center justify-between border-b border-border px-3 py-2.5"><div className="flex items-center gap-2"><input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-3.5 w-3.5 accent-primary" aria-label="Pilih semua shift" /><span className="text-xs font-bold">Pilih semua</span></div></div>
 					<div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-xs"><thead className="bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-3 py-2 text-left">Shift</th><th className="px-3 py-2 text-left">Kasir</th><th className="px-3 py-2 text-right">Net</th><th className="px-3 py-2 text-center">Target</th><th className="px-3 py-2 text-right">Produk</th><th className="px-3 py-2 text-right">Pengeluaran</th><th className="px-3 py-2 text-right">Aksi</th></tr></thead><tbody>
 						{visibleRows.map((shift) => { const isSelected = shift.startTime === selectedShift?.startTime; return <tr key={shift.shiftId} onClick={() => setSelectedShiftStart(shift.startTime)} className={`cursor-pointer border-t border-border transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/30"}`}><td className="px-3 py-2.5"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${shift.status === "AKTIF" ? "bg-emerald-500" : "bg-slate-300"}`} /><div><div className="font-semibold">{shift.shiftName}</div><div className="text-[10px] text-muted-foreground">{formatCompactRange(shift.startTime, shift.endTime)}</div></div></div></td><td className="max-w-[130px] truncate px-3 py-2.5" title={shift.cashierName}>{shift.cashierName || "—"}</td><td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-primary">{formatCurrencyIDR(shift.totalRevenue, true)}</td><td className="px-3 py-2.5 text-center"><TargetStatusCell label="" hasTarget={!!shift.hasTarget} met={!!shift.isShiftTargetMet} current={shift.shiftCollected ?? shift.totalRevenue} target={shift.shiftTarget ?? 0} /></td><td className="px-3 py-2.5 text-right tabular-nums">{shift.totalItemsSold}</td><td className="whitespace-nowrap px-3 py-2.5 text-right text-rose-700">{formatCurrencyIDR(shift.totalExpenses, true)}</td><td className="px-3 py-2.5" onClick={(event) => event.stopPropagation()}><div className="flex justify-end gap-1"><button type="button" onClick={(event) => openEdit(shift, event)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label="Edit shift"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setConfirmDeleteIds([shift.shiftId])} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/10" aria-label="Hapus shift"><Trash2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void handleSendShiftEmail(shift)} disabled={sendingShiftStart === shift.startTime} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label="Kirim email laporan"><Mail className="h-3.5 w-3.5" /></button></div></td></tr>; })}
 					</tbody></table></div>
 				</div>
 
 				<div className="min-w-0 rounded-2xl border border-border bg-card"><div className="flex items-start justify-between border-b border-border px-3 py-3"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-primary">Detail terpilih</p><h3 className="truncate text-base font-bold">{selectedShift?.shiftName || "Pilih shift"}</h3><p className="truncate text-[11px] text-muted-foreground">{selectedShift?.cashierName || "Kasir belum diisi"} · {selectedShift ? formatDateTime(selectedShift.startTime) : "—"}</p></div><button type="button" onClick={async () => { if (summaryText) { await navigator.clipboard.writeText(summaryText); toast.success("Ringkasan shift disalin"); } }} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border px-2 text-[11px] font-semibold text-muted-foreground hover:bg-muted"><Copy className="h-3 w-3" /> Salin</button></div>
-					{selectedShift && <div className="space-y-3 p-3"><div className="grid grid-cols-2 gap-2"><MiniStat icon={Wallet} label="Net" value={formatCurrencyIDR(selectedShift.totalRevenue, true)} /><MiniStat icon={ReceiptText} label="Bruto" value={formatCurrencyIDR(selectedShift.totalGrossSales, true)} /><MiniStat icon={Clock3} label="Durasi" value={`${formatTime(selectedShift.startTime)}–${formatTime(selectedShift.endTime)}`} /><MiniStat icon={CheckCircle2} label="Status" value={selectedShift.status} /></div><div className="rounded-xl border border-border bg-muted/20 p-3"><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"><TrendingUp className="h-3.5 w-3.5" /> Target</div>{selectedShift.hasTarget ? <div className="space-y-2"><TargetLine label="Shift" met={!!selectedShift.isShiftTargetMet} current={selectedShift.shiftCollected ?? selectedShift.totalRevenue} target={selectedShift.shiftTarget ?? 0} /><TargetLine label="Harian" met={!!selectedShift.isDailyTargetMet} current={selectedShift.dailyCollected ?? 0} target={selectedShift.dailyTarget ?? 0} /></div> : <p className="text-xs text-muted-foreground">Belum ada target untuk periode ini.</p>}</div><div className="grid grid-cols-2 gap-2"><DetailBlock title="Pembayaran" items={[["Modal", formatCurrencyIDR(selectedShift.startingCash, true)], ["Tunai", formatCurrencyIDR(selectedShift.cashRevenue, true)], ["QRIS", formatCurrencyIDR(selectedShift.qrisRevenue, true)]]} /><DetailBlock title="Aktivitas" items={[["Produk", `${selectedShift.totalItemsSold} item`], ["Transaksi", `${selectedShift.orderCount}`], ["Pengeluaran", formatCurrencyIDR(selectedShift.totalExpenses, true)]]} /></div>{details?.topProducts?.length ? <div className="rounded-xl border border-border p-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Produk teratas</p>{details.topProducts.slice(0, 3).map((item: any, index: number) => <div key={`${item.productName}-${index}`} className="flex items-center justify-between border-t border-border py-1.5 text-xs first:border-0"><span className="truncate">{index + 1}. {item.productName}</span><strong>{item.quantity}</strong></div>)}</div> : null}</div>}
+					{selectedShift && <div className="space-y-3 p-4"><div className="grid grid-cols-2 gap-2"><MiniStat icon={Wallet} label="Net" value={formatCurrencyIDR(selectedShift.totalRevenue, true)} /><MiniStat icon={ReceiptText} label="Bruto" value={formatCurrencyIDR(selectedShift.totalGrossSales, true)} /><MiniStat icon={Clock3} label="Durasi" value={`${formatTime(selectedShift.startTime)}–${formatTime(selectedShift.endTime)}`} /><MiniStat icon={CheckCircle2} label="Status" value={selectedShift.status} /></div><div className="rounded-xl border border-border bg-muted/20 p-3"><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"><TrendingUp className="h-3.5 w-3.5" /> Target</div>{selectedShift.hasTarget ? <div className="space-y-2"><TargetLine label="Shift" met={!!selectedShift.isShiftTargetMet} current={selectedShift.shiftCollected ?? selectedShift.totalRevenue} target={selectedShift.shiftTarget ?? 0} /><TargetLine label="Harian" met={!!selectedShift.isDailyTargetMet} current={selectedShift.dailyCollected ?? 0} target={selectedShift.dailyTarget ?? 0} /></div> : <p className="text-xs text-muted-foreground">Belum ada target untuk periode ini.</p>}</div><div className="grid grid-cols-2 gap-2"><DetailBlock title="Pembayaran" items={[["Modal", formatCurrencyIDR(selectedShift.startingCash, true)], ["Tunai", formatCurrencyIDR(selectedShift.cashRevenue, true)], ["QRIS", formatCurrencyIDR(selectedShift.qrisRevenue, true)]]} /><DetailBlock title="Aktivitas" items={[["Produk", `${selectedShift.totalItemsSold} item`], ["Transaksi", `${selectedShift.orderCount}`], ["Pengeluaran", formatCurrencyIDR(selectedShift.totalExpenses, true)]]} /></div>{details?.topProducts?.length ? <div className="rounded-xl border border-border p-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Produk teratas</p>{details.topProducts.slice(0, 3).map((item: any, index: number) => <div key={`${item.productName}-${index}`} className="flex items-center justify-between border-t border-border py-1.5 text-xs first:border-0"><span className="truncate">{index + 1}. {item.productName}</span><strong>{item.quantity}</strong></div>)}</div> : null}</div>}
 				</div>
 			</div>
 
@@ -1001,7 +986,7 @@ function DetailBlock({
 	items: Array<[string, string]>;
 }) {
 	return (
-		<div className="rounded-[20px] border border-border bg-background p-3">
+		<div className="min-h-[142px] rounded-xl border border-border bg-background p-3">
 			<h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 				{title}
 			</h4>
