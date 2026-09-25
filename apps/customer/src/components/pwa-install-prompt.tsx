@@ -82,17 +82,30 @@ export function PwaInstallPrompt() {
     setInstalling(false);
   };
 
+  const shareForIosDownload = async () => {
+    if (typeof navigator.share !== "function") return;
+    try {
+      await navigator.share({
+        title: "Download Djiwa App",
+        text: "Tambahkan Djiwa App ke layar utama untuk akses lebih cepat.",
+        url: window.location.href,
+      });
+    } catch {
+      // User may close the native share sheet; keep the popup available.
+    }
+  };
+
   return (
-    <aside className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-md rounded-[22px] border border-primary/15 bg-card/95 p-3 shadow-[0_16px_50px_rgba(15,23,42,0.2)] backdrop-blur-xl" role="dialog" aria-label="Install Djiwa App">
-      <button type="button" onClick={close} aria-label="Tutup sementara — ajakan install akan muncul lagi" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+    <aside className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-md rounded-[22px] border border-primary/15 bg-card/95 p-3 shadow-[0_16px_50px_rgba(15,23,42,0.2)] backdrop-blur-xl" role="dialog" aria-label="Download Djiwa App">
+      <button type="button" onClick={close} aria-label="Tutup sementara — popup download akan muncul lagi" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
       <div className="flex items-start gap-3 pr-8">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><Download className="h-5 w-5" /></div>
         <div className="min-w-0">
-          <p className="text-sm font-black">Pasang Djiwa App</p>
+          <p className="text-sm font-black">Download Djiwa App</p>
           {ios ? <><p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">Akses lebih cepat dari layar utama.</p><p className="mt-2 flex items-center gap-1 text-[11px] font-bold text-primary"><Share className="h-3.5 w-3.5" /> Tekan Share → Add to Home Screen</p></> : <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">Simpan sebagai aplikasi mobile agar lebih cepat dibuka.</p>}
         </div>
       </div>
-      {ios ? <div className="mt-2 flex items-center gap-2 rounded-xl bg-primary/5 px-2.5 py-2 text-[10px] text-muted-foreground"><Share className="h-3.5 w-3.5 shrink-0 text-primary" /> Pilih <span className="font-black text-foreground">Add to Home Screen</span>, lalu tekan Add.</div> : <button type="button" onClick={() => void install()} disabled={installing} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground disabled:opacity-60"><Download className="h-4 w-4" /> {installing ? "Menyiapkan..." : "Install sekarang"}</button>}
+      {ios ? <><div className="mt-2 flex items-center gap-2 rounded-xl bg-primary/5 px-2.5 py-2 text-[10px] text-muted-foreground"><Share className="h-3.5 w-3.5 shrink-0 text-primary" /> Pilih <span className="font-black text-foreground">Add to Home Screen</span>, lalu tekan Add.</div><button type="button" onClick={() => void shareForIosDownload()} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground"><Share className="h-4 w-4" /> Share untuk Download</button></> : <button type="button" onClick={() => void install()} disabled={installing} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground disabled:opacity-60"><Download className="h-4 w-4" /> {installing ? "Menyiapkan..." : "Download sekarang"}</button>}
     </aside>
   );
 }
