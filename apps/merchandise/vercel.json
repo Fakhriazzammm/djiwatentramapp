@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd ../.. && bun run --cwd apps/customer build",
-  "ignoreCommand": "bash ../../scripts/vercel-ignore.sh apps/customer packages/env supabase",
+  "buildCommand": "cd ../.. && bun run --cwd apps/merchandise build",
+  "ignoreCommand": "bash ../../scripts/vercel-ignore.sh apps/merchandise packages/env supabase",
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && bun install",
   "headers": [
