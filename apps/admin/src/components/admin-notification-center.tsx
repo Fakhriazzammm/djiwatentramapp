@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Bell, Check, ChevronRight, X } from "lucide-react";
 import { toast } from "sonner";
@@ -71,7 +71,16 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 	} = useAdminNotifications();
 	const { supported: pushSupported, isSubscribed: pushSubscribed, isBusy: pushBusy, enable: enablePush } = useAdminPush();
 	const [isOpen, setIsOpen] = useState(false);
+	const [isMobile, setIsMobile] = useState(false);
 	const [iconFailed, setIconFailed] = useState(false);
+
+	useEffect(() => {
+		const media = window.matchMedia("(max-width: 767px)");
+		const sync = () => setIsMobile(media.matches);
+		sync();
+		media.addEventListener("change", sync);
+		return () => media.removeEventListener("change", sync);
+	}, []);
 
 	const openNotification = async (notification: AdminNotification) => {
 		if (!notification.isRead) await markRead(notification.id).catch(() => toast.error("Notifikasi gagal ditandai"));
@@ -86,7 +95,13 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 				type="button"
 				aria-label={unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : "Notifikasi"}
 				aria-expanded={isOpen}
-				onClick={() => setIsOpen((current) => !current)}
+				onClick={() => {
+					if (isMobile) {
+						onNavigate("/admin/notifications");
+						return;
+					}
+					setIsOpen((current) => !current);
+				}}
 				whileTap={reduceMotion ? undefined : { scale: 0.94 }}
 				className="relative flex h-10 w-10 items-center justify-center rounded-full bg-primary/5 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 			>
@@ -126,7 +141,7 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 			</AnimatePresence>
 
 			<AnimatePresence>
-				{popupNotification && !isOpen && (
+				{popupNotification && !isMobile && !isOpen && (
 					<motion.div
 						initial={reduceMotion ? false : { opacity: 0, y: -8, scale: 0.96 }}
 						animate={{ opacity: 1, y: 0, scale: 1 }}

@@ -84,6 +84,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/accounting": "Chart of Accounts",
 	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
+	"/admin/notifications": "Notifikasi",
 	"/admin/order-mie-yamin": "Order Mie Yamin",
 	"/admin/order-mie-yamin/orders": "Pesanan Mie Yamin",
 	"/admin/order-mie-yamin/delivery": "Pengiriman Mie Yamin",
