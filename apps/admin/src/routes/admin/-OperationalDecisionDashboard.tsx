@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CheckCircle2, ChevronRight, CircleDollarSign, Clock3, Package, RefreshCw, ShoppingBag, WalletCards } from "lucide-react";
-import { useMemo } from "react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CheckCircle2, ChevronRight, CircleDollarSign, Clock3, Eye, EyeOff, Package, RefreshCw, ShoppingBag, WalletCards } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ function Row({ children, href }: { children: React.ReactNode; href?: string }) {
 function TooltipContent({ active, payload, label }: any) { if (!active || !payload?.length) return null; return <div className="rounded-xl border border-black/[.06] bg-white px-3 py-2 text-xs shadow-lg"><p className="text-[#6e6e73]">{label}</p><p className="mt-0.5 font-bold text-[#007aff]">{money(payload[0].value)}</p></div>; }
 
 export default function OperationalDecisionDashboard() {
+  const [isDataHidden, setIsDataHidden] = useState(false);
   const stats = useHybridDashboardStats();
   const orders = useHybridOrders();
   const shiftStatus = useHybridShiftStatus();
@@ -65,7 +66,11 @@ export default function OperationalDecisionDashboard() {
   const averageOrder = p.today.orders ? p.today.revenue / p.today.orders : 0;
 
   return <main className="min-h-full bg-white px-3 py-3 text-[#1d1d1f] sm:px-5 sm:py-4"><div className="mx-auto max-w-[1440px] space-y-3">
-    <header className="flex min-h-11 items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#0b2342] text-white"><BarChart3 className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-bold tracking-[-.025em] sm:text-lg">Pusat Pantau Operasional</h1><Badge className="hidden rounded-full bg-[#eaf8ef] px-2 py-0.5 text-[10px] font-semibold text-[#248a3d] sm:inline-flex">LIVE</Badge></div><p className="truncate text-[11px] text-[#6e6e73]">Djiwa Tentram Cafe &amp; Resto · keputusan berbasis data · WIB</p></div></div><Button className="h-9 shrink-0 rounded-xl bg-white px-3 text-xs text-[#1d1d1f] shadow-sm hover:bg-white/80" onClick={() => triggerHybridRefresh()} type="button" variant="outline"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Refresh</Button></header>
+    <header className="flex min-h-11 items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#0b2342] text-white"><BarChart3 className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-bold tracking-[-.025em] sm:text-lg">Pusat Pantau Operasional</h1><Badge className="hidden rounded-full bg-[#eaf8ef] px-2 py-0.5 text-[10px] font-semibold text-[#248a3d] sm:inline-flex">LIVE</Badge></div><p className="truncate text-[11px] text-[#6e6e73]">Djiwa Tentram Cafe &amp; Resto · keputusan berbasis data · WIB</p></div></div><div className="flex items-center gap-1.5"><Button aria-label={isDataHidden ? "Tampilkan seluruh data" : "Sembunyikan seluruh data"} className="h-9 w-9 rounded-xl bg-white p-0 text-[#1d1d1f] shadow-sm hover:bg-[#f5f5f7]" onClick={() => setIsDataHidden((hidden) => !hidden)} title={isDataHidden ? "Tampilkan data" : "Sembunyikan data"} type="button" variant="outline">{isDataHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button className="h-9 shrink-0 rounded-xl bg-white px-3 text-xs text-[#1d1d1f] shadow-sm hover:bg-white/80" onClick={() => triggerHybridRefresh()} type="button" variant="outline"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Refresh</Button></div></header>
+
+    <div className="relative">
+      {isDataHidden && <div className="absolute inset-0 z-10 flex items-start justify-center pt-20"><div className="rounded-2xl border border-[#d8e6f7] bg-white/95 px-4 py-3 text-center shadow-lg backdrop-blur"><EyeOff className="mx-auto h-4 w-4 text-[#007aff]" /><p className="mt-1 text-xs font-bold text-[#1d1d1f]">Data disembunyikan</p><p className="mt-0.5 text-[10px] text-[#6e6e73]">Tekan ikon mata untuk menampilkan kembali.</p></div></div>}
+      <div aria-hidden={isDataHidden} className={isDataHidden ? "pointer-events-none select-none blur-[8px] opacity-0" : ""}>
 
     <section aria-label="Perbandingan periode" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"><PeriodTile data={p.today} emphasis label="Hari ini" previous={p.yesterday} />{periodItems.slice(1).map(([key, label]) => <PeriodTile data={p[key as PeriodKey]} key={key} label={label} />)}</section>
 
@@ -78,6 +83,8 @@ export default function OperationalDecisionDashboard() {
     <section className="grid gap-3 lg:grid-cols-3"><div className="rounded-[20px] border border-black/[.04] bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,.035)]"><div className="mb-2 flex items-center justify-between"><h2 className="text-sm font-bold">Produk terlaris</h2><Link className="text-[10px] font-semibold text-[#007aff]" to="/admin/products">Semua produk</Link></div>{stats.topProducts.slice(0, 4).map((item, index) => <Row href="/admin/products" key={item.name}><span className="w-4 text-[10px] font-bold text-[#8e8e93]">{index + 1}</span><span className="flex-1 truncate font-medium">{item.name}</span><span className="text-[#6e6e73]">{item.count} terjual</span></Row>)}</div><div className="rounded-[20px] border border-black/[.04] bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,.035)]"><div className="mb-2 flex items-center justify-between"><h2 className="text-sm font-bold">Aktivitas terbaru</h2><Link className="text-[10px] font-semibold text-[#007aff]" to="/admin/orders">Buka order</Link></div>{stats.recentOrders.slice(0, 4).map((order) => <Row href="/admin/orders" key={order._id}><span className="w-12 text-[10px] text-[#8e8e93]">{formatTimeWIB(order.createdAt)}</span><span className="flex-1 truncate font-medium">#{order.orderNumber}</span><span className="text-[#6e6e73]">{money(order.totalAmount)}</span></Row>)}</div><div className="rounded-[20px] border border-black/[.04] bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,.035)]"><div className="mb-2 flex items-center justify-between"><h2 className="text-sm font-bold">Keuangan hari ini</h2><Link className="text-[10px] font-semibold text-[#007aff]" to="/admin/finance">Detail</Link></div><Row><span className="flex-1 text-[#6e6e73]">Pemasukan tercatat</span><b className="text-[#248a3d]">{money(stats.todayIncome)}</b></Row><Row><span className="flex-1 text-[#6e6e73]">Pengeluaran tercatat</span><b className="text-[#d70015]">{money(stats.todayExpense)}</b></Row><Row><span className="flex-1 font-semibold">Net cashflow</span><b>{money(stats.todayIncome - stats.todayExpense)}</b></Row></div></section>
 
     <footer className="flex items-center justify-between px-1 text-[10px] text-[#8e8e93]"><span>Revenue = transaksi settled · data dihitung dalam WIB</span><span className="hidden sm:inline">Refresh untuk membaca perubahan terbaru dari Supabase</span></footer>
+      </div>
+    </div>
   </div></main>;
 }
 
