@@ -692,9 +692,9 @@ function AdminOrders() {
 
 	return (
 		<div className="flex min-w-0 flex-col gap-3 pb-6">
-			<header className="flex min-w-0 items-center justify-between gap-3">
-				<div className="min-w-0"><div className="flex items-center gap-2"><h1 className="font-display truncate text-[22px] font-bold tracking-tight md:text-2xl">Pesanan</h1><span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{totalFiltered} terlihat</span></div><p className="mt-0.5 text-xs text-muted-foreground">Monitor transaksi dan pembayaran dalam satu layar.</p></div>
-				<div className="flex shrink-0 items-center gap-2"><div className="hidden text-right sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Periode</p><p className="text-xs font-semibold">{activeQuickDateLabel}</p></div><Button aria-label="Refresh daftar pesanan" className="h-10 w-10 rounded-xl" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button></div>
+			<header className="flex min-w-0 items-center justify-between gap-3 rounded-[24px] bg-[#123b73] px-4 py-4 text-white shadow-[0_14px_36px_rgba(18,59,115,0.18)] sm:px-5">
+				<div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100/75">Djiwa Tentram · Operational queue</p><div className="mt-1 flex items-center gap-2"><h1 className="font-display truncate text-[24px] font-bold tracking-tight">Pesanan</h1><span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-blue-50">{totalFiltered} terlihat</span></div><p className="mt-1 text-xs text-blue-100/80">Pantau transaksi, pembayaran, dan tindakan berikutnya.</p></div>
+				<div className="flex shrink-0 items-center gap-2"><div className="hidden text-right sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100/60">Periode aktif</p><p className="text-xs font-semibold text-white">{activeQuickDateLabel}</p></div><Button aria-label="Refresh daftar pesanan" className="h-10 w-10 rounded-xl border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button></div>
 			</header>
 
 			<section aria-label="Ringkasan pesanan" className="grid grid-cols-2 divide-x divide-border overflow-hidden rounded-[22px] border border-border/80 bg-card shadow-[0_8px_24px_rgba(9,9,11,0.045)] sm:grid-cols-5">

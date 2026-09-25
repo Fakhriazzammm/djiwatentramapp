@@ -1,9 +1,14 @@
 import {
 	ArrowDownLeft,
+	ArrowRight,
 	ArrowUpRight,
 	Calculator,
+	CircleDollarSign,
 	FileBarChart,
+	Landmark,
 	ListOrdered,
+	RefreshCw,
+	Receipt,
 	TrendingUp,
 	Wallet,
 } from "lucide-react";
@@ -75,7 +80,7 @@ function getRange(selected: string): { startDate?: number; endDate?: number } {
 const fmt = (v: number) =>
 	new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(v);
 
-export function FinanceDashboard() {
+function FinanceDashboardLegacy() {
 	const [selectedRange, setSelectedRange] = useState("month");
 	const range = getRange(selectedRange);
 
@@ -216,4 +221,32 @@ export function FinanceDashboard() {
 			)}
 		</div>
 	);
+}
+
+function MetricTile({ label, value, caption, tone = "text-foreground" }: { label: string; value: string; caption: string; tone?: string }) {
+	return <div className="rounded-[18px] border border-slate-200/80 bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(15,23,42,0.045)]"><div className="flex items-center justify-between gap-2"><span className="text-[11px] font-semibold text-slate-500">{label}</span><span className="h-1.5 w-1.5 rounded-full bg-slate-300" /></div><p className={`mt-2 font-display text-[17px] font-bold tabular-nums ${tone}`}>{value}</p><p className="mt-0.5 text-[10px] text-slate-400">{caption}</p></div>;
+}
+
+export function FinanceDashboard() {
+	const [selectedRange, setSelectedRange] = useState("month");
+	const range = getRange(selectedRange);
+	const summary = useHybridFinancialSummary({ startDate: range.startDate, endDate: range.endDate });
+	const hppCogs = useHybridOrdersCogs({ startDate: range.startDate, endDate: range.endDate });
+	const money = (value?: number) => value === undefined ? "—" : fmt(value);
+
+	return <main className="min-w-0 space-y-3 pb-6">
+		<header className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1a5dc6]">Djiwa Tentram · Finance</p><h1 className="mt-1 font-display text-[25px] font-bold tracking-tight text-slate-950">Keuangan</h1><p className="mt-0.5 text-xs text-slate-500">Ringkasan finansial yang siap dipakai untuk keputusan hari ini.</p></div><div className="flex items-center gap-1.5"><button aria-label="Refresh data keuangan" className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition active:scale-[.97]" onClick={() => window.location.reload()} type="button"><RefreshCw className="h-4 w-4" /></button><Link className="hidden h-10 items-center gap-1.5 rounded-xl bg-[#123b73] px-3 text-xs font-semibold text-white shadow-sm transition active:scale-[.97] sm:inline-flex" to="/admin/finance/transactions"><Receipt className="h-4 w-4" />Transaksi</Link></div></header>
+
+		<nav aria-label="Periode keuangan" className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl bg-slate-100 p-1"><span className="flex shrink-0 items-center px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Periode</span>{PERIODS.map((period) => <button aria-pressed={selectedRange === period.id} className={`min-h-10 shrink-0 rounded-xl px-3 text-xs font-semibold transition active:scale-[.97] ${selectedRange === period.id ? "bg-white text-[#123b73] shadow-sm" : "text-slate-500 hover:text-slate-900"}`} key={period.id} onClick={() => setSelectedRange(period.id)} type="button">{period.label}</button>)}</nav>
+
+		<section className="overflow-hidden rounded-[24px] bg-[#123b73] p-4 text-white shadow-[0_14px_36px_rgba(18,59,115,0.2)] sm:p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100/75">Saldo bersih</p><p className="mt-1 text-xs text-blue-100/80">{RANGE_LABEL_MAP[selectedRange]} · setelah pemasukan dan pengeluaran</p></div><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10"><Landmark className="h-5 w-5" /></span></div><p className="mt-6 font-display text-[31px] font-bold tracking-tight tabular-nums">{money(summary?.netBalance)}</p><div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-3 text-xs"><span className="inline-flex items-center gap-1.5 text-blue-100"><ArrowDownLeft className="h-3.5 w-3.5 text-emerald-300" />Pemasukan <b className="text-white">{money(summary?.totalIncome)}</b></span><span className="inline-flex items-center gap-1.5 text-blue-100"><ArrowUpRight className="h-3.5 w-3.5 text-orange-300" />Pengeluaran <b className="text-white">{money(summary?.totalExpense)}</b></span></div></section>
+
+		<section aria-label="Metrik keuangan" className="grid grid-cols-2 gap-2 sm:grid-cols-4"><MetricTile caption="arus masuk periode aktif" label="Pemasukan" tone="text-emerald-700" value={money(summary?.totalIncome)} /><MetricTile caption="arus keluar periode aktif" label="Pengeluaran" tone="text-orange-700" value={money(summary?.totalExpense)} /><MetricTile caption="margin dari order selesai" label="Margin kotor" tone="text-[#1a5dc6]" value={hppCogs?.matchedOrders ? `${hppCogs.grossMargin.toFixed(1)}%` : "—"} /><MetricTile caption="order yang dianalisis" label="Transaksi" tone="text-slate-900" value={hppCogs?.matchedOrders ? String(hppCogs.matchedOrders) : "—"} /></section>
+
+		<section className="grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,.75fr)]"><TrendChart /><ExpenseCategoryPieChart /></section>
+
+		<section className="rounded-[22px] border border-slate-200/80 bg-white p-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.045)]"><div className="flex items-center justify-between gap-3"><div><p className="font-display text-sm font-bold text-slate-900">Akses cepat</p><p className="mt-0.5 text-[11px] text-slate-500">Buka data detail tanpa meninggalkan alur monitoring.</p></div><CircleDollarSign className="h-5 w-5 text-[#1a5dc6]" /></div><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3"><Link className="group flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-[#1a5dc6]" to="/admin/finance/transactions">Riwayat transaksi<ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></Link><Link className="group flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-[#1a5dc6]" to="/admin/finance/expenses">Pengeluaran<ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></Link><Link className="group col-span-2 flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-[#1a5dc6] sm:col-span-1" to="/admin/finance/reports">Laporan lengkap<ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></Link></div></section>
+
+		{hppCogs && hppCogs.matchedOrders > 0 && <section className="rounded-[22px] border border-slate-200/80 bg-slate-50 p-3.5"><div className="flex items-center gap-2"><Calculator className="h-4 w-4 text-[#1a5dc6]" /><div><p className="font-display text-sm font-bold text-slate-900">HPP & laba kotor</p><p className="text-[11px] text-slate-500">{hppCogs.matchedOrders} dari {hppCogs.totalCompletedOrders} order memiliki snapshot HPP.</p></div></div><div className="mt-3 grid grid-cols-3 gap-2"><MetricTile caption="revenue" label="Revenue" value={fmt(hppCogs.totalRevenue)} /><MetricTile caption="cost of goods sold" label="COGS" tone="text-orange-700" value={fmt(hppCogs.totalCogs)} /><MetricTile caption="revenue dikurangi COGS" label="Laba kotor" tone="text-emerald-700" value={fmt(hppCogs.totalProfit)} /></div></section>}
+	</main>;
 }
