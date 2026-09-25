@@ -814,10 +814,10 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 
 function CommandMetric({ label, value, helper }: { label: string; value: string; helper: string }) {
 	return (
-		<div className="min-w-0 px-2 first:pl-0 last:pr-0 sm:px-3">
+		<div className="flex min-h-[92px] min-w-0 flex-col justify-center px-3 py-3 first:pl-4 last:pr-4 sm:px-4 sm:first:pl-5 sm:last:pr-5">
 			<p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-			<p className="mt-1 truncate text-base font-bold tracking-tight text-foreground sm:text-lg">{value}</p>
-			<p className="mt-0.5 truncate text-[10px] text-muted-foreground">{helper}</p>
+			<p className="mt-2 truncate text-base font-bold leading-none tracking-tight text-foreground sm:text-lg">{value}</p>
+			<p className="mt-2 truncate text-[10px] leading-none text-muted-foreground">{helper}</p>
 		</div>
 	);
 }
