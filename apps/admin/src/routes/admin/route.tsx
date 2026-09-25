@@ -62,6 +62,7 @@ import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { APP_VERSION } from "@/lib/version";
 import { Footer } from "@/components/layout/Footer";
+import { AdminNotificationCenter } from "@/components/admin-notification-center";
 
 export const Route = createFileRoute("/admin")({
 	component: AdminRouteLayout,
@@ -1164,6 +1165,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
+						<AdminNotificationCenter onNavigate={(path) => navigate({ to: path as any })} />
 						<DropdownMenu>
 							<DropdownMenuTrigger
 								render={(props) => (
