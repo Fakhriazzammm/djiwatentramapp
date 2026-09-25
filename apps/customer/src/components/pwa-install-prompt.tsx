@@ -1,12 +1,10 @@
-import { Download, Share, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Download, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
-
-const PROMPT_REAPPEAR_MS = 60 * 1000;
 
 function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
@@ -20,13 +18,46 @@ function isMobile() {
   return window.matchMedia("(max-width: 900px)").matches || /android|iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+type InstallGuide = {
+  title: string;
+  steps: string[];
+  note: string;
+};
+
+function installGuide(ios: boolean): InstallGuide {
+  if (ios) return {
+    title: "Safari iPhone / iPad",
+    steps: ["Tekan ikon Share (kotak dengan panah ke atas).", "Geser menu lalu pilih Add to Home Screen.", "Tekan Add di kanan atas untuk menyimpan."],
+    note: "Jika Add to Home Screen belum terlihat, geser daftar menu Share ke bawah.",
+  };
+  const agent = navigator.userAgent.toLowerCase();
+  if (agent.includes("samsungbrowser")) return {
+    title: "Samsung Internet",
+    steps: ["Tekan menu ☰ di bagian bawah atau kanan bawah.", "Pilih Add page to, lalu Home screen.", "Tekan Add untuk menyimpan ke layar utama."],
+    note: "Nama menu dapat tampil sebagai Add to Home screen pada beberapa versi.",
+  };
+  if (agent.includes("firefox")) return {
+    title: "Firefox Android",
+    steps: ["Tekan menu ⋮ di kanan atas.", "Pilih Install atau Add to Home screen.", "Konfirmasi dengan Add / Install."],
+    note: "Jika opsi belum tersedia, buka situs ini langsung di Firefox dan bukan dari browser dalam aplikasi lain.",
+  };
+  if (agent.includes("chrome") || agent.includes("crios")) return {
+    title: "Chrome Android",
+    steps: ["Tekan Download sekarang di bawah.", "Pada dialog yang muncul, pilih Install.", "Jika tidak ada dialog, buka menu ⋮ lalu pilih Install app atau Add to Home screen."],
+    note: "Pastikan halaman dibuka di Chrome, bukan dari browser dalam aplikasi WhatsApp atau Instagram.",
+  };
+  return {
+    title: "Browser Android",
+    steps: ["Buka menu browser ⋮ atau ☰.", "Cari Install app, Install, atau Add to Home screen.", "Konfirmasi dengan Add / Install."],
+    note: "Nama menu berbeda menurut browser dan versi perangkat.",
+  };
+}
+
 export function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [ios, setIos] = useState(false);
   const [installing, setInstalling] = useState(false);
-  const [installed, setInstalled] = useState(false);
-  const reappearTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isMobile() || isStandalone()) return;
@@ -46,10 +77,8 @@ export function PwaInstallPrompt() {
       window.setTimeout(() => setVisible(true), 900);
     };
     const handleInstalled = () => {
-      setInstalled(true);
       setVisible(false);
       setDeferredPrompt(null);
-      if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
@@ -57,7 +86,6 @@ export function PwaInstallPrompt() {
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
       window.removeEventListener("appinstalled", handleInstalled);
-      if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
     };
   }, []);
 
@@ -65,10 +93,6 @@ export function PwaInstallPrompt() {
 
   const close = () => {
     setVisible(false);
-    if (reappearTimer.current !== null) window.clearTimeout(reappearTimer.current);
-    reappearTimer.current = window.setTimeout(() => {
-      if (!installed && !isStandalone()) setVisible(true);
-    }, PROMPT_REAPPEAR_MS);
   };
 
   const install = async () => {
@@ -82,30 +106,20 @@ export function PwaInstallPrompt() {
     setInstalling(false);
   };
 
-  const shareForIosDownload = async () => {
-    if (typeof navigator.share !== "function") return;
-    try {
-      await navigator.share({
-        title: "Download Djiwa App",
-        text: "Tambahkan Djiwa App ke layar utama untuk akses lebih cepat.",
-        url: window.location.href,
-      });
-    } catch {
-      // User may close the native share sheet; keep the popup available.
-    }
-  };
+  const guide = installGuide(ios);
 
   return (
-    <aside className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-md rounded-[22px] border border-primary/15 bg-card/95 p-3 shadow-[0_16px_50px_rgba(15,23,42,0.2)] backdrop-blur-xl" role="dialog" aria-label="Download Djiwa App">
-      <button type="button" onClick={close} aria-label="Tutup sementara — popup download akan muncul lagi" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
-      <div className="flex items-start gap-3 pr-8">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><Download className="h-5 w-5" /></div>
+    <aside className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-[270px] rounded-[12px] border border-primary/15 bg-card/95 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.16)] backdrop-blur-xl" role="dialog" aria-label="Download Djiwa App">
+      <button type="button" onClick={close} aria-label="Tutup popup download untuk kunjungan ini" className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-3 w-3" /></button>
+      <div className="flex items-start gap-2 pr-6">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Download className="h-3.5 w-3.5" /></div>
         <div className="min-w-0">
-          <p className="text-sm font-black">Download Djiwa App</p>
-          {ios ? <><p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">Akses lebih cepat dari layar utama.</p><p className="mt-2 flex items-center gap-1 text-[11px] font-bold text-primary"><Share className="h-3.5 w-3.5" /> Tekan Share → Add to Home Screen</p></> : <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">Simpan sebagai aplikasi mobile agar lebih cepat dibuka.</p>}
+          <p className="text-[11px] font-black">Download Djiwa App</p>
+          <p className="mt-0.5 text-[9px] font-bold leading-snug text-primary">{guide.title}</p>
         </div>
       </div>
-      {ios ? <><div className="mt-2 flex items-center gap-2 rounded-xl bg-primary/5 px-2.5 py-2 text-[10px] text-muted-foreground"><Share className="h-3.5 w-3.5 shrink-0 text-primary" /> Pilih <span className="font-black text-foreground">Add to Home Screen</span>, lalu tekan Add.</div><button type="button" onClick={() => void shareForIosDownload()} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground"><Share className="h-4 w-4" /> Share untuk Download</button></> : <button type="button" onClick={() => void install()} disabled={installing} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground disabled:opacity-60"><Download className="h-4 w-4" /> {installing ? "Menyiapkan..." : "Download sekarang"}</button>}
+      <div className="mt-1.5 rounded-lg bg-primary/5 px-2 py-1.5 text-[9px] leading-snug text-muted-foreground"><ol className="space-y-0.5">{guide.steps.map((step, index) => <li key={step}><span className="font-black text-foreground">{index + 1}.</span> {step}</li>)}</ol><p className="mt-1 border-t border-primary/10 pt-1 text-[8px] leading-snug text-muted-foreground">{guide.note}</p></div>
+      {!ios ? <button type="button" onClick={() => void install()} disabled={installing} className="mt-2 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-2 py-1.5 text-[11px] font-black text-primary-foreground disabled:opacity-60"><Download className="h-3.5 w-3.5" /> {installing ? "Menyiapkan..." : "Download sekarang"}</button> : null}
     </aside>
   );
 }

@@ -40,7 +40,6 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [likePending, setLikePending] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
-  const [likeSuccess, setLikeSuccess] = useState(false);
   useEffect(() => {
     setLiked(post.likedByMe);
     setLikeCount(post.likeCount);
@@ -53,15 +52,12 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
     const nextLiked = !liked;
     setLikePending(true);
     setLikeError(null);
-    setLikeSuccess(false);
     setLiked(nextLiked);
     setLikeCount((count) => Math.max(0, count + (nextLiked ? 1 : -1)));
     try {
       const result = nextLiked ? await communityClient.like(post.id) : await communityClient.unlike(post.id);
       setLiked(result.liked);
       setLikeCount(Math.max(0, result.likeCount));
-      setLikeSuccess(true);
-      window.setTimeout(() => setLikeSuccess(false), 1600);
     } catch (reason) {
       setLiked(!nextLiked);
       setLikeCount((count) => Math.max(0, count + (nextLiked ? -1 : 1)));
@@ -87,7 +83,7 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
           {post.mediaUrl && post.mediaType === "image" ? <img src={post.mediaUrl} alt={`Kiriman dari ${post.author.name}`} className="mt-4 max-h-[500px] w-full rounded-xl object-cover" loading="lazy" /> : null}
           {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-4 max-h-[500px] w-full rounded-xl bg-black object-contain" controls playsInline preload="metadata" /> : null}
           <div className="mt-4 flex items-center gap-5 text-[#333333] sm:gap-7">
-            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-125 ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} aria-busy={likePending} disabled={likePending} onClick={() => void toggleLike}>{likePending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} />}<span>{likePending ? "Memproses…" : likeCount}</span></button>
+            <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-125 ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} aria-busy={likePending} disabled={likePending} onPointerUp={() => void toggleLike()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void toggleLike(); } }}><Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} /><span>{likeCount}</span></button>
             <button type="button" className="flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-110 hover:text-[#3156a3]" aria-label="Buka komentar postingan" onClick={() => onOpen(post)}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{post.commentCount}</span></button>
           </div>
           {likeError ? <p role="alert" className="mt-2 text-xs font-semibold text-rose-600">{likeError}</p> : null}
