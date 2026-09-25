@@ -8,6 +8,12 @@ type UserContext = {
   name: string;
 };
 
+type PushSubscriptionInput = {
+  endpoint?: unknown;
+  keys?: { p256dh?: unknown; auth?: unknown };
+  userAgent?: unknown;
+};
+
 const dbUrl = (Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "").replace(/\/+$/, "");
 const serviceKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ORDER_NOTIFICATION_TTL_MS = 30 * 60 * 1000;
@@ -35,12 +41,12 @@ async function dbGet(table: string, params: Record<string, string>): Promise<any
   return (await result.json()) as any[];
 }
 
-async function dbWrite(table: string, method: "POST" | "PATCH", body: unknown, params = "") {
+async function dbWrite(table: string, method: "POST" | "PATCH", body: unknown, params = "", preferOverride?: string) {
   const result = await fetch(`${dbUrl}/rest/v1/${table}${params}`, {
     method,
     headers: {
       ...dbHeaders(),
-      Prefer: method === "POST" ? "resolution=ignore-duplicates,return=representation" : "return=representation",
+      Prefer: preferOverride ?? (method === "POST" ? "resolution=ignore-duplicates,return=representation" : "return=representation"),
     },
     body: JSON.stringify(body),
   });
@@ -50,6 +56,59 @@ async function dbWrite(table: string, method: "POST" | "PATCH", body: unknown, p
   }
   const text = await result.text();
   return text ? JSON.parse(text) : [];
+}
+
+async function upsertPushSubscription(user: UserContext, payload: PushSubscriptionInput) {
+  const endpoint = String(payload.endpoint ?? "").trim();
+  const p256dh = String(payload.keys?.p256dh ?? "").trim();
+  const auth = String(payload.keys?.auth ?? "").trim();
+  if (!endpoint.startsWith("https://") || !p256dh || !auth || endpoint.length > 2048) throw new Error("Invalid push subscription");
+  await dbWrite("pos_notification_push_subscriptions", "POST", {
+    endpoint, p256dh, auth, user_id: user.id, target_role: user.role || null,
+    target_branch_id: user.branchId, user_agent: String(payload.userAgent ?? "").slice(0, 1000) || null,
+    is_active: true, last_seen_at: new Date().toISOString(), last_error: null, updated_at: new Date().toISOString(),
+  }, "?on_conflict=endpoint", "resolution=merge-duplicates,return=representation");
+  return { success: true };
+}
+
+async function removePushSubscription(user: UserContext, endpoint: unknown) {
+  const value = String(endpoint ?? "").trim();
+  if (!value) throw new Error("endpoint is required");
+  await dbWrite("pos_notification_push_subscriptions", "PATCH", { is_active: false, updated_at: new Date().toISOString() }, `?endpoint=eq.${encodeURIComponent(value)}&user_id=eq.${encodeURIComponent(user.id)}`);
+  return { success: true };
+}
+
+async function pushStatus(user: UserContext, endpoint: unknown) {
+  const value = String(endpoint ?? "").trim();
+  if (!value) return { subscribed: false };
+  const rows = await dbGet("pos_notification_push_subscriptions", { select: "id", endpoint: `eq.${encodeURIComponent(value)}`, user_id: `eq.${encodeURIComponent(user.id)}`, is_active: "eq.true", limit: "1" });
+  return { subscribed: rows.length > 0 };
+}
+
+async function dispatchWebPush(notification: any) {
+  const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
+  const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
+  const vapidSubject = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@yumme.id";
+  if (!vapidPublicKey || !vapidPrivateKey || !notification?.id) return;
+  const subscriptions = await dbGet("pos_notification_push_subscriptions", { select: "id,endpoint,p256dh,auth,user_id,target_role,target_branch_id", is_active: "eq.true", limit: "500" });
+  const targets = (subscriptions ?? []).filter((item: any) => (!notification.target_user_id || notification.target_user_id === item.user_id) && (!notification.target_role || notification.target_role === item.target_role) && (!notification.target_branch_id || notification.target_branch_id === item.target_branch_id));
+  if (!targets.length) return;
+  // @ts-ignore Deno resolves the npm package at Edge Function runtime.
+  const webpush = await import("npm:web-push@3.6.7");
+  webpush.default?.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+  const body = JSON.stringify({ title: notification.title, body: notification.message, notificationId: notification.id, url: notification.action_type === "open_order" ? "/admin/orders" : "/admin" });
+  await Promise.all(targets.map(async (item: any) => {
+    const delivery = await dbWrite("pos_notification_push_deliveries", "POST", { notification_id: notification.id, subscription_id: item.id, status: "sent" }, "?on_conflict=notification_id,subscription_id");
+    if (!Array.isArray(delivery) || !delivery.length) return;
+    try {
+      await webpush.default?.sendNotification({ endpoint: item.endpoint, keys: { p256dh: item.p256dh, auth: item.auth } }, body);
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 500) : "Web Push failed";
+      await dbWrite("pos_notification_push_deliveries", "PATCH", { status: "failed", error_message: message }, `?notification_id=eq.${encodeURIComponent(notification.id)}&subscription_id=eq.${encodeURIComponent(item.id)}`);
+      const statusCode = Number((error as { statusCode?: number })?.statusCode);
+      if (statusCode === 404 || statusCode === 410) await dbWrite("pos_notification_push_subscriptions", "PATCH", { is_active: false, last_error: message, updated_at: new Date().toISOString() }, `?id=eq.${encodeURIComponent(item.id)}`);
+    }
+  }));
 }
 
 function bearer(req: Request) {
@@ -190,7 +249,10 @@ async function syncRecentOrders() {
         : new Date(Date.now() + ORDER_NOTIFICATION_TTL_MS).toISOString(),
       is_active: true,
     }, "?on_conflict=dedupe_key");
-    if (Array.isArray(result) && result.length > 0) created++;
+    if (Array.isArray(result) && result.length > 0) {
+      created++;
+      await dispatchWebPush(result[0]).catch((error) => console.error("[pos-notifications] push dispatch", error));
+    }
   }
   return { scanned: orders?.length ?? 0, created };
 }
@@ -271,6 +333,10 @@ Deno.serve(async (req) => {
       return response({ success: true, ...result });
     }
 
+    if (action === "push_subscribe") return response(await upsertPushSubscription(user, payload as PushSubscriptionInput));
+    if (action === "push_unsubscribe") return response(await removePushSubscription(user, (payload as Json).endpoint));
+    if (action === "push_status") return response(await pushStatus(user, (payload as Json).endpoint));
+
     if (action === "list") return response({ success: true, notifications: await listNotifications(user) });
 
     if (action === "mark_read" || action === "acknowledge" || action === "dismiss") {
@@ -306,6 +372,7 @@ Deno.serve(async (req) => {
         expires_at: (payload as Json).expiresAt ?? null,
         is_active: true,
       });
+      if (created?.[0]) await dispatchWebPush(created[0]).catch((error) => console.error("[pos-notifications] push dispatch", error));
       return response({ success: true, notification: created?.[0] ?? null });
     }
 

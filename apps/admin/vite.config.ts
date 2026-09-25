@@ -45,6 +45,7 @@ export default defineConfig({
 			},
 			workbox: {
 				cacheId: "djiwa-admin-booking-v3",
+				importScripts: ["/push-sw.js"],
 				navigateFallback: "/index.html",
 				maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
 				globPatterns: ["**/*.{js,css,html,png,svg,gif,ico,webmanifest}"],

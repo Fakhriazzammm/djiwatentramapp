@@ -8,6 +8,7 @@ import {
 	type AdminNotification,
 	useAdminNotifications,
 } from "@/hooks/use-admin-notifications";
+import { useAdminPush } from "@/hooks/use-admin-push";
 
 const spring = { type: "spring" as const, stiffness: 360, damping: 28, mass: 0.7 };
 
@@ -68,6 +69,7 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 		markAllRead,
 		closePopup,
 	} = useAdminNotifications();
+	const { supported: pushSupported, isSubscribed: pushSubscribed, isBusy: pushBusy, enable: enablePush } = useAdminPush();
 	const [isOpen, setIsOpen] = useState(false);
 	const [iconFailed, setIconFailed] = useState(false);
 
@@ -111,6 +113,11 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 							<div><p className="text-xs font-black">Notifikasi</p><p className="text-[10px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
 							{unreadCount > 0 && <button type="button" onClick={() => void markAllRead().catch(() => toast.error("Gagal menandai semua"))} className="text-[10px] font-bold text-primary hover:underline">Tandai semua</button>}
 						</div>
+						{pushSupported && !pushSubscribed && (
+							<button type="button" disabled={pushBusy} onClick={() => void enablePush()} className="mx-1.5 mt-1.5 flex w-[calc(100%-12px)] items-center justify-between rounded-lg bg-primary/[0.06] px-2.5 py-2 text-left text-[10px] font-semibold text-primary disabled:opacity-60">
+								<span>Dapatkan notifikasi saat app tertutup</span><span>{pushBusy ? "Menyiapkan..." : "Aktifkan"}</span>
+							</button>
+						)}
 						<div className="max-h-[min(360px,calc(100dvh-150px))] overflow-y-auto p-1.5">
 							{isLoading && notifications.length === 0 ? <div className="space-y-1.5 p-1"><div className="h-11 animate-pulse rounded-lg bg-muted" /><div className="h-11 animate-pulse rounded-lg bg-muted" /></div> : error && notifications.length === 0 ? <div className="p-4 text-center text-[11px] text-muted-foreground"><p>Notifikasi gagal dimuat.</p><button type="button" onClick={() => window.location.reload()} className="mt-1 font-bold text-primary">Coba lagi</button></div> : notifications.length === 0 ? <div className="p-5 text-center text-[11px] text-muted-foreground">Tidak ada notifikasi penting</div> : notifications.slice(0, 8).map((notification) => <NotificationRow key={notification.id} notification={notification} onOpen={openNotification} />)}
 						</div>
