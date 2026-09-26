@@ -1,17 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+@import "@yumipos/web-shared/theme.css";
 
 :root {
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #1a2332;
-  background: #f7f9fc;
+  font-family: var(--font-body, Inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--foreground, #1a2332);
+  background: var(--surface-page, #f7f9fc);
   font-synthesis: none;
-  --booking-accent: #1a5dc6;
+  --booking-accent: var(--primary, #1a5dc6);
   --booking-accent-soft: #edf4ff;
-  --ink: #111827;
-  --muted: #667085;
-  --line: #e5e7eb;
-  --surface: #ffffff;
-  --surface-muted: #fafafa;
+  --ink: var(--foreground, #111827);
+  --muted: var(--muted-foreground, #667085);
+  --line: var(--border, #e5e7eb);
+  --surface: var(--surface-card, #ffffff);
+  --surface-muted: var(--surface-page, #f7f9fc);
   --shadow-soft: 0 10px 30px rgba(15, 23, 42, .08);
   --shadow-raised: 0 24px 60px rgba(15, 23, 42, .10);
   --ease-ios: cubic-bezier(.32, .72, 0, 1);
@@ -32,7 +33,7 @@ h1, h2, h3, strong { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
 p { color: var(--muted); line-height: 1.6; }
 
 .app-shell { width: min(100%, 520px); min-height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; background: var(--surface-muted); box-shadow: 0 0 60px rgba(15,23,42,.06); }
-.topbar { width: 100%; padding: calc(14px + env(safe-area-inset-top)) 18px 12px; display: flex; align-items: center; justify-content: space-between; }
+.topbar { position: sticky; top: 0; z-index: 30; width: 100%; padding: calc(10px + env(safe-area-inset-top)) 12px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,.04); background: color-mix(in srgb, var(--surface) 90%, transparent); box-shadow: 0 1px 0 rgba(15,23,42,.02); backdrop-filter: blur(18px); }
 .brand { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .brand-mark, .brand-logo { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 14px; display: grid; place-items: center; color: var(--booking-accent); background: var(--booking-accent-soft); box-shadow: none; }
 .brand-logo { display: block; object-fit: cover; }
