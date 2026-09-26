@@ -2,7 +2,6 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Bell, Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useAdminNotifications, formatNotificationTime, type AdminNotification } from "@/hooks/use-admin-notifications";
 import { useAdminPush } from "@/hooks/use-admin-push";
 
@@ -77,12 +76,11 @@ function AdminNotificationsPage() {
           </button>
         )}
 
-        <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="flex items-center justify-between border-b border-border/70 px-3.5 py-3">
-            <div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" /></span><div><p className="text-sm font-black">Pusat notifikasi</p><p className="text-[10px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div></div>
-            <Bell className="h-4 w-4 text-muted-foreground/50" />
+        <section className="mt-6">
+          <div className="flex items-center justify-between border-b border-border/70 pb-3">
+            <div><p className="text-sm font-black">Aktivitas terbaru</p><p className="text-[10px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
           </div>
-          {isLoading && notifications.length === 0 ? <div className="space-y-2 p-3"><div className="h-16 animate-pulse rounded-xl bg-muted" /><div className="h-16 animate-pulse rounded-xl bg-muted" /></div> : error && notifications.length === 0 ? <div className="p-8 text-center text-xs text-muted-foreground"><p>Notifikasi gagal dimuat.</p><button type="button" onClick={() => window.location.reload()} className="mt-2 font-bold text-primary">Coba lagi</button></div> : notifications.length === 0 ? <div className="p-10 text-center text-xs text-muted-foreground">Tidak ada notifikasi penting</div> : <div className="space-y-1.5 p-2">{notifications.map((notification) => <button key={notification.id} type="button" onClick={() => void openNotification(notification)} className={`flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted/70 ${notification.isRead ? "opacity-65" : "bg-primary/[0.035]"}`}><span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tone(notification)}`}>{notification.isRead ? <Check className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}</span><span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><span className="truncate text-xs font-bold">{notification.title}</span>{!notification.isRead && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}</span><span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{notification.message}</span><span className="mt-1 block text-[10px] text-muted-foreground/80">{formatNotificationTime(notification.created_at)}</span></span></button>)}</div>}
+          {isLoading && notifications.length === 0 ? <div className="space-y-2 p-3"><div className="h-16 animate-pulse rounded-xl bg-muted" /><div className="h-16 animate-pulse rounded-xl bg-muted" /></div> : error && notifications.length === 0 ? <div className="p-8 text-center text-xs text-muted-foreground"><p>Notifikasi gagal dimuat.</p><button type="button" onClick={() => window.location.reload()} className="mt-2 font-bold text-primary">Coba lagi</button></div> : notifications.length === 0 ? <div className="p-10 text-center text-xs text-muted-foreground">Tidak ada notifikasi penting</div> : <div className="divide-y divide-border/70">{notifications.map((notification) => <button key={notification.id} type="button" onClick={() => void openNotification(notification)} className={`flex w-full items-start gap-3 px-1 py-4 text-left transition-colors hover:bg-muted/40 ${notification.isRead ? "opacity-70" : "bg-primary/[0.025]"}`}><span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tone(notification)}`}>{notification.isRead ? <Check className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}</span><span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><span className="truncate text-xs font-bold">{notification.title}</span>{!notification.isRead && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}</span><span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{notification.message}</span><span className="mt-1 block text-[10px] text-muted-foreground/80">{formatNotificationTime(notification.created_at)}</span></span></button>)}</div>}
         </section>
       </div>
     </div>
