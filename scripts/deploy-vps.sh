@@ -89,9 +89,18 @@ cleanup() {
 	echo "✅ Cleanup done"
 }
 
+install_notification_sync() {
+	# Reconcile customer orders every minute so Web Push is dispatched even when
+	# the Admin PWA is closed. The service-role key is read only by the script.
+	sudo install -m 700 "scripts/sync-pos-notifications.sh" /usr/local/sbin/djiwa-sync-pos-notifications
+	printf '*/1 * * * * root /usr/local/sbin/djiwa-sync-pos-notifications\n' | sudo tee /etc/cron.d/djiwa-pos-notifications >/dev/null
+	sudo chmod 644 /etc/cron.d/djiwa-pos-notifications
+}
+
 # ── Main ──
 
 SELFHOST_FUNCTIONS="/opt/supabase-selfhost/volumes/functions"
+install_notification_sync
 
 case "$APP" in
 	pos)

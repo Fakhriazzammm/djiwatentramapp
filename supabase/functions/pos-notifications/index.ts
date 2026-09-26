@@ -128,6 +128,9 @@ function bearer(req: Request) {
 async function authenticate(req: Request): Promise<UserContext | null> {
   const token = bearer(req);
   if (!token || !dbUrl || !serviceKey) return null;
+  if (token === serviceKey) {
+    return { id: "notification-sync", role: "admin", branchId: null, name: "Notification sync" };
+  }
 
   const sessions = await dbGet("yumi_sessions", {
     select: "user_source_id,expires_at",
