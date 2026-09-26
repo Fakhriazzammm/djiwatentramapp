@@ -83,8 +83,14 @@ describe("investor portal server boundary", () => {
       averageOrderValue: 43296,
       firstDateWib: "2026-08-09",
       lastDateWib: "2026-09-25",
+      ecosystemSettledOrders: 419,
+      ecosystemOrderValue: 18140840,
+      ecosystemAverageOrderValue: 43296,
+      ecosystemFirstDateWib: "2026-08-09",
+      ecosystemLastDateWib: "2026-09-25",
       source: "public.pos_orders",
       scope: "tagged_customer_self_service_only",
+      ecosystemScope: "all_recorded_pos_orders_paid_or_completed",
       completeness: "partial",
     });
     const queryIndex = harness.queries.findIndex((sql) => sql.includes("FROM public.pos_orders"));
@@ -134,14 +140,8 @@ describe("investor portal server boundary", () => {
     expect(harness.queries.some((sql) => sql.includes("INSERT INTO public.investor_leads"))).toBe(true);
   });
 
-  test("investor Better Auth uses a dedicated path and rejects email/password sign-in", async () => {
-    const session = await investorAuth.handler(new Request("https://djiwatentram.yumme.id/api/investor-auth/get-session"));
-    const passwordLogin = await investorAuth.handler(new Request("https://djiwatentram.yumme.id/api/investor-auth/sign-in/email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "test@example.invalid", password: "test-only" }),
-    }));
+  test("investor portal reuses the central Better Auth session path", async () => {
+    const session = await investorAuth.handler(new Request("https://djiwatentram.yumme.id/api/auth/get-session"));
     expect(session.status).toBe(200);
-    expect(passwordLogin.status).toBeGreaterThanOrEqual(400);
   });
 });

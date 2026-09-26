@@ -15,6 +15,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPA
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
 const customerOrigins = [
   "https://djiwatentram.yumme.id",
+  "https://investor.yumme.id",
   "https://merchandise.yumme.id",
   "https://b2b.yumme.id",
   "https://ordermieyamin.yumme.id",
