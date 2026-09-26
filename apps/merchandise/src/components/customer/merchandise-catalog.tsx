@@ -28,7 +28,7 @@ function dispatchLabel(campaign: MerchandiseCampaignRecord) {
   return start === end ? start : `${start} – ${end}`;
 }
 
-export function renderMerchandiseCatalog(props: MenuSectionProps) {
+export function MerchandiseCatalog(props: MenuSectionProps) {
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const openCampaigns = useMemo(() => props.filteredProducts.filter((product) => {
     const campaign = props.campaignByProductId.get(String(product._id));
