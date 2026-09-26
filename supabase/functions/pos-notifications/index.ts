@@ -16,8 +16,7 @@ type PushSubscriptionInput = {
 
 const dbUrl = (Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "").replace(/\/+$/, "");
 const serviceKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const PENDING_ORDER_NOTIFICATION_TTL_MS = 30 * 60 * 1000;
-const PAID_ORDER_NOTIFICATION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const ORDER_NOTIFICATION_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 function response(body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -185,7 +184,7 @@ async function syncRecentOrders() {
   // Reconcile a bounded recent window so a short function outage does not
   // permanently lose an operational alert. Initial POS load seeds silently;
   // only newly observed IDs create a popup in the client.
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
   const orders = await dbGet("pos_orders", {
     select: "_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items",
     order: "createdAt.desc",
@@ -255,8 +254,8 @@ async function syncRecentOrders() {
         ? new Date(Number(order.createdAt)).toISOString()
         : new Date().toISOString(),
       expires_at: Number.isFinite(Number(order.createdAt))
-        ? new Date(Number(order.createdAt) + (type === "order_paid" ? PAID_ORDER_NOTIFICATION_RETENTION_MS : PENDING_ORDER_NOTIFICATION_TTL_MS)).toISOString()
-        : new Date(Date.now() + (type === "order_paid" ? PAID_ORDER_NOTIFICATION_RETENTION_MS : PENDING_ORDER_NOTIFICATION_TTL_MS)).toISOString(),
+        ? new Date(Number(order.createdAt) + ORDER_NOTIFICATION_RETENTION_MS).toISOString()
+        : new Date(Date.now() + ORDER_NOTIFICATION_RETENTION_MS).toISOString(),
       is_active: true,
     }, "?on_conflict=dedupe_key");
     if (Array.isArray(result) && result.length > 0) {
@@ -290,11 +289,10 @@ async function listNotifications(user: UserContext) {
   const expiredOrderIds = (rows ?? [])
     .filter((item: any) => {
       if (!String(item.notification_type ?? "").startsWith("order_")) return false;
-      if (item.notification_type === "order_paid") return false;
       const createdAt = Date.parse(String(item.created_at ?? ""));
       const expiresAt = item.expires_at ? Date.parse(String(item.expires_at)) : 0;
       return (Number.isFinite(expiresAt) && expiresAt < now)
-        || (Number.isFinite(createdAt) && createdAt + PENDING_ORDER_NOTIFICATION_TTL_MS < now);
+        || (Number.isFinite(createdAt) && createdAt + ORDER_NOTIFICATION_RETENTION_MS < now);
     })
     .map((item: any) => String(item.id ?? ""))
     .filter(Boolean);
@@ -308,7 +306,7 @@ async function listNotifications(user: UserContext) {
   }
   const visible = (rows ?? []).filter((item: any) => {
     if (expiredOrderIds.includes(String(item.id ?? ""))) return false;
-    if (item.expires_at && Date.parse(item.expires_at) < now && item.notification_type !== "order_paid") return false;
+    if (item.expires_at && Date.parse(item.expires_at) < now) return false;
     if (item.target_user_id && item.target_user_id !== user.id) return false;
     if (item.target_role && item.target_role.toLowerCase() !== user.role) return false;
     if (item.target_branch_id && item.target_branch_id !== user.branchId) return false;
