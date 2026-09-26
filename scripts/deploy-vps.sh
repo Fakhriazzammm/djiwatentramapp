@@ -39,6 +39,12 @@ deploy_app() {
 	# Ponytail: clear ALL turbo caches so .env vars are picked up fresh
 	rm -rf ".turbo" "apps/$name/.turbo" "apps/$name/dist"
 
+	# Public VAPID key is safe for the browser but must be injected at build time.
+	# Keep the private key server-side; only expose VAPID_PUBLIC_KEY to Vite.
+	if [ "$name" = "admin" ] && [ -f "/opt/supabase-selfhost/.env" ]; then
+		export VITE_VAPID_PUBLIC_KEY="$(grep -E '^VAPID_PUBLIC_KEY=' /opt/supabase-selfhost/.env | cut -d= -f2- | head -n1)"
+	fi
+
 	if [ "$name" = "customer" ]; then
 		bun run build:customer
 	else
