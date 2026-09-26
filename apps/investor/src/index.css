@@ -3,28 +3,75 @@
 @import "tailwindcss";
 @import "@yumipos/web-shared/theme.css";
 
+@theme inline {
+  --color-djiwa-ink: var(--djiwa-ink);
+  --color-djiwa-navy: var(--djiwa-navy);
+  --color-djiwa-navy-deep: var(--djiwa-navy-deep);
+  --color-djiwa-navy-soft: var(--djiwa-navy-soft);
+  --color-djiwa-navy-mist: var(--djiwa-navy-mist);
+  --color-djiwa-gold: var(--djiwa-gold);
+  --color-djiwa-gold-highlight: var(--djiwa-gold-highlight);
+  --color-djiwa-gold-deep: var(--djiwa-gold-deep);
+  --color-djiwa-gold-soft: var(--djiwa-gold-soft);
+  --color-djiwa-gold-border: var(--djiwa-gold-border);
+  --color-djiwa-canvas: var(--djiwa-canvas);
+  --color-djiwa-surface: var(--djiwa-surface);
+  --color-djiwa-surface-muted: var(--djiwa-surface-muted);
+  --color-djiwa-line: var(--djiwa-line);
+  --color-djiwa-line-strong: var(--djiwa-line-strong);
+  --color-djiwa-muted: var(--djiwa-muted);
+  --color-djiwa-muted-light: var(--djiwa-muted-light);
+  --color-djiwa-inverse-muted: var(--djiwa-inverse-muted);
+  --color-djiwa-inverse-soft: var(--djiwa-inverse-soft);
+  --color-djiwa-success: var(--djiwa-success);
+  --color-djiwa-warning: var(--djiwa-warning);
+  --color-djiwa-warning-soft: var(--djiwa-warning-soft);
+  --color-djiwa-warning-ink: var(--djiwa-warning-ink);
+  --color-djiwa-danger: var(--djiwa-danger);
+  --color-djiwa-danger-soft: var(--djiwa-danger-soft);
+}
+
 :root {
-  --investor-ink: #102033;
-  --investor-navy: #0d1b2a;
-  --investor-navy-soft: #172a3d;
-  --investor-gold: #d4b46a;
-  --investor-gold-light: #f1e5bf;
-  --investor-line: #e7ebf0;
-  --investor-muted: #657184;
+  color-scheme: light;
+  --djiwa-ink: #18283d;
+  --djiwa-navy: #12243a;
+  --djiwa-navy-deep: #0b1a2b;
+  --djiwa-navy-soft: #1c3652;
+  --djiwa-navy-mist: #edf2f7;
+  --djiwa-gold: #c9a85b;
+  --djiwa-gold-highlight: #efdda5;
+  --djiwa-gold-deep: #715625;
+  --djiwa-gold-soft: #f5eedb;
+  --djiwa-gold-border: #d8c48d;
+  --djiwa-canvas: #f6f8fb;
+  --djiwa-surface: #ffffff;
+  --djiwa-surface-muted: #f4f6f9;
+  --djiwa-line: #e3e8ef;
+  --djiwa-line-strong: #d4dde7;
+  --djiwa-muted: #637187;
+  --djiwa-muted-light: #98a5b5;
+  --djiwa-inverse-muted: #b5c1d0;
+  --djiwa-inverse-soft: #d5deea;
+  --djiwa-success: #356b51;
+  --djiwa-warning: #826224;
+  --djiwa-warning-soft: #f7f0df;
+  --djiwa-warning-ink: #70551e;
+  --djiwa-danger: #a3423b;
+  --djiwa-danger-soft: #fff0ed;
 }
 
 html { scroll-behavior: smooth; }
-body { margin: 0; color: var(--investor-ink); background: #f7f9fc; }
+body { margin: 0; color: var(--djiwa-ink); background: var(--djiwa-canvas); }
 button, a, input, select { -webkit-tap-highlight-color: transparent; }
-::selection { background: #e8d9ac; color: var(--investor-navy); }
+::selection { background: rgb(201 168 91 / 28%); color: var(--djiwa-navy); }
 
 .investor-page { min-height: 100vh; overflow-x: clip; }
-.investor-nav { backdrop-filter: saturate(180%) blur(16px); background: rgb(255 255 255 / 88%); }
+.investor-nav { backdrop-filter: saturate(180%) blur(16px); background: rgb(255 255 255 / 94%); }
 .investor-display { font-family: var(--font-display); letter-spacing: -0.04em; }
-.investor-panel { border: 1px solid rgb(226 232 240 / 78%); background: #fff; border-radius: 22px; box-shadow: 0 12px 32px rgb(15 23 42 / 5%); }
-.investor-focus:focus-visible { outline: 3px solid rgb(212 180 106 / 80%); outline-offset: 3px; }
+.investor-panel { border: 1px solid rgb(212 221 231 / 82%); background: var(--djiwa-surface); border-radius: 24px; box-shadow: 0 12px 32px rgb(18 36 58 / 6%); }
+.investor-focus:focus-visible { outline: 3px solid rgb(201 168 91 / 84%); outline-offset: 3px; }
 .investor-grid {
-  background-image: linear-gradient(rgb(255 255 255 / 4%) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 4%) 1px, transparent 1px);
+  background-image: linear-gradient(rgb(201 168 91 / 8%) 1px, transparent 1px), linear-gradient(90deg, rgb(201 168 91 / 8%) 1px, transparent 1px);
   background-size: 42px 42px;
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

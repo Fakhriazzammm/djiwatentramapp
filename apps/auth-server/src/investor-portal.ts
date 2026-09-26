@@ -66,6 +66,13 @@ function privateJson(body: Record<string, unknown>, status = 200) {
   });
 }
 
+function publicSnapshotJson(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": status === 200 ? "public, max-age=300" : "no-store" },
+  });
+}
+
 function numberValue(value: string | number | null | undefined) {
   const parsed = typeof value === "number" ? value : Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : null;
@@ -117,6 +124,47 @@ export function registerInvestorPortalRoutes(app: Hono, auth: InvestorAuth, pool
     if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
     const status = await membershipStatus(pool, session.user.id);
     return privateJson({ status: status === "approved" || status === "pending" || status === "suspended" ? status : "none" });
+  });
+
+  // Public landing-page teaser: deliberately limited to one tagged self-service channel.
+  // It returns aggregates only, never order rows, identifiers, or customer fields.
+  app.get("/api/investor/public-snapshot", async () => {
+    try {
+      const result = await pool.query<{
+        settled_orders: string | number;
+        order_value: string | number;
+        average_order_value: string | number;
+        first_date_wib: string | null;
+        last_date_wib: string | null;
+      }>(
+        `SELECT COUNT(*) FILTER (WHERE status IN ('paid', 'completed'))::int AS settled_orders,
+                COALESCE(ROUND(SUM("totalAmount") FILTER (WHERE status IN ('paid', 'completed'))), 0)::text AS order_value,
+                COALESCE(ROUND(AVG("totalAmount") FILTER (WHERE status IN ('paid', 'completed'))), 0)::text AS average_order_value,
+                MIN((to_timestamp("createdAt" / 1000.0) AT TIME ZONE 'Asia/Jakarta')::date) FILTER (WHERE status IN ('paid', 'completed'))::text AS first_date_wib,
+                MAX((to_timestamp("createdAt" / 1000.0) AT TIME ZONE 'Asia/Jakarta')::date) FILTER (WHERE status IN ('paid', 'completed'))::text AS last_date_wib
+           FROM public.pos_orders
+          WHERE "brandSlug" = $1
+            AND source = $2`,
+        ["djiwatentram", "customer_self_service"],
+      );
+      const row = result.rows[0];
+      if (!row) return publicSnapshotJson({ success: false, error: "SNAPSHOT_UNAVAILABLE" }, 503);
+      return publicSnapshotJson({
+        success: true,
+        data: {
+          settledOrders: numberValue(row.settled_orders),
+          orderValue: numberValue(row.order_value),
+          averageOrderValue: numberValue(row.average_order_value),
+          firstDateWib: row.first_date_wib,
+          lastDateWib: row.last_date_wib,
+          source: "public.pos_orders",
+          scope: "tagged_customer_self_service_only",
+          completeness: "partial",
+        },
+      });
+    } catch {
+      return publicSnapshotJson({ success: false, error: "SNAPSHOT_UNAVAILABLE" }, 503);
+    }
   });
 
   app.post("/api/investor/access-request", async (c) => {
