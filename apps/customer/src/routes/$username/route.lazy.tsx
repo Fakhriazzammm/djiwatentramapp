@@ -87,6 +87,7 @@ function MemberHomePage() {
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 	const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
 	const b2bChannelHref = isAuthenticated && customer ? `https://b2b.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://b2b.yumme.id/daftar";
+	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu` : "https://merchandise.yumme.id/daftar";
 
 	const matches = useMatches();
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
@@ -250,7 +251,7 @@ function MemberHomePage() {
 							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
 							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
-							onMerchandise={() => window.location.assign(`https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu`)}
+							onMerchandise={() => window.location.assign(merchandiseChannelHref)}
 							onBooking={() => window.location.assign("https://booking.yumme.id/")}
 							onDjiwaRun={() => navigate({ to: "/$username/run", params: { username } })}
 						/>
@@ -316,7 +317,7 @@ function MemberHomePage() {
 							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
 							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
-							onMerchandise={() => window.location.assign(`https://merchandise.yumme.id/${encodeURIComponent(username)}/order?step=menu`)}
+							onMerchandise={() => window.location.assign(merchandiseChannelHref)}
 							onBooking={() => window.location.assign("https://booking.yumme.id/")}
 							onDjiwaRun={() => navigate({ to: "/$username/run", params: { username } })}
 						/>

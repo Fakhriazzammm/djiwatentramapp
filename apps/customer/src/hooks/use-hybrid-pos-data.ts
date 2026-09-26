@@ -536,6 +536,34 @@ async function fetchSiteSettings() {
 	} as SiteSettingsRecord;
 }
 
+async function fetchMerchandiseCategoryIds() {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_categories")
+		.select("_id,name,parentId")
+		.order("displayOrder", { ascending: true });
+
+	if (error) throw error;
+
+	const rows = data ?? [];
+	const merchandiseIds = new Set(
+		rows
+			.filter((row: any) => String(row.name ?? "").trim() === "Merchandise")
+			.map((row: any) => String(row._id))
+	);
+	let changed = true;
+	while (changed) {
+		changed = false;
+		for (const row of rows as any[]) {
+			if (merchandiseIds.has(String(row.parentId ?? "")) && !merchandiseIds.has(String(row._id))) {
+				merchandiseIds.add(String(row._id));
+				changed = true;
+			}
+		}
+	}
+	return Array.from(merchandiseIds);
+}
+
 async function fetchCategories() {
 	const supabase = createClient();
 	const { data, error } = await supabase
@@ -544,8 +572,9 @@ async function fetchCategories() {
 		.order("displayOrder", { ascending: true });
 
 	if (error) throw error;
+	const merchandiseCategoryIds = new Set(await fetchMerchandiseCategoryIds());
 
-	return (data ?? []).map((row: any) => ({
+	return (data ?? []).filter((row: any) => !merchandiseCategoryIds.has(String(row._id))).map((row: any) => ({
 		_id: row._id,
 		name: row.name,
 		order: row.displayOrder ?? 0,
@@ -556,6 +585,7 @@ async function fetchCategories() {
 
 async function fetchProducts() {
 	const supabase = createClient();
+	const merchandiseCategoryIds = new Set(await fetchMerchandiseCategoryIds());
 	const { data, error } = await supabase
 		.from("pos_products")
 		.select("*")
@@ -564,7 +594,7 @@ async function fetchProducts() {
 
 	if (error) throw error;
 
-	return (data ?? []).map((row: any) => ({
+	return (data ?? []).filter((row: any) => !merchandiseCategoryIds.has(String(row.categoryId ?? ""))).map((row: any) => ({
 		_id: row._id,
 		categoryId: row.categoryId,
 		name: row.name,
@@ -591,9 +621,12 @@ async function fetchProducts() {
 
 async function fetchBestSellers() {
 	const supabase = createClient();
+	const customerProductIds = (await fetchProducts()).map((product) => String(product._id));
+	if (customerProductIds.length === 0) return [];
 	const { data, error } = await supabase
 		.from("pos_best_sellers")
 		.select("product_id, product_name, total_sold, order_count")
+		.in("product_id", customerProductIds)
 		.limit(8);
 
 	if (error) throw error;
@@ -607,6 +640,7 @@ async function fetchBestSellers() {
 
 async function fetchAllProducts() {
 	const supabase = createClient();
+	const merchandiseCategoryIds = new Set(await fetchMerchandiseCategoryIds());
 	const { data, error } = await supabase
 		.from("pos_products_all")
 		.select("*")
@@ -614,7 +648,7 @@ async function fetchAllProducts() {
 
 	if (error) throw error;
 
-	return (data ?? []).map((row: any) => ({
+	return (data ?? []).filter((row: any) => !merchandiseCategoryIds.has(String(row.categoryId ?? ""))).map((row: any) => ({
 		_id: row._id,
 		categoryId: row.categoryId,
 		name: row.name,

@@ -15,7 +15,6 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
-	useHybridActiveDiscounts,
 	useHybridCategories,
 	useHybridAllProducts,
 	useHybridSiteSettings,
@@ -35,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
 import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
 import { CustomerHeader } from "@/components/customer/customer-shell";
-import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
+import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";
 
 import { useOrderContext } from "@/hooks/use-order-context";
@@ -56,6 +55,17 @@ import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 
+const NO_PRODUCT_DISCOUNTS: Doc<"discounts">[] = [];
+
+function persistMerchandiseOrderAccessKey(orderId: string | number, key: string | null) {
+	if (typeof window === "undefined" || !key) return;
+	try {
+		window.localStorage.setItem(`merchandise-order-access:${String(orderId)}`, key);
+	} catch {
+		// Keep checkout working if browser storage is unavailable; owner-only actions remain unavailable.
+	}
+}
+
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
 });
@@ -74,7 +84,7 @@ function OrderPage() {
 	const brandSettings = useHybridBookingSettings(brandSlug);
 	const categories = useHybridCategories(menuRefreshTrigger);
 	const products = useHybridAllProducts(menuRefreshTrigger);
-	const discounts = useHybridActiveDiscounts();
+
 	const createOrder = useHybridCreateOrder();
 	const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
 	const updateOrderStatus = useHybridUpdateOrderStatus();
@@ -112,6 +122,12 @@ function OrderPage() {
 		setPaymentChoice,
 		customerName,
 		setCustomerName,
+		shippingReceiverName,
+		setShippingReceiverName,
+		shippingAddress,
+		setShippingAddress,
+		shippingPhone,
+		setShippingPhone,
 		customerDescription,
 		setCustomerDescription,
 		guestMarketingConsent,
@@ -149,6 +165,9 @@ function OrderPage() {
 		setCheckoutError(null);
 		setGuestEmail("");
 		setGuestPhone("");
+		setShippingReceiverName("");
+		setShippingAddress("");
+		setShippingPhone("");
 		setDessertLater(false);
 		setNotes("");
 		setTableNumber("");
@@ -164,6 +183,8 @@ function OrderPage() {
 	useEffect(() => {
 		if (isAuthenticated && customer) {
 			if (customer.name?.trim() && !customerName.trim()) setCustomerName(customer.name.trim());
+			if (customer.name?.trim() && !shippingReceiverName.trim()) setShippingReceiverName(customer.name.trim());
+			if (customer.phone?.trim() && !shippingPhone.trim()) setShippingPhone(customer.phone.trim());
 			if (customer.customerDescription?.trim() && !customerDescription.trim()) setCustomerDescription(customer.customerDescription.trim());
 			return;
 		}
@@ -173,17 +194,16 @@ function OrderPage() {
 			if (!raw) return;
 			const data = JSON.parse(raw) as Record<string, unknown>;
 			if (typeof data.name === "string" && data.name.trim() && !customerName.trim()) setCustomerName(data.name.trim());
+			if (typeof data.name === "string" && data.name.trim() && !shippingReceiverName.trim()) setShippingReceiverName(data.name.trim());
 			if (typeof data.email === "string" && data.email.trim() && !guestEmail.trim()) setGuestEmail(data.email.trim());
 			if (typeof data.phone === "string" && data.phone.trim() && !guestPhone.trim()) setGuestPhone(data.phone.trim());
+			if (typeof data.phone === "string" && data.phone.trim() && !shippingPhone.trim()) setShippingPhone(data.phone.trim());
 			if (typeof data.description === "string" && data.description.trim() && !customerDescription.trim()) setCustomerDescription(data.description.trim());
 		} catch {
 			// Ignore malformed guest storage; checkout validation will show the missing field.
 		}
-	}, [customer, customerDescription, customerName, guestEmail, guestPhone, isAuthenticated, setCustomerDescription, setCustomerName]);
-	const memberDiscounts = useMemo(
-		() => isAuthenticated ? discounts : discounts?.filter((discount) => !discount.isHappyHour),
-		[discounts, isAuthenticated],
-	);
+	}, [customer, customerDescription, customerName, guestEmail, guestPhone, isAuthenticated, setCustomerDescription, setCustomerName, setShippingPhone, setShippingReceiverName, shippingPhone, shippingReceiverName]);
+	const memberDiscounts = NO_PRODUCT_DISCOUNTS;
 	const isMenuLoading = categories === undefined || products === undefined;
 	const isMenuError = categories === null || products === null;
 	const [catalogQuery, setCatalogQuery] = useState("");
@@ -286,24 +306,8 @@ function OrderPage() {
 		return { lookup, duplicates };
 	}, [orderedProducts]);
 	const productByMenuNumber = menuNumberIndex.lookup;
-	const activeFreeRefillPromo = useMemo(() => {
-		if (!discounts) return null;
-		const now = new Date();
-		const context = {
-			currentTimestamp: now.getTime(),
-			currentDay: now.getDay(),
-			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
-		};
-		return (
-			discounts.find((discount: Doc<"discounts">) =>
-				isFreeRefillActive(discount, context)
-			) || null
-		);
-	}, [discounts]);
-	const freeRefillCharge =
-		freeRefillOptIn && activeFreeRefillPromo
-			? (activeFreeRefillPromo.refillPrice ?? 0) * Math.max(1, partySize)
-			: 0;
+	const activeFreeRefillPromo: Doc<"discounts"> | null = null;
+	const freeRefillCharge = 0;
 	const productSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 	const productGrossSubtotal = cart.reduce(
 		(sum, item) => sum + (item.originalPrice ?? item.price) * item.quantity,
@@ -332,7 +336,7 @@ function OrderPage() {
 		source: "customer_self_service",
 		paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
 		paymentChoice,
-		paymentReceiptKind: paymentChoice === "cashier" ? "cashier_pending" : null,
+		paymentReceiptKind: null,
 	});
 	const serviceChargeAmount = taxCalculation.serviceChargeAmount;
 	const taxBase = taxCalculation.taxBase;
@@ -343,11 +347,6 @@ function OrderPage() {
 		/(dessert|cake|pudding|ice cream|gelato|tiramisu|sweet)/i.test(item.name)
 	);
 	const paymentOptions = [
-		{
-			key: "cashier" as PaymentChoice,
-			label: "Bayar Tunai di Kasir",
-			description: "Tampilkan struk dan bayar langsung ke kasir.",
-		},
 		...(canUseWallet
 			? [
 					{
@@ -408,7 +407,7 @@ function OrderPage() {
 
 	useEffect(() => {
 		if (!paymentOptions.find((option) => option.key === paymentChoice) || (paymentChoice === "wallet" && (!customer || (customer.walletBalance ?? 0) < total))) {
-			setPaymentChoice("cashier");
+			setPaymentChoice(paymentOptions[0]?.key ?? "mayar");
 		}
 	}, [customer, paymentChoice, total]);
 
@@ -419,7 +418,6 @@ function OrderPage() {
 			fallbackReference: `SELF-${String(search.orderId).slice(-4).toUpperCase()}`,
 			mode: "mayar_pending",
 			paymentChoice: "mayar",
-			dessertLater: false,
 			cartSnapshot: [],
 		});
 		setStep("receipt");
@@ -434,11 +432,9 @@ function OrderPage() {
 			(currentOrder as any).payment_choice ??
 			""
 		).toLowerCase();
-		const paymentReceiptKind = String((currentOrder as any).paymentReceiptKind ?? (currentOrder as any).payment_receipt_kind ?? "").toLowerCase();
-		const isCashierPayment = paymentReceiptKind === "cashier_pending" || normalizedPaymentMethod === "cash" || normalizedPaymentMethod.includes("cashier") || normalizedPaymentMethod.includes("tunai");
 		const isWalletPayment = normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa");
-		const resolvedPaymentChoice = isCashierPayment ? "cashier" : isWalletPayment ? "wallet" : "mayar";
-		const resolvedMode = currentOrder.status === "paid" || currentOrder.status === "completed" ? "paid" : isCashierPayment ? "cashier_pending" : "mayar_pending";
+		const resolvedPaymentChoice = isWalletPayment ? "wallet" : "mayar";
+		const resolvedMode = currentOrder.status === "paid" || currentOrder.status === "completed" ? "paid" : "mayar_pending";
 		if (receipt.paymentChoice !== resolvedPaymentChoice || receipt.mode !== resolvedMode) {
 			setReceipt((value) => value ? { ...value, paymentChoice: resolvedPaymentChoice, mode: resolvedMode } : value);
 		}
@@ -621,6 +617,22 @@ function OrderPage() {
 			toast.error("Pilih minimal satu produk");
 			return;
 		}
+		if (!shippingReceiverName.trim()) {
+			rejectCheckout("Nama penerima wajib diisi", "Nama penerima");
+			return;
+		}
+		if (!shippingAddress.trim()) {
+			rejectCheckout("Alamat pengiriman wajib diisi", "Alamat pengiriman");
+			return;
+		}
+		if (!hasValidCustomerPhone(shippingPhone)) {
+			rejectCheckout("Isi nomor WhatsApp penerima yang valid", "Nomor WhatsApp penerima");
+			return;
+		}
+		if (!paymentOptions.length) {
+			rejectCheckout("Metode pembayaran belum tersedia. Silakan coba lagi nanti.");
+			return;
+		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
 			if (!customerName.trim()) {
 				rejectCheckout("Nama customer wajib diisi", "Nama customer");
@@ -660,7 +672,6 @@ function OrderPage() {
 		setCheckoutError(null);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
-			const normalizedCustomerName = customerName.trim();
 			let guestCustomerSourceId: string | null = null;
 			// Guest QRIS perlu disinkronkan agar identity dan contact dapat dipakai Mayar.
 			// Guest bayar tunai tidak boleh dipaksa mengisi email/WhatsApp; nama dan ciri
@@ -668,9 +679,9 @@ function OrderPage() {
 			if (!isAuthenticated && paymentChoice === "mayar") {
 				const guestCapture = await invokeEdgeFunction<{ customerSourceId?: string }>("customer-sync", {
 					action: "captureGuest",
-					name: normalizedCustomerName,
+					name: shippingReceiverName.trim(),
 					email: checkoutEmail,
-					phone: checkoutPhone,
+					phone: shippingPhone.trim(),
 					customerDescription: customerDescription.trim().slice(0, 160),
 					marketingConsent: guestMarketingConsent,
 					guestSessionId: sessionRef.current,
@@ -678,12 +689,7 @@ function OrderPage() {
 				guestCustomerSourceId = guestCapture.customerSourceId || null;
 				if (!guestCustomerSourceId) throw new Error("Data guest belum berhasil disimpan");
 			}
-			if (paymentChoice === "mayar" && !normalizedCustomerName) {
-				throw new Error("Nama customer wajib diisi sebelum pembayaran");
-			}
-			const orderCustomerName = normalizedCustomerName || `Customer ${tableNumber.trim() || "Walk In"}`;
-			const normalizedCustomerDescription = customerDescription.trim().slice(0, 160) || undefined;
-			const normalizedTableNumber = tableNumber.trim() || undefined;
+			const orderCustomerName = shippingReceiverName.trim();
 			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
 				items: cart.map((item) => ({
@@ -698,19 +704,18 @@ function OrderPage() {
 				totalAmount: total,
 				taxAmount,
 				serviceChargeAmount,
-				paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
+				paymentMethod: paymentChoice === "mayar" ? "qris" : "wallet",
 				paymentChoice,
 				idempotencyKey: checkoutRequestKeyRef.current,
 				customerName: orderCustomerName,
 				customerEmail: checkoutEmail || null,
-				customerPhone: checkoutPhone || null,
-				customerDescription: normalizedCustomerDescription,
-				tableNumber: normalizedTableNumber,
-				orderType: "dine_in" as const,
+				customerPhone: shippingPhone.trim(),
+				orderType: "takeaway" as const,
+				deliveryAddress: shippingAddress.trim(),
 				source: "customer_self_service" as const,
 				brandSlug,
-				freeRefillSelected: Boolean(freeRefillOptIn),
-				dessertLater,
+				isOpenBill: true,
+				paymentReceiptKind: "gateway_pending",
 				notes: normalizedNotes,
 				discountAmount: getAdditionalOrderDiscount(promoDiscount, djiwaPayDiscount),
 				voucherId: djiwaPayDiscount > 0 ? "djiwa-pay-20" : null,
@@ -719,8 +724,14 @@ function OrderPage() {
 						const pricing = calculateEffectivePrice({ _id: item.productId, price: item.originalPrice ?? item.price, categoryId: item.categoryId }, memberDiscounts);
 						return pricing.isHappyHour && item.price < (item.originalPrice ?? item.price);
 					}),
-					...(freeRefillOptIn && activeFreeRefillPromo ? { adjustmentLines: [{ label: `${activeFreeRefillPromo.name || "Free Refill"} x${partySize}`, amount: freeRefillCharge }] } : {}),
 					...(djiwaPayDiscount > 0 ? { djiwaPayDiscountPercent, djiwaPayDiscount, djiwaPayDiscountPaymentMethod: "wallet" } : {}),
+					merchandiseFulfillment: {
+						fulfillmentType: "physical_preorder",
+						receiverName: shippingReceiverName.trim(),
+						address: shippingAddress.trim(),
+						phone: shippingPhone.trim(),
+						shippingStatus: "awaiting_payment",
+					},
 				},
 				customerSourceId: customer?.sourceId || guestCustomerSourceId,
 			};
@@ -733,6 +744,7 @@ function OrderPage() {
 					paymentReceiptKind: "wallet_pending",
 					isOpenBill: true,
 				});
+				persistMerchandiseOrderAccessKey(orderId, checkoutRequestKeyRef.current);
 				let walletHoldId: string | null = null;
 				let walletCaptured = false;
 				try {
@@ -760,7 +772,7 @@ function OrderPage() {
 					});
 					walletCaptured = true;
 					if (!isAuthenticated) rememberGuestOrder(String(orderId));
-					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, dessertLater, cartSnapshot: cart });
+					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, cartSnapshot: cart });
 				} catch (error) {
 					if (walletHoldId && !walletCaptured) {
 						await invokeEdgeFunction("customer-wallet", {
@@ -781,10 +793,11 @@ function OrderPage() {
 					paymentReceiptKind: "gateway_pending",
 					isOpenBill: true,
 				});
+				persistMerchandiseOrderAccessKey(orderId, checkoutRequestKeyRef.current);
 				if (!isAuthenticated) rememberGuestOrder(String(orderId));
 				const redirectUrl =
 					typeof window !== "undefined"
-						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
+						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(String(orderId))}`
 						: undefined;
 				let invoice:
 					| {
@@ -798,29 +811,18 @@ function OrderPage() {
 						orderId: String(orderId),
 						idempotencyKey: checkoutRequestKeyRef.current,
 						paymentMethod: "qris",
-						name: normalizedCustomerName,
+						name: shippingReceiverName.trim(),
 						email: checkoutEmail || undefined,
-						mobile: checkoutPhone || "",
+						mobile: shippingPhone.trim(),
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
 						expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 						extraData: { orderId: String(orderId) },
-						items: [
-							...cart.map((item) => ({
-								quantity: item.quantity,
-								rate: item.price,
-								description: item.variant ? `${item.name} (${item.variant})` : item.name,
-							})),
-							...(freeRefillOptIn && activeFreeRefillPromo
-								? [
-										{
-											quantity: Math.max(1, partySize),
-											rate: activeFreeRefillPromo.refillPrice ?? 0,
-											description: activeFreeRefillPromo.name || "Free Refill",
-										},
-								  ]
-								: []),
-						],
+						items: cart.map((item) => ({
+							quantity: item.quantity,
+							rate: item.price,
+							description: item.variant ? `${item.name} (${item.variant})` : item.name,
+						})),
 					});
 					if (!invoice?.data?.id) {
 						throw new Error(invoice?.messages || "Gagal membuat invoice pembayaran");
@@ -848,7 +850,6 @@ function OrderPage() {
 					paymentChoice,
 					invoiceId: invoice?.data?.id,
 					invoiceUrl: invoice?.data?.link,
-					dessertLater,
 					cartSnapshot: cart,
 				});
 
@@ -857,20 +858,7 @@ function OrderPage() {
 					return;
 				}
 			} else {
-				const orderId = await createOrder({
-					...payload,
-					paymentReceiptKind: "cashier_pending",
-					isOpenBill: true,
-				});
-				if (!isAuthenticated) rememberGuestOrder(String(orderId));
-				setReceipt({
-					orderId,
-					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
-					mode: "cashier_pending",
-					paymentChoice,
-					dessertLater,
-					cartSnapshot: cart,
-				});
+				throw new Error("Metode pembayaran Merchandise tidak tersedia");
 			}
 			setCart([]);
 			checkoutRequestKeyRef.current = null;
@@ -910,10 +898,29 @@ function OrderPage() {
 				await invokeEdgeFunction("customer-wallet", { action: "settle-order", sourceId: customer.sourceId, email: customer.email, orderId, holdId: holdResponse.result.hold_id, idempotencyKey: key });
 				toast.success("Pembayaran Djiwa Pay berhasil diproses");
 			} else {
+				const currentGateway = (currentOrder as any)?.paymentGateway || (currentOrder as any)?.payment_gateway || {};
+				const finalInvoiceStatus = ["expired", "cancelled", "canceled", "void"].includes(String(currentGateway.status || "").toLowerCase());
+				if ((currentGateway.invoiceId || (currentOrder as any)?.gatewayInvoiceId) && !finalInvoiceStatus) {
+					throw new Error("Invoice lama masih aktif; tunggu konfirmasi status dari Mayar sebelum membuat invoice baru");
+				}
+				const orderAccessKey = window.localStorage.getItem(`merchandise-order-access:${orderId}`);
+				if (!orderAccessKey) throw new Error("Kunci akses order tidak tersedia di perangkat ini; hubungi admin untuk bantuan");
 				const redirectUrl = `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(orderId)}`;
-				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "", forceNew: true });
+				const invoice = await createMayarInvoice({ orderId, idempotencyKey: orderAccessKey, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "", forceNew: true });
 				if (!invoice?.data?.id || !invoice.data.link) throw new Error(invoice?.messages || "Link pembayaran baru tidak tersedia");
-				await updateOrderPaymentGateway({ id: receipt.orderId, paymentGateway: { provider: "mayar", invoiceId: invoice.data.id, transactionId: invoice.data.transactionId, invoiceUrl: invoice.data.link, status: "created", retryOf: (currentOrder as any).gatewayInvoiceId ?? (currentOrder as any).gateway_invoice_id ?? null } });
+				await updateOrderPaymentGateway({ id: receipt.orderId, paymentGateway: {
+					provider: "mayar",
+					invoiceId: invoice.data.id,
+					transactionId: invoice.data.transactionId,
+					invoiceUrl: invoice.data.link,
+					expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+					status: "created",
+					retryOf: currentGateway.invoiceId ?? (currentOrder as any).gatewayInvoiceId ?? (currentOrder as any).gateway_invoice_id ?? null,
+					previousInvoices: [
+						...(Array.isArray(currentGateway.previousInvoices) ? currentGateway.previousInvoices : []),
+						...(currentGateway.invoiceId ? [{ invoiceId: currentGateway.invoiceId, transactionId: currentGateway.transactionId ?? null, status: currentGateway.status ?? "unknown", verifiedAt: currentGateway.providerStatusVerifiedAt ?? null }] : []),
+					],
+				} });
 				setReceipt((value) => value ? { ...value, mode: "mayar_pending", paymentChoice: "mayar", invoiceId: invoice.data?.id, invoiceUrl: invoice.data?.link } : value);
 				window.location.assign(invoice.data.link);
 				return;
@@ -1033,10 +1040,10 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
-					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
+					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
@@ -1082,7 +1089,6 @@ function OrderPage() {
 					>
 						<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Layanan customer</p><h3 className="mt-0.5 text-lg font-black">Hubungi tim restoran</h3><p className="mt-1 text-xs text-muted-foreground">Request akan langsung muncul di halaman admin operasional.</p></div>
 						<button type="button" className="flex w-full items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#ef4444,#b91c1c)] px-3 py-4 text-white shadow-sm" onClick={() => requestService("call_staff")}><PhoneCall className="h-4 w-4" /><div><p className="font-black text-sm">Panggil staff</p><p className="text-xs text-white/75">Panggil staff ke meja customer.</p></div></button>
-						{config.enableDessertLater && receipt?.dessertLater ? <button type="button" className="flex w-full items-center gap-2.5 rounded-xl bg-[linear-gradient(135deg,#f59e0b,#d97706)] px-3 py-4 text-white shadow-sm" onClick={() => requestService("bring_dessert")}><Bell className="h-4 w-4" /><div><p className="font-black text-sm">Bawa dessert sekarang</p><p className="text-xs text-white/75">Kirim pengingat agar dessert dibawakan sekarang.</p></div></button> : null}
 					</motion.div>
 				</SheetContent>
 			</Sheet>
