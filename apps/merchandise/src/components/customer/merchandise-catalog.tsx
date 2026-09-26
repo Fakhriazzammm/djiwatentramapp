@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Minus, PackageSearch, Plus, Search, Sparkles } from "lucide-react";
+import { Minus, PackageSearch, Plus, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
@@ -39,21 +39,7 @@ export function renderMerchandiseCatalog(props: MenuSectionProps) {
 
   return (
     <div className="space-y-4 px-4 pb-5 pt-2">
-      <section className="relative overflow-hidden rounded-[24px] bg-[#12233f] px-4 py-5 text-white shadow-[0_12px_30px_rgba(18,35,63,0.18)]">
-        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#d7b56d]/20 blur-2xl" />
-        <div className="absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-cyan-300/10 blur-2xl" />
-        <div className="relative">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#e6c987]"><Sparkles className="h-3.5 w-3.5" /> Koleksi Djiwa Tentram</div>
-          <h2 className="mt-2 max-w-[15rem] font-display text-xl font-black leading-tight">Bawa pulang cerita dari Djiwa.</h2>
-          <p className="mt-1.5 max-w-[18rem] text-[11px] leading-relaxed text-slate-200/80">Merchandise edisi terbatas, dibuat dengan sistem pre-order.</p>
-          <div className="mt-4 flex items-center gap-2">
-            <button type="button" onClick={() => setFeaturedOnly(false)} className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#d7b56d] px-4 py-2 text-[11px] font-black text-[#12233f] shadow-sm active:scale-[.97]">Lihat koleksi <ArrowUpRight className="h-3.5 w-3.5" /></button>
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[10px] font-bold text-white/80">{openCampaigns.length} aktif</span>
-          </div>
-        </div>
-      </section>
-
-      <section className="sticky top-0 z-10 -mx-1 space-y-3 bg-background/95 px-1 pb-1 pt-1 backdrop-blur-xl">
+      <section className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -67,9 +53,9 @@ export function renderMerchandiseCatalog(props: MenuSectionProps) {
         </div>
       </section>
 
-      {props.isMenuError ? <div role="alert" className="rounded-3xl border border-red-200 bg-red-50 px-4 py-10 text-center text-red-800"><PackageSearch className="mx-auto h-8 w-8" /><p className="mt-3 text-sm font-black">Koleksi belum dapat dimuat</p><button type="button" onClick={props.onRetryMenu} className="mt-4 rounded-xl bg-red-700 px-4 py-2.5 text-xs font-black text-white">Coba lagi</button></div> : props.isMenuLoading ? <div className="grid grid-cols-2 gap-3">{[1, 2, 3, 4].map((item) => <div key={item} className="overflow-hidden rounded-[24px] border border-border/70 bg-card"><div className="aspect-[.82] animate-pulse bg-muted" /><div className="space-y-2 p-3"><div className="h-3 w-4/5 animate-pulse rounded bg-muted" /><div className="h-4 w-1/2 animate-pulse rounded bg-muted" /></div></div>)}</div> : (
+      {props.isMenuError ? <div role="alert" className="rounded-3xl border border-red-200 bg-red-50 px-4 py-10 text-center text-red-800"><PackageSearch className="mx-auto h-8 w-8" /><p className="mt-3 text-sm font-black">Koleksi belum dapat dimuat</p><button type="button" onClick={props.onRetryMenu} className="mt-4 rounded-xl bg-red-700 px-4 py-2.5 text-xs font-black text-white">Coba lagi</button></div> : props.isMenuLoading ? <div className="grid grid-cols-2 gap-3">{[1, 2, 3, 4].map((item) => <div key={item} className="overflow-hidden rounded-[16px] bg-transparent"><div className="aspect-square animate-pulse rounded-[16px] bg-muted" /><div className="space-y-2 px-1.5 pt-2"><div className="h-3 w-4/5 animate-pulse rounded bg-muted" /><div className="h-4 w-1/2 animate-pulse rounded bg-muted" /></div></div>)}</div> : (
         <section aria-label="Daftar merchandise">
-          <div className="mb-3 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary/70">Koleksi pilihan</p><h3 className="mt-1 text-lg font-black tracking-tight">Temukan favoritmu</h3></div><span className="text-[11px] font-semibold text-muted-foreground">{visibleProducts.length} produk</span></div>
+          <div className="mb-2 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">Merchandise</p><h3 className="mt-0.5 text-base font-black tracking-tight">Koleksi terbaru</h3></div><span className="text-[11px] font-semibold text-muted-foreground">{visibleProducts.length} produk</span></div>
           {visibleProducts.length === 0 ? <div className="rounded-3xl border border-dashed border-border px-4 py-12 text-center"><PackageSearch className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 text-sm font-black">Belum ada produk di koleksi ini</p><p className="mt-1 text-xs text-muted-foreground">Coba kata kunci atau kategori lain.</p></div> : <div className="grid grid-cols-2 gap-x-3 gap-y-7">
             {visibleProducts.map((product) => {
               const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
