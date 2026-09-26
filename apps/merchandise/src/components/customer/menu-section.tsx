@@ -3,6 +3,7 @@ import { Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search } from "lucide-r
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
+import type { MerchandiseCampaignRecord } from "@/hooks/use-hybrid-pos-data";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
@@ -35,9 +36,17 @@ function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
 		</>
 	);
 }
+function formatDispatchWindow(start: string, end: string) {
+	const formatter = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
+	const startLabel = formatter.format(new Date(`${start}T00:00:00+07:00`));
+	const endLabel = formatter.format(new Date(`${end}T00:00:00+07:00`));
+	return startLabel === endLabel ? startLabel : `${startLabel} – ${endLabel}`;
+}
+
 export interface MenuSectionProps {
 	activeCategoryId: Id<"categories"> | null;
 	cart: CartItem[];
+	campaignByProductId: Map<string, MerchandiseCampaignRecord>;
 	codeFeedback: string;
 	config: typeof CUSTOMER_ORDERING_DEFAULTS;
 	discounts: Doc<"discounts">[] | undefined;
@@ -147,20 +156,27 @@ export function renderMenuSection(props: MenuSectionProps) {
 							{props.filteredProducts.map((product) => {
 								const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
-								const isSold = product.isAvailable === false || Number(product.quantity ?? 0) <= 0;
+								const campaign = props.campaignByProductId.get(String(product._id));
+								const now = Date.now();
+								const saleStart = campaign ? Date.parse(campaign.saleWindowStart) : NaN;
+								const saleEnd = campaign ? Date.parse(campaign.saleWindowEnd) : NaN;
+								const isPreorderOpen = campaign?.lifecycle === "open" && now >= saleStart && now < saleEnd;
+								const isScheduled = campaign?.lifecycle === "scheduled" || (campaign?.lifecycle === "open" && now < saleStart);
+								const isSold = !isPreorderOpen;
 								const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 								return (
 									<article key={product._id} className="flex items-center gap-3 rounded-[24px] border border-border/80 bg-card p-2.5 shadow-[0_4px_20px_rgba(9,9,11,0.05)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<button type="button" aria-label={`Lihat ${product.name}`} className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[18px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97]" onClick={() => props.handleProductSelect(product)}>
 											<ProductImage src={product.image} alt={product.name} />
-											{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
+											{isPreorderOpen ? <span className="absolute inset-x-1.5 top-1.5 z-10 rounded-full bg-primary px-1.5 py-1 text-center text-[9px] font-black tracking-[0.12em] text-primary-foreground shadow">PRE-ORDER</span> : <span className="absolute inset-x-1.5 top-1.5 z-10 rounded-full bg-slate-950/70 px-1.5 py-1 text-center text-[9px] font-black tracking-[0.12em] text-white shadow">{isScheduled ? "SEGERA DIBUKA" : "PRE-ORDER DITUTUP"}</span>}
 											{pricing.isPromo ? <span className="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-black text-white shadow" style={{ background: pricing.isHappyHour ? '#f59e0b' : '#ef4444' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 										</button>
 										<div className="min-w-0 flex-1 self-stretch py-0.5">
 											<div className="flex min-h-full flex-col justify-between gap-1.5">
 												<div>
 													<p className="break-words text-sm font-black leading-tight">{product.name}</p>
-													{product.description ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Siap dikirim atau diambil sesuai pilihan toko.</p>}
+													{product.description ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{product.description}</p> : <p className="mt-1 text-xs text-muted-foreground">Pre-order merchandise dengan pengiriman setelah produksi.</p>}
+													{campaign ? <p className="mt-1 text-[10px] font-semibold text-primary">Perkiraan dikirim {formatDispatchWindow(campaign.expectedDispatchStart, campaign.expectedDispatchEnd)}</p> : <p className="mt-1 text-[10px] font-semibold text-muted-foreground">Jadwal pre-order belum tersedia</p>}
 												</div>
 												<div className="flex items-end justify-between gap-2">
 													<div><p className="text-sm font-black text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>

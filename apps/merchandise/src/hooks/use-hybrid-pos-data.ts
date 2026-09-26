@@ -34,6 +34,16 @@ type BestSellerRecord = {
 	totalSold: number;
 	orderCount: number;
 };
+export type MerchandiseCampaignRecord = {
+	id: string;
+	productSourceId: string;
+	productName: string;
+	lifecycle: "scheduled" | "open" | "paused" | "closed";
+	saleWindowStart: string;
+	saleWindowEnd: string;
+	expectedDispatchStart: string;
+	expectedDispatchEnd: string;
+};
 type InventoryRecord = Record<string, any>;
 type ShiftReportRecord = {
 	shiftId: string;
@@ -564,6 +574,28 @@ async function fetchProducts() {
 				: Number(row.menuNumber),
 		variations: row.variations,
 	})) as ProductRecord[];
+}
+
+async function fetchMerchandiseCampaigns() {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.schema("pos")
+		.from("merchandise_campaign_public")
+		.select("id,product_source_id,product_name,lifecycle,sale_window_start,sale_window_end,expected_dispatch_start,expected_dispatch_end")
+		.in("lifecycle", ["scheduled", "open"])
+		.order("sale_window_start", { ascending: true });
+
+	if (error) throw error;
+	return (data ?? []).map((row: any) => ({
+		id: String(row.id),
+		productSourceId: String(row.product_source_id),
+		productName: String(row.product_name ?? ""),
+		lifecycle: row.lifecycle,
+		saleWindowStart: String(row.sale_window_start),
+		saleWindowEnd: String(row.sale_window_end),
+		expectedDispatchStart: String(row.expected_dispatch_start),
+		expectedDispatchEnd: String(row.expected_dispatch_end),
+	})) as MerchandiseCampaignRecord[];
 }
 
 async function fetchBestSellers() {
@@ -2198,6 +2230,16 @@ export function useHybridBestSellers(refreshTrigger?: number) {
 export function useHybridAllProducts(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("products-all", fetchAllProducts, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
 	return supabaseData as ProductRecord[] | undefined;
+}
+
+export function useHybridMerchandiseCampaigns(refreshTrigger?: number) {
+	const supabaseData = useSupabaseValue(
+		"merchandise-campaigns",
+		fetchMerchandiseCampaigns,
+		[],
+		{ refreshMs: 60_000, ...(refreshTrigger !== undefined ? { refreshTrigger } : {}) },
+	);
+	return supabaseData as MerchandiseCampaignRecord[] | undefined;
 }
 
 export function useHybridHppProductMap(refreshTrigger?: number) {

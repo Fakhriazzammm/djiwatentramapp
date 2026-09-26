@@ -112,8 +112,8 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 						</div>
 					) : null}
 					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Catatan order</label>
-						<textarea aria-label="Catatan order" className="min-h-[88px] w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: saus dipisah, tanpa es" />
+						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Catatan pengiriman</label>
+						<textarea aria-label="Catatan pengiriman" className="min-h-[88px] w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: patokan alamat, warna pilihan, atau instruksi kurir" />
 					</div>
 
 				</div>

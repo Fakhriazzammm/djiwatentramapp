@@ -17,6 +17,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	useHybridCategories,
 	useHybridAllProducts,
+	useHybridMerchandiseCampaigns,
 	useHybridSiteSettings,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridBookingSettings } from "@/hooks/use-hybrid-booking-data";
@@ -84,6 +85,7 @@ function OrderPage() {
 	const brandSettings = useHybridBookingSettings(brandSlug);
 	const categories = useHybridCategories(menuRefreshTrigger);
 	const products = useHybridAllProducts(menuRefreshTrigger);
+	const campaigns = useHybridMerchandiseCampaigns(menuRefreshTrigger);
 
 	const createOrder = useHybridCreateOrder();
 	const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
@@ -204,8 +206,8 @@ function OrderPage() {
 		}
 	}, [customer, customerDescription, customerName, guestEmail, guestPhone, isAuthenticated, setCustomerDescription, setCustomerName, setShippingPhone, setShippingReceiverName, shippingPhone, shippingReceiverName]);
 	const memberDiscounts = NO_PRODUCT_DISCOUNTS;
-	const isMenuLoading = categories === undefined || products === undefined;
-	const isMenuError = categories === null || products === null;
+	const isMenuLoading = categories === undefined || products === undefined || campaigns === undefined;
+	const isMenuError = categories === null || products === null || campaigns === null;
 	const [catalogQuery, setCatalogQuery] = useState("");
 	const [pendingNumberProduct, setPendingNumberProduct] = useState<Doc<"products"> | null>(null);
 	const [pendingNumberQuantity, setPendingNumberQuantity] = useState(1);
@@ -276,6 +278,10 @@ function OrderPage() {
 				  )
 				: [],
 		[products]
+	);
+	const campaignByProductId = useMemo(
+		() => new Map((campaigns ?? []).map((campaign) => [campaign.productSourceId, campaign])),
+		[campaigns],
 	);
 	const filteredProducts = useMemo(() => {
 		const categoryFiltered = !activeCategoryId
@@ -527,8 +533,13 @@ function OrderPage() {
 	};
 
 	const handleProductSelect = (product: (typeof orderedProducts)[number]) => {
-		if (product.isAvailable === false || Number(product.quantity ?? 0) <= 0) {
-			toast.info(`${product.name} sedang SOLD`);
+		const campaign = campaignByProductId.get(String(product._id));
+		const now = Date.now();
+		const campaignOpen = campaign?.lifecycle === "open"
+			&& now >= Date.parse(campaign.saleWindowStart)
+			&& now < Date.parse(campaign.saleWindowEnd);
+		if (!campaignOpen) {
+			toast.info(campaign?.lifecycle === "scheduled" ? `${product.name} belum dibuka untuk preorder` : `${product.name} sedang tidak tersedia untuk preorder`);
 			return;
 		}
 		const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
@@ -1036,7 +1047,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, campaignByProductId, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
