@@ -134,12 +134,30 @@ async function supabasePatch(path: string, body: Record<string, unknown>) {
   return result;
 }
 
+async function supabaseRpc(name: string, payload: Record<string, unknown>) {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new Error("Supabase storage is not configured");
+  const response = await fetchMayar(`${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(name)}`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      "Content-Profile": "pos",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await readJsonResponse(response);
+  if (!response.ok) throw new Error(`Preorder reservation failed (${response.status})`);
+  return body;
+}
+
 async function createInvoiceFromOrder(payload: Record<string, unknown>) {
   const orderId = typeof payload.orderId === "string" ? payload.orderId.trim() : "";
   if (!orderId) throw new Error("orderId wajib diisi");
 
   const orders = await supabaseGet(
-    `orders?select=source_id,order_number,total_amount,subtotal_amount,discount_amount,tax_amount,service_charge_amount,status,source,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+    `orders?select=source_id,order_number,total_amount,subtotal_amount,discount_amount,tax_amount,service_charge_amount,status,source,brand_slug,payment_method,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
   ) as Array<Record<string, unknown>>;
   const order = orders[0];
   if (!order) throw new Error("Order tidak ditemukan");
@@ -153,7 +171,7 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
   if (!["pending", "created"].includes(String(order.status || ""))) {
     throw new Error("Order tidak berada pada status pending");
   }
-
+  const isMerchandiseOrder = String(order.brand_slug || "").trim().toLowerCase() === "merchandise";
   const existingGateway = order.payment_gateway && typeof order.payment_gateway === "object"
     ? order.payment_gateway as Record<string, unknown>
     : {};
@@ -162,8 +180,32 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
     : typeof existingGateway.link === "string" && existingGateway.link.trim()
       ? existingGateway.link.trim()
       : "";
-  if (existingLink && existingGateway.invoiceId && payload.forceNew !== true) {
+  const forceNew = payload.forceNew === true;
+  if (existingLink && existingGateway.invoiceId && !forceNew) {
     return { statusCode: 200, messages: "success", data: { id: existingGateway.invoiceId, transactionId: existingGateway.transactionId, link: existingLink, reused: true } };
+  }
+  if (isMerchandiseOrder) {
+    if (String(order.source || "") !== "customer_self_service"
+      || !["qris", "mayar"].includes(String(order.payment_method || "").toLowerCase())) {
+      throw new Error("Pre-order merchandise hanya menerima pembayaran Mayar");
+    }
+    if ((existingGateway.invoiceId || existingGateway.transactionId) && !forceNew) {
+      throw new Error("Invoice lama masih aktif atau perlu diverifikasi; invoice baru tidak dibuat");
+    }
+    if (forceNew && (existingGateway.invoiceId || existingGateway.transactionId)) {
+      const finalStatus = String(existingGateway.status || "").toLowerCase();
+      if (!["expired", "cancelled", "canceled", "void"].includes(finalStatus)
+        || !existingGateway.providerStatusVerifiedAt) {
+        throw new Error("Invoice lama belum terverifikasi final oleh Mayar");
+      }
+    }
+  }
+  const invoiceExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  if (isMerchandiseOrder) {
+    await supabaseRpc("reserve_merchandise_preorder_order", {
+      p_order_source_id: orderId,
+      p_hold_expires_at: invoiceExpiresAt,
+    });
   }
 
   const itemRows = await supabaseGet(
@@ -223,18 +265,31 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
     mobile: order.delivery_contact_phone || payload.mobile,
     redirectUrl: payload.redirectUrl,
     description: `Pembayaran order ${order.order_number || orderId}`,
-    expiredAt: payload.expiredAt,
+    expiredAt: invoiceExpiresAt,
     items,
     paymentMethod: payload.paymentMethod,
     extraData: { orderId },
   });
   const invoiceData = result?.data && typeof result.data === "object" ? result.data as Record<string, unknown> : {};
+  const previousInvoices = Array.isArray(existingGateway.previousInvoices)
+    ? existingGateway.previousInvoices
+    : [];
+  const archivedInvoice = forceNew && (existingGateway.invoiceId || existingGateway.transactionId)
+    ? [{
+      invoiceId: existingGateway.invoiceId || null,
+      transactionId: existingGateway.transactionId || null,
+      status: existingGateway.status || "unknown",
+      verifiedAt: existingGateway.providerStatusVerifiedAt || null,
+    }]
+    : [];
   const paymentGateway = {
     provider: "mayar",
     invoiceId: invoiceData.id || null,
     transactionId: invoiceData.transactionId || null,
     invoiceUrl: invoiceData.link || null,
+    expiresAt: invoiceExpiresAt,
     status: "created",
+    previousInvoices: [...previousInvoices, ...archivedInvoice],
   };
   await supabasePatch(`orders?source_id=eq.${encodeURIComponent(orderId)}`, {
     payment_gateway: paymentGateway,

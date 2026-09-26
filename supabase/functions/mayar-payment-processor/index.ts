@@ -120,13 +120,40 @@ async function insertFinancialTransaction(order: Record<string, unknown>, paymen
 }
 
 async function verifyTransaction(transactionId: string) {
+  const transaction = await fetchVerifiedTransaction(transactionId);
+  return transaction && String(transaction.status || "").toLowerCase() === "paid"
+    ? transaction
+    : null;
+}
+
+async function fetchVerifiedTransaction(transactionId: string) {
   const response = await fetchWithTimeout(
     `${MAYAR_API_BASE}/transactions/${encodeURIComponent(transactionId)}`,
     { headers: { Authorization: `Bearer ${MAYAR_API_KEY}` } },
   );
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body?.statusCode !== 200) return null;
-  return body?.data?.status === "paid" ? body.data : null;
+  return body?.data && typeof body.data === "object" ? body.data as Record<string, unknown> : null;
+}
+
+const NON_SETTLING_PROVIDER_STATUSES = new Set(["expired", "cancelled", "canceled", "void"]);
+
+async function releaseExpiredMerchandiseReservation(orderId: string, providerStatus: string) {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/release_expired_merchandise_preorder`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      "Content-Profile": "pos",
+    },
+    body: JSON.stringify({
+      p_order_source_id: orderId,
+      p_verified_provider_status: providerStatus,
+    }),
+  });
+  if (!response.ok) throw new Error(`Merchandise reservation release failed (${response.status})`);
+  return await response.json();
 }
 
 async function settleBooking(bookingId: string, invoiceId: string, transaction: Record<string, unknown>) {
@@ -266,8 +293,15 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
   const transactionId = String(transaction.id || "");
   if (!orderId || !transactionId) return { updated: 0, transactionCreated: false };
   const expectedInvoice = String(order.gateway_invoice_id || parseExtraData(order.payment_gateway)?.invoiceId || "");
+  const merchandiseOrder = String(order.brand_slug || "").trim().toLowerCase() === "merchandise";
+  const currentGateway = parseExtraData(order.payment_gateway);
+  const expectedTransactionId = String(currentGateway.transactionId || "");
   if (expectedInvoice && invoiceId && expectedInvoice !== invoiceId) {
     throw new Error("Order invoice mismatch");
+  }
+  if (merchandiseOrder && (currentGateway.status === "replacement_pending"
+      || !expectedTransactionId || expectedTransactionId !== transactionId)) {
+    throw new Error("Mayar transaction does not match the currently active Merchandise invoice");
   }
   const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
   const orderAmount = Number(order.total_amount ?? NaN);
@@ -286,7 +320,9 @@ async function settleOrder(order: Record<string, unknown>, transaction: Record<s
     gateway_invoice_id: paymentGateway.invoiceId || null,
     payment_receipt_kind: "gateway_paid",
     delivery_status: "paid",
-    status: "completed",
+    // A settled merchandise preorder is paid, not fulfilled. Cafe orders keep
+    // their established payment-to-completed behavior.
+    status: merchandiseOrder ? "paid" : "completed",
   };
   const updated = await patchOrder(`source_id=eq.${encodeURIComponent(orderId)}`, patch);
   const settledOrder = updated[0] || order;
@@ -300,7 +336,7 @@ async function reconcilePendingOrders() {
   // jsonb payment_gateway, kolom gateway_invoice_id sering NULL sebelum settle pertama.
   const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
   const response = await fetchWithTimeout(
-    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway,source&status=in.(pending,cancelled)&created_at=gte.${threeDaysAgo}&order=created_at.desc&limit=100`,
+    `${SUPABASE_URL}/rest/v1/orders?select=source_id,order_number,status,total_amount,customer_name,gateway_invoice_id,payment_gateway,source,brand_slug&status=in.(pending,cancelled)&created_at=gte.${threeDaysAgo}&order=created_at.desc&limit=100`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
   );
 if (!response.ok) throw new Error(`Pending order lookup failed (${response.status})`);
@@ -318,10 +354,19 @@ if (!response.ok) throw new Error(`Pending order lookup failed (${response.statu
     const gateway = parseExtraData(order.payment_gateway);
     const transactionId = String(gateway.transactionId || "");
     if (!transactionId) continue;
-    const transaction = await verifyTransaction(transactionId);
+    const transaction = await fetchVerifiedTransaction(transactionId);
     if (!transaction) continue;
-    const result = await settleOrder(order, transaction, String(gateway.invoiceId || order.gateway_invoice_id || ""));
-    results.push({ orderId: order.source_id, ...result });
+    const providerStatus = String(transaction.status || "").trim().toLowerCase();
+    if (providerStatus === "paid") {
+      const result = await settleOrder(order, transaction, String(gateway.invoiceId || order.gateway_invoice_id || ""));
+      results.push({ orderId: order.source_id, ...result });
+    } else if (
+      String(order.brand_slug || "").trim().toLowerCase() === "merchandise"
+      && NON_SETTLING_PROVIDER_STATUSES.has(providerStatus)
+    ) {
+      const released = await releaseExpiredMerchandiseReservation(String(order.source_id || ""), providerStatus);
+      results.push({ orderId: order.source_id, releasedReservations: released });
+    }
   }
   return { scanned: orders.length, settled: results };
 }
@@ -336,10 +381,25 @@ async function processEvent(payload: Record<string, unknown>) {
   const data = (payload.data || {}) as Record<string, unknown>;
   const transactionId = String(data.transactionId || "");
   if (!transactionId || !MAYAR_API_KEY) throw new Error("Missing transaction verification identity");
-  const transaction = await verifyTransaction(transactionId);
-  if (!transaction) throw new Error("Transaction is not verified as paid");
+  const transaction = await fetchVerifiedTransaction(transactionId);
+  if (!transaction) throw new Error("Transaction verification failed");
+  const providerStatus = String(transaction.status || "").trim().toLowerCase();
   const transactionExtraData = parseExtraData(transaction.extraData);
   const extraData = parseExtraData(data.extraData);
+  const customFields = Array.isArray(data.custom_field) ? data.custom_field as Array<Record<string, unknown>> : [];
+  const customOrderId = customFields.find((field) => field?.key === "order_id")?.value;
+  const orderId = String(extraData.orderId || transactionExtraData.orderId || customOrderId || "");
+  if (providerStatus !== "paid") {
+    if (NON_SETTLING_PROVIDER_STATUSES.has(providerStatus) && orderId) {
+      const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders?select=source_id,brand_slug,source&source_id=eq.${encodeURIComponent(orderId)}&limit=1`, { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } });
+      const orders = response.ok ? await response.json() as Array<Record<string, unknown>> : [];
+      const order = orders[0];
+      if (order && String(order.brand_slug || "").trim().toLowerCase() === "merchandise" && String(order.source || "") === "customer_self_service") {
+        return { merchandiseReservationsReleased: await releaseExpiredMerchandiseReservation(orderId, providerStatus), providerStatus };
+      }
+    }
+    throw new Error("Transaction is not verified as paid");
+  }
   const walletTopupId = String(extraData.walletTopupId || transactionExtraData.walletTopupId || "");
   if (walletTopupId) return { walletTopup: await settleWalletTopup(walletTopupId, transaction) };
   const listingId = String(extraData.coffeePassportListingPaymentId || transactionExtraData.coffeePassportListingPaymentId || "");
@@ -351,9 +411,6 @@ async function processEvent(payload: Record<string, unknown>) {
   // data.id / data.transactionId adalah transaction id. Salah ambil = invoice mismatch.
   const invoiceId = String(data.productId || data.id || "");
   if (bookingId) return { booking: await settleBooking(bookingId, invoiceId, transaction) };
-  const customFields = Array.isArray(data.custom_field) ? data.custom_field as Array<Record<string, unknown>> : [];
-  const customOrderId = customFields.find((field) => field?.key === "order_id")?.value;
-  const orderId = String(extraData.orderId || transactionExtraData.orderId || customOrderId || "");
   let settled = { scanned: 0, settled: [] as Array<Record<string, unknown>> };
   if (orderId) {
     const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/orders?select=*&source_id=eq.${encodeURIComponent(orderId)}&limit=1`, { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } });

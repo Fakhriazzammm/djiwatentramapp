@@ -56,8 +56,12 @@ export type ReceiptState = {
 	paymentChoice: PaymentChoice;
 	invoiceId?: string;
 	invoiceUrl?: string;
-	dessertLater: boolean;
 	cartSnapshot: CartItem[];
+	shipping?: {
+		receiverName: string;
+		address: string;
+		phone: string;
+	};
 };
 
 export const CUSTOMER_ORDERING_DEFAULTS = {
