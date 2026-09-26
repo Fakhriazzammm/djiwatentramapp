@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, BarChart3, Building2, Check, ChevronRight, CircleDollarSign, Compass, LockKeyhole, ShieldCheck, TrendingUp } from "lucide-react";
+import { ArrowRight, BarChart3, Building2, Check, ChevronRight, CircleDollarSign, Compass, Database, LockKeyhole, Network, ShieldCheck, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/")({ component: InvestorLanding });
 
@@ -10,6 +10,11 @@ type PublicSnapshot = {
   averageOrderValue: number | null;
   firstDateWib: string | null;
   lastDateWib: string | null;
+  ecosystemSettledOrders: number | null;
+  ecosystemOrderValue: number | null;
+  ecosystemAverageOrderValue: number | null;
+  ecosystemFirstDateWib: string | null;
+  ecosystemLastDateWib: string | null;
   completeness: "partial" | "unavailable";
 };
 
@@ -223,22 +228,42 @@ function InvestorLanding() {
           </figure>)}
         </div>
       </section>
+      <section className="mx-auto max-w-7xl px-5 pb-14 sm:px-8 sm:pb-18 lg:px-10" aria-labelledby="ecosystem-title">
+        <div className="overflow-hidden rounded-[28px] bg-djiwa-navy text-white shadow-[0_22px_70px_rgba(18,36,58,.14)]">
+          <div className="grid gap-0 lg:grid-cols-[.92fr_1.08fr] lg:items-stretch">
+            <div className="flex flex-col justify-between p-6 sm:p-8 lg:p-10">
+              <div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-djiwa-gold-highlight">Keunggulan sistem · dikembangkan internal</p><h2 id="ecosystem-title" className="investor-display mt-3 text-3xl font-semibold leading-tight sm:text-4xl">Bukan sekadar aplikasi. Kami membangun sistem operasi digital sendiri.</h2><p className="mt-4 max-w-xl text-[13px] leading-6 text-djiwa-inverse-muted">Fondasi digital Djiwa Tentram kami kembangkan dan operasikan sendiri untuk menyatukan pelanggan, penjualan, stok, keuangan, tim, dan pengambilan keputusan. Bukan sekumpulan tools yang berdiri sendiri: setiap alur dirancang agar data lebih rapi, dapat ditelusuri, dan siap dikembangkan.</p></div>
+              <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
+                {[{ value: "14", label: "aplikasi bisnis" }, { value: "1", label: "backend autentikasi" }, { value: "8", label: "layanan backend" }, { value: "30+", label: "view analitik" }].map((item) => <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[.06] p-3.5"><p className="text-xl font-bold tabular-nums text-djiwa-gold-highlight">{item.value}</p><p className="mt-1 text-[10px] text-djiwa-inverse-soft">{item.label}</p></div>)}
+              </div>
+            </div>
+            <div className="relative min-h-[280px] overflow-hidden bg-djiwa-navy-deep/40"><img src="/images/investor/digital-ecosystem.webp" alt="Ilustrasi ekosistem digital Djiwa Tentram yang menghubungkan pelanggan, POS, inventori, keuangan, tim, AI, dan investor." loading="lazy" decoding="async" width={1280} height={853} className="h-full w-full object-cover opacity-90" /><div className="absolute inset-0 bg-gradient-to-r from-djiwa-navy via-transparent to-transparent lg:bg-gradient-to-r" /><span className="absolute bottom-4 left-4 rounded-full border border-white/20 bg-djiwa-navy/75 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.12em] text-white backdrop-blur-sm">Ilustrasi sistem digital</span></div>
+          </div>
+          <div className="grid gap-3 border-t border-white/10 p-5 sm:grid-cols-2 sm:p-8 lg:grid-cols-4">
+            {[{ icon: Network, title: "Aplikasi pelanggan & kanal", detail: "Customer, Merchandise, B2B, Booking, Linkbio, Yumme, 500 Kopi Tasik, Ordermie Yamin, dan brand storefront." }, { icon: Database, title: "POS, stok & produksi", detail: "POS, admin, resep, inventori, HPP, dan alur produksi." }, { icon: BarChart3, title: "Finance, AI & insight", detail: "Transaksi, akuntansi, analitik, forecasting, dan asisten AI." }, { icon: ShieldCheck, title: "People, akses & kontrol", detail: "Karyawan, rekrutmen, payroll, autentikasi, dan audit trail." }].map(({ icon: Icon, title, detail }) => <div key={title} className="rounded-2xl border border-white/10 bg-white/[.04] p-3.5"><Icon size={18} className="text-djiwa-gold-highlight" aria-hidden="true" /><h3 className="mt-3 text-[12px] font-bold text-white">{title}</h3><p className="mt-1 text-[10px] leading-5 text-djiwa-inverse-soft">{detail}</p></div>)}
+          </div>
+        </div>
+      </section>
 
       <ProjectionPlanner />
 
       <section id="data" className="border-y border-djiwa-line bg-djiwa-surface">
         <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 lg:px-10">
           <div className="grid gap-7 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
-            <div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-djiwa-gold-deep">Data aktual · kanal pemesanan mandiri</p><h2 className="investor-display mt-3 text-3xl font-semibold leading-tight text-djiwa-ink sm:text-4xl">Transaksi nyata. Batasnya jelas.</h2><p className="mt-4 text-[13px] leading-6 text-djiwa-muted">Lihat jumlah order dibayar atau selesai dan total nilai pesanannya pada kanal digital bertag Djiwa Tentram.</p></div>
-            <p className="max-w-2xl text-[13px] leading-6 text-djiwa-muted">Inilah cuplikan awal untuk membantu Anda memulai evaluasi. Kami mencantumkan periode dan sumbernya; laporan keuangan serta rincian operasi yang lebih luas tetap berada di ruang investor berizin.</p>
+            <div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-djiwa-gold-deep">Data aktual · kanal pemesanan mandiri</p><h2 className="investor-display mt-3 text-3xl font-semibold leading-tight text-djiwa-ink sm:text-4xl">Transaksi nyata, cakupan jujur.</h2><p className="mt-4 text-[13px] leading-6 text-djiwa-muted">Kami membedakan dua lapisan bukti: performa kanal Djiwa Tentram yang sedang dibaca investor, dan rekam jejak seluruh sistem POS sejak data pertama tercatat. Perbandingan ini menjawab dua hal sekaligus: apakah kanal ini mulai menunjukkan traksi, dan apakah fondasi teknologinya sudah siap menopang pertumbuhan.</p></div>
+            <p className="max-w-2xl text-[13px] leading-6 text-djiwa-muted">Ringkasan metrik tersedia secara publik. Laporan keuangan dan rincian operasional lengkap tersedia melalui portal investor terproteksi setelah proses verifikasi.</p>
           </div>
           <div aria-live="polite" aria-busy={snapshotLoading} className="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <SnapshotCard label="Order dibayar / selesai" value={snapshotLoading ? "Memuat…" : snapshot ? new Intl.NumberFormat("id-ID").format(snapshot.settledOrders ?? 0) : "Belum tersedia"} detail="Pada kanal mandiri bertag Djiwa Tentram" icon={<Check size={16} />} />
-            <SnapshotCard label="Total nilai pesanan" value={snapshotLoading ? "Memuat…" : snapshot ? formatRupiah(snapshot.orderValue) : "Belum tersedia"} detail="Jumlah nilai order terselesaikan—bukan laba" icon={<CircleDollarSign size={17} />} />
-            <SnapshotCard label="Rata-rata per order" value={snapshotLoading ? "Memuat…" : snapshot ? formatRupiah(snapshot.averageOrderValue) : "Belum tersedia"} detail="Rata-rata nilai order settled; bukan per pelanggan" icon={<BarChart3 size={16} />} />
-            <SnapshotCard label="Periode tercatat (WIB)" value={snapshot ? `${formatWibDate(snapshot.firstDateWib) ?? "—"} – ${formatWibDate(snapshot.lastDateWib) ?? "—"}` : snapshotLoading ? "Memuat…" : "Belum tersedia"} detail="Rentang tanggal order settled" icon={<Check size={16} />} />
+            <SnapshotCard label="Pesanan selesai dibayar" value={snapshotLoading ? "Memuat…" : snapshot ? new Intl.NumberFormat("id-ID").format(snapshot.settledOrders ?? 0) : "Belum tersedia"} detail="Dari kanal pemesanan mandiri Djiwa Tentram" icon={<Check size={16} />} />
+            <SnapshotCard label="Nilai bruto total pesanan" value={snapshotLoading ? "Memuat…" : snapshot ? formatRupiah(snapshot.orderValue) : "Belum tersedia"} detail="Nilai transaksi selesai; bukan pendapatan atau laba" icon={<CircleDollarSign size={17} />} />
+            <SnapshotCard label="Rata-rata nilai per pesanan" value={snapshotLoading ? "Memuat…" : snapshot ? formatRupiah(snapshot.averageOrderValue) : "Belum tersedia"} detail="Per pesanan selesai; bukan per pelanggan" icon={<BarChart3 size={16} />} />
+            <SnapshotCard label="Periode pesanan selesai (WIB)" value={snapshot ? `${formatWibDate(snapshot.firstDateWib) ?? "—"} – ${formatWibDate(snapshot.lastDateWib) ?? "—"}` : snapshotLoading ? "Memuat…" : "Belum tersedia"} detail="Tanggal pembayaran/penyelesaian yang tercatat" icon={<Check size={16} />} />
           </div>
-          <p className="mt-3 rounded-xl border border-djiwa-line bg-djiwa-surface-muted px-3.5 py-3 text-[10px] leading-5 text-djiwa-muted">Catatan cakupan: hanya order dengan tag Djiwa Tentram pada kanal pemesanan mandiri; kanal POS kasir dan kanal lain belum tercakup. Nilai pesanan bukan pendapatan akuntansi yang direkonsiliasi, laba, valuasi, proyeksi, atau imbal hasil. Status pending dan cancelled tidak dihitung. Sumber: agregat dari Supabase self-hosted.</p>
+          <p className="mt-3 rounded-xl border border-djiwa-line bg-djiwa-surface-muted px-3.5 py-3 text-[10px] leading-5 text-djiwa-muted">Cakupan kanal: hanya pesanan dari kanal pemesanan mandiri yang diklasifikasikan dengan tag Djiwa Tentram. POS kasir dan kanal lain tidak termasuk, sehingga metrik ini belum mewakili seluruh penjualan. Nilai bruto transaksi bukan pendapatan akuntansi, arus kas, laba, valuasi, proyeksi, atau imbal hasil. Status pending dan cancelled tidak dihitung. Sumber: agregat Supabase self-hosted.</p>
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            <article className="investor-panel border-djiwa-navy/10 bg-djiwa-navy p-5 text-white sm:p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-djiwa-gold-highlight">Rekam jejak sistem · sejak data pertama</p><h3 className="mt-2 text-xl font-bold">Ekosistem POS yang sudah berjalan</h3></div><Database className="shrink-0 text-djiwa-gold-highlight" size={20} aria-hidden="true" /></div><div className="mt-5 grid grid-cols-2 gap-3"><div><p className="text-2xl font-bold tabular-nums text-djiwa-gold-highlight">{snapshotLoading ? "…" : snapshot ? new Intl.NumberFormat("id-ID").format(snapshot.ecosystemSettledOrders ?? 0) : "—"}</p><p className="mt-1 text-[10px] text-djiwa-inverse-soft">pesanan selesai tercatat</p></div><div><p className="text-2xl font-bold tabular-nums text-djiwa-gold-highlight">{snapshotLoading ? "…" : snapshot ? formatRupiah(snapshot.ecosystemOrderValue) : "—"}</p><p className="mt-1 text-[10px] text-djiwa-inverse-soft">nilai bruto agregat</p></div></div><p className="mt-4 text-[10px] leading-5 text-djiwa-inverse-soft">Periode {snapshot ? `${formatWibDate(snapshot.ecosystemFirstDateWib) ?? "—"} – ${formatWibDate(snapshot.ecosystemLastDateWib) ?? "—"}` : "terverifikasi dari database"}. Ini agregat seluruh order POS dengan status paid/completed, bukan scope Djiwa Tentram saja.</p></article>
+            <article className="investor-panel p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-djiwa-gold-deep">Cara membaca perbandingan</p><h3 className="mt-2 text-xl font-bold text-djiwa-navy">Rekam jejak sistem vs kanal Djiwa Tentram</h3></div><Network className="shrink-0 text-djiwa-gold-deep" size={20} aria-hidden="true" /></div><p className="mt-4 text-[12px] leading-6 text-djiwa-muted">Angka rekam jejak menunjukkan bahwa platform sudah memproses transaksi sejak data pertama tercatat. Angka kanal Djiwa Tentram lebih sempit dan lebih bersih untuk membaca performa kanal ini—keduanya sengaja ditampilkan terpisah agar tidak menyesatkan.</p><div className="mt-4 rounded-xl bg-djiwa-gold-soft p-3 text-[10px] font-semibold leading-5 text-djiwa-warning-ink">Kesimpulan: data kanal Investor belum cukup untuk menilai seluruh perusahaan, tetapi sistem sudah memiliki jejak operasional dan fondasi digital yang dapat diverifikasi.</div></article>
+          </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {[
               ["Pemasukan & beban tercatat", "Ringkasan untuk investor yang disetujui, dengan periode dan definisi sumber."],
