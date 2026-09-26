@@ -785,15 +785,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	const progress = useHybridCurrentMonthProgress();
 
 	const shiftPct = useMemo(
-		() => Math.min(100, Math.max(0, progress?.shiftTarget ? (progress.shiftCollected / progress.shiftTarget) * 100 : 0)),
+		() => Math.max(0, progress?.shiftTarget ? (progress.shiftCollected / progress.shiftTarget) * 100 : 0),
 		[progress?.shiftCollected, progress?.shiftTarget]
 	);
 	const dailyPct = useMemo(
-		() => Math.min(100, Math.max(0, progress?.dailyTarget ? (progress.dailyCollected / progress.dailyTarget) * 100 : 0)),
+		() => Math.max(0, progress?.dailyTarget ? (progress.dailyCollected / progress.dailyTarget) * 100 : 0),
 		[progress?.dailyCollected, progress?.dailyTarget]
 	);
 	const monthlyPct = useMemo(
-		() => Math.min(100, Math.max(0, progress?.progressPct ?? 0)),
+		() => Math.max(0, progress?.progressPct ?? 0),
 		[progress?.progressPct]
 	);
 
