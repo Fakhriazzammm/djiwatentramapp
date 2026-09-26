@@ -26,6 +26,14 @@ function formatRupiah(value: number | null) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
 
+function formatCompactRupiah(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return "Belum tersedia";
+  if (Math.abs(value) >= 1_000_000_000) return `Rp${(value / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} M`;
+  if (Math.abs(value) >= 1_000_000) return `Rp${(value / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
+  if (Math.abs(value) >= 1_000) return `Rp${(value / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} rb`;
+  return formatRupiah(value);
+}
+
 function formatWibDate(value: string | null) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [year, month, day] = value.split("-").map(Number);
@@ -108,28 +116,39 @@ function ProjectionPlanner() {
 
 function InvestmentCalculator() {
   const [investment, setInvestment] = useState(100_000_000);
-  const [projectedRevenue, setProjectedRevenue] = useState(1_200_000_000);
-  const [netMargin, setNetMargin] = useState(8);
-  const [profitShare, setProfitShare] = useState(20);
-  const [offeredOwnership, setOfferedOwnership] = useState(5);
+  const projectionYears = 5;
+  const systemAssumptions = { revenuePerInvestment: 12, netMargin: 8, profitShare: 20, offeredOwnership: 5, annualGrowth: 10 };
+  const projectedRevenue = investment * systemAssumptions.revenuePerInvestment;
+  const netMargin = systemAssumptions.netMargin;
+  const profitShare = systemAssumptions.profitShare;
+  const offeredOwnership = systemAssumptions.offeredOwnership;
+  const annualGrowth = systemAssumptions.annualGrowth;
   const annualProfit = projectedRevenue * netMargin / 100;
   const investorProfitShare = annualProfit * profitShare / 100;
   const estimatedPayback = investorProfitShare > 0 ? investment / investorProfitShare : 0;
   const impliedPostMoney = offeredOwnership > 0 ? investment / (offeredOwnership / 100) : 0;
+  const projections = Array.from({ length: projectionYears }, (_, index) => {
+    const year = index + 1;
+    const revenue = projectedRevenue * (1 + annualGrowth / 100) ** index;
+    const profit = revenue * netMargin / 100;
+    return { year, revenue, profit, investorShare: profit * profitShare / 100 };
+  });
+  const cumulativeRevenue = projections.reduce((total, item) => total + item.revenue, 0);
+  const cumulativeInvestorShare = projections.reduce((total, item) => total + item.investorShare, 0);
+  const finalYearValue = projections[projections.length - 1]?.revenue ?? 0;
+  const maxRevenue = Math.max(1, ...projections.map((item) => item.revenue));
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 
   return (
     <article className="investor-panel p-5 sm:p-6" id="kalkulator-valuasi">
       <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-djiwa-navy-soft">Kalkulator · asumsi dapat diubah</p><h3 className="mt-2 text-xl font-bold text-djiwa-navy">Simulasikan peluang investasi</h3></div><TrendingUp className="shrink-0 text-djiwa-navy-soft" size={20} aria-hidden="true" /></div>
       <p className="mt-3 text-[12px] leading-6 text-djiwa-muted">Uji hubungan antara modal, proyeksi, kepemilikan, dan pembagian hasil. Angka ini ilustratif untuk diskusi awal—bukan valuasi resmi, janji keuntungan, atau penawaran efek.</p>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {[["Modal investasi", investment, setInvestment, 0, 10_000_000_000, 10_000_000], ["Proyeksi omzet tahunan", projectedRevenue, setProjectedRevenue, 0, 50_000_000_000, 50_000_000]].map(([label, value, setter, min, max, step]) => <label key={label as string} className="text-[11px] font-semibold text-djiwa-muted">{label as string}<input type="number" min={min as number} max={max as number} step={step as number} value={value as number} onChange={(event) => (setter as (value: number) => void)(Math.min(max as number, Math.max(min as number, Number(event.target.value) || 0)))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>)}
-        <label className="text-[11px] font-semibold text-djiwa-muted">Margin laba bersih asumsi (%)<input type="number" min="0" max="100" step="0.5" value={netMargin} onChange={(event) => setNetMargin(Math.min(100, Math.max(0, Number(event.target.value) || 0)))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>
-        <label className="text-[11px] font-semibold text-djiwa-muted">Pembagian hasil ke investor (%)<input type="number" min="0" max="100" step="1" value={profitShare} onChange={(event) => setProfitShare(Math.min(100, Math.max(0, Number(event.target.value) || 0)))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>
-        <label className="text-[11px] font-semibold text-djiwa-muted sm:col-span-2">Porsi kepemilikan yang ditawarkan (%)<input type="number" min="0.1" max="100" step="0.1" value={offeredOwnership} onChange={(event) => setOfferedOwnership(Math.min(100, Math.max(0.1, Number(event.target.value) || 0.1)))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>
-      </div>
+      <div className="mt-5 rounded-2xl border border-djiwa-line bg-djiwa-surface-muted p-4"><div className="flex items-end justify-between gap-3"><label htmlFor="investment-slider" className="text-[11px] font-bold text-djiwa-navy">Geser nilai modal investasi</label><output htmlFor="investment-slider" className="text-right text-lg font-bold tabular-nums text-djiwa-navy">{rupiah(investment)}</output></div><input id="investment-slider" type="range" min="50_000_000" max="5_000_000_000" step="50_000_000" value={investment} onChange={(event) => setInvestment(Number(event.target.value))} className="investor-range mt-5 w-full" aria-label="Nilai modal investasi" /><div className="mt-2 flex justify-between text-[10px] text-djiwa-muted"><span>Rp50 jt</span><span>Rp5 M</span></div><p className="mt-4 text-[10px] leading-5 text-djiwa-muted">Satu input saja. Sistem otomatis menghitung proyeksi omzet, margin, pembagian hasil, porsi kepemilikan, dan estimasi balik modal menggunakan asumsi dasar yang sama untuk menjaga perbandingan tetap konsisten.</p></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2"><MetricTile label="Asumsi omzet tahunan" value={rupiah(projectedRevenue)} /><MetricTile label="Margin laba bersih sistem" value={`${netMargin}%`} /><MetricTile label="Pembagian hasil investor" value={`${profitShare}%`} /><MetricTile label="Porsi kepemilikan acuan" value={`${offeredOwnership}%`} /></div>
       <div className="mt-5 grid gap-2 sm:grid-cols-2"><MetricTile label="Valuasi pasca-investasi tersirat" value={rupiah(impliedPostMoney)} /><MetricTile label="Estimasi laba tahunan" value={rupiah(annualProfit)} /><MetricTile label="Bagian hasil investor / tahun" value={rupiah(investorProfitShare)} /><MetricTile label="Estimasi periode balik modal" value={estimatedPayback > 0 ? `${estimatedPayback.toFixed(1)} tahun` : "—"} /></div>
-      <p className="mt-4 rounded-xl bg-djiwa-warning-soft p-3 text-[10px] leading-5 text-djiwa-warning-ink">Struktur final dapat berupa saham, bagi hasil, pinjaman, atau instrumen lain setelah uji tuntas, persetujuan pemilik, dan peninjauan legal. Kalkulator ini tidak menghitung pajak, dilusi, biaya modal, arus kas, atau risiko kerugian.</p>
+      <div className="mt-5 rounded-2xl border border-djiwa-line bg-djiwa-surface-muted p-4"><div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-djiwa-navy-soft">Proyeksi 5 tahun</p><h4 className="mt-1 text-sm font-bold text-djiwa-navy">Lintasan omzet tahunan</h4></div><span className="text-right text-[10px] leading-4 text-djiwa-muted">Pertumbuhan asumsi<br /><strong className="text-djiwa-navy">{annualGrowth}% / tahun</strong></span></div><div className="mt-5 flex h-36 items-end gap-2" aria-label="Grafik proyeksi omzet lima tahun">{projections.map((item) => <div key={item.year} className="flex min-w-0 flex-1 flex-col items-center gap-1"><span className="text-[9px] font-semibold tabular-nums text-djiwa-navy">{new Intl.NumberFormat("id-ID", { notation: "compact", maximumFractionDigits: 1 }).format(item.revenue)}</span><div className="flex h-24 w-full items-end rounded-t-lg bg-djiwa-navy/5"><div className="w-full rounded-t-lg bg-djiwa-gold transition-[height]" style={{ height: `${Math.max(8, item.revenue / maxRevenue * 100)}%` }} /></div><span className="text-[9px] text-djiwa-muted">Tahun {item.year}</span></div>)}</div><div className="mt-3 flex items-center justify-between border-t border-djiwa-line pt-3 text-[10px] text-djiwa-muted"><span>Omzet tahun pertama: <strong className="text-djiwa-navy">{rupiah(projections[0]?.revenue ?? 0)}</strong></span><span>Tahun kelima: <strong className="text-djiwa-navy">{rupiah(finalYearValue)}</strong></span></div></div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3"><MetricTile label="Akumulasi omzet 5 tahun" value={rupiah(cumulativeRevenue)} /><MetricTile label="Akumulasi bagian investor" value={rupiah(cumulativeInvestorShare)} /><MetricTile label="Laba bersih tahun kelima" value={rupiah(projections[projections.length - 1]?.profit ?? 0)} /></div>
+      <p className="mt-4 rounded-xl bg-djiwa-warning-soft p-3 text-[10px] leading-5 text-djiwa-warning-ink">Struktur final dapat berupa saham, bagi hasil, pinjaman, atau instrumen lain setelah uji tuntas, persetujuan pemilik, dan peninjauan legal. Kalkulator ini tidak menghitung pajak, dilusi, biaya modal, arus kas, atau risiko kerugian. Proyeksi bukan janji performa; gunakan skenario konservatif dan validasi dengan laporan aktual.</p>
     </article>
   );
 }
@@ -273,7 +292,7 @@ function InvestorLanding() {
           <div aria-live="polite" aria-busy={snapshotLoading} className="mt-7 grid gap-3 md:grid-cols-2 xl:grid-cols-4"><SnapshotCard label="Pesanan dibayar & diselesaikan" value={snapshotLoading ? "Memuat…" : snapshot ? new Intl.NumberFormat("id-ID").format(snapshot.ecosystemSettledOrders ?? 0) : "Belum tersedia"} detail="Seluruh sistem POS · sejak data pertama" icon={<Check size={16} />} accent="navy" /><SnapshotCard label="Nilai transaksi bruto" value={snapshotLoading ? "Memuat…" : snapshot ? formatRupiah(snapshot.ecosystemOrderValue) : "Belum tersedia"} detail="Agregat seluruh POS; bukan pendapatan" icon={<CircleDollarSign size={17} />} accent="gold" /><SnapshotCard label="Rata-rata nilai per pesanan" value={snapshotLoading ? "Memuat…" : snapshot ? formatRupiah(snapshot.ecosystemAverageOrderValue) : "Belum tersedia"} detail="Dihitung dari seluruh POS selesai" icon={<BarChart3 size={16} />} accent="blue" /><SnapshotCard label="Periode sistem (WIB)" value={snapshot ? `${formatWibDate(snapshot.ecosystemFirstDateWib) ?? "—"} – ${formatWibDate(snapshot.ecosystemLastDateWib) ?? "—"}` : snapshotLoading ? "Memuat…" : "Belum tersedia"} detail="Sejak data pertama tercatat" icon={<Check size={16} />} accent="slate" /></div>
           <p className="mt-3 rounded-xl border border-djiwa-gold-border bg-djiwa-warning-soft px-3.5 py-3 text-[10px] leading-5 text-djiwa-warning-ink"><strong className="font-bold">Cakupan & status data:</strong> seluruh order POS dengan status paid/completed sejak data pertama tercatat, lintas kanal. Ini indikator operasional perusahaan yang belum diaudit—bukan pendapatan akuntansi, arus kas, laba, valuasi, proyeksi, atau imbal hasil. Pending dan cancelled dikecualikan. Sumber: database operasional perusahaan.</p>
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
-            <article className="investor-panel p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-djiwa-navy-soft">Seluruh POS · indikator belum diaudit</p><h3 className="mt-2 text-xl font-bold">Skala sistem sejak data pertama</h3></div><Database className="shrink-0 text-djiwa-gold-highlight" size={20} aria-hidden="true" /></div><div className="mt-5 grid grid-cols-2 gap-3"><div><p className="text-2xl font-bold tabular-nums text-djiwa-ink">{snapshotLoading ? "…" : snapshot ? new Intl.NumberFormat("id-ID").format(snapshot.ecosystemSettledOrders ?? 0) : "—"}</p><p className="mt-1 text-[10px] text-djiwa-muted">pesanan selesai tercatat</p></div><div><p className="text-2xl font-bold tabular-nums text-djiwa-ink">{snapshotLoading ? "…" : snapshot ? formatRupiah(snapshot.ecosystemOrderValue) : "—"}</p><p className="mt-1 text-[10px] text-djiwa-muted">nilai bruto agregat</p></div></div><p className="mt-4 text-[10px] leading-5 text-djiwa-muted">Periode {snapshot ? `${formatWibDate(snapshot.ecosystemFirstDateWib) ?? "—"} – ${formatWibDate(snapshot.ecosystemLastDateWib) ?? "—"}` : "terverifikasi dari database"}. Ini agregat seluruh order POS dengan status paid/completed, bukan scope Djiwa Tentram saja.</p></article>
+            <article className="investor-panel p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.15em] text-djiwa-navy-soft">Seluruh POS · indikator belum diaudit</p><h3 className="mt-2 text-xl font-bold">Skala sistem sejak data pertama</h3></div><Database className="shrink-0 text-djiwa-gold-highlight" size={20} aria-hidden="true" /></div><div className="mt-5 grid grid-cols-2 gap-3"><div><p className="text-2xl font-bold tabular-nums text-djiwa-ink">{snapshotLoading ? "…" : snapshot ? new Intl.NumberFormat("id-ID").format(snapshot.ecosystemSettledOrders ?? 0) : "—"}</p><p className="mt-1 text-[10px] text-djiwa-muted">pesanan selesai tercatat</p></div><div><p className="text-2xl font-bold tabular-nums text-djiwa-ink">{snapshotLoading ? "…" : snapshot ? formatCompactRupiah(snapshot.ecosystemOrderValue) : "—"}</p><p className="mt-1 text-[10px] text-djiwa-muted">nilai bruto agregat</p></div></div><p className="mt-4 text-[10px] leading-5 text-djiwa-muted">Periode {snapshot ? `${formatWibDate(snapshot.ecosystemFirstDateWib) ?? "—"} – ${formatWibDate(snapshot.ecosystemLastDateWib) ?? "—"}` : "terverifikasi dari database"}. Ini agregat seluruh order POS dengan status paid/completed, bukan scope Djiwa Tentram saja.</p></article>
             <InvestmentCalculator />
           </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
