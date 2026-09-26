@@ -8,6 +8,7 @@ import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { chipClassName } from "./shared-components";
+import { renderMerchandiseCatalog } from "./merchandise-catalog";
 
 
 function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
@@ -82,6 +83,7 @@ export interface MenuSectionProps {
 }
 
 export function renderMenuSection(props: MenuSectionProps) {
+	return renderMerchandiseCatalog(props);
 
 	return (
 		<div className="space-y-3 px-3 py-3">
