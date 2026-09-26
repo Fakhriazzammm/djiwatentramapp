@@ -58,7 +58,7 @@ function AdminNotificationsPage() {
           </button>
         )}
 
-        <section className="mt-6">
+        <section className="mt-2 md:mt-4">
           <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
             <div><p className="text-sm font-black">Aktivitas terbaru</p><p className="text-[10px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
             {unreadCount > 0 && (
