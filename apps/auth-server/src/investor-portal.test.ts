@@ -4,10 +4,10 @@ import type { Pool } from "pg";
 import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js";
 
 type TestUser = { id: string; name: string; email: string };
-type PoolHarness = { status: string | null; queries: string[] };
+type PoolHarness = { status: string | null; queries: string[]; parameters: unknown[][] };
 
 function appFor(status: string | null) {
-  const harness: PoolHarness = { status, queries: [] };
+  const harness: PoolHarness = { status, queries: [], parameters: [] };
   const authStub = {
     handler: async () => new Response("not found", { status: 404 }),
     api: {
@@ -18,10 +18,14 @@ function appFor(status: string | null) {
     },
   } as unknown as Parameters<typeof registerInvestorPortalRoutes>[1];
   const poolStub = {
-    query: async (sql: string) => {
+    query: async (sql: string, parameters?: unknown[]) => {
       harness.queries.push(sql);
+      harness.parameters.push(parameters ?? []);
       if (sql.includes("FROM public.investor_memberships")) {
         return { rows: harness.status ? [{ status: harness.status }] : [] };
+      }
+      if (sql.includes("FROM public.pos_orders")) {
+        return { rows: [{ settled_orders: 419, order_value: "18140840", average_order_value: "43296", first_date_wib: "2026-08-09", last_date_wib: "2026-09-25" }] };
       }
       if (sql.includes("FROM public.pos_current_month_progress")) {
         return { rows: [{
@@ -65,6 +69,29 @@ describe("investor portal server boundary", () => {
     const metrics = await app.request("/api/investor/metrics");
     expect(access.status).toBe(401);
     expect(metrics.status).toBe(401);
+  });
+
+  test("public snapshot exposes only tagged channel aggregates without investor login", async () => {
+    const { app, harness } = appFor(null);
+    const response = await app.request("/api/investor/public-snapshot");
+    const body = await response.json() as { data: Record<string, unknown> };
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=300");
+    expect(body.data).toEqual({
+      settledOrders: 419,
+      orderValue: 18140840,
+      averageOrderValue: 43296,
+      firstDateWib: "2026-08-09",
+      lastDateWib: "2026-09-25",
+      source: "public.pos_orders",
+      scope: "tagged_customer_self_service_only",
+      completeness: "partial",
+    });
+    const queryIndex = harness.queries.findIndex((sql) => sql.includes("FROM public.pos_orders"));
+    expect(queryIndex).toBeGreaterThanOrEqual(0);
+    expect(harness.parameters[queryIndex]).toEqual(["djiwatentram", "customer_self_service"]);
+    expect(harness.queries[queryIndex]).toContain("status IN ('paid', 'completed')");
+    expect(harness.queries[queryIndex]).not.toContain("customerName");
   });
 
   test("pending membership is visible as pending but cannot read metrics", async () => {

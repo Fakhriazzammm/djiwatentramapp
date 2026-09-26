@@ -6,7 +6,7 @@ export const pool = new Pool({
   host: "localhost",
   port: 5433,
   user: "supabase_admin",
-  password: "supabase_local_password",
+  password: process.env.DB_PASSWORD,
   database: "postgres",
 });
 
