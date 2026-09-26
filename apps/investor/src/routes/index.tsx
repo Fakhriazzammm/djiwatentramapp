@@ -33,6 +33,74 @@ const conceptImages = [
   { src: "/images/investor/concept-expansion-planning.webp", alt: "Ilustrasi konsep perencanaan lokasi, bukan peta atau rencana cabang yang disetujui.", title: "Perencanaan ekspansi", description: "Visual konsep perencanaan—bukan peta atau rencana cabang yang disetujui." },
 ];
 
+function ProjectionPlanner() {
+  const [monthlyRevenue, setMonthlyRevenue] = useState(100_000_000);
+  const [netMargin, setNetMargin] = useState(8);
+  const [growth, setGrowth] = useState(10);
+  const [revenueMultiple, setRevenueMultiple] = useState(1.5);
+  const scenarios = [
+    { name: "Konservatif", growth: Math.max(0, growth - 5), color: "#637187" },
+    { name: "Dasar", growth, color: "#c9a85b" },
+    { name: "Optimistis", growth: growth + 5, color: "#356b51" },
+  ];
+  const baseAnnualRevenue = monthlyRevenue * 12;
+  const years = Array.from({ length: 6 }, (_, year) => year);
+  const baseFiveYearRevenue = baseAnnualRevenue * (1 + growth / 100) ** 5;
+  const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+  const maxRevenue = Math.max(1, ...scenarios.flatMap((scenario) => years.map((year) => baseAnnualRevenue * (1 + scenario.growth / 100) ** year)));
+  const maxProfit = Math.max(1, maxRevenue * netMargin / 100);
+  const chartPoints = (scenarioGrowth: number, margin = 100) => years.map((year, index) => {
+    const revenue = baseAnnualRevenue * (1 + scenarioGrowth / 100) ** year * margin / 100;
+    const x = 36 + (index / 5) * 500;
+    const y = 180 - (revenue / (margin === 100 ? maxRevenue : maxProfit)) * 150;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <section id="proyeksi" className="border-y border-djiwa-line bg-djiwa-surface">
+      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 lg:px-10">
+        <div className="grid gap-7 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
+          <div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-djiwa-gold-deep">Simulator · asumsi dapat diubah</p><h2 className="investor-display mt-3 text-3xl font-semibold leading-tight text-djiwa-ink sm:text-4xl">Uji skenario, bukan janji hasil.</h2></div>
+          <p className="max-w-2xl text-[13px] leading-6 text-djiwa-muted">Belum tersedia rangkaian laporan historis terverifikasi untuk menyusun proyeksi dan valuasi perusahaan. Angka awal di bawah adalah contoh hipotetis, bukan data aktual Djiwa Tentram atau penawaran investasi. Ubah asumsi untuk simulasi Anda.</p>
+        </div>
+        <div className="mt-7 grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
+          <form className="investor-panel space-y-4 p-5" onSubmit={(event) => event.preventDefault()} aria-label="Asumsi simulasi">
+            <h3 className="text-[14px] font-bold text-djiwa-navy">Asumsi simulasi (dapat diedit)</h3>
+            <label className="block text-[11px] font-semibold text-djiwa-muted">Omzet bulanan awal (Rp)<input type="number" min="0" step="1000000" value={monthlyRevenue} onChange={(event) => setMonthlyRevenue(Math.max(0, Number(event.target.value) || 0))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>
+            <label className="block text-[11px] font-semibold text-djiwa-muted">Margin laba bersih asumsi (%)<input type="number" min="0" max="100" step="0.5" value={netMargin} onChange={(event) => setNetMargin(Math.min(100, Math.max(0, Number(event.target.value) || 0)))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>
+            <label className="block text-[11px] font-semibold text-djiwa-muted">Pertumbuhan omzet tahunan dasar (%)<input type="number" min="0" max="200" step="1" value={growth} onChange={(event) => setGrowth(Math.min(200, Math.max(0, Number(event.target.value) || 0)))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>
+            <label className="block text-[11px] font-semibold text-djiwa-muted">Kelipatan valuasi omzet tahunan (x)<input type="number" min="0" max="20" step="0.1" value={revenueMultiple} onChange={(event) => setRevenueMultiple(Math.min(20, Math.max(0, Number(event.target.value) || 0)))} className="investor-focus mt-1.5 min-h-11 w-full rounded-xl border border-djiwa-line bg-white px-3 text-sm tabular-nums text-djiwa-ink" /></label>
+            <p className="rounded-xl bg-djiwa-warning-soft p-3 text-[10px] leading-5 text-djiwa-warning-ink">Contoh awal: omzet Rp100 juta/bulan, margin 8%, pertumbuhan 10%, dan kelipatan 1,5x. Semua asumsi ini ilustratif dan harus diganti dengan laporan perusahaan yang tervalidasi.</p>
+          </form>
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <article className="investor-panel p-4"><p className="text-[10px] font-semibold text-djiwa-muted">Valuasi indikatif hari ini*</p><p className="mt-2 text-lg font-bold tabular-nums text-djiwa-ink">{rupiah(baseAnnualRevenue * revenueMultiple)}</p><p className="mt-1 text-[9px] text-djiwa-muted">Omzet tahunan × {revenueMultiple}x</p></article>
+              <article className="investor-panel p-4"><p className="text-[10px] font-semibold text-djiwa-muted">Laba bersih tahunan dasar*</p><p className="mt-2 text-lg font-bold tabular-nums text-djiwa-ink">{rupiah(baseAnnualRevenue * netMargin / 100)}</p><p className="mt-1 text-[9px] text-djiwa-muted">Omzet × margin asumsi</p></article>
+              <article className="investor-panel p-4"><p className="text-[10px] font-semibold text-djiwa-muted">Laba bersih tahunan · tahun ke-5*</p><p className="mt-2 text-lg font-bold tabular-nums text-djiwa-ink">{rupiah(baseFiveYearRevenue * netMargin / 100)}</p><p className="mt-1 text-[9px] text-djiwa-muted">Margin diasumsikan tetap</p></article>
+              <article className="investor-panel p-4"><p className="text-[10px] font-semibold text-djiwa-muted">Valuasi indikatif tahun ke-5*</p><p className="mt-2 text-lg font-bold tabular-nums text-djiwa-ink">{rupiah(baseFiveYearRevenue * revenueMultiple)}</p><p className="mt-1 text-[9px] text-djiwa-muted">Omzet dasar tumbuh majemuk</p></article>
+            </div>
+            <div className="investor-panel p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="text-[13px] font-bold text-djiwa-navy">Proyeksi omzet tahunan · 5 tahun</h3><p className="mt-1 text-[10px] text-djiwa-muted">Simulasi majemuk berdasarkan skenario pertumbuhan</p></div><span className="rounded-full bg-djiwa-warning-soft px-2.5 py-1 text-[9px] font-bold text-djiwa-warning-ink">ILUSTRASI</span></div>
+              <div className="mt-4 overflow-hidden"><svg viewBox="0 0 560 220" role="img" aria-label="Grafik proyeksi omzet hipotetis lima tahun untuk tiga skenario" className="h-auto w-full">
+                {[0, 1, 2, 3].map((line) => <g key={line}><line x1="36" x2="536" y1={30 + line * 50} y2={30 + line * 50} stroke="#e3e8ef" strokeDasharray="4 5" /></g>)}
+                {scenarios.map((scenario) => <polyline key={scenario.name} points={chartPoints(scenario.growth)} fill="none" stroke={scenario.color} strokeWidth={scenario.name === "Dasar" ? 3 : 2} strokeDasharray={scenario.name === "Dasar" ? undefined : "5 4"} strokeLinecap="round" strokeLinejoin="round" />)}
+                {years.map((year, index) => <text key={year} x={36 + (index / 5) * 500} y="205" textAnchor="middle" fontSize="10" fill="#637187">{year === 0 ? "Hari ini" : `Th ${year}`}</text>)}
+              </svg></div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">{scenarios.map((scenario) => <span key={scenario.name} className="inline-flex items-center gap-1.5 text-[10px] text-djiwa-muted"><i className="h-2 w-2 rounded-full" style={{ backgroundColor: scenario.color }} />{scenario.name} · {scenario.growth}%</span>)}</div>
+              <div className="mt-5 border-t border-djiwa-line pt-4"><h4 className="text-[11px] font-bold text-djiwa-navy">Proyeksi laba bersih tahunan · margin {netMargin}% diasumsikan tetap</h4><svg viewBox="0 0 560 220" role="img" aria-label="Grafik proyeksi laba bersih hipotetis lima tahun untuk tiga skenario" className="mt-2 h-auto w-full">
+                {[0, 1, 2, 3].map((line) => <line key={line} x1="36" x2="536" y1={30 + line * 50} y2={30 + line * 50} stroke="#e3e8ef" strokeDasharray="4 5" />)}
+                {scenarios.map((scenario) => <polyline key={scenario.name} points={chartPoints(scenario.growth, netMargin)} fill="none" stroke={scenario.color} strokeWidth={scenario.name === "Dasar" ? 3 : 2} strokeDasharray={scenario.name === "Dasar" ? undefined : "5 4"} strokeLinecap="round" strokeLinejoin="round" />)}
+                {years.map((year, index) => <text key={year} x={36 + (index / 5) * 500} y="205" textAnchor="middle" fontSize="10" fill="#637187">{year === 0 ? "Hari ini" : `Th ${year}`}</text>)}
+              </svg></div>
+              <p className="mt-3 text-[10px] leading-5 text-djiwa-muted">*Valuasi hanya ilustrasi berbasis omzet, bukan penilaian independen atau harga saham. Tidak memperhitungkan utang/kas, aset, pajak, struktur kepemilikan, risiko, atau transaksi pembanding. Margin laba diasumsikan tetap; skenario bukan ramalan.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function InvestorLanding() {
   const [snapshot, setSnapshot] = useState<PublicSnapshot | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(true);
@@ -60,6 +128,7 @@ function InvestorLanding() {
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-djiwa-muted md:flex" aria-label="Navigasi utama">
             <a className="transition-colors hover:text-djiwa-navy" href="#thesis">Tesis pertumbuhan</a>
             <a className="transition-colors hover:text-djiwa-navy" href="#data">Data transaksi</a>
+            <a className="transition-colors hover:text-djiwa-navy" href="#proyeksi">Proyeksi & valuasi</a>
             <a className="transition-colors hover:text-djiwa-navy" href="#process">Cara bermitra</a>
           </nav>
           <Link to="/dashboard" className="investor-focus inline-flex min-h-11 items-center gap-2 rounded-full bg-djiwa-navy px-3 text-[11px] font-bold text-white shadow-sm transition hover:bg-djiwa-navy-soft active:scale-[.98] whitespace-nowrap sm:px-5 sm:text-[13px]">
@@ -155,6 +224,7 @@ function InvestorLanding() {
         </div>
       </section>
 
+      <ProjectionPlanner />
       <section id="data" className="border-y border-djiwa-line bg-djiwa-surface">
         <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 lg:px-10">
           <div className="grid gap-7 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
