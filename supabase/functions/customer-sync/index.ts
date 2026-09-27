@@ -131,6 +131,8 @@ async function handleSync(payload: JsonRecord) {
 	const userId = toTrimmedString(payload.userId);
 	const name = toTrimmedString(payload.name);
 	const email = toTrimmedString(payload.email);
+	const sharePurchaseActivity = typeof payload.sharePurchaseActivity === "boolean" ? payload.sharePurchaseActivity : undefined;
+	const purchaseActivityNameMode = payload.purchaseActivityNameMode === "full_name" ? "full_name" : "first_name";
 
 	if (!userId) throw new Error("userId wajib diisi");
 
@@ -162,6 +164,8 @@ async function handleSync(payload: JsonRecord) {
 				source_id: userId,
 				email: email || null,
 				name: name || null,
+				share_purchase_activity: sharePurchaseActivity === true,
+				purchase_activity_name_mode: purchaseActivityNameMode,
 				is_active: true,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
@@ -182,6 +186,8 @@ async function handleSync(payload: JsonRecord) {
 	};
 	if (email) updates.email = email;
 	if (name) updates.name = name;
+	if (sharePurchaseActivity !== undefined) updates.share_purchase_activity = sharePurchaseActivity;
+	if (sharePurchaseActivity !== undefined || payload.purchaseActivityNameMode !== undefined) updates.purchase_activity_name_mode = purchaseActivityNameMode;
 
 	const { error: updateError } = await supabaseAdmin
 		.schema("pos")

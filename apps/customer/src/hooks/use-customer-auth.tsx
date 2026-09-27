@@ -60,6 +60,7 @@ interface CustomerAuthContextType {
     email: string,
     password: string,
     name: string,
+    sharePurchaseActivity?: boolean,
   ) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -277,7 +278,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   // ── register ─────────────────────────────────────────────────
   const register = useCallback(
-    async (email: string, password: string, name: string) => {
+    async (email: string, password: string, name: string, sharePurchaseActivity = false) => {
       setIsLoading(true);
       try {
         const { data, error } = await authClient.signUp.email({
@@ -288,6 +289,16 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           toast.error(error.message || "Gagal mendaftar.");
           throw new Error(error.message || "Gagal mendaftar.");
+        }
+        if (data?.user?.id) {
+          await invokeEdgeFunction("customer-sync", {
+            action: "sync",
+            userId: data.user.id,
+            email,
+            name,
+            sharePurchaseActivity,
+            purchaseActivityNameMode: "first_name",
+          });
         }
         const requiresEmailConfirm = !data?.token;
         setRegistrationNeedsEmailConfirm(requiresEmailConfirm);

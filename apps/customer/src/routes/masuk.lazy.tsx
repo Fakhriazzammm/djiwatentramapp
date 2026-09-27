@@ -48,6 +48,7 @@ function CustomerAuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [sharePurchaseActivity, setSharePurchaseActivity] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [error, setError] = useState("");
@@ -95,9 +96,13 @@ function CustomerAuthPage() {
       setError(mode === "register" ? "Nama, email, dan password wajib diisi." : "Email dan password wajib diisi.");
       return;
     }
+    if (mode === "register" && !sharePurchaseActivity) {
+      setError("Persetujuan aktivitas pembelian wajib dipilih saat membuat akun.");
+      return;
+    }
     try {
       if (mode === "login") await login(email.trim(), password);
-      else await register(email.trim(), password, name.trim());
+      else await register(email.trim(), password, name.trim(), sharePurchaseActivity);
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : mode === "login" ? "Gagal masuk" : "Gagal mendaftar");
     }
@@ -149,6 +154,7 @@ function CustomerAuthPage() {
                     {mode === "register" && !forgotMode ? <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nama lengkap" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /> : null}
                     <div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" className="min-h-11 w-full rounded-[14px] border border-border bg-background pl-10 pr-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /></div>
                     {!forgotMode ? <div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 pr-11 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /><button type="button" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div> : null}
+                    {mode === "register" && !forgotMode ? <label className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={sharePurchaseActivity} onChange={(event) => setSharePurchaseActivity(event.target.checked)} className="mt-0.5" />Saya setuju aktivitas pembelian saya ditampilkan di Komunitas Djiwa. Saya dapat mengubahnya kapan saja dari Profil.</label> : null}
                     {error ? <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive">{error}</p> : null}
                     {info ? <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700">{info}</p> : null}
                     <button type="submit" disabled={isLoading} className="min-h-11 w-full rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white disabled:opacity-60">{isLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : forgotMode ? "Kirim link reset" : mode === "login" ? "Masuk" : "Daftar"}</button>
