@@ -123,10 +123,17 @@ async function dispatchWebPush(notification: any) {
   webpush.default?.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
   const body = JSON.stringify({ title: notification.title, body: notification.message, notificationId: notification.id, url: notification.action_type === "open_order" ? "/admin/orders" : "/admin" });
   await Promise.all(targets.map(async (item: any) => {
-    const delivery = await dbWrite("pos_notification_push_deliveries", "POST", { notification_id: notification.id, subscription_id: item.id, status: "sent" }, "?on_conflict=notification_id,subscription_id");
+    const delivery = await dbWrite(
+      "pos_notification_push_deliveries",
+      "POST",
+      { notification_id: notification.id, subscription_id: item.id, status: "pending", error_message: null },
+      "?on_conflict=notification_id,subscription_id",
+      "resolution=merge-duplicates,return=representation",
+    );
     if (!Array.isArray(delivery) || !delivery.length) return;
     try {
       await webpush.default?.sendNotification({ endpoint: item.endpoint, keys: { p256dh: item.p256dh, auth: item.auth } }, body);
+      await dbWrite("pos_notification_push_deliveries", "PATCH", { status: "sent", error_message: null }, `?notification_id=eq.${encodeURIComponent(notification.id)}&subscription_id=eq.${encodeURIComponent(item.id)}`);
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 500) : "Web Push failed";
       await dbWrite("pos_notification_push_deliveries", "PATCH", { status: "failed", error_message: message }, `?notification_id=eq.${encodeURIComponent(notification.id)}&subscription_id=eq.${encodeURIComponent(item.id)}`);
