@@ -29,6 +29,15 @@ function getRange(args?: { startDate?: number; endDate?: number }) {
 	};
 }
 
+function normalizePaymentMethod(value: unknown) {
+	const method = String(value ?? "").trim().toLowerCase();
+	if (["cash", "tunai", "cashier", "bayar_di_kasir"].includes(method)) return "Tunai";
+	if (["qris", "qr", "mayar", "transfer", "bank_transfer"].includes(method)) return "QRIS";
+	if (["wallet", "djiwa_pay", "djiwapay", "djiwaapp"].includes(method)) return "Djiwa Pay";
+	if (["debit", "credit", "edc"].includes(method)) return "EDC";
+	return method ? method.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Lainnya";
+}
+
 function groupBy(items: any[], key: (item: any) => string) {
 	const map = new Map<string, any[]>();
 	for (const item of items) {
@@ -112,6 +121,47 @@ async function fetchFinancialTransactions(args?: {
 		roundingAdjustment: null as number | null,
 		metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
 	}));
+
+	// Tidak semua order POS/DjiwaApp memiliki baris financial_transactions.
+	// Tambahkan order paid/completed sebagai fallback immutable agar laporan
+	// menggabungkan semua sumber penjualan tanpa menggandakan ledger yang sudah ada.
+	const orderRows = await fetchOrders(args);
+	const linkedOrderIds = new Set(mapped.filter((tx: any) => tx.type === "income" && tx.orderId).map((tx: any) => String(tx.orderId)));
+	for (const order of orderRows) {
+		const orderId = String(order._id ?? "");
+		const status = String(order.status ?? "").toLowerCase();
+		if (!orderId || !["paid", "completed"].includes(status) || linkedOrderIds.has(orderId)) continue;
+		const source = String(order.sourceApp ?? order.source ?? order.orderChannel ?? "pos").trim().toLowerCase();
+		mapped.push({
+			_id: `order-income:${orderId}`,
+			type: "income",
+			amount: safeNum(order.totalAmount),
+			category: "Penjualan",
+			merchant: source === "customer_self_service" ? "DjiwaApp" : source.toUpperCase(),
+			description: `Penjualan ${source} #${order.orderNumber ?? orderId}`,
+			date: safeNum(order.createdAt),
+			paymentMethod: order.paymentMethod ?? "cash",
+			status: "completed",
+			orderId,
+			bookingOrderId: null,
+			attachmentUrl: null,
+			sourceFingerprint: `order:${orderId}:income`,
+			isRecurring: false,
+			recurringInterval: null,
+			tags: [],
+			transactionKind: "order_income",
+			isCashOutflow: false,
+			cogsOrderSourceId: null,
+			subtotalAmount: null,
+			taxBaseAmount: null,
+			taxAmount: null,
+			serviceChargeAmount: null,
+			rawTotalAmount: null,
+			roundingAdjustment: null,
+			metadata: { source, sourceApp: order.sourceApp ?? null, orderNumber: order.orderNumber ?? null },
+		});
+		linkedOrderIds.add(orderId);
+	}
 	// ── Batch-fetch order items untuk income transaksi ──
 	const orderTxIds = mapped
 		.filter((tx: any) => tx.type === "income" && tx.orderId)
@@ -738,7 +788,7 @@ export function useHybridCashFlowReport(args?: {
 				});
 			const byPaymentMethod: Record<string, { inflow: number; outflow: number }> = {};
 			for (const tx of completed) {
-				const method = String(tx.paymentMethod || "cash");
+				const method = normalizePaymentMethod(tx.paymentMethod);
 				if (!byPaymentMethod[method]) {
 					byPaymentMethod[method] = { inflow: 0, outflow: 0 };
 				}
