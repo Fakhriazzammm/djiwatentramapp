@@ -62,6 +62,7 @@ function MemberHomePage() {
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 	const [showProfileCompletion, setShowProfileCompletion] = useState(false);
 	const [confirmedProfileSourceId, setConfirmedProfileSourceId] = useState<string | null>(null);
+	const [consentPromptSaving, setConsentPromptSaving] = useState(false);
 	const [notificationSeenAt, setNotificationSeenAt] = useState<number>(() => {
 		try {
 			const stored = Number(localStorage.getItem("djiwa-customer-notif-seen"));
@@ -171,6 +172,25 @@ function MemberHomePage() {
 		setShowMemberOnboarding(false);
 	};
 
+	const acceptExistingConsent = async () => {
+		if (!customer?.email || consentPromptSaving) return;
+		setConsentPromptSaving(true);
+		try {
+			await invokeEdgeFunction("customer-sync", {
+				action: "updateProfile",
+				sourceId: customer.sourceId,
+				email: customer.email,
+				name: customer.name ?? "",
+				marketingConsent: true,
+				sharePurchaseActivity: true,
+				purchaseActivityNameMode: "first_name",
+			});
+			await refreshCustomer();
+		} finally {
+			setConsentPromptSaving(false);
+		}
+	};
+
 	const saveProfileCompletion = async (phone: string) => {
 		if (!customer?.email) throw new Error("Email akun belum tersedia. Silakan keluar dan masuk kembali.");
 		await invokeEdgeFunction("customer-sync", {
@@ -190,7 +210,7 @@ function MemberHomePage() {
 			open={authModalOpen}
 			onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
 			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-			onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
+			onRegister={async (email, password, name, consentAll) => { try { setAuthError(undefined); await register(email, password, name, consentAll); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
 			onSkip={() => setAuthModalOpen(false)}
 			onGoogleSignIn={async () => {
 				try {
@@ -227,6 +247,7 @@ function MemberHomePage() {
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
 				{authModal}
+				{customer && !customer.sharePurchaseActivity ? <ExistingConsentPrompt saving={consentPromptSaving} onAccept={acceptExistingConsent} onOpenProfile={() => navigate({ to: "/$username/profile", params: { username } })} /> : null}
 				{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={customer.name || customer.username || "Member"} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
 			</>
 		);
@@ -329,8 +350,14 @@ function MemberHomePage() {
 			</div>
 			<CustomerBottomNav items={customerNav} />
 			{authModal}
+			{customer && !customer.sharePurchaseActivity ? <ExistingConsentPrompt saving={consentPromptSaving} onAccept={acceptExistingConsent} onOpenProfile={() => navigate({ to: "/$username/profile", params: { username } })} /> : null}
 			{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={displayName} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
 			{!showProfileCompletion && showMemberOnboarding && customer ? <MemberOnboarding name={displayName} onDismiss={dismissMemberOnboarding} onStartOrdering={() => { dismissMemberOnboarding(); navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }); }} /> : null}
 		</>
 	);
+}
+
+
+function ExistingConsentPrompt({ saving, onAccept, onOpenProfile }: { saving: boolean; onAccept: () => void; onOpenProfile: () => void }) {
+	return <div className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-2xl border border-cyan-200 bg-white p-3 shadow-xl"><p className="text-xs font-black text-slate-950">Persetujuan Djiwa</p><p className="mt-1 text-[10px] leading-relaxed text-slate-600">Setujui penggunaan data untuk layanan, marketing, cookies non-esensial, dan aktivitas pembelian di Komunitas.</p><div className="mt-2 flex items-center gap-2"><button type="button" disabled={saving} onClick={onAccept} className="min-h-8 flex-1 rounded-lg bg-cyan-700 px-3 text-[10px] font-black text-white disabled:opacity-60">{saving ? "Menyimpan..." : "Saya setuju"}</button><button type="button" disabled={saving} onClick={onOpenProfile} className="min-h-8 rounded-lg border border-slate-200 px-3 text-[10px] font-bold text-slate-700">Lihat Profil</button></div></div>;
 }
