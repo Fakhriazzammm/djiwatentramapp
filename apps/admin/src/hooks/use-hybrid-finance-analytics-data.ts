@@ -49,7 +49,7 @@ function paymentSourceLabel(tx: any) {
 
 function paymentBreakdownKey(tx: any) {
 	const method = normalizePaymentMethod(tx?.paymentMethod);
-	return method === "QRIS" ? `QRIS · ${paymentSourceLabel(tx)}` : method;
+	return ["QRIS", "Tunai"].includes(method) ? `${method} · ${paymentSourceLabel(tx)}` : method;
 }
 
 function groupBy(items: any[], key: (item: any) => string) {
