@@ -47,3 +47,25 @@ export type CommunityCommentPage = {
 };
 
 export class CommunityClientError extends Error {}
+
+
+export type PurchaseActivityNameMode = "first_name" | "full_name";
+
+export type CommunityPurchaseActivity = {
+  id: string;
+  displayName: string;
+  productSourceId: string;
+  productName: string;
+  productImageUrl: string | null;
+  price: number | null;
+  nutrition: Record<string, unknown> | null;
+  orderSettledAt: string;
+  visibleAt: string;
+  verified: boolean;
+};
+
+export type CommunityPurchaseActivityPage = {
+  activities: CommunityPurchaseActivity[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};

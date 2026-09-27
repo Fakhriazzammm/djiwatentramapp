@@ -1,7 +1,7 @@
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { ImageWithPlaceholder } from "@/components/customer/image-with-placeholder";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, Check, LogIn, LogOut, Mail, MapPin, Phone, ShieldCheck, Star, User, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, Eye, EyeOff, LogIn, LogOut, Mail, MapPin, Phone, ShieldCheck, Star, User, Wallet } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -39,6 +39,8 @@ function ProfilePage() {
 	const [editProvince, setEditProvince] = useState("");
 	const [editPostalCode, setEditPostalCode] = useState("");
 	const [editMarketingConsent, setEditMarketingConsent] = useState(false);
+	const [editSharePurchaseActivity, setEditSharePurchaseActivity] = useState(false);
+	const [editPurchaseActivityNameMode, setEditPurchaseActivityNameMode] = useState<"first_name" | "full_name">("first_name");
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
 
@@ -109,6 +111,8 @@ function ProfilePage() {
 				province: editProvince.trim() || undefined,
 				postalCode: editPostalCode.trim() || undefined,
 				marketingConsent: editMarketingConsent,
+				sharePurchaseActivity: editSharePurchaseActivity,
+				purchaseActivityNameMode: editPurchaseActivityNameMode,
 			});
 			await refreshCustomer();
 			setSaving(false);
@@ -137,6 +141,8 @@ function ProfilePage() {
 		setEditProvince(customer.province || "");
 		setEditPostalCode(customer.postalCode || "");
 		setEditMarketingConsent(customer.marketingConsent);
+		setEditSharePurchaseActivity(customer.sharePurchaseActivity);
+		setEditPurchaseActivityNameMode(customer.purchaseActivityNameMode);
 		setIsEditing(true);
 	};
 
@@ -191,6 +197,7 @@ function ProfilePage() {
 								<InfoRow icon={<MapPin className="h-4 w-4 text-muted-foreground" />} label="Alamat" value={customer.address || "Belum diisi"} />
 								<InfoRow icon={<MapPin className="h-4 w-4 text-muted-foreground" />} label="Kode pos" value={customer.postalCode || "Belum diisi"} />
 								<InfoRow icon={<Star className="h-4 w-4 text-muted-foreground" />} label="Informasi promo" value={customer.marketingConsent ? "Diaktifkan" : "Tidak diaktifkan"} />
+								<InfoRow icon={customer.sharePurchaseActivity ? <Eye className="h-4 w-4 text-cyan-600" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />} label="Aktivitas pembelian Komunitas" value={customer.sharePurchaseActivity ? `Diaktifkan · ${customer.purchaseActivityNameMode === "full_name" ? "nama lengkap" : "nama depan"}` : "Tidak diaktifkan"} />
 							</div>
 						) : null}
 						{isEditing ? (
@@ -235,6 +242,11 @@ function ProfilePage() {
 								<div className="grid grid-cols-2 gap-2"><input type="text" value={editCity} onChange={(e) => setEditCity(e.target.value)} placeholder="Kota/Kabupaten" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /><input type="text" value={editProvince} onChange={(e) => setEditProvince(e.target.value)} placeholder="Provinsi" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
 								<div><input type="text" value={editPostalCode} onChange={(e) => setEditPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5))} placeholder="Kode pos" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
 								<label className="flex items-start gap-2 rounded-xl bg-muted/40 p-2 text-[10px] leading-relaxed"><input type="checkbox" checked={editMarketingConsent} onChange={(e) => setEditMarketingConsent(e.target.checked)} className="mt-0.5" />Saya bersedia menerima informasi promo dan layanan Djiwa Tentram.</label>
+								<div className="rounded-2xl border border-cyan-200/70 bg-cyan-50/60 p-3">
+									<label className="flex items-start gap-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={editSharePurchaseActivity} onChange={(e) => setEditSharePurchaseActivity(e.target.checked)} className="mt-0.5" />Tampilkan aktivitas pembelian saya di Komunitas.</label>
+									<p className="mt-1 pl-5 text-[10px] leading-relaxed text-cyan-800">Ini terpisah dari persetujuan informasi promo. Hanya pesanan yang sudah dibayar yang dapat muncul.</p>
+									{editSharePurchaseActivity ? <div className="mt-2 flex flex-wrap gap-3 pl-5"><label className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-900"><input type="radio" name="purchase-activity-name-mode" checked={editPurchaseActivityNameMode === "first_name"} onChange={() => setEditPurchaseActivityNameMode("first_name")} />Nama depan</label><label className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-900"><input type="radio" name="purchase-activity-name-mode" checked={editPurchaseActivityNameMode === "full_name"} onChange={() => setEditPurchaseActivityNameMode("full_name")} />Nama lengkap</label></div> : null}
+									</div>
 								<div className="flex gap-2 pt-1">
 									<Button
 										variant="outline"

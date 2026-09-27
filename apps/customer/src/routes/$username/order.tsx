@@ -7,6 +7,7 @@ const orderSearchSchema = z.object({
 		.optional()
 		.default("table"),
 	orderId: z.string().optional(),
+	productSourceId: z.string().optional(),
 	runRewardId: z.string().uuid().optional(),
 	table: z.preprocess(
 		(value) => (value === undefined || value === null ? value : String(value)),
