@@ -17,6 +17,8 @@ type PushSubscriptionInput = {
 const dbUrl = (Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "").replace(/\/+$/, "");
 const serviceKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ORDER_NOTIFICATION_RETENTION_MS = 24 * 60 * 60 * 1000;
+const REST_PAGE_SIZE = 500;
+const REST_MAX_PAGES = 20;
 
 function response(body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -39,6 +41,20 @@ async function dbGet(table: string, params: Record<string, string>): Promise<any
   const result = await fetch(`${dbUrl}/rest/v1/${table}?${query}`, { headers: dbHeaders() });
   if (!result.ok) throw new Error(`DB read failed (${result.status})`);
   return (await result.json()) as any[];
+}
+
+async function dbGetPaged(table: string, params: Record<string, string>): Promise<any[]> {
+  const rows: any[] = [];
+  for (let page = 0; page < REST_MAX_PAGES; page += 1) {
+    const batch = await dbGet(table, {
+      ...params,
+      limit: String(REST_PAGE_SIZE),
+      offset: String(page * REST_PAGE_SIZE),
+    });
+    rows.push(...batch);
+    if (batch.length < REST_PAGE_SIZE) break;
+  }
+  return rows;
 }
 
 async function dbWrite(table: string, method: "POST" | "PATCH", body: unknown, params = "", preferOverride?: string) {
@@ -188,10 +204,9 @@ async function syncRecentOrders() {
   // permanently lose an operational alert. Initial POS load seeds silently;
   // only newly observed IDs create a popup in the client.
   const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
-  const orders = await dbGet("pos_orders", {
+  const orders = await dbGetPaged("pos_orders", {
     select: "_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items",
     order: "createdAt.desc",
-    limit: "500",
   });
   let created = 0;
   for (const order of orders ?? []) {
@@ -270,11 +285,10 @@ async function syncRecentOrders() {
 }
 
 async function listNotifications(user: UserContext) {
-  const rows = await dbGet("pos_notifications", {
+  const rows = await dbGetPaged("pos_notifications", {
     select: "*",
     is_active: "eq.true",
     order: "created_at.desc",
-    limit: "500",
   });
   const now = Date.now();
   const orderIds = [...new Set((rows ?? []).map((item: any) => String(item.order_source_id ?? "")).filter(Boolean))];
