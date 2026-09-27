@@ -38,6 +38,20 @@ function normalizePaymentMethod(value: unknown) {
 	return method ? method.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Lainnya";
 }
 
+function paymentSourceLabel(tx: any) {
+	const source = String(tx?.metadata?.sourceApp ?? tx?.metadata?.source ?? tx?.sourceApp ?? tx?.source ?? "").trim().toLowerCase();
+	if (["customer_self_service", "djiwaapp", "djiwa_app", "b2b"].includes(source)) return "DjiwaApp";
+	if (["pos", "cashier", "menu"].includes(source)) return "POS";
+	if (source === "ordermieyamin") return "Order Mie Yamin";
+	if (source === "merchandise") return "Merchandise";
+	return source ? source.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Operasional";
+}
+
+function paymentBreakdownKey(tx: any) {
+	const method = normalizePaymentMethod(tx?.paymentMethod);
+	return method === "QRIS" ? `QRIS · ${paymentSourceLabel(tx)}` : method;
+}
+
 function groupBy(items: any[], key: (item: any) => string) {
 	const map = new Map<string, any[]>();
 	for (const item of items) {
@@ -791,7 +805,7 @@ export function useHybridCashFlowReport(args?: {
 				});
 			const byPaymentMethod: Record<string, { inflow: number; outflow: number }> = {};
 			for (const tx of completed) {
-				const method = normalizePaymentMethod(tx.paymentMethod);
+				const method = paymentBreakdownKey(tx);
 				if (!byPaymentMethod[method]) {
 					byPaymentMethod[method] = { inflow: 0, outflow: 0 };
 				}
