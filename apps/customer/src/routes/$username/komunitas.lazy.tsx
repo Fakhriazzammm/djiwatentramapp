@@ -68,21 +68,21 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
   };
 
   return (
-    <article className="relative border-b border-[#e5e5e5] bg-white px-5 py-6 sm:px-8" aria-label={`Postingan ${displayName}`}>
-      <div className="flex items-start gap-4">
-        <div className="relative h-12 w-12 shrink-0">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e8eefb] text-lg font-bold text-[#3156a3]" aria-hidden="true">{post.author.name.slice(0, 1).toUpperCase()}</div>
-          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-black text-base font-medium leading-none text-white" aria-hidden="true">+</span>
+    <article className="relative border-b border-[#e5e5e5] bg-white px-3 py-3 sm:px-5" aria-label={`Postingan ${displayName}`}>
+      <div className="flex items-start gap-2.5">
+        <div className="relative h-9 w-9 shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e8eefb] text-sm font-bold text-[#3156a3]" aria-hidden="true">{post.author.name.slice(0, 1).toUpperCase()}</div>
+          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-black text-sm font-medium leading-none text-white" aria-hidden="true">+</span>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2 text-[15px] leading-6"><p className="truncate font-bold text-[#111111]">{displayName}</p><span className="shrink-0 text-[#969696]">{relativeTime(post.createdAt)}</span></div>
+            <div className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5"><p className="truncate font-bold text-[#111111]">{displayName}</p><span className="shrink-0 text-xs text-[#969696]">{relativeTime(post.createdAt)}</span></div>
             <div className="relative -mr-2 -mt-2"><button type="button" className="flex h-10 w-10 items-center justify-center rounded-full text-[#777777] hover:bg-[#f5f5f5]" aria-label="Aksi postingan" onClick={() => setOpen((value) => !value)}><MoreHorizontal className="h-5 w-5" /></button>{open ? <div className="absolute right-0 top-10 z-10 w-44 rounded-xl border border-[#e2e2e2] bg-white p-1 shadow-lg">{isOwner ? <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(post); }}>Hapus postingan</button> : <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold hover:bg-[#f5f5f5]" onClick={() => { setOpen(false); onReport(post); }}>Laporkan postingan</button>}</div> : null}</div>
           </div>
-          {post.body ? <p className="mt-1 whitespace-pre-wrap text-[16px] leading-[1.55] text-[#161616]">{post.body}</p> : null}
-          {post.mediaUrl && post.mediaType === "image" ? <img src={post.mediaUrl} alt={`Kiriman dari ${post.author.name}`} className="mt-4 max-h-[500px] w-full rounded-xl bg-[#f7f7f7] object-contain" loading="lazy" /> : null}
-          {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-4 max-h-[500px] w-full rounded-xl bg-black object-contain" controls playsInline preload="metadata" /> : null}
-          <div className="mt-4 flex items-center gap-5 text-[#333333] sm:gap-7">
+          {post.body ? <p className="mt-0.5 whitespace-pre-wrap text-[14px] leading-[1.4] text-[#161616]">{post.body}</p> : null}
+          {post.mediaUrl && post.mediaType === "image" ? <img src={post.mediaUrl} alt={`Kiriman dari ${post.author.name}`} className="mt-2 max-h-[300px] w-full rounded-lg bg-[#f7f7f7] object-contain sm:max-h-[380px]" loading="lazy" /> : null}
+          {post.mediaUrl && post.mediaType === "video" ? <video src={post.mediaUrl} className="mt-2 max-h-[300px] w-full rounded-lg bg-black object-contain sm:max-h-[380px]" controls playsInline preload="metadata" /> : null}
+          <div className="mt-2 flex items-center gap-4 text-[#333333] sm:gap-6">
             <button type="button" className={`flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-125 ${liked ? "text-rose-500" : "hover:text-rose-500"}`} aria-label={liked ? "Batal suka" : "Suka"} aria-pressed={liked} aria-busy={likePending} disabled={likePending} onPointerUp={() => void toggleLike()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void toggleLike(); } }}><Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={1.8} /><span>{likeCount}</span></button>
             <button type="button" className="flex min-h-10 items-center gap-1.5 rounded-lg text-sm transition-all active:scale-110 hover:text-[#3156a3]" aria-label="Buka komentar postingan" onClick={() => onOpen(post)}><MessageCircle className="h-5 w-5" strokeWidth={1.8} /><span>{post.commentCount}</span></button>
           </div>
