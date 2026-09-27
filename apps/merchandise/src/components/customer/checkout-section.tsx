@@ -32,6 +32,7 @@ export interface CheckoutSectionProps {
 	setNotes: (v: string) => void;
 	setPaymentChoice: (v: PaymentChoice) => void;
 	onBackToMenu: () => void;
+	onContinueToShipping: () => void;
 	taxAmount: number;
 	taxEnabled: boolean;
 	taxRate: number;
@@ -63,7 +64,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 						<Wallet className="h-4 w-4" />
 					</div>
 					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 4 · Preorder Merchandise</p>
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 2 · Checkout</p>
 						<h2 className="text-sm font-black">Detail pengiriman & pembayaran</h2>
 						<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Bayar penuh saat checkout. Produk akan disiapkan dan dikirim setelah pembayaran terkonfirmasi.</p>
 					</div>
@@ -125,7 +126,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 			{props.checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{props.checkoutError}</div> : null}
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={0} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
-				<button type="button" className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={props.checkout} disabled={props.isSubmitting}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : <>Checkout {props.currency(props.total)}</>}</button>
+				<button type="button" className="mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={props.onContinueToShipping} disabled={props.isSubmitting}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : <>Lanjut pilih kurir</>}</button>
 			</div>
 		</div>
 	);

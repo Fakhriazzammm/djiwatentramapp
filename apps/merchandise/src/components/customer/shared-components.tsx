@@ -275,10 +275,11 @@ export function BarcodeLines({ value }: { value: string }) {
 	);
 }
 
-export function CustomerOrderProgress({ step }: { step: "table" | "party" | "refill" | "menu" | "checkout" | "payment" | "receipt" }) {
+export function CustomerOrderProgress({ step }: { step: "table" | "party" | "refill" | "menu" | "checkout" | "shipping" | "payment" | "receipt" }) {
 	const steps = [
 		{ key: "menu", label: "Pilih merchandise", shortLabel: "Produk" },
 		{ key: "checkout", label: "Checkout", shortLabel: "Checkout" },
+		{ key: "shipping", label: "Pengiriman", shortLabel: "Kurir" },
 		{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
 		{ key: "receipt", label: "Selesai / Struk", shortLabel: "Selesai" },
 	] as const;

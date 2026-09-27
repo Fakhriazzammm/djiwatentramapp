@@ -41,6 +41,7 @@ import type { Doc, Id } from "@/types/backend-compat";
 import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
+import { ShippingSection } from "@/components/customer/shipping-section";
 import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
 import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
@@ -130,6 +131,8 @@ function OrderPage() {
 		setShippingAddress,
 		shippingPhone,
 		setShippingPhone,
+		shippingProvider,
+		setShippingProvider,
 		customerDescription,
 		setCustomerDescription,
 		guestMarketingConsent,
@@ -170,6 +173,7 @@ function OrderPage() {
 		setShippingReceiverName("");
 		setShippingAddress("");
 		setShippingPhone("");
+		setShippingProvider(null);
 		setDessertLater(false);
 		setNotes("");
 		setTableNumber("");
@@ -640,6 +644,10 @@ function OrderPage() {
 			rejectCheckout("Isi nomor WhatsApp penerima yang valid", "Nomor WhatsApp penerima");
 			return;
 		}
+		if (!shippingProvider) {
+			rejectCheckout("Pilih kurir pengiriman terlebih dahulu");
+			return;
+		}
 		if (!paymentOptions.length) {
 			rejectCheckout("Metode pembayaran belum tersedia. Silakan coba lagi nanti.");
 			return;
@@ -723,6 +731,7 @@ function OrderPage() {
 				customerPhone: shippingPhone.trim(),
 				orderType: "takeaway" as const,
 				deliveryAddress: shippingAddress.trim(),
+				deliveryProvider: shippingProvider,
 				source: "customer_self_service" as const,
 				brandSlug,
 				isOpenBill: true,
@@ -742,6 +751,7 @@ function OrderPage() {
 						address: shippingAddress.trim(),
 						phone: shippingPhone.trim(),
 						shippingStatus: "awaiting_payment",
+						provider: shippingProvider,
 					},
 				},
 				customerSourceId: customer?.sourceId || guestCustomerSourceId,
@@ -828,7 +838,7 @@ function OrderPage() {
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
 						expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-						extraData: { orderId: String(orderId) },
+						extraData: { orderId: String(orderId), shippingProvider },
 						items: cart.map((item) => ({
 							quantity: item.quantity,
 							rate: item.price,
@@ -862,6 +872,7 @@ function OrderPage() {
 					invoiceId: invoice?.data?.id,
 					invoiceUrl: invoice?.data?.link,
 					cartSnapshot: cart,
+					shipping: { provider: shippingProvider ?? undefined, receiverName: shippingReceiverName.trim(), address: shippingAddress.trim(), phone: shippingPhone.trim() },
 				});
 
 				if (invoice?.data?.link && typeof window !== "undefined") {
@@ -1051,7 +1062,8 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), onContinueToShipping: () => setStep("shipping"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
+					{step === "shipping" ? <ShippingSection cart={cart} shippingProvider={shippingProvider} setShippingProvider={setShippingProvider} onBackToCheckout={() => setStep("checkout")} onContinueToPayment={checkout} isSubmitting={isSubmitting} productSubtotal={productSubtotal} total={total} /> : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
