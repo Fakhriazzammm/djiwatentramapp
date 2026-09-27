@@ -192,7 +192,7 @@ BEGIN
   END IF;
 
   v_settled_at := to_timestamp(
-    coalesce(v_order.created_at, v_order.creation_time, extract(epoch FROM now()))
+    coalesce(v_order.created_at, v_order.creation_time, extract(epoch FROM now()) * 1000) / 1000.0
   );
   v_mode := coalesce(v_customer.purchase_activity_name_mode, 'first_name');
   v_name := CASE
