@@ -4610,7 +4610,27 @@ async function assertShiftAttendanceComplete(
 		endTime: number,
 	): Promise<void> {
 		const rawMemberIds = Array.isArray(shift.teamMemberIds) ? shift.teamMemberIds : [];
-		const memberIds = rawMemberIds.map((id: unknown) => String(id || "")).filter(Boolean);
+		let memberIds = rawMemberIds.map((id: unknown) => String(id || "")).filter(Boolean);
+
+		// Older shifts were saved before teamMemberIds became mandatory. Resolve the
+		// persisted names instead of making those shifts impossible to close.
+		if (memberIds.length === 0) {
+			const memberNames = String(shift.teamMembers ?? "")
+				.split(",")
+				.map((name: string) => name.trim())
+				.filter(Boolean);
+			if (memberNames.length > 0) {
+				const { data: legacyStaff, error: legacyStaffError } = await supabase
+					.from("pos_staff_users")
+					.select("_id,name")
+					.in("name", memberNames);
+				if (legacyStaffError) {
+					throw new Error("Daftar anggota shift lama tidak dapat diverifikasi. Refresh data shift lalu coba lagi.");
+				}
+				const idByName = new Map((legacyStaff ?? []).map((row: any) => [String(row.name ?? "").trim().toLowerCase(), String(row._id ?? "")]));
+				memberIds = memberNames.map((name: string) => idByName.get(name.toLowerCase()) ?? "").filter(Boolean);
+			}
+		}
 		if (memberIds.length === 0) {
 			throw new Error("Tutup kasir diblokir: daftar anggota shift tidak tersedia. Refresh data shift lalu coba lagi.");
 		}
