@@ -126,7 +126,7 @@ async function dispatchWebPush(notification: any) {
     const delivery = await dbWrite(
       "pos_notification_push_deliveries",
       "POST",
-      { notification_id: notification.id, subscription_id: item.id, status: "pending", error_message: null },
+      { notification_id: notification.id, subscription_id: item.id, status: "sent", error_message: null },
       "?on_conflict=notification_id,subscription_id",
       "resolution=merge-duplicates,return=representation",
     );
