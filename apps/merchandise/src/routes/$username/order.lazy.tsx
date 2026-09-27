@@ -42,7 +42,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { ShippingSection } from "@/components/customer/shipping-section";
-import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
+import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode } from "@/components/customer/types";
 import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
@@ -52,7 +52,6 @@ import { renderReceiptSection } from "@/components/customer/receipt-section";
 import { UpsellSheet } from "@/components/customer/upsell-sheet";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { AuthHeader } from "@/components/customer/auth-header";
-import { AuthModal } from "@/components/customer/auth-modal";
 import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
@@ -146,10 +145,6 @@ function OrderPage() {
 		setReceipt,
 		isSubmitting,
 		setIsSubmitting,
-		authModalOpen,
-		setAuthModalOpen,
-		authError,
-		setAuthError,
 		sessionRef,
 		addToCart,
 		updateCartQuantity,
@@ -181,7 +176,7 @@ function OrderPage() {
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
-	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	const { isAuthenticated, customer, logout, isLoading: authLoading } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
 	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
 	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
@@ -626,8 +621,31 @@ function OrderPage() {
 		if (fieldLabel) focusCheckoutField(fieldLabel);
 	};
 
+	const redirectToCustomerAuth = () => {
+		const returnTo = `${window.location.origin}/${encodeURIComponent(username)}/order?step=checkout`;
+		redirectToDjiwaAppLogin(returnTo);
+	};
+
+	const continueToShipping = () => {
+		if (!isAuthenticated) {
+			redirectToCustomerAuth();
+			return;
+		}
+		setStep("shipping");
+	};
+
+	useEffect(() => {
+		if (authLoading || isAuthenticated || step !== "shipping") return;
+		redirectToCustomerAuth();
+	}, [authLoading, isAuthenticated, step, username]);
+
 	const checkout = async () => {
 		if (isSubmitting) return;
+		if (!isAuthenticated) {
+			setCheckoutError("Login customer diperlukan sebelum membuat preorder.");
+			redirectToCustomerAuth();
+			return;
+		}
 		if (typeof navigator !== "undefined" && !navigator.onLine) {
 			rejectCheckout("Koneksi internet sedang offline. Sambungkan internet lalu coba lagi.");
 			return;
@@ -656,32 +674,10 @@ function OrderPage() {
 			rejectCheckout("Metode pembayaran belum tersedia. Silakan coba lagi nanti.");
 			return;
 		}
-		if (!isAuthenticated && paymentChoice === "mayar") {
-			if (!customerName.trim()) {
-				rejectCheckout("Nama customer wajib diisi", "Nama customer");
-				return;
-			}
-			if (!/^\S+@\S+\.\S+$/.test(checkoutEmail)) {
-				rejectCheckout("Isi email yang valid", "Email untuk pembayaran QRIS");
-				return;
-			}
-			if (!hasValidCustomerPhone(checkoutPhone)) {
-				rejectCheckout("Isi nomor WhatsApp yang valid", "Nomor WhatsApp untuk pembayaran QRIS");
-				return;
-			}
-		}
 		if (paymentChoice === "mayar") {
 			if (isAuthenticated && missingContactFields.length > 0) {
 				toast.error(getCustomerContactMessage(missingContactFields));
 				window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`);
-				return;
-			}
-			if (!isAuthenticated && !/^\S+@\S+\.\S+$/.test(checkoutEmail)) {
-				rejectCheckout("Isi email yang valid untuk pembayaran QRIS", "Email untuk pembayaran QRIS");
-				return;
-			}
-			if (!isAuthenticated && !hasValidCustomerPhone(checkoutPhone)) {
-				rejectCheckout("Isi nomor WhatsApp yang valid untuk pembayaran QRIS", "Nomor WhatsApp untuk pembayaran QRIS");
 				return;
 			}
 		}
@@ -695,23 +691,6 @@ function OrderPage() {
 		setCheckoutError(null);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
-			let guestCustomerSourceId: string | null = null;
-			// Guest QRIS perlu disinkronkan agar identity dan contact dapat dipakai Mayar.
-			// Guest bayar tunai tidak boleh dipaksa mengisi email/WhatsApp; nama dan ciri
-			// customer tetap disimpan langsung pada pending order untuk kasir.
-			if (!isAuthenticated && paymentChoice === "mayar") {
-				const guestCapture = await invokeEdgeFunction<{ customerSourceId?: string }>("customer-sync", {
-					action: "captureGuest",
-					name: shippingReceiverName.trim(),
-					email: checkoutEmail,
-					phone: shippingPhone.trim(),
-					customerDescription: customerDescription.trim().slice(0, 160),
-					marketingConsent: guestMarketingConsent,
-					guestSessionId: sessionRef.current,
-				});
-				guestCustomerSourceId = guestCapture.customerSourceId || null;
-				if (!guestCustomerSourceId) throw new Error("Data guest belum berhasil disimpan");
-			}
 			const orderCustomerName = shippingReceiverName.trim();
 			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
@@ -758,7 +737,7 @@ function OrderPage() {
 						provider: shippingProvider,
 					},
 				},
-				customerSourceId: customer?.sourceId || guestCustomerSourceId,
+				customerSourceId: customer?.sourceId,
 			};
 
 			if (paymentChoice === "wallet") {
@@ -796,7 +775,6 @@ function OrderPage() {
 						idempotencyKey: checkoutRequestKeyRef.current,
 					});
 					walletCaptured = true;
-					if (!isAuthenticated) rememberGuestOrder(String(orderId));
 					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, cartSnapshot: cart });
 				} catch (error) {
 					if (walletHoldId && !walletCaptured) {
@@ -819,7 +797,6 @@ function OrderPage() {
 					isOpenBill: true,
 				});
 				persistMerchandiseOrderAccessKey(orderId, checkoutRequestKeyRef.current);
-				if (!isAuthenticated) rememberGuestOrder(String(orderId));
 				const redirectUrl =
 					typeof window !== "undefined"
 						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(String(orderId))}`
@@ -1025,21 +1002,6 @@ function OrderPage() {
 						/>
 					</div>
 
-					{/* ── AuthModal ────────────────────────────────── */}
-					<AuthModal
-						open={authModalOpen}
-						onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
-						onSkip={() => setAuthModalOpen(false)}
-						onDjiwaAppSignIn={() => redirectToDjiwaAppLogin()}
-						onGoogleSignIn={signInWithGoogle}
-						onResetPassword={async (email) => { try { await resetPassword(email); } catch { } }}
-						isLoading={authLoading}
-						needsEmailConfirm={registrationNeedsEmailConfirm}
-						error={authError}
-					/>
-
 					{/* ── Refill section ──────────────────────────── */}
 					{step === "refill" ? (
 						<section className="space-y-2 px-2 py-2">
@@ -1066,7 +1028,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), onContinueToShipping: () => setStep("shipping"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), onContinueToShipping: continueToShipping, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
 					{step === "shipping" ? <ShippingSection cart={cart} shippingProvider={shippingProvider} setShippingProvider={setShippingProvider} onBackToCheckout={() => setStep("checkout")} onContinueToPayment={checkout} isSubmitting={isSubmitting} productSubtotal={productSubtotal} total={total} checkoutError={checkoutError} /> : null}
 
 					{/* ── Receipt section ─────────────────────────── */}

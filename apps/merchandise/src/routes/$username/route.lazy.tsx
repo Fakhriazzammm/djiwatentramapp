@@ -5,8 +5,6 @@ import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
-import { AuthModal } from "@/components/customer/auth-modal";
-import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
@@ -50,11 +48,9 @@ function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer, logout, refreshCustomer } = useCustomerAuth();
 	const { setCart } = useOrderContext();
 	const siteSettings = useHybridSiteSettings();
-	const [authModalOpen, setAuthModalOpen] = useState(false);
-	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 	const [showProfileCompletion, setShowProfileCompletion] = useState(false);
 	const [confirmedProfileSourceId, setConfirmedProfileSourceId] = useState<string | null>(null);
@@ -154,29 +150,6 @@ function MemberHomePage() {
 		await refreshCustomer();
 	};
 
-	const authModal = (
-		<AuthModal
-			open={authModalOpen}
-			onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-			onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
-			onSkip={() => setAuthModalOpen(false)}
-			onDjiwaAppSignIn={() => redirectToDjiwaAppLogin()}
-			onGoogleSignIn={async () => {
-				try {
-					setAuthError(undefined);
-					await signInWithGoogle();
-				} catch (e: any) {
-					setAuthError(e?.message || "Gagal masuk dengan Google");
-				}
-			}}
-			onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
-			isLoading={isLoading}
-			needsEmailConfirm={registrationNeedsEmailConfirm}
-			error={authError}
-		/>
-	);
-
 	// ── Loading ────────────────────────────────────
 	// Guest match → skip loading (resolved=true sejak awal, tanpa network)
 	// Non-guest → nunggu auth baru resolve
@@ -196,7 +169,6 @@ function MemberHomePage() {
 					<Outlet />
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
-				{authModal}
 				{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={customer.name || customer.username || "Member"} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
 			</>
 		);
@@ -221,7 +193,6 @@ function MemberHomePage() {
 					</main>
 				</div>
 				<CustomerBottomNav items={customerNav} />
-				{authModal}
 			</div>
 		);
 	}
@@ -257,7 +228,6 @@ function MemberHomePage() {
 				</div>
 			</div>
 			<CustomerBottomNav items={customerNav} />
-			{authModal}
 			{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={displayName} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
 			{!showProfileCompletion && showMemberOnboarding && customer ? <MemberOnboarding name={displayName} onDismiss={dismissMemberOnboarding} onStartOrdering={() => { dismissMemberOnboarding(); navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } }); }} /> : null}
 		</>

@@ -33,7 +33,12 @@ function getSafeMerchandiseReturnUrl() {
     const isAllowedOrigin =
       url.origin === "https://merchandise.yumme.id" ||
       url.origin === "http://localhost:5174";
-    return isAllowedOrigin ? url.toString() : null;
+    const isAllowedPath = /^\/[^/]+\/order$/.test(url.pathname);
+    const step = url.searchParams.get("step");
+    const isAllowedStep = step === null || step === "checkout" || step === "shipping" || step === "payment";
+    const hasOnlySafeParams = [...url.searchParams.keys()].every((key) => key === "step");
+    if (!isAllowedOrigin || !isAllowedPath || !isAllowedStep || !hasOnlySafeParams || url.hash) return null;
+    return url.toString();
   } catch {
     return null;
   }
