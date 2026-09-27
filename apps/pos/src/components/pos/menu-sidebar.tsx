@@ -2581,14 +2581,6 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			toast.error(closingAttendanceError);
 			return;
 		}
-		if (activeClosingStaff.length > 0) {
-			const staffNames = activeClosingStaff.map((member) => member.name).join(", ");
-			const message = `Belum bisa tutup kasir. ${staffNames} harus absen keluar terlebih dahulu melalui bot Telegram Yumi HRD.`;
-			setSubmitError(null);
-			setSubmitNotice(`⏳ ${message}`);
-			toast.info(message);
-			return;
-		}
 		if (!shiftStatus?.shiftInfo?.shiftId) {
 			// Fallback if it's a legacy shift without ID
 			toast.error("Shift ini dimulai dari versi lama. Mohon gunakan tombol legacy.");
@@ -3274,7 +3266,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				{shiftType === "akhiri" && <div className="sticky bottom-0 z-20 -mx-1 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 					<Button
 						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
-						disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || activeClosingStaff.length > 0 || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
+						disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
 						type="button"
 						onClick={() => setShowEndConfirm(true)}
 					>
