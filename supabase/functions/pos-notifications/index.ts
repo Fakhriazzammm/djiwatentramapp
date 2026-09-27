@@ -97,7 +97,7 @@ async function removePushSubscription(user: UserContext, endpoint: unknown) {
 async function pushStatus(user: UserContext, endpoint: unknown) {
   const value = String(endpoint ?? "").trim();
   if (!value) return { subscribed: false };
-  const rows = await dbGet("pos_notification_push_subscriptions", { select: "id", endpoint: `eq.${encodeURIComponent(value)}`, user_id: `eq.${encodeURIComponent(user.id)}`, is_active: "eq.true", limit: "1" });
+  const rows = await dbGet("pos_notification_push_subscriptions", { select: "id", endpoint: `eq.${value}`, user_id: `eq.${user.id}`, is_active: "eq.true", limit: "1" });
   return { subscribed: rows.length > 0 };
 }
 
