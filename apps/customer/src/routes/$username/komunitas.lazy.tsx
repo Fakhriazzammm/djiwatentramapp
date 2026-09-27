@@ -95,15 +95,12 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
 
 function PurchaseActivityCard({ activity, onOpenProduct }: { activity: CommunityPurchaseActivity; onOpenProduct: (activity: CommunityPurchaseActivity) => void }) {
   return (
-    <article className="border-b border-[#e5e5e5] bg-white px-4 py-3 sm:px-6" aria-label={`Aktivitas Teman Djiwa ${activity.productName}`}>
-      <div className="flex items-start gap-2.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-xs font-black text-[#3156a3]">T</div>
+    <article className="border-b border-[#e5e5e5] bg-white px-3 py-2 sm:px-5" aria-label={`Aktivitas Teman Djiwa ${activity.productName}`}>
+      <div className="flex items-start gap-2">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-[11px] font-black text-[#3156a3]">T</div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[13px] leading-5"><p className="font-bold text-[#111111]">Teman Djiwa</p><BadgeCheck className="h-3.5 w-3.5 text-cyan-600" aria-label="Pembelian terverifikasi" /><span className="text-xs text-[#969696]">· {relativeTime(activity.orderSettledAt)}</span></div>
-          <p className="mt-0.5 text-[13px] leading-5 text-[#161616]">baru saja membeli <span className="font-bold">{activity.productName}</span></p>
-          <div className="mt-2 flex items-center gap-2.5">
-            {activity.productImageUrl ? <img src={activity.productImageUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg bg-slate-100 object-contain p-1" loading="lazy" /> : <div className="h-11 w-11 shrink-0 rounded-lg bg-gradient-to-br from-violet-100 to-cyan-100" aria-hidden="true" />}
-            <button type="button" className="min-h-8 rounded-lg border border-[#3156a3]/20 px-2.5 text-[10px] font-bold text-[#3156a3] hover:bg-[#e8eefb]" onClick={() => onOpenProduct(activity)}>Lihat menu <ArrowRight className="ml-1 inline h-3 w-3" /></button>
+          <div className="flex items-center gap-1 text-[12px] leading-4"><p className="font-bold text-[#111111]">Teman Djiwa</p><BadgeCheck className="h-3 w-3 text-cyan-600" aria-label="Pembelian terverifikasi" /><span className="text-[11px] text-[#969696]">· {relativeTime(activity.orderSettledAt)}</span></div>
+          <div className="mt-0.5 flex items-center gap-2"><p className="min-w-0 truncate text-[12px] leading-4 text-[#161616]">baru saja membeli <span className="font-bold">{activity.productName}</span></p>{activity.productImageUrl ? <img src={activity.productImageUrl} alt="" className="h-8 w-8 shrink-0 rounded-md bg-slate-100 object-contain p-0.5" loading="lazy" /> : <div className="h-8 w-8 shrink-0 rounded-md bg-gradient-to-br from-violet-100 to-cyan-100" aria-hidden="true" />}<button type="button" className="min-h-7 shrink-0 rounded-md border border-[#3156a3]/20 px-2 text-[9px] font-bold text-[#3156a3] hover:bg-[#e8eefb]" onClick={() => onOpenProduct(activity)}>Lihat <ArrowRight className="ml-0.5 inline h-2.5 w-2.5" /></button>
           </div>
         </div>
       </div>
