@@ -94,7 +94,7 @@ export const communityClient = {
     return {
       activities: (payload.activities ?? []).map((activity) => ({
         ...activity,
-        productImageUrl: proxyPath(activity.productImageUrl),
+        productImageUrl: activity.productImageUrl,
         verified: activity.verified !== false,
       })),
       nextCursor: payload.nextCursor ?? null,
