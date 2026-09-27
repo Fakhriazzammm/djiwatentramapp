@@ -127,10 +127,12 @@ async function fetchFinancialTransactions(args?: {
 	// menggabungkan semua sumber penjualan tanpa menggandakan ledger yang sudah ada.
 	const orderRows = await fetchOrders(args);
 	const linkedOrderIds = new Set(mapped.filter((tx: any) => tx.type === "income" && tx.orderId).map((tx: any) => String(tx.orderId)));
+	const linkedOrderNumbers = new Set(mapped.filter((tx: any) => tx.type === "income" && tx.metadata?.orderNumber).map((tx: any) => String(tx.metadata.orderNumber)));
 	for (const order of orderRows) {
 		const orderId = String(order._id ?? "");
+		const orderNumber = String(order.orderNumber ?? "");
 		const status = String(order.status ?? "").toLowerCase();
-		if (!orderId || !["paid", "completed"].includes(status) || linkedOrderIds.has(orderId)) continue;
+		if (!orderId || !["paid", "completed"].includes(status) || linkedOrderIds.has(orderId) || (orderNumber && linkedOrderNumbers.has(orderNumber))) continue;
 		const source = String(order.sourceApp ?? order.source ?? order.orderChannel ?? "pos").trim().toLowerCase();
 		mapped.push({
 			_id: `order-income:${orderId}`,
@@ -161,6 +163,7 @@ async function fetchFinancialTransactions(args?: {
 			metadata: { source, sourceApp: order.sourceApp ?? null, orderNumber: order.orderNumber ?? null },
 		});
 		linkedOrderIds.add(orderId);
+		if (orderNumber) linkedOrderNumbers.add(orderNumber);
 	}
 	// ── Batch-fetch order items untuk income transaksi ──
 	const orderTxIds = mapped
