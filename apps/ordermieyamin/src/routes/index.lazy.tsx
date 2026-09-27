@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridMayarGetInvoiceDetail, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
 import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { redirectToCustomerLogin } from "@/lib/auth-client";
 
 export const Route = createLazyFileRoute("/")({ component: OrderMieYaminPage });
 
@@ -370,6 +372,7 @@ function OrderForm() {
   const getInvoiceDetail = useHybridMayarGetInvoiceDetail();
   const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
   const siteSettings = useHybridSiteSettings() as any;
+  const { isAuthenticated, isLoading: authLoading, customer } = useCustomerAuth();
   const mieYaminSettings = { ...DEFAULT_MIE_YAMIN_SETTINGS, ...(siteSettings?.mieYaminSettings ?? {}) };
   const settingsLoaded = siteSettings != null;
   const [productType, setProductType] = useState<"noodle" | "ready_pack">("noodle");
@@ -445,6 +448,13 @@ function OrderForm() {
       setDraftHydrated(true);
     }
   }, [minOrderKg]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !customer) return;
+    setName((value) => value || customer.name || "");
+    setEmail((value) => value || customer.email || "");
+    setPhone((value) => value || customer.phone || "");
+  }, [customer, isAuthenticated]);
 
   useEffect(() => {
     if (!draftHydrated || pendingPaymentOrderId) return;
@@ -587,6 +597,10 @@ function OrderForm() {
   }
 
   async function confirmSubmit() {
+    if (authLoading || !isAuthenticated || !customer) {
+      redirectToCustomerLogin(`${window.location.origin}/?stage=order`);
+      return;
+    }
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
     checkoutIdempotencyKeyRef.current = checkoutIdempotencyKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `ordermieyamin-b2b-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -606,6 +620,7 @@ function OrderForm() {
         idempotencyKey: checkoutIdempotencyKeyRef.current,
         customerName: name.trim(),
         customerEmail: email.trim() || null,
+        customerSourceId: customer.sourceId,
         source: "ordermieyamin_b2b",
         sourceApp: BUSINESS_UNIT,
         businessUnit: BUSINESS_UNIT,

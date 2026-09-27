@@ -21,23 +21,27 @@ function GoogleMark() {
   );
 }
 
-function getSafeMerchandiseReturnUrl() {
+function getSafeCustomerReturnUrl() {
   const search = new URLSearchParams(window.location.search);
-  // returnTo hanya boleh dipakai untuk handoff yang dibuat Merchandise.
-  // Login/register normal Customer harus selalu berakhir di /<slugusername>.
   if (search.get("sso") !== "1") return null;
   const raw = search.get("returnTo");
   if (!raw) return null;
   try {
     const url = new URL(raw);
-    const isAllowedOrigin =
-      url.origin === "https://merchandise.yumme.id" ||
-      url.origin === "http://localhost:5174";
-    const isAllowedPath = /^\/[^/]+\/order$/.test(url.pathname);
+    const allowedOrigins = new Set([
+      "https://merchandise.yumme.id",
+      "https://ordermieyamin.yumme.id",
+      "https://booking.yumme.id",
+      "http://localhost:3010",
+      "http://localhost:5174",
+    ]);
+    const isAllowedPath = /^\/[^/]+\/order$/.test(url.pathname) || url.pathname === "/";
     const step = url.searchParams.get("step");
+    const stage = url.searchParams.get("stage");
     const isAllowedStep = step === null || step === "checkout" || step === "shipping" || step === "payment";
-    const hasOnlySafeParams = [...url.searchParams.keys()].every((key) => key === "step");
-    if (!isAllowedOrigin || !isAllowedPath || !isAllowedStep || !hasOnlySafeParams || url.hash) return null;
+    const isAllowedStage = stage === null || stage === "order";
+    const hasOnlySafeParams = [...url.searchParams.keys()].every((key) => key === "step" || key === "stage");
+    if (!allowedOrigins.has(url.origin) || !isAllowedPath || !isAllowedStep || !isAllowedStage || !hasOnlySafeParams || url.hash) return null;
     return url.toString();
   } catch {
     return null;
@@ -61,7 +65,7 @@ function CustomerAuthPage() {
 
   useEffect(() => {
     if (isAuthenticated && customer) {
-      const returnTo = getSafeMerchandiseReturnUrl();
+      const returnTo = getSafeCustomerReturnUrl();
       if (returnTo) {
         window.location.assign(returnTo);
         return;

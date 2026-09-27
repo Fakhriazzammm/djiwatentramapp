@@ -18,6 +18,7 @@ export const auth = betterAuth({
     "https://djiwatentram.yumme.id",
     "https://investor.yumme.id",
     "https://merchandise.yumme.id",
+    "https://booking.yumme.id",
     "https://b2b.yumme.id",
     "https://ordermieyamin.yumme.id",
     "https://500kopitasik.yumme.id",

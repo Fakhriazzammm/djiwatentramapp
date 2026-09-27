@@ -13,6 +13,7 @@ import { installNumberInputBehavior } from "@yumipos/web-shared";
 import { AppUpdatePrompt } from "./components/app-update-prompt";
 import { checkForAppUpdate, notifyAppUpdateAvailable, setAppUpdateHandler, startAppUpdatePolling } from "./lib/app-update";
 import { registerSW } from "virtual:pwa-register";
+import { redirectToBookingLogin, useBookingCustomerAuth } from "./lib/customer-auth";
 
 
 installNumberInputBehavior();
@@ -79,6 +80,7 @@ export default function App() {
   const [statusResult, setStatusResult] = useState<BookingResult | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const { isAuthenticated, customer } = useBookingCustomerAuth();
 
   useEffect(() => {
     canonicalizeLegacyPath();
@@ -87,6 +89,18 @@ export default function App() {
     loadBookingData().then(setData).catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "Data booking tidak dapat dimuat."));
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+  useEffect(() => {
+    if (!customer) return;
+    setDraft((current) => ({
+      ...current,
+      customer: {
+        ...current.customer,
+        name: current.customer.name || customer.name,
+        email: current.customer.email || customer.email,
+        phone: current.customer.phone || customer.phone,
+      },
+    }));
+  }, [customer]);
   useEffect(() => { sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft)); }, [draft]);
 
   const settings = data?.settings;
@@ -118,12 +132,16 @@ export default function App() {
     else if (screen === "menu" && !hasMenu) navigate("review");
   }, [data, hasBookingType, hasMenu, requiresEvent, screen]);
   const nextFromCheckout = async () => {
+    if (!isAuthenticated || !customer) {
+      redirectToBookingLogin();
+      return;
+    }
     const customerErrors = validateCustomer(draft.customer);
     const customErrors = requiredFieldErrors(settings?.customFields ?? [], draft.customAnswers);
     if (Object.keys(customerErrors).length || Object.keys(customErrors).length) return;
     setSubmitting(true); setSubmitError(null);
     try {
-      const bookingDraft: BookingDraft = { bookingType: draft.bookingType, bookingTypeLabel: selectedType?.label || draft.bookingType, eventType: draft.eventType || undefined, eventTypeLabel: selectedEvent?.label, eventTypeOther: draft.eventTypeOther || undefined, date: draft.selectedDate, arrivalTime: draft.arrivalTime, guests: draft.guests, tableCount, items: cartItems.map((item) => ({ productId: item.id, name: item.name, price: item.promoPrice ?? item.price, quantity: item.quantity })), customer: draft.customer, customAnswers: { ...draft.customAnswers, "Tipe booking": draft.bookingType, "Tipe booking label": selectedType?.label || draft.bookingType, "Jenis acara": draft.eventType || null, "Jenis acara label": selectedEvent?.label || null, "Jenis acara lainnya": draft.eventTypeOther || null, "Jam kedatangan": draft.arrivalTime } };
+      const bookingDraft: BookingDraft = { customerSourceId: customer.sourceId, bookingType: draft.bookingType, bookingTypeLabel: selectedType?.label || draft.bookingType, eventType: draft.eventType || undefined, eventTypeLabel: selectedEvent?.label, eventTypeOther: draft.eventTypeOther || undefined, date: draft.selectedDate, arrivalTime: draft.arrivalTime, guests: draft.guests, tableCount, items: cartItems.map((item) => ({ productId: item.id, name: item.name, price: item.promoPrice ?? item.price, quantity: item.quantity })), customer: draft.customer, customAnswers: { ...draft.customAnswers, "Tipe booking": draft.bookingType, "Tipe booking label": selectedType?.label || draft.bookingType, "Jenis acara": draft.eventType || null, "Jenis acara label": selectedEvent?.label || null, "Jenis acara lainnya": draft.eventTypeOther || null, "Jam kedatangan": draft.arrivalTime } };
       const created = pendingBooking ?? await createBooking(bookingDraft);
       setPendingBooking(created);
       sessionStorage.setItem("booking-pending-result", JSON.stringify(created));

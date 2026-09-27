@@ -2,7 +2,7 @@ import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } fro
 import { useEffect, useState } from "react";
 import { ClipboardList, Coins, Home, UserRound, ChevronRight, LogIn, LogOut, ShoppingCart, Star, User } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
-import { AuthModal } from "@/components/customer/auth-modal";
+import { redirectToCustomerLogin } from "@/lib/auth-client";
 import { CustomerMenuGrid } from "@/components/customer/CustomerMenuGrid";
 import { MemberOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
@@ -36,8 +36,6 @@ function MemberHomePage() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
-	const [authModalOpen, setAuthModalOpen] = useState(false);
-	const [authError, setAuthError] = useState<string | undefined>(undefined);
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
@@ -111,20 +109,7 @@ function MemberHomePage() {
 		setShowMemberOnboarding(false);
 	};
 
-	const authModal = (
-		<AuthModal
-			open={authModalOpen}
-			onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-			onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
-			onSkip={() => setAuthModalOpen(false)}
-			onGoogleSignIn={signInWithGoogle}
-			onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
-			isLoading={isLoading}
-			needsEmailConfirm={registrationNeedsEmailConfirm}
-			error={authError}
-		/>
-	);
+
 
 	// ── Loading ────────────────────────────────────
 	// Guest match → skip loading (resolved=true sejak awal, tanpa network)
@@ -145,7 +130,7 @@ function MemberHomePage() {
 					<Outlet />
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
-				{authModal}
+
 			</>
 		);
 	}
@@ -206,7 +191,7 @@ function MemberHomePage() {
 								<button
 									type="button"
 									className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black text-muted-foreground"
-									onClick={() => setAuthModalOpen(true)}
+									onClick={() => redirectToCustomerLogin(`${window.location.origin}/${encodeURIComponent(username)}/order?step=checkout`)}
 								>
 									<LogIn className="h-3.5 w-3.5" />
 									Masuk / Daftar untuk poin
@@ -224,7 +209,7 @@ function MemberHomePage() {
 				</div>
 
 				<CustomerBottomNav items={customerNav} />
-				{authModal}
+
 			</div>
 		);
 	}
@@ -310,7 +295,6 @@ function MemberHomePage() {
 			</div>
 
 			<CustomerBottomNav items={customerNav} />
-			{authModal}
 			{showMemberOnboarding && customer ? (
 				<MemberOnboarding
 					name={displayName}

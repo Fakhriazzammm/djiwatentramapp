@@ -17,11 +17,13 @@ const customerOrigins = [
   "https://djiwatentram.yumme.id",
   "https://investor.yumme.id",
   "https://merchandise.yumme.id",
+  "https://booking.yumme.id",
   "https://b2b.yumme.id",
   "https://ordermieyamin.yumme.id",
   "https://500kopitasik.yumme.id",
   "https://kolmarketing.yumme.id",
   "http://localhost:5173",
+  "http://localhost:3010",
 ];
 const stickerRateLimit = new Map<string, number[]>();
 

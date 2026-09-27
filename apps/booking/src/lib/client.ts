@@ -35,6 +35,7 @@ export type BookingDraft = {
   items: Array<{ productId: string; name: string; price: number; quantity: number }>;
   customer: { name: string; phone: string; email: string; notes: string };
   customAnswers: Record<string, unknown>;
+  customerSourceId?: string;
 };
 export type BookingResult = { bookingId?: string; bookingCode: string; status: string; paymentStatus: string; date: string; arrivalTime?: string | null; guests: number; tableCount: number; totalAmount?: number; items: BookingDraft["items"]; invoiceId?: string; invoiceUrl?: string };
 
@@ -197,7 +198,7 @@ function normalizeResult(raw: BookingResult & { bookingId?: string; bookingDate?
 export async function createBooking(draft: BookingDraft): Promise<BookingResult> {
   if (BOOKING_API_URL) {
     const credentials = getGuestCredentials();
-    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, arrivalTime: draft.arrivalTime, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
+    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, arrivalTime: draft.arrivalTime, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, customerSourceId: draft.customerSourceId, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
     if (result.bookingId && result.bookingCode && result.items.length === 0) {
       try {
         const recovered = await lookupBooking(result.bookingCode);
