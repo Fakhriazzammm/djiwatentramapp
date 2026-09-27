@@ -212,24 +212,45 @@ async function syncRecentOrders() {
   for (const order of orders ?? []) {
     const source = sourceOf(order);
     const createdAt = Number(order.createdAt ?? 0);
-    if (source !== "customer_self_service" || !Number.isFinite(createdAt) || createdAt < Date.parse(since)) continue;
+    if (!source || !Number.isFinite(createdAt) || createdAt < Date.parse(since)) continue;
     const status = String(order.status ?? "").toLowerCase();
     const payment = paymentType(order);
+    const sourceLabel = source === "customer_self_service" || source === "djiwaapp"
+      ? "DjiwaApp"
+      : source === "pos"
+        ? "POS"
+        : source === "ordermieyamin"
+          ? "Order Mie Yamin"
+          : source === "merchandise"
+            ? "Merchandise"
+            : source;
     let type: string | null = null;
     let title = "";
     let message = "";
     if (status === "pending" && payment === "cashier") {
       type = "order_cashier_pending";
-      title = "Pesanan Baru dari DjiwaApp";
+      title = `Pesanan Baru dari ${sourceLabel}`;
       message = "Menunggu Pembayaran di Kasir";
     } else if (status === "pending" && payment === "mayar") {
       type = "order_mayar_pending";
-      title = "Menunggu Pembayaran QRIS DjiwaApp";
+      title = `Menunggu Pembayaran QRIS ${sourceLabel}`;
       message = "Pembayaran belum dikonfirmasi";
-    } else if ((status === "paid" || status === "completed") && (payment === "mayar" || payment === "cashier" || payment === "wallet")) {
+    } else if ((status === "paid" || status === "completed") && source) {
       type = "order_paid";
-      title = payment === "cashier" ? "Pembayaran TUNAI Berhasil" : payment === "wallet" ? "Pembayaran DJIWA PAY Berhasil" : "Pembayaran QRIS Berhasil";
-      message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar secara TUNAI" : payment === "wallet" ? "Pesanan DjiwaApp Sudah Dibayar dengan DJIWA PAY" : "Pesanan DjiwaApp Sudah Lunas";
+      title = payment === "cashier"
+        ? `Pembayaran ${sourceLabel} TUNAI Berhasil`
+        : payment === "wallet"
+          ? `Pembayaran ${sourceLabel} Djiwa Pay Berhasil`
+          : payment === "mayar"
+            ? `Pembayaran ${sourceLabel} QRIS Berhasil`
+            : `Transaksi ${sourceLabel} Berhasil`;
+      message = payment === "cashier"
+        ? `Pesanan ${sourceLabel} sudah dibayar secara TUNAI`
+        : payment === "wallet"
+          ? `Pesanan ${sourceLabel} sudah dibayar dengan Djiwa Pay`
+          : payment === "mayar"
+            ? `Pesanan ${sourceLabel} sudah lunas`
+            : `Order ${order.orderNumber ?? order._id} berstatus ${status}`;
     }
     if (!type || !order._id) continue;
 
@@ -252,14 +273,14 @@ async function syncRecentOrders() {
       message,
       order_source_id: String(order._id),
       order_number: order.orderNumber ?? null,
-      source: "customer_self_service",
+      source,
       dedupe_key: `order:${order._id}:${type}`,
       action_type: "open_order",
       action_payload: {
         orderId: order._id,
         orderNumber: order.orderNumber ?? null,
-        source: "djiwaapp",
-        paymentMethod: payment === "mayar" ? "qris" : payment === "wallet" ? "wallet" : "cashier",
+        source,
+        paymentMethod: payment === "mayar" ? "qris" : payment === "wallet" ? "wallet" : payment === "cashier" ? "cashier" : "unknown",
         paymentStatus: status,
         customerName: order.customerName ?? null,
         tableNumber: order.tableNumber ?? null,
