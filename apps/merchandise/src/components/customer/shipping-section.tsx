@@ -12,6 +12,7 @@ export interface ShippingSectionProps {
 	isSubmitting: boolean;
 	productSubtotal: number;
 	total: number;
+	checkoutError?: string | null;
 }
 
 const PROVIDERS: Array<{ key: ShippingProvider; label: string; estimate: string }> = [
@@ -28,6 +29,7 @@ export function ShippingSection({
 	isSubmitting,
 	productSubtotal,
 	total,
+	checkoutError,
 }: ShippingSectionProps) {
 	return (
 		<section className="space-y-2 px-2 py-2">
@@ -68,6 +70,7 @@ export function ShippingSection({
 				</div>
 			</div>
 
+			{checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{checkoutError}</div> : null}
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 				<div className="space-y-1.5 text-xs">
 					<div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal merchandise</span><span className="font-black">{currency(productSubtotal)}</span></div>
@@ -75,7 +78,7 @@ export function ShippingSection({
 				</div>
 				<div className="mt-3 grid grid-cols-2 gap-2">
 					<button type="button" onClick={onBackToCheckout} className="min-h-11 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black">Kembali</button>
-					<button type="button" onClick={onContinueToPayment} disabled={!shippingProvider || isSubmitting} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">Lanjut ke pembayaran</button>
+					<button type="button" onClick={onContinueToPayment} disabled={!shippingProvider || isSubmitting} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? "Memproses..." : "Lanjut ke pembayaran"}</button>
 				</div>
 			</div>
 		</section>
