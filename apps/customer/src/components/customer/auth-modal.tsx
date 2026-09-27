@@ -298,7 +298,7 @@ export function AuthModal({
               ) : null}
 
               {/* Google Sign In */}
-              {onGoogleSignIn ? (
+              {onGoogleSignIn && tab === "login" ? (
                 <>
                   <div className="relative mt-4 flex items-center gap-3">
                     <div className="h-px flex-1 bg-border/50" />
