@@ -93,14 +93,16 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
   );
 }
 
-function PurchaseActivityCard({ activity, onOpenProduct }: { activity: CommunityPurchaseActivity; onOpenProduct: (activity: CommunityPurchaseActivity) => void }) {
+type GroupedPurchaseActivity = CommunityPurchaseActivity & { products: CommunityPurchaseActivity[] };
+
+function PurchaseActivityCard({ activity, onOpenProduct }: { activity: GroupedPurchaseActivity; onOpenProduct: (activity: CommunityPurchaseActivity) => void }) {
   return (
     <article className="border-b border-[#e5e5e5] bg-white px-3 py-2 sm:px-5" aria-label={`Aktivitas Teman Djiwa ${activity.productName}`}>
       <div className="flex items-start gap-2">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-[11px] font-black text-[#3156a3]">T</div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1 text-[12px] leading-4"><p className="font-bold text-[#111111]">Teman Djiwa</p><BadgeCheck className="h-3 w-3 text-cyan-600" aria-label="Pembelian terverifikasi" /><span className="text-[11px] text-[#969696]">· {relativeTime(activity.orderSettledAt)}</span></div>
-          <div className="mt-0.5 flex items-center gap-2"><p className="min-w-0 truncate text-[12px] leading-4 text-[#161616]">baru saja membeli <span className="font-bold">{activity.productName}</span></p>{activity.productImageUrl ? <img src={activity.productImageUrl} alt="" className="h-8 w-8 shrink-0 rounded-md bg-slate-100 object-contain p-0.5" loading="lazy" /> : <div className="h-8 w-8 shrink-0 rounded-md bg-gradient-to-br from-violet-100 to-cyan-100" aria-hidden="true" />}<button type="button" className="min-h-7 shrink-0 rounded-md border border-[#3156a3]/20 px-2 text-[9px] font-bold text-[#3156a3] hover:bg-[#e8eefb]" onClick={() => onOpenProduct(activity)}>Lihat <ArrowRight className="ml-0.5 inline h-2.5 w-2.5" /></button>
+          <div className="mt-0.5 flex items-center gap-2"><p className="min-w-0 truncate text-[12px] leading-4 text-[#161616]">baru saja membeli <span className="font-bold">{activity.products.map((product) => product.productName).join(", ")}</span></p>{activity.productImageUrl ? <img src={activity.productImageUrl} alt="" className="h-8 w-8 shrink-0 rounded-md bg-slate-100 object-contain p-0.5" loading="lazy" /> : <div className="h-8 w-8 shrink-0 rounded-md bg-gradient-to-br from-violet-100 to-cyan-100" aria-hidden="true" />}<button type="button" className="min-h-7 shrink-0 rounded-md border border-[#3156a3]/20 px-2 text-[9px] font-bold text-[#3156a3] hover:bg-[#e8eefb]" onClick={() => onOpenProduct(activity)}>Lihat <ArrowRight className="ml-0.5 inline h-2.5 w-2.5" /></button>
           </div>
         </div>
       </div>
@@ -207,10 +209,21 @@ function CommunityPage() {
   const deletePost = async (post: CommunityPost) => { if (!window.confirm("Hapus postingan ini?")) return; try { await communityClient.remove(post.id); setPosts((current) => current.filter((item) => item.id !== post.id)); } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Post belum dapat dihapus."); } };
   const reportPost = async (post: CommunityPost) => { try { await communityClient.report(post.id); setNotice("Laporan sudah diterima Admin."); } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Post belum dapat dilaporkan."); } };
 
+  const groupedActivities = useMemo(() => {
+    const groups = new Map<string, GroupedPurchaseActivity>();
+    for (const activity of activities) {
+      const key = `${activity.displayName}|${activity.orderSettledAt}`;
+      const current = groups.get(key);
+      if (current) current.products.push(activity);
+      else groups.set(key, { ...activity, products: [activity] });
+    }
+    return Array.from(groups.values());
+  }, [activities]);
+
   const timelineItems = useMemo(() => [
-    ...activities.map((item) => ({ kind: "activity" as const, at: item.orderSettledAt, item })),
+    ...groupedActivities.map((item) => ({ kind: "activity" as const, at: item.orderSettledAt, item })),
     ...posts.map((item) => ({ kind: "post" as const, at: item.createdAt, item })),
-  ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [activities, posts]);
+  ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [groupedActivities, posts]);
 
   if (isPostDetail) return <Outlet />;
   if (authLoading) return <CustomerSectionSkeleton label="Menyiapkan Komunitas Djiwa" />;
