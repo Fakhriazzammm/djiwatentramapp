@@ -51,7 +51,8 @@ SELECT
   o.rounding_adjustment AS "roundingAdjustment",
   o.payment_channel_canonical AS "paymentChannelCanonical",
   o.tax_exemption_reason AS "taxExemptionReason",
-  o.tax_policy_version AS "taxPolicyVersion"
+  o.tax_policy_version AS "taxPolicyVersion",
+  o.shift_source_id AS "shiftSourceId"
 FROM pos.orders o
 LEFT JOIN LATERAL (
   SELECT jsonb_agg(

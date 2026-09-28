@@ -1676,6 +1676,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						totalAmount: finalAmount,
 						paymentMethod: normalizedPaymentMethod,
 						source: "pos" as const,
+						shiftId: shiftStatus?.ongoingShift?._id ?? shiftStatus?.shiftInfo?.shiftId ?? null,
 						customerName: customerInfo.name || "Pelanggan",
 						customerEmail: customerInfo.email?.trim() || null,
 						customerPhone: customerInfo.phone?.trim() || null,

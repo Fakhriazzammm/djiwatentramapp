@@ -2566,10 +2566,14 @@ export function useHybridCreateOrder() {
 					: "online";
 			let dailyReceiptNo = null;
 			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
+				const shiftId = String(args?.shiftId ?? "").trim();
+				const receiptFunction = args?.source === "pos" && shiftId
+					? "next_shift_receipt_no"
+					: "next_daily_receipt_no";
+				const receiptParams = args?.source === "pos" && shiftId
+					? { p_shift_id: shiftId }
+					: { p_order_kind: kind };
+				const { data: rpcData, error: rpcErr } = await supabase.rpc(receiptFunction, receiptParams);
 				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
 			} catch (_) {} // best-effort
 
@@ -2614,6 +2618,7 @@ const orderRow = {
 					table_number: args?.tableNumber ?? null,
 					order_type: args?.orderType ?? null,
 					source: args?.source ?? null,
+					shift_source_id: args?.source === "pos" ? String(args?.shiftId ?? "").trim() || null : null,
 					brand_slug: args?.brandSlug ?? null,
 					guest_count:
 						args?.guestCount === undefined ? null : Number(args.guestCount ?? 0),
@@ -2911,17 +2916,17 @@ export function useHybridDeleteOrder() {
 				// Fetch order details before deleting (for counter decrement + order_status cleanup)
 				let orderNumber: string | null = null;
 				let dailyReceiptNo: number | null = null;
-				let receiptKind: string | null = null;
+				let shiftSourceId: string | null = null;
 				try {
 					const { data: order } = await pos
 						.from("orders")
-						.select("order_number,daily_receipt_no,receipt_kind")
+						.select("order_number,daily_receipt_no,receipt_kind,shift_source_id")
 						.eq("source_id", id)
 						.maybeSingle();
 					if (order) {
 						orderNumber = order.order_number ?? null;
 						dailyReceiptNo = order.daily_receipt_no ?? null;
-						receiptKind = order.receipt_kind ?? null;
+						shiftSourceId = order.shift_source_id ?? null;
 					}
 				} catch (_) { /* best-effort */ }
 
@@ -2957,12 +2962,17 @@ export function useHybridDeleteOrder() {
 				if (orderError) throw orderError;
 
 				// Decrement daily receipt counter (fill gap — only if this was the highest number)
-				if (dailyReceiptNo != null && receiptKind) {
+				if (dailyReceiptNo != null) {
 					try {
-						const { error: decrementError } = await pos.rpc("decrement_daily_receipt_no", {
-							p_order_kind: "all",
-							p_last_no: dailyReceiptNo,
-						});
+						const { error: decrementError } = shiftSourceId
+							? await pos.rpc("decrement_shift_receipt_no", {
+								p_shift_id: shiftSourceId,
+								p_last_no: dailyReceiptNo,
+							})
+							: await pos.rpc("decrement_daily_receipt_no", {
+								p_order_kind: "all",
+								p_last_no: dailyReceiptNo,
+							});
 						if (decrementError) console.warn("[delete-order] Counter decrement failed:", decrementError.message);
 					} catch (_) { /* best-effort */ }
 				}
