@@ -242,6 +242,10 @@ async function syncRecentOrders() {
       type = "order_mayar_pending";
       title = `Menunggu Pembayaran QRIS ${sourceLabel}`;
       message = "Pembayaran belum dikonfirmasi";
+    } else if (status === "cancelled" && source && (payment === "wallet" || payment === "mayar")) {
+      type = "order_payment_failed";
+      title = `Pembayaran ${sourceLabel} Gagal`;
+      message = payment === "wallet" ? "Saldo Djiwa Pay tidak cukup atau pembayaran dibatalkan" : "Pembayaran QRIS gagal atau kedaluwarsa";
     } else if ((status === "paid" || status === "completed") && source) {
       type = "order_paid";
       title = payment === "cashier"
