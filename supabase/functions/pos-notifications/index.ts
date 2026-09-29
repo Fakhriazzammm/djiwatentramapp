@@ -328,10 +328,11 @@ async function listNotifications(user: UserContext) {
     limit: "5000",
   });
   const readByNotification = new Map((userReads ?? []).map((read: any) => [String(read.notification_id), read]));
-  const rows = await dbGetPaged("pos_notifications", {
+  const rows = await dbGet("pos_notifications", {
     select: "*",
     is_active: "eq.true",
     order: "created_at.desc",
+    limit: "500",
   });
   const now = Date.now();
   const orderIds = [...new Set((rows ?? []).map((item: any) => String(item.order_source_id ?? "")).filter(Boolean))];
@@ -373,8 +374,8 @@ async function listNotifications(user: UserContext) {
     const orderStatus = item.order_source_id
       ? orderStatuses.get(String(item.order_source_id))
       : undefined;
-    if (orderStatus === "cancelled") return false;
-    // Pending payment notifications are stale as soon as the order is paid.
+    if (item.order_source_id && orderStatus === "cancelled"
+      && ["order_cashier_pending", "order_mayar_pending"].includes(String(item.notification_type))) return false;
     if ((item.notification_type === "order_cashier_pending" || item.notification_type === "order_mayar_pending")
       && (orderStatus === "paid" || orderStatus === "completed")) return false;
     return true;
@@ -385,6 +386,16 @@ async function listNotifications(user: UserContext) {
     acknowledgedAt: readByNotification.get(String(item.id))?.acknowledged_at ?? null,
   }));
   return visible;
+}
+
+async function assertNotificationVisible(notificationId: string, user: UserContext) {
+  const rows = await dbGet("pos_notifications", { select: "id,is_active,expires_at,target_user_id,target_role,target_branch_id", id: `eq.${encodeURIComponent(notificationId)}`, limit: "1" });
+  const item = rows[0];
+  if (!item || item.is_active !== true) throw new Error("Notification tidak ditemukan");
+  if (item.expires_at && Date.parse(String(item.expires_at)) < Date.now()) throw new Error("Notification sudah kedaluwarsa");
+  if (item.target_user_id && String(item.target_user_id) !== user.id) throw new Error("Notification tidak dapat diakses");
+  if (item.target_role && String(item.target_role).toLowerCase() !== user.role) throw new Error("Notification tidak dapat diakses");
+  if (item.target_branch_id && String(item.target_branch_id) !== String(user.branchId ?? "")) throw new Error("Notification tidak dapat diakses");
 }
 
 Deno.serve(async (req) => {
@@ -411,6 +422,7 @@ Deno.serve(async (req) => {
     if (action === "mark_read" || action === "acknowledge" || action === "dismiss") {
       const notificationId = String((payload as Json).notificationId ?? "");
       if (!notificationId) return response({ error: "notificationId is required" }, 400);
+      await assertNotificationVisible(notificationId, user);
       const now = new Date().toISOString();
       await dbWrite("pos_notification_reads", "POST", {
         notification_id: notificationId,
