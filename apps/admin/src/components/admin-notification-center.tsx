@@ -147,7 +147,7 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 						animate={{ opacity: 1, y: 0, scale: 1 }}
 						exit={reduceMotion ? undefined : { opacity: 0, y: -5, scale: 0.98 }}
 						transition={spring}
-						className="fixed left-1/2 top-[4.25rem] z-[1190] w-[min(320px,calc(100vw-24px))] -translate-x-1/2 rounded-2xl border border-primary/15 bg-card p-2.5 shadow-[0_14px_34px_rgba(9,9,11,0.16)]"
+						className="fixed right-4 top-[4.25rem] z-[1190] w-[min(320px,calc(100vw-24px))] rounded-2xl border border-primary/15 bg-card p-2.5 shadow-[0_14px_34px_rgba(9,9,11,0.16)]"
 					>
 						<div className="flex items-start gap-2">
 							<span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${notificationTone(popupNotification)}`}><Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" /></span>
