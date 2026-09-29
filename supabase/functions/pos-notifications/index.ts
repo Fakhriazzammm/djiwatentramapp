@@ -281,6 +281,11 @@ async function syncRecentOrders() {
       order_source_id: String(order._id),
       order_number: order.orderNumber ?? null,
       source,
+      source_app: source === "pos" ? "pos" : "customer",
+      source_module: "orders",
+      entity_type: "order",
+      entity_id: String(order._id),
+      event_id: crypto.randomUUID(),
       dedupe_key: `order:${order._id}:${type}`,
       action_type: "open_order",
       action_payload: {
@@ -313,6 +318,12 @@ async function syncRecentOrders() {
 }
 
 async function listNotifications(user: UserContext) {
+  const userReads = await dbGet("pos_notification_reads", {
+    select: "notification_id,read_at,acknowledged_at",
+    user_id: `eq.${encodeURIComponent(user.id)}`,
+    limit: "5000",
+  });
+  const readByNotification = new Map((userReads ?? []).map((read: any) => [String(read.notification_id), read]));
   const rows = await dbGetPaged("pos_notifications", {
     select: "*",
     is_active: "eq.true",
@@ -365,9 +376,9 @@ async function listNotifications(user: UserContext) {
     return true;
   }).map((item: any) => ({
     ...item,
-    isRead: Boolean(item.global_read_at),
-    readAt: item.global_read_at ?? null,
-    acknowledgedAt: item.global_acknowledged_at ?? null,
+    isRead: Boolean(readByNotification.get(String(item.id))?.read_at),
+    readAt: readByNotification.get(String(item.id))?.read_at ?? null,
+    acknowledgedAt: readByNotification.get(String(item.id))?.acknowledged_at ?? null,
   }));
   return visible;
 }
@@ -396,13 +407,16 @@ Deno.serve(async (req) => {
     if (action === "mark_read" || action === "acknowledge" || action === "dismiss") {
       const notificationId = String((payload as Json).notificationId ?? "");
       if (!notificationId) return response({ error: "notificationId is required" }, 400);
-      await dbWrite("pos_notifications", "PATCH", action === "dismiss"
-        ? { is_active: false, global_read_at: new Date().toISOString() }
-        : {
-            global_read_at: new Date().toISOString(),
-            global_acknowledged_at: action === "acknowledge" ? new Date().toISOString() : null,
-          },
-      `?id=eq.${encodeURIComponent(notificationId)}`);
+      const now = new Date().toISOString();
+      await dbWrite("pos_notification_reads", "POST", {
+        notification_id: notificationId,
+        user_id: user.id,
+        read_at: now,
+        acknowledged_at: action === "acknowledge" ? now : null,
+      }, "?on_conflict=notification_id,user_id", "resolution=merge-duplicates,return=representation");
+      if (action === "dismiss") {
+        await dbWrite("pos_notifications", "PATCH", { is_active: false }, `?id=eq.${encodeURIComponent(notificationId)}`);
+      }
       return response({ success: true });
     }
 

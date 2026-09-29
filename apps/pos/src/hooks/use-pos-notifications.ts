@@ -3,7 +3,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 export type PosNotification = {
   id: string;
-  notification_type: "order_cashier_pending" | "order_mayar_pending" | "order_paid" | "admin_info" | "admin_briefing";
+  notification_type: "order_cashier_pending" | "order_mayar_pending" | "order_paid" | "order_payment_failed" | "order_cancelled" | "admin_info" | "admin_briefing";
   priority: "normal" | "high" | "urgent";
   title: string;
   message: string;

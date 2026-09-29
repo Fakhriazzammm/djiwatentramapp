@@ -20,6 +20,9 @@ function typeMeta(item: PosNotification) {
   if (item.notification_type === "order_mayar_pending") {
     return { Icon: WalletCards, label: "Menunggu DjiwaApp", className: "border-violet-200 bg-violet-50 text-violet-900" };
   }
+  if (item.notification_type === "order_payment_failed") {
+    return { Icon: X, label: "Pembayaran gagal", className: "border-rose-200 bg-rose-50 text-rose-900" };
+  }
   if (item.notification_type === "order_paid") {
     return { Icon: Check, label: "Lunas", className: "border-emerald-200 bg-emerald-50 text-emerald-900" };
   }
@@ -75,11 +78,14 @@ export function NotificationCenter({
   onOpenOrder?: (notification: PosNotification) => void;
 }) {
   const [tab, setTab] = useState<"all" | "orders" | "admin">("all");
+  const [filter, setFilter] = useState<"all" | "unread" | "payment">("all");
   const visible = useMemo(() => notifications.filter((item) => {
-    if (tab === "orders") return item.notification_type.startsWith("order_");
-    if (tab === "admin") return item.notification_type.startsWith("admin_");
+    if (tab === "orders" && !item.notification_type.startsWith("order_")) return false;
+    if (tab === "admin" && !item.notification_type.startsWith("admin_")) return false;
+    if (filter === "unread" && item.isRead) return false;
+    if (filter === "payment" && !item.notification_type.includes("payment") && item.notification_type !== "order_paid") return false;
     return true;
-  }), [notifications, tab]);
+  }), [filter, notifications, tab]);
 
   if (!open) return null;
 
@@ -103,6 +109,12 @@ export function NotificationCenter({
             return <button key={value} type="button" onClick={() => setTab(value)} className={`rounded-lg px-2 py-2 text-xs font-bold transition ${tab === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{label}</button>;
           })}
         </div>
+        <div className="flex gap-2 border-b border-border px-3 pb-2">
+          {(["all", "unread", "payment"] as const).map((value) => {
+            const label = value === "all" ? "Semua" : value === "unread" ? "Belum dibaca" : "Pembayaran";
+            return <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${filter === value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>{label}</button>;
+          })}
+        </div>
 
         <div className="flex-1 overflow-y-auto p-3">
           {isLoading ? <div className="space-y-2">{[1, 2, 3].map((item) => <div key={item} className="h-24 animate-pulse rounded-2xl bg-muted" />)}</div> : null}
@@ -120,7 +132,7 @@ export function NotificationCenter({
                     <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/70"><Icon className="h-4 w-4" /></div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-wide opacity-70">{meta.label}</p><h3 className="text-sm font-black leading-tight">{item.title}</h3></div>{!item.isRead ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-rose-500" /> : null}</div>
-                      {item.order_number ? <p className="mt-1 text-xs font-bold">#{item.order_number} · DjiwaApp</p> : null}
+                      {item.order_number ? <p className="mt-1 text-xs font-bold">#{item.order_number} · {item.source === "pos" ? "POS Kasir" : item.source === "customer_self_service" || item.source === "djiwaapp" ? "DjiwaApp" : item.source || "Operasional"}</p> : null}
                       <p className="mt-1 text-xs leading-relaxed opacity-80">{item.message}</p>
                       <p className="mt-2 text-[10px] font-semibold opacity-60">{formatAge(item.created_at)}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
