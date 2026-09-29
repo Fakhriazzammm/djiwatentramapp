@@ -10,25 +10,23 @@ import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
 
 // Status lifecycle order — live tracker di struk
 const STATUS_STEPS = [
-	{ key: "pending", label: "Diterima" },
-	{ key: "preparing", label: "Diproses" },
-	{ key: "ready", label: "Siap" },
-	{ key: "served", label: "Disajikan" },
-	{ key: "completed", label: "Selesai" },
+	{ key: "paid", label: "Pembayaran terkonfirmasi" },
+	{ key: "preparing", label: "Disiapkan" },
+	{ key: "shipped", label: "Dikirim" },
 ] as const;
 
 function getStatusStepIndex(status?: string) {
 	const s = String(status ?? "").toLowerCase();
 	const idx = STATUS_STEPS.findIndex((step) => step.key === s);
-	// "processing" → step "Diproses"
-	if (idx === -1 && (s === "processing" || s === "paid")) return 1;
+	if (idx === -1 && (s === "processing" || s === "ready")) return 1;
+	if (s === "pending" || s === "completed" || s === "selesai") return -1;
 	return idx;
 }
 
 export interface ReceiptSectionProps {
 	cartSnapshot: CartItem[];
 	currentOrder: Doc<"orders"> | undefined;
-	dessertLater: boolean;
+
 	logoUrl: string;
 	onOpenService: () => void;
 	onOrderAgain: () => void;
@@ -40,6 +38,13 @@ export interface ReceiptSectionProps {
 	receipt: ReceiptState;
 	storeName: string;
 	total: number;
+}
+
+function formatDispatchEstimate(start: string, end: string) {
+	const formatter = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
+	const startLabel = formatter.format(new Date(`${start}T00:00:00+07:00`));
+	const endLabel = formatter.format(new Date(`${end}T00:00:00+07:00`));
+	return startLabel === endLabel ? startLabel : `${startLabel} – ${endLabel}`;
 }
 
 export function renderReceiptSection(props: ReceiptSectionProps) {
@@ -74,25 +79,32 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 		unitPrice: Number(item.price ?? 0),
 		variant: item.variant ? String(item.variant) : undefined,
 	}));
-	const customerName = props.currentOrder?.customerName || "-";
-	const customerDescription = props.currentOrder?.customerDescription || "-";
-	const tableNumber = props.currentOrder?.tableNumber || "-";
-	const orderType = props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
+	const receiptMeta = (props.currentOrder?.receiptMeta ?? (props.currentOrder as any)?.raw?.receiptMeta ?? {}) as Record<string, any>;
+	const shipping = (receiptMeta.merchandiseFulfillment ?? props.receipt.shipping) as { receiverName?: string; address?: string; phone?: string } | undefined;
+	const customerName = shipping?.receiverName || props.currentOrder?.customerName || "-";
 	const customerNotes = props.currentOrder?.notes || "-";
+	const dispatchEstimates = Object.entries(
+		(receiptMeta.merchandiseDispatchEstimates ?? {}) as Record<string, { start?: string; end?: string }>,
+	).filter((entry): entry is [string, { start: string; end: string }] => Boolean(entry[1]?.start && entry[1]?.end));
 
-	const unifiedStatusLabel = isSettledOrder && orderStatus !== "completed" && orderStatus !== "selesai" ? "LUNAS"
-		: isSettledOrder ? "SELESAI"
-		: "OPEN BILL";
+	const unifiedStatusLabel = isSettledOrder ? "PEMBAYARAN TERVERIFIKASI" : "MENUNGGU PEMBAYARAN";
 	const unifiedStatusColor = !isSettledOrder ? "text-amber-600"
 		: orderStatus === "paid" || orderStatus === "lunas" || ["gateway_paid", "wallet_paid"].includes(paymentReceiptKind) ? "text-blue-600"
 		: "text-emerald-600";
 	const normalizedPaymentMethod = String(props.currentOrder?.paymentMethod ?? (props.currentOrder as any)?.payment_method ?? props.receipt.paymentChoice).toLowerCase();
-	const canRetryPayment = mode !== "paid" && (normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa") || normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar") || props.receipt.paymentChoice === "mayar");
+	const currentGateway = (props.currentOrder as any)?.paymentGateway || (props.currentOrder as any)?.payment_gateway || {};
+	const currentGatewayStatus = String(currentGateway.status || "").toLowerCase();
+	const currentGatewayHasInvoice = Boolean(currentGateway.invoiceId || (props.currentOrder as any)?.gatewayInvoiceId || (props.currentOrder as any)?.gateway_invoice_id);
+	const mayarRetryAllowed = !currentGatewayHasInvoice || ["expired", "cancelled", "canceled", "void"].includes(currentGatewayStatus);
+	const canRetryPayment = mode !== "paid" && (
+		normalizedPaymentMethod.includes("wallet") || normalizedPaymentMethod.includes("djiwa")
+		|| ((normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar") || props.receipt.paymentChoice === "mayar") && mayarRetryAllowed)
+	);
 
 	const currentStepIndex = getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
-	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : props.receipt.paymentChoice === "mayar" ? "QRIS Mayar" : "Bayar di Kasir";
-	const printerStatusLabel = mode === "paid" ? "Pembayaran berhasil" : props.receipt.mode === "mayar_pending" ? "Invoice siap dibayar" : "Struk siap ditunjukkan ke kasir";
+	const paymentLabel = props.receipt.paymentChoice === "wallet" ? "Djiwa Pay" : "QRIS";
+	const printerStatusLabel = mode === "paid" ? "Pembayaran terkonfirmasi" : "Menunggu pembayaran";
 	// Do not reconstruct historical totals from item prices. Show this breakdown
 	// only when the backend stored the authoritative tax calculation.
 	const persistedTaxBase = Number(props.currentOrder?.taxBaseAmount ?? props.currentOrder?.tax_base_amount);
@@ -112,28 +124,24 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
 				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 5 · Selesai / Struk</p>
-				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
-				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice pembayaran sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
-				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{mode === "paid" ? "Preorder terkonfirmasi" : "Menunggu pembayaran"}</h2>
+				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{mode === "paid" ? "Pembayaran sudah terkonfirmasi. Produk akan disiapkan lalu dikirim ke alamat berikut." : "Selesaikan pembayaran penuh melalui metode yang dipilih. Status akan berubah setelah pembayaran terverifikasi."}</p>
+				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Djiwa Pay"}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
 					{hasPersistedTotals ? <ReceiptTotalsBreakdown rawTotal={persistedRawTotal} taxBase={persistedTaxBase} taxAmount={Number(props.currentOrder?.taxAmount ?? 0)} taxRate={Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0)} taxEnabled={Number(props.currentOrder?.taxAmount ?? 0) > 0 || Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0} serviceChargeAmount={Number(props.currentOrder?.serviceChargeAmount ?? 0)} roundingAdjustment={persistedRounding} total={persistedTotal} /> : null}
 					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
-						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>
+						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Alamat pengiriman</p>
 						<div className="mt-1.5 space-y-1">
 							<div className="flex items-center justify-between gap-2 text-[11px]">
 								<span className="text-muted-foreground">Nama</span>
 								<span className="font-semibold text-foreground">{customerName}</span>
 							</div>
-							<div className="flex items-start justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Ciri</span>
-								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerDescription}</span>
+							<div className="flex items-center justify-between gap-2 text-[11px]">
+								<span className="text-muted-foreground">WhatsApp</span>
+								<span className="font-semibold text-foreground">{shipping?.phone || "-"}</span>
 							</div>
 							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Meja</span>
-								<span className="font-semibold text-foreground">{tableNumber}</span>
-							</div>
-							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Tipe</span>
-								<span className="font-semibold text-foreground">{orderType}</span>
+								<span className="text-muted-foreground">Alamat</span>
+								<span className="max-w-[70%] text-right font-semibold text-foreground">{shipping?.address || "-"}</span>
 							</div>
 							<div className="flex items-start justify-between gap-2 text-[11px]">
 								<span className="text-muted-foreground">Catatan</span>
@@ -141,6 +149,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 							</div>
 						</div>
 					</div>
+					{dispatchEstimates.length > 0 ? <div className="mt-2.5 rounded-lg border border-blue-200 bg-blue-50/60 px-2.5 py-2 text-left dark:border-blue-900 dark:bg-blue-950/20"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-blue-700 dark:text-blue-300">Perkiraan dispatch</p><div className="mt-1.5 space-y-1">{dispatchEstimates.map(([productId, estimate]) => { const item = orderItems.find((candidate: any) => String(candidate.productId ?? candidate.productSourceId) === productId); return <div className="flex items-start justify-between gap-2 text-[11px]" key={productId}><span className="text-muted-foreground">{item?.productName ?? item?.name ?? "Produk preorder"}</span><span className="text-right font-semibold text-foreground">{formatDispatchEstimate(estimate.start, estimate.end)}</span></div>; })}</div></div> : null}
 					{orderItems.length > 0 ? <div data-receipt-section="items" className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
 					<BarcodeLines value={orderReference} />
 					</div>
@@ -175,7 +184,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 						<p className="mt-2.5 text-center text-[10px] text-muted-foreground/70">Pembaruan otomatis — pesananmu sedang {currentStepLabel.toLowerCase()}.</p>
 					</div>
 				) : null}
-			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div><button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/20 bg-primary/5 px-2.5 py-2.5 text-[10px] font-black text-primary shadow-sm" onClick={props.onHome}>Kembali ke Home</button>
+			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Preorder lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground" onClick={props.onHome}>Kembali ke Home</button></div>
 		</div>
 	);
 }

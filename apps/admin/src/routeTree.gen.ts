@@ -37,6 +37,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminOrderMieYaminRouteImport } from './routes/admin/order-mie-yamin'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
 import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
+import { Route as AdminNotificationsRouteImport } from './routes/admin/notifications'
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminKolReportsRouteImport } from './routes/admin/kol-reports'
@@ -285,6 +286,13 @@ const AdminOnboardingRoute = AdminOnboardingRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/onboarding.lazy').then((d) => d.Route),
+)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/notifications.lazy').then((d) => d.Route),
 )
 const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
   id: '/minigames',
@@ -954,6 +962,7 @@ export interface FileRoutesByFullPath {
   '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
@@ -1061,6 +1070,7 @@ export interface FileRoutesByTo {
   '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
@@ -1164,6 +1174,7 @@ export interface FileRoutesById {
   '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/minigames': typeof AdminMinigamesRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
@@ -1278,6 +1289,7 @@ export interface FileRouteTypes {
     | '/admin/kol-reports'
     | '/admin/login'
     | '/admin/minigames'
+    | '/admin/notifications'
     | '/admin/onboarding'
     | '/admin/operational-team'
     | '/admin/order-mie-yamin'
@@ -1385,6 +1397,7 @@ export interface FileRouteTypes {
     | '/admin/kol-reports'
     | '/admin/login'
     | '/admin/minigames'
+    | '/admin/notifications'
     | '/admin/onboarding'
     | '/admin/orders'
     | '/admin/pos-notifications'
@@ -1487,6 +1500,7 @@ export interface FileRouteTypes {
     | '/admin/kol-reports'
     | '/admin/login'
     | '/admin/minigames'
+    | '/admin/notifications'
     | '/admin/onboarding'
     | '/admin/operational-team'
     | '/admin/order-mie-yamin'
@@ -1774,6 +1788,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/admin/onboarding'
       preLoaderRoute: typeof AdminOnboardingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/minigames': {
@@ -2704,6 +2725,7 @@ interface AdminRouteRouteChildren {
   AdminKolReportsRoute: typeof AdminKolReportsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminMinigamesRoute: typeof AdminMinigamesRoute
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRouteWithChildren
   AdminOrderMieYaminRoute: typeof AdminOrderMieYaminRouteWithChildren
@@ -2739,6 +2761,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminKolReportsRoute: AdminKolReportsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminMinigamesRoute: AdminMinigamesRoute,
+  AdminNotificationsRoute: AdminNotificationsRoute,
   AdminOnboardingRoute: AdminOnboardingRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRouteWithChildren,
   AdminOrderMieYaminRoute: AdminOrderMieYaminRouteWithChildren,

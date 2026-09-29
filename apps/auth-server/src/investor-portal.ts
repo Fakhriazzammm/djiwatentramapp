@@ -1,42 +1,24 @@
 import type { Hono } from "hono";
 import type { Pool } from "pg";
-import { betterAuth } from "better-auth";
-import { pool as authPool } from "./auth.js";
+import { auth, pool as authPool } from "./auth.js";
 
-const investorOrigins = [
-  "https://investor.yumme.id",
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:3011",
-];
-
-/** Dedicated investor identity surface. It intentionally cannot sign in with a password. */
-export const investorAuth = betterAuth({
-  database: authPool,
-  baseURL: process.env.BETTER_AUTH_URL || "https://djiwatentram.yumme.id",
-  basePath: "/api/investor-auth",
-  trustedOrigins: investorOrigins,
-  advanced: {
-    cookiePrefix: "djiwa_investor",
-    defaultCookieAttributes: {
-      secure: true,
-      httpOnly: true,
-      sameSite: "lax",
-    },
-  },
-  emailAndPassword: { enabled: false },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    },
-  },
-});
+/**
+ * Investor access reuses the central Djiwa App identity/session.
+ * Membership approval remains the separate gate for investor data.
+ */
+export const investorAuth = auth;
 
 type InvestorAuth = typeof investorAuth;
 
 type InvestorMembership = {
   status: "approved" | "pending" | "suspended" | "revoked";
+};
+
+type EcosystemRow = {
+  settled_orders: string | number;
+  order_value: string | number;
+  first_date_wib: string | null;
+  last_date_wib: string | null;
 };
 
 type MetricsRow = {
@@ -63,6 +45,13 @@ function privateJson(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
+
+function publicSnapshotJson(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": status === 200 ? "public, max-age=300" : "no-store" },
   });
 }
 
@@ -109,14 +98,71 @@ async function requireApprovedInvestor(auth: InvestorAuth, pool: Pool, headers: 
 }
 
 export function registerInvestorPortalRoutes(app: Hono, auth: InvestorAuth, pool: Pool) {
-  // Better Auth OAuth/session handlers are isolated from customer and staff cookies.
-  app.on(["POST", "GET"], "/api/investor-auth/*", (c) => auth.handler(c.req.raw));
-
+  // Investor access/data routes reuse the central Better Auth session.
   app.get("/api/investor/access", async (c) => {
     const session = await investorSession(auth, c.req.raw.headers);
     if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
     const status = await membershipStatus(pool, session.user.id);
     return privateJson({ status: status === "approved" || status === "pending" || status === "suspended" ? status : "none" });
+  });
+
+  // Public landing-page teaser: deliberately limited to one tagged self-service channel.
+  // It returns aggregates only, never order rows, identifiers, or customer fields.
+  app.get("/api/investor/public-snapshot", async () => {
+    try {
+      const [result, ecosystemResult] = await Promise.all([
+        pool.query<{
+          settled_orders: string | number;
+          order_value: string | number;
+          average_order_value: string | number;
+          first_date_wib: string | null;
+          last_date_wib: string | null;
+        }>(
+          `SELECT COUNT(*) FILTER (WHERE status IN ('paid', 'completed'))::int AS settled_orders,
+                  COALESCE(ROUND(SUM("totalAmount") FILTER (WHERE status IN ('paid', 'completed'))), 0)::text AS order_value,
+                  COALESCE(ROUND(AVG("totalAmount") FILTER (WHERE status IN ('paid', 'completed'))), 0)::text AS average_order_value,
+                  MIN((to_timestamp("createdAt" / 1000.0) AT TIME ZONE 'Asia/Jakarta')::date) FILTER (WHERE status IN ('paid', 'completed'))::text AS first_date_wib,
+                  MAX((to_timestamp("createdAt" / 1000.0) AT TIME ZONE 'Asia/Jakarta')::date) FILTER (WHERE status IN ('paid', 'completed'))::text AS last_date_wib
+             FROM public.pos_orders
+            WHERE "brandSlug" = $1
+              AND source = $2`,
+          ["djiwatentram", "customer_self_service"],
+        ),
+        pool.query<EcosystemRow>(
+          `SELECT COUNT(*) FILTER (WHERE status IN ('paid', 'completed'))::int AS settled_orders,
+                  COALESCE(ROUND(SUM("totalAmount") FILTER (WHERE status IN ('paid', 'completed'))), 0)::text AS order_value,
+                  MIN((to_timestamp("createdAt" / 1000.0) AT TIME ZONE 'Asia/Jakarta')::date) FILTER (WHERE status IN ('paid', 'completed'))::text AS first_date_wib,
+                  MAX((to_timestamp("createdAt" / 1000.0) AT TIME ZONE 'Asia/Jakarta')::date) FILTER (WHERE status IN ('paid', 'completed'))::text AS last_date_wib
+             FROM public.pos_orders`,
+        ),
+      ]);
+      const row = result.rows[0];
+      const ecosystemRow = ecosystemResult.rows[0];
+      if (!row || !ecosystemRow) return publicSnapshotJson({ success: false, error: "SNAPSHOT_UNAVAILABLE" }, 503);
+      const ecosystemOrders = numberValue(ecosystemRow.settled_orders) ?? 0;
+      const ecosystemValue = numberValue(ecosystemRow.order_value) ?? 0;
+      return publicSnapshotJson({
+        success: true,
+        data: {
+          settledOrders: numberValue(row.settled_orders),
+          orderValue: numberValue(row.order_value),
+          averageOrderValue: numberValue(row.average_order_value),
+          firstDateWib: row.first_date_wib,
+          lastDateWib: row.last_date_wib,
+          ecosystemSettledOrders: ecosystemOrders,
+          ecosystemOrderValue: ecosystemValue,
+          ecosystemAverageOrderValue: ecosystemOrders > 0 ? Math.round(ecosystemValue / ecosystemOrders) : 0,
+          ecosystemFirstDateWib: ecosystemRow.first_date_wib,
+          ecosystemLastDateWib: ecosystemRow.last_date_wib,
+          source: "public.pos_orders",
+          scope: "tagged_customer_self_service_only",
+          ecosystemScope: "all_recorded_pos_orders_paid_or_completed",
+          completeness: "partial",
+        },
+      });
+    } catch {
+      return publicSnapshotJson({ success: false, error: "SNAPSHOT_UNAVAILABLE" }, 503);
+    }
   });
 
   app.post("/api/investor/access-request", async (c) => {

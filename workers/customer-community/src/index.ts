@@ -33,12 +33,27 @@ type ReportRow = {
   created_at: string;
   reviewed_at: string | null;
 };
+type ActivityRow = {
+  id: string;
+  activity_type: "order_completed";
+  display_name_snapshot: string;
+  display_mode: "first_name" | "full_name";
+  product_source_id: string;
+  product_name_snapshot: string;
+  product_image_snapshot: string | null;
+  price_snapshot: number | null;
+  nutrition_snapshot: unknown;
+  order_settled_at: string;
+  visible_at: string;
+  expires_at: string;
+};
 
 const MAX_BODY_LENGTH = 1000;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 60;
 const MAX_PAGE_SIZE = 30;
+const MAX_ACTIVITY_PAGE_SIZE = 20;
 const UPLOAD_TOKEN_SECONDS = 10 * 60;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"]);
 
@@ -62,7 +77,7 @@ function preflight(request: Request, env: Env) {
   const origin = originFor(request, env);
   if (!origin) return json({ error: "Origin tidak diizinkan." }, 403);
   return json({ ok: true }, 200, origin, {
-    "Access-Control-Allow-Headers": "Content-Type, X-Requested-With",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Max-Age": "600",
   });
@@ -129,7 +144,8 @@ async function verifyToken(token: string, secret: string): Promise<Record<string
 }
 
 function dbUrl(env: Env, table: string, query = "") {
-  return `${env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${table}${query ? `?${query}` : ""}`;
+  const resource = table.startsWith("pos.") ? table.slice(4) : table;
+  return `${env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${resource}${query ? `?${query}` : ""}`;
 }
 
 async function db<T>(env: Env, table: string, init: RequestInit = {}, query = ""): Promise<T> {
@@ -138,6 +154,7 @@ async function db<T>(env: Env, table: string, init: RequestInit = {}, query = ""
     headers: {
       apikey: env.SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      ...(table.startsWith("pos.") ? { "Accept-Profile": "pos", "Content-Profile": "pos" } : {}),
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
       ...(init.headers || {}),
@@ -157,6 +174,37 @@ function normalizeExt(contentType: string) {
 
 function mediaMaxBytes(type: string) { return type.startsWith("video/") ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES; }
 function routeParts(url: URL) { return url.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean); }
+
+function encodeActivityCursor(visibleAt: string, id: string): string {
+  const value = JSON.stringify({ visibleAt, id });
+  return base64Url(new TextEncoder().encode(value));
+}
+
+function decodeActivityCursor(value: string | null): { visibleAt: string; id: string } | null {
+  if (!value || value.length > 256 || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(fromBase64Url(value))) as { visibleAt?: unknown; id?: unknown };
+    if (typeof parsed.visibleAt !== "string" || Number.isNaN(Date.parse(parsed.visibleAt)) || typeof parsed.id !== "string" || !/^[0-9a-f-]{36}$/i.test(parsed.id)) return null;
+    return { visibleAt: new Date(parsed.visibleAt).toISOString(), id: parsed.id };
+  } catch {
+    return null;
+  }
+}
+
+function serializeActivity(row: ActivityRow) {
+  return {
+    id: row.id,
+    displayName: row.display_name_snapshot,
+    productSourceId: row.product_source_id,
+    productName: row.product_name_snapshot,
+    productImageUrl: row.product_image_snapshot,
+    price: row.price_snapshot,
+    nutrition: row.nutrition_snapshot,
+    orderSettledAt: row.order_settled_at,
+    visibleAt: row.visible_at,
+    verified: true,
+  };
+}
 function publicAuthor(user: { source_id: string; name?: string | null; username?: string | null; slug?: string | null }) {
   return { sourceId: user.source_id, name: user.name || "Member", username: user.username || user.slug || null };
 }
@@ -240,7 +288,7 @@ export default {
       const requestUrl = new URL(request.url);
       const delegatedPath = requestUrl.searchParams.get("route");
       const parts = routeParts(delegatedPath ? new URL(delegatedPath, requestUrl.origin) : requestUrl);
-      if (parts[0] !== "posts" && parts[0] !== "admin") return json({ error: "Endpoint tidak ditemukan." }, 404, origin);
+      if (parts[0] !== "posts" && parts[0] !== "admin" && parts[0] !== "activity" && parts[0] !== "profile") return json({ error: "Endpoint tidak ditemukan." }, 404, origin);
 
       if (request.method === "PUT" && parts[0] === "posts" && parts[1] === "upload" && parts[2]) {
         const token = new URL(request.url).searchParams.get("token") || "";
@@ -258,6 +306,67 @@ export default {
 
       const user = await authenticate(request, env);
       if (!user?.id) return json({ error: "Sesi customer tidak valid." }, 401, origin);
+
+      if (request.method === "GET" && parts[0] === "activity" && parts.length === 1) {
+        const url = new URL(request.url);
+        const rawLimit = url.searchParams.get("limit");
+        const parsedLimit = rawLimit === null || rawLimit === "" ? 20 : Number(rawLimit);
+        if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > MAX_ACTIVITY_PAGE_SIZE) return json({ error: "Limit activity harus berupa bilangan bulat 1–20." }, 400, origin);
+        const cursorValue = url.searchParams.get("cursor");
+        const cursor = cursorValue ? decodeActivityCursor(cursorValue) : null;
+        if (cursorValue && !cursor) return json({ error: "Cursor activity tidak valid." }, 400, origin);
+        const now = new Date().toISOString();
+        const filters = [
+          "activity_type=eq.order_completed",
+          "visibility=eq.public",
+          "status=eq.active",
+          `visible_at=lte.${encodeURIComponent(now)}`,
+          `expires_at=gt.${encodeURIComponent(now)}`,
+          "order=visible_at.desc,id.desc",
+          `limit=${parsedLimit + 1}`,
+          "select=id,activity_type,display_name_snapshot,display_mode,product_source_id,product_name_snapshot,product_image_snapshot,price_snapshot,nutrition_snapshot,order_settled_at,visible_at,expires_at",
+        ];
+        if (cursor) {
+          filters.push(`or=(visible_at.lt.${encodeURIComponent(cursor.visibleAt)},and(visible_at.eq.${encodeURIComponent(cursor.visibleAt)},id.lt.${encodeURIComponent(cursor.id)}))`);
+        }
+        const rows = await db<ActivityRow[]>(env, "customer_community_activity_events", {}, filters.join("&"));
+        const hasMore = rows.length > parsedLimit;
+        const page = rows.slice(0, parsedLimit);
+        const last = page.at(-1);
+        return json({
+          success: true,
+          activities: page.map(serializeActivity),
+          nextCursor: hasMore && last ? encodeActivityCursor(last.visible_at, last.id) : null,
+          hasMore,
+        }, 200, origin);
+      }
+
+      if (request.method === "PATCH" && parts[0] === "profile" && parts[1] === "privacy" && parts.length === 2) {
+        const input = await request.json().catch(() => null) as Record<string, unknown> | null;
+        if (!input || typeof input.share_purchase_activity !== "boolean" || (input.purchase_activity_name_mode !== "first_name" && input.purchase_activity_name_mode !== "full_name")) {
+          return json({ error: "Pengaturan aktivitas pembelian tidak valid." }, 400, origin);
+        }
+        const rows = await db<Array<{ source_id: string; share_purchase_activity: boolean; purchase_activity_name_mode: "first_name" | "full_name" }>>(
+          env,
+          "pos_customers_view",
+          {},
+          `select=source_id,share_purchase_activity,purchase_activity_name_mode&source_id=eq.${encodeURIComponent(user.id)}&limit=1`,
+        );
+        if (!rows[0]) return json({ error: "Profil customer tidak ditemukan." }, 404, origin);
+        const updated = await db<typeof rows>(
+          env,
+          "pos.customers",
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ share_purchase_activity: input.share_purchase_activity, purchase_activity_name_mode: input.purchase_activity_name_mode }),
+          },
+          `source_id=eq.${encodeURIComponent(user.id)}&is_active=eq.true&select=source_id,share_purchase_activity,purchase_activity_name_mode&limit=1`,
+        );
+        const profile = updated[0];
+        if (!profile) return json({ error: "Profil customer tidak dapat diperbarui." }, 404, origin);
+        return json({ success: true, privacy: { sharePurchaseActivity: profile.share_purchase_activity, purchaseActivityNameMode: profile.purchase_activity_name_mode } }, 200, origin);
+      }
 
       if (request.method === "GET" && parts[0] === "posts" && parts.length === 1) {
         const url = new URL(request.url);

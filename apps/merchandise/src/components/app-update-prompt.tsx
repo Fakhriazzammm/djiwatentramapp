@@ -165,7 +165,7 @@ export function AppUpdatePrompt() {
 	return (
 		<Dialog open={open}>
 			<DialogContent
-				className="max-w-[calc(100%-2rem)] overflow-hidden rounded-[28px] border-0 p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)] sm:max-w-md"
+				className="!left-1/2 !right-auto !top-1/2 !w-[calc(100vw-2rem)] !max-w-md !-translate-x-1/2 !-translate-y-1/2 overflow-hidden rounded-[28px] border-0 p-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)]"
 				showCloseButton={!isUpdating}
 			>
 				<div className="bg-card p-6 sm:p-7">

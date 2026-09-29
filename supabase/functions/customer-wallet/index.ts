@@ -59,11 +59,18 @@ async function createHold(payload: Json) {
   await ownedCustomer(sourceId, email);
   const orderId = text(payload.orderId); const key = idempotency(payload.idempotencyKey);
   if (!orderId) throw new Error("orderId wajib diisi");
-  const { data: order, error: orderError } = await admin.schema("pos").from("orders").select("source_id,customer_source_id,total_amount,payment_method,status").eq("source_id", orderId).maybeSingle();
+  const { data: order, error: orderError } = await admin.schema("pos").from("orders").select("source_id,customer_source_id,total_amount,payment_method,status,brand_slug,source").eq("source_id", orderId).maybeSingle();
   if (orderError) throw orderError;
   if (!order || order.customer_source_id !== sourceId) throw new Error("Order bukan milik customer");
   if (String(order.payment_method || "").toLowerCase() !== "wallet") throw new Error("Order bukan pembayaran Djiwa Pay");
   if (["paid", "completed", "cancelled"].includes(String(order.status || "").toLowerCase())) throw new Error("Status order tidak dapat ditahan");
+  if (String(order.brand_slug || "").trim().toLowerCase() === "merchandise") {
+    if (String(order.source || "") !== "customer_self_service") {
+      throw new Error("Pre-order merchandise tidak dapat dibuat melalui POS kasir");
+    }
+    const { error: reservationError } = await admin.schema("pos").rpc("reserve_merchandise_preorder_order", { p_order_source_id: orderId });
+    if (reservationError) throw reservationError;
+  }
   const amount = Math.round(Number(order.total_amount));
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("Total order tidak valid");
   const { data, error } = await admin.schema("pos").rpc("wallet_create_hold", { p_customer_id: sourceId, p_order_id: orderId, p_amount: amount, p_idempotency_key: key });

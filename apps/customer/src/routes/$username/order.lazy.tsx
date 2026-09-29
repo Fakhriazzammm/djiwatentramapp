@@ -68,6 +68,7 @@ function OrderPage() {
 	const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0);
 	const menuScrollRef = useRef<HTMLElement | null>(null);
 	const checkoutRequestKeyRef = useRef<string | null>(null);
+	const activityProductAppliedRef = useRef<string | null>(null);
 
 	const siteSettings = useHybridSiteSettings();
 	const brandSettings = useHybridBookingSettings(brandSlug);
@@ -212,6 +213,34 @@ function OrderPage() {
 			return changed ? nextCart : currentCart;
 		});
 	}, [memberDiscounts, products, setCart]);
+
+	useEffect(() => {
+		const sourceId = search.productSourceId;
+		if (!sourceId || !products || !memberDiscounts || activityProductAppliedRef.current === sourceId) return;
+		const product = products.find((entry) => entry._id === sourceId);
+		const unavailable = !product || product.isAvailable === false || (product.quantity !== null && product.quantity !== undefined && product.quantity <= 0);
+		if (unavailable) return;
+		if (cart.some((item) => item.productId === sourceId)) {
+			activityProductAppliedRef.current = sourceId;
+			return;
+		}
+		const pricing = calculateEffectivePrice(
+			{ _id: product._id, price: product.price, categoryId: product.categoryId },
+			memberDiscounts,
+			{ channel: "djiwa_app", paymentMethod: paymentChoice === "wallet" ? "wallet" : undefined },
+		);
+		addToCart({
+			productId: product._id,
+			name: product.name,
+			price: pricing.finalPrice,
+			originalPrice: pricing.originalPrice,
+			quantity: 1,
+			image: product.image,
+			categoryId: product.categoryId,
+			menuNumber: product.menuNumber,
+		});
+		activityProductAppliedRef.current = sourceId;
+	}, [addToCart, cart, memberDiscounts, paymentChoice, products, search.productSourceId]);
 
 	const currentOrder = useHybridOrderById(receipt?.orderId);
 	const config = {
@@ -386,6 +415,9 @@ function OrderPage() {
 		}
 		if (search.table) {
 			params.table = search.table;
+		}
+		if (search.productSourceId) {
+			params.productSourceId = search.productSourceId;
 		}
 		navigate({ to: "/$username/order", params: { username }, search: params as any, replace: true });
 	}, [step]);

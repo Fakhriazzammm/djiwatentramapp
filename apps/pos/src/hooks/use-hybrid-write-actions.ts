@@ -2614,6 +2614,7 @@ const orderRow = {
 					table_number: args?.tableNumber ?? null,
 					order_type: args?.orderType ?? null,
 					source: args?.source ?? null,
+					shift_source_id: args?.source === "pos" ? String(args?.shiftId ?? "").trim() || null : null,
 					brand_slug: args?.brandSlug ?? null,
 					guest_count:
 						args?.guestCount === undefined ? null : Number(args.guestCount ?? 0),
@@ -2911,17 +2912,15 @@ export function useHybridDeleteOrder() {
 				// Fetch order details before deleting (for counter decrement + order_status cleanup)
 				let orderNumber: string | null = null;
 				let dailyReceiptNo: number | null = null;
-				let receiptKind: string | null = null;
 				try {
 					const { data: order } = await pos
 						.from("orders")
-						.select("order_number,daily_receipt_no,receipt_kind")
+						.select("order_number,daily_receipt_no,receipt_kind,shift_source_id")
 						.eq("source_id", id)
 						.maybeSingle();
 					if (order) {
 						orderNumber = order.order_number ?? null;
 						dailyReceiptNo = order.daily_receipt_no ?? null;
-						receiptKind = order.receipt_kind ?? null;
 					}
 				} catch (_) { /* best-effort */ }
 
@@ -2957,7 +2956,7 @@ export function useHybridDeleteOrder() {
 				if (orderError) throw orderError;
 
 				// Decrement daily receipt counter (fill gap — only if this was the highest number)
-				if (dailyReceiptNo != null && receiptKind) {
+				if (dailyReceiptNo != null) {
 					try {
 						const { error: decrementError } = await pos.rpc("decrement_daily_receipt_no", {
 							p_order_kind: "all",
@@ -4610,7 +4609,27 @@ async function assertShiftAttendanceComplete(
 		endTime: number,
 	): Promise<void> {
 		const rawMemberIds = Array.isArray(shift.teamMemberIds) ? shift.teamMemberIds : [];
-		const memberIds = rawMemberIds.map((id: unknown) => String(id || "")).filter(Boolean);
+		let memberIds = rawMemberIds.map((id: unknown) => String(id || "")).filter(Boolean);
+
+		// Older shifts were saved before teamMemberIds became mandatory. Resolve the
+		// persisted names instead of making those shifts impossible to close.
+		if (memberIds.length === 0) {
+			const memberNames = String(shift.teamMembers ?? "")
+				.split(",")
+				.map((name: string) => name.trim())
+				.filter(Boolean);
+			if (memberNames.length > 0) {
+				const { data: legacyStaff, error: legacyStaffError } = await supabase
+					.from("pos_staff_users")
+					.select("_id,name")
+					.in("name", memberNames);
+				if (legacyStaffError) {
+					throw new Error("Daftar anggota shift lama tidak dapat diverifikasi. Refresh data shift lalu coba lagi.");
+				}
+				const idByName = new Map((legacyStaff ?? []).map((row: any) => [String(row.name ?? "").trim().toLowerCase(), String(row._id ?? "")]));
+				memberIds = memberNames.map((name: string) => idByName.get(name.toLowerCase()) ?? "").filter(Boolean);
+			}
+		}
 		if (memberIds.length === 0) {
 			throw new Error("Tutup kasir diblokir: daftar anggota shift tidak tersedia. Refresh data shift lalu coba lagi.");
 		}

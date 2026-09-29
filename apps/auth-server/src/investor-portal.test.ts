@@ -4,10 +4,10 @@ import type { Pool } from "pg";
 import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js";
 
 type TestUser = { id: string; name: string; email: string };
-type PoolHarness = { status: string | null; queries: string[] };
+type PoolHarness = { status: string | null; queries: string[]; parameters: unknown[][] };
 
 function appFor(status: string | null) {
-  const harness: PoolHarness = { status, queries: [] };
+  const harness: PoolHarness = { status, queries: [], parameters: [] };
   const authStub = {
     handler: async () => new Response("not found", { status: 404 }),
     api: {
@@ -18,10 +18,14 @@ function appFor(status: string | null) {
     },
   } as unknown as Parameters<typeof registerInvestorPortalRoutes>[1];
   const poolStub = {
-    query: async (sql: string) => {
+    query: async (sql: string, parameters?: unknown[]) => {
       harness.queries.push(sql);
+      harness.parameters.push(parameters ?? []);
       if (sql.includes("FROM public.investor_memberships")) {
         return { rows: harness.status ? [{ status: harness.status }] : [] };
+      }
+      if (sql.includes("FROM public.pos_orders")) {
+        return { rows: [{ settled_orders: 419, order_value: "18140840", average_order_value: "43296", first_date_wib: "2026-08-09", last_date_wib: "2026-09-25" }] };
       }
       if (sql.includes("FROM public.pos_current_month_progress")) {
         return { rows: [{
@@ -67,6 +71,35 @@ describe("investor portal server boundary", () => {
     expect(metrics.status).toBe(401);
   });
 
+  test("public snapshot exposes only tagged channel aggregates without investor login", async () => {
+    const { app, harness } = appFor(null);
+    const response = await app.request("/api/investor/public-snapshot");
+    const body = await response.json() as { data: Record<string, unknown> };
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=300");
+    expect(body.data).toEqual({
+      settledOrders: 419,
+      orderValue: 18140840,
+      averageOrderValue: 43296,
+      firstDateWib: "2026-08-09",
+      lastDateWib: "2026-09-25",
+      ecosystemSettledOrders: 419,
+      ecosystemOrderValue: 18140840,
+      ecosystemAverageOrderValue: 43296,
+      ecosystemFirstDateWib: "2026-08-09",
+      ecosystemLastDateWib: "2026-09-25",
+      source: "public.pos_orders",
+      scope: "tagged_customer_self_service_only",
+      ecosystemScope: "all_recorded_pos_orders_paid_or_completed",
+      completeness: "partial",
+    });
+    const queryIndex = harness.queries.findIndex((sql) => sql.includes("FROM public.pos_orders"));
+    expect(queryIndex).toBeGreaterThanOrEqual(0);
+    expect(harness.parameters[queryIndex]).toEqual(["djiwatentram", "customer_self_service"]);
+    expect(harness.queries[queryIndex]).toContain("status IN ('paid', 'completed')");
+    expect(harness.queries[queryIndex]).not.toContain("customerName");
+  });
+
   test("pending membership is visible as pending but cannot read metrics", async () => {
     const { app } = appFor("pending");
     const access = await app.request("/api/investor/access", { headers: sessionHeaders("test-user") });
@@ -107,14 +140,8 @@ describe("investor portal server boundary", () => {
     expect(harness.queries.some((sql) => sql.includes("INSERT INTO public.investor_leads"))).toBe(true);
   });
 
-  test("investor Better Auth uses a dedicated path and rejects email/password sign-in", async () => {
-    const session = await investorAuth.handler(new Request("https://djiwatentram.yumme.id/api/investor-auth/get-session"));
-    const passwordLogin = await investorAuth.handler(new Request("https://djiwatentram.yumme.id/api/investor-auth/sign-in/email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "test@example.invalid", password: "test-only" }),
-    }));
+  test("investor portal reuses the central Better Auth session path", async () => {
+    const session = await investorAuth.handler(new Request("https://djiwatentram.yumme.id/api/auth/get-session"));
     expect(session.status).toBe(200);
-    expect(passwordLogin.status).toBeGreaterThanOrEqual(400);
   });
 });

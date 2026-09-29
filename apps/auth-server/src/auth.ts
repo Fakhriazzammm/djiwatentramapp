@@ -6,7 +6,7 @@ export const pool = new Pool({
   host: "localhost",
   port: 5433,
   user: "supabase_admin",
-  password: "supabase_local_password",
+  password: process.env.DB_PASSWORD,
   database: "postgres",
 });
 
@@ -16,7 +16,9 @@ export const auth = betterAuth({
   // Customer sessions are shared by the Djiwa App storefronts.
   trustedOrigins: [
     "https://djiwatentram.yumme.id",
+    "https://investor.yumme.id",
     "https://merchandise.yumme.id",
+    "https://booking.yumme.id",
     "https://b2b.yumme.id",
     "https://ordermieyamin.yumme.id",
     "https://500kopitasik.yumme.id",

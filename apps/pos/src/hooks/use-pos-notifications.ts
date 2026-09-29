@@ -3,7 +3,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 export type PosNotification = {
   id: string;
-  notification_type: "order_cashier_pending" | "order_mayar_pending" | "order_paid" | "admin_info" | "admin_briefing";
+  notification_type: "order_cashier_pending" | "order_mayar_pending" | "order_paid" | "order_payment_failed" | "order_cancelled" | "admin_info" | "admin_briefing";
   priority: "normal" | "high" | "urgent";
   title: string;
   message: string;
@@ -74,8 +74,13 @@ export function usePosNotifications(orderRefreshKey?: string) {
 
   useEffect(() => {
     void refresh(true);
-    const timer = window.setInterval(() => void refresh(true), 15000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => void refresh(false), 15000);
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(false); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [refresh, orderRefreshKey]);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.isRead).length, [notifications]);

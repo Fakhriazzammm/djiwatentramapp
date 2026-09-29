@@ -13,6 +13,7 @@ import type {
 	MenuMode,
 	PaymentChoice,
 	ReceiptState,
+	ShippingProvider,
 } from "@/components/customer/types";
 import { getSessionId } from "@/components/customer/types";
 import {
@@ -27,7 +28,7 @@ import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 // ── Types ──────────────────────────────────────────────────────
 
-export type OrderStep = "table" | "party" | "refill" | "menu" | "checkout" | "payment" | "receipt";
+export type OrderStep = "table" | "party" | "refill" | "menu" | "checkout" | "shipping" | "payment" | "receipt";
 
 export interface OrderContextType {
 	// ── Step / navigation ────────────────────────────────────
@@ -73,6 +74,14 @@ export interface OrderContextType {
 	setPaymentChoice: (value: PaymentChoice) => void;
 	customerName: string;
 	setCustomerName: (value: string) => void;
+	shippingReceiverName: string;
+	setShippingReceiverName: (value: string) => void;
+	shippingAddress: string;
+	setShippingAddress: (value: string) => void;
+	shippingPhone: string;
+	setShippingPhone: (value: string) => void;
+	shippingProvider: ShippingProvider | null;
+	setShippingProvider: (value: ShippingProvider | null) => void;
 	customerDescription: string;
 	setCustomerDescription: (value: string) => void;
 	tableNumber: string;
@@ -164,8 +173,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 	const [productSheet, setProductSheet] = useState<any | null>(null);
 
 	// Checkout / payment
-	const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("cashier");
+	const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("mayar");
 	const [customerName, setCustomerName] = useState("");
+	const [shippingReceiverName, setShippingReceiverName] = useState("");
+	const [shippingAddress, setShippingAddress] = useState("");
+	const [shippingPhone, setShippingPhone] = useState("");
+	const [shippingProvider, setShippingProvider] = useState<ShippingProvider | null>(null);
 	const [customerDescription, setCustomerDescription] = useState("");
 	const [tableNumber, setTableNumber] = useState("");
 	const [notes, setNotes] = useState("");
@@ -329,6 +342,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 				setPaymentChoice,
 				customerName,
 				setCustomerName,
+				shippingReceiverName,
+				setShippingReceiverName,
+				shippingAddress,
+				setShippingAddress,
+				shippingPhone,
+				setShippingPhone,
+				shippingProvider,
+				setShippingProvider,
 				customerDescription,
 				setCustomerDescription,
 				tableNumber,

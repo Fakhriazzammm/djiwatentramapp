@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { Clock, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useHybridProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
-import { AuthModal } from "@/components/customer/auth-modal";
 import { redirectToDjiwaAppLogin } from "@/lib/auth-client";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { CustomerOnboarding, CustomerSplash } from "@/components/customer/customer-entry";
@@ -16,21 +15,8 @@ export const Route = createLazyFileRoute("/")({
 function BrandCustomerIndex() {
 	const search = Route.useSearch();
 	const navigate = useNavigate();
-	const {
-		isAuthenticated,
-		isLoading,
-		customer,
-		login,
-		register,
-		logout,
-		resetPassword,
-		signInWithGoogle,
-		registrationNeedsEmailConfirm,
-	} = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer } = useCustomerAuth();
 
-	const [authModalOpen, setAuthModalOpen] = useState(false);
-	const [authError, setAuthError] = useState<string | undefined>(undefined);
-	const [googleLoading, setGoogleLoading] = useState(false);
 	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">("splash");
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
@@ -268,51 +254,6 @@ function BrandCustomerIndex() {
 						</div>
 					</section>
 				</main>
-
-				{/* ── Auth Modal ───────────────────────────────── */}
-				<AuthModal
-					open={authModalOpen}
-					onOpenChange={(val) => {
-						setAuthModalOpen(val);
-						if (!val) setAuthError(undefined);
-					}}
-					onLogin={async (email, password) => {
-						try {
-							setAuthError(undefined);
-							await login(email, password);
-						} catch (e: any) {
-							setAuthError(e?.message || "Gagal masuk");
-						}
-					}}
-					onRegister={async (email, password, name) => {
-						try {
-							setAuthError(undefined);
-							await register(email, password, name);
-						} catch (e: any) {
-							setAuthError(e?.message || "Gagal mendaftar");
-						}
-					}}
-					onSkip={() => setAuthModalOpen(false)}
-					onDjiwaAppSignIn={() => redirectToDjiwaAppLogin()}
-					onGoogleSignIn={async () => {
-						try {
-							setGoogleLoading(true);
-							setAuthError(undefined);
-							await signInWithGoogle();
-						} catch (e: any) {
-							setGoogleLoading(false);
-							setAuthError(e?.message || "Gagal masuk dengan Google");
-						}
-					}}
-					onResetPassword={async (email) => {
-						try {
-							await resetPassword(email);
-						} catch {}
-					}}
-					isLoading={isLoading || googleLoading}
-					needsEmailConfirm={registrationNeedsEmailConfirm}
-					error={authError}
-				/>
 			</div>
 		</div>
 	);

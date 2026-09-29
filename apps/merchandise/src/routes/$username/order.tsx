@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const orderSearchSchema = z.object({
 	step: z
-		.enum(["table", "party", "refill", "menu", "checkout", "payment", "receipt"])
+		.enum(["table", "party", "refill", "menu", "checkout", "shipping", "payment", "receipt"])
 		.optional()
 		.default("menu"),
 	orderId: z.string().optional(),

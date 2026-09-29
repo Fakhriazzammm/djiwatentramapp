@@ -17,6 +17,8 @@ type PushSubscriptionInput = {
 const dbUrl = (Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "").replace(/\/+$/, "");
 const serviceKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ORDER_NOTIFICATION_RETENTION_MS = 24 * 60 * 60 * 1000;
+const REST_PAGE_SIZE = 500;
+const REST_MAX_PAGES = 20;
 
 function response(body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -39,6 +41,20 @@ async function dbGet(table: string, params: Record<string, string>): Promise<any
   const result = await fetch(`${dbUrl}/rest/v1/${table}?${query}`, { headers: dbHeaders() });
   if (!result.ok) throw new Error(`DB read failed (${result.status})`);
   return (await result.json()) as any[];
+}
+
+async function dbGetPaged(table: string, params: Record<string, string>): Promise<any[]> {
+  const rows: any[] = [];
+  for (let page = 0; page < REST_MAX_PAGES; page += 1) {
+    const batch = await dbGet(table, {
+      ...params,
+      limit: String(REST_PAGE_SIZE),
+      offset: String(page * REST_PAGE_SIZE),
+    });
+    rows.push(...batch);
+    if (batch.length < REST_PAGE_SIZE) break;
+  }
+  return rows;
 }
 
 async function dbWrite(table: string, method: "POST" | "PATCH", body: unknown, params = "", preferOverride?: string) {
@@ -81,7 +97,7 @@ async function removePushSubscription(user: UserContext, endpoint: unknown) {
 async function pushStatus(user: UserContext, endpoint: unknown) {
   const value = String(endpoint ?? "").trim();
   if (!value) return { subscribed: false };
-  const rows = await dbGet("pos_notification_push_subscriptions", { select: "id", endpoint: `eq.${encodeURIComponent(value)}`, user_id: `eq.${encodeURIComponent(user.id)}`, is_active: "eq.true", limit: "1" });
+  const rows = await dbGet("pos_notification_push_subscriptions", { select: "id", endpoint: `eq.${value}`, user_id: `eq.${user.id}`, is_active: "eq.true", limit: "1" });
   return { subscribed: rows.length > 0 };
 }
 
@@ -107,10 +123,17 @@ async function dispatchWebPush(notification: any) {
   webpush.default?.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
   const body = JSON.stringify({ title: notification.title, body: notification.message, notificationId: notification.id, url: notification.action_type === "open_order" ? "/admin/orders" : "/admin" });
   await Promise.all(targets.map(async (item: any) => {
-    const delivery = await dbWrite("pos_notification_push_deliveries", "POST", { notification_id: notification.id, subscription_id: item.id, status: "sent" }, "?on_conflict=notification_id,subscription_id");
+    const delivery = await dbWrite(
+      "pos_notification_push_deliveries",
+      "POST",
+      { notification_id: notification.id, subscription_id: item.id, status: "sent", error_message: null },
+      "?on_conflict=notification_id,subscription_id",
+      "resolution=merge-duplicates,return=representation",
+    );
     if (!Array.isArray(delivery) || !delivery.length) return;
     try {
       await webpush.default?.sendNotification({ endpoint: item.endpoint, keys: { p256dh: item.p256dh, auth: item.auth } }, body);
+      await dbWrite("pos_notification_push_deliveries", "PATCH", { status: "sent", error_message: null }, `?notification_id=eq.${encodeURIComponent(notification.id)}&subscription_id=eq.${encodeURIComponent(item.id)}`);
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 500) : "Web Push failed";
       await dbWrite("pos_notification_push_deliveries", "PATCH", { status: "failed", error_message: message }, `?notification_id=eq.${encodeURIComponent(notification.id)}&subscription_id=eq.${encodeURIComponent(item.id)}`);
@@ -188,33 +211,57 @@ async function syncRecentOrders() {
   // permanently lose an operational alert. Initial POS load seeds silently;
   // only newly observed IDs create a popup in the client.
   const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
-  const orders = await dbGet("pos_orders", {
+  const orders = await dbGetPaged("pos_orders", {
     select: "_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items",
     order: "createdAt.desc",
-    limit: "500",
   });
   let created = 0;
   for (const order of orders ?? []) {
     const source = sourceOf(order);
     const createdAt = Number(order.createdAt ?? 0);
-    if (source !== "customer_self_service" || !Number.isFinite(createdAt) || createdAt < Date.parse(since)) continue;
+    if (!source || !Number.isFinite(createdAt) || createdAt < Date.parse(since)) continue;
     const status = String(order.status ?? "").toLowerCase();
     const payment = paymentType(order);
+    const sourceLabel = source === "customer_self_service" || source === "djiwaapp"
+      ? "DjiwaApp"
+      : source === "pos"
+        ? "POS"
+        : source === "ordermieyamin"
+          ? "Order Mie Yamin"
+          : source === "merchandise"
+            ? "Merchandise"
+            : source;
     let type: string | null = null;
     let title = "";
     let message = "";
     if (status === "pending" && payment === "cashier") {
       type = "order_cashier_pending";
-      title = "Pesanan Baru dari DjiwaApp";
+      title = `Pesanan Baru dari ${sourceLabel}`;
       message = "Menunggu Pembayaran di Kasir";
     } else if (status === "pending" && payment === "mayar") {
       type = "order_mayar_pending";
-      title = "Menunggu Pembayaran QRIS DjiwaApp";
+      title = `Menunggu Pembayaran QRIS ${sourceLabel}`;
       message = "Pembayaran belum dikonfirmasi";
-    } else if ((status === "paid" || status === "completed") && (payment === "mayar" || payment === "cashier" || payment === "wallet")) {
+    } else if (status === "cancelled" && source && (payment === "wallet" || payment === "mayar")) {
+      type = "order_payment_failed";
+      title = `Pembayaran ${sourceLabel} Gagal`;
+      message = payment === "wallet" ? "Saldo Djiwa Pay tidak cukup atau pembayaran dibatalkan" : "Pembayaran QRIS gagal atau kedaluwarsa";
+    } else if ((status === "paid" || status === "completed") && source) {
       type = "order_paid";
-      title = payment === "cashier" ? "Pembayaran TUNAI Berhasil" : payment === "wallet" ? "Pembayaran DJIWA PAY Berhasil" : "Pembayaran QRIS Berhasil";
-      message = payment === "cashier" ? "Pesanan DjiwaApp Sudah Dibayar secara TUNAI" : payment === "wallet" ? "Pesanan DjiwaApp Sudah Dibayar dengan DJIWA PAY" : "Pesanan DjiwaApp Sudah Lunas";
+      title = payment === "cashier"
+        ? `Pembayaran ${sourceLabel} TUNAI Berhasil`
+        : payment === "wallet"
+          ? `Pembayaran ${sourceLabel} Djiwa Pay Berhasil`
+          : payment === "mayar"
+            ? `Pembayaran ${sourceLabel} QRIS Berhasil`
+            : `Transaksi ${sourceLabel} Berhasil`;
+      message = payment === "cashier"
+        ? `Pesanan ${sourceLabel} sudah dibayar secara TUNAI`
+        : payment === "wallet"
+          ? `Pesanan ${sourceLabel} sudah dibayar dengan Djiwa Pay`
+          : payment === "mayar"
+            ? `Pesanan ${sourceLabel} sudah lunas`
+            : `Order ${order.orderNumber ?? order._id} berstatus ${status}`;
     }
     if (!type || !order._id) continue;
 
@@ -237,14 +284,19 @@ async function syncRecentOrders() {
       message,
       order_source_id: String(order._id),
       order_number: order.orderNumber ?? null,
-      source: "customer_self_service",
+      source,
+      source_app: source === "pos" ? "pos" : "customer",
+      source_module: "orders",
+      entity_type: "order",
+      entity_id: String(order._id),
+      event_id: crypto.randomUUID(),
       dedupe_key: `order:${order._id}:${type}`,
       action_type: "open_order",
       action_payload: {
         orderId: order._id,
         orderNumber: order.orderNumber ?? null,
-        source: "djiwaapp",
-        paymentMethod: payment === "mayar" ? "qris" : payment === "wallet" ? "wallet" : "cashier",
+        source,
+        paymentMethod: payment === "mayar" ? "qris" : payment === "wallet" ? "wallet" : payment === "cashier" ? "cashier" : "unknown",
         paymentStatus: status,
         customerName: order.customerName ?? null,
         tableNumber: order.tableNumber ?? null,
@@ -270,6 +322,12 @@ async function syncRecentOrders() {
 }
 
 async function listNotifications(user: UserContext) {
+  const userReads = await dbGet("pos_notification_reads", {
+    select: "notification_id,read_at,acknowledged_at",
+    user_id: `eq.${encodeURIComponent(user.id)}`,
+    limit: "5000",
+  });
+  const readByNotification = new Map((userReads ?? []).map((read: any) => [String(read.notification_id), read]));
   const rows = await dbGet("pos_notifications", {
     select: "*",
     is_active: "eq.true",
@@ -316,18 +374,28 @@ async function listNotifications(user: UserContext) {
     const orderStatus = item.order_source_id
       ? orderStatuses.get(String(item.order_source_id))
       : undefined;
-    if (orderStatus === "cancelled") return false;
-    // Pending payment notifications are stale as soon as the order is paid.
+    if (item.order_source_id && orderStatus === "cancelled"
+      && ["order_cashier_pending", "order_mayar_pending"].includes(String(item.notification_type))) return false;
     if ((item.notification_type === "order_cashier_pending" || item.notification_type === "order_mayar_pending")
       && (orderStatus === "paid" || orderStatus === "completed")) return false;
     return true;
   }).map((item: any) => ({
     ...item,
-    isRead: Boolean(item.global_read_at),
-    readAt: item.global_read_at ?? null,
-    acknowledgedAt: item.global_acknowledged_at ?? null,
+    isRead: Boolean(readByNotification.get(String(item.id))?.read_at),
+    readAt: readByNotification.get(String(item.id))?.read_at ?? null,
+    acknowledgedAt: readByNotification.get(String(item.id))?.acknowledged_at ?? null,
   }));
   return visible;
+}
+
+async function assertNotificationVisible(notificationId: string, user: UserContext) {
+  const rows = await dbGet("pos_notifications", { select: "id,is_active,expires_at,target_user_id,target_role,target_branch_id", id: `eq.${encodeURIComponent(notificationId)}`, limit: "1" });
+  const item = rows[0];
+  if (!item || item.is_active !== true) throw new Error("Notification tidak ditemukan");
+  if (item.expires_at && Date.parse(String(item.expires_at)) < Date.now()) throw new Error("Notification sudah kedaluwarsa");
+  if (item.target_user_id && String(item.target_user_id) !== user.id) throw new Error("Notification tidak dapat diakses");
+  if (item.target_role && String(item.target_role).toLowerCase() !== user.role) throw new Error("Notification tidak dapat diakses");
+  if (item.target_branch_id && String(item.target_branch_id) !== String(user.branchId ?? "")) throw new Error("Notification tidak dapat diakses");
 }
 
 Deno.serve(async (req) => {
@@ -354,13 +422,17 @@ Deno.serve(async (req) => {
     if (action === "mark_read" || action === "acknowledge" || action === "dismiss") {
       const notificationId = String((payload as Json).notificationId ?? "");
       if (!notificationId) return response({ error: "notificationId is required" }, 400);
-      await dbWrite("pos_notifications", "PATCH", action === "dismiss"
-        ? { is_active: false, global_read_at: new Date().toISOString() }
-        : {
-            global_read_at: new Date().toISOString(),
-            global_acknowledged_at: action === "acknowledge" ? new Date().toISOString() : null,
-          },
-      `?id=eq.${encodeURIComponent(notificationId)}`);
+      await assertNotificationVisible(notificationId, user);
+      const now = new Date().toISOString();
+      await dbWrite("pos_notification_reads", "POST", {
+        notification_id: notificationId,
+        user_id: user.id,
+        read_at: now,
+        acknowledged_at: action === "acknowledge" ? now : null,
+      }, "?on_conflict=notification_id,user_id", "resolution=merge-duplicates,return=representation");
+      if (action === "dismiss") {
+        await dbWrite("pos_notifications", "PATCH", { is_active: false }, `?id=eq.${encodeURIComponent(notificationId)}`);
+      }
       return response({ success: true });
     }
 

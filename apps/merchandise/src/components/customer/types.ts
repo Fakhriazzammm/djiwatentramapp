@@ -32,9 +32,10 @@ export function readGuestOrderReferences(now = Date.now()): GuestOrderReference[
 }
 
 export type RouteSearch = { table?: string; session?: string; orderId?: string };
-export type Step = "welcome" | "party" | "refill" | "menu" | "checkout" | "receipt";
+export type Step = "welcome" | "party" | "refill" | "menu" | "checkout" | "shipping" | "receipt";
 export type MenuMode = "number" | "catalog";
 export type PaymentChoice = "cashier" | "mayar" | "wallet";
+export type ShippingProvider = "anteraja" | "sicepat";
 export type ServiceRequestType = "call_staff" | "bring_dessert";
 
 export type CartItem = {
@@ -56,8 +57,13 @@ export type ReceiptState = {
 	paymentChoice: PaymentChoice;
 	invoiceId?: string;
 	invoiceUrl?: string;
-	dessertLater: boolean;
 	cartSnapshot: CartItem[];
+	shipping?: {
+		provider?: ShippingProvider;
+		receiverName: string;
+		address: string;
+		phone: string;
+	};
 };
 
 export const CUSTOMER_ORDERING_DEFAULTS = {

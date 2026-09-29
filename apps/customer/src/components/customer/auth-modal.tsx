@@ -17,7 +17,7 @@ type AuthModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLogin: (email: string, password: string) => void;
-  onRegister: (email: string, password: string, name: string) => void;
+  onRegister: (email: string, password: string, name: string, consentAll: boolean) => void;
   onResetPassword: (email: string) => void;
   onSkip: () => void;
   onGoogleSignIn?: () => void;
@@ -44,6 +44,7 @@ export function AuthModal({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
+  const [consentAll, setConsentAll] = useState(false);
 
   // ── Forgot password state ─────────────────────────────────
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -84,14 +85,15 @@ export function AuthModal({
     if (tab === "login") {
       onLogin(email.trim(), password);
     } else {
-      onRegister(email.trim(), password, name.trim());
+      if (!consentAll) return;
+      onRegister(email.trim(), password, name.trim(), consentAll);
     }
   };
 
   const isFormValid =
     email.trim().length > 0 &&
     password.trim().length > 0 &&
-    (tab === "login" || name.trim().length > 0);
+    (tab === "login" || (name.trim().length > 0 && consentAll));
 
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!showSuccess) onOpenChange(value); }}>
@@ -278,6 +280,7 @@ export function AuthModal({
                     {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
                 </div>
+                {tab === "register" ? <label className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={consentAll} onChange={(event) => setConsentAll(event.target.checked)} className="mt-0.5" />Saya menyetujui Ketentuan Djiwa dan penggunaan data untuk layanan, marketing, cookies non-esensial, serta aktivitas pembelian di Komunitas. Saya dapat mengubah pilihan yang tersedia di Profil.</label> : null}
               </div>
 
               {/* Forgot password */}
@@ -295,7 +298,7 @@ export function AuthModal({
               ) : null}
 
               {/* Google Sign In */}
-              {onGoogleSignIn ? (
+              {onGoogleSignIn && tab === "login" ? (
                 <>
                   <div className="relative mt-4 flex items-center gap-3">
                     <div className="h-px flex-1 bg-border/50" />

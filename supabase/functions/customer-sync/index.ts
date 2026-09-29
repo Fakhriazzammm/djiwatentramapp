@@ -68,7 +68,7 @@ async function findOwnedCustomer(sourceId: string, email: string) {
 	const { data, error } = await supabaseAdmin
 		.schema("pos")
 		.from("customers")
-		.select("source_id, email, name, username, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
+		.select("source_id, email, name, username, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, share_purchase_activity, purchase_activity_name_mode, profile_completed_at, total_points, lifetime_points")
 		.eq("source_id", sourceId)
 		.maybeSingle();
 
@@ -131,6 +131,8 @@ async function handleSync(payload: JsonRecord) {
 	const userId = toTrimmedString(payload.userId);
 	const name = toTrimmedString(payload.name);
 	const email = toTrimmedString(payload.email);
+	const sharePurchaseActivity = typeof payload.sharePurchaseActivity === "boolean" ? payload.sharePurchaseActivity : undefined;
+	const purchaseActivityNameMode = payload.purchaseActivityNameMode === "full_name" ? "full_name" : "first_name";
 
 	if (!userId) throw new Error("userId wajib diisi");
 
@@ -162,6 +164,8 @@ async function handleSync(payload: JsonRecord) {
 				source_id: userId,
 				email: email || null,
 				name: name || null,
+				share_purchase_activity: sharePurchaseActivity === true,
+				purchase_activity_name_mode: purchaseActivityNameMode,
 				is_active: true,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
@@ -182,6 +186,8 @@ async function handleSync(payload: JsonRecord) {
 	};
 	if (email) updates.email = email;
 	if (name) updates.name = name;
+	if (sharePurchaseActivity !== undefined) updates.share_purchase_activity = sharePurchaseActivity;
+	if (sharePurchaseActivity !== undefined || payload.purchaseActivityNameMode !== undefined) updates.purchase_activity_name_mode = purchaseActivityNameMode;
 
 	const { error: updateError } = await supabaseAdmin
 		.schema("pos")
@@ -238,9 +244,11 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	const province = toTrimmedString(payload.province);
 	const postalCode = toTrimmedString(payload.postalCode);
 	const marketingConsent = typeof payload.marketingConsent === "boolean" ? payload.marketingConsent : undefined;
+	const sharePurchaseActivity = typeof payload.sharePurchaseActivity === "boolean" ? payload.sharePurchaseActivity : undefined;
+	const purchaseActivityNameMode = payload.purchaseActivityNameMode === "first_name" || payload.purchaseActivityNameMode === "full_name" ? payload.purchaseActivityNameMode : undefined;
 
 	if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
-	if (!name && !username && !phone && !customerDescription && !nickname && !birthDate && !gender && !address && !city && !province && !postalCode && marketingConsent === undefined) throw new Error("Tidak ada field yang diubah");
+	if (!name && !username && !phone && !customerDescription && !nickname && !birthDate && !gender && !address && !city && !province && !postalCode && marketingConsent === undefined && sharePurchaseActivity === undefined && purchaseActivityNameMode === undefined) throw new Error("Tidak ada field yang diubah");
 	if (username) assertUsername(username);
 
 	const { customer, error: ownershipError } = await findOwnedCustomer(sourceId, email);
@@ -268,6 +276,8 @@ async function handleUpdateProfile(payload: JsonRecord) {
 	if (province) updates.province = province;
 	if (postalCode) updates.postal_code = postalCode;
 	if (marketingConsent !== undefined) updates.marketing_consent = marketingConsent;
+	if (sharePurchaseActivity !== undefined) updates.share_purchase_activity = sharePurchaseActivity;
+	if (purchaseActivityNameMode !== undefined) updates.purchase_activity_name_mode = purchaseActivityNameMode;
 	if ((name || String((customer as Record<string, unknown>).name ?? "").trim()) && (phone || String((customer as Record<string, unknown>).phone ?? "").replace(/[^\d]/g, "").length >= 10)) {
 		updates.profile_completed_at = new Date().toISOString();
 	}
@@ -277,7 +287,7 @@ async function handleUpdateProfile(payload: JsonRecord) {
 		.from("customers")
 		.update(updates)
 		.eq("source_id", sourceId)
-		.select("source_id, name, username, email, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, profile_completed_at, total_points, lifetime_points")
+		.select("source_id, name, username, email, phone, customer_description, nickname, birth_date, gender, address, city, province, postal_code, marketing_consent, share_purchase_activity, purchase_activity_name_mode, profile_completed_at, total_points, lifetime_points")
 		.maybeSingle();
 
 	if (error) throw error;

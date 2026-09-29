@@ -135,6 +135,12 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/kol-data": "Data KOL",
 	"/admin/kol-collaborations": "Kolaborasi KOL",
 	"/admin/kol-reports": "Laporan KOL",
+	"/admin/merchandise": "Merchandise · Ringkasan",
+	"/admin/merchandise/": "Merchandise · Ringkasan",
+	"/admin/merchandise/campaigns": "Produk & Pre-order",
+	"/admin/merchandise/orders": "Pesanan Merchandise",
+	"/admin/merchandise/refunds": "Review Refund Merchandise",
+	"/admin/merchandise/settings": "Pengaturan Merchandise",
 };
 
 // Bottom nav items (Djiwa Tentram AI at center index 2)
@@ -179,6 +185,12 @@ const MORE_MENU_PATHS = [
 	"/admin/kol-data",
 	"/admin/kol-collaborations",
 	"/admin/kol-reports",
+	"/admin/merchandise",
+	"/admin/merchandise/",
+	"/admin/merchandise/campaigns",
+	"/admin/merchandise/orders",
+	"/admin/merchandise/refunds",
+	"/admin/merchandise/settings",
 	"/admin/operational-team",
 	"/admin/karyawan",
 	"/admin/karyawan/data",
@@ -202,6 +214,16 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/recipe/base", icon: FileText, label: "Base Recipe", permission: "inventory:manage" },
 			{ to: "/admin/inventory", icon: Archive, label: "Inventaris", permission: "inventory:manage" },
 			{ to: '/admin/stock-overview', icon: BarChart3, label: 'Ringkasan Stok', permission: 'inventory:manage' },
+		],
+	},
+	{
+		label: "Merchandise",
+		items: [
+			{ to: "/admin/merchandise/", icon: LayoutDashboard, label: "Ringkasan", permission: "orders:view" },
+			{ to: "/admin/merchandise/campaigns", icon: Package, label: "Produk & Pre-order", permission: "products:manage" },
+			{ to: "/admin/merchandise/orders", icon: Truck, label: "Pesanan & Fulfillment", permission: "orders:view" },
+			{ to: "/admin/merchandise/refunds", icon: Receipt, label: "Review Refund", permission: "orders:view" },
+			{ to: "/admin/merchandise/settings", icon: Settings, label: "Pengaturan", permission: "products:manage" },
 		],
 	},
 	{
@@ -302,6 +324,15 @@ const FINANCE_PATHS = [
 const DJIWA_APP_PATHS = [
 	"/admin/djiwa-app",
 	"/admin/customers",
+];
+
+const MERCHANDISE_PATHS = [
+	"/admin/merchandise",
+	"/admin/merchandise/",
+	"/admin/merchandise/campaigns",
+	"/admin/merchandise/orders",
+	"/admin/merchandise/refunds",
+	"/admin/merchandise/settings",
 ];
 
 const KOL_MARKETING_PATHS = [
@@ -522,6 +553,17 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	useEffect(() => {
 		if (isOnKolMarketingPath) setIsKolMarketingOpen(true);
 	}, [isOnKolMarketingPath]);
+
+	const isOnMerchandisePath = MERCHANDISE_PATHS.some((p) => location.pathname.startsWith(p));
+	const [isMerchandiseOpen, setIsMerchandiseOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-merchandise-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnMerchandisePath;
+	});
+	useEffect(() => { if (isOnMerchandisePath) setIsMerchandiseOpen(true); }, [isOnMerchandisePath]);
+	useEffect(() => { localStorage.setItem("admin-merchandise-open", String(isMerchandiseOpen)); }, [isMerchandiseOpen]);
 
 	useEffect(() => {
 		localStorage.setItem("admin-rekrutmen-open", String(isRecruitmentOpen));
@@ -1034,6 +1076,31 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 									<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/kol-reports" permission="analytics:view" />
 								</div></motion.div>}
 							</AnimatePresence>
+						</>
+					)}
+
+					{/* MERCHANDISE */}
+					<SidebarSection isCollapsed={isCollapsed} label="MERCHANDISE" />
+					{isCollapsed ? (
+						<>
+							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Ringkasan Merchandise" to="/admin/merchandise/" permission="orders:view" />
+							<DesktopNavLink icon={<Package />} isCollapsed={isCollapsed} label="Produk & Pre-order" to="/admin/merchandise/campaigns" permission="products:manage" />
+							<DesktopNavLink icon={<Truck />} isCollapsed={isCollapsed} label="Pesanan Merchandise" to="/admin/merchandise/orders" permission="orders:view" />
+							<DesktopNavLink icon={<Receipt />} isCollapsed={isCollapsed} label="Review Refund" to="/admin/merchandise/refunds" permission="orders:view" />
+							<DesktopNavLink icon={<Settings />} isCollapsed={isCollapsed} label="Pengaturan Merchandise" to="/admin/merchandise/settings" permission="products:manage" />
+						</>
+					) : (
+						<>
+							<button className={`mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnMerchandisePath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} onClick={() => setIsMerchandiseOpen(!isMerchandiseOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><Package /></span><span className="flex-1 truncate text-left">Merchandise</span><motion.span animate={{ rotate: isMerchandiseOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>{isMerchandiseOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}><div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+									<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Ringkasan" to="/admin/merchandise/" permission="orders:view" />
+									<DesktopSubNavLink icon={<Package />} label="Produk & Pre-order" to="/admin/merchandise/campaigns" permission="products:manage" />
+									<DesktopSubNavLink icon={<Truck />} label="Pesanan & Fulfillment" to="/admin/merchandise/orders" permission="orders:view" />
+									<DesktopSubNavLink icon={<Receipt />} label="Review Refund" to="/admin/merchandise/refunds" permission="orders:view" />
+									<DesktopSubNavLink icon={<Settings />} label="Pengaturan" to="/admin/merchandise/settings" permission="products:manage" />
+								</div></motion.div>}</AnimatePresence>
 						</>
 					)}
 

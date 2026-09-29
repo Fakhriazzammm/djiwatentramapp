@@ -1,7 +1,7 @@
 {
-  "version": "0.2.224",
-  "commitHash": "00fa1e7",
-  "message": "fix(admin): prevent false update prompt loop",
-  "buildDate": "2026-09-25",
-  "generatedAt": "2026-09-25T11:24:42.053Z"
+  "version": "0.2.365",
+  "commitHash": "276033b",
+  "message": "chore(admin): publish notification release metadata",
+  "buildDate": "2026-09-29",
+  "generatedAt": "2026-09-29T09:13:50.482Z"
 }

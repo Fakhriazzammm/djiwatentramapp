@@ -143,6 +143,9 @@ function resolveOrderChannel(order: any): OrderChannel {
 	if (order.type === "booking" || order.businessCategory === "booking") {
 		return { label: "Booking", className: "bg-blue-100 text-blue-700" };
 	}
+	if (brandSlug === "merchandise") {
+		return { label: "Merchandise · Pre-order", className: "bg-sky-100 text-sky-700" };
+	}
 	if (businessUnit === "ordermieyamin" || businessUnit === "mieyamin") {
 		return { label: "Mie Yamin", className: "bg-amber-100 text-amber-800" };
 	}

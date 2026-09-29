@@ -17,6 +17,8 @@ export type AdminNotification = {
 	isRead: boolean;
 	readAt: string | null;
 	acknowledgedAt: string | null;
+	source_app?: string | null;
+	source?: string | null;
 };
 
 type NotificationResponse = { notifications?: AdminNotification[] };
@@ -109,9 +111,14 @@ export function useAdminNotifications() {
 	useEffect(() => {
 		if (isLoading || !isAuthenticated) return;
 		void fetchNotifications();
-		const interval = window.setInterval(() => void fetchNotifications(true), 45000);
+		const interval = window.setInterval(() => void fetchNotifications(true), 10_000);
+		const onVisible = () => {
+			if (document.visibilityState === "visible") void fetchNotifications(true);
+		};
+		document.addEventListener("visibilitychange", onVisible);
 		return () => {
 			window.clearInterval(interval);
+			document.removeEventListener("visibilitychange", onVisible);
 			if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
 		};
 	}, [fetchNotifications, isAuthenticated, isLoading]);

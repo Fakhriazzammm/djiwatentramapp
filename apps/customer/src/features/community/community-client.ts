@@ -1,3 +1,5 @@
+import type { CommunityPurchaseActivity, CommunityPurchaseActivityPage } from "./community-types";
+
 export type CommunityMediaType = "image" | "video";
 
 export type CommunityAuthor = {
@@ -85,6 +87,20 @@ function mapPost(post: CommunityPost): CommunityPost {
 }
 
 export const communityClient = {
+  async listPurchaseActivity(cursor?: string, signal?: AbortSignal): Promise<CommunityPurchaseActivityPage> {
+    const params = new URLSearchParams({ limit: "20" });
+    if (cursor) params.set("cursor", cursor);
+    const payload = await request<CommunityPurchaseActivityPage>(`/activity?${params.toString()}`, { signal });
+    return {
+      activities: (payload.activities ?? []).map((activity) => ({
+        ...activity,
+        productImageUrl: activity.productImageUrl,
+        verified: activity.verified !== false,
+      })),
+      nextCursor: payload.nextCursor ?? null,
+      hasMore: payload.hasMore === true && Boolean(payload.nextCursor),
+    };
+  },
   async list(cursor?: string, signal?: AbortSignal): Promise<CommunityPage> {
     const params = new URLSearchParams({ limit: "20" });
     if (cursor) params.set("cursor", cursor);

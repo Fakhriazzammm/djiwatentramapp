@@ -28,6 +28,8 @@ export type CustomerUser = {
   province: string | null;
   postalCode: string | null;
   marketingConsent: boolean;
+  sharePurchaseActivity: boolean;
+  purchaseActivityNameMode: "first_name" | "full_name";
   profileCompletedAt: string | null;
   username: string;
   totalPoints: number;
@@ -58,6 +60,7 @@ interface CustomerAuthContextType {
     email: string,
     password: string,
     name: string,
+    sharePurchaseActivity?: boolean,
   ) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -93,6 +96,8 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
     province: (row.province as string) ?? null,
     postalCode: (row.postal_code as string) ?? null,
     marketingConsent: row.marketing_consent === true,
+    sharePurchaseActivity: row.share_purchase_activity === true,
+    purchaseActivityNameMode: row.purchase_activity_name_mode === "full_name" ? "full_name" : "first_name",
     profileCompletedAt: (row.profile_completed_at as string) ?? null,
     username: String(row.username ?? deriveUsername((row.email as string) ?? null, (row.name as string) ?? null)),
     totalPoints: Number(row.total_points ?? 0),
@@ -151,6 +156,8 @@ function buildFallbackCustomer(
     province: null,
     postalCode: null,
     marketingConsent: false,
+    sharePurchaseActivity: false,
+    purchaseActivityNameMode: "first_name",
     profileCompletedAt: null,
     username: deriveUsername(email, name),
     totalPoints: 0,
@@ -271,7 +278,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   // ── register ─────────────────────────────────────────────────
   const register = useCallback(
-    async (email: string, password: string, name: string) => {
+    async (email: string, password: string, name: string, sharePurchaseActivity = false) => {
       setIsLoading(true);
       try {
         const { data, error } = await authClient.signUp.email({
@@ -282,6 +289,16 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           toast.error(error.message || "Gagal mendaftar.");
           throw new Error(error.message || "Gagal mendaftar.");
+        }
+        if (data?.user?.id) {
+          await invokeEdgeFunction("customer-sync", {
+            action: "sync",
+            userId: data.user.id,
+            email,
+            name,
+            sharePurchaseActivity,
+            purchaseActivityNameMode: "first_name",
+          });
         }
         const requiresEmailConfirm = !data?.token;
         setRegistrationNeedsEmailConfirm(requiresEmailConfirm);

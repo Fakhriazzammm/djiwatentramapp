@@ -48,7 +48,7 @@ import { renderReceiptSection } from "@/components/customer/receipt-section";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 import { AuthHeader } from "@/components/customer/auth-header";
-import { AuthModal } from "@/components/customer/auth-modal";
+import { redirectToCustomerLogin } from "@/lib/auth-client";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/order")({
@@ -750,25 +750,12 @@ function OrderPage() {
 							isAuthenticated={isAuthenticated}
 							customer={(customer ?? null) as any}
 							isLoading={authLoading}
-							onOpenAuth={() => setAuthModalOpen(true)}
+							onOpenAuth={() => redirectToCustomerLogin(`${window.location.origin}/${encodeURIComponent(username)}/order?step=checkout`)}
 							onLogout={logout}
 							onProfileClick={() => navigate({ to: "/$username/profile", params: { username } })}
 						/>
 					</div>
 
-					{/* ── AuthModal ────────────────────────────────── */}
-					<AuthModal
-						open={authModalOpen}
-						onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
-						onSkip={() => setAuthModalOpen(false)}
-						onGoogleSignIn={signInWithGoogle}
-						onResetPassword={async (email) => { try { await resetPassword(email); } catch { } }}
-						isLoading={authLoading}
-						needsEmailConfirm={registrationNeedsEmailConfirm}
-						error={authError}
-					/>
 
 					{/* ── Party section ───────────────────────────── */}
 					{step === "party" ? (
