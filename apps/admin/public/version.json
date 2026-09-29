@@ -1,7 +1,7 @@
 {
-  "version": "0.2.362",
-  "commitHash": "78ddf62",
-  "message": "feat(customer): improve community feed discovery and pagination",
+  "version": "0.2.364",
+  "commitHash": "8c7a9c2",
+  "message": "chore(admin): deploy merchandise navigation and update prompt",
   "buildDate": "2026-09-29",
-  "generatedAt": "2026-09-29T08:58:38.557Z"
+  "generatedAt": "2026-09-29T09:04:21.984Z"
 }
