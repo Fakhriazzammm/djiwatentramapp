@@ -1,7 +1,7 @@
 {
-  "version": "0.2.387",
-  "commitHash": "732e2fa",
-  "message": "feat(customer): tambahkan mode delivery dan alamat tersimpan",
+  "version": "0.2.388",
+  "commitHash": "1372646",
+  "message": "fix(customer): letakkan switch order di atas progress card",
   "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T12:03:36.809Z"
+  "generatedAt": "2026-09-30T12:18:57.183Z"
 }

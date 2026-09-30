@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.387",
+	semantic: "0.2.388",
 	// Git/deploy commit hash (short)
-	commitHash: "732e2fa",
-	message: "feat(customer): tambahkan mode delivery dan alamat tersimpan",
+	commitHash: "1372646",
+	message: "fix(customer): letakkan switch order di atas progress card",
 	// Commit subject for the update prompt
-	commitMessage: "feat(customer): tambahkan mode delivery dan alamat tersimpan",
+	commitMessage: "fix(customer): letakkan switch order di atas progress card",
 	// Build timestamp
 	buildDate: "2026-09-30",
 	// Full version string for display

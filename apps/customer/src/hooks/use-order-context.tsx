@@ -27,7 +27,7 @@ import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 // ── Types ──────────────────────────────────────────────────────
 
-export type OrderStep = "table" | "party" | "refill" | "menu" | "review" | "payment" | "receipt";
+export type OrderStep = "table" | "address" | "party" | "refill" | "menu" | "shipping" | "review" | "payment" | "receipt";
 
 export interface OrderContextType {
 	// ── Step / navigation ────────────────────────────────────

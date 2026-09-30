@@ -437,8 +437,8 @@ function OrderPage() {
 		if ((step === "menu" || step === "review" || step === "payment") && orderMode === "dine_in" && !tableNumber.trim()) {
 			setStep("table");
 		}
-		if ((step === "menu" || step === "review" || step === "payment") && orderMode === "delivery" && !deliveryAddress) {
-			setStep("table");
+		if ((step === "menu" || step === "shipping" || step === "review" || step === "payment") && orderMode === "delivery" && !deliveryAddress) {
+			setStep("address");
 		}
 	}, [step, tableNumber, orderMode, deliveryAddress]);
 
@@ -709,7 +709,7 @@ function OrderPage() {
 		}
 		if (orderMode === "delivery" && !deliveryAddress) {
 			rejectCheckout("Pilih alamat pengantaran terlebih dahulu");
-			setStep("table");
+			setStep("address");
 			return;
 		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
@@ -731,7 +731,7 @@ function OrderPage() {
 			setStep("table");
 			return;
 		}
-		if (!Number.isInteger(partySize) || partySize < 1) {
+		if (orderMode === "dine_in" && (!Number.isInteger(partySize) || partySize < 1)) {
 			rejectCheckout("Pilih jumlah orang terlebih dahulu", "Jumlah orang");
 			setStep("party");
 			return;
@@ -1097,7 +1097,7 @@ function OrderPage() {
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
-					<CustomerOrderProgress step={step} mode={orderMode} onModeChange={setOrderMode} />
+					<CustomerOrderProgress step={step} mode={orderMode} onModeChange={(nextMode) => { setOrderMode(nextMode); setStep(nextMode === "delivery" ? "address" : "table"); }} />
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -1125,7 +1125,7 @@ function OrderPage() {
 					/>
 
 					{/* ── Step 1: table selection ───────────────────── */}
-					{step === "table" ? (
+					{((step === "table" && orderMode === "dine_in") || (step === "address" && orderMode === "delivery")) ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								{orderMode === "delivery" ? <>
@@ -1144,7 +1144,7 @@ function OrderPage() {
 					) : null}
 
 					{/* ── Step 2: party size ───────────────────────── */}
-					{step === "party" ? (
+					{step === "party" && orderMode === "dine_in" ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
@@ -1200,7 +1200,11 @@ function OrderPage() {
 					{step === "menu"
 						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
-					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep("party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep("review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div> : null}
+					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
+
+					{step === "shipping" && orderMode === "delivery" ? (
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih pengantaran</h2></div></div><div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3"><p className="text-sm font-black">Kurir Biteship</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tarif dan estimasi akan dihitung dari alamat, isi keranjang, dan layanan kurir yang tersedia.</p></div><p className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">Pilihan kurir belum tersedia sampai koneksi tarif Biteship diaktifkan.</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground opacity-40">Lanjut ke review →</button></div></div></section>
+					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
 					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}

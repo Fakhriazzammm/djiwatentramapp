@@ -286,15 +286,24 @@ export function BarcodeLines({ value }: { value: string }) {
 
 export type CustomerOrderMode = "dine_in" | "delivery";
 
-export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: { step: "table" | "party" | "refill" | "menu" | "review" | "payment" | "receipt"; mode?: CustomerOrderMode; onModeChange?: (mode: CustomerOrderMode) => void }) {
-	const steps = [
-		{ key: "table", label: "Pilih meja", shortLabel: "Meja" },
-		{ key: "party", label: "Jumlah orang", shortLabel: "Orang" },
-		{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
-		{ key: "review", label: "Review pesanan", shortLabel: "Review" },
-		{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
-		{ key: "receipt", label: "Selesai / Struk", shortLabel: "Selesai" },
-	] as const;
+export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: { step: "table" | "address" | "party" | "refill" | "menu" | "shipping" | "review" | "payment" | "receipt"; mode?: CustomerOrderMode; onModeChange?: (mode: CustomerOrderMode) => void }) {
+	const steps = mode === "delivery"
+		? [
+			{ key: "address", label: "Alamat pengantaran", shortLabel: "Alamat" },
+			{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
+			{ key: "shipping", label: "Pengantaran", shortLabel: "Kirim" },
+			{ key: "review", label: "Review pesanan", shortLabel: "Review" },
+			{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
+			{ key: "receipt", label: "Selesai / Tracking", shortLabel: "Selesai" },
+		] as const
+		: [
+			{ key: "table", label: "Pilih meja", shortLabel: "Meja" },
+			{ key: "party", label: "Jumlah orang", shortLabel: "Orang" },
+			{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
+			{ key: "review", label: "Review pesanan", shortLabel: "Review" },
+			{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
+			{ key: "receipt", label: "Selesai / Struk", shortLabel: "Selesai" },
+		] as const;
 	const normalizedStep = step === "refill" ? "party" : step;
 	const activeIndex = Math.max(0, steps.findIndex((item) => item.key === normalizedStep));
 	const activeStep = steps[activeIndex];
