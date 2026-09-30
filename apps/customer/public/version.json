@@ -1,7 +1,7 @@
 {
-  "version": "0.2.402",
-  "commitHash": "79f8e56",
-  "message": "feat(delivery): add biteship rate quote function",
+  "version": "0.2.403",
+  "commitHash": "aa930f6",
+  "message": "feat(customer): include delivery shipping in checkout payment",
   "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T16:49:58.271Z"
+  "generatedAt": "2026-09-30T16:50:54.515Z"
 }
