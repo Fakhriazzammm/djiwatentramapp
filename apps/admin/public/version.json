@@ -1,7 +1,7 @@
 {
-  "version": "0.2.377",
-  "commitHash": "66f3d3e",
-  "message": "fix(admin): pin notification list to viewport top",
+  "version": "0.2.379",
+  "commitHash": "5be9a5b",
+  "message": "fix(admin): portal notification overlays above dashboard",
   "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T04:41:49.802Z"
+  "generatedAt": "2026-09-30T04:49:19.300Z"
 }

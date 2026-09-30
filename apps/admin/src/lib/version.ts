@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.377",
+	semantic: "0.2.379",
 	// Git/deploy commit hash (short)
-	commitHash: "66f3d3e",
-	message: "fix(admin): pin notification list to viewport top",
+	commitHash: "5be9a5b",
+	message: "fix(admin): portal notification overlays above dashboard",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): pin notification list to viewport top",
+	commitMessage: "fix(admin): portal notification overlays above dashboard",
 	// Build timestamp
 	buildDate: "2026-09-30",
 	// Full version string for display
