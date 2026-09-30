@@ -1066,6 +1066,7 @@ export function computeMemberBonuses(
 	name: string;
 	roleName: string;
 	bonus: number;
+	basis: "shift" | "daily" | "monthly";
 	achievedTiers: number[];
 	allTiers: Array<{ thresholdPct: number; bonusAmount: number }>;
 }> {
@@ -1091,7 +1092,7 @@ export function computeMemberBonuses(
 		const roleName = matched?.roleName ?? "-";
 
 		if (!config?.tiers || config.tiers.length === 0) {
-			return { name: memberName, roleName, bonus: 0, achievedTiers: [], allTiers: [] };
+			return { name: memberName, roleName, bonus: 0, basis: config?.basis ?? "shift", achievedTiers: [], allTiers: [] };
 		}
 
 		const allTiers = config.tiers;
@@ -1115,6 +1116,7 @@ export function computeMemberBonuses(
 			name: memberName,
 			roleName,
 			bonus,
+			basis,
 			achievedTiers,
 			allTiers: allTiers.map((t) => ({ thresholdPct: t.thresholdPct, bonusAmount: t.bonusAmount })),
 		};
