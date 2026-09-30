@@ -140,6 +140,7 @@ export function CartRow({
 }
 
 export function SummaryCardLines({
+	shippingFee = 0,
 	freeRefillCharge,
 	productGrossSubtotal,
 	promoDiscount,
@@ -152,6 +153,7 @@ export function SummaryCardLines({
 	taxRate,
 	total,
 }: {
+	shippingFee?: number;
 	freeRefillCharge: number;
 	productGrossSubtotal: number;
 	promoDiscount: number;
@@ -167,7 +169,7 @@ export function SummaryCardLines({
 	// The checkout caller predates the persisted tax fields. Derive these values
 	// from the values it already supplies; receipt history uses persisted values.
 	const taxBase = Math.max(0, productGrossSubtotal + freeRefillCharge - promoDiscount - djiwaPayDiscount);
-	const rawTotal = taxBase + serviceChargeAmount + taxAmount;
+	const rawTotal = taxBase + shippingFee + serviceChargeAmount + taxAmount;
 	const roundingAdjustment = total - rawTotal;
 	const isCashierFree = paymentChoice === "cashier";
 
@@ -181,6 +183,7 @@ export function SummaryCardLines({
 			{djiwaPayDiscount > 0 ? (
 				<Line label="Djiwa Pay 50%" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
 			) : null}
+			{shippingFee > 0 ? <Line label="Biaya pengantaran" value={currency(shippingFee)} /> : null}
 			<Line label={`Service Charge (${serviceChargeRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(serviceChargeAmount)} />
 			{taxEnabled ? <Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(taxAmount)} /> : null}
 			{taxEnabled ? <Line label="Dasar pajak" value={currency(taxBase)} /> : null}

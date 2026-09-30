@@ -17,6 +17,10 @@ export interface CheckoutSectionProps {
 	dessertLater: boolean;
 	djiwaPayDiscount?: number;
 	freeRefillCharge: number;
+	shippingFee?: number;
+	shippingQuotePending?: boolean;
+	shippingQuoteError?: string | null;
+	canPay?: boolean;
 	hasDessertInCart: boolean;
 	isSubmitting: boolean;
 	notes: string;
@@ -144,11 +148,13 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 			</div> : null}
 			{props.checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{props.checkoutError}</div> : null}
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
+				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} shippingFee={props.shippingFee} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
+				{props.shippingQuotePending ? <p className="mt-2 rounded-xl bg-primary/5 px-3 py-2 text-[10px] font-semibold text-primary">Memuat tarif pengantaran…</p> : null}
+				{props.shippingQuoteError ? <p role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-red-800">{props.shippingQuoteError}</p> : null}
 				{props.paymentChoice === "wallet" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-bold leading-relaxed text-emerald-800">Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil.</p> : <p className="mt-2 rounded-xl bg-muted/50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-muted-foreground">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</p>}
 				<div className="flex gap-2">
 					{(isReview || isPaymentOnly) ? <button type="button" onClick={props.onBackToMenu} className="mt-2.5 min-h-11 flex-1 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button> : null}
-					<button type="button" className="mt-2.5 flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={isReview ? props.onContinueToPayment : props.checkout} disabled={isReview ? !props.onContinueToPayment : props.isSubmitting}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : isReview ? <>Lanjut ke pembayaran <QrCode className="h-3.5 w-3.5" /></> : <>Bayar {props.currency(props.total)}</>}</button>
+					<button type="button" className="mt-2.5 flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={isReview ? props.onContinueToPayment : props.checkout} disabled={isReview ? !props.onContinueToPayment || props.canPay === false : props.isSubmitting || props.canPay === false}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : isReview ? <>Lanjut ke pembayaran <QrCode className="h-3.5 w-3.5" /></> : <>Bayar {props.currency(props.total)}</>}</button>
 				</div>
 			</div>
 		</div>

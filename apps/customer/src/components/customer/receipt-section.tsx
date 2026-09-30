@@ -173,6 +173,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const persistedRawTotal = Number(props.currentOrder?.rawTotalAmount ?? props.currentOrder?.raw_total_amount);
 	const persistedRounding = Number(props.currentOrder?.roundingAdjustment ?? props.currentOrder?.rounding_adjustment);
 	const persistedTotal = Number(props.currentOrder?.totalAmount ?? props.currentOrder?.total_amount);
+	const persistedShippingFee = Number(props.currentOrder?.shippingFeeAmount ?? (props.currentOrder as any)?.shipping_fee_amount ?? 0);
 	const hasPersistedTotals = [persistedTaxBase, persistedRawTotal, persistedRounding, persistedTotal].every(Number.isFinite);
 
 	return (
@@ -221,6 +222,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{receiptTitle}</h2>
 				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{receiptDescription}</p>
 				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{paymentLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+					{isDeliveryOrder && persistedShippingFee > 0 ? <div className="mt-2 flex items-center justify-between rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-2 text-[11px]"><span className="text-muted-foreground">Ongkir {courierLabel}</span><span className="font-black text-primary">{currency(persistedShippingFee)}</span></div> : null}
 					{hasPersistedTotals ? <ReceiptTotalsBreakdown rawTotal={persistedRawTotal} taxBase={persistedTaxBase} taxAmount={Number(props.currentOrder?.taxAmount ?? 0)} taxRate={Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0)} taxEnabled={Number(props.currentOrder?.taxAmount ?? 0) > 0 || Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0} serviceChargeAmount={Number(props.currentOrder?.serviceChargeAmount ?? 0)} roundingAdjustment={persistedRounding} total={persistedTotal} /> : null}
 					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
 						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>

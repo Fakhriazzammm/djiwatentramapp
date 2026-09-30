@@ -1,6 +1,7 @@
 import {
 	Bell,
 	ChevronRight,
+	Loader2,
 	LogIn,
 	MapPin,
 	LocateFixed,
@@ -144,6 +145,10 @@ function OrderPage() {
 	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
 	const [deliveryLocationLoading, setDeliveryLocationLoading] = useState(false);
 	const [deliveryLocationError, setDeliveryLocationError] = useState<string | null>(null);
+	const [shippingQuote, setShippingQuote] = useState<{ fee: number; courierCode: string; expiresAt: number } | null>(null);
+	const [shippingQuoteLoading, setShippingQuoteLoading] = useState(false);
+	const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
+	const [, setShippingClock] = useState(() => Date.now());
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
@@ -178,6 +183,51 @@ function OrderPage() {
 	const missingContactFields = getMissingCustomerFields(customer);
 	const profileDeliveryAddress = isAuthenticated ? customer?.address?.trim() || "" : "";
 	const deliveryAddress = deliveryAddressOverride ?? profileDeliveryAddress;
+	useEffect(() => {
+		if (orderMode !== "delivery" || !deliveryAddress || !deliveryLocation?.postalCode || !cart.length) {
+			setShippingQuote(null);
+			setShippingQuoteError(null);
+			return;
+		}
+		const postalCode = deliveryLocation.postalCode.replace(/\D/g, "");
+		if (!/^\d{5}$/.test(postalCode)) {
+			setShippingQuote(null);
+			setShippingQuoteError("Titik lokasi belum memiliki kode pos 5 digit. Gunakan lokasi realtime dengan kode pos atau pilih alamat lain.");
+			return;
+		}
+		const items = cart.map((item) => {
+			const product = products?.find((entry) => entry._id === item.productId) as any;
+			const weight = Number(product?.netWeight ?? product?.weight ?? 0);
+			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight };
+		});
+		if (items.some((item) => !Number.isFinite(item.weight) || item.weight <= 0)) {
+			setShippingQuote(null);
+			setShippingQuoteError("Tarif pengantaran belum tersedia karena berat produk belum diatur.");
+			return;
+		}
+		let cancelled = false;
+		setShippingQuote(null);
+		setShippingQuoteError(null);
+		setShippingQuoteLoading(true);
+		void invokeEdgeFunction<{ rates?: Array<{ courierCode?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
+			destination_postal_code: postalCode,
+			couriers: deliveryProvider,
+			items,
+		}).then((response) => {
+			if (cancelled) return;
+			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
+			const fee = Number(rate?.shippingFee ?? rate?.price);
+			if (!rate || !Number.isFinite(fee) || fee < 0) throw new Error("Tarif kurir tidak tersedia untuk alamat ini.");
+			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
+		}).catch((error) => {
+			if (!cancelled) {
+				setShippingQuote(null);
+				setShippingQuoteError(error instanceof Error ? error.message : "Tarif pengantaran belum tersedia. Coba lagi.");
+			}
+		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
+		return () => { cancelled = true; };
+	}, [cart, deliveryAddress, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
+
 	const useCurrentDeliveryLocation = () => {
 		if (!navigator.geolocation) {
 			setDeliveryLocationError("Perangkat ini tidak mendukung lokasi realtime.");
@@ -415,7 +465,16 @@ function OrderPage() {
 	const serviceChargeAmount = taxCalculation.serviceChargeAmount;
 	const taxBase = taxCalculation.taxBase;
 	const taxAmount = taxCalculation.taxAmount;
-	const total = taxCalculation.finalTotal;
+	const shippingQuoteExpired = Boolean(shippingQuote && shippingQuote.expiresAt <= Date.now());
+	useEffect(() => {
+		if (!shippingQuote) return;
+		const timer = window.setInterval(() => setShippingClock(Date.now()), 1000);
+		return () => window.clearInterval(timer);
+	}, [shippingQuote]);
+	const shippingFee = orderMode === "delivery" && shippingQuote && !shippingQuoteExpired ? shippingQuote.fee : 0;
+	const shippingPaymentBlocked = orderMode === "delivery" && (!shippingQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
+	const shippingBlockerMessage = shippingQuoteLoading ? "Menunggu tarif pengantaran sebelum pembayaran." : shippingQuoteError || (shippingQuoteExpired ? "Tarif pengantaran kedaluwarsa. Kembali ke pengantaran untuk memuat ulang." : "Tarif pengantaran belum tersedia. Lengkapi lokasi dengan kode pos lalu pilih kurir.");
+	const total = taxCalculation.finalTotal + shippingFee;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 	const hasDessertInCart = cart.some((item) =>
 		/(dessert|cake|pudding|ice cream|gelato|tiramisu|sweet)/i.test(item.name)
@@ -756,6 +815,10 @@ function OrderPage() {
 			setStep("address");
 			return;
 		}
+		if (orderMode === "delivery" && (!shippingQuote || shippingQuote.expiresAt <= Date.now() || shippingQuoteLoading || Boolean(shippingQuoteError))) {
+			rejectCheckout(shippingBlockerMessage);
+			return;
+		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
 			if (!customerName.trim()) {
 				rejectCheckout("Nama customer wajib diisi", "Nama customer");
@@ -846,6 +909,9 @@ function OrderPage() {
 					};
 				}),
 				totalAmount: total,
+				shippingFee,
+				shippingRateSnapshot: shippingQuote ? { provider: "biteship", courierCode: shippingQuote.courierCode, fee: shippingQuote.fee, currency: "IDR", quotedAt: new Date().toISOString(), expiresAt: new Date(shippingQuote.expiresAt).toISOString() } : null,
+				shippingProvider: orderMode === "delivery" ? deliveryProvider : undefined,
 				taxAmount,
 				serviceChargeAmount,
 				paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
@@ -991,7 +1057,8 @@ function OrderPage() {
 											description: activeFreeRefillPromo.name || "Free Refill",
 										},
 								  ]
-								: []),
+							: []),
+							...(shippingFee > 0 ? [{ quantity: 1, rate: shippingFee, description: `Biaya pengantaran ${deliveryProvider}` }] : []),
 						],
 					});
 					if (!invoice?.data?.id) {
@@ -1248,11 +1315,11 @@ function OrderPage() {
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
 					{step === "shipping" && orderMode === "delivery" ? (
-						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Instant delivery" }, { key: "grab", label: "Grab", detail: "Instant delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">Tarif dan estimasi pengiriman akan mengikuti hasil layanan Biteship Sandbox.</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Instant delivery" }, { key: "grab", label: "Grab", detail: "Instant delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
-					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onCashierPaymentExpired: () => {

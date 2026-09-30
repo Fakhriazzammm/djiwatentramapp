@@ -2529,7 +2529,9 @@ export function useHybridCreateOrder() {
 const orderRow = {
 					source_id: orderId,
 					order_number: orderNumber,
-					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0),
+					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0) + Number(args?.shippingFee ?? 0),
+					shipping_fee_amount: args?.shippingFee === undefined ? null : Number(args.shippingFee),
+					shipping_rate_snapshot: args?.shippingRateSnapshot ?? null,
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,

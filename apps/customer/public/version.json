@@ -1,7 +1,7 @@
 {
-  "version": "0.2.388",
-  "commitHash": "1372646",
-  "message": "fix(customer): letakkan switch order di atas progress card",
+  "version": "0.2.402",
+  "commitHash": "79f8e56",
+  "message": "feat(delivery): add biteship rate quote function",
   "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T12:18:57.183Z"
+  "generatedAt": "2026-09-30T16:49:58.271Z"
 }
