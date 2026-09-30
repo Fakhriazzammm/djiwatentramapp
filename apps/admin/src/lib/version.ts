@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.381",
+	semantic: "0.2.223",
 	// Git/deploy commit hash (short)
-	commitHash: "522aa7b",
-	message: "chore(admin): publish portal notification release metadata",
+	commitHash: "751d639",
+	message: "feat(admin): add customer delivery monitoring",
 	// Commit subject for the update prompt
-	commitMessage: "chore(admin): publish portal notification release metadata",
+	commitMessage: "feat(admin): add customer delivery monitoring",
 	// Build timestamp
 	buildDate: "2026-09-30",
 	// Full version string for display
