@@ -1,7 +1,7 @@
 {
-  "version": "0.2.225",
-  "commitHash": "a0f33d8",
-  "message": "fix(admin): surface delivery monitoring from orders",
+  "version": "0.2.227",
+  "commitHash": "1f5fbc1",
+  "message": "feat(admin): make delivery monitor standalone",
   "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T17:29:13.307Z"
+  "generatedAt": "2026-09-30T17:39:40.936Z"
 }

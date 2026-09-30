@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.225",
+	semantic: "0.2.227",
 	// Git/deploy commit hash (short)
-	commitHash: "a0f33d8",
-	message: "fix(admin): surface delivery monitoring from orders",
+	commitHash: "1f5fbc1",
+	message: "feat(admin): make delivery monitor standalone",
 	// Commit subject for the update prompt
-	commitMessage: "fix(admin): surface delivery monitoring from orders",
+	commitMessage: "feat(admin): make delivery monitor standalone",
 	// Build timestamp
 	buildDate: "2026-09-30",
 	// Full version string for display
