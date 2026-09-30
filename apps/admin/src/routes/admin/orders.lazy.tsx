@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
@@ -28,6 +28,7 @@ import {
 	Search,
 	ShoppingBag,
 	Star,
+	Truck,
 	User,
 	XCircle,
 	Trash2,
@@ -699,7 +700,7 @@ function AdminOrders() {
 		<div className="flex min-w-0 flex-col gap-3 pb-6">
 			<header className="flex min-w-0 items-center justify-between gap-3 rounded-[24px] bg-[#123b73] px-4 py-4 text-white shadow-[0_14px_36px_rgba(18,59,115,0.18)] sm:px-5">
 				<div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100/75">Djiwa Tentram · Operational queue</p><div className="mt-1 flex items-center gap-2"><h1 className="font-display truncate text-[24px] font-bold tracking-tight">Pesanan</h1><span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-blue-50">{totalFiltered} terlihat</span></div><p className="mt-1 text-xs text-blue-100/80">Pantau transaksi, pembayaran, dan tindakan berikutnya.</p></div>
-				<div className="flex shrink-0 items-center gap-2"><div className="hidden text-right sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100/60">Periode aktif</p><p className="text-xs font-semibold text-white">{activeQuickDateLabel}</p></div><Button aria-label="Refresh daftar pesanan" className="h-10 w-10 rounded-xl border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button></div>
+				<div className="flex shrink-0 items-center gap-2"><Link className="hidden h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-bold text-white transition hover:bg-white/20 sm:inline-flex" to="/admin/orders/delivery"><Truck className="h-4 w-4" />Pantau Delivery</Link><div className="hidden text-right sm:block"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100/60">Periode aktif</p><p className="text-xs font-semibold text-white">{activeQuickDateLabel}</p></div><Button aria-label="Refresh daftar pesanan" className="h-10 w-10 rounded-xl border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => triggerHybridRefresh()} size="icon" variant="outline"><RefreshCw className="h-4 w-4" /></Button></div>
 			</header>
 
 			<section aria-label="Ringkasan nilai dan status pesanan" className="rounded-2xl border border-border/80 bg-card px-3 py-3 shadow-sm sm:px-4"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nilai transaksi</p><p className="mt-0.5 truncate font-display text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl">{formatrupiah(visibleRevenue)}</p></div><div className="shrink-0 text-right"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Pesanan</p><p className="mt-0.5 font-display text-xl font-bold tracking-tight text-primary tabular-nums sm:text-2xl">{formatCount(totalFiltered)}</p><p className="text-[10px] text-muted-foreground">sesuai filter</p></div></div><div className="mt-3 grid grid-cols-3 divide-x border-t border-border/70 pt-2.5"><div className="flex items-baseline gap-1 pr-2"><span className="text-[11px] font-semibold text-amber-700">Open</span><span className="font-display text-base font-bold tabular-nums text-amber-700">{formatCount(openCount)}</span></div><div className="flex items-baseline gap-1 px-2"><span className="text-[11px] font-semibold text-sky-700">Lunas</span><span className="font-display text-base font-bold tabular-nums text-sky-700">{formatCount(paidCount)}</span></div><div className="flex items-baseline gap-1 pl-2"><span className="text-[11px] font-semibold text-emerald-700">Selesai</span><span className="font-display text-base font-bold tabular-nums text-emerald-700">{formatCount(completedCount)}</span></div></div></section>

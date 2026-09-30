@@ -711,6 +711,13 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						permission="orders:view"
 					/>
 					<DesktopNavLink
+						icon={<Truck />}
+						isCollapsed={isCollapsed}
+						label="Delivery Customer"
+						to="/admin/orders/delivery"
+						permission="orders:view"
+					/>
+					<DesktopNavLink
 						icon={<ShieldAlert />}
 						isCollapsed={isCollapsed}
 						label="Moderasi Komunitas"
@@ -758,7 +765,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />
 							<DesktopNavLink icon={<Beer />} isCollapsed={isCollapsed} label="Bar" to="/admin/bar" />
 							<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
-			<DesktopNavLink icon={<Truck />} isCollapsed={isCollapsed} label="Delivery Customer" to="/admin/orders/delivery" permission="orders:view" />
 						</>
 					) : (
 						<>
@@ -774,7 +780,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 											<DesktopSubNavLink icon={<ChefHat />} label="Dapur" to="/admin/kitchen" />
 											<DesktopSubNavLink icon={<Beer />} label="Bar" to="/admin/bar" />
 											<DesktopSubNavLink icon={<Bell />} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
-											<DesktopSubNavLink icon={<Truck />} label="Delivery Customer" to="/admin/orders/delivery" permission="orders:view" />
 										</div>
 									</motion.div>
 								)}
