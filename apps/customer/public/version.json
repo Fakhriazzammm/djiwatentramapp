@@ -1,7 +1,7 @@
 {
-  "version": "0.2.184",
-  "commitHash": "be56c1a",
-  "message": "fix(customer): normalize numeric table query on receipt",
-  "buildDate": "2026-09-07",
-  "generatedAt": "2026-09-07T05:08:21.583Z"
+  "version": "0.2.385",
+  "commitHash": "7dd199a",
+  "message": "fix(api): terima probe webhook kosong Biteship",
+  "buildDate": "2026-09-30",
+  "generatedAt": "2026-09-30T11:53:44.619Z"
 }

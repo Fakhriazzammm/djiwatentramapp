@@ -284,7 +284,9 @@ export function BarcodeLines({ value }: { value: string }) {
 	);
 }
 
-export function CustomerOrderProgress({ step }: { step: "table" | "party" | "refill" | "menu" | "review" | "payment" | "receipt" }) {
+export type CustomerOrderMode = "dine_in" | "delivery";
+
+export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: { step: "table" | "party" | "refill" | "menu" | "review" | "payment" | "receipt"; mode?: CustomerOrderMode; onModeChange?: (mode: CustomerOrderMode) => void }) {
 	const steps = [
 		{ key: "table", label: "Pilih meja", shortLabel: "Meja" },
 		{ key: "party", label: "Jumlah orang", shortLabel: "Orang" },
@@ -306,6 +308,9 @@ export function CustomerOrderProgress({ step }: { step: "table" | "party" | "ref
 				</div>
 				<span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-black text-primary">Langkah {activeIndex + 1} dari {steps.length}</span>
 			</div>
+			{onModeChange ? <div className="mt-2.5 grid grid-cols-2 gap-1 rounded-xl bg-muted/70 p-1" role="group" aria-label="Jenis pesanan">
+				{([{ key: "dine_in", label: "Dine In" }, { key: "delivery", label: "Delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => onModeChange(option.key)} aria-pressed={mode === option.key} className={cn("min-h-10 rounded-lg px-3 text-xs font-black transition-all", mode === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{option.label}</button>)}
+			</div> : null}
 			<div className="mt-2.5 flex items-start" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={activeIndex + 1} aria-valuetext={`Langkah ${activeIndex + 1} dari ${steps.length}: ${activeStep.label}`}>
 				{steps.map((item, index) => (
 					<div key={item.key} className="relative flex min-w-0 flex-1 flex-col items-center">

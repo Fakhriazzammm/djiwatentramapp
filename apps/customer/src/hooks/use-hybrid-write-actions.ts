@@ -2537,6 +2537,7 @@ const orderRow = {
 					customer_description: args?.customerDescription ?? null,
 					delivery_contact_name: args?.deliveryContactName ?? args?.customerName ?? null,
 					delivery_contact_phone: args?.customerPhone ?? args?.deliveryContactPhone ?? null,
+					delivery_address: args?.deliveryAddress ?? null,
 					table_number: args?.tableNumber ?? null,
 					order_type: args?.orderType ?? null,
 					source: args?.source ?? null,

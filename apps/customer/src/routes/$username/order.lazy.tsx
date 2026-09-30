@@ -2,6 +2,7 @@ import {
 	Bell,
 	ChevronRight,
 	LogIn,
+	MapPin,
 	PhoneCall,
 	Table2,
 	X,
@@ -40,7 +41,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
-import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
+import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines, type CustomerOrderMode } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
 import { renderMenuSection } from "@/components/customer/menu-section";
@@ -133,6 +134,7 @@ function OrderPage() {
 		addToCart,
 		updateCartQuantity,
 	} = useOrderContext();
+	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
@@ -152,12 +154,14 @@ function OrderPage() {
 		setDessertLater(false);
 		setNotes("");
 		setTableNumber("");
+		setOrderMode("dine_in");
 		setStep("table");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
+	const deliveryAddress = isAuthenticated ? customer?.address?.trim() || "" : "";
 	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
 	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
 
@@ -430,10 +434,13 @@ function OrderPage() {
 	}, [search.table]);
 
 	useEffect(() => {
-		if ((step === "menu" || step === "review" || step === "payment") && !tableNumber.trim()) {
+		if ((step === "menu" || step === "review" || step === "payment") && orderMode === "dine_in" && !tableNumber.trim()) {
 			setStep("table");
 		}
-	}, [step, tableNumber]);
+		if ((step === "menu" || step === "review" || step === "payment") && orderMode === "delivery" && !deliveryAddress) {
+			setStep("table");
+		}
+	}, [step, tableNumber, orderMode, deliveryAddress]);
 
 	useEffect(() => {
 		if (step !== "menu" || menuMode !== "catalog" || typeof document === "undefined") return;
@@ -696,8 +703,13 @@ function OrderPage() {
 			toast.error("Pilih minimal satu produk");
 			return;
 		}
-		if (config.requireTableNumber && !tableNumber.trim()) {
+		if (orderMode === "dine_in" && config.requireTableNumber && !tableNumber.trim()) {
 			rejectCheckout("Nomor meja wajib diisi sebelum checkout", "Nomor meja");
+			return;
+		}
+		if (orderMode === "delivery" && !deliveryAddress) {
+			rejectCheckout("Pilih alamat pengantaran terlebih dahulu");
+			setStep("table");
 			return;
 		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
@@ -714,7 +726,7 @@ function OrderPage() {
 				return;
 			}
 		}
-		if (!tableNumber.trim()) {
+		if (orderMode === "dine_in" && !tableNumber.trim()) {
 			rejectCheckout("Pilih nomor meja terlebih dahulu", "Nomor meja");
 			setStep("table");
 			return;
@@ -770,9 +782,10 @@ function OrderPage() {
 			if (paymentChoice === "mayar" && !normalizedCustomerName) {
 				throw new Error("Nama customer wajib diisi sebelum pembayaran");
 			}
-			const orderCustomerName = normalizedCustomerName || `Customer ${tableNumber.trim() || "Walk In"}`;
+			const orderCustomerName = normalizedCustomerName || `Customer ${orderMode === "delivery" ? "Delivery" : tableNumber.trim() || "Walk In"}`;
 			const normalizedCustomerDescription = customerDescription.trim().slice(0, 160) || undefined;
-			const normalizedTableNumber = tableNumber.trim() || undefined;
+			const normalizedTableNumber = orderMode === "dine_in" ? (tableNumber.trim() || undefined) : undefined;
+			const normalizedDeliveryAddress = orderMode === "delivery" ? deliveryAddress : undefined;
 			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
 				items: cart.map((item) => {
@@ -797,9 +810,10 @@ function OrderPage() {
 				customerName: orderCustomerName,
 				customerEmail: checkoutEmail || null,
 				customerPhone: checkoutPhone || null,
+				deliveryAddress: normalizedDeliveryAddress,
 				customerDescription: normalizedCustomerDescription,
 				tableNumber: normalizedTableNumber,
-				orderType: "dine_in" as const,
+				orderType: orderMode,
 				source: "customer_self_service" as const,
 				brandSlug,
 				guestCount: partySize,
@@ -1083,7 +1097,7 @@ function OrderPage() {
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
-					<CustomerOrderProgress step={step} />
+					<CustomerOrderProgress step={step} mode={orderMode} onModeChange={setOrderMode} />
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -1114,14 +1128,17 @@ function OrderPage() {
 					{step === "table" ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-								<div className="flex items-center gap-2.5">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div>
-								</div>
-								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
-								<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
-								<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
-								<button type="button" disabled={!tableNumber.trim()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("party")}>Lanjut ke jumlah orang <ChevronRight className="h-4 w-4" /></button>
+								{orderMode === "delivery" ? <>
+									<div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Delivery</p><h2 className="text-base font-black">{storeName}</h2></div></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">Antar</span></div>
+									<div className="mt-3 rounded-xl border border-border bg-background p-3"><div className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat pengantaran</p>{deliveryAddress ? <p className="mt-1 text-sm font-bold leading-relaxed">{deliveryAddress}</p> : <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Belum ada alamat tersimpan di profil kamu.</p>}</div></div><button type="button" className="mt-3 min-h-11 w-full rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => navigate({ to: "/$username/profile", params: { username } })}>{deliveryAddress ? "Ubah alamat" : isAuthenticated ? "Tambah alamat" : "Masuk untuk memilih alamat"}</button></div>
+									<button type="button" disabled={!deliveryAddress} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("party")}>Lanjut ke jumlah orang <ChevronRight className="h-4 w-4" /></button>
+								</> : <>
+									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
+									<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
+									<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
+									<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
+									<button type="button" disabled={!tableNumber.trim()} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("party")}>Lanjut ke jumlah orang <ChevronRight className="h-4 w-4" /></button>
+								</>}
 							</div>
 						</section>
 					) : null}
