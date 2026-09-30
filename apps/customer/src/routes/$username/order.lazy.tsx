@@ -3,6 +3,7 @@ import {
 	ChevronRight,
 	LogIn,
 	MapPin,
+	LocateFixed,
 	Pencil,
 	PhoneCall,
 	Table2,
@@ -140,6 +141,9 @@ function OrderPage() {
 	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
 	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
 	const [deliveryAddressDraft, setDeliveryAddressDraft] = useState("");
+	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
+	const [deliveryLocationLoading, setDeliveryLocationLoading] = useState(false);
+	const [deliveryLocationError, setDeliveryLocationError] = useState<string | null>(null);
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
@@ -164,6 +168,8 @@ function OrderPage() {
 		setDeliveryAddressOverride(null);
 		setDeliveryAddressEditorOpen(false);
 		setDeliveryAddressDraft("");
+		setDeliveryLocation(null);
+		setDeliveryLocationError(null);
 		setStep("table");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
@@ -172,6 +178,34 @@ function OrderPage() {
 	const missingContactFields = getMissingCustomerFields(customer);
 	const profileDeliveryAddress = isAuthenticated ? customer?.address?.trim() || "" : "";
 	const deliveryAddress = deliveryAddressOverride ?? profileDeliveryAddress;
+	const useCurrentDeliveryLocation = () => {
+		if (!navigator.geolocation) {
+			setDeliveryLocationError("Perangkat ini tidak mendukung lokasi realtime.");
+			return;
+		}
+		setDeliveryLocationLoading(true);
+		setDeliveryLocationError(null);
+		navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+			try {
+				const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=${encodeURIComponent(coords.latitude)}&lon=${encodeURIComponent(coords.longitude)}`, { headers: { Accept: "application/json" } });
+				if (!response.ok) throw new Error("Gagal membaca alamat lokasi");
+				const result = await response.json() as { display_name?: string; address?: { postcode?: string } };
+				const resolvedAddress = String(result.display_name ?? "").trim();
+				if (!resolvedAddress) throw new Error("Alamat tidak ditemukan dari lokasi saat ini");
+				setDeliveryAddressDraft(resolvedAddress);
+				setDeliveryAddressOverride(resolvedAddress);
+				setDeliveryLocation({ latitude: coords.latitude, longitude: coords.longitude, postalCode: result.address?.postcode });
+				setDeliveryAddressEditorOpen(false);
+			} catch (error) {
+				setDeliveryLocationError(error instanceof Error ? error.message : "Alamat realtime belum dapat dibaca");
+			} finally {
+				setDeliveryLocationLoading(false);
+			}
+		}, (error) => {
+			setDeliveryLocationLoading(false);
+			setDeliveryLocationError(error.code === error.PERMISSION_DENIED ? "Izin lokasi ditolak. Kamu tetap bisa memasukkan alamat manual." : "Lokasi realtime belum tersedia.");
+		}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+	};
 	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
 	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
 
@@ -1141,7 +1175,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								{orderMode === "delivery" ? <>
 									<div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Delivery</p><h2 className="text-base font-black">{storeName}</h2></div></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">Antar</span></div>
-									<div className="mt-3 rounded-xl border border-border bg-background p-3"><div className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat pengantaran</p>{deliveryAddress ? <p className="mt-1 text-sm font-bold leading-relaxed">{deliveryAddress}</p> : <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Belum ada alamat tujuan. Masukkan alamat penerima di sini.</p>}</div></div>{deliveryAddressEditorOpen ? <div className="mt-3 space-y-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-address-editor">Alamat tujuan penerima</label><textarea id="delivery-address-editor" autoFocus rows={3} value={deliveryAddressDraft} onChange={(event) => setDeliveryAddressDraft(event.target.value)} placeholder="Contoh: Jalan Bojong Tengah No.28, RT/RW, patokan rumah" className="w-full resize-none rounded-xl border border-primary/30 bg-background px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-primary" /><p className="text-[11px] leading-relaxed text-muted-foreground">Alamat ini hanya dipakai untuk pesanan ini dan tidak mengubah alamat di profil.</p><div className="grid grid-cols-2 gap-2"><button type="button" className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setDeliveryAddressEditorOpen(false)}>Batal</button><button type="button" disabled={!deliveryAddressDraft.trim()} className="min-h-11 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => { setDeliveryAddressOverride(deliveryAddressDraft.trim()); setDeliveryAddressEditorOpen(false); }}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressDraft(deliveryAddress); setDeliveryAddressEditorOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
+									<div className="mt-3 rounded-xl border border-border bg-background p-3"><div className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat pengantaran</p>{deliveryAddress ? <p className="mt-1 text-sm font-bold leading-relaxed">{deliveryAddress}</p> : <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Belum ada alamat tujuan. Masukkan alamat penerima di sini.</p>}</div></div>{deliveryAddressEditorOpen ? <div className="mt-3 space-y-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-address-editor">Alamat tujuan penerima</label><button type="button" disabled={deliveryLocationLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary disabled:opacity-60" onClick={useCurrentDeliveryLocation}><LocateFixed className="h-4 w-4" />{deliveryLocationLoading ? "Mencari lokasi realtime..." : "Gunakan lokasi saya"}</button><textarea id="delivery-address-editor" autoFocus rows={3} value={deliveryAddressDraft} onChange={(event: any) => setDeliveryAddressDraft(event.target.value)} placeholder="Contoh: Jalan Bojong Tengah No.28, RT/RW, patokan rumah" className="w-full resize-none rounded-xl border border-primary/30 bg-background px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-primary" />{deliveryLocation ? <a className="block text-[11px] font-bold text-primary underline" href={`https://www.google.com/maps/search/?api=1&query=${deliveryLocation.latitude},${deliveryLocation.longitude}`} target="_blank" rel="noreferrer">Buka titik lokasi di Google Maps</a> : null}{deliveryLocationError ? <p className="text-[11px] font-semibold text-destructive">{deliveryLocationError}</p> : null}<p className="text-[11px] leading-relaxed text-muted-foreground">Alamat ini hanya dipakai untuk pesanan ini dan tidak mengubah alamat di profil.</p><div className="grid grid-cols-2 gap-2"><button type="button" className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setDeliveryAddressEditorOpen(false)}>Batal</button><button type="button" disabled={!deliveryAddressDraft.trim()} className="min-h-11 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => { setDeliveryAddressOverride(deliveryAddressDraft.trim()); setDeliveryAddressEditorOpen(false); }}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressDraft(deliveryAddress); setDeliveryAddressEditorOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
 									<button type="button" disabled={!deliveryAddress} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("menu")}>Lanjut ke menu <ChevronRight className="h-4 w-4" /></button>
 								</> : <>
 									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
