@@ -135,6 +135,7 @@ function OrderPage() {
 		updateCartQuantity,
 	} = useOrderContext();
 	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
+	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("gojek");
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
@@ -155,6 +156,7 @@ function OrderPage() {
 		setNotes("");
 		setTableNumber("");
 		setOrderMode("dine_in");
+		setDeliveryProvider("gojek");
 		setStep("table");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
@@ -811,6 +813,7 @@ function OrderPage() {
 				customerEmail: checkoutEmail || null,
 				customerPhone: checkoutPhone || null,
 				deliveryAddress: normalizedDeliveryAddress,
+				deliveryProvider: orderMode === "delivery" ? deliveryProvider : undefined,
 				customerDescription: normalizedCustomerDescription,
 				tableNumber: normalizedTableNumber,
 				orderType: orderMode,
@@ -1203,7 +1206,7 @@ function OrderPage() {
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
 					{step === "shipping" && orderMode === "delivery" ? (
-						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih pengantaran</h2></div></div><div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3"><p className="text-sm font-black">Kurir Biteship</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tarif dan estimasi akan dihitung dari alamat, isi keranjang, dan layanan kurir yang tersedia.</p></div><p className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">Pilihan kurir belum tersedia sampai koneksi tarif Biteship diaktifkan.</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground opacity-40">Lanjut ke review →</button></div></div></section>
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Instant delivery" }, { key: "grab", label: "Grab", detail: "Instant delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">Tarif dan estimasi pengiriman akan mengikuti hasil layanan Biteship Sandbox.</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
