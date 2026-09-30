@@ -138,20 +138,73 @@ function AdminCustomerDelivery() {
   }, [orders]);
 
   if (!orders) {
-    return <div className="space-y-4 p-4 md:p-6"><Skeleton className="h-8 w-64" /><Skeleton className="h-12 w-full" /><Skeleton className="h-64 w-full" /></div>;
+    return (
+      <div className="space-y-3 p-3 md:p-4">
+        <Skeleton className="h-7 w-56" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
   }
 
   return (
-    <main className="space-y-4 p-4 pb-24 md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Operasional · DjiwaApp</p><h1 className="mt-1 text-2xl font-black tracking-tight">Delivery Customer</h1><p className="mt-1 text-sm text-muted-foreground">Pantau pengiriman Biteship dari order delivery customer app.</p></div>
-        <Button onClick={() => triggerHybridRefresh()} size="sm" variant="outline"><RefreshCw className="mr-2 h-4 w-4" />Segarkan</Button>
+    <main className="flex min-h-full flex-col gap-2 p-3 pb-20 md:h-full md:min-h-0 md:gap-2 md:p-3 md:pb-3">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border pb-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Truck className="h-4 w-4 shrink-0 text-primary" />
+            <h1 className="truncate text-lg font-black tracking-tight md:text-xl">Delivery Customer</h1>
+            <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary sm:inline-flex">Biteship</span>
+          </div>
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">Pantau pengiriman order delivery customer.</p>
+        </div>
+        <Button className="h-8 shrink-0 px-2.5 text-xs" onClick={() => triggerHybridRefresh()} size="sm" variant="outline">
+          <RefreshCw className="mr-1.5 h-3.5 w-3.5" />Segarkan
+        </Button>
+      </header>
+
+      <section className="grid shrink-0 grid-cols-3 gap-1.5 sm:max-w-md" aria-label="Ringkasan delivery">
+        <div className="rounded-lg border border-border bg-card px-2.5 py-1.5"><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Aktif</p><p className="text-lg font-black leading-tight tabular-nums">{counts.active}</p></div>
+        <div className="rounded-lg border border-border bg-card px-2.5 py-1.5"><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Terkirim</p><p className="text-lg font-black leading-tight text-emerald-600 tabular-nums">{counts.delivered}</p></div>
+        <div className="rounded-lg border border-border bg-card px-2.5 py-1.5"><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Dibatalkan</p><p className="text-lg font-black leading-tight text-red-600 tabular-nums">{counts.cancelled}</p></div>
+      </section>
+
+      <section className="sticky top-0 z-10 grid shrink-0 gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 backdrop-blur md:grid-cols-[minmax(0,1fr)_170px]" aria-label="Filter delivery">
+        <div className="relative min-w-0"><Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input className="h-8 min-w-0 pl-8 text-xs" onChange={(event) => setQuery(event.target.value)} placeholder="Cari order, customer, alamat, resi..." value={query} /></div>
+        <select className="h-8 min-w-0 rounded-md border border-input bg-background px-2.5 text-xs" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="active">Aktif</option><option value="all">Semua status</option>{DELIVERY_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</select>
+      </section>
+
+      <div className="flex shrink-0 items-center justify-between text-[10px] text-muted-foreground"><span>{deliveryOrders.length} order ditampilkan</span><span>Pembaruan #{refreshTrigger}</span></div>
+
+      <div className="hidden min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card md:block">
+        <table className="w-full min-w-[1120px] table-fixed text-left text-[11px]">
+          <thead className="sticky top-0 z-[1] bg-muted/95 text-[9px] uppercase tracking-wider text-muted-foreground backdrop-blur"><tr><th className="w-[16%] px-2 py-1.5">Order / customer</th><th className="w-[28%] px-2 py-1.5">Timeline Biteship</th><th className="w-[18%] px-2 py-1.5">Kurir & tujuan</th><th className="w-[16%] px-2 py-1.5">Tracking</th><th className="w-[11%] px-2 py-1.5 text-right">Biaya / total</th><th className="w-[11%] px-2 py-1.5">Payment / order</th></tr></thead>
+          <tbody className="divide-y divide-border">
+            {deliveryOrders.map((order) => { const status = normalizeStatus(order); return (
+              <tr className="align-middle transition-colors hover:bg-muted/30" key={order._id}>
+                <td className="px-2 py-1.5 align-top"><p className="truncate font-bold" title={order.orderNumber || order._id}>#{order.orderNumber || order._id}</p><p className="truncate text-[10px]">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[9px] text-muted-foreground">{formatDate(order.createdAt)}</p></td>
+                <td className="px-2 py-1.5"><span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span><div className="mt-1.5 overflow-x-auto"><DeliveryTimeline status={status} /></div></td>
+                <td className="max-w-0 px-2 py-1.5 align-top"><p className="flex items-center gap-1 truncate font-bold"><Truck className="h-3 w-3 shrink-0" />{courierLabel(order)}</p><p className="mt-0.5 flex max-w-full gap-1 truncate text-[10px] text-muted-foreground" title={order.deliveryAddress || "Alamat belum tersedia"}><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p></td>
+                <td className="px-2 py-1.5 align-top text-[10px]"><p className="truncate" title={order.deliveryWaybillId || "-"}>Waybill: <span className="font-semibold">{order.deliveryWaybillId || "-"}</span></p><p className="truncate" title={order.deliveryTrackingId || "-"}>Tracking: <span className="font-semibold">{order.deliveryTrackingId || "-"}</span></p><p className="truncate text-[9px] text-muted-foreground" title={order.deliveryProviderOrderId || "-"}>Provider: {order.deliveryProviderOrderId || "-"}</p></td>
+                <td className="px-2 py-1.5 text-right align-top text-[10px]"><p>Ongkir <span className="font-semibold">{formatRupiah(order.shippingFeeAmount)}</span></p><p className="mt-0.5 font-bold">{formatRupiah(order.totalAmount)}</p></td>
+                <td className="px-2 py-1.5 align-top text-[10px]"><p>{paymentLabel(order.paymentMethod)}</p><p className="mt-0.5 truncate text-muted-foreground">{order.status || "-"}</p></td>
+              </tr>
+            ); })}
+          </tbody>
+        </table>
+        {deliveryOrders.length === 0 ? <div className="p-8 text-center text-xs text-muted-foreground">Belum ada order delivery customer sesuai filter.</div> : null}
       </div>
-      <div className="grid grid-cols-3 gap-2 md:max-w-xl"><div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Aktif</p><p className="mt-1 text-xl font-black">{counts.active}</p></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Terkirim</p><p className="mt-1 text-xl font-black text-emerald-600">{counts.delivered}</p></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-[10px] uppercase text-muted-foreground">Dibatalkan</p><p className="mt-1 text-xl font-black text-red-600">{counts.cancelled}</p></div></div>
-      <div className="grid gap-2 rounded-2xl border border-border bg-card p-3 md:grid-cols-[minmax(240px,1fr)_190px]"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" onChange={(event) => setQuery(event.target.value)} placeholder="Cari order, customer, alamat, resi..." value={query} /></div><select className="h-10 rounded-md border border-input bg-background px-3 text-sm" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="active">Aktif</option><option value="all">Semua status</option>{DELIVERY_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</select></div>
-      <p className="text-xs text-muted-foreground">{deliveryOrders.length} order ditampilkan · pembaruan data #{refreshTrigger}</p>
-      <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card shadow-sm md:block"><table className="w-full min-w-[1280px] text-left text-xs"><thead className="bg-muted/70 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-3 py-3">Order / customer</th><th className="px-3 py-3">Timeline Biteship</th><th className="px-3 py-3">Kurir & tujuan</th><th className="px-3 py-3">Tracking</th><th className="px-3 py-3 text-right">Biaya / total</th><th className="px-3 py-3">Payment / order</th></tr></thead><tbody className="divide-y divide-border">{deliveryOrders.map((order) => { const status = normalizeStatus(order); return <tr className="align-top transition-colors hover:bg-muted/30" key={order._id}><td className="px-3 py-3"><p className="font-bold">#{order.orderNumber || order._id}</p><p className="mt-1">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="mt-1 text-[10px] text-muted-foreground">{formatDate(order.createdAt)}</p></td><td className="px-3 py-3"><span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span><div className="mt-3 overflow-x-auto"><DeliveryTimeline status={status} /></div></td><td className="max-w-[220px] px-3 py-3"><p className="flex items-center gap-1 font-bold"><Truck className="h-3.5 w-3.5" />{courierLabel(order)}</p><p className="mt-1 flex gap-1 leading-relaxed text-muted-foreground"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p></td><td className="px-3 py-3"><p>Waybill: <span className="font-semibold">{order.deliveryWaybillId || "-"}</span></p><p className="mt-1">Tracking: <span className="font-semibold">{order.deliveryTrackingId || "-"}</span></p><p className="mt-1 text-[10px] text-muted-foreground">Provider ID: {order.deliveryProviderOrderId || "-"}</p></td><td className="px-3 py-3 text-right"><p>Ongkir <span className="font-semibold">{formatRupiah(order.shippingFeeAmount)}</span></p><p className="mt-1 font-black">Total {formatRupiah(order.totalAmount)}</p></td><td className="px-3 py-3"><p>{paymentLabel(order.paymentMethod)}</p><p className="mt-1 font-semibold capitalize">{order.status || "-"}</p></td></tr>; })}</tbody></table>{deliveryOrders.length === 0 ? <div className="py-12 text-center text-sm text-muted-foreground">Belum ada order delivery customer sesuai filter.</div> : null}</div>
-      <div className="space-y-3 md:hidden">{deliveryOrders.map((order) => { const status = normalizeStatus(order); return <article className="rounded-2xl border border-border bg-card p-4 shadow-sm" key={order._id}><div className="flex items-start justify-between gap-2"><div><p className="font-black">#{order.orderNumber || order._id}</p><p className="text-sm">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[10px] text-muted-foreground">{formatDate(order.createdAt)}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span></div><div className="mt-4 overflow-x-auto"><DeliveryTimeline status={status} /></div><div className="mt-4 space-y-2 border-t border-border pt-3 text-xs"><p className="flex gap-2"><Truck className="h-4 w-4 shrink-0" />{courierLabel(order)}</p><p className="flex gap-2"><MapPin className="h-4 w-4 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p><p>Waybill: <strong>{order.deliveryWaybillId || "-"}</strong> · Tracking: <strong>{order.deliveryTrackingId || "-"}</strong></p><div className="flex justify-between"><span>{paymentLabel(order.paymentMethod)} · {order.status || "-"}</span><strong>{formatRupiah(order.totalAmount)}</strong></div><p className="text-muted-foreground">Ongkir {formatRupiah(order.shippingFeeAmount)}</p></div></article>; })}{deliveryOrders.length === 0 ? <div className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">Belum ada order delivery customer sesuai filter.</div> : null}</div>
+
+      <div className="space-y-2 md:hidden">
+        {deliveryOrders.map((order) => { const status = normalizeStatus(order); return (
+          <article className="rounded-xl border border-border bg-card p-3" key={order._id}>
+            <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate font-black">#{order.orderNumber || order._id}</p><p className="truncate text-xs">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[10px] text-muted-foreground">{formatDate(order.createdAt)}</p></div><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span></div>
+            <div className="mt-2 overflow-x-auto"><DeliveryTimeline status={status} /></div>
+            <div className="mt-2 space-y-1.5 border-t border-border pt-2 text-[11px]"><p className="flex gap-1.5"><Truck className="h-3.5 w-3.5 shrink-0" />{courierLabel(order)}</p><p className="flex gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p><p className="truncate">Waybill: <strong>{order.deliveryWaybillId || "-"}</strong> · Tracking: <strong>{order.deliveryTrackingId || "-"}</strong></p><div className="flex justify-between gap-2"><span>{paymentLabel(order.paymentMethod)} · {order.status || "-"}</span><strong>{formatRupiah(order.totalAmount)}</strong></div><p className="text-muted-foreground">Ongkir {formatRupiah(order.shippingFeeAmount)}</p></div>
+          </article>
+        ); })}
+        {deliveryOrders.length === 0 ? <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground">Belum ada order delivery customer sesuai filter.</div> : null}
+      </div>
     </main>
   );
 }

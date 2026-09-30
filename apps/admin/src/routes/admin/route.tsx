@@ -245,6 +245,11 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
+		],
+	},
+	{
+		label: "DELIVERY",
+		items: [
 			{ to: "/admin/orders/delivery", icon: Truck, label: "Delivery Customer", permission: "orders:view" },
 		],
 	},
@@ -308,7 +313,6 @@ const OPERATIONAL_PATHS = [
   "/admin/kitchen",
   "/admin/bar",
   "/admin/customer-service",
-  "/admin/orders/delivery",
 ];
 
 // Flat list for backward compat
@@ -711,13 +715,6 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						permission="orders:view"
 					/>
 					<DesktopNavLink
-						icon={<Truck />}
-						isCollapsed={isCollapsed}
-						label="Delivery Customer"
-						to="/admin/orders/delivery"
-						permission="orders:view"
-					/>
-					<DesktopNavLink
 						icon={<ShieldAlert />}
 						isCollapsed={isCollapsed}
 						label="Moderasi Komunitas"
@@ -786,6 +783,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							</AnimatePresence>
 						</>
 					)}
+
+					{/* DELIVERY - Standalone */}
+					<SidebarSection isCollapsed={isCollapsed} label="DELIVERY" />
+					<DesktopNavLink icon={<Truck />} isCollapsed={isCollapsed} label="Delivery Customer" to="/admin/orders/delivery" permission="orders:view" />
 
 					{/* KARYAWAN - Section */}
 					<SidebarSection isCollapsed={isCollapsed} label="Karyawan" />
