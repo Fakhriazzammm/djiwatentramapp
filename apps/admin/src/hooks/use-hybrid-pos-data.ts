@@ -791,6 +791,13 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		deliveryStatus: row.deliveryStatus ?? row.delivery_status ?? null,
 		deliveryDate: row.deliveryDate ?? row.delivery_date ?? null,
 		deliveryProvider: row.deliveryProvider ?? row.delivery_provider ?? null,
+		deliveryContactName: row.deliveryContactName ?? row.delivery_contact_name ?? null,
+		deliveryNotes: row.deliveryNotes ?? row.delivery_notes ?? null,
+		deliveryProviderOrderId: row.deliveryProviderOrderId ?? row.delivery_provider_order_id ?? null,
+		deliveryTrackingId: row.deliveryTrackingId ?? row.delivery_tracking_id ?? null,
+		deliveryWaybillId: row.deliveryWaybillId ?? row.delivery_waybill_id ?? null,
+		shippingFeeAmount: row.shippingFeeAmount ?? row.shipping_fee_amount ?? null,
+		shippingRateSnapshot: row.shippingRateSnapshot ?? row.shipping_rate_snapshot ?? null,
 		brandSlug: row.brandSlug ?? row.brand_slug ?? null,
 		guestCount:
 			row.guestCount === null || row.guestCount === undefined

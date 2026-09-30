@@ -84,6 +84,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/accounting": "Chart of Accounts",
 	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
+	"/admin/orders/delivery": "Delivery Customer",
 	"/admin/notifications": "Notifikasi",
 	"/admin/order-mie-yamin": "Order Mie Yamin",
 	"/admin/order-mie-yamin/orders": "Pesanan Mie Yamin",
@@ -244,6 +245,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
+			{ to: "/admin/orders/delivery", icon: Truck, label: "Delivery Customer", permission: "orders:view" },
 		],
 	},
 	{
@@ -306,6 +308,7 @@ const OPERATIONAL_PATHS = [
   "/admin/kitchen",
   "/admin/bar",
   "/admin/customer-service",
+  "/admin/orders/delivery",
 ];
 
 // Flat list for backward compat
@@ -755,6 +758,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />
 							<DesktopNavLink icon={<Beer />} isCollapsed={isCollapsed} label="Bar" to="/admin/bar" />
 							<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
+			<DesktopNavLink icon={<Truck />} isCollapsed={isCollapsed} label="Delivery Customer" to="/admin/orders/delivery" permission="orders:view" />
 						</>
 					) : (
 						<>
@@ -770,6 +774,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 											<DesktopSubNavLink icon={<ChefHat />} label="Dapur" to="/admin/kitchen" />
 											<DesktopSubNavLink icon={<Beer />} label="Bar" to="/admin/bar" />
 											<DesktopSubNavLink icon={<Bell />} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
+											<DesktopSubNavLink icon={<Truck />} label="Delivery Customer" to="/admin/orders/delivery" permission="orders:view" />
 										</div>
 									</motion.div>
 								)}
