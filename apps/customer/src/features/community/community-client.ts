@@ -1,4 +1,4 @@
-import type { CommunityPurchaseActivity, CommunityPurchaseActivityPage } from "./community-types";
+import type { CommunityProductSummary, CommunityPurchaseActivity, CommunityPurchaseActivityPage } from "./community-types";
 
 export type CommunityMediaType = "image" | "video";
 
@@ -20,7 +20,10 @@ export type CommunityPost = {
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
+  savedByMe: boolean;
+  followingByMe: boolean;
   author: CommunityAuthor;
+  products: CommunityProductSummary[];
   mediaUrl: string | null;
 };
 
@@ -87,6 +90,14 @@ function mapPost(post: CommunityPost): CommunityPost {
 }
 
 export const communityClient = {
+  async listProducts(signal?: AbortSignal): Promise<CommunityProductSummary[]> {
+    const payload = await request<{ data: CommunityProductSummary[] }>("/products", { signal });
+    return payload.data ?? [];
+  },
+  async listSaved(signal?: AbortSignal): Promise<CommunityPage> {
+    const payload = await request<CommunityPage>("/saved", { signal });
+    return { ...payload, data: (payload.data ?? []).map(mapPost) };
+  },
   async listPurchaseActivity(cursor?: string, signal?: AbortSignal): Promise<CommunityPurchaseActivityPage> {
     const params = new URLSearchParams({ limit: "20" });
     if (cursor) params.set("cursor", cursor);
@@ -94,6 +105,7 @@ export const communityClient = {
     return {
       activities: (payload.activities ?? []).map((activity) => ({
         ...activity,
+        activityGroupKey: activity.activityGroupKey || `${activity.displayName}|${activity.orderSettledAt}`,
         productImageUrl: activity.productImageUrl,
         verified: activity.verified !== false,
       })),
@@ -126,7 +138,7 @@ export const communityClient = {
     if (!response.ok || !payload?.data?.objectKey) throw new CommunityClientError(payload?.error || "Upload media Komunitas gagal.");
     return { objectKey: payload.data.objectKey };
   },
-  async create(input: { postId?: string; body?: string; mediaType?: "image" | "video"; mediaObjectKey?: string; mediaContentType?: string; mediaSizeBytes?: number }): Promise<CommunityPost> {
+  async create(input: { postId?: string; body?: string; mediaType?: "image" | "video"; mediaObjectKey?: string; mediaContentType?: string; mediaSizeBytes?: number; productSourceIds?: string[] }): Promise<CommunityPost> {
     const payload = await request<{ data: CommunityPost }>("/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
     return mapPost(payload.data);
   },
@@ -142,6 +154,22 @@ export const communityClient = {
   },
   async unlike(id: string): Promise<{ liked: boolean; likeCount: number }> {
     const payload = await request<{ data: { liked: boolean; likeCount: number } }>(`/posts/${encodeURIComponent(id)}/like`, { method: "DELETE" });
+    return payload.data;
+  },
+  async save(id: string): Promise<{ saved: boolean }> {
+    const payload = await request<{ data: { saved: boolean } }>(`/posts/${encodeURIComponent(id)}/save`, { method: "POST" });
+    return payload.data;
+  },
+  async unsave(id: string): Promise<{ saved: boolean }> {
+    const payload = await request<{ data: { saved: boolean } }>(`/posts/${encodeURIComponent(id)}/save`, { method: "DELETE" });
+    return payload.data;
+  },
+  async follow(sourceId: string): Promise<{ following: boolean }> {
+    const payload = await request<{ data: { following: boolean } }>(`/profile/${encodeURIComponent(sourceId)}/follow`, { method: "POST" });
+    return payload.data;
+  },
+  async unfollow(sourceId: string): Promise<{ following: boolean }> {
+    const payload = await request<{ data: { following: boolean } }>(`/profile/${encodeURIComponent(sourceId)}/follow`, { method: "DELETE" });
     return payload.data;
   },
   async listComments(id: string): Promise<CommunityCommentPage> {
