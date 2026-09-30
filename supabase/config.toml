@@ -70,3 +70,7 @@ verify_jwt = false
 [functions.kol-public]
 enabled = true
 verify_jwt = false
+
+[functions.biteship-webhook]
+enabled = true
+verify_jwt = false
