@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.385",
+	semantic: "0.2.387",
 	// Git/deploy commit hash (short)
-	commitHash: "7dd199a",
-	message: "fix(api): terima probe webhook kosong Biteship",
+	commitHash: "732e2fa",
+	message: "feat(customer): tambahkan mode delivery dan alamat tersimpan",
 	// Commit subject for the update prompt
-	commitMessage: "fix(api): terima probe webhook kosong Biteship",
+	commitMessage: "feat(customer): tambahkan mode delivery dan alamat tersimpan",
 	// Build timestamp
 	buildDate: "2026-09-30",
 	// Full version string for display

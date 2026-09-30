@@ -300,7 +300,11 @@ export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: 
 	const activeStep = steps[activeIndex];
 
 	return (
-		<div className="mx-2 mt-2 rounded-2xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-sm" aria-label={`Progress order: Langkah ${activeIndex + 1} dari ${steps.length}, ${activeStep.label}`}>
+		<div className="mx-2 mt-2" aria-label={`Progress order: Langkah ${activeIndex + 1} dari ${steps.length}, ${activeStep.label}`}>
+			{onModeChange ? <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-muted/70 p-1" role="group" aria-label="Jenis pesanan">
+				{([{ key: "dine_in", label: "Dine In" }, { key: "delivery", label: "Delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => onModeChange(option.key)} aria-pressed={mode === option.key} className={cn("min-h-10 rounded-lg px-3 text-xs font-black transition-all", mode === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{option.label}</button>)}
+			</div> : null}
+		<div className="rounded-2xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-sm">
 			<div className="flex items-center justify-between gap-3">
 				<div className="min-w-0">
 					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Progress pesanan</p>
@@ -308,9 +312,6 @@ export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: 
 				</div>
 				<span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-black text-primary">Langkah {activeIndex + 1} dari {steps.length}</span>
 			</div>
-			{onModeChange ? <div className="mt-2.5 grid grid-cols-2 gap-1 rounded-xl bg-muted/70 p-1" role="group" aria-label="Jenis pesanan">
-				{([{ key: "dine_in", label: "Dine In" }, { key: "delivery", label: "Delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => onModeChange(option.key)} aria-pressed={mode === option.key} className={cn("min-h-10 rounded-lg px-3 text-xs font-black transition-all", mode === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{option.label}</button>)}
-			</div> : null}
 			<div className="mt-2.5 flex items-start" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={activeIndex + 1} aria-valuetext={`Langkah ${activeIndex + 1} dari ${steps.length}: ${activeStep.label}`}>
 				{steps.map((item, index) => (
 					<div key={item.key} className="relative flex min-w-0 flex-1 flex-col items-center">
@@ -320,6 +321,7 @@ export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: 
 					</div>
 				))}
 			</div>
+		</div>
 		</div>
 	);
 }
