@@ -1,7 +1,7 @@
 {
-  "version": "0.2.223",
-  "commitHash": "751d639",
-  "message": "feat(admin): add customer delivery monitoring",
+  "version": "0.2.225",
+  "commitHash": "a0f33d8",
+  "message": "fix(admin): surface delivery monitoring from orders",
   "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T17:17:31.354Z"
+  "generatedAt": "2026-09-30T17:29:13.307Z"
 }
