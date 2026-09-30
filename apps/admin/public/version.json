@@ -1,7 +1,7 @@
 {
-  "version": "0.2.365",
-  "commitHash": "276033b",
-  "message": "chore(admin): publish notification release metadata",
-  "buildDate": "2026-09-29",
-  "generatedAt": "2026-09-29T09:13:50.482Z"
+  "version": "0.2.377",
+  "commitHash": "66f3d3e",
+  "message": "fix(admin): pin notification list to viewport top",
+  "buildDate": "2026-09-30",
+  "generatedAt": "2026-09-30T04:41:49.802Z"
 }

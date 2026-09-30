@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Bell, Check, ChevronRight, X } from "lucide-react";
@@ -115,39 +116,43 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 				{unreadCount > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-black leading-none text-white ring-2 ring-card">{unreadCount > 9 ? "9+" : unreadCount}</span>}
 			</motion.button>
 
-			<AnimatePresence>
-				{isOpen && (
-					<motion.div
-						initial={reduceMotion ? false : { opacity: 0, y: -5, scale: 0.98 }}
-						animate={{ opacity: 1, y: 0, scale: 1 }}
-						exit={reduceMotion ? undefined : { opacity: 0, y: -4, scale: 0.98 }}
-						transition={spring}
-						className="fixed right-4 top-2 z-[9999] w-[min(340px,calc(100vw-24px))] overflow-hidden rounded-xl border border-border bg-card shadow-[0_18px_48px_rgba(9,9,11,0.16)]"
-					>
-						<div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
-							<div><p className="text-xs font-black">Notifikasi</p><p className="text-[10px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
-							{unreadCount > 0 && <button type="button" onClick={() => void markAllRead().catch(() => toast.error("Gagal menandai semua"))} className="text-[10px] font-bold text-primary hover:underline">Tandai semua</button>}
-						</div>
-						{pushSupported && !pushSubscribed && (
-							<button type="button" disabled={pushBusy} onClick={() => void enablePush()} className="mx-1.5 mt-1.5 flex w-[calc(100%-12px)] items-center justify-between rounded-lg bg-primary/[0.06] px-2.5 py-2 text-left text-[10px] font-semibold text-primary disabled:opacity-60">
-								<span>Dapatkan notifikasi saat app tertutup</span><span>{pushBusy ? "Menyiapkan..." : "Aktifkan"}</span>
-							</button>
-						)}
-						<div className="max-h-[min(360px,calc(100dvh-150px))] overflow-y-auto p-1.5">
-							{isLoading && notifications.length === 0 ? <div className="space-y-1.5 p-1"><div className="h-11 animate-pulse rounded-lg bg-muted" /><div className="h-11 animate-pulse rounded-lg bg-muted" /></div> : error && notifications.length === 0 ? <div className="p-4 text-center text-[11px] text-muted-foreground"><p>Notifikasi gagal dimuat.</p><button type="button" onClick={() => window.location.reload()} className="mt-1 font-bold text-primary">Coba lagi</button></div> : notifications.length === 0 ? <div className="p-5 text-center text-[11px] text-muted-foreground">Tidak ada notifikasi penting</div> : notifications.slice(0, 8).map((notification) => <NotificationRow key={notification.id} notification={notification} onOpen={openNotification} />)}
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
+			{typeof document !== "undefined" && createPortal(
+				<AnimatePresence>
+					{isOpen && (
+						<motion.div
+							initial={reduceMotion ? false : { opacity: 0, y: -5, scale: 0.98 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							exit={reduceMotion ? undefined : { opacity: 0, y: -4, scale: 0.98 }}
+							transition={spring}
+							className="fixed right-4 top-[4.25rem] z-[9999] w-[min(340px,calc(100vw-24px))] overflow-hidden rounded-xl border border-border bg-card shadow-[0_18px_48px_rgba(9,9,11,0.16)]"
+						>
+							<div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
+								<div><p className="text-xs font-black">Notifikasi</p><p className="text-[10px] text-muted-foreground">{unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}</p></div>
+								{unreadCount > 0 && <button type="button" onClick={() => void markAllRead().catch(() => toast.error("Gagal menandai semua"))} className="text-[10px] font-bold text-primary hover:underline">Tandai semua</button>}
+							</div>
+							{pushSupported && !pushSubscribed && (
+								<button type="button" disabled={pushBusy} onClick={() => void enablePush()} className="mx-1.5 mt-1.5 flex w-[calc(100%-12px)] items-center justify-between rounded-lg bg-primary/[0.06] px-2.5 py-2 text-left text-[10px] font-semibold text-primary disabled:opacity-60">
+									<span>Dapatkan notifikasi saat app tertutup</span><span>{pushBusy ? "Menyiapkan..." : "Aktifkan"}</span>
+								</button>
+							)}
+							<div className="max-h-[min(360px,calc(100dvh-150px))] overflow-y-auto p-1.5">
+								{isLoading && notifications.length === 0 ? <div className="space-y-1.5 p-1"><div className="h-11 animate-pulse rounded-lg bg-muted" /><div className="h-11 animate-pulse rounded-lg bg-muted" /></div> : error && notifications.length === 0 ? <div className="p-4 text-center text-[11px] text-muted-foreground"><p>Notifikasi gagal dimuat.</p><button type="button" onClick={() => window.location.reload()} className="mt-1 font-bold text-primary">Coba lagi</button></div> : notifications.length === 0 ? <div className="p-5 text-center text-[11px] text-muted-foreground">Tidak ada notifikasi penting</div> : notifications.slice(0, 8).map((notification) => <NotificationRow key={notification.id} notification={notification} onOpen={openNotification} />)}
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>,
+				document.body,
+			)}
 
-			<AnimatePresence>
-				{popupNotification && !isMobile && !isOpen && (
+			{typeof document !== "undefined" && createPortal(
+				<AnimatePresence>
+					{popupNotification && !isMobile && !isOpen && (
 					<motion.div
 						initial={reduceMotion ? false : { opacity: 0, y: -8, scale: 0.96 }}
 						animate={{ opacity: 1, y: 0, scale: 1 }}
 						exit={reduceMotion ? undefined : { opacity: 0, y: -5, scale: 0.98 }}
 						transition={spring}
-						className="fixed right-4 top-2 z-[10000] w-[min(320px,calc(100vw-24px))] rounded-2xl border border-primary/15 bg-card p-2.5 shadow-[0_14px_34px_rgba(9,9,11,0.16)]"
+						className="fixed right-4 top-[4.25rem] z-[10000] w-[min(320px,calc(100vw-24px))] rounded-2xl border border-primary/15 bg-card p-2.5 shadow-[0_14px_34px_rgba(9,9,11,0.16)]"
 					>
 						<div className="flex items-start gap-2">
 							<span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${notificationTone(popupNotification)}`}><Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" /></span>
@@ -156,7 +161,9 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 						</div>
 					</motion.div>
 				)}
-			</AnimatePresence>
+				</AnimatePresence>,
+				document.body,
+			)}
 		</div>
 	);
 }
