@@ -76,5 +76,32 @@ Deno.serve(async (req) => {
     return json({ error: "EVENT_NOT_QUEUED" }, 500);
   }
 
+  const status = stringValue(data.status, body.status).toLowerCase();
+  const trackingId = stringValue(data.tracking_id, data.trackingId, data.tracking_number, data.trackingNumber);
+  const waybillId = stringValue(data.waybill_id, data.waybillId, data.awb, data.resi);
+  if (providerOrderId) {
+    const deliveryStatus = ["confirmed", "allocated", "picking_up", "picked", "dropping_off", "delivered", "cancelled"].includes(status) ? status : null;
+    const courierCompany = stringValue(data.courier?.company, data.courier_company, data.courierCompany).toLowerCase();
+    const normalizedProvider = courierCompany.includes("grab") ? "grab" : courierCompany.includes("gojek") ? "gojek" : null;
+    const update: Record<string, unknown> = {
+      ...(normalizedProvider ? { delivery_provider: normalizedProvider } : {}),
+      delivery_tracking_id: trackingId || null,
+      delivery_waybill_id: waybillId || null,
+    };
+    if (deliveryStatus) update.delivery_status = deliveryStatus;
+    const orderResponse = await fetch(`${supabaseUrl}/rest/v1/orders?delivery_provider_order_id=eq.${encodeURIComponent(providerOrderId)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "content-type": "application/json",
+        "Content-Profile": "pos",
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify(update),
+    });
+    if (!orderResponse.ok) console.warn("biteship order mapping deferred", orderResponse.status);
+  }
+
   return json({ ok: true, received: true, event: result });
 });
