@@ -32,7 +32,14 @@ Deno.serve(async (req) => {
     return json({ error: "UNAUTHORIZED" }, 401);
   }
 
-  const payload = await req.json().catch(() => null);
+  const rawBody = await req.text();
+  if (!rawBody.trim()) return new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return json({ error: "INVALID_JSON" }, 400);
+  }
   if (!payload || typeof payload !== "object") return json({ error: "INVALID_JSON" }, 400);
   const body = payload as Record<string, any>;
   const data = body.data && typeof body.data === "object" ? body.data : body;
