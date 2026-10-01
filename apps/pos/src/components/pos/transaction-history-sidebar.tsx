@@ -176,6 +176,7 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 	);
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+	const [isPrinterConnecting, setIsPrinterConnecting] = useState(false);
 
 	const orders = useHybridOrders();
 	const siteSettings = useHybridSiteSettings();
@@ -234,6 +235,20 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 	};
 
 	const shiftStatus = useHybridShiftStatus();
+
+	const handleConnectPrinter = async () => {
+		if (isPrinterConnecting || bluetoothPrinter.isConnected()) return;
+		setIsPrinterConnecting(true);
+		try {
+			const name = await bluetoothPrinter.connect();
+			toast.success(`Printer terhubung: ${name}`, { id: "printing" });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Gagal menghubungkan printer";
+			toast.error(message, { id: "printing" });
+		} finally {
+			setIsPrinterConnecting(false);
+		}
+	};
 
 	const handlePrintOrder = async (order: Doc<"orders">, mode?: ReceiptPrintMode) => {
 		if (!siteSettings) {
@@ -342,11 +357,15 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 			);
 		} catch (error) {
 			console.error("Print failed:", error);
-			const message = error instanceof Error ? error.message : "Gagal mencetak";
-			toast.error(
-				`Gagal mencetak: ${message}. ${!bluetoothPrinter.isConnected() ? 'Pastikan printer Bluetooth sudah terhubung — klik "Hubungkan Printer".' : ""}`,
-				{ id: "printing" }
-			);
+			const rawMessage = error instanceof Error ? error.message : "Gagal mencetak";
+			const isConnectionError = /connection|networkerror|gatt|terputus|menyambung/i.test(rawMessage);
+			const message = isConnectionError
+				? "Printer belum terhubung atau koneksinya terputus."
+				: rawMessage;
+			toast.error(`Gagal mencetak: ${message}`, {
+				id: "printing",
+				action: isConnectionError ? { label: isPrinterConnecting ? "Menghubungkan..." : "Hubungkan Printer", onClick: () => void handleConnectPrinter() } : undefined,
+			});
 		}
 	};
 
@@ -400,10 +419,15 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 					) : (
 						<>
 							<SheetHeader className="border-b p-4">
-								<SheetTitle className="flex items-center gap-2">
-									<ClipboardList className="h-5 w-5 text-primary" />
-									Riwayat Transaksi
-								</SheetTitle>
+								<div className="flex items-center justify-between gap-2">
+									<SheetTitle className="flex items-center gap-2">
+										<ClipboardList className="h-5 w-5 text-primary" />
+										Riwayat Transaksi
+									</SheetTitle>
+									<Button className="h-8 shrink-0 gap-1.5 px-2 text-[10px]" disabled={isPrinterConnecting} onClick={() => void handleConnectPrinter()} size="sm" variant="outline">
+										<Printer className="h-3.5 w-3.5" />{isPrinterConnecting ? "Menghubungkan..." : "Hubungkan Printer"}
+									</Button>
+								</div>
 							</SheetHeader>
 
 							{/* Filter Buttons */}
