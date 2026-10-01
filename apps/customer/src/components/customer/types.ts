@@ -47,6 +47,8 @@ export type CartItem = {
 	image?: string;
 	categoryId: Id<"categories">;
 	menuNumber?: number;
+	deliveryWeightGrams?: number | null;
+	deliveryEnabled?: boolean;
 };
 
 export type ReceiptState = {

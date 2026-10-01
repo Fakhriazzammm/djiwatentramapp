@@ -203,6 +203,11 @@ function OrderPage() {
 			setShippingQuoteError(null);
 			return;
 		}
+		if (products === undefined) {
+			setShippingQuote(null);
+			setShippingQuoteError(null);
+			return;
+		}
 		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode).replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
 			setShippingQuote(null);
@@ -210,9 +215,9 @@ function OrderPage() {
 			return;
 		}
 		const items = cart.map((item) => {
-			const product = products?.find((entry) => entry._id === item.productId) as any;
-			const weight = Number(product?.deliveryWeightGrams ?? product?.netWeight ?? product?.weight ?? 0);
-			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight, deliveryEnabled: product?.deliveryEnabled !== false };
+			const product = products?.find((entry) => String(entry._id) === String(item.productId)) as any;
+			const weight = Number(item.deliveryWeightGrams ?? product?.deliveryWeightGrams ?? product?.netWeight ?? product?.weight ?? 0);
+			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight, deliveryEnabled: item.deliveryEnabled ?? product?.deliveryEnabled !== false };
 		});
 		if (items.some((item) => !item.deliveryEnabled)) {
 			setShippingQuote(null);
@@ -728,7 +733,12 @@ function OrderPage() {
 	// ── Handlers ────────────────────────────────────────────────
 
 	const addItemAndOfferUpsells = (item: CartItem) => {
-		addToCart(item);
+		const catalogProduct = products?.find((entry) => String(entry._id) === String(item.productId)) as any;
+		addToCart({
+			...item,
+			deliveryWeightGrams: item.deliveryWeightGrams ?? catalogProduct?.deliveryWeightGrams ?? null,
+			deliveryEnabled: item.deliveryEnabled ?? catalogProduct?.deliveryEnabled !== false,
+		});
 		setUpsellMainItem(item);
 		setUpsellSourceProductId(String(item.productId));
 	};
