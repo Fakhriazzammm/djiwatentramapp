@@ -702,6 +702,16 @@ tbody tr:hover td { background: #fcfdff; }
   .page { margin-left:0; padding:10px 8px 14px; }
   .topbar-right { width:100%; justify-content:space-between; }
 }
+
+.admin-sidebar .side-section { margin-top:18px; padding:0 10px 7px; color:var(--muted); font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.special-mode .toolbar, .special-mode .filter-row, .special-mode .meta-row { display:none; }
+.special-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:4px; }
+.special-card { border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff; }
+.special-card h3 { font-size:12px; margin-bottom:8px; }
+.special-card .big { font-size:28px; font-weight:800; letter-spacing:-.04em; }
+.special-list { margin-top:12px; display:grid; gap:7px; }
+.special-list-row { display:flex; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; font-size:11px; }
+@media (max-width:720px) { .special-grid { grid-template-columns:1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -731,10 +741,14 @@ tbody tr:hover td { background: #fcfdff; }
 
 
 <aside class="admin-sidebar" aria-label="Navigasi rekrutmen">
-  <div class="admin-sidebar-title">Rekrutmen</div>
+  <div class="admin-sidebar-title">Recruitment App</div>
+  <button class="admin-side-link" data-side-tab="dashboard" type="button" onclick="switchTab('dashboard')">⌂ <span>Dashboard</span></button>
   <button class="admin-side-link active" data-side-tab="candidates" type="button" onclick="switchTab('candidates')">▣ <span>Kandidat</span><span class="side-count" id="sideCandidatesCount">0</span></button>
+  <button class="admin-side-link" data-side-tab="positions" type="button" onclick="switchTab('positions')">▤ <span>Posisi Lowongan</span></button>
   <button class="admin-side-link" data-side-tab="interviews" type="button" onclick="switchTab('interviews')">◷ <span>Interview</span><span class="side-count" id="sideInterviewsCount">0</span></button>
   <button class="admin-side-link" data-side-tab="onboarding" type="button" onclick="switchTab('onboarding')">✓ <span>Onboarding</span><span class="side-count" id="sideOnboardingCount">0</span></button>
+  <div class="side-section">Analitik</div>
+  <button class="admin-side-link" data-side-tab="reports" type="button" onclick="switchTab('reports')">▥ <span>Laporan</span></button>
 </aside>
 
 <div class="page">
@@ -864,6 +878,7 @@ const TAB_CONFIG = {
     ]
   }
 };
+const SPECIAL_TABS = new Set(['dashboard', 'positions', 'reports']);
 
 const state = {
   allData: { candidates: [], interviews: [], onboarding: [] },
@@ -939,8 +954,10 @@ function renderTabs() {
 function switchTab(tab) {
   state.activeTab = tab;
   document.querySelectorAll('[data-side-tab]').forEach((item) => item.classList.toggle('active', item.dataset.sideTab === tab));
-  const titles = { candidates: 'Kandidat', interviews: 'Interview', onboarding: 'Onboarding' };
+  const titles = { dashboard: 'Dashboard', candidates: 'Kandidat', positions: 'Posisi Lowongan', interviews: 'Interview', onboarding: 'Onboarding', reports: 'Laporan' };
   document.getElementById('pageTitle').textContent = titles[tab] || 'Rekrutmen';
+  document.querySelector('.workspace').classList.toggle('special-mode', SPECIAL_TABS.has(tab));
+  if (SPECIAL_TABS.has(tab)) { renderSpecialPage(tab); return; }
   state.activeQuickFilter = 'All';
   document.getElementById('searchInput').value = '';
   populateToolbars();
@@ -1009,8 +1026,25 @@ function sortRecords(tab, records) {
   return items;
 }
 
+function renderSpecialPage(tab) {
+  const candidates = getRecords('candidates');
+  const statusCounts = candidates.reduce((acc, item) => { const key = item.fields.Status || 'Tanpa status'; acc[key] = (acc[key] || 0) + 1; return acc; }, {});
+  const positionCounts = candidates.reduce((acc, item) => { const key = item.fields['Posisi Dilamar'] || 'Tanpa posisi'; acc[key] = (acc[key] || 0) + 1; return acc; }, {});
+  const entries = (obj) => Object.entries(obj).sort((a,b) => b[1] - a[1]);
+  if (tab === 'dashboard') {
+    const recent = [...candidates].slice(0, 8);
+    document.getElementById('tableContainer').innerHTML = `<div class="special-grid"><div class="special-card"><h3>Total Kandidat</h3><div class="big">${candidates.length}</div></div><div class="special-card"><h3>Posisi Dibuka</h3><div class="big">${Object.keys(positionCounts).length}</div></div><div class="special-card"><h3>Status Interview</h3><div class="big">${statusCounts.Interview || 0}</div></div></div><div class="special-card" style="margin:10px 4px"><h3>Kandidat Terbaru</h3><div class="special-list">${recent.map(r => `<div class="special-list-row"><strong>${escapeHtml(r.fields['Nama Lengkap'] || '-')}</strong><span>${escapeHtml(r.fields['Posisi Dilamar'] || '-')}</span></div>`).join('')}</div></div>`;
+  } else if (tab === 'positions') {
+    document.getElementById('tableContainer').innerHTML = `<div class="special-card" style="margin:4px"><h3>Posisi Lowongan dari data kandidat</h3><div class="special-list">${entries(positionCounts).map(([name,count]) => `<div class="special-list-row"><strong>${escapeHtml(name)}</strong><span>${count} kandidat</span></div>`).join('')}</div></div>`;
+  } else {
+    document.getElementById('tableContainer').innerHTML = `<div class="special-grid"><div class="special-card"><h3>Total kandidat</h3><div class="big">${candidates.length}</div></div><div class="special-card"><h3>Sudah interview</h3><div class="big">${statusCounts.Interview || 0}</div></div><div class="special-card"><h3>Diterima</h3><div class="big">${statusCounts.Accepted || 0}</div></div></div><div class="special-card" style="margin:10px 4px"><h3>Ringkasan status</h3><div class="special-list">${entries(statusCounts).map(([name,count]) => `<div class="special-list-row"><strong>${escapeHtml(name)}</strong><span>${count}</span></div>`).join('')}</div></div>`;
+  }
+  document.getElementById('mobileContainer').innerHTML = '';
+}
+
 function renderActiveView() {
   const tab = state.activeTab;
+  if (SPECIAL_TABS.has(tab)) { renderSpecialPage(tab); return; }
   const config = TAB_CONFIG[tab];
   const filtered = sortRecords(tab, filterRecords(tab));
   const statusValue = document.getElementById('statusFilter').value;
