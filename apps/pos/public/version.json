@@ -1,7 +1,7 @@
 {
-  "version": "0.2.232",
-  "commitHash": "cdb7e0b",
-  "message": "fix(pos): map delivery shipping fee column",
+  "version": "0.2.233",
+  "commitHash": "f3f453a",
+  "message": "feat(pos): move notifications to header",
   "buildDate": "2026-10-01",
-  "generatedAt": "2026-10-01T06:04:36.923Z"
+  "generatedAt": "2026-10-01T06:09:04.918Z"
 }
