@@ -66,6 +66,7 @@ export function NotificationCenter({
   onDismiss,
   onMarkCashierPaid,
   onOpenOrder,
+  fullPage = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -76,6 +77,7 @@ export function NotificationCenter({
   onDismiss: (id: string) => void | Promise<void>;
   onMarkCashierPaid?: (notification: PosNotification) => void | Promise<void>;
   onOpenOrder?: (notification: PosNotification) => void;
+  fullPage?: boolean;
 }) {
   const [tab, setTab] = useState<"all" | "orders" | "admin">("all");
   const [filter, setFilter] = useState<"all" | "unread" | "payment">("all");
@@ -91,8 +93,8 @@ export function NotificationCenter({
 
   return (
     <>
-      <button type="button" aria-label="Tutup notifikasi" className="fixed inset-0 z-40 cursor-default bg-black/20" onClick={onClose} />
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col border-l border-border bg-background shadow-2xl" aria-label="Pusat notifikasi">
+      {!fullPage && <button type="button" aria-label="Tutup notifikasi" className="fixed inset-0 z-40 cursor-default bg-black/20" onClick={onClose} />}
+      <aside className={fullPage ? "flex min-h-[calc(100vh-4rem)] w-full flex-col bg-background" : "fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col border-l border-border bg-background shadow-2xl"} aria-label="Pusat notifikasi">
         <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
           <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.16em] text-primary">Operasional POS</p>

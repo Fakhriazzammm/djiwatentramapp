@@ -1966,8 +1966,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								<button
 									type="button"
 									onClick={() => {
-										setIsNotificationCenterOpen(true);
-										void refreshNotifications(true);
+										navigate({ to: "/notifications" });
 									}}
 									className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
 									aria-label={unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : "Buka notifikasi"}

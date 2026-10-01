@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.233",
+	semantic: "0.2.234",
 	// Git/deploy commit hash (short)
-	commitHash: "f3f453a",
-	message: "feat(pos): move notifications to header",
+	commitHash: "6eab8f8",
+	message: "fix(pos): compact notification center layout",
 	// Commit subject for the update prompt
-	commitMessage: "feat(pos): move notifications to header",
+	commitMessage: "fix(pos): compact notification center layout",
 	// Build timestamp
 	buildDate: "2026-10-01",
 	// Full version string for display
