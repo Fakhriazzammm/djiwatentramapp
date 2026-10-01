@@ -17,6 +17,7 @@ function NotificationsPage() {
     refresh,
     markRead,
     removeNotification,
+    realtimeStatus,
   } = usePosNotifications();
 
   return (
@@ -36,6 +37,9 @@ function NotificationsPage() {
             <h1 className="text-sm font-black leading-tight sm:text-base">Pusat Notifikasi</h1>
           </div>
           <div className="flex items-center gap-2">
+            <span className={`hidden rounded-full px-2 py-1 text-[10px] font-bold sm:inline-flex ${realtimeStatus === "connected" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+              {realtimeStatus === "connected" ? "Realtime aktif" : "Polling cadangan"}
+            </span>
             <span className="hidden rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary sm:inline-flex">
               {unreadCount} belum dibaca
             </span>
