@@ -224,7 +224,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const result = await pool.query(`select * from pos.kol_request_invited_visit_booking($1,$2,$3,$4)`, [invite.invite_id, date, typeof body.visitNote === "string" ? body.visitNote.trim().slice(0, 500) : null, current.userId]).catch((error: any) => ({ error }));
     if ((result as any).error) {
       const error = (result as any).error;
-      if (error?.code === "23505") return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
+      if (error?.code === "23505") return json(c, { success: false, error: error?.message === "creator already has an active visit booking" ? "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" : "DATE_ALREADY_BOOKED" }, 409);
       if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","INVITATION_NOT_VALID"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" ? 409 : 400);
       throw error;
     }
@@ -484,7 +484,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const result = await pool.query(`select * from pos.kol_request_visit_booking($1,$2,$3)`, [current.kol.source_id, date, typeof body.visitNote === "string" ? body.visitNote.trim().slice(0, 500) : null]).catch((error: any) => ({ error }));
     if ((result as any).error) {
       const error = (result as any).error;
-      if (error?.code === "23505") return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
+      if (error?.code === "23505") return json(c, { success: false, error: error?.message === "creator already has an active visit booking" ? "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" : "DATE_ALREADY_BOOKED" }, 409);
       if (error?.code === "22023") return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
       throw error;
     }
