@@ -138,9 +138,10 @@ function psql(sql) {
 async function validateRecruitmentAdmin(req, res, next) {
   const outsourcingSession = verifyOutsourcingSession(req.get("x-rekrutmen-outsourcing-session"));
   if (outsourcingSession) {
-    if (req.method !== "GET") return res.status(403).json({ error: "Akses outsourcing hanya baca data" });
+    const candidateStatusPatch = req.method === "PATCH" && /^\/api\/table\/Candidates\/[0-9a-f-]+$/i.test(req.path);
+    if (req.method !== "GET" && !candidateStatusPatch) return res.status(403).json({ error: "Akses outsourcing hanya dapat membaca atau mengubah status kandidat" });
     res.locals.recruitmentAdmin = { role: "outsourcing_readonly" };
-    res.locals.readOnly = true;
+    res.locals.readOnly = !candidateStatusPatch;
     return next();
   }
   const headerToken = req.get("x-yumi-session") || req.get("authorization")?.replace(/^Bearer\s+/i, "");
