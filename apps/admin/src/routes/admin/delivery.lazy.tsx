@@ -88,12 +88,12 @@ function DeliveryTimeline({ status }: { status: string }) {
   const currentIndex = DELIVERY_STATUSES.findIndex((item) => item.value === status);
   const cancelled = status === "cancelled";
   return (
-    <div className="flex min-w-[420px] items-start gap-0">
+    <div className="flex w-full min-w-0 items-start gap-0">
       {DELIVERY_STATUSES.filter((item) => item.value !== "cancelled").map((item, index, steps) => {
         const reached = !cancelled && currentIndex >= 0 && index <= currentIndex;
         const active = !cancelled && item.value === status;
         return (
-          <div className="flex flex-1 flex-col items-center" key={item.value}>
+          <div className="flex min-w-0 flex-1 flex-col items-center" key={item.value}>
             <div className="flex w-full items-center">
               <div className={`h-0.5 flex-1 ${index === 0 ? "bg-transparent" : reached ? "bg-primary" : "bg-muted"}`} />
               <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] ${active ? "ring-4 ring-primary/15" : ""} ${reached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
@@ -101,7 +101,7 @@ function DeliveryTimeline({ status }: { status: string }) {
               </div>
               <div className={`h-0.5 flex-1 ${index === steps.length - 1 ? "bg-transparent" : reached && index < currentIndex ? "bg-primary" : "bg-muted"}`} />
             </div>
-            <span className={`mt-1 text-center text-[9px] leading-tight ${active ? "font-bold text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
+            <span className={`mt-1 min-h-[2rem] max-w-[3.5rem] whitespace-normal break-words px-0.5 text-center text-[8px] leading-[1.1] ${active ? "font-bold text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
           </div>
         );
       })}
