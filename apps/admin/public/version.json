@@ -1,7 +1,7 @@
 {
-  "version": "0.2.227",
-  "commitHash": "1f5fbc1",
-  "message": "feat(admin): make delivery monitor standalone",
-  "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T17:39:40.936Z"
+  "version": "0.2.229",
+  "commitHash": "3a191f0",
+  "message": "fix(admin): make delivery a top-level workspace",
+  "buildDate": "2026-10-01",
+  "generatedAt": "2026-10-01T04:32:39.260Z"
 }
