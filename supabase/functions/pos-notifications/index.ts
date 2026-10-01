@@ -212,7 +212,7 @@ async function syncRecentOrders() {
   // only newly observed IDs create a popup in the client.
   const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
   const orders = await dbGetPaged("pos_orders", {
-    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFee,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
+    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
     order: "createdAt.desc",
   });
   let created = 0;
@@ -304,7 +304,7 @@ async function syncRecentOrders() {
         deliveryContactPhone: order.deliveryContactPhone ?? null,
         deliveryAddress: order.deliveryAddress ?? null,
         deliveryNotes: order.deliveryNotes ?? null,
-        shippingFee: Number(order.shippingFee ?? 0),
+        shippingFee: Number(order.shippingFeeAmount ?? 0),
         subtotalAmount: Number(order.subtotalAmount ?? 0),
         tableNumber: order.tableNumber ?? null,
         orderType: order.orderType ?? null,
