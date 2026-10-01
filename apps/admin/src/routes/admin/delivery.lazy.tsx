@@ -1,8 +1,11 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Check, Circle, MapPin, RefreshCw, Search, Truck } from "lucide-react";
+import { Check, Circle, MapPin, RefreshCw, Search, Trash2, Truck } from "lucide-react";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
+import { useHybridDeleteOrder } from "@/hooks/use-hybrid-write-actions";
 import { useHybridOrders, useGlobalRefreshTrigger, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { Button } from "@/components/ui/button";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -114,6 +117,10 @@ function AdminCustomerDelivery() {
   const refreshTrigger = useGlobalRefreshTrigger();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<string[] | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteOrder = useHybridDeleteOrder();
 
   const deliveryOrders = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -136,6 +143,37 @@ function AdminCustomerDelivery() {
     const all = (orders ?? []).filter((order) => String(order.source ?? order.sourceApp ?? order.source_app ?? "").toLowerCase() === "customer_self_service" && String(order.orderType ?? order.order_type ?? "").toLowerCase() === "delivery");
     return { active: all.filter((order) => !TERMINAL_STATUSES.has(normalizeStatus(order))).length, delivered: all.filter((order) => normalizeStatus(order) === "delivered").length, cancelled: all.filter((order) => normalizeStatus(order) === "cancelled").length };
   }, [orders]);
+
+  const allVisibleSelected = deliveryOrders.length > 0 && deliveryOrders.every((order) => selectedIds.includes(String(order._id)));
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
+
+  const toggleAllVisible = () => {
+    const visibleIds = deliveryOrders.map((order) => String(order._id));
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : Array.from(new Set([...current, ...visibleIds])));
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation?.length || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      for (const id of deleteConfirmation) await deleteOrder({ id });
+      setSelectedIds((current) => current.filter((id) => !deleteConfirmation.includes(id)));
+      setDeleteConfirmation(null);
+      triggerHybridRefresh();
+      toast.success(`${deleteConfirmation.length} order delivery berhasil dihapus.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Sebagian order gagal dihapus.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const selectedCount = selectedIds.length;
 
   if (!orders) {
     return (
@@ -174,14 +212,15 @@ function AdminCustomerDelivery() {
         <select className="h-8 min-w-0 rounded-md border border-input bg-background px-2.5 text-xs" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="active">Aktif</option><option value="all">Semua status</option>{DELIVERY_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</select>
       </section>
 
-      <div className="flex shrink-0 items-center justify-between text-[10px] text-muted-foreground"><span>{deliveryOrders.length} order ditampilkan</span><span>Pembaruan #{refreshTrigger}</span></div>
+      <div className="flex shrink-0 items-center justify-between gap-2 text-[10px] text-muted-foreground"><span>{deliveryOrders.length} order ditampilkan</span><div className="flex items-center gap-2"><span>Pembaruan #{refreshTrigger}</span>{selectedCount > 0 ? <Button className="h-7 px-2 text-[10px]" disabled={isDeleting} onClick={() => setDeleteConfirmation([...selectedIds])} size="sm" variant="destructive"><Trash2 className="mr-1 h-3 w-3" />Hapus {selectedCount}</Button> : null}</div></div>
 
       <div className="hidden min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card md:block">
         <table className="w-full min-w-[1120px] table-fixed text-left text-[11px]">
-          <thead className="sticky top-0 z-[1] bg-muted/95 text-[9px] uppercase tracking-wider text-muted-foreground backdrop-blur"><tr><th className="w-[16%] px-2 py-1.5">Order / customer</th><th className="w-[28%] px-2 py-1.5">Timeline Biteship</th><th className="w-[18%] px-2 py-1.5">Kurir & tujuan</th><th className="w-[16%] px-2 py-1.5">Tracking</th><th className="w-[11%] px-2 py-1.5 text-right">Biaya / total</th><th className="w-[11%] px-2 py-1.5">Payment / order</th></tr></thead>
+          <thead className="sticky top-0 z-[1] bg-muted/95 text-[9px] uppercase tracking-wider text-muted-foreground backdrop-blur"><tr><th className="w-10 px-2 py-1.5 text-center"><input aria-label="Pilih semua order yang terlihat" checked={allVisibleSelected} onChange={toggleAllVisible} type="checkbox" className="h-3.5 w-3.5 accent-primary" /></th><th className="w-[14%] px-2 py-1.5">Order / customer</th><th className="w-[27%] px-2 py-1.5">Timeline Biteship</th><th className="w-[18%] px-2 py-1.5">Kurir & tujuan</th><th className="w-[16%] px-2 py-1.5">Tracking</th><th className="w-[10%] px-2 py-1.5 text-right">Biaya / total</th><th className="w-[11%] px-2 py-1.5">Payment / order</th></tr></thead>
           <tbody className="divide-y divide-border">
             {deliveryOrders.map((order) => { const status = normalizeStatus(order); return (
               <tr className="align-middle transition-colors hover:bg-muted/30" key={order._id}>
+                <td className="px-2 py-1.5 text-center align-top"><input aria-label={`Pilih order ${order.orderNumber || order._id}`} checked={selectedIds.includes(String(order._id))} onChange={() => toggleSelected(String(order._id))} type="checkbox" className="mt-0.5 h-3.5 w-3.5 accent-primary" /></td>
                 <td className="px-2 py-1.5 align-top"><p className="truncate font-bold" title={order.orderNumber || order._id}>#{order.orderNumber || order._id}</p><p className="truncate text-[10px]">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[9px] text-muted-foreground">{formatDate(order.createdAt)}</p></td>
                 <td className="px-2 py-1.5"><span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span><div className="mt-1.5 overflow-x-auto"><DeliveryTimeline status={status} /></div></td>
                 <td className="max-w-0 px-2 py-1.5 align-top"><p className="flex items-center gap-1 truncate font-bold"><Truck className="h-3 w-3 shrink-0" />{courierLabel(order)}</p><p className="mt-0.5 flex max-w-full gap-1 truncate text-[10px] text-muted-foreground" title={order.deliveryAddress || "Alamat belum tersedia"}><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p></td>
@@ -197,14 +236,23 @@ function AdminCustomerDelivery() {
 
       <div className="space-y-2 md:hidden">
         {deliveryOrders.map((order) => { const status = normalizeStatus(order); return (
-          <article className="rounded-xl border border-border bg-card p-3" key={order._id}>
-            <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate font-black">#{order.orderNumber || order._id}</p><p className="truncate text-xs">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[10px] text-muted-foreground">{formatDate(order.createdAt)}</p></div><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span></div>
+          <article className={`rounded-xl border bg-card p-3 ${selectedIds.includes(String(order._id)) ? "border-primary ring-1 ring-primary/20" : "border-border"}`} key={order._id}>
+            <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-start gap-2"><input aria-label={`Pilih order ${order.orderNumber || order._id}`} checked={selectedIds.includes(String(order._id))} onChange={() => toggleSelected(String(order._id))} type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" /><div className="min-w-0"><p className="truncate font-black">#{order.orderNumber || order._id}</p><p className="truncate text-xs">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[10px] text-muted-foreground">{formatDate(order.createdAt)}</p></div><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span></div></div>
             <div className="mt-2 overflow-x-auto"><DeliveryTimeline status={status} /></div>
             <div className="mt-2 space-y-1.5 border-t border-border pt-2 text-[11px]"><p className="flex gap-1.5"><Truck className="h-3.5 w-3.5 shrink-0" />{courierLabel(order)}</p><p className="flex gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p><p className="truncate">Waybill: <strong>{order.deliveryWaybillId || "-"}</strong> · Tracking: <strong>{order.deliveryTrackingId || "-"}</strong></p><div className="flex justify-between gap-2"><span>{paymentLabel(order.paymentMethod)} · {order.status || "-"}</span><strong>{formatRupiah(order.totalAmount)}</strong></div><p className="text-muted-foreground">Ongkir {formatRupiah(order.shippingFeeAmount)}</p></div>
           </article>
         ); })}
         {deliveryOrders.length === 0 ? <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground">Belum ada order delivery customer sesuai filter.</div> : null}
       </div>
+      <ConfirmationModal
+        confirmText={isDeleting ? "Menghapus..." : "Hapus"}
+        isOpen={Boolean(deleteConfirmation?.length)}
+        loading={isDeleting}
+        message={`Hapus ${deleteConfirmation?.length ?? 0} order delivery terpilih? Data order, item, transaksi, dan status terkait akan dihapus.`}
+        onClose={() => { if (!isDeleting) setDeleteConfirmation(null); }}
+        onConfirm={confirmDelete}
+        title="Konfirmasi Hapus Order"
+      />
     </main>
   );
 }
