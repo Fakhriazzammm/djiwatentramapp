@@ -140,6 +140,7 @@ export function CartRow({
 }
 
 export function SummaryCardLines({
+	shippingFee = 0,
 	freeRefillCharge,
 	productGrossSubtotal,
 	promoDiscount,
@@ -152,6 +153,7 @@ export function SummaryCardLines({
 	taxRate,
 	total,
 }: {
+	shippingFee?: number;
 	freeRefillCharge: number;
 	productGrossSubtotal: number;
 	promoDiscount: number;
@@ -167,7 +169,7 @@ export function SummaryCardLines({
 	// The checkout caller predates the persisted tax fields. Derive these values
 	// from the values it already supplies; receipt history uses persisted values.
 	const taxBase = Math.max(0, productGrossSubtotal + freeRefillCharge - promoDiscount - djiwaPayDiscount);
-	const rawTotal = taxBase + serviceChargeAmount + taxAmount;
+	const rawTotal = taxBase + shippingFee + serviceChargeAmount + taxAmount;
 	const roundingAdjustment = total - rawTotal;
 	const isCashierFree = paymentChoice === "cashier";
 
@@ -181,6 +183,7 @@ export function SummaryCardLines({
 			{djiwaPayDiscount > 0 ? (
 				<Line label="Djiwa Pay 50%" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
 			) : null}
+			{shippingFee > 0 ? <Line label="Biaya pengantaran" value={currency(shippingFee)} /> : null}
 			<Line label={`Service Charge (${serviceChargeRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(serviceChargeAmount)} />
 			{taxEnabled ? <Line label={`PBJT/Pajak Restoran (${taxRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(taxAmount)} /> : null}
 			{taxEnabled ? <Line label="Dasar pajak" value={currency(taxBase)} /> : null}
@@ -284,21 +287,39 @@ export function BarcodeLines({ value }: { value: string }) {
 	);
 }
 
-export function CustomerOrderProgress({ step }: { step: "table" | "party" | "refill" | "menu" | "review" | "payment" | "receipt" }) {
-	const steps = [
-		{ key: "table", label: "Pilih meja", shortLabel: "Meja" },
-		{ key: "party", label: "Jumlah orang", shortLabel: "Orang" },
-		{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
-		{ key: "review", label: "Review pesanan", shortLabel: "Review" },
-		{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
-		{ key: "receipt", label: "Selesai / Struk", shortLabel: "Selesai" },
-	] as const;
+export type CustomerOrderMode = "dine_in" | "delivery";
+
+export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: { step: "table" | "address" | "party" | "refill" | "menu" | "shipping" | "review" | "payment" | "receipt"; mode?: CustomerOrderMode; onModeChange?: (mode: CustomerOrderMode) => void }) {
+	const steps = mode === "delivery"
+		? [
+			{ key: "address", label: "Alamat pengantaran", shortLabel: "Alamat" },
+			{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
+			{ key: "shipping", label: "Pengantaran", shortLabel: "Kirim" },
+			{ key: "review", label: "Review pesanan", shortLabel: "Review" },
+			{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
+			{ key: "receipt", label: "Selesai / Tracking", shortLabel: "Selesai" },
+		] as const
+		: [
+			{ key: "table", label: "Pilih meja", shortLabel: "Meja" },
+			{ key: "party", label: "Jumlah orang", shortLabel: "Orang" },
+			{ key: "menu", label: "Pilih menu", shortLabel: "Menu" },
+			{ key: "review", label: "Review pesanan", shortLabel: "Review" },
+			{ key: "payment", label: "Pembayaran", shortLabel: "Bayar" },
+			{ key: "receipt", label: "Selesai / Struk", shortLabel: "Selesai" },
+		] as const;
 	const normalizedStep = step === "refill" ? "party" : step;
 	const activeIndex = Math.max(0, steps.findIndex((item) => item.key === normalizedStep));
 	const activeStep = steps[activeIndex];
 
 	return (
-		<div className="mx-2 mt-2 rounded-2xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-sm" aria-label={`Progress order: Langkah ${activeIndex + 1} dari ${steps.length}, ${activeStep.label}`}>
+		<div className="mx-2 mt-2" aria-label={`Progress order: Langkah ${activeIndex + 1} dari ${steps.length}, ${activeStep.label}`}>
+			{onModeChange ? <div className="mb-2 rounded-xl border border-primary/15 bg-primary/5 p-1.5" role="group" aria-label="Jenis pesanan">
+				<p className="px-2 pb-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Pilih jenis pesanan</p>
+				<div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/70 p-1">
+					{([{ key: "dine_in", label: "Dine In", description: "Makan di tempat" }, { key: "delivery", label: "Delivery", description: "Antar ke alamat" }] as const).map((option) => <button key={option.key} type="button" onClick={() => onModeChange(option.key)} aria-pressed={mode === option.key} className={cn("min-h-12 rounded-lg px-3 py-1.5 text-left transition-all", mode === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}><span className="block text-xs font-black">{option.label}</span><span className="mt-0.5 block text-[10px] font-semibold leading-tight">{option.description}</span></button>)}
+				</div>
+			</div> : null}
+		<div className="rounded-2xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-sm">
 			<div className="flex items-center justify-between gap-3">
 				<div className="min-w-0">
 					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Progress pesanan</p>
@@ -315,6 +336,7 @@ export function CustomerOrderProgress({ step }: { step: "table" | "party" | "ref
 					</div>
 				))}
 			</div>
+		</div>
 		</div>
 	);
 }
