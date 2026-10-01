@@ -8,7 +8,6 @@ import {
 	Coffee,
 	FileText,
 	Minus,
-	MoreHorizontal,
 	Package,
 	Plus,
 	Search,
@@ -200,7 +199,6 @@ const SIDEBAR_MENU_ITEMS = [
 
 const BOTTOM_NAV_ITEMS = [
 	SIDEBAR_MENU_ITEMS[0],
-	{ id: "notifications", label: "Notifikasi", icon: Bell, illustration: "notifications-alerts" as Djiwa3DIconName },
 	{ id: "transaksi", label: "Transaksi", icon: Receipt, illustration: "order-receipt" as Djiwa3DIconName },
 	SIDEBAR_MENU_ITEMS.find((item) => item.id === "kas")!,
 	SIDEBAR_MENU_ITEMS.find((item) => item.id === "antrian")!,
@@ -209,7 +207,6 @@ const BOTTOM_NAV_ITEMS = [
 const BOTTOM_NAV_3D_ICONS: Record<string, Djiwa3DIconName> = {
 	dashboard: "dashboard-overview",
 	transaksi: "order-receipt",
-	notifications: "notifications-alerts",
 	kas: "payment-wallet",
 	antrian: "order-queue",
 };
@@ -1969,13 +1966,18 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								<button
 									type="button"
 									onClick={() => {
-										setActiveSidebarTab("yumi");
-										setIsSidebarOpen(true);
+										setIsNotificationCenterOpen(true);
+										void refreshNotifications(true);
 									}}
-									className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
-									aria-label="Buka menu lainnya"
+									className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
+									aria-label={unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : "Buka notifikasi"}
 								>
-									<MoreHorizontal className="h-4 w-4" />
+									<Bell className="h-4 w-4" />
+									{unreadCount > 0 && (
+										<span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-none text-white ring-2 ring-background">
+											{unreadCount > 99 ? "99+" : unreadCount}
+										</span>
+									)}
 								</button>
 							</div>
 						</div>
