@@ -85,6 +85,7 @@ import { resolveTransactionVoice } from "@/lib/transaction-voice-resolver";
 import { NotificationCenter } from "@/components/pos/notification-center";
 import { TransactionAlertStack } from "@/components/pos/transaction-alert-popup";
 import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
+import { DeliveryCustomerQueue } from "@/components/pos/delivery-customer-queue";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
@@ -2171,7 +2172,17 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					)}
 				</header>
 
-				<TransactionAlertStack
+			<DeliveryCustomerQueue
+				notifications={notifications}
+				onOpenOrder={(notification) => {
+					markNotificationRead(notification.id);
+					setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
+					setSelectedOrderNotification(notification);
+					setSelectedOrderId(String(notification.action_payload?.orderId ?? notification.order_source_id ?? ""));
+				}}
+			/>
+
+			<TransactionAlertStack
 				notifications={notifications.filter((item) => transactionAlertIds.includes(item.id))}
 				onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
 				onMarkCashierPaid={handleMarkCashierPaid}

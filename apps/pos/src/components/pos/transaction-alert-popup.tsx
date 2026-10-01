@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { CheckCircle2, ChevronRight, CreditCard, X } from "lucide-react";
-import type { PosNotification } from "@/hooks/use-pos-notifications";
+import { CheckCircle2, ChevronRight, CreditCard, MapPin, X } from "lucide-react";
+import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
 
 type TransactionAlertStackProps = {
   notifications: PosNotification[];
@@ -15,11 +15,19 @@ function isDjiwaAppTransaction(item: PosNotification) {
 }
 
 function getTransactionAlerts(notifications: PosNotification[]) {
-  return notifications
+  const candidates = notifications
     .filter((item) => isDjiwaAppTransaction(item))
     .filter((item) => item.notification_type === "order_cashier_pending" || item.notification_type === "order_paid")
-    .filter((item) => !item.isRead)
-    .slice(0, 3);
+    .filter((item) => !item.isRead);
+  const newestDelivery = new Map<string, PosNotification>();
+  const result: PosNotification[] = [];
+  for (const item of candidates) {
+    const orderId = String(item.action_payload?.orderId ?? item.order_source_id ?? item.id);
+    if (!isDeliveryNotification(item)) { result.push(item); continue; }
+    const previous = newestDelivery.get(orderId);
+    if (!previous || new Date(item.created_at).getTime() > new Date(previous.created_at).getTime()) newestDelivery.set(orderId, item);
+  }
+  return [...result, ...newestDelivery.values()].slice(0, 3);
 }
 
 function formatCurrency(value: unknown) {
@@ -27,6 +35,16 @@ function formatCurrency(value: unknown) {
 }
 
 function getAlertCopy(item: PosNotification) {
+  if (isDeliveryNotification(item)) {
+    const paid = item.notification_type === "order_paid";
+    return {
+      title: "Pesanan Delivery Customer",
+      subtitle: paid ? "Pembayaran sudah dikonfirmasi" : "Pesanan baru perlu diproses",
+      label: `DELIVERY CUSTOMER · ${paid ? "LUNAS" : "BARU"}`,
+      className: paid ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-sky-200 bg-sky-50 text-sky-950",
+      Icon: MapPin,
+    };
+  }
   const paymentMethod = String(item.action_payload?.paymentMethod ?? "").toLowerCase();
   const isWallet = paymentMethod === "wallet" || paymentMethod === "djiwa_pay";
   if (item.notification_type === "order_paid" && isWallet) {
@@ -68,7 +86,10 @@ function TransactionAlert({ item, onOpenOrder, onDismiss, onMarkCashierPaid }: {
   const itemCount = Number(payload.itemCount ?? 0);
   const totalAmount = Number(payload.totalAmount ?? 0);
   const customerName = String(payload.customerName ?? "").trim();
-  const summary = [customerName, itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "", totalAmount > 0 ? formatCurrency(totalAmount) : ""].filter(Boolean).join(" · ");
+  const deliverySummary = isDeliveryNotification(item)
+    ? [payload.deliveryContactName ?? customerName, payload.deliveryProvider ?? payload.shippingProvider, payload.deliveryAddress ?? payload.delivery_address, Number(payload.shippingFee ?? payload.deliveryFee) > 0 ? `Fee ${formatCurrency(payload.shippingFee ?? payload.deliveryFee)}` : "", totalAmount > 0 ? formatCurrency(totalAmount) : ""].filter(Boolean).join(" · ")
+    : "";
+  const summary = deliverySummary || [customerName, itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "", totalAmount > 0 ? formatCurrency(totalAmount) : ""].filter(Boolean).join(" · ");
 
   return (
     <article className={`pointer-events-auto relative w-full max-w-[min(420px,calc(100vw-1.5rem))] rounded-2xl border p-3 shadow-xl backdrop-blur-sm ${copy.className}`}>

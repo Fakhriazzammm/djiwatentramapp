@@ -19,6 +19,13 @@ export type PosNotification = {
   acknowledgedAt?: string | null;
 };
 
+export function isDeliveryNotification(item: PosNotification | null | undefined) {
+  const payload = item?.action_payload ?? {};
+  const orderType = String(payload.orderType ?? payload.order_type ?? "").toLowerCase();
+  return orderType === "delivery" || orderType.includes("delivery")
+    || Boolean(payload.deliveryAddress ?? payload.delivery_address ?? payload.deliveryProvider ?? payload.shippingProvider);
+}
+
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pos-notifications`;
 
 async function callNotifications(token: string, payload: Record<string, unknown> = {}) {

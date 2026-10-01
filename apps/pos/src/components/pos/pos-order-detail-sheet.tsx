@@ -1,5 +1,5 @@
-import { Banknote, CheckCircle2, Clock3, MapPin, ReceiptText, X } from "lucide-react";
-import type { PosNotification } from "@/hooks/use-pos-notifications";
+import { Banknote, CheckCircle2, Clock3, MapPin, ReceiptText, Truck, X } from "lucide-react";
+import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type PosOrderDetailSheetProps = {
@@ -67,6 +67,10 @@ export function PosOrderDetailSheet({ open, order, notification, loading = false
   const status = getStatusLabel(order, notification);
   const paid = ["paid", "completed"].includes(String(order?.status ?? notification?.action_payload?.paymentStatus ?? "").toLowerCase());
   const table = getTableLabel(order, payload);
+  const delivery = isDeliveryNotification(notification) || String(order?.orderType ?? order?.order_type ?? "").toLowerCase().includes("delivery");
+  const courier = order?.deliveryProvider ?? order?.delivery_provider ?? payload.deliveryProvider ?? payload.shippingProvider;
+  const address = order?.deliveryAddress ?? order?.delivery_address ?? payload.deliveryAddress ?? payload.delivery_address;
+  const deliveryFee = order?.shippingFee ?? order?.deliveryFee ?? payload.shippingFee ?? payload.deliveryFee;
 
   return (
     <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
@@ -75,7 +79,7 @@ export function PosOrderDetailSheet({ open, order, notification, loading = false
           <div className="flex items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm"><ReceiptText className="h-5 w-5" /></span>
             <div className="min-w-0">
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">Pesanan masuk · DjiwaApp</p>
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{delivery ? "Delivery Customer" : "Pesanan masuk · DjiwaApp"}</p>
               <SheetTitle className="font-display text-xl font-extrabold tracking-tight">Detail pesanan</SheetTitle>
               <SheetDescription className="mt-1 break-all text-xs font-semibold text-muted-foreground">#{orderNumber}</SheetDescription>
             </div>
@@ -99,6 +103,8 @@ export function PosOrderDetailSheet({ open, order, notification, loading = false
                   <div className="col-span-2 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-amber-700">Ciri khusus customer</p><p className="mt-1.5 text-sm font-semibold text-amber-950">{customerDescription || "Belum diisi"}</p></div>
                 </div>
               </section>
+
+              {delivery ? <section aria-labelledby="delivery-info-heading" className="mt-6"><h3 id="delivery-info-heading" className="mb-3 font-display text-sm font-extrabold tracking-tight">Detail pengantaran</h3><div className="space-y-2.5 text-sm"><div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-3.5"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-sky-700">Kurir</p><p className="mt-1.5 flex items-start gap-1.5 font-extrabold"><Truck className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" />{String(courier || "Kurir belum dipilih")}</p></div><div className="rounded-2xl border border-border/70 bg-card p-3.5"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Alamat pengantaran</p><p className="mt-1.5 break-words font-semibold">{String(address || "Alamat belum tersedia")}</p></div>{Number(deliveryFee ?? 0) > 0 ? <div className="flex justify-between rounded-2xl border border-border/70 bg-card p-3.5"><span className="font-semibold text-muted-foreground">Biaya pengantaran</span><span className="font-extrabold">{formatCurrency(deliveryFee)}</span></div> : null}</div></section> : null}
 
               <section aria-labelledby="payment-info-heading" className="mt-6">
                 <h3 id="payment-info-heading" className="mb-3 font-display text-sm font-extrabold tracking-tight">Pembayaran</h3>
