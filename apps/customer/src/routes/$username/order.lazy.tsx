@@ -141,7 +141,7 @@ function OrderPage() {
 	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("gojek");
 	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
 	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
-	const [deliveryAddressDraft, setDeliveryAddressDraft] = useState("");
+	const [deliveryAddressFields, setDeliveryAddressFields] = useState({ street: "", rtRw: "", district: "", city: "", province: "", postalCode: "", landmark: "" });
 	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
 	const [deliveryLocationLoading, setDeliveryLocationLoading] = useState(false);
 	const [deliveryLocationError, setDeliveryLocationError] = useState<string | null>(null);
@@ -172,7 +172,7 @@ function OrderPage() {
 		setDeliveryProvider("gojek");
 		setDeliveryAddressOverride(null);
 		setDeliveryAddressEditorOpen(false);
-		setDeliveryAddressDraft("");
+		setDeliveryAddressFields({ street: "", rtRw: "", district: "", city: "", province: "", postalCode: "", landmark: "" });
 		setDeliveryLocation(null);
 		setDeliveryLocationError(null);
 		setStep("table");
@@ -182,24 +182,43 @@ function OrderPage() {
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
 	const profileDeliveryAddress = isAuthenticated ? customer?.address?.trim() || "" : "";
-	const deliveryAddress = deliveryAddressOverride ?? profileDeliveryAddress;
+	const formatDeliveryAddress = (fields: typeof deliveryAddressFields) => [
+		fields.street,
+		fields.rtRw && `RT/RW ${fields.rtRw}`,
+		fields.district && `Kec. ${fields.district}`,
+		fields.city,
+		fields.province,
+		fields.postalCode,
+		fields.landmark && `Patokan: ${fields.landmark}`,
+	].filter(Boolean).join(", ");
+	const deliveryAddress = deliveryAddressOverride ?? (formatDeliveryAddress(deliveryAddressFields) || profileDeliveryAddress);
 	useEffect(() => {
-		if (orderMode !== "delivery" || !deliveryAddress || !deliveryLocation?.postalCode || !cart.length) {
+		if (deliveryAddressEditorOpen && !formatDeliveryAddress(deliveryAddressFields) && profileDeliveryAddress) {
+			setDeliveryAddressFields((current) => ({ ...current, street: profileDeliveryAddress }));
+		}
+	}, [deliveryAddressEditorOpen, deliveryAddressFields, profileDeliveryAddress]);
+	useEffect(() => {
+		if (orderMode !== "delivery" || !deliveryAddress || !(deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode) || !cart.length) {
 			setShippingQuote(null);
 			setShippingQuoteError(null);
 			return;
 		}
-		const postalCode = deliveryLocation.postalCode.replace(/\D/g, "");
+		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode).replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
 			setShippingQuote(null);
-			setShippingQuoteError("Titik lokasi belum memiliki kode pos 5 digit. Gunakan lokasi realtime dengan kode pos atau pilih alamat lain.");
+			setShippingQuoteError("Kode pos alamat harus terdiri dari 5 digit agar tarif pengantaran dapat dihitung.");
 			return;
 		}
 		const items = cart.map((item) => {
 			const product = products?.find((entry) => entry._id === item.productId) as any;
-			const weight = Number(product?.netWeight ?? product?.weight ?? 0);
-			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight };
+			const weight = Number(product?.deliveryWeightGrams ?? product?.netWeight ?? product?.weight ?? 0);
+			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight, deliveryEnabled: product?.deliveryEnabled !== false };
 		});
+		if (items.some((item) => !item.deliveryEnabled)) {
+			setShippingQuote(null);
+			setShippingQuoteError("Ada produk di keranjang yang hanya tersedia untuk pembelian langsung, bukan delivery.");
+			return;
+		}
 		if (items.some((item) => !Number.isFinite(item.weight) || item.weight <= 0)) {
 			setShippingQuote(null);
 			setShippingQuoteError("Tarif pengantaran belum tersedia karena berat produk belum diatur.");
@@ -226,7 +245,7 @@ function OrderPage() {
 			}
 		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
 		return () => { cancelled = true; };
-	}, [cart, deliveryAddress, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
+	}, [cart, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
 
 	const useCurrentDeliveryLocation = () => {
 		if (!navigator.geolocation) {
@@ -239,11 +258,12 @@ function OrderPage() {
 			try {
 				const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=${encodeURIComponent(coords.latitude)}&lon=${encodeURIComponent(coords.longitude)}`, { headers: { Accept: "application/json" } });
 				if (!response.ok) throw new Error("Gagal membaca alamat lokasi");
-				const result = await response.json() as { display_name?: string; address?: { postcode?: string } };
+				const result = await response.json() as { display_name?: string; address?: { road?: string; house_number?: string; neighbourhood?: string; suburb?: string; village?: string; city_district?: string; town?: string; city?: string; municipality?: string; state?: string; province?: string; postcode?: string; country?: string } };
 				const resolvedAddress = String(result.display_name ?? "").trim();
 				if (!resolvedAddress) throw new Error("Alamat tidak ditemukan dari lokasi saat ini");
-				setDeliveryAddressDraft(resolvedAddress);
-				setDeliveryAddressOverride(resolvedAddress);
+				const address = result.address ?? {};
+				setDeliveryAddressFields((current) => ({ ...current, street: [address.road, address.house_number].filter(Boolean).join(" ") || resolvedAddress, district: address.city_district ?? address.suburb ?? address.village ?? "", city: address.city ?? address.town ?? address.municipality ?? "", province: address.state ?? address.province ?? "", postalCode: address.postcode ?? "" }));
+				setDeliveryAddressOverride(null);
 				setDeliveryLocation({ latitude: coords.latitude, longitude: coords.longitude, postalCode: result.address?.postcode });
 				setDeliveryAddressEditorOpen(false);
 			} catch (error) {
@@ -1242,7 +1262,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								{orderMode === "delivery" ? <>
 									<div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Delivery</p><h2 className="text-base font-black">{storeName}</h2></div></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">Antar</span></div>
-									<div className="mt-3 rounded-xl border border-border bg-background p-3"><div className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat pengantaran</p>{deliveryAddress ? <p className="mt-1 text-sm font-bold leading-relaxed">{deliveryAddress}</p> : <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Belum ada alamat tujuan. Masukkan alamat penerima di sini.</p>}</div></div>{deliveryAddressEditorOpen ? <div className="mt-3 space-y-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-address-editor">Alamat tujuan penerima</label><button type="button" disabled={deliveryLocationLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary disabled:opacity-60" onClick={useCurrentDeliveryLocation}><LocateFixed className="h-4 w-4" />{deliveryLocationLoading ? "Mencari lokasi realtime..." : "Gunakan lokasi saya"}</button><textarea id="delivery-address-editor" autoFocus rows={3} value={deliveryAddressDraft} onChange={(event: any) => setDeliveryAddressDraft(event.target.value)} placeholder="Contoh: Jalan Bojong Tengah No.28, RT/RW, patokan rumah" className="w-full resize-none rounded-xl border border-primary/30 bg-background px-3 py-2.5 text-sm leading-relaxed outline-none focus:border-primary" />{deliveryLocation ? <a className="block text-[11px] font-bold text-primary underline" href={`https://www.google.com/maps/search/?api=1&query=${deliveryLocation.latitude},${deliveryLocation.longitude}`} target="_blank" rel="noreferrer">Buka titik lokasi di Google Maps</a> : null}{deliveryLocationError ? <p className="text-[11px] font-semibold text-destructive">{deliveryLocationError}</p> : null}<p className="text-[11px] leading-relaxed text-muted-foreground">Alamat ini hanya dipakai untuk pesanan ini dan tidak mengubah alamat di profil.</p><div className="grid grid-cols-2 gap-2"><button type="button" className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setDeliveryAddressEditorOpen(false)}>Batal</button><button type="button" disabled={!deliveryAddressDraft.trim()} className="min-h-11 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => { setDeliveryAddressOverride(deliveryAddressDraft.trim()); setDeliveryAddressEditorOpen(false); }}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressDraft(deliveryAddress); setDeliveryAddressEditorOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
+									<div className="mt-3 rounded-xl border border-border bg-background p-3"><div className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat pengantaran</p>{deliveryAddress ? <p className="mt-1 text-sm font-bold leading-relaxed">{deliveryAddress}</p> : <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Belum ada alamat tujuan. Masukkan alamat penerima di sini.</p>}</div></div>{deliveryAddressEditorOpen ? <div className="mt-3 space-y-2"><div className="grid min-w-0 grid-cols-2 gap-2"><div className="col-span-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-street">Jalan lengkap <span className="text-destructive">*</span></label><input id="delivery-street" autoFocus value={deliveryAddressFields.street} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, street: event.target.value }))} placeholder="Jalan Gunung Bentang V No. 89" className="mt-1 w-full rounded-xl border border-primary/30 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-rtrw">RT/RW</label><input id="delivery-rtrw" value={deliveryAddressFields.rtRw} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, rtRw: event.target.value }))} placeholder="03/05" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-district">Kecamatan <span className="text-destructive">*</span></label><input id="delivery-district" value={deliveryAddressFields.district} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, district: event.target.value }))} placeholder="Cidadap" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-city">Kota/Kabupaten <span className="text-destructive">*</span></label><input id="delivery-city" value={deliveryAddressFields.city} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, city: event.target.value }))} placeholder="Bandung" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-province">Provinsi</label><input id="delivery-province" value={deliveryAddressFields.province} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, province: event.target.value }))} placeholder="Jawa Barat" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-postal-code">Kode pos <span className="text-destructive">*</span></label><input id="delivery-postal-code" inputMode="numeric" maxLength={5} value={deliveryAddressFields.postalCode} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, postalCode: event.target.value.replace(/\D/g, "").slice(0, 5) }))} placeholder="40141" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div className="col-span-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-landmark">Patokan (opsional)</label><input id="delivery-landmark" value={deliveryAddressFields.landmark} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, landmark: event.target.value }))} placeholder="Dekat minimarket / gerbang warna putih" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div></div><button type="button" disabled={deliveryLocationLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary disabled:opacity-60" onClick={useCurrentDeliveryLocation}><LocateFixed className="h-4 w-4" />{deliveryLocationLoading ? "Mencari lokasi realtime..." : "Isi dari lokasi saya"}</button>{deliveryLocation ? <a className="block text-[11px] font-bold text-primary underline" href={`https://www.google.com/maps/search/?api=1&query=${deliveryLocation.latitude},${deliveryLocation.longitude}`} target="_blank" rel="noreferrer">Buka titik lokasi di Google Maps</a> : null}{deliveryLocationError ? <p className="text-[11px] font-semibold text-destructive">{deliveryLocationError}</p> : null}<p className="text-[11px] leading-relaxed text-muted-foreground">Alamat ini hanya dipakai untuk pesanan ini dan tidak mengubah alamat di profil.</p><div className="grid grid-cols-2 gap-2"><button type="button" className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setDeliveryAddressEditorOpen(false)}>Batal</button><button type="button" disabled={!deliveryAddressFields.street.trim() || !deliveryAddressFields.district.trim() || !deliveryAddressFields.city.trim() || !/^\d{5}$/.test(deliveryAddressFields.postalCode)} className="min-h-11 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => { setDeliveryAddressOverride(null); setDeliveryAddressEditorOpen(false); }}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressEditorOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
 									<button type="button" disabled={!deliveryAddress} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("menu")}>Lanjut ke menu <ChevronRight className="h-4 w-4" /></button>
 								</> : <>
 									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
