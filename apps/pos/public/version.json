@@ -1,7 +1,7 @@
 {
-  "version": "0.2.238",
-  "commitHash": "dbdf38c",
-  "message": "chore(pos): publish compact notification build",
+  "version": "0.2.239",
+  "commitHash": "6fd8d32",
+  "message": "fix(pos): route notification order details correctly",
   "buildDate": "2026-10-01",
-  "generatedAt": "2026-10-01T07:03:05.170Z"
+  "generatedAt": "2026-10-01T07:08:01.630Z"
 }

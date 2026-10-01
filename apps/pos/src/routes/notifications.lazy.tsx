@@ -1,7 +1,10 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { NotificationCenter } from "@/components/pos/notification-center";
-import { usePosNotifications } from "@/hooks/use-pos-notifications";
+import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
+import { usePosNotifications, getNotificationOrderId, type PosNotification } from "@/hooks/use-pos-notifications";
+import { useHybridOrders } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/notifications")({
   component: NotificationsPage,
@@ -9,6 +12,8 @@ export const Route = createLazyFileRoute("/notifications")({
 
 function NotificationsPage() {
   const navigate = useNavigate();
+  const orders = useHybridOrders({ limit: 2000 });
+  const [selectedNotification, setSelectedNotification] = useState<PosNotification | null>(null);
   const {
     notifications,
     unreadCount,
@@ -63,13 +68,19 @@ function NotificationsPage() {
             error={error}
             onMarkRead={markRead}
             onDismiss={removeNotification}
-            onOpenOrder={(notification) => navigate({
-              to: "/admin/orders",
-              search: { focusOrder: notification.order_number ?? undefined } as any,
-            })}
+            onOpenOrder={(notification) => {
+              markRead(notification.id);
+              setSelectedNotification(notification);
+            }}
           />
         </section>
       </div>
+      <PosOrderDetailSheet
+        open={Boolean(selectedNotification)}
+        order={selectedNotification ? (orders ?? []).find((order: any) => String(order._id ?? "") === getNotificationOrderId(selectedNotification) || String(order.orderNumber ?? "") === String(selectedNotification.order_number ?? "")) ?? null : null}
+        notification={selectedNotification}
+        onClose={() => setSelectedNotification(null)}
+      />
     </main>
   );
 }
