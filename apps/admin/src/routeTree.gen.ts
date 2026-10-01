@@ -51,6 +51,7 @@ import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting
 import { Route as AdminDjiwaRunRouteImport } from './routes/admin/djiwa-run'
 import { Route as AdminDjiwaAppRouteImport } from './routes/admin/djiwa-app'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
+import { Route as AdminDeliveryRouteImport } from './routes/admin/delivery'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
 import { Route as AdminCommunityRouteImport } from './routes/admin/community'
@@ -74,7 +75,6 @@ import { Route as AdminRekrutmenCandidatesRouteImport } from './routes/admin/rek
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe/view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminRecipeBaseRouteImport } from './routes/admin/recipe/base'
-import { Route as AdminOrdersDeliveryRouteImport } from './routes/admin/orders/delivery'
 import { Route as AdminOrderMieYaminSettingsRouteImport } from './routes/admin/order-mie-yamin/settings'
 import { Route as AdminOrderMieYaminOrdersRouteImport } from './routes/admin/order-mie-yamin/orders'
 import { Route as AdminOrderMieYaminDeliveryRouteImport } from './routes/admin/order-mie-yamin/delivery'
@@ -380,6 +380,13 @@ const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/discounts.lazy').then((d) => d.Route),
 )
+const AdminDeliveryRoute = AdminDeliveryRouteImport.update({
+  id: '/delivery',
+  path: '/delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/delivery.lazy').then((d) => d.Route),
+)
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
   id: '/customers',
   path: '/customers',
@@ -535,13 +542,6 @@ const AdminRecipeBaseRoute = AdminRecipeBaseRouteImport.update({
   getParentRoute: () => AdminRecipeRoute,
 } as any).lazy(() =>
   import('./routes/admin/recipe/base.lazy').then((d) => d.Route),
-)
-const AdminOrdersDeliveryRoute = AdminOrdersDeliveryRouteImport.update({
-  id: '/delivery',
-  path: '/delivery',
-  getParentRoute: () => AdminOrdersRoute,
-} as any).lazy(() =>
-  import('./routes/admin/orders/delivery.lazy').then((d) => d.Route),
 )
 const AdminOrderMieYaminSettingsRoute =
   AdminOrderMieYaminSettingsRouteImport.update({
@@ -957,6 +957,7 @@ export interface FileRoutesByFullPath {
   '/admin/community': typeof AdminCommunityRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
@@ -974,7 +975,7 @@ export interface FileRoutesByFullPath {
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
-  '/admin/orders': typeof AdminOrdersRouteWithChildren
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -1012,7 +1013,6 @@ export interface FileRoutesByFullPath {
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
   '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
-  '/admin/orders/delivery': typeof AdminOrdersDeliveryRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -1067,6 +1067,7 @@ export interface FileRoutesByTo {
   '/admin/community': typeof AdminCommunityRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
@@ -1081,7 +1082,7 @@ export interface FileRoutesByTo {
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
-  '/admin/orders': typeof AdminOrdersRouteWithChildren
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -1112,7 +1113,6 @@ export interface FileRoutesByTo {
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
   '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
-  '/admin/orders/delivery': typeof AdminOrdersDeliveryRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -1171,6 +1171,7 @@ export interface FileRoutesById {
   '/admin/community': typeof AdminCommunityRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
@@ -1188,7 +1189,7 @@ export interface FileRoutesById {
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
-  '/admin/orders': typeof AdminOrdersRouteWithChildren
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -1226,7 +1227,6 @@ export interface FileRoutesById {
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
   '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
-  '/admin/orders/delivery': typeof AdminOrdersDeliveryRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -1287,6 +1287,7 @@ export interface FileRouteTypes {
     | '/admin/community'
     | '/admin/customer-service'
     | '/admin/customers'
+    | '/admin/delivery'
     | '/admin/discounts'
     | '/admin/djiwa-app'
     | '/admin/djiwa-run'
@@ -1342,7 +1343,6 @@ export interface FileRouteTypes {
     | '/admin/order-mie-yamin/delivery'
     | '/admin/order-mie-yamin/orders'
     | '/admin/order-mie-yamin/settings'
-    | '/admin/orders/delivery'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -1397,6 +1397,7 @@ export interface FileRouteTypes {
     | '/admin/community'
     | '/admin/customer-service'
     | '/admin/customers'
+    | '/admin/delivery'
     | '/admin/discounts'
     | '/admin/djiwa-app'
     | '/admin/djiwa-run'
@@ -1442,7 +1443,6 @@ export interface FileRouteTypes {
     | '/admin/order-mie-yamin/delivery'
     | '/admin/order-mie-yamin/orders'
     | '/admin/order-mie-yamin/settings'
-    | '/admin/orders/delivery'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -1500,6 +1500,7 @@ export interface FileRouteTypes {
     | '/admin/community'
     | '/admin/customer-service'
     | '/admin/customers'
+    | '/admin/delivery'
     | '/admin/discounts'
     | '/admin/djiwa-app'
     | '/admin/djiwa-run'
@@ -1555,7 +1556,6 @@ export interface FileRouteTypes {
     | '/admin/order-mie-yamin/delivery'
     | '/admin/order-mie-yamin/orders'
     | '/admin/order-mie-yamin/settings'
-    | '/admin/orders/delivery'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -1902,6 +1902,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDiscountsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/delivery': {
+      id: '/admin/delivery'
+      path: '/delivery'
+      fullPath: '/admin/delivery'
+      preLoaderRoute: typeof AdminDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/customers': {
       id: '/admin/customers'
       path: '/customers'
@@ -2062,13 +2069,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/recipe/base'
       preLoaderRoute: typeof AdminRecipeBaseRouteImport
       parentRoute: typeof AdminRecipeRoute
-    }
-    '/admin/orders/delivery': {
-      id: '/admin/orders/delivery'
-      path: '/delivery'
-      fullPath: '/admin/orders/delivery'
-      preLoaderRoute: typeof AdminOrdersDeliveryRouteImport
-      parentRoute: typeof AdminOrdersRoute
     }
     '/admin/order-mie-yamin/settings': {
       id: '/admin/order-mie-yamin/settings'
@@ -2685,18 +2685,6 @@ const AdminOrderMieYaminRouteChildren: AdminOrderMieYaminRouteChildren = {
 const AdminOrderMieYaminRouteWithChildren =
   AdminOrderMieYaminRoute._addFileChildren(AdminOrderMieYaminRouteChildren)
 
-interface AdminOrdersRouteChildren {
-  AdminOrdersDeliveryRoute: typeof AdminOrdersDeliveryRoute
-}
-
-const AdminOrdersRouteChildren: AdminOrdersRouteChildren = {
-  AdminOrdersDeliveryRoute: AdminOrdersDeliveryRoute,
-}
-
-const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
-  AdminOrdersRouteChildren,
-)
-
 interface AdminRecipeRouteChildren {
   AdminRecipeBaseRoute: typeof AdminRecipeBaseRoute
   AdminRecipeHppRoute: typeof AdminRecipeHppRoute
@@ -2745,6 +2733,7 @@ interface AdminRouteRouteChildren {
   AdminCommunityRoute: typeof AdminCommunityRoute
   AdminCustomerServiceRoute: typeof AdminCustomerServiceRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminDeliveryRoute: typeof AdminDeliveryRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminDjiwaAppRoute: typeof AdminDjiwaAppRoute
   AdminDjiwaRunRoute: typeof AdminDjiwaRunRoute
@@ -2762,7 +2751,7 @@ interface AdminRouteRouteChildren {
   AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRouteWithChildren
   AdminOrderMieYaminRoute: typeof AdminOrderMieYaminRouteWithChildren
-  AdminOrdersRoute: typeof AdminOrdersRouteWithChildren
+  AdminOrdersRoute: typeof AdminOrdersRoute
   AdminPosNotificationsRoute: typeof AdminPosNotificationsRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
@@ -2781,6 +2770,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCommunityRoute: AdminCommunityRoute,
   AdminCustomerServiceRoute: AdminCustomerServiceRoute,
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminDeliveryRoute: AdminDeliveryRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminDjiwaAppRoute: AdminDjiwaAppRoute,
   AdminDjiwaRunRoute: AdminDjiwaRunRoute,
@@ -2798,7 +2788,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminOnboardingRoute: AdminOnboardingRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRouteWithChildren,
   AdminOrderMieYaminRoute: AdminOrderMieYaminRouteWithChildren,
-  AdminOrdersRoute: AdminOrdersRouteWithChildren,
+  AdminOrdersRoute: AdminOrdersRoute,
   AdminPosNotificationsRoute: AdminPosNotificationsRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminRecipeRoute: AdminRecipeRouteWithChildren,
