@@ -313,8 +313,11 @@ export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: 
 
 	return (
 		<div className="mx-2 mt-2" aria-label={`Progress order: Langkah ${activeIndex + 1} dari ${steps.length}, ${activeStep.label}`}>
-			{onModeChange ? <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-muted/70 p-1" role="group" aria-label="Jenis pesanan">
-				{([{ key: "dine_in", label: "Dine In" }, { key: "delivery", label: "Delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => onModeChange(option.key)} aria-pressed={mode === option.key} className={cn("min-h-10 rounded-lg px-3 text-xs font-black transition-all", mode === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{option.label}</button>)}
+			{onModeChange ? <div className="mb-2 rounded-xl border border-primary/15 bg-primary/5 p-1.5" role="group" aria-label="Jenis pesanan">
+				<p className="px-2 pb-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">Pilih jenis pesanan</p>
+				<div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/70 p-1">
+					{([{ key: "dine_in", label: "Dine In", description: "Makan di tempat" }, { key: "delivery", label: "Delivery", description: "Antar ke alamat" }] as const).map((option) => <button key={option.key} type="button" onClick={() => onModeChange(option.key)} aria-pressed={mode === option.key} className={cn("min-h-12 rounded-lg px-3 py-1.5 text-left transition-all", mode === option.key ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}><span className="block text-xs font-black">{option.label}</span><span className="mt-0.5 block text-[10px] font-semibold leading-tight">{option.description}</span></button>)}
+				</div>
 			</div> : null}
 		<div className="rounded-2xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-sm">
 			<div className="flex items-center justify-between gap-3">
