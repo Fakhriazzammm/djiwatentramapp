@@ -28,7 +28,19 @@ const SUPABASE_URL = SUP.SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SKEY = SUP.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CV_BUCKET = "recruitment-cv";
 const OUTSOURCING_AUTH_FILE = path.join(__dirname, ".outsourcing-auth.json");
-const OUTSOURCING_SESSION_SECRET = process.env.REKRUTMEN_OUTSOURCING_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const OUTSOURCING_SESSION_SECRET_FILE = path.join(__dirname, ".outsourcing-session-secret");
+function loadOutsourcingSessionSecret() {
+  const configured = process.env.REKRUTMEN_OUTSOURCING_SESSION_SECRET;
+  if (configured) return configured;
+  try {
+    const existing = fs.readFileSync(OUTSOURCING_SESSION_SECRET_FILE, "utf8").trim();
+    if (existing) return existing;
+  } catch {}
+  const generated = crypto.randomBytes(32).toString("hex");
+  try { fs.writeFileSync(OUTSOURCING_SESSION_SECRET_FILE, generated + "\n", { mode: 0o600 }); } catch {}
+  return generated;
+}
+const OUTSOURCING_SESSION_SECRET = loadOutsourcingSessionSecret();
 
 function readOutsourcingAuth() {
   try { return JSON.parse(fs.readFileSync(OUTSOURCING_AUTH_FILE, "utf8")); } catch { return null; }
