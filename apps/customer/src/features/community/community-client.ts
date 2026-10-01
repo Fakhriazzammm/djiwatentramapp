@@ -86,7 +86,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 function mapPost(post: CommunityPost): CommunityPost {
-  return { ...post, mediaUrl: proxyPath(post.mediaUrl) };
+  return {
+    ...post,
+    author: {
+      ...post.author,
+      name: post.author?.name || "Teman Djiwa",
+      username: post.author?.username ?? null,
+      sourceId: post.author?.sourceId || "unknown",
+    },
+    products: Array.isArray(post.products) ? post.products : [],
+    mediaUrl: proxyPath(post.mediaUrl),
+  };
 }
 
 export const communityClient = {
