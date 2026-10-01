@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.237",
+	semantic: "0.2.238",
 	// Git/deploy commit hash (short)
-	commitHash: "419084c",
-	message: "fix(pos): tighten notification card grid",
+	commitHash: "dbdf38c",
+	message: "chore(pos): publish compact notification build",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): tighten notification card grid",
+	commitMessage: "chore(pos): publish compact notification build",
 	// Build timestamp
 	buildDate: "2026-10-01",
 	// Full version string for display

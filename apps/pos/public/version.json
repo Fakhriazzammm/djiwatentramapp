@@ -1,7 +1,7 @@
 {
-  "version": "0.2.237",
-  "commitHash": "419084c",
-  "message": "fix(pos): tighten notification card grid",
+  "version": "0.2.238",
+  "commitHash": "dbdf38c",
+  "message": "chore(pos): publish compact notification build",
   "buildDate": "2026-10-01",
-  "generatedAt": "2026-10-01T06:51:13.337Z"
+  "generatedAt": "2026-10-01T07:03:05.170Z"
 }

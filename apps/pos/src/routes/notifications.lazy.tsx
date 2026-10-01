@@ -63,7 +63,10 @@ function NotificationsPage() {
             error={error}
             onMarkRead={markRead}
             onDismiss={removeNotification}
-            onOpenOrder={() => navigate({ to: "/orders" })}
+            onOpenOrder={(notification) => navigate({
+              to: "/admin/orders",
+              search: { focusOrder: notification.order_number ?? undefined } as any,
+            })}
           />
         </section>
       </div>
