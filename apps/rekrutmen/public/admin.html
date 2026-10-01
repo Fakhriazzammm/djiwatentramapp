@@ -651,9 +651,27 @@ tbody tr:hover td { background: #fcfdff; }
     box-shadow: none;
   }
 }
+
+#outsourcingLogin { position:fixed; inset:0; z-index:100; display:none; place-items:center; padding:20px; background:rgba(245,247,251,.96); }
+#outsourcingLogin.show { display:grid; }
+.outsourcing-login-card { width:min(100%, 390px); padding:28px; border:1px solid var(--line); border-radius:var(--radius-lg); background:white; box-shadow:var(--shadow); }
+.outsourcing-login-card input { width:100%; margin-top:8px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; }
+.outsourcing-login-card button { width:100%; margin-top:14px; min-height:44px; border:0; border-radius:12px; background:var(--primary); color:white; font-weight:800; }
+.outsourcing-login-error { min-height:18px; margin-top:8px; color:var(--danger); font-size:12px; font-weight:700; }
 </style>
 </head>
 <body>
+<div id="outsourcingLogin" class="show" aria-modal="true" role="dialog">
+  <form class="outsourcing-login-card" id="outsourcingLoginForm">
+    <p class="eyebrow">PORTAL OUTSOURCING</p>
+    <h1 style="margin-top:6px;font-size:22px">Admin Rekrutmen</h1>
+    <p style="margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5">Masukkan PIN akses untuk melihat data kandidat secara read-only.</p>
+    <label style="display:block;margin-top:18px;font-size:12px;font-weight:800">PIN akses<input id="outsourcingPin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" type="password" required></label>
+    <p id="outsourcingLoginError" class="outsourcing-login-error"></p>
+    <button type="submit">Masuk</button>
+  </form>
+</div>
+
 <div class="nav">
   <div class="nav-inner">
     <a href="/" class="brand">
@@ -1372,11 +1390,47 @@ async function saveStatus() {
   }
 }
 
+
+let outsourcingToken = localStorage.getItem('rekrutmen_outsourcing_session') || '';
+function outsourcingHeaders(json = false) {
+  const headers = json ? {'Content-Type':'application/json'} : {};
+  if (outsourcingToken) headers['X-Rekrutmen-Outsourcing-Session'] = outsourcingToken;
+  return headers;
+}
+function showOutsourcingLogin(message = '') {
+  document.getElementById('outsourcingLogin').classList.add('show');
+  document.getElementById('outsourcingLoginError').textContent = message;
+}
+function hideOutsourcingLogin() { document.getElementById('outsourcingLogin').classList.remove('show'); }
+async function outsourcingLogin(pin) {
+  const response = await fetch('/api/recruitment-outsourcing/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin})});
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'PIN tidak valid');
+  outsourcingToken = data.token;
+  localStorage.setItem('rekrutmen_outsourcing_session', outsourcingToken);
+  if (data.mustChange) {
+    const nextPin = window.prompt('Buat PIN baru 6 digit untuk mengganti PIN awal:') || '';
+    const changeResponse = await fetch('/api/recruitment-outsourcing/change-pin', { method:'POST', headers: outsourcingHeaders(true), body: JSON.stringify({ pin: nextPin }) });
+    const changeData = await changeResponse.json().catch(() => ({}));
+    if (!changeResponse.ok) throw new Error(changeData.error || 'PIN baru wajib dibuat');
+    outsourcingToken = changeData.token;
+    localStorage.setItem('rekrutmen_outsourcing_session', outsourcingToken);
+  }
+  hideOutsourcingLogin();
+  await refreshAll(false);
+}
+document.getElementById('outsourcingLoginForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  try { await outsourcingLogin(document.getElementById('outsourcingPin').value); }
+  catch (error) { showOutsourcingLogin(error.message || 'Login gagal'); }
+});
+
 function recruitmentHeaders(json = false) {
   const headers = {};
   if (json) headers['Content-Type'] = 'application/json';
+  if (outsourcingToken) headers['X-Rekrutmen-Outsourcing-Session'] = outsourcingToken;
   const token = localStorage.getItem('yumi_session_token');
-  if (token) headers['X-Yumi-Session'] = token;
+  if (!outsourcingToken && token) headers['X-Yumi-Session'] = token;
   return headers;
 }
 

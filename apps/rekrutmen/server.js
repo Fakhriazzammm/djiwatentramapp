@@ -27,6 +27,37 @@ const SUP = loadEnv(path.join(__dirname, "..", "..", "yumi-ai-bot", ".env"));
 const SUPABASE_URL = SUP.SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SKEY = SUP.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CV_BUCKET = "recruitment-cv";
+const OUTSOURCING_AUTH_FILE = path.join(__dirname, ".outsourcing-auth.json");
+const OUTSOURCING_SESSION_SECRET = process.env.REKRUTMEN_OUTSOURCING_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+
+function readOutsourcingAuth() {
+  try { return JSON.parse(fs.readFileSync(OUTSOURCING_AUTH_FILE, "utf8")); } catch { return null; }
+}
+
+function hashOutsourcingPin(pin, saltB64) {
+  return crypto.scryptSync(String(pin), Buffer.from(saltB64, "base64"), 64).toString("base64");
+}
+
+function safeEqualText(a, b) {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function signOutsourcingSession(mustChange = false) {
+  const payload = Buffer.from(JSON.stringify({ role: "outsourcing_readonly", mustChange, exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = crypto.createHmac("sha256", OUTSOURCING_SESSION_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function verifyOutsourcingSession(token) {
+  try {
+    const [payload, signature] = String(token || "").split(".");
+    const expected = crypto.createHmac("sha256", OUTSOURCING_SESSION_SECRET).update(payload).digest("base64url");
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return safeEqualText(signature, expected) && data.role === "outsourcing_readonly" && Number(data.exp) > Date.now() ? data : null;
+  } catch { return null; }
+}
 
 // pastikan folder uploads ada (fallback)
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -52,8 +83,28 @@ async function uploadToStorage(objectPath, buffer, contentType) {
 
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
+
+app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+app.post("/api/recruitment-outsourcing/login", (req, res) => {
+  const auth = readOutsourcingAuth();
+  const pin = String(req.body?.pin ?? "");
+  if (!auth?.salt || !auth?.hash || !safeEqualText(hashOutsourcingPin(pin, auth.salt), auth.hash)) {
+    return res.status(401).json({ error: "PIN tidak valid" });
+  }
+  return res.json({ token: signOutsourcingSession(Boolean(auth.mustChange)), mustChange: Boolean(auth.mustChange), readOnly: true });
+});
+app.post("/api/recruitment-outsourcing/change-pin", (req, res) => {
+  const session = verifyOutsourcingSession(req.get("x-rekrutmen-outsourcing-session"));
+  const nextPin = String(req.body?.pin ?? "");
+  if (!session) return res.status(401).json({ error: "Sesi outsourcing tidak valid" });
+  if (!/^\d{6}$/.test(nextPin) || nextPin === "000000") return res.status(400).json({ error: "PIN baru harus 6 digit dan tidak boleh 000000" });
+  const salt = crypto.randomBytes(16).toString("base64");
+  fs.writeFileSync(OUTSOURCING_AUTH_FILE, JSON.stringify({ salt, hash: hashOutsourcingPin(nextPin, salt), mustChange: false, updatedAt: new Date().toISOString() }, null, 2), { mode: 0o600 });
+  return res.json({ token: signOutsourcingSession(false), mustChange: false, readOnly: true });
+});
+
 // Legacy standalone candidate viewer is intentionally disabled; Admin SPA is the only protected viewer.
-app.get("/admin.html", (_req, res) => res.status(404).send("Not Found"));
+app.get("/admin.html", (_req, res) => res.redirect(302, "/admin"));
 app.use(express.static(path.join(__dirname, "public"), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith("index.html")) {
@@ -73,6 +124,13 @@ function psql(sql) {
 }
 
 async function validateRecruitmentAdmin(req, res, next) {
+  const outsourcingSession = verifyOutsourcingSession(req.get("x-rekrutmen-outsourcing-session"));
+  if (outsourcingSession) {
+    if (req.method !== "GET") return res.status(403).json({ error: "Akses outsourcing hanya baca data" });
+    res.locals.recruitmentAdmin = { role: "outsourcing_readonly" };
+    res.locals.readOnly = true;
+    return next();
+  }
   const headerToken = req.get("x-yumi-session") || req.get("authorization")?.replace(/^Bearer\s+/i, "");
   const standardized = req.path.startsWith("/api/rekrutmen/");
   const authError = (status, code, message) => {

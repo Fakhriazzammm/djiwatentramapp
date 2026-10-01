@@ -1,4 +1,5 @@
 node_modules/
+.outsourcing-auth.json
 .hermes/
 airtable_export.json
 .supabase_key
