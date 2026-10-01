@@ -1,7 +1,7 @@
 {
-  "version": "0.2.236",
-  "commitHash": "258bee4",
-  "message": "feat(pos): enable realtime notification updates",
+  "version": "0.2.237",
+  "commitHash": "419084c",
+  "message": "fix(pos): tighten notification card grid",
   "buildDate": "2026-10-01",
-  "generatedAt": "2026-10-01T06:49:31.351Z"
+  "generatedAt": "2026-10-01T06:51:13.337Z"
 }
