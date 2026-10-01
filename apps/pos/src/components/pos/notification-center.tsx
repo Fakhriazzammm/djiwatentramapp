@@ -122,26 +122,26 @@ export function NotificationCenter({
           {isLoading ? <div className="space-y-1.5">{[1, 2, 3].map((item) => <div key={item} className="h-20 animate-pulse rounded-xl bg-muted" />)}</div> : null}
           {!isLoading && error ? <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</div> : null}
           {!isLoading && !error && visible.length === 0 ? <div className="flex min-h-40 flex-col items-center justify-center px-4 text-center"><Bell className="h-7 w-7 text-muted-foreground/40" /><p className="mt-2 text-sm font-bold">Belum ada notifikasi</p><p className="mt-1 text-xs text-muted-foreground">Pesanan baru dan briefing admin akan muncul di sini.</p></div> : null}
-          <div className="space-y-1.5">
+          <div className={fullPage ? "grid grid-cols-1 gap-2 md:grid-cols-2" : "space-y-1.5"}>
             {visible.map((item) => {
               const meta = typeMeta(item);
               const Icon = meta.Icon;
               const isOrder = item.notification_type.startsWith("order_");
               return (
-                <article key={item.id} className={`relative rounded-xl border p-2.5 pr-9 shadow-sm transition ${meta.className} ${item.isRead ? "opacity-70" : "ring-1 ring-current/10"}`}>
-                  <button type="button" onClick={() => void onDismiss(item.id)} aria-label="Hapus notifikasi" className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md opacity-60 hover:bg-white/70 hover:opacity-100"><X className="h-3.5 w-3.5" /></button>
-                  <div className="flex items-start gap-2">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/70"><Icon className="h-3.5 w-3.5" /></div>
+                <article key={item.id} className={`relative rounded-lg border p-2 pr-8 shadow-sm transition ${meta.className} ${item.isRead ? "opacity-70" : "ring-1 ring-current/10"}`}>
+                  <button type="button" onClick={() => void onDismiss(item.id)} aria-label="Hapus notifikasi" className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-md opacity-60 hover:bg-white/70 hover:opacity-100"><X className="h-3 w-3" /></button>
+                  <div className="flex items-start gap-1.5">
+                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/70"><Icon className="h-3 w-3" /></div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-1.5"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-wide opacity-70">{meta.label}</p><h3 className="text-xs font-black leading-snug">{item.title}</h3></div>{!item.isRead ? <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" /> : null}</div>
-                      {item.order_number ? <p className="mt-0.5 text-[11px] font-bold">#{item.order_number} · {item.source === "pos" ? "POS Kasir" : item.source === "customer_self_service" || item.source === "djiwaapp" ? "DjiwaApp" : item.source || "Operasional"}</p> : null}
-                      <p className="mt-0.5 text-[11px] leading-snug opacity-80">{item.message}</p>
-                      <p className="mt-1.5 text-[9px] font-semibold opacity-60">{formatAge(item.created_at)}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {isOrder && onOpenOrder ? <button type="button" onClick={() => { onMarkRead(item.id); onOpenOrder(item); }} className="inline-flex min-h-8 items-center gap-1 rounded-md bg-white/80 px-2 text-[10px] font-black hover:bg-white">Buka detail <ChevronRight className="h-3 w-3" /></button> : null}
-                        {item.notification_type === "order_cashier_pending" && onMarkCashierPaid ? <button type="button" onClick={() => void onMarkCashierPaid(item)} className="inline-flex min-h-8 items-center gap-1 rounded-md bg-emerald-600 px-2 text-[10px] font-black text-white hover:bg-emerald-700"><Check className="h-3 w-3" /> Sudah Dibayar</button> : null}
-                        {!item.isRead ? <button type="button" onClick={() => onMarkRead(item.id)} className="inline-flex min-h-8 items-center gap-1 rounded-md border border-current/20 px-2 text-[10px] font-bold hover:bg-white/50"><Check className="h-3 w-3" /> Tandai dibaca</button> : null}
-                        {item.notification_type === "admin_briefing" && !item.acknowledgedAt ? <button type="button" onClick={() => onMarkRead(item.id, true)} className="inline-flex min-h-8 items-center rounded-md border border-current/20 px-2 text-[10px] font-bold hover:bg-white/50">Saya sudah membaca</button> : null}
+                      <div className="flex items-start justify-between gap-1"><div className="min-w-0"><p className="text-[8px] font-black uppercase tracking-wide opacity-70">{meta.label}</p><h3 className="text-[11px] font-black leading-tight">{item.title}</h3></div>{!item.isRead ? <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" /> : null}</div>
+                      {item.order_number ? <p className="mt-0.5 text-[10px] font-bold leading-tight">#{item.order_number} · {item.source === "pos" ? "POS Kasir" : item.source === "customer_self_service" || item.source === "djiwaapp" ? "DjiwaApp" : item.source || "Operasional"}</p> : null}
+                      <p className="mt-0.5 text-[10px] leading-tight opacity-80">{item.message}</p>
+                      <p className="mt-1 text-[8px] font-semibold opacity-60">{formatAge(item.created_at)}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {isOrder && onOpenOrder ? <button type="button" onClick={() => { onMarkRead(item.id); onOpenOrder(item); }} className="inline-flex min-h-7 items-center gap-0.5 rounded-md bg-white/80 px-1.5 text-[9px] font-black hover:bg-white">Buka detail <ChevronRight className="h-2.5 w-2.5" /></button> : null}
+                        {item.notification_type === "order_cashier_pending" && onMarkCashierPaid ? <button type="button" onClick={() => void onMarkCashierPaid(item)} className="inline-flex min-h-7 items-center gap-0.5 rounded-md bg-emerald-600 px-1.5 text-[9px] font-black text-white hover:bg-emerald-700"><Check className="h-2.5 w-2.5" /> Sudah Dibayar</button> : null}
+                        {!item.isRead ? <button type="button" onClick={() => onMarkRead(item.id)} className="inline-flex min-h-7 items-center gap-0.5 rounded-md border border-current/20 px-1.5 text-[9px] font-bold hover:bg-white/50"><Check className="h-2.5 w-2.5" /> Tandai dibaca</button> : null}
+                        {item.notification_type === "admin_briefing" && !item.acknowledgedAt ? <button type="button" onClick={() => onMarkRead(item.id, true)} className="inline-flex min-h-7 items-center rounded-md border border-current/20 px-1.5 text-[9px] font-bold hover:bg-white/50">Saya sudah membaca</button> : null}
                       </div>
                     </div>
                   </div>
