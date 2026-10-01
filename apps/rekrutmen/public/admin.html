@@ -681,6 +681,27 @@ tbody tr:hover td { background: #fcfdff; }
   .toolbar .search { grid-column:1 / -1; }
   .workspace { padding:10px; }
 }
+
+/* Screenshot-aligned simple admin shell */
+.admin-sidebar { position:fixed; top:56px; left:0; bottom:0; width:208px; padding:18px 12px; background:#fff; border-right:1px solid var(--line); z-index:20; }
+.admin-sidebar-title { padding:0 10px 12px; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.admin-side-link { width:100%; min-height:40px; display:flex; align-items:center; gap:9px; border:0; border-radius:10px; background:transparent; color:var(--muted); padding:0 10px; font-size:12px; font-weight:800; text-align:left; }
+.admin-side-link:hover,.admin-side-link.active { background:var(--primary-soft); color:var(--primary); }
+.admin-side-link .side-count { margin-left:auto; font-size:10px; opacity:.7; }
+.page { max-width:none; margin-left:208px; padding:18px 24px 24px; }
+.topbar { align-items:flex-start; }
+.topbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.export-actions { display:flex; gap:5px; }
+.export-btn { min-height:32px; padding:0 10px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--muted); font-size:11px; font-weight:800; }
+.export-btn:hover { color:var(--primary); border-color:var(--primary-border); background:var(--primary-soft); }
+.tab-row { display:none; }
+@media (max-width:720px) {
+  .admin-sidebar { position:sticky; top:56px; width:100%; height:auto; padding:8px; display:flex; gap:6px; overflow-x:auto; border-right:0; border-bottom:1px solid var(--line); }
+  .admin-sidebar-title { display:none; }
+  .admin-side-link { width:auto; min-width:max-content; padding:0 12px; }
+  .page { margin-left:0; padding:10px 8px 14px; }
+  .topbar-right { width:100%; justify-content:space-between; }
+}
 </style>
 </head>
 <body>
@@ -708,13 +729,31 @@ tbody tr:hover td { background: #fcfdff; }
   </div>
 </div>
 
+
+<aside class="admin-sidebar" aria-label="Navigasi rekrutmen">
+  <div class="admin-sidebar-title">Rekrutmen</div>
+  <button class="admin-side-link active" data-side-tab="candidates" type="button" onclick="switchTab('candidates')">▣ <span>Kandidat</span><span class="side-count" id="sideCandidatesCount">0</span></button>
+  <button class="admin-side-link" data-side-tab="interviews" type="button" onclick="switchTab('interviews')">◷ <span>Interview</span><span class="side-count" id="sideInterviewsCount">0</span></button>
+  <button class="admin-side-link" data-side-tab="onboarding" type="button" onclick="switchTab('onboarding')">✓ <span>Onboarding</span><span class="side-count" id="sideOnboardingCount">0</span></button>
+</aside>
+
 <div class="page">
   <section class="summary" id="stats"></section>
 
   <section class="card workspace">
     <div class="topbar">
-      <div class="topbar-title">Pipeline Rekrutmen</div>
-      <div class="tab-row" id="tabRow"></div>
+      <div>
+        <div class="topbar-title" id="pageTitle">Kandidat</div>
+        <div class="row-sub" style="margin-top:3px">Daftar kandidat dan status lamaran</div>
+      </div>
+      <div class="topbar-right">
+        <div class="export-actions" aria-label="Export data">
+          <button class="export-btn" type="button" onclick="exportCandidates('excel')">Excel</button>
+          <button class="export-btn" type="button" onclick="exportCandidates('csv')">CSV</button>
+          <button class="export-btn" type="button" onclick="exportCandidates('pdf')">PDF</button>
+        </div>
+        <div class="tab-row" id="tabRow"></div>
+      </div>
     </div>
 
     <div class="toolbar">
@@ -892,10 +931,16 @@ function renderTabs() {
     const disabled = config.supported === false ? 'disabled title="Belum tersedia: belum ada tabel sumber interview"' : '';
     return `<button class="tab ${state.activeTab === key ? 'active' : ''}" type="button" ${disabled} onclick="switchTab('${key}')">${config.label}<span class="count">${count}</span></button>`;
   }).join('');
+  document.getElementById('sideCandidatesCount').textContent = getRecords('candidates').length;
+  document.getElementById('sideInterviewsCount').textContent = getRecords('interviews').length;
+  document.getElementById('sideOnboardingCount').textContent = getRecords('onboarding').length;
 }
 
 function switchTab(tab) {
   state.activeTab = tab;
+  document.querySelectorAll('[data-side-tab]').forEach((item) => item.classList.toggle('active', item.dataset.sideTab === tab));
+  const titles = { candidates: 'Kandidat', interviews: 'Interview', onboarding: 'Onboarding' };
+  document.getElementById('pageTitle').textContent = titles[tab] || 'Rekrutmen';
   state.activeQuickFilter = 'All';
   document.getElementById('searchInput').value = '';
   populateToolbars();
@@ -1413,6 +1458,25 @@ async function saveStatus() {
   }
 }
 
+
+function exportCandidates(format) {
+  const records = sortRecords(state.activeTab, filterRecords(state.activeTab));
+  const rows = records.map((record) => record.fields);
+  if (format === 'pdf') {
+    const popup = window.open('', '_blank');
+    if (!popup) return showToast('Izinkan pop-up untuk export PDF', 'error');
+    popup.document.write(`<html><head><title>Export Kandidat</title><style>body{font-family:Arial;padding:24px}h1{font-size:18px}table{border-collapse:collapse;width:100%;font-size:10px}th,td{border:1px solid #ccc;padding:6px;text-align:left}</style></head><body><h1>Daftar Kandidat</h1>${buildExportTable(rows)}</body></html>`);
+    popup.document.close(); popup.focus(); popup.print(); return;
+  }
+  const headers = ['Nama Lengkap','Jenis Kelamin','Tanggal Lahir','Email','Nomor Telepon/HP','Posisi Dilamar','Status','Application Date'];
+  const body = [headers, ...rows.map((row) => headers.map((key) => row[key] || ''))].map((row) => row.map((value) => `"${String(value).replaceAll('"','""')}"`).join(',')).join('\n');
+  const blob = new Blob([body], {type:'text/csv;charset=utf-8;'});
+  const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `kandidat-${format === 'excel' ? 'excel.xls' : 'data.csv'}`; link.click(); URL.revokeObjectURL(link.href);
+}
+function buildExportTable(rows) {
+  const headers = ['Nama Lengkap','Jenis Kelamin','Tanggal Lahir','Email','Nomor Telepon/HP','Posisi Dilamar','Status'];
+  return `<table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((h) => `<td>${escapeHtml(row[h] || '-')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
 
 let outsourcingToken = localStorage.getItem('rekrutmen_outsourcing_session') || '';
 function outsourcingHeaders(json = false) {
