@@ -1,7 +1,11 @@
 import {
 	Bell,
 	ChevronRight,
+	Loader2,
 	LogIn,
+	MapPin,
+	LocateFixed,
+	Pencil,
 	PhoneCall,
 	Table2,
 	X,
@@ -40,7 +44,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
-import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
+import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines, type CustomerOrderMode } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
 import { renderMenuSection } from "@/components/customer/menu-section";
@@ -133,6 +137,18 @@ function OrderPage() {
 		addToCart,
 		updateCartQuantity,
 	} = useOrderContext();
+	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
+	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("gojek");
+	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
+	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
+	const [deliveryAddressFields, setDeliveryAddressFields] = useState({ street: "", rtRw: "", district: "", city: "", province: "", postalCode: "", landmark: "" });
+	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
+	const [deliveryLocationLoading, setDeliveryLocationLoading] = useState(false);
+	const [deliveryLocationError, setDeliveryLocationError] = useState<string | null>(null);
+	const [shippingQuote, setShippingQuote] = useState<{ fee: number; courierCode: string; expiresAt: number } | null>(null);
+	const [shippingQuoteLoading, setShippingQuoteLoading] = useState(false);
+	const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
+	const [, setShippingClock] = useState(() => Date.now());
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
@@ -152,12 +168,109 @@ function OrderPage() {
 		setDessertLater(false);
 		setNotes("");
 		setTableNumber("");
+		setOrderMode("dine_in");
+		setDeliveryProvider("gojek");
+		setDeliveryAddressOverride(null);
+		setDeliveryAddressEditorOpen(false);
+		setDeliveryAddressFields({ street: "", rtRw: "", district: "", city: "", province: "", postalCode: "", landmark: "" });
+		setDeliveryLocation(null);
+		setDeliveryLocationError(null);
 		setStep("table");
 	};
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
 	const missingContactFields = getMissingCustomerFields(customer);
+	const profileDeliveryAddress = isAuthenticated ? customer?.address?.trim() || "" : "";
+	const formatDeliveryAddress = (fields: typeof deliveryAddressFields) => [
+		fields.street,
+		fields.rtRw && `RT/RW ${fields.rtRw}`,
+		fields.district && `Kec. ${fields.district}`,
+		fields.city,
+		fields.province,
+		fields.postalCode,
+		fields.landmark && `Patokan: ${fields.landmark}`,
+	].filter(Boolean).join(", ");
+	const deliveryAddress = deliveryAddressOverride ?? (formatDeliveryAddress(deliveryAddressFields) || profileDeliveryAddress);
+	useEffect(() => {
+		if (deliveryAddressEditorOpen && !formatDeliveryAddress(deliveryAddressFields) && profileDeliveryAddress) {
+			setDeliveryAddressFields((current) => ({ ...current, street: profileDeliveryAddress }));
+		}
+	}, [deliveryAddressEditorOpen, deliveryAddressFields, profileDeliveryAddress]);
+	useEffect(() => {
+		if (orderMode !== "delivery" || !deliveryAddress || !(deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode) || !cart.length) {
+			setShippingQuote(null);
+			setShippingQuoteError(null);
+			return;
+		}
+		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode).replace(/\D/g, "");
+		if (!/^\d{5}$/.test(postalCode)) {
+			setShippingQuote(null);
+			setShippingQuoteError("Kode pos alamat harus terdiri dari 5 digit agar tarif pengantaran dapat dihitung.");
+			return;
+		}
+		const items = cart.map((item) => {
+			const product = products?.find((entry) => entry._id === item.productId) as any;
+			const weight = Number(product?.netWeight ?? product?.weight ?? 0);
+			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight };
+		});
+		if (items.some((item) => !Number.isFinite(item.weight) || item.weight <= 0)) {
+			setShippingQuote(null);
+			setShippingQuoteError("Tarif pengantaran belum tersedia karena berat produk belum diatur.");
+			return;
+		}
+		let cancelled = false;
+		setShippingQuote(null);
+		setShippingQuoteError(null);
+		setShippingQuoteLoading(true);
+		void invokeEdgeFunction<{ rates?: Array<{ courierCode?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
+			destination_postal_code: postalCode,
+			couriers: deliveryProvider,
+			items,
+		}).then((response) => {
+			if (cancelled) return;
+			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
+			const fee = Number(rate?.shippingFee ?? rate?.price);
+			if (!rate || !Number.isFinite(fee) || fee < 0) throw new Error("Tarif kurir tidak tersedia untuk alamat ini.");
+			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
+		}).catch((error) => {
+			if (!cancelled) {
+				setShippingQuote(null);
+				setShippingQuoteError(error instanceof Error ? error.message : "Tarif pengantaran belum tersedia. Coba lagi.");
+			}
+		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
+		return () => { cancelled = true; };
+	}, [cart, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
+
+	const useCurrentDeliveryLocation = () => {
+		if (!navigator.geolocation) {
+			setDeliveryLocationError("Perangkat ini tidak mendukung lokasi realtime.");
+			return;
+		}
+		setDeliveryLocationLoading(true);
+		setDeliveryLocationError(null);
+		navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+			try {
+				const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=${encodeURIComponent(coords.latitude)}&lon=${encodeURIComponent(coords.longitude)}`, { headers: { Accept: "application/json" } });
+				if (!response.ok) throw new Error("Gagal membaca alamat lokasi");
+				const result = await response.json() as { display_name?: string; address?: { road?: string; house_number?: string; neighbourhood?: string; suburb?: string; village?: string; city_district?: string; town?: string; city?: string; municipality?: string; state?: string; province?: string; postcode?: string; country?: string } };
+				const resolvedAddress = String(result.display_name ?? "").trim();
+				if (!resolvedAddress) throw new Error("Alamat tidak ditemukan dari lokasi saat ini");
+				const address = result.address ?? {};
+				setDeliveryAddressFields((current) => ({ ...current, street: [address.road, address.house_number].filter(Boolean).join(" ") || resolvedAddress, district: address.city_district ?? address.suburb ?? address.village ?? "", city: address.city ?? address.town ?? address.municipality ?? "", province: address.state ?? address.province ?? "", postalCode: address.postcode ?? "" }));
+				setDeliveryAddressOverride(null);
+				setDeliveryLocation({ latitude: coords.latitude, longitude: coords.longitude, postalCode: result.address?.postcode });
+				setDeliveryAddressEditorOpen(false);
+			} catch (error) {
+				setDeliveryLocationError(error instanceof Error ? error.message : "Alamat realtime belum dapat dibaca");
+			} finally {
+				setDeliveryLocationLoading(false);
+			}
+		}, (error) => {
+			setDeliveryLocationLoading(false);
+			setDeliveryLocationError(error.code === error.PERMISSION_DENIED ? "Izin lokasi ditolak. Kamu tetap bisa memasukkan alamat manual." : "Lokasi realtime belum tersedia.");
+		}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+	};
 	const checkoutEmail = isAuthenticated ? customer?.email?.trim() || "" : guestEmail.trim();
 	const checkoutPhone = isAuthenticated ? customer?.phone?.trim() || "" : guestPhone.trim();
 
@@ -367,7 +480,16 @@ function OrderPage() {
 	const serviceChargeAmount = taxCalculation.serviceChargeAmount;
 	const taxBase = taxCalculation.taxBase;
 	const taxAmount = taxCalculation.taxAmount;
-	const total = taxCalculation.finalTotal;
+	const shippingQuoteExpired = Boolean(shippingQuote && shippingQuote.expiresAt <= Date.now());
+	useEffect(() => {
+		if (!shippingQuote) return;
+		const timer = window.setInterval(() => setShippingClock(Date.now()), 1000);
+		return () => window.clearInterval(timer);
+	}, [shippingQuote]);
+	const shippingFee = orderMode === "delivery" && shippingQuote && !shippingQuoteExpired ? shippingQuote.fee : 0;
+	const shippingPaymentBlocked = orderMode === "delivery" && (!shippingQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
+	const shippingBlockerMessage = shippingQuoteLoading ? "Menunggu tarif pengantaran sebelum pembayaran." : shippingQuoteError || (shippingQuoteExpired ? "Tarif pengantaran kedaluwarsa. Kembali ke pengantaran untuk memuat ulang." : "Tarif pengantaran belum tersedia. Lengkapi lokasi dengan kode pos lalu pilih kurir.");
+	const total = taxCalculation.finalTotal + shippingFee;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 	const hasDessertInCart = cart.some((item) =>
 		/(dessert|cake|pudding|ice cream|gelato|tiramisu|sweet)/i.test(item.name)
@@ -430,10 +552,13 @@ function OrderPage() {
 	}, [search.table]);
 
 	useEffect(() => {
-		if ((step === "menu" || step === "review" || step === "payment") && !tableNumber.trim()) {
+		if ((step === "menu" || step === "review" || step === "payment") && orderMode === "dine_in" && !tableNumber.trim()) {
 			setStep("table");
 		}
-	}, [step, tableNumber]);
+		if ((step === "menu" || step === "shipping" || step === "review" || step === "payment") && orderMode === "delivery" && !deliveryAddress) {
+			setStep("address");
+		}
+	}, [step, tableNumber, orderMode, deliveryAddress]);
 
 	useEffect(() => {
 		if (step !== "menu" || menuMode !== "catalog" || typeof document === "undefined") return;
@@ -696,8 +821,17 @@ function OrderPage() {
 			toast.error("Pilih minimal satu produk");
 			return;
 		}
-		if (config.requireTableNumber && !tableNumber.trim()) {
+		if (orderMode === "dine_in" && config.requireTableNumber && !tableNumber.trim()) {
 			rejectCheckout("Nomor meja wajib diisi sebelum checkout", "Nomor meja");
+			return;
+		}
+		if (orderMode === "delivery" && !deliveryAddress) {
+			rejectCheckout("Pilih alamat pengantaran terlebih dahulu");
+			setStep("address");
+			return;
+		}
+		if (orderMode === "delivery" && (!shippingQuote || shippingQuote.expiresAt <= Date.now() || shippingQuoteLoading || Boolean(shippingQuoteError))) {
+			rejectCheckout(shippingBlockerMessage);
 			return;
 		}
 		if (!isAuthenticated && paymentChoice === "mayar") {
@@ -714,12 +848,12 @@ function OrderPage() {
 				return;
 			}
 		}
-		if (!tableNumber.trim()) {
+		if (orderMode === "dine_in" && !tableNumber.trim()) {
 			rejectCheckout("Pilih nomor meja terlebih dahulu", "Nomor meja");
 			setStep("table");
 			return;
 		}
-		if (!Number.isInteger(partySize) || partySize < 1) {
+		if (orderMode === "dine_in" && (!Number.isInteger(partySize) || partySize < 1)) {
 			rejectCheckout("Pilih jumlah orang terlebih dahulu", "Jumlah orang");
 			setStep("party");
 			return;
@@ -770,9 +904,10 @@ function OrderPage() {
 			if (paymentChoice === "mayar" && !normalizedCustomerName) {
 				throw new Error("Nama customer wajib diisi sebelum pembayaran");
 			}
-			const orderCustomerName = normalizedCustomerName || `Customer ${tableNumber.trim() || "Walk In"}`;
+			const orderCustomerName = normalizedCustomerName || `Customer ${orderMode === "delivery" ? "Delivery" : tableNumber.trim() || "Walk In"}`;
 			const normalizedCustomerDescription = customerDescription.trim().slice(0, 160) || undefined;
-			const normalizedTableNumber = tableNumber.trim() || undefined;
+			const normalizedTableNumber = orderMode === "dine_in" ? (tableNumber.trim() || undefined) : undefined;
+			const normalizedDeliveryAddress = orderMode === "delivery" ? deliveryAddress : undefined;
 			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
 				items: cart.map((item) => {
@@ -789,6 +924,9 @@ function OrderPage() {
 					};
 				}),
 				totalAmount: total,
+				shippingFee,
+				shippingRateSnapshot: shippingQuote ? { provider: "biteship", courierCode: shippingQuote.courierCode, fee: shippingQuote.fee, currency: "IDR", quotedAt: new Date().toISOString(), expiresAt: new Date(shippingQuote.expiresAt).toISOString() } : null,
+				shippingProvider: orderMode === "delivery" ? deliveryProvider : undefined,
 				taxAmount,
 				serviceChargeAmount,
 				paymentMethod: paymentChoice === "mayar" ? "qris" : paymentChoice === "wallet" ? "wallet" : "cash",
@@ -797,9 +935,11 @@ function OrderPage() {
 				customerName: orderCustomerName,
 				customerEmail: checkoutEmail || null,
 				customerPhone: checkoutPhone || null,
+				deliveryAddress: normalizedDeliveryAddress,
+				deliveryProvider: orderMode === "delivery" ? deliveryProvider : undefined,
 				customerDescription: normalizedCustomerDescription,
 				tableNumber: normalizedTableNumber,
-				orderType: "dine_in" as const,
+				orderType: orderMode,
 				source: "customer_self_service" as const,
 				brandSlug,
 				guestCount: partySize,
@@ -932,7 +1072,8 @@ function OrderPage() {
 											description: activeFreeRefillPromo.name || "Free Refill",
 										},
 								  ]
-								: []),
+							: []),
+							...(shippingFee > 0 ? [{ quantity: 1, rate: shippingFee, description: `Biaya pengantaran ${deliveryProvider}` }] : []),
 						],
 					});
 					if (!invoice?.data?.id) {
@@ -1083,7 +1224,7 @@ function OrderPage() {
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
-					<CustomerOrderProgress step={step} />
+					<CustomerOrderProgress step={step} mode={orderMode} onModeChange={(nextMode) => { setOrderMode(nextMode); setStep(nextMode === "delivery" ? "address" : "table"); }} />
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -1111,23 +1252,26 @@ function OrderPage() {
 					/>
 
 					{/* ── Step 1: table selection ───────────────────── */}
-					{step === "table" ? (
+					{((step === "table" && orderMode === "dine_in") || (step === "address" && orderMode === "delivery")) ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-								<div className="flex items-center gap-2.5">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div>
-								</div>
-								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
-								<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
-								<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
-								<button type="button" disabled={!tableNumber.trim()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("party")}>Lanjut ke jumlah orang <ChevronRight className="h-4 w-4" /></button>
+								{orderMode === "delivery" ? <>
+									<div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Delivery</p><h2 className="text-base font-black">{storeName}</h2></div></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">Antar</span></div>
+									<div className="mt-3 rounded-xl border border-border bg-background p-3"><div className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat pengantaran</p>{deliveryAddress ? <p className="mt-1 text-sm font-bold leading-relaxed">{deliveryAddress}</p> : <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Belum ada alamat tujuan. Masukkan alamat penerima di sini.</p>}</div></div>{deliveryAddressEditorOpen ? <div className="mt-3 space-y-2"><div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><div className="sm:col-span-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-street">Jalan lengkap <span className="text-destructive">*</span></label><input id="delivery-street" autoFocus value={deliveryAddressFields.street} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, street: event.target.value }))} placeholder="Jalan Gunung Bentang V No. 89" className="mt-1 w-full rounded-xl border border-primary/30 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-rtrw">RT/RW</label><input id="delivery-rtrw" value={deliveryAddressFields.rtRw} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, rtRw: event.target.value }))} placeholder="03/05" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-district">Kecamatan <span className="text-destructive">*</span></label><input id="delivery-district" value={deliveryAddressFields.district} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, district: event.target.value }))} placeholder="Cidadap" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-city">Kota/Kabupaten <span className="text-destructive">*</span></label><input id="delivery-city" value={deliveryAddressFields.city} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, city: event.target.value }))} placeholder="Bandung" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-province">Provinsi</label><input id="delivery-province" value={deliveryAddressFields.province} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, province: event.target.value }))} placeholder="Jawa Barat" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-postal-code">Kode pos <span className="text-destructive">*</span></label><input id="delivery-postal-code" inputMode="numeric" maxLength={5} value={deliveryAddressFields.postalCode} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, postalCode: event.target.value.replace(/\D/g, "").slice(0, 5) }))} placeholder="40141" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div className="sm:col-span-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-landmark">Patokan (opsional)</label><input id="delivery-landmark" value={deliveryAddressFields.landmark} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, landmark: event.target.value }))} placeholder="Dekat minimarket / gerbang warna putih" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div></div><button type="button" disabled={deliveryLocationLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary disabled:opacity-60" onClick={useCurrentDeliveryLocation}><LocateFixed className="h-4 w-4" />{deliveryLocationLoading ? "Mencari lokasi realtime..." : "Isi dari lokasi saya"}</button>{deliveryLocation ? <a className="block text-[11px] font-bold text-primary underline" href={`https://www.google.com/maps/search/?api=1&query=${deliveryLocation.latitude},${deliveryLocation.longitude}`} target="_blank" rel="noreferrer">Buka titik lokasi di Google Maps</a> : null}{deliveryLocationError ? <p className="text-[11px] font-semibold text-destructive">{deliveryLocationError}</p> : null}<p className="text-[11px] leading-relaxed text-muted-foreground">Alamat ini hanya dipakai untuk pesanan ini dan tidak mengubah alamat di profil.</p><div className="grid grid-cols-2 gap-2"><button type="button" className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setDeliveryAddressEditorOpen(false)}>Batal</button><button type="button" disabled={!deliveryAddressFields.street.trim() || !deliveryAddressFields.district.trim() || !deliveryAddressFields.city.trim() || !/^\d{5}$/.test(deliveryAddressFields.postalCode)} className="min-h-11 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => { setDeliveryAddressOverride(null); setDeliveryAddressEditorOpen(false); }}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressEditorOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
+									<button type="button" disabled={!deliveryAddress} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("menu")}>Lanjut ke menu <ChevronRight className="h-4 w-4" /></button>
+								</> : <>
+									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
+									<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
+									<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
+									<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
+									<button type="button" disabled={!tableNumber.trim()} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("party")}>Lanjut ke jumlah orang <ChevronRight className="h-4 w-4" /></button>
+								</>}
 							</div>
 						</section>
 					) : null}
 
 					{/* ── Step 2: party size ───────────────────────── */}
-					{step === "party" ? (
+					{step === "party" && orderMode === "dine_in" ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
@@ -1183,10 +1327,14 @@ function OrderPage() {
 					{step === "menu"
 						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
-					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep("party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep("review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div> : null}
+					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
+
+					{step === "shipping" && orderMode === "delivery" ? (
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Instant delivery" }, { key: "grab", label: "Grab", detail: "Instant delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
+					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
-					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onCashierPaymentExpired: () => {
@@ -1197,14 +1345,14 @@ function OrderPage() {
 				</main>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
-				{step !== "table" && step !== "party" && step !== "refill" && step !== "review" && step !== "payment" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
+				{step !== "table" && step !== "address" && step !== "party" && step !== "refill" && step !== "shipping" && step !== "review" && step !== "payment" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-5 gap-1.5 p-1.5">
 							<BottomButton label="Menu" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep("menu")} />
 							<BottomButton label="Riwayat" icon={<Djiwa3DIcon name="navigation-history" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => navigate({ to: "/$username/riwayat", params: { username } })} />
 							<BottomButton label="Keranjang" icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
 							<BottomButton label="Staff" icon={<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setServiceOpen(true)} />
-							<BottomButton label={receipt ? "Struk" : "Review"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : "review")} primary disabled={!receipt && !cart.length} />
+							<BottomButton label={receipt ? "Struk" : orderMode === "delivery" ? "Kirim" : "Review"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : orderMode === "delivery" ? "shipping" : "review")} primary disabled={!receipt && !cart.length} />
 						</div>
 					</div>
 				) : null}
