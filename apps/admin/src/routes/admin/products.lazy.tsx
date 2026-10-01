@@ -167,6 +167,8 @@ function ProductsTab({
 		description: "",
 		image: "",
 		menuNumber: "",
+		deliveryWeightGrams: "",
+		deliveryEnabled: true,
 		variations: [] as Variation[],
 	});
 	const [imageFile, setImageFile] = useState<File | null>(null);
@@ -310,6 +312,8 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 			description: "",
 			image: "",
 			menuNumber: "",
+			deliveryWeightGrams: "",
+			deliveryEnabled: true,
 			variations: [],
 		});
 		setImageFile(null);
@@ -428,6 +432,9 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 				description: formData.description,
 				image: imageId,
 				menuNumber: formData.menuNumber ? Number(formData.menuNumber) : undefined,
+				deliveryWeightGrams: formData.deliveryWeightGrams ? Number(formData.deliveryWeightGrams) : null,
+				deliveryWeightSource: "manual",
+				deliveryEnabled: formData.deliveryEnabled,
 				variations: formData.variations,
 			};
 
@@ -462,6 +469,8 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 			description: product.description || "",
 			image: product.image || "",
 			menuNumber: product.menuNumber != null ? String(product.menuNumber) : "",
+			deliveryWeightGrams: product.deliveryWeightGrams != null ? String(product.deliveryWeightGrams) : "",
+			deliveryEnabled: product.deliveryEnabled !== false,
 			variations: (product.variations as Variation[]) || [],
 		});
 		setOriginalStorageId(product.storageId || null);
@@ -1695,6 +1704,13 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 												</div>
 											</div>
 										</div>
+									</div>
+									<div className="grid grid-cols-2 gap-3">
+										<div className="space-y-1.5">
+											<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground" htmlFor="product-delivery-weight">Berat delivery (gram)</label>
+											<input id="product-delivery-weight" type="number" min="1" step="1" inputMode="numeric" placeholder="Contoh: 500" value={formData.deliveryWeightGrams} onChange={(e) => setFormData({ ...formData, deliveryWeightGrams: e.target.value })} className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm font-medium text-foreground outline-none transition-all focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10" />
+										</div>
+										<label className="flex items-center gap-2 self-end pb-2.5 text-xs font-semibold text-foreground"><input type="checkbox" checked={formData.deliveryEnabled} onChange={(e) => setFormData({ ...formData, deliveryEnabled: e.target.checked })} className="h-4 w-4 rounded border-border accent-primary" /> Bisa delivery</label>
 									</div>
 
 									{/* Description */}

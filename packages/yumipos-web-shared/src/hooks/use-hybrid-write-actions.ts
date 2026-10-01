@@ -556,6 +556,9 @@ export function useHybridCreateProduct() {
 				quantity: args?.quantity === undefined ? null : Number(args.quantity ?? 0),
 				menu_number: args?.menuNumber === undefined ? null : Number(args.menuNumber ?? 0),
 				variations: Array.isArray(args?.variations) ? args.variations : null,
+				delivery_weight_grams: args?.deliveryWeightGrams === undefined ? null : Number(args.deliveryWeightGrams ?? 0),
+				delivery_weight_source: args?.deliveryWeightSource ?? "unreviewed",
+				delivery_enabled: args?.deliveryEnabled === undefined ? true : Boolean(args.deliveryEnabled),
 				creation_time: Number(args?._creationTime ?? Date.now()),
 				raw: args ?? {},
 			};
@@ -589,9 +592,11 @@ export function useHybridUpdateProduct() {
 			if (args?.variations !== undefined) {
 				updates.variations = Array.isArray(args.variations) ? args.variations : null;
 			}
+			if (args?.deliveryWeightGrams !== undefined) updates.delivery_weight_grams = args.deliveryWeightGrams == null ? null : Number(args.deliveryWeightGrams);
+			if (args?.deliveryWeightSource !== undefined) updates.delivery_weight_source = String(args.deliveryWeightSource ?? "unreviewed");
+			if (args?.deliveryEnabled !== undefined) updates.delivery_enabled = Boolean(args.deliveryEnabled);
 			if (Object.keys(updates).length === 0) return;
-			const { error } = await createClient()
-				.schema("pos")
+			const { error } = await createClient().schema("pos")
 				.from("products")
 				.update(updates)
 				.eq("source_id", id);

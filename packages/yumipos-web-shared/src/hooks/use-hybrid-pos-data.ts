@@ -524,6 +524,9 @@ async function fetchProducts() {
 				? null
 				: Number(row.menuNumber),
 		variations: row.variations,
+		deliveryWeightGrams: row.deliveryWeightGrams == null ? null : Number(row.deliveryWeightGrams),
+		deliveryWeightSource: row.deliveryWeightSource ?? "unreviewed",
+		deliveryEnabled: row.deliveryEnabled !== false,
 	})) as ProductRecord[];
 }
 
@@ -557,6 +560,9 @@ async function fetchAllProducts() {
 				? null
 				: Number(row.menuNumber),
 		variations: row.variations,
+		deliveryWeightGrams: row.deliveryWeightGrams == null ? null : Number(row.deliveryWeightGrams),
+		deliveryWeightSource: row.deliveryWeightSource ?? "unreviewed",
+		deliveryEnabled: row.deliveryEnabled !== false,
 	})) as ProductRecord[];
 }
 

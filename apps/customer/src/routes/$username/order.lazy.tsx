@@ -211,9 +211,14 @@ function OrderPage() {
 		}
 		const items = cart.map((item) => {
 			const product = products?.find((entry) => entry._id === item.productId) as any;
-			const weight = Number(product?.netWeight ?? product?.weight ?? 0);
-			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight };
+			const weight = Number(product?.deliveryWeightGrams ?? product?.netWeight ?? product?.weight ?? 0);
+			return { name: item.name, value: Math.max(0, Math.round(item.price)), quantity: item.quantity, weight, deliveryEnabled: product?.deliveryEnabled !== false };
 		});
+		if (items.some((item) => !item.deliveryEnabled)) {
+			setShippingQuote(null);
+			setShippingQuoteError("Ada produk di keranjang yang hanya tersedia untuk pembelian langsung, bukan delivery.");
+			return;
+		}
 		if (items.some((item) => !Number.isFinite(item.weight) || item.weight <= 0)) {
 			setShippingQuote(null);
 			setShippingQuoteError("Tarif pengantaran belum tersedia karena berat produk belum diatur.");
