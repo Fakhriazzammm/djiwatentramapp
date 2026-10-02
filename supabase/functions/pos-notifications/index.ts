@@ -153,7 +153,8 @@ async function dispatchWebPush(notification: any) {
   // @ts-ignore Deno resolves the npm package at Edge Function runtime.
   const webpush = await import("npm:web-push@3.6.7");
   webpush.default?.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-  const body = JSON.stringify({ title: notification.title, body: notification.message, notificationId: notification.id, url: notification.action_type === "open_order" ? "/admin/orders" : "/admin" });
+  const orderReference = String(notification.order_number ?? notification.order_source_id ?? "").trim();
+  const body = JSON.stringify({ title: notification.title, body: notification.message, notificationId: notification.id, url: notification.action_type === "open_order" && orderReference ? `/admin/orders/${encodeURIComponent(orderReference)}` : "/admin" });
   await Promise.all(targets.map(async (item: any) => {
     const delivery = await dbWrite(
       "pos_notification_push_deliveries",

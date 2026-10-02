@@ -23,8 +23,8 @@ function notificationTone(notification: AdminNotification) {
 function notificationRoute(notification: AdminNotification) {
 	const payload = notification.action_payload ?? {};
 	if (notification.action_type === "open_order") {
-		const orderReference = String(notification.order_number ?? payload.orderNumber ?? payload.order_number ?? notification.order_source_id ?? "").trim();
-		return orderReference ? `/admin/orders?focusOrder=${encodeURIComponent(orderReference)}` : "/admin/orders";
+		const orderReference = String(payload.orderNumber ?? payload.order_number ?? payload.orderSourceId ?? payload.order_source_id ?? "").trim();
+		return orderReference ? `/admin/orders/${encodeURIComponent(orderReference)}` : "/admin/orders";
 	}
 	if (notification.action_type === "open_inventory") return "/admin/inventory";
 	if (notification.action_type === "open_shift") return "/admin/finance/shift-reports";

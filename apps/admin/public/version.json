@@ -1,7 +1,7 @@
 {
-  "version": "0.2.265",
-  "commitHash": "94f96ab",
-  "message": "feat(admin): play cashier sound for foreground alerts",
+  "version": "0.2.268",
+  "commitHash": "46759e5",
+  "message": "chore(admin): release notification sound",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T03:09:15.643Z"
+  "generatedAt": "2026-10-02T03:48:51.004Z"
 }
