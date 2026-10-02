@@ -1,7 +1,7 @@
 {
-  "version": "0.2.264",
-  "commitHash": "9a222cb",
-  "message": "fix(pos): use canonical order number format in notifications",
+  "version": "0.2.265",
+  "commitHash": "94f96ab",
+  "message": "feat(admin): play cashier sound for foreground alerts",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T02:59:46.764Z"
+  "generatedAt": "2026-10-02T03:09:15.643Z"
 }
