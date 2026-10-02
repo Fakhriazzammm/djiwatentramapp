@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.265",
+	semantic: "0.2.278",
 	// Git/deploy commit hash (short)
-	commitHash: "94f96ab",
-	message: "feat(admin): play cashier sound for foreground alerts",
+	commitHash: "6fc014f",
+	message: "fix(delivery): persist shipping fields for admin monitoring",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): play cashier sound for foreground alerts",
+	commitMessage: "fix(delivery): persist shipping fields for admin monitoring",
 	// Build timestamp
 	buildDate: "2026-10-02",
 	// Full version string for display

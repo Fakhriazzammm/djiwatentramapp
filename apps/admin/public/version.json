@@ -1,7 +1,7 @@
 {
-  "version": "0.2.269",
-  "commitHash": "325c32b",
-  "message": "feat(admin): add dedicated order detail pages",
+  "version": "0.2.278",
+  "commitHash": "6fc014f",
+  "message": "fix(delivery): persist shipping fields for admin monitoring",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T03:51:52.267Z"
+  "generatedAt": "2026-10-02T04:28:46.246Z"
 }

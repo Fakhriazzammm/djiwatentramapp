@@ -75,6 +75,7 @@ import { Route as AdminRekrutmenCandidatesRouteImport } from './routes/admin/rek
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe/view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminRecipeBaseRouteImport } from './routes/admin/recipe/base'
+import { Route as AdminOrdersOrderNumberRouteImport } from './routes/admin/orders.$orderNumber'
 import { Route as AdminOrderMieYaminSettingsRouteImport } from './routes/admin/order-mie-yamin/settings'
 import { Route as AdminOrderMieYaminOrdersRouteImport } from './routes/admin/order-mie-yamin/orders'
 import { Route as AdminOrderMieYaminDeliveryRouteImport } from './routes/admin/order-mie-yamin/delivery'
@@ -543,6 +544,13 @@ const AdminRecipeBaseRoute = AdminRecipeBaseRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/recipe/base.lazy').then((d) => d.Route),
 )
+const AdminOrdersOrderNumberRoute = AdminOrdersOrderNumberRouteImport.update({
+  id: '/$orderNumber',
+  path: '/$orderNumber',
+  getParentRoute: () => AdminOrdersRoute,
+} as any).lazy(() =>
+  import('./routes/admin/orders.$orderNumber.lazy').then((d) => d.Route),
+)
 const AdminOrderMieYaminSettingsRoute =
   AdminOrderMieYaminSettingsRouteImport.update({
     id: '/settings',
@@ -975,7 +983,7 @@ export interface FileRoutesByFullPath {
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
-  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -1013,6 +1021,7 @@ export interface FileRoutesByFullPath {
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
   '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
+  '/admin/orders/$orderNumber': typeof AdminOrdersOrderNumberRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -1082,7 +1091,7 @@ export interface FileRoutesByTo {
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
-  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -1113,6 +1122,7 @@ export interface FileRoutesByTo {
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
   '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
+  '/admin/orders/$orderNumber': typeof AdminOrdersOrderNumberRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -1189,7 +1199,7 @@ export interface FileRoutesById {
   '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/order-mie-yamin': typeof AdminOrderMieYaminRouteWithChildren
-  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/pos-notifications': typeof AdminPosNotificationsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -1227,6 +1237,7 @@ export interface FileRoutesById {
   '/admin/order-mie-yamin/delivery': typeof AdminOrderMieYaminDeliveryRoute
   '/admin/order-mie-yamin/orders': typeof AdminOrderMieYaminOrdersRoute
   '/admin/order-mie-yamin/settings': typeof AdminOrderMieYaminSettingsRouteWithChildren
+  '/admin/orders/$orderNumber': typeof AdminOrdersOrderNumberRoute
   '/admin/recipe/base': typeof AdminRecipeBaseRoute
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
@@ -1343,6 +1354,7 @@ export interface FileRouteTypes {
     | '/admin/order-mie-yamin/delivery'
     | '/admin/order-mie-yamin/orders'
     | '/admin/order-mie-yamin/settings'
+    | '/admin/orders/$orderNumber'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -1443,6 +1455,7 @@ export interface FileRouteTypes {
     | '/admin/order-mie-yamin/delivery'
     | '/admin/order-mie-yamin/orders'
     | '/admin/order-mie-yamin/settings'
+    | '/admin/orders/$orderNumber'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -1556,6 +1569,7 @@ export interface FileRouteTypes {
     | '/admin/order-mie-yamin/delivery'
     | '/admin/order-mie-yamin/orders'
     | '/admin/order-mie-yamin/settings'
+    | '/admin/orders/$orderNumber'
     | '/admin/recipe/base'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
@@ -2069,6 +2083,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/recipe/base'
       preLoaderRoute: typeof AdminRecipeBaseRouteImport
       parentRoute: typeof AdminRecipeRoute
+    }
+    '/admin/orders/$orderNumber': {
+      id: '/admin/orders/$orderNumber'
+      path: '/$orderNumber'
+      fullPath: '/admin/orders/$orderNumber'
+      preLoaderRoute: typeof AdminOrdersOrderNumberRouteImport
+      parentRoute: typeof AdminOrdersRoute
     }
     '/admin/order-mie-yamin/settings': {
       id: '/admin/order-mie-yamin/settings'
@@ -2685,6 +2706,18 @@ const AdminOrderMieYaminRouteChildren: AdminOrderMieYaminRouteChildren = {
 const AdminOrderMieYaminRouteWithChildren =
   AdminOrderMieYaminRoute._addFileChildren(AdminOrderMieYaminRouteChildren)
 
+interface AdminOrdersRouteChildren {
+  AdminOrdersOrderNumberRoute: typeof AdminOrdersOrderNumberRoute
+}
+
+const AdminOrdersRouteChildren: AdminOrdersRouteChildren = {
+  AdminOrdersOrderNumberRoute: AdminOrdersOrderNumberRoute,
+}
+
+const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
+  AdminOrdersRouteChildren,
+)
+
 interface AdminRecipeRouteChildren {
   AdminRecipeBaseRoute: typeof AdminRecipeBaseRoute
   AdminRecipeHppRoute: typeof AdminRecipeHppRoute
@@ -2751,7 +2784,7 @@ interface AdminRouteRouteChildren {
   AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRouteWithChildren
   AdminOrderMieYaminRoute: typeof AdminOrderMieYaminRouteWithChildren
-  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminOrdersRoute: typeof AdminOrdersRouteWithChildren
   AdminPosNotificationsRoute: typeof AdminPosNotificationsRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
@@ -2788,7 +2821,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminOnboardingRoute: AdminOnboardingRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRouteWithChildren,
   AdminOrderMieYaminRoute: AdminOrderMieYaminRouteWithChildren,
-  AdminOrdersRoute: AdminOrdersRoute,
+  AdminOrdersRoute: AdminOrdersRouteWithChildren,
   AdminPosNotificationsRoute: AdminPosNotificationsRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminRecipeRoute: AdminRecipeRouteWithChildren,
