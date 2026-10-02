@@ -1251,7 +1251,7 @@ function OrderPage() {
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
-					{orderModeConfirmed ? <CustomerOrderProgress step={step} mode={orderMode} onModeChange={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} /> : null}
+					{orderModeConfirmed && !deliveryAddressPickerOpen ? <CustomerOrderProgress step={step} mode={orderMode} onModeChange={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} /> : null}
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -1266,7 +1266,7 @@ function OrderPage() {
 
 					{/* ── AuthModal ────────────────────────────────── */}
 					<Sheet open={deliveryAddressPickerOpen} onOpenChange={setDeliveryAddressPickerOpen}>
-										<SheetContent side="bottom" showCloseButton={false} className="z-[2000] max-h-[85dvh] overflow-y-auto rounded-t-3xl p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+										<SheetContent side="bottom" showCloseButton={false} className="z-[2000] h-[100dvh] max-h-[100dvh] overflow-y-auto rounded-none bg-background p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
 											<div className="border-b border-border px-4 pb-3 pt-5"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Delivery</p><h2 className="mt-1 text-lg font-black">Pilih alamat pengantaran</h2><p className="mt-1 text-xs text-muted-foreground">Gunakan alamat utama atau masukkan tujuan lain.</p></div>
 											<div className="space-y-2 p-4">
 												{profileDeliveryAddress ? <button type="button" className="flex min-h-16 w-full items-start gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-left" onClick={() => { setDeliveryAddressOverride(null); setDeliveryAddressPickerOpen(false); }}><MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><span className="min-w-0"><span className="flex items-center gap-2 text-sm font-black">Alamat utama <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Profil</span></span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{profileDeliveryAddress}</span></span></button> : <div className="rounded-2xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">Belum ada alamat utama di profil.</div>}
