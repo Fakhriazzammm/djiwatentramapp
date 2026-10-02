@@ -775,6 +775,21 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		paymentMethod: row.paymentMethod ?? null,
 		customerName: row.customerName ?? null,
 		tableNumber: row.tableNumber ?? null,
+		deliveryDate: row.deliveryDate ?? null,
+		deliveryProvider: row.deliveryProvider ?? row.delivery_provider ?? row.shippingProvider ?? row.shipping_provider ?? null,
+		deliveryStatus: row.deliveryStatus ?? row.delivery_status ?? null,
+		deliveryContactName: row.deliveryContactName ?? row.delivery_contact_name ?? null,
+		deliveryContactPhone: row.deliveryContactPhone ?? row.delivery_contact_phone ?? null,
+		deliveryAddress: row.deliveryAddress ?? row.delivery_address ?? null,
+		deliveryNotes: row.deliveryNotes ?? row.delivery_notes ?? null,
+		deliveryProviderOrderId: row.deliveryProviderOrderId ?? row.delivery_provider_order_id ?? null,
+		deliveryTrackingId: row.deliveryTrackingId ?? row.delivery_tracking_id ?? null,
+		deliveryWaybillId: row.deliveryWaybillId ?? row.delivery_waybill_id ?? null,
+		shippingFeeAmount:
+			row.shippingFeeAmount === null || row.shippingFeeAmount === undefined
+				? (row.shipping_fee_amount === null || row.shipping_fee_amount === undefined ? Number(row.shippingFee ?? 0) : Number(row.shipping_fee_amount))
+				: Number(row.shippingFeeAmount),
+		shippingRateSnapshot: row.shippingRateSnapshot ?? row.shipping_rate_snapshot ?? null,
 		orderType: row.orderType ?? null,
 		source: row.source ?? null,
 		brandSlug: row.brandSlug ?? null,
