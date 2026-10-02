@@ -342,18 +342,6 @@ async function listNotifications(user: UserContext) {
     limit: "500",
   });
   const now = Date.now();
-  const orderIds = [...new Set((rows ?? []).map((item: any) => String(item.order_source_id ?? "")).filter(Boolean))];
-  const orderStatuses = new Map<string, string>();
-  if (orderIds.length > 0) {
-    const orders = await dbGet("pos_orders", {
-      select: "_id,status",
-      _id: `in.(${orderIds.join(",")})`,
-      limit: "500",
-    });
-    for (const order of orders ?? []) {
-      orderStatuses.set(String(order._id), String(order.status ?? "").toLowerCase());
-    }
-  }
   const expiredOrderIds = (rows ?? [])
     .filter((item: any) => {
       if (!String(item.notification_type ?? "").startsWith("order_")) return false;
@@ -378,13 +366,10 @@ async function listNotifications(user: UserContext) {
     if (item.target_user_id && item.target_user_id !== user.id) return false;
     if (item.target_role && item.target_role.toLowerCase() !== user.role) return false;
     if (item.target_branch_id && item.target_branch_id !== user.branchId) return false;
-    const orderStatus = item.order_source_id
-      ? orderStatuses.get(String(item.order_source_id))
-      : undefined;
-    if (item.order_source_id && orderStatus === "cancelled"
-      && ["order_cashier_pending", "order_mayar_pending"].includes(String(item.notification_type))) return false;
-    if ((item.notification_type === "order_cashier_pending" || item.notification_type === "order_mayar_pending")
-      && (orderStatus === "paid" || orderStatus === "completed")) return false;
+    // Keep every persisted order event visible. A later paid event must not
+    // replace or hide the earlier cashier/QRIS-pending event; each event is
+    // an individual notification card and dedupe is limited to the same
+    // order + event type at insert time.
     return true;
   }).map((item: any) => ({
     ...item,
