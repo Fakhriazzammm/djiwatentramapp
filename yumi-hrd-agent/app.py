@@ -19,6 +19,9 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+# Server-side bot traffic must stay on the local Supabase/Kong path.
+# The public hostname resolves back to this VPS and can hairpin-timeout.
+SUPABASE_INTERNAL_URL = os.getenv("SUPABASE_INTERNAL_URL", SUPABASE_URL).rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 # Group where attendance notifications are broadcast (overrides yumi-ai-bot behavior)
 REPORT_CHAT_ID = int(os.getenv("TELEGRAM_REPORT_CHAT_ID", "-1003991897388"))
@@ -45,7 +48,7 @@ def _svc_headers():
     }
 
 async def _fetch(table: str, query: str = "") -> list[dict]:
-    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    url = f"{SUPABASE_INTERNAL_URL}/rest/v1/{table}"
     if query:
         url = f"{url}?{query}"
     async with httpx.AsyncClient() as client:
@@ -54,7 +57,7 @@ async def _fetch(table: str, query: str = "") -> list[dict]:
         return r.json() if isinstance(r.json(), list) else []
 
 async def _post(table: str, payload: dict) -> dict:
-    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    url = f"{SUPABASE_INTERNAL_URL}/rest/v1/{table}"
     async with httpx.AsyncClient() as client:
         r = await client.post(url, json=payload, headers={**_headers(), "Prefer": "return=representation"}, timeout=15)
         r.raise_for_status()
@@ -62,7 +65,7 @@ async def _post(table: str, payload: dict) -> dict:
         return data[0] if isinstance(data, list) and data else {}
 
 async def _patch(table: str, query: str, payload: dict) -> dict:
-    url = f"{SUPABASE_URL}/rest/v1/{table}?{query}"
+    url = f"{SUPABASE_INTERNAL_URL}/rest/v1/{table}?{query}"
     async with httpx.AsyncClient() as client:
         r = await client.patch(url, json=payload, headers={**_headers(), "Prefer": "return=representation"}, timeout=15)
         r.raise_for_status()
@@ -70,7 +73,7 @@ async def _patch(table: str, query: str, payload: dict) -> dict:
         return data[0] if isinstance(data, list) and data else {}
 
 async def _post_legacy_mirror(payload: dict) -> dict:
-    url = f"{SUPABASE_URL}/rest/v1/documents"
+    url = f"{SUPABASE_INTERNAL_URL}/rest/v1/documents"
     headers = {**_svc_headers(), "Accept-Profile": "legacy_mirror", "Content-Profile": "legacy_mirror", "Prefer": "return=representation"}
     async with httpx.AsyncClient() as client:
         r = await client.post(url, json=payload, headers=headers, timeout=15)
@@ -241,7 +244,7 @@ async def _insert_attendance(employee_user_id: str, att_type: str, notes: str = 
     if shift_name:
         payload["shiftName"] = shift_name
     try:
-        url = f"{SUPABASE_URL}/functions/v1/record-attendance"
+        url = f"{SUPABASE_INTERNAL_URL}/functions/v1/record-attendance"
         headers = {
             "apikey": SUPABASE_SERVICE_ROLE_KEY,
             "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
@@ -591,7 +594,7 @@ def _haversine_km(lat1, lon1, lat2, lon2):
 async def _get_attendance_radius() -> tuple[float, float, float] | None:
     """Return (lat, lng, radius_m) from site settings, or None."""
     try:
-        url = f"{SUPABASE_URL}/rest/v1/site_settings?select=raw&limit=1"
+        url = f"{SUPABASE_INTERNAL_URL}/rest/v1/site_settings?select=raw&limit=1"
         headers = _headers()
         headers["Accept-Profile"] = "pos"
         async with httpx.AsyncClient() as client:
@@ -614,7 +617,7 @@ async def _upload_photo_to_storage(employee_id: str, photo_bytes: bytes) -> str 
     try:
         ext = "jpg"
         object_name = f"attendance/{employee_id}/{int(_now_wib().timestamp() * 1000)}.{ext}"
-        url = f"{SUPABASE_URL}/storage/v1/object/attendance-photos/{object_name}"
+        url = f"{SUPABASE_INTERNAL_URL}/storage/v1/object/attendance-photos/{object_name}"
         headers = {
             "apikey": SUPABASE_SERVICE_ROLE_KEY,
             "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
