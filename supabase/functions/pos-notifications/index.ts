@@ -20,6 +20,38 @@ const ORDER_NOTIFICATION_RETENTION_MS = 24 * 60 * 60 * 1000;
 const REST_PAGE_SIZE = 500;
 const REST_MAX_PAGES = 20;
 
+
+function canonicalOrderNumber(order: any) {
+  const raw = String(order.orderNumber ?? order.order_number ?? "").trim();
+  if (!raw) return null;
+  if (/^ORD-[A-Z]+-[A-Z0-9]+-\d{4}-\d{6}$/i.test(raw)) return raw.toUpperCase();
+  const match = raw.match(/^ORD(\d{1,6})-([A-Z0-9]+)-/i);
+  if (!match) return raw;
+  const sequence = match[1].padStart(4, "0");
+  const type = match[2].toUpperCase();
+  const timestamp = Number(order.createdAt ?? order.created_at ?? Date.now());
+  const date = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(new Date(timestamp));
+  const source = String(order.source ?? "").trim().toLowerCase();
+  const brand = String(order.brandSlug ?? order.brand_slug ?? "").trim().toLowerCase();
+  const business = String(order.businessUnit ?? order.business_unit ?? "").trim().toLowerCase();
+  const sourceApp = String(order.sourceApp ?? order.source_app ?? "").trim().toLowerCase();
+  const channel = brand === "merchandise" ? "MERCH"
+    : brand === "b2b" || business === "b2b" ? "B2B"
+      : source === "customer_self_service" || sourceApp.includes("djiwaapp") ? "APP"
+        : source === "booking" ? "BOOK"
+          : source.includes("gofood") || sourceApp.includes("gofood") ? "GF"
+            : source.includes("grabfood") || sourceApp.includes("grabfood") ? "GRAB"
+              : source.includes("shopeefood") || sourceApp.includes("shopeefood") ? "SF"
+                : source === "telegram" || sourceApp.includes("telegram") ? "TG"
+                  : "POS";
+  return `ORD-${channel}-${type}-${sequence}-${date.replaceAll("/", "")}`;
+}
+
 function response(body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -212,12 +244,13 @@ async function syncRecentOrders() {
   // only newly observed IDs create a popup in the client.
   const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
   const orders = await dbGetPaged("pos_orders", {
-    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
+    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,brandSlug,businessUnit,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
     order: "createdAt.desc",
   });
   let created = 0;
   for (const order of orders ?? []) {
     const source = sourceOf(order);
+    const displayOrderNumber = canonicalOrderNumber(order);
     const createdAt = Number(order.createdAt ?? 0);
     if (!source || !Number.isFinite(createdAt) || createdAt < Date.parse(since)) continue;
     const status = String(order.status ?? "").toLowerCase();
@@ -274,7 +307,7 @@ async function syncRecentOrders() {
       title,
       message,
       order_source_id: String(order._id),
-      order_number: order.orderNumber ?? null,
+      order_number: displayOrderNumber,
       source,
       source_app: source === "pos" ? "pos" : "customer",
       source_module: "orders",
@@ -285,7 +318,7 @@ async function syncRecentOrders() {
       action_type: "open_order",
       action_payload: {
         orderId: order._id,
-        orderNumber: order.orderNumber ?? null,
+        orderNumber: displayOrderNumber,
         source,
         paymentMethod: payment === "mayar" ? "qris" : payment === "wallet" ? "wallet" : payment === "cashier" ? "cashier" : "unknown",
         paymentStatus: status,
