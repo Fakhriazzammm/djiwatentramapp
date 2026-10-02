@@ -21,7 +21,10 @@ function notificationTone(notification: AdminNotification) {
 
 function notificationRoute(notification: AdminNotification) {
 	const payload = notification.action_payload ?? {};
-	if (notification.action_type === "open_order") return "/admin/orders";
+	if (notification.action_type === "open_order") {
+		const orderReference = String(notification.order_number ?? payload.orderNumber ?? payload.order_number ?? notification.order_source_id ?? "").trim();
+		return orderReference ? `/admin/orders?focusOrder=${encodeURIComponent(orderReference)}` : "/admin/orders";
+	}
 	if (notification.action_type === "open_inventory") return "/admin/inventory";
 	if (notification.action_type === "open_shift") return "/admin/finance/shift-reports";
 	if (notification.action_type === "open_finance") return "/admin/finance/transactions";
