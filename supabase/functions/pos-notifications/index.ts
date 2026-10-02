@@ -303,7 +303,12 @@ async function syncRecentOrders() {
     const receiptType = receiptKind === "dine_in" ? "DINE IN" : receiptKind === "takeaway" ? "TAKEAWAY" : "ORDER";
     const paymentLabel = payment === "cashier" ? "Bayar Tunai di Kasir" : payment === "mayar" ? "QRIS" : payment === "wallet" ? "Djiwa Pay" : payment.toUpperCase();
     if (receiptNumber > 0) {
-      message = `Struk #${receiptNumber} · ${receiptType} · ${displayOrderNumber}\nPembayaran: ${paymentLabel}`;
+      const paymentStatusLabel = status === "paid" || status === "completed" ? "LUNAS" : status === "pending" ? "BELUM LUNAS" : status.toUpperCase();
+      const itemCount = Array.isArray(order.items) ? order.items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0) : 0;
+      const customerLabel = String(order.customerName ?? "Pelanggan Umum").trim() || "Pelanggan Umum";
+      const totalLabel = `Rp${Number(order.totalAmount ?? 0).toLocaleString("id-ID")}`;
+      const tableLabel = String(order.tableNumber ?? "").trim();
+      message = `Struk #${receiptNumber} · ${receiptType} · ${displayOrderNumber}\nSumber: ${sourceLabel} · Pembayaran: ${paymentLabel}\nCustomer: ${customerLabel} · Status: ${paymentStatusLabel}\nTotal: ${totalLabel} · ${itemCount} item${tableLabel ? ` · Meja ${tableLabel}` : ""}`;
     }
 
     // Never mutate or deactivate a previous order event. A settlement creates
