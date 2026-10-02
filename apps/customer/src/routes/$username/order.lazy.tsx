@@ -282,7 +282,7 @@ function OrderPage() {
 				setDeliveryAddressFields((current) => ({ ...current, street: [address.road, address.house_number].filter(Boolean).join(" ") || resolvedAddress, district: address.city_district ?? address.suburb ?? address.village ?? "", city: address.city ?? address.town ?? address.municipality ?? "", province: address.state ?? address.province ?? "", postalCode: address.postcode ?? "" }));
 				setDeliveryAddressOverride(null);
 				setDeliveryLocation({ latitude: coords.latitude, longitude: coords.longitude, postalCode: result.address?.postcode });
-				setDeliveryAddressEditorOpen(false);
+				setDeliveryAddressEditorOpen(true);
 			} catch (error) {
 				setDeliveryLocationError(error instanceof Error ? error.message : "Alamat realtime belum dapat dibaca");
 			} finally {
@@ -1271,7 +1271,7 @@ function OrderPage() {
 											<div className="space-y-2 p-4">
 												{profileDeliveryAddress ? <button type="button" className="flex min-h-16 w-full items-start gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-left" onClick={() => { setDeliveryAddressOverride(null); setDeliveryAddressPickerOpen(false); }}><MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><span className="min-w-0"><span className="flex items-center gap-2 text-sm font-black">Alamat utama <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Profil</span></span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{profileDeliveryAddress}</span></span></button> : <div className="rounded-2xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">Belum ada alamat utama di profil.</div>}
 												<button type="button" className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border p-3 text-left" onClick={() => { setDeliveryAddressPickerOpen(false); setDeliveryAddressEditorOpen(true); }}><Pencil className="h-5 w-5 text-primary" /><span><span className="block text-sm font-black">Tambah atau cari alamat</span><span className="mt-1 block text-xs text-muted-foreground">Isi alamat, patokan, dan detail penerima.</span></span></button>
-												<button type="button" className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border p-3 text-left" onClick={() => { setDeliveryAddressPickerOpen(false); setDeliveryAddressEditorOpen(true); }}><LocateFixed className="h-5 w-5 text-primary" /><span><span className="block text-sm font-black">Gunakan lokasi saya</span><span className="mt-1 block text-xs text-muted-foreground">Isi otomatis dari GPS, lalu periksa kembali alamatnya.</span></span></button>
+												<button type="button" className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border p-3 text-left" onClick={() => { setDeliveryAddressPickerOpen(false); setDeliveryAddressEditorOpen(true); useCurrentDeliveryLocation(); }}><LocateFixed className="h-5 w-5 text-primary" /><span><span className="block text-sm font-black">Gunakan lokasi saya</span><span className="mt-1 block text-xs text-muted-foreground">Isi otomatis dari GPS, lalu periksa kembali alamatnya.</span></span></button>
 											</div>
 										</SheetContent>
 									</Sheet>
