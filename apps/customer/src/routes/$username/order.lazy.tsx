@@ -209,7 +209,7 @@ function OrderPage() {
 		}
 	}, [customer?.city, customer?.postalCode, customer?.province, deliveryAddressEditorOpen, deliveryAddressFields, profileDeliveryAddress]);
 	useEffect(() => {
-		if (orderMode !== "delivery" || !deliveryAddress || !(deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode) || !cart.length) {
+		if (orderMode !== "delivery" || !deliveryAddress || !(deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode ?? customer?.postalCode) || !cart.length) {
 			setShippingQuote(null);
 			setShippingQuoteError(null);
 			return;
@@ -219,7 +219,7 @@ function OrderPage() {
 			setShippingQuoteError(null);
 			return;
 		}
-		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode).replace(/\D/g, "");
+		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode ?? customer?.postalCode ?? "").replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
 			setShippingQuote(null);
 			setShippingQuoteError("Kode pos alamat harus terdiri dari 5 digit agar tarif pengantaran dapat dihitung.");
@@ -255,7 +255,7 @@ function OrderPage() {
 			if (!cancelled) setShippingQuote({ fee: flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
 		}).finally(() => { if (!cancelled) { setShippingQuoteError(null); setShippingQuoteLoading(false); } });
 		return () => { cancelled = true; };
-	}, [cart, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
+	}, [cart, customer?.postalCode, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
 
 	const resolveManualDeliveryLocation = async () => {
 		const query = [deliveryAddressFields.street, deliveryAddressFields.district, deliveryAddressFields.city, deliveryAddressFields.province, deliveryAddressFields.postalCode, "Indonesia"].filter(Boolean).join(", ");
