@@ -1,7 +1,7 @@
 {
-  "version": "0.2.263",
-  "commitHash": "fde9a36",
-  "message": "feat(admin): open notification orders directly",
+  "version": "0.2.264",
+  "commitHash": "9a222cb",
+  "message": "fix(pos): use canonical order number format in notifications",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T02:31:40.454Z"
+  "generatedAt": "2026-10-02T02:59:46.764Z"
 }

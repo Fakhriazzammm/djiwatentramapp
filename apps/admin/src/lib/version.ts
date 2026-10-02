@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.263",
+	semantic: "0.2.264",
 	// Git/deploy commit hash (short)
-	commitHash: "fde9a36",
-	message: "feat(admin): open notification orders directly",
+	commitHash: "9a222cb",
+	message: "fix(pos): use canonical order number format in notifications",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): open notification orders directly",
+	commitMessage: "fix(pos): use canonical order number format in notifications",
 	// Build timestamp
 	buildDate: "2026-10-02",
 	// Full version string for display
