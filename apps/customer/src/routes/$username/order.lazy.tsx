@@ -1271,7 +1271,7 @@ function OrderPage() {
 					{!orderModeConfirmed ? <CustomerOrderModeSelection themeColor={themeColor} onSelect={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} /> : null}
 
 					{/* ── Step 1: table selection ───────────────────── */}
-					{((step === "table" && orderMode === "dine_in") || (step === "address" && orderMode === "delivery")) ? (
+					{orderModeConfirmed && ((step === "table" && orderMode === "dine_in") || (step === "address" && orderMode === "delivery")) ? (
 						<section className="space-y-2 px-2 py-2">
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								{orderMode === "delivery" ? <>
