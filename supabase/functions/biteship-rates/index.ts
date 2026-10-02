@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       throw new Error("Gojek/Grab requires pickup and destination coordinates");
     }
     const upstreamBody = instantCourierRequested
-      ? { origin_latitude: originLatitude, origin_longitude: originLongitude, destination_latitude: destinationLatitude, destination_longitude: destinationLongitude, couriers, items }
+      ? { origin_postal_code: Number(originPostalCode), destination_postal_code: destinationPostalCode, origin_latitude: originLatitude, origin_longitude: originLongitude, destination_latitude: destinationLatitude, destination_longitude: destinationLongitude, couriers, items }
       : { origin_postal_code: Number(originPostalCode), destination_postal_code: destinationPostalCode, couriers, items };
 
     const upstream = await fetch(BITESHIP_RATES_URL, {
