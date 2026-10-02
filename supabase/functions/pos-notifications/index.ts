@@ -303,7 +303,7 @@ async function syncRecentOrders() {
     const receiptType = receiptKind === "dine_in" ? "DINE IN" : receiptKind === "takeaway" ? "TAKEAWAY" : "ORDER";
     const paymentLabel = payment === "cashier" ? "Bayar Tunai di Kasir" : payment === "mayar" ? "QRIS" : payment === "wallet" ? "Djiwa Pay" : payment.toUpperCase();
     if (receiptNumber > 0) {
-      message = `📍 STRUK NO. ${receiptNumber} - ${receiptType}\n📲 SUMBER: ${sourceLabel}\n⚠️ PEMBAYARAN: ${paymentLabel}\n────────────\n${message}`;
+      message = `Struk #${receiptNumber} · ${receiptType} · ${displayOrderNumber}\nPembayaran: ${paymentLabel}`;
     }
 
     // Never mutate or deactivate a previous order event. A settlement creates
