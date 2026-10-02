@@ -219,6 +219,10 @@ function OrderPage() {
 			setShippingQuoteError(null);
 			return;
 		}
+		if (!deliveryLocation && deliveryAddressFields.street && deliveryAddressFields.district && deliveryAddressFields.city) {
+			void resolveManualDeliveryLocation();
+			return;
+		}
 		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode).replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
 			setShippingQuote(null);
