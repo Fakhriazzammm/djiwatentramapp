@@ -142,6 +142,7 @@ function OrderPage() {
 	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("gojek");
 	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
 	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
+	const [deliveryAddressPickerOpen, setDeliveryAddressPickerOpen] = useState(false);
 	const [saveAddressToProfile, setSaveAddressToProfile] = useState(true);
 	const [deliveryAddressFields, setDeliveryAddressFields] = useState({ street: "", rtRw: "", district: "", city: "", province: "", postalCode: "", landmark: "" });
 	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
@@ -175,6 +176,7 @@ function OrderPage() {
 		setDeliveryProvider("gojek");
 		setDeliveryAddressOverride(null);
 		setDeliveryAddressEditorOpen(false);
+		setDeliveryAddressPickerOpen(false);
 		setSaveAddressToProfile(true);
 		setDeliveryAddressFields({ street: "", rtRw: "", district: "", city: "", province: "", postalCode: "", landmark: "" });
 		setDeliveryLocation(null);
@@ -1263,7 +1265,18 @@ function OrderPage() {
 					</div>
 
 					{/* ── AuthModal ────────────────────────────────── */}
-					<AuthModal
+					<Sheet open={deliveryAddressPickerOpen} onOpenChange={setDeliveryAddressPickerOpen}>
+										<SheetContent side="bottom" showCloseButton={false} className="z-[2000] max-h-[85dvh] overflow-y-auto rounded-t-3xl p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+											<div className="border-b border-border px-4 pb-3 pt-5"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Delivery</p><h2 className="mt-1 text-lg font-black">Pilih alamat pengantaran</h2><p className="mt-1 text-xs text-muted-foreground">Gunakan alamat utama atau masukkan tujuan lain.</p></div>
+											<div className="space-y-2 p-4">
+												{profileDeliveryAddress ? <button type="button" className="flex min-h-16 w-full items-start gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-left" onClick={() => { setDeliveryAddressOverride(null); setDeliveryAddressPickerOpen(false); }}><MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><span className="min-w-0"><span className="flex items-center gap-2 text-sm font-black">Alamat utama <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Profil</span></span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{profileDeliveryAddress}</span></span></button> : <div className="rounded-2xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">Belum ada alamat utama di profil.</div>}
+												<button type="button" className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border p-3 text-left" onClick={() => { setDeliveryAddressPickerOpen(false); setDeliveryAddressEditorOpen(true); }}><Pencil className="h-5 w-5 text-primary" /><span><span className="block text-sm font-black">Tambah atau cari alamat</span><span className="mt-1 block text-xs text-muted-foreground">Isi alamat, patokan, dan detail penerima.</span></span></button>
+												<button type="button" className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border p-3 text-left" onClick={() => { setDeliveryAddressPickerOpen(false); setDeliveryAddressEditorOpen(true); }}><LocateFixed className="h-5 w-5 text-primary" /><span><span className="block text-sm font-black">Gunakan lokasi saya</span><span className="mt-1 block text-xs text-muted-foreground">Isi otomatis dari GPS, lalu periksa kembali alamatnya.</span></span></button>
+											</div>
+										</SheetContent>
+									</Sheet>
+
+									<AuthModal
 						open={authModalOpen}
 						onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
 						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
@@ -1291,7 +1304,7 @@ function OrderPage() {
 									await refreshCustomer();
 									setDeliveryAddressOverride(null); setDeliveryAddressEditorOpen(false); toast.success("Alamat utama tersimpan di profil");
 								} catch (error) { toast.error((error as Error).message || "Gagal menyimpan alamat profil"); }
-								}}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressEditorOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
+								}}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressPickerOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
 									<button type="button" disabled={!deliveryAddress} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("menu")}>Lanjut ke menu <ChevronRight className="h-4 w-4" /></button>
 								</> : <>
 									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
