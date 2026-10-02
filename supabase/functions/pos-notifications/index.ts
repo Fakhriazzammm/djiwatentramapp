@@ -265,18 +265,9 @@ async function syncRecentOrders() {
     }
     if (!type || !order._id) continue;
 
-    // Satu order tidak boleh menampilkan state pembayaran lama dan baru
-    // bersamaan. Setelah order settled, nonaktifkan notifikasi pending lama;
-    // dedupe_key tetap menjaga agar event paid hanya dibuat sekali.
-    if (status === "paid" || status === "completed") {
-      await dbWrite(
-        "pos_notifications",
-        "PATCH",
-        { is_active: false },
-        `?order_source_id=eq.${encodeURIComponent(String(order._id))}&notification_type=in.%28order_cashier_pending,order_mayar_pending%29&is_active=eq.true`,
-      );
-    }
-
+    // Never mutate or deactivate a previous order event. A settlement creates
+    // its own order_paid card; the unique dedupe key only prevents replaying
+    // the same order + event type.
     const result = await dbWrite("pos_notifications", "POST", {
       notification_type: type,
       priority: type === "order_cashier_pending" ? "high" : "normal",
