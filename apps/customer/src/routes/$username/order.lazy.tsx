@@ -44,7 +44,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
-import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines, type CustomerOrderMode } from "@/components/customer/shared-components";
+import { BottomButton, CartRow, CustomerOrderModeSelection, CustomerOrderProgress, SummaryCardLines, type CustomerOrderMode } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
 import { renderMenuSection } from "@/components/customer/menu-section";
@@ -138,6 +138,7 @@ function OrderPage() {
 		updateCartQuantity,
 	} = useOrderContext();
 	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
+	const [orderModeConfirmed, setOrderModeConfirmed] = useState(false);
 	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("gojek");
 	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
 	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
@@ -169,6 +170,7 @@ function OrderPage() {
 		setNotes("");
 		setTableNumber("");
 		setOrderMode("dine_in");
+		setOrderModeConfirmed(false);
 		setDeliveryProvider("gojek");
 		setDeliveryAddressOverride(null);
 		setDeliveryAddressEditorOpen(false);
@@ -1239,7 +1241,7 @@ function OrderPage() {
 								: "flex-1 min-h-0 overflow-y-auto pb-32"
 					}
 				>
-					<CustomerOrderProgress step={step} mode={orderMode} onModeChange={(nextMode) => { setOrderMode(nextMode); setStep(nextMode === "delivery" ? "address" : "table"); }} />
+					{orderModeConfirmed ? <CustomerOrderProgress step={step} mode={orderMode} onModeChange={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} /> : null}
 					{/* ── Auth header (always visible, no welcome) ── */}
 					<div className="mt-3 mb-2 px-3">
 						<AuthHeader
@@ -1265,6 +1267,8 @@ function OrderPage() {
 						needsEmailConfirm={registrationNeedsEmailConfirm}
 						error={authError}
 					/>
+
+					{!orderModeConfirmed ? <CustomerOrderModeSelection themeColor={themeColor} onSelect={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} /> : null}
 
 					{/* ── Step 1: table selection ───────────────────── */}
 					{((step === "table" && orderMode === "dine_in") || (step === "address" && orderMode === "delivery")) ? (
