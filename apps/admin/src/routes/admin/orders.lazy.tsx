@@ -220,7 +220,6 @@ function compactRupiah(amount: number) {
 
 function AdminOrders() {
 	const navigate = useNavigate();
-	if (typeof window !== "undefined" && /^\/admin\/orders\/[^/]+/.test(window.location.pathname)) return <Outlet />;
 	const allOrders = useHybridOrders();
 	const allBookingOrders = useHybridBookingOrders({ slug: "booking" });
 	
@@ -644,6 +643,8 @@ function AdminOrders() {
 				return status;
 		}
 	};
+
+	if (typeof window !== "undefined" && /^\/admin\/orders\/[^/]+/.test(window.location.pathname)) return <Outlet />;
 
 	if (unifiedOrders === undefined) {
 		return (

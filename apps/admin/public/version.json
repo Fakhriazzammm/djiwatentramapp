@@ -1,7 +1,7 @@
 {
-  "version": "0.2.285",
-  "commitHash": "d568af1",
-  "message": "fix(customer): hide checkout steps before mode selection",
+  "version": "0.2.286",
+  "commitHash": "fc810b5",
+  "message": "fix(admin): resolve canonical order detail IDs",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T04:39:31.054Z"
+  "generatedAt": "2026-10-02T04:42:52.621Z"
 }

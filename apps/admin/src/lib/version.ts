@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.285",
+	semantic: "0.2.286",
 	// Git/deploy commit hash (short)
-	commitHash: "d568af1",
-	message: "fix(customer): hide checkout steps before mode selection",
+	commitHash: "fc810b5",
+	message: "fix(admin): resolve canonical order detail IDs",
 	// Commit subject for the update prompt
-	commitMessage: "fix(customer): hide checkout steps before mode selection",
+	commitMessage: "fix(admin): resolve canonical order detail IDs",
 	// Build timestamp
 	buildDate: "2026-10-02",
 	// Full version string for display
