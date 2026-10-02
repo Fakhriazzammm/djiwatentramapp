@@ -138,7 +138,7 @@ function OrderPage() {
 	} = useOrderContext();
 	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
 	const [orderModeConfirmed, setOrderModeConfirmed] = useState(false);
-	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("gojek");
+	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("grab");
 	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
 	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
 	const [deliveryAddressPickerOpen, setDeliveryAddressPickerOpen] = useState(false);
