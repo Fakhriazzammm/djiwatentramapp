@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.278",
+	semantic: "0.2.279",
 	// Git/deploy commit hash (short)
-	commitHash: "6fc014f",
-	message: "fix(delivery): persist shipping fields for admin monitoring",
+	commitHash: "93f9af4",
+	message: "chore(admin): publish dedicated order route",
 	// Commit subject for the update prompt
-	commitMessage: "fix(delivery): persist shipping fields for admin monitoring",
+	commitMessage: "chore(admin): publish dedicated order route",
 	// Build timestamp
 	buildDate: "2026-10-02",
 	// Full version string for display

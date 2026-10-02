@@ -1,7 +1,7 @@
 {
-  "version": "0.2.278",
-  "commitHash": "6fc014f",
-  "message": "fix(delivery): persist shipping fields for admin monitoring",
+  "version": "0.2.279",
+  "commitHash": "93f9af4",
+  "message": "chore(admin): publish dedicated order route",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T04:28:46.246Z"
+  "generatedAt": "2026-10-02T04:30:14.083Z"
 }
