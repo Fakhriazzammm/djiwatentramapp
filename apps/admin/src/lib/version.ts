@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.262",
+	semantic: "0.2.263",
 	// Git/deploy commit hash (short)
-	commitHash: "d304611",
-	message: "feat(admin): enrich recruitment and moderation views",
+	commitHash: "fde9a36",
+	message: "feat(admin): open notification orders directly",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): enrich recruitment and moderation views",
+	commitMessage: "feat(admin): open notification orders directly",
 	// Build timestamp
 	buildDate: "2026-10-02",
 	// Full version string for display

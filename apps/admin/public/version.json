@@ -1,7 +1,7 @@
 {
-  "version": "0.2.262",
-  "commitHash": "d304611",
-  "message": "feat(admin): enrich recruitment and moderation views",
+  "version": "0.2.263",
+  "commitHash": "fde9a36",
+  "message": "feat(admin): open notification orders directly",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T02:28:12.214Z"
+  "generatedAt": "2026-10-02T02:31:40.454Z"
 }
