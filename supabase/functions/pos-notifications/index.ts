@@ -295,7 +295,7 @@ async function syncRecentOrders() {
           ? `Pesanan ${sourceLabel} sudah dibayar dengan Djiwa Pay`
           : payment === "mayar"
             ? `Pesanan ${sourceLabel} sudah lunas`
-            : `Order ${order.orderNumber ?? order._id} berstatus ${status}`;
+            : `Order ${displayOrderNumber ?? order._id} berstatus ${status}`;
     }
     if (!type || !order._id) continue;
 
