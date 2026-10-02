@@ -407,9 +407,12 @@ async def _notify_attendance_group(emp: dict, att_type: str, now_dt,
         m = re.search(r"foto:\s*(\S+)", notes)
         if m:
             foto_url = m.group(1)
+            # Fetch through the VPS-local Supabase route. The public origin may
+            # be unreachable from this host even though storage is healthy.
+            foto_fetch_url = foto_url.replace(SUPABASE_URL, SUPABASE_INTERNAL_URL, 1)
             try:
                 async with httpx.AsyncClient() as client:
-                    resp = await client.get(foto_url, timeout=15)
+                    resp = await client.get(foto_fetch_url, timeout=15)
                     if resp.status_code == 200:
                         photo_bytes = resp.content
             except Exception as e:
