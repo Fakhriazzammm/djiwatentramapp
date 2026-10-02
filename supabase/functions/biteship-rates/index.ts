@@ -146,6 +146,7 @@ Deno.serve(async (req) => {
     const destinationLongitude = body.destination_longitude === undefined ? undefined : coordinate(body.destination_longitude, "destination_longitude");
     if ((destinationLatitude === undefined) !== (destinationLongitude === undefined)) throw new Error("destination latitude and longitude must be provided together");
     const couriers = requiredString(body.couriers, "couriers", 200);
+    if (!/^(?:gojek|grab)(?:,(?:gojek|grab))*$/i.test(couriers)) throw new Error("Only Gojek and Grab are supported for customer delivery");
     if (!/^[a-z0-9]+(?:,[a-z0-9]+)*$/i.test(couriers)) {
       throw new Error("couriers must be a comma-separated list of courier codes");
     }
