@@ -1,7 +1,7 @@
 {
-  "version": "0.2.279",
-  "commitHash": "93f9af4",
-  "message": "chore(admin): publish dedicated order route",
+  "version": "0.2.282",
+  "commitHash": "4c70282",
+  "message": "feat(customer): choose order mode before checkout flow",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T04:30:14.083Z"
+  "generatedAt": "2026-10-02T04:35:57.412Z"
 }

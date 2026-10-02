@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.279",
+	semantic: "0.2.282",
 	// Git/deploy commit hash (short)
-	commitHash: "93f9af4",
-	message: "chore(admin): publish dedicated order route",
+	commitHash: "4c70282",
+	message: "feat(customer): choose order mode before checkout flow",
 	// Commit subject for the update prompt
-	commitMessage: "chore(admin): publish dedicated order route",
+	commitMessage: "feat(customer): choose order mode before checkout flow",
 	// Build timestamp
 	buildDate: "2026-10-02",
 	// Full version string for display
