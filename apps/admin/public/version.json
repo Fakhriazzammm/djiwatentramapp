@@ -1,7 +1,7 @@
 {
-  "version": "0.2.286",
-  "commitHash": "fc810b5",
-  "message": "fix(admin): resolve canonical order detail IDs",
+  "version": "0.2.289",
+  "commitHash": "3f771cf",
+  "message": "feat(customer): persist delivery address to profile",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T04:42:52.621Z"
+  "generatedAt": "2026-10-02T04:46:31.828Z"
 }

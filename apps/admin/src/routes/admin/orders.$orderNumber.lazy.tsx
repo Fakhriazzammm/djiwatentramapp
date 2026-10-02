@@ -15,7 +15,7 @@ const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "curre
 const normalize = (value: unknown) => String(value ?? "").trim().replace(/^#/, "").toUpperCase();
 const statusLabel: Record<string, string> = { pending: "Menunggu", paid: "Dibayar", completed: "Selesai", cancelled: "Dibatalkan" };
 
-function AdminOrderDetailPage() {
+export function AdminOrderDetailPage() {
   const { orderNumber } = useParams({ from: "/admin/orders/$orderNumber" });
   const navigate = useNavigate();
   const orders = useHybridOrders({ limit: 500 });

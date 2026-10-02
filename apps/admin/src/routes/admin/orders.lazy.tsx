@@ -1,4 +1,4 @@
-﻿import { Outlet, createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { playSuccessSound } from "@/lib/play-success-sound";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { AdminOrderDetailPage } from "./orders.$orderNumber.lazy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -644,7 +645,7 @@ function AdminOrders() {
 		}
 	};
 
-	if (typeof window !== "undefined" && /^\/admin\/orders\/[^/]+/.test(window.location.pathname)) return <Outlet />;
+	if (typeof window !== "undefined" && /^\/admin\/orders\/[^/]+/.test(window.location.pathname)) return <AdminOrderDetailPage />;
 
 	if (unifiedOrders === undefined) {
 		return (
