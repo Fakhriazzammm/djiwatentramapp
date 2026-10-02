@@ -1276,7 +1276,12 @@ function OrderPage() {
 						error={authError}
 					/>
 
-					{!orderModeConfirmed ? <CustomerOrderModeSelection themeColor={themeColor} onSelect={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} /> : null}
+					{!orderModeConfirmed ? <>
+						<div className="px-2 pt-2">
+							<img src="/order-greeting-cafe.jpg" alt="Suasana hangat Djiwa Tentram Cafe & Resto" className="h-auto max-h-40 w-full rounded-2xl object-cover shadow-sm" loading="eager" />
+						</div>
+						<CustomerOrderModeSelection themeColor={themeColor} onSelect={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} />
+					</> : null}
 
 					{/* ── Step 1: table selection ───────────────────── */}
 					{orderModeConfirmed && ((step === "table" && orderMode === "dine_in") || (step === "address" && orderMode === "delivery")) ? (
