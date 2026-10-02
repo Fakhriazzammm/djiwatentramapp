@@ -3,7 +3,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const BITESHIP_RATES_URL = "https://api.biteship.com/v1/rates/couriers";
 const apiKey = Deno.env.get("BITESHIP_API_KEY")?.trim() ?? "";
 const originPostalCode = Deno.env.get("BITESHIP_ORIGIN_POSTAL_CODE")?.trim() ?? "";
+const originLatitude = Number(Deno.env.get("BITESHIP_ORIGIN_LATITUDE"));
+const originLongitude = Number(Deno.env.get("BITESHIP_ORIGIN_LONGITUDE"));
 const validOriginPostalCode = /^\d{5}$/.test(originPostalCode);
+const validOriginCoordinates = Number.isFinite(originLatitude) && Number.isFinite(originLongitude);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,6 +63,13 @@ function nonNegativeInteger(value: unknown, field: string, max: number): number 
     throw new Error(`${field} must be a non-negative integer no greater than ${max}`);
   }
   return value as number;
+}
+
+function coordinate(value: unknown, field: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < -180 || value > 180) {
+    throw new Error(`${field} must be a valid coordinate`);
+  }
+  return value;
 }
 
 function postalCode(value: unknown, field: string): number {
@@ -128,10 +138,13 @@ Deno.serve(async (req) => {
   if (!isObject(body)) return fail("INVALID_BODY", "Request body must be an object");
 
   try {
-    const allowedFields = new Set(["destination_postal_code", "couriers", "items"]);
+    const allowedFields = new Set(["destination_postal_code", "destination_latitude", "destination_longitude", "couriers", "items"]);
     const unknownFields = Object.keys(body).filter((field) => !allowedFields.has(field));
     if (unknownFields.length > 0) throw new Error(`Unknown request field: ${unknownFields[0]}`);
     const destinationPostalCode = postalCode(body.destination_postal_code, "destination_postal_code");
+    const destinationLatitude = body.destination_latitude === undefined ? undefined : coordinate(body.destination_latitude, "destination_latitude");
+    const destinationLongitude = body.destination_longitude === undefined ? undefined : coordinate(body.destination_longitude, "destination_longitude");
+    if ((destinationLatitude === undefined) !== (destinationLongitude === undefined)) throw new Error("destination latitude and longitude must be provided together");
     const couriers = requiredString(body.couriers, "couriers", 200);
     if (!/^[a-z0-9]+(?:,[a-z0-9]+)*$/i.test(couriers)) {
       throw new Error("couriers must be a comma-separated list of courier codes");
@@ -140,12 +153,13 @@ Deno.serve(async (req) => {
       throw new Error("items must contain between 1 and 100 entries");
     }
     const items = body.items.map(normalizeItem);
-    const upstreamBody = {
-      origin_postal_code: Number(originPostalCode),
-      destination_postal_code: destinationPostalCode,
-      couriers,
-      items,
-    };
+    const instantCourierRequested = /(^|,)(gojek|grab)(,|$)/i.test(couriers);
+    if (instantCourierRequested && (!validOriginCoordinates || destinationLatitude === undefined || destinationLongitude === undefined)) {
+      throw new Error("Gojek/Grab requires pickup and destination coordinates");
+    }
+    const upstreamBody = instantCourierRequested
+      ? { origin_latitude: originLatitude, origin_longitude: originLongitude, destination_latitude: destinationLatitude, destination_longitude: destinationLongitude, couriers, items }
+      : { origin_postal_code: Number(originPostalCode), destination_postal_code: destinationPostalCode, couriers, items };
 
     const upstream = await fetch(BITESHIP_RATES_URL, {
       method: "POST",
