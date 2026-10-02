@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Check, Minus, Plus, Trash2, Utensils } from "lucide-react";
+import { Check, Minus, Plus, Trash2, Truck, Utensils } from "lucide-react";
 import { ImageWithPlaceholder } from "@/components/customer/image-with-placeholder";
 import type { CartItem } from "./types";
 import { currency } from "./types";
@@ -288,6 +288,26 @@ export function BarcodeLines({ value }: { value: string }) {
 }
 
 export type CustomerOrderMode = "dine_in" | "delivery";
+
+export function CustomerOrderModeSelection({ onSelect, themeColor }: { onSelect: (mode: CustomerOrderMode) => void; themeColor: string }) {
+	return (
+		<section className="space-y-3 px-2 py-3" aria-labelledby="order-mode-title">
+			<div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+				<p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: themeColor }}>Mulai pesanan</p>
+				<h1 id="order-mode-title" className="mt-1 text-lg font-black">Bagaimana kamu ingin menerima pesanan?</h1>
+				<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pilih dulu cara pesanan agar langkah berikutnya sesuai kebutuhanmu.</p>
+				<div className="mt-4 grid gap-2 sm:grid-cols-2">
+					<button type="button" onClick={() => onSelect("dine_in")} className="flex min-h-24 items-center gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary hover:bg-primary/5 active:scale-[.99]">
+						<span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Utensils className="h-5 w-5" /></span><span><span className="block text-sm font-black">Dine In</span><span className="mt-1 block text-xs text-muted-foreground">Makan di tempat</span></span>
+					</button>
+					<button type="button" onClick={() => onSelect("delivery")} className="flex min-h-24 items-center gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary hover:bg-primary/5 active:scale-[.99]">
+						<span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Truck className="h-5 w-5" /></span><span><span className="block text-sm font-black">Delivery</span><span className="mt-1 block text-xs text-muted-foreground">Antar ke alamat</span></span>
+					</button>
+				</div>
+			</div>
+		</section>
+	);
+}
 
 export function CustomerOrderProgress({ step, mode = "dine_in", onModeChange }: { step: "table" | "address" | "party" | "refill" | "menu" | "shipping" | "review" | "payment" | "receipt"; mode?: CustomerOrderMode; onModeChange?: (mode: CustomerOrderMode) => void }) {
 	const steps = mode === "delivery"
