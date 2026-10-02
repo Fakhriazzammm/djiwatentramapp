@@ -1,7 +1,7 @@
 {
-  "version": "0.2.282",
-  "commitHash": "4c70282",
-  "message": "feat(customer): choose order mode before checkout flow",
+  "version": "0.2.285",
+  "commitHash": "d568af1",
+  "message": "fix(customer): hide checkout steps before mode selection",
   "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T04:35:57.412Z"
+  "generatedAt": "2026-10-02T04:39:31.054Z"
 }

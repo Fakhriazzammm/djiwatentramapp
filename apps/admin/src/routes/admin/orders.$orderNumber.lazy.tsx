@@ -21,7 +21,10 @@ function AdminOrderDetailPage() {
   const orders = useHybridOrders({ limit: 500 });
   const hppMap = useHybridHppProductMap();
   const updateStatus = useHybridUpdateOrderStatus();
-  const order = useMemo(() => (orders ?? []).find((item: any) => [item.orderNumber, item.order_number, item.displayId, item._id, item.source_id].some((candidate) => normalize(candidate) === normalize(orderNumber))), [orders, orderNumber]);
+  const order = useMemo(() => (orders ?? []).find((item: any) => {
+    const canonical = item.orderNumber ? getDisplayOrderNumber(String(item.orderNumber), { source: item.source, sourceApp: item.sourceApp, businessUnit: item.businessUnit, brandSlug: item.brandSlug, orderType: item.orderType, createdAt: Number(item.createdAt ?? item.created_at) }) : null;
+    return [canonical, item.orderNumber, item.order_number, item.displayId, item._id, item.source_id].some((candidate) => normalize(candidate) === normalize(orderNumber));
+  }), [orders, orderNumber]);
 
   if (!orders) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
   if (!order) return <div className="mx-auto max-w-3xl p-4"><Link to="/admin/orders" className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><ArrowLeft className="h-4 w-4" />Kembali ke pesanan</Link><div className="mt-6 rounded-2xl border border-dashed p-10 text-center"><p className="font-bold">Order tidak ditemukan</p><p className="mt-1 text-sm text-muted-foreground">Nomor {orderNumber} belum tersedia di data order.</p></div></div>;
