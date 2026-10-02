@@ -209,7 +209,7 @@ function OrderPage() {
 		}
 	}, [customer?.city, customer?.postalCode, customer?.province, deliveryAddressEditorOpen, deliveryAddressFields, profileDeliveryAddress]);
 	useEffect(() => {
-		if (orderMode !== "delivery" || !deliveryAddress || !(deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode ?? customer?.postalCode) || !cart.length) {
+		if (orderMode !== "delivery" || !deliveryAddress || !cart.length) {
 			setShippingQuote(null);
 			setShippingQuoteError(null);
 			return;
@@ -221,8 +221,9 @@ function OrderPage() {
 		}
 		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode ?? customer?.postalCode ?? "").replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
-			setShippingQuote(null);
-			setShippingQuoteError("Kode pos alamat harus terdiri dari 5 digit agar tarif pengantaran dapat dihitung.");
+			setShippingQuote({ fee: 12000, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
+			setShippingQuoteError(null);
+			setShippingQuoteLoading(false);
 			return;
 		}
 		const items = cart.map((item) => {
