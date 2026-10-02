@@ -52,7 +52,6 @@ import { renderCheckoutSection } from "@/components/customer/checkout-section";
 import { renderReceiptSection } from "@/components/customer/receipt-section";
 import { UpsellSheet } from "@/components/customer/upsell-sheet";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
-import { AuthHeader } from "@/components/customer/auth-header";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
@@ -1252,18 +1251,6 @@ function OrderPage() {
 					}
 				>
 					{orderModeConfirmed && !deliveryAddressPickerOpen ? <CustomerOrderProgress step={step} mode={orderMode} onModeChange={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} /> : null}
-					{/* ── Auth header (always visible, no welcome) ── */}
-					<div className="mt-3 mb-2 px-3">
-						<AuthHeader
-							isAuthenticated={isAuthenticated}
-							customer={(customer ?? null) as any}
-							isLoading={authLoading}
-							onOpenAuth={() => navigate({ to: "/masuk" })}
-							onLogout={logout}
-							onProfileClick={() => navigate({ to: "/$username/profile", params: { username } })}
-						/>
-					</div>
-
 					{/* ── AuthModal ────────────────────────────────── */}
 					<Sheet open={deliveryAddressPickerOpen} onOpenChange={setDeliveryAddressPickerOpen}>
 										<SheetContent side="bottom" showCloseButton={false} className="z-[2000] h-[100dvh] max-h-[100dvh] overflow-y-auto rounded-none bg-background p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
