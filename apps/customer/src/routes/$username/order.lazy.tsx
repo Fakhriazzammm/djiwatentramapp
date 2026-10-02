@@ -235,15 +235,7 @@ function OrderPage() {
 			setShippingQuoteError("Ada produk di keranjang yang hanya tersedia untuk pembelian langsung, bukan delivery.");
 			return;
 		}
-		setShippingQuote({ fee: 12000, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
-		setShippingQuoteError(null);
-		setShippingQuoteLoading(false);
-		return;
-		if (items.some((item) => !Number.isFinite(item.weight) || item.weight <= 0)) {
-			setShippingQuote(null);
-			setShippingQuoteError("Tarif pengantaran belum tersedia karena berat produk belum diatur.");
-			return;
-		}
+		const flatDeliveryFee = 12000;
 		let cancelled = false;
 		setShippingQuote(null);
 		setShippingQuoteError(null);
@@ -258,14 +250,10 @@ function OrderPage() {
 			if (cancelled) return;
 			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
 			const fee = Number(rate?.shippingFee ?? rate?.price);
-			if (!rate || !Number.isFinite(fee) || fee < 0) throw new Error("Tarif kurir tidak tersedia untuk alamat ini.");
-			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
-		}).catch((error) => {
-			if (!cancelled) {
-				setShippingQuote(null);
-				setShippingQuoteError(error instanceof Error ? error.message : "Tarif pengantaran belum tersedia. Coba lagi.");
-			}
-		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
+			setShippingQuote({ fee: rate && Number.isFinite(fee) && fee >= 0 ? Math.round(fee) : flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
+		}).catch(() => {
+			if (!cancelled) setShippingQuote({ fee: flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
+		}).finally(() => { if (!cancelled) { setShippingQuoteError(null); setShippingQuoteLoading(false); } });
 		return () => { cancelled = true; };
 	}, [cart, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
 
