@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const AUTH_BASE = "https://djiwatentram.yumme.id";
+const AUTH_BASE = "https://api.yumme.id";
 const LOGIN_URL = `${AUTH_BASE}/masuk`;
 
 type BookingCustomer = { sourceId: string; name: string; email: string; phone: string };
@@ -13,14 +13,14 @@ export function useBookingCustomerAuth(): AuthState {
     let active = true;
     (async () => {
       try {
-        const sessionResponse = await fetch(`${AUTH_BASE}/api/auth/get-session`, { credentials: "include", headers: { Accept: "application/json" } });
+        const sessionResponse = await fetch(`${AUTH_BASE}/v1/auth/get-session`, { credentials: "include", headers: { Accept: "application/json" } });
         if (!sessionResponse.ok) throw new Error("session unavailable");
         const session = await sessionResponse.json() as { user?: { id?: string; name?: string | null; email?: string | null } };
         if (!session.user?.id) {
           if (active) setState({ isLoading: false, isAuthenticated: false, customer: null });
           return;
         }
-        const profileResponse = await fetch(`${AUTH_BASE}/api/customer/profile`, { credentials: "include", headers: { Accept: "application/json" } });
+        const profileResponse = await fetch(`${AUTH_BASE}/v1/customer/profile`, { credentials: "include", headers: { Accept: "application/json" } });
         const profilePayload = await profileResponse.json().catch(() => null) as { success?: boolean; customer?: Record<string, unknown> } | null;
         const profile = profilePayload?.success ? profilePayload.customer : undefined;
         const customer: BookingCustomer = {

@@ -18,7 +18,7 @@ type PublicSnapshot = {
   completeness: "partial" | "unavailable";
 };
 
-const INVESTOR_API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://djiwatentram.yumme.id";
+const INVESTOR_API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://api.yumme.id";
 const dateFormatter = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 function formatRupiah(value: number | null) {
@@ -158,7 +158,7 @@ function InvestorLanding() {
 
   useEffect(() => {
     let active = true;
-    fetch(`${INVESTOR_API_BASE}/api/investor/public-snapshot`, { headers: { Accept: "application/json" } })
+    fetch(`${INVESTOR_API_BASE}/v1/investor/public-snapshot`, { headers: { Accept: "application/json" } })
       .then((response) => { if (!response.ok) throw new Error("Snapshot unavailable"); return response.json(); })
       .then((payload: { success?: boolean; data?: PublicSnapshot }) => {
         if (active && payload.success && payload.data) setSnapshot(payload.data);

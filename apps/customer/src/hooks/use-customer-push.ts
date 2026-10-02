@@ -82,7 +82,7 @@ export function useCustomerPush() {
         userVisibleOnly: true,
         applicationServerKey: base64ToUint8Array(publicKey),
       });
-      const response = await fetch("/api/customer/push/subscribe", {
+      const response = await fetch("https://api.yumme.id/v1/customer/push/subscribe", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +113,7 @@ export function useCustomerPush() {
       const registration = await getRegistration();
       const subscription = await registration.pushManager.getSubscription();
       if (!subscription) { setState("ready"); return; }
-      await fetch("/api/customer/push/unsubscribe", {
+      await fetch("https://api.yumme.id/v1/customer/push/unsubscribe", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

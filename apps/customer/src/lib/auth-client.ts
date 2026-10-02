@@ -3,7 +3,7 @@ import { sentinelClient } from "@better-auth/infra/client";
 
 export const authClient = createAuthClient({
   // Semua customer app memakai auth server pusat Djiwa App.
-  baseURL: "https://djiwatentram.yumme.id/api/auth",
+  baseURL: "https://api.yumme.id/v1/auth",
   fetchOptions: {
     credentials: "include",
   },

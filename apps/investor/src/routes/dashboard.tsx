@@ -21,7 +21,7 @@ type InvestorMetrics = {
   completeness: "available" | "partial" | "unavailable";
 };
 
-const API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://djiwatentram.yumme.id";
+const API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://api.yumme.id";
 
 function formatRupiah(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "Belum tersedia";
@@ -63,7 +63,7 @@ function InvestorDashboard() {
     let active = true;
     setAccessLoading(true);
     setError(null);
-    request<{ status: AccessState }>("/api/investor/access")
+    request<{ status: AccessState }>("/v1/investor/access")
       .then((result) => { if (active) setAccess(result.status); })
       .catch((err) => { if (active) { setAccess("unavailable"); setError(err instanceof Error ? err.message : "Status akses belum dapat dimuat."); } })
       .finally(() => { if (active) setAccessLoading(false); });
@@ -75,7 +75,7 @@ function InvestorDashboard() {
     let active = true;
     setMetricsLoading(true);
     setError(null);
-    request<{ data: InvestorMetrics }>("/api/investor/metrics")
+    request<{ data: InvestorMetrics }>("/v1/investor/metrics")
       .then((result) => { if (active) setMetrics(result.data); })
       .catch((err) => { if (active) setError(err instanceof Error ? err.message : "Data belum dapat dimuat."); })
       .finally(() => { if (active) setMetricsLoading(false); });
@@ -95,7 +95,7 @@ function InvestorDashboard() {
     if (!consent) { toast.error("Mohon setujui penggunaan data untuk menindaklanjuti permintaan."); return; }
     setRequesting(true); setError(null);
     try {
-      await request("/api/investor/access-request", {
+      await request("/v1/investor/access-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ city: cityInterest.trim() || null, investmentRange: interestRange.trim() || null, consent: true, consentVersion: "investor-portal-v1" }),
