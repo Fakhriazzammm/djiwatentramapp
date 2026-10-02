@@ -308,7 +308,7 @@ async function syncRecentOrders() {
       const customerLabel = String(order.customerName ?? "Pelanggan Umum").trim() || "Pelanggan Umum";
       const totalLabel = `Rp${Number(order.totalAmount ?? 0).toLocaleString("id-ID")}`;
       const tableLabel = String(order.tableNumber ?? "").trim();
-      message = `Struk #${receiptNumber} · ${receiptType} · ${displayOrderNumber}\nSumber: ${sourceLabel} · Pembayaran: ${paymentLabel}\nCustomer: ${customerLabel} · Status: ${paymentStatusLabel}\nTotal: ${totalLabel} · ${itemCount} item${tableLabel ? ` · Meja ${tableLabel}` : ""}`;
+      message = `Struk #${receiptNumber} · ${receiptType}\n${displayOrderNumber}\nSumber: ${sourceLabel}\nPembayaran: ${paymentLabel}\nCustomer: ${customerLabel}\nStatus: ${paymentStatusLabel}\nTotal: ${totalLabel} · ${itemCount} item${tableLabel ? ` · Meja ${tableLabel}` : ""}`;
     }
 
     // Never mutate or deactivate a previous order event. A settlement creates
