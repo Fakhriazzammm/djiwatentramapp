@@ -44,7 +44,7 @@ function NotificationRow({ notification, onOpen }: { notification: AdminNotifica
 			transition={spring}
 			whileTap={reduceMotion ? undefined : { scale: 0.985 }}
 			onClick={() => onOpen(notification)}
-			className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted/70 ${notification.isRead ? "opacity-65" : "bg-primary/[0.035]"}`}
+			className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted/70 ${notification.isRead ? "opacity-65" : ""}`}
 		>
 			<span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${notificationTone(notification)}`}>
 				{notification.isRead ? <Check className="h-3 w-3" /> : <Bell className="h-3 w-3" />}

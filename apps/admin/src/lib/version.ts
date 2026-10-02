@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.289",
+	semantic: "0.2.302",
 	// Git/deploy commit hash (short)
-	commitHash: "3f771cf",
-	message: "feat(customer): persist delivery address to profile",
+	commitHash: "e543286",
+	message: "style(pos): tidy notification field layout",
 	// Commit subject for the update prompt
-	commitMessage: "feat(customer): persist delivery address to profile",
+	commitMessage: "style(pos): tidy notification field layout",
 	// Build timestamp
 	buildDate: "2026-10-02",
 	// Full version string for display
