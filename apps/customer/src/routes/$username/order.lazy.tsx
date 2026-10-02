@@ -269,8 +269,13 @@ function OrderPage() {
 		const query = [deliveryAddressFields.street, deliveryAddressFields.district, deliveryAddressFields.city, deliveryAddressFields.province, deliveryAddressFields.postalCode, "Indonesia"].filter(Boolean).join(", ");
 		setDeliveryLocationLoading(true); setDeliveryLocationError(null);
 		try {
-			const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=id&q=${encodeURIComponent(query)}`, { headers: { Accept: "application/json" } });
-			const results = await response.json().catch(() => []); const result = Array.isArray(results) ? results[0] : null;
+			const queries = [query, [deliveryAddressFields.street, deliveryAddressFields.district, deliveryAddressFields.city, "Indonesia"].filter(Boolean).join(", "), [deliveryAddressFields.district, deliveryAddressFields.city, "Indonesia"].filter(Boolean).join(", ")].filter((value, index, all) => value && all.indexOf(value) === index);
+			let result: any = null;
+			for (const candidate of queries) {
+				const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=id&q=${encodeURIComponent(candidate)}`, { headers: { Accept: "application/json" } });
+				const results = await response.json().catch(() => []);
+				if (Array.isArray(results) && results[0]) { result = results[0]; break; }
+			}
 			const latitude = Number(result?.lat); const longitude = Number(result?.lon);
 			if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error("Lokasi alamat belum ditemukan. Gunakan tombol lokasi realtime untuk memilih titik pengantaran.");
 			setDeliveryLocation({ latitude, longitude, postalCode: deliveryAddressFields.postalCode }); return true;
