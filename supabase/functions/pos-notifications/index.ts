@@ -245,7 +245,7 @@ async function syncRecentOrders() {
   // only newly observed IDs create a popup in the client.
   const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
   const orders = await dbGetPaged("pos_orders", {
-    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,brandSlug,businessUnit,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
+    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,dailyReceiptNo,receiptKind,source,sourceApp,brandSlug,businessUnit,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
     order: "createdAt.desc",
   });
   let created = 0;
@@ -298,6 +298,13 @@ async function syncRecentOrders() {
             : `Order ${displayOrderNumber ?? order._id} berstatus ${status}`;
     }
     if (!type || !order._id) continue;
+    const receiptNumber = Number(order.dailyReceiptNo ?? order.daily_receipt_no ?? 0);
+    const receiptKind = String(order.receiptKind ?? order.receipt_kind ?? order.orderType ?? "").toLowerCase();
+    const receiptType = receiptKind === "dine_in" ? "DINE IN" : receiptKind === "takeaway" ? "TAKEAWAY" : "ORDER";
+    const paymentLabel = payment === "cashier" ? "Bayar Tunai di Kasir" : payment === "mayar" ? "QRIS" : payment === "wallet" ? "Djiwa Pay" : payment.toUpperCase();
+    if (receiptNumber > 0) {
+      message = `📍 STRUK NO. ${receiptNumber} - ${receiptType}\n📲 SUMBER: ${sourceLabel}\n⚠️ PEMBAYARAN: ${paymentLabel}\n────────────\n${message}`;
+    }
 
     // Never mutate or deactivate a previous order event. A settlement creates
     // its own order_paid card; the unique dedupe key only prevents replaying
@@ -333,6 +340,8 @@ async function syncRecentOrders() {
         subtotalAmount: Number(order.subtotalAmount ?? 0),
         tableNumber: order.tableNumber ?? null,
         orderType: order.orderType ?? null,
+        receiptNumber: receiptNumber > 0 ? receiptNumber : null,
+        receiptType,
         itemCount: Array.isArray(order.items) ? order.items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0) : 0,
         totalAmount: Number(order.totalAmount ?? 0),
         items: Array.isArray(order.items) ? order.items : [],
