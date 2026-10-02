@@ -10,6 +10,7 @@ import {
 	useAdminNotifications,
 } from "@/hooks/use-admin-notifications";
 import { useAdminPush } from "@/hooks/use-admin-push";
+import { playSuccessSound } from "@/lib/play-success-sound";
 
 const spring = { type: "spring" as const, stiffness: 360, damping: 28, mass: 0.7 };
 
@@ -77,6 +78,10 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 	const [isOpen, setIsOpen] = useState(false);
 	const [isMobile, setIsMobile] = useState(false);
 	const [iconFailed, setIconFailed] = useState(false);
+	useEffect(() => {
+		if (popupNotification) playSuccessSound();
+	}, [popupNotification?.id]);
+
 
 	useEffect(() => {
 		const media = window.matchMedia("(max-width: 767px)");
