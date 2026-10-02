@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const BITESHIP_RATES_URL = "https://api.biteship.com/v1/rates/couriers";
+const BITESHIP_COURIERS_URL = "https://api.biteship.com/v1/couriers";
 const apiKey = Deno.env.get("BITESHIP_API_KEY")?.trim() ?? "";
 const originPostalCode = Deno.env.get("BITESHIP_ORIGIN_POSTAL_CODE")?.trim() ?? "";
 const originLatitude = Number(Deno.env.get("BITESHIP_ORIGIN_LATITUDE"));
@@ -136,6 +137,13 @@ Deno.serve(async (req) => {
     return fail("INVALID_JSON", "Request body must be valid JSON");
   }
   if (!isObject(body)) return fail("INVALID_BODY", "Request body must be an object");
+  if (body.action === "list_couriers") {
+    const upstream = await fetch(BITESHIP_COURIERS_URL, { headers: { authorization: apiKey } });
+    const payload = await upstream.json().catch(() => null);
+    if (!upstream.ok || !isObject(payload) || !Array.isArray(payload.couriers)) return fail("BITESHIP_COURIERS_REQUEST_FAILED", "Biteship courier catalog unavailable", upstream.ok ? 502 : 400);
+    const couriers = payload.couriers.filter((entry) => isObject(entry) && ["gojek", "grab"].includes(String(entry.courier_code).toLowerCase()));
+    return response({ success: true, couriers });
+  }
 
   try {
     const allowedFields = new Set(["destination_postal_code", "destination_latitude", "destination_longitude", "couriers", "items"]);
