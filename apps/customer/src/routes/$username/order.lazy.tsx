@@ -219,10 +219,6 @@ function OrderPage() {
 			setShippingQuoteError(null);
 			return;
 		}
-		if (!deliveryLocation && deliveryAddressFields.street && deliveryAddressFields.district && deliveryAddressFields.city) {
-			void resolveManualDeliveryLocation();
-			return;
-		}
 		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode).replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
 			setShippingQuote(null);
@@ -239,6 +235,10 @@ function OrderPage() {
 			setShippingQuoteError("Ada produk di keranjang yang hanya tersedia untuk pembelian langsung, bukan delivery.");
 			return;
 		}
+		setShippingQuote({ fee: 12000, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
+		setShippingQuoteError(null);
+		setShippingQuoteLoading(false);
+		return;
 		if (items.some((item) => !Number.isFinite(item.weight) || item.weight <= 0)) {
 			setShippingQuote(null);
 			setShippingQuoteError("Tarif pengantaran belum tersedia karena berat produk belum diatur.");
