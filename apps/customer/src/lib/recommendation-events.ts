@@ -55,3 +55,33 @@ export async function assignRecommendationExperiment(experimentKey: string): Pro
     return null;
   }
 }
+
+const FATIGUE_STORAGE_KEY = "djiwa-recommendation-impressions";
+
+export function getRecommendationImpressionCount(productSourceId: string): number {
+  try {
+    const raw = window.sessionStorage.getItem(FATIGUE_STORAGE_KEY);
+    const counts = raw ? JSON.parse(raw) as Record<string, number> : {};
+    return Math.max(0, Number(counts[productSourceId] ?? 0));
+  } catch {
+    return 0;
+  }
+}
+
+export function markRecommendationImpressions(productSourceIds: string[]): void {
+  try {
+    const raw = window.sessionStorage.getItem(FATIGUE_STORAGE_KEY);
+    const counts = raw ? JSON.parse(raw) as Record<string, number> : {};
+    for (const productSourceId of productSourceIds) {
+      if (productSourceId) counts[productSourceId] = Math.min(10, getRecommendationImpressionCount(productSourceId) + 1);
+    }
+    window.sessionStorage.setItem(FATIGUE_STORAGE_KEY, JSON.stringify(counts));
+  } catch {
+    // Fatigue tracking must never block rendering.
+  }
+}
+
+export function recommendationFatiguePenalty(productSourceId: string): number {
+  const impressions = getRecommendationImpressionCount(productSourceId);
+  return impressions <= 1 ? 0 : Math.min(80, (impressions - 1) * 20);
+}
