@@ -252,7 +252,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 								return (
 									<div key={product._id}>
 										{showRootCategoryHeading ? <div data-category-section={rootCategoryId} className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
-										{showSubcategoryHeading ? <div data-category-section={String(productCategory._id)} className="scroll-mt-28 pt-3"><h5 className="px-1 text-xs font-black text-primary">{productCategory.name}</h5><div className="mt-1 h-px w-full bg-primary/15" /></div> : null}
+										{showSubcategoryHeading ? <div data-category-section={String(productCategory._id)} className="scroll-mt-28 pt-3 pb-2"><h5 className="px-1 text-xs font-black text-primary">{productCategory.name}</h5><div className="mt-1 h-px w-full bg-primary/15" /></div> : null}
 										<article className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<ProductImageButton src={product.image} alt={product.name} isSold={isSold} />
 										<div className="min-w-0 flex-1 py-0">
