@@ -191,6 +191,7 @@ const QUICK_MENU_SECTIONS = [
 		label: "Lainnya",
 		items: [
 			{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast", permission: "analytics:view" },
+	{ to: "/admin/recommendation-metrics", icon: BarChart3, label: "Recommendation", permission: "analytics:view" },
 			{ to: "/admin/settings", icon: Settings, label: "Pengaturan", permission: "settings:manage" },
 		],
 	},
