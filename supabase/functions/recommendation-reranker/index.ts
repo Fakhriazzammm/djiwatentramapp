@@ -5,7 +5,7 @@ const MAX_CANDIDATES = 50;
 const MAX_RESULTS = 20;
 const MIN_CONFIDENCE = 0.6;
 const REQUEST_TIMEOUT_MS = 1_500;
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_API_URL = "https://openrouter.ai/api/alpha/decisions";
 const OPENROUTER_MODEL = "typesafe/jev-1.13";
 const OPENROUTER_PROVIDER = "TypeSafe";
 const CORS_HEADERS = {
@@ -88,30 +88,21 @@ async function fetchAvailableProducts(ids: string[]): Promise<Set<string>> {
     .map((product) => String(product._id)));
 }
 
-function parseProviderRanking(value: unknown, allowedIds: Set<string>): { items: RankedCandidate[]; confidence: number } | null {
-  let parsed: unknown = value;
-  if (typeof value === "string") {
-    try { parsed = JSON.parse(value); } catch { return null; }
-  }
-  if (!parsed || typeof parsed !== "object") return null;
-  const result = parsed as Record<string, unknown>;
-  const confidence = result.confidence;
-  const rawItems = result.items;
-  if (typeof confidence !== "number" || !Number.isFinite(confidence) || !Array.isArray(rawItems)) return null;
-  const items: RankedCandidate[] = [];
-  const seen = new Set<string>();
-  for (const item of rawItems) {
-    if (!item || typeof item !== "object") return null;
-    const row = item as Record<string, unknown>;
-    if (typeof row.productId !== "string" || !allowedIds.has(row.productId) || seen.has(row.productId)) return null;
-    const score = row.deterministicScore;
-    if (typeof score !== "number" || !Number.isFinite(score)) return null;
-    const itemConfidence = row.confidence;
-    if (itemConfidence !== undefined && (typeof itemConfidence !== "number" || !Number.isFinite(itemConfidence) || itemConfidence < 0 || itemConfidence > 1)) return null;
-    seen.add(row.productId);
-    items.push({ productId: row.productId, deterministicScore: score, ...(itemConfidence === undefined ? {} : { confidence: itemConfidence }) });
-  }
-  return { items, confidence };
+function parseDecisionRanking(value: unknown, candidates: CandidateInput[]): RankedCandidate[] | null {
+  if (!value || typeof value !== "object") return null;
+  const answers = (value as Record<string, unknown>).answers;
+  if (!answers || typeof answers !== "object") return null;
+  const rows = Object.entries(answers as Record<string, unknown>).map(([key, answer]) => {
+    if (!answer || typeof answer !== "object") return null;
+    const score = (answer as Record<string, unknown>).score;
+    const confidence = (answer as Record<string, unknown>).confidence;
+    const index = Number(key.replace(/^candidate_/, ""));
+    if (!Number.isInteger(index) || !candidates[index] || typeof score !== "number" || !Number.isFinite(score)) return null;
+    if (typeof confidence === "number" && (confidence < MIN_CONFIDENCE || confidence > 1)) return null;
+    return { productId: candidates[index].productId, deterministicScore: score, ...(typeof confidence === "number" ? { confidence } : {}) };
+  });
+  if (rows.some((row) => row === null)) return null;
+  return (rows as RankedCandidate[]).sort((a, b) => b.deterministicScore - a.deterministicScore || a.productId.localeCompare(b.productId));
 }
 
 async function requestProvider(candidates: CandidateInput[]): Promise<RankedCandidate[] | null> {
@@ -120,27 +111,19 @@ async function requestProvider(candidates: CandidateInput[]): Promise<RankedCand
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
+    const questions = Object.fromEntries(candidates.map((_candidate, index) => [
+      `candidate_${index}`,
+      { type: "score", instructions: "How relevant is this product for the supplied recommendation context?", criteria: ["Not relevant", "Possibly relevant", "Relevant", "Highly relevant"] },
+    ]));
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
       signal: controller.signal,
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        provider: { order: [OPENROUTER_PROVIDER], allow_fallbacks: false },
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: "Return JSON only: {items:[{productId,deterministicScore,confidence}],confidence}. Rank only the supplied IDs; do not invent IDs." },
-          { role: "user", content: JSON.stringify({ candidates }) },
-        ],
-      }),
+      body: JSON.stringify({ model: OPENROUTER_MODEL, provider: { order: [OPENROUTER_PROVIDER], allow_fallbacks: false }, state: { candidates }, questions }),
     });
     if (!response.ok) return null;
-    const payload = await response.json();
-    const content = payload?.choices?.[0]?.message?.content;
-    const parsed = parseProviderRanking(content, new Set(candidates.map((candidate) => candidate.productId)));
-    if (!parsed || parsed.confidence < MIN_CONFIDENCE || parsed.confidence > 1) return null;
-    return parsed.items;
+    const parsed = parseDecisionRanking(await response.json(), candidates);
+    return parsed && parsed.length > 0 ? parsed : null;
   } catch {
     return null;
   } finally {
