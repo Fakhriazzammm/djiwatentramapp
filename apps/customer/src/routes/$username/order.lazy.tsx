@@ -70,6 +70,7 @@ function OrderPage() {
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
 	const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0);
 	const menuScrollRef = useRef<HTMLElement | null>(null);
+	const categorySelectionLockRef = useRef(0);
 	const checkoutRequestKeyRef = useRef<string | null>(null);
 	const activityProductAppliedRef = useRef<string | null>(null);
 
@@ -136,6 +137,7 @@ function OrderPage() {
 		addToCart,
 		updateCartQuantity,
 	} = useOrderContext();
+	const selectMenuCategory = (value: Id<"categories"> | null) => { categorySelectionLockRef.current = Date.now() + 900; setActiveCategoryId(value); };
 	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
 	const [orderModeConfirmed, setOrderModeConfirmed] = useState(false);
 	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("grab");
@@ -602,6 +604,7 @@ function OrderPage() {
 		const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-category-section]"));
 		if (!sections.length) return;
 		const observer = new IntersectionObserver((entries) => {
+			if (Date.now() < categorySelectionLockRef.current) return;
 			const scrollRoot = menuScrollRef.current;
 			if (scrollRoot && scrollRoot.scrollTop <= 48) {
 				if (activeCategoryId !== null) setActiveCategoryId(null);
@@ -1380,7 +1383,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
