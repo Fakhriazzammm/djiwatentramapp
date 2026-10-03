@@ -156,14 +156,27 @@ export function renderMenuSection(props: MenuSectionProps) {
 		const makeCandidates = (kind: "recent" | "today" | "month" | "all") => catalogProducts.filter((product) => !cartIds.has(String(product._id))).filter((product) => kind === "recent" ? recentIds.has(String(product._id)) : (kind === "today" ? today.has(String(product._id)) : kind === "month" ? month.has(String(product._id)) : allTime.has(String(product._id)))).sort((a, b) => {
 			const rank = (product: typeof a) => deterministicRecommendationScore({ recentScore: kind === "recent" ? (recentRank.get(String(product._id)) ?? 0) : 0, periodScore: kind === "recent" ? 0 : (kind === "today" ? (today.get(String(product._id)) ?? 0) : kind === "month" ? (month.get(String(product._id)) ?? 0) : (allTime.get(String(product._id)) ?? 0)), diversityPenalty: recommendationFatiguePenalty(String(product._id)) });
 			return rank(b) - rank(a);
-		}).slice(0, 2);
+		});
+		const diversifyCandidates = (products: typeof catalogProducts) => {
+			const selected: typeof catalogProducts = [];
+			const usedRoots = new Set<string>();
+			for (const product of products) {
+				const root = rootCategoryForProduct(product);
+				const rootKey = String(root?._id ?? product.categoryId ?? "uncategorized");
+				if (usedRoots.has(rootKey)) continue;
+				usedRoots.add(rootKey);
+				selected.push(product);
+				if (selected.length === 2) return selected;
+			}
+			return selected.concat(products.filter((product) => !selected.includes(product))).slice(0, 2);
+		};
 		const definitions = [
 			{ kind: "recent" as const, title: "Pesanan sebelumnya", subtitle: "Pesan lagi menu yang pernah kamu pilih", strategy: "recent_history" },
 			{ kind: "today" as const, title: "Best seller hari ini", subtitle: "Paling banyak dipesan hari ini", strategy: "bestseller_today" },
 			{ kind: "month" as const, title: "Favorit bulan ini", subtitle: "Menu favorit pelanggan bulan ini", strategy: "bestseller_month" },
 			{ kind: "all" as const, title: "Favorit pelanggan", subtitle: "Pilihan populer di Djiwa Tentram", strategy: "bestseller_all" },
 		];
-		return definitions.map((definition) => ({ ...definition, products: makeCandidates(definition.kind) })).filter((block) => block.products.length > 0);
+		return definitions.map((definition) => ({ ...definition, products: diversifyCandidates(makeCandidates(definition.kind)) })).filter((block) => block.products.length > 0);
 	})();
 	const recommendationPositions = [2, 6, 11, 17].map((position, index) => ({ position, sort: (catalogProducts.length * 31 + index * 17) % 101 })).sort((a, b) => a.sort - b.sort).map((entry) => entry.position).filter((position) => position < catalogProducts.length);
 	const recommendationBlocksByIndex = new Map(recommendationBlocks.slice(0, recommendationPositions.length).map((block, index) => [recommendationPositions[index], block]));
