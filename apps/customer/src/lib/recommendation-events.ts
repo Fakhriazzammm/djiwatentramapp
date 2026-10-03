@@ -85,3 +85,25 @@ export function recommendationFatiguePenalty(productSourceId: string): number {
   const impressions = getRecommendationImpressionCount(productSourceId);
   return impressions <= 1 ? 0 : Math.min(80, (impressions - 1) * 20);
 }
+
+const NOT_INTERESTED_STORAGE_KEY = "djiwa-recommendation-not-interested";
+
+export function markRecommendationNotInterested(productSourceId: string): void {
+  try {
+    const raw = window.sessionStorage.getItem(NOT_INTERESTED_STORAGE_KEY);
+    const ids = raw ? JSON.parse(raw) as string[] : [];
+    if (!ids.includes(productSourceId)) window.sessionStorage.setItem(NOT_INTERESTED_STORAGE_KEY, JSON.stringify([...ids, productSourceId].slice(-50)));
+  } catch {
+    // Feedback must never block the menu.
+  }
+}
+
+export function recommendationFeedbackPenalty(productSourceId: string): number {
+  try {
+    const raw = window.sessionStorage.getItem(NOT_INTERESTED_STORAGE_KEY);
+    const ids = raw ? JSON.parse(raw) as string[] : [];
+    return ids.includes(productSourceId) ? 10000 : 0;
+  } catch {
+    return 0;
+  }
+}
