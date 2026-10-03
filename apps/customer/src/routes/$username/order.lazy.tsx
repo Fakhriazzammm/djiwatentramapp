@@ -428,12 +428,15 @@ function OrderPage() {
 	);
 	const filteredProducts = useMemo(() => {
 		const query = catalogQuery.trim().toLowerCase();
-		if (!query) return orderedProducts;
-		return orderedProducts.filter((product) =>
-			product.name.toLowerCase().includes(query) ||
-			String(product.menuNumber ?? "").includes(query),
-		);
-	}, [catalogQuery, orderedProducts]);
+		const categoryById = new Map(orderedCategories.map((category) => [String(category._id), category]));
+		const selectedCategory = activeCategoryId ? categoryById.get(String(activeCategoryId)) : null;
+		const matchesCategory = (product: (typeof orderedProducts)[number]) => {
+			if (!selectedCategory) return true;
+			const productCategory = categoryById.get(String(product.categoryId));
+			return String(productCategory?._id ?? "") === String(selectedCategory._id) || String(productCategory?.parentId ?? "") === String(selectedCategory._id) || String(selectedCategory.parentId ?? "") === String(productCategory?._id ?? "");
+		};
+		return orderedProducts.filter((product) => matchesCategory(product) && (!query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query)));
+	}, [activeCategoryId, catalogQuery, orderedCategories, orderedProducts]);
 	const menuNumberIndex = useMemo(() => {
 		const lookup = new Map<string, (typeof orderedProducts)[number]>();
 		const duplicates = new Set<string>();
