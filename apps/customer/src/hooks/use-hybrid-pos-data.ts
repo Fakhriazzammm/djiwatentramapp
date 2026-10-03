@@ -49,6 +49,7 @@ type BestSellerRecord = {
 	productName: string;
 	totalSold: number;
 	orderCount: number;
+	period?: "today" | "month" | "all";
 };
 type InventoryRecord = Record<string, any>;
 type ShiftReportRecord = {
@@ -624,13 +625,14 @@ async function fetchBestSellers() {
 	const customerProductIds = (await fetchProducts()).map((product) => String(product._id));
 	if (customerProductIds.length === 0) return [];
 	const { data, error } = await supabase
-		.from("pos_best_sellers")
-		.select("product_id, product_name, total_sold, order_count")
+		.from("pos_best_sellers_period")
+		.select("period_key, product_id, product_name, total_sold, order_count")
 		.in("product_id", customerProductIds)
-		.limit(8);
+		.limit(100);
 
 	if (error) throw error;
 	return (data ?? []).map((row: any) => ({
+		period: String(row.period_key ?? "all") as "today" | "month" | "all",
 		productId: String(row.product_id ?? ""),
 		productName: String(row.product_name ?? ""),
 		totalSold: Number(row.total_sold ?? 0),
