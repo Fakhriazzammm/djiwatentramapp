@@ -53,6 +53,8 @@ import { renderCheckoutSection } from "@/components/customer/checkout-section";
 import { renderReceiptSection } from "@/components/customer/receipt-section";
 import { UpsellSheet } from "@/components/customer/upsell-sheet";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { useCustomerOrders } from "@/hooks/use-customer-data";
+import { recordRecommendationEvent } from "@/lib/recommendation-events";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
@@ -79,6 +81,8 @@ function OrderPage() {
 	const brandSettings = useHybridBookingSettings(brandSlug);
 	const categories = useHybridCategories(menuRefreshTrigger);
 	const bestSellers = useHybridBestSellers(menuRefreshTrigger);
+	const { orders: customerOrders } = useCustomerOrders();
+	const recentProductIds = useMemo(() => customerOrders.filter((order) => ["paid", "completed", "settled"].includes(String(order.status).toLowerCase())).sort((a, b) => b.createdAt - a.createdAt).flatMap((order) => order.items.map((item) => String(item.productId))).filter((id, index, all) => id && all.indexOf(id) === index).slice(0, 8), [customerOrders]);
 	const products = useHybridAllProducts(menuRefreshTrigger);
 	const discounts = useHybridActiveDiscounts();
 	const createOrder = useHybridCreateOrder();
@@ -189,6 +193,10 @@ function OrderPage() {
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, refreshCustomer, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	useEffect(() => {
+		if (step !== "menu" || !bestSellers?.length) return;
+		for (const item of bestSellers.slice(0, 2)) void recordRecommendationEvent({ eventType: "impression", recommendedProductSourceId: item.productId, strategy: recentProductIds.length > 0 ? "recent_plus_bestseller" : "bestseller", customerSourceId: customer?.sourceId ?? null });
+	}, [bestSellers, customer?.sourceId, recentProductIds.length, step]);
 	const missingContactFields = getMissingCustomerFields(customer);
 	const profileDeliveryAddress = isAuthenticated ? customer?.address?.trim() || "" : "";
 	const formatDeliveryAddress = (fields: typeof deliveryAddressFields) => [
@@ -1385,7 +1393,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
@@ -1491,7 +1499,7 @@ function OrderPage() {
 							skipLabel={upsellSkipLabel}
 							addedLabel={upsellAddedLabel}
 							onClose={() => { setUpsellMainItem(null); setUpsellSourceProductId(null); }}
-							onAdd={(_recommendation, item) => { addToCart(item); }}
+							onAdd={(recommendation, item) => { addToCart(item); void recordRecommendationEvent({ eventType: "add_to_cart", recommendedProductSourceId: recommendation.recommendedProductSourceId, strategy: "pairing_upsell", customerSourceId: customer?.sourceId ?? null }); }}
 							onChooseOptions={(recommendation) => {
 							const product = products?.find((entry) => entry._id === recommendation.recommendedProductSourceId);
 							if (product) {
