@@ -56,6 +56,7 @@ export function ProductSheet({
 	const nutritionIsEstimate = nutrition?.status === "draft";
 	const nutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value) => Number.isFinite(Number(value)) && Number(value) >= 0);
 	const unitPrice = pricing.finalPrice + variantPrice;
+	const productImage = String((product as any).image ?? (product as any).imageUrl ?? (product as any).image_url ?? "").trim() || undefined;
 
 	return (
 		<div className="flex max-h-full min-h-0 flex-col overflow-hidden">
@@ -64,7 +65,7 @@ export function ProductSheet({
 			</div>
 			<div className="relative h-40 shrink-0 bg-muted sm:h-44">
 				<ImageWithPlaceholder
-					src={product.image ?? undefined}
+					src={productImage}
 					alt={product.name}
 					containerClassName="absolute inset-0"
 					className="object-cover"
@@ -74,8 +75,9 @@ export function ProductSheet({
 				/>
 				<button
 					type="button"
-					className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/30"
+					className="absolute right-3 top-3 z-20 flex h-11 w-11 pointer-events-auto items-center justify-center rounded-full bg-black/60 text-white transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/30"
 					aria-label="Tutup detail produk"
+					onPointerDown={(event) => { event.stopPropagation(); onClose(); }}
 					onClick={onClose}
 				>
 					<X className="h-4 w-4" />
