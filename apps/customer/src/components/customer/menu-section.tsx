@@ -118,10 +118,25 @@ export function renderMenuSection(props: MenuSectionProps) {
 		if (!category) return null;
 		return category.parentId ? categoryById.get(String(category.parentId)) ?? category : category;
 	};
+	const selectedCategory = props.activeCategoryId
+		? categoryById.get(String(props.activeCategoryId)) ?? null
+		: null;
+	const productCategoryRank = (product: Doc<"products">) => {
+		if (!selectedCategory) return 1;
+		const category = categoryById.get(String(product.categoryId));
+		if (!category) return 2;
+		// When Bubur is selected, Bubur must be the first vertical section;
+		// the remaining sections stay available below it in the same scroll.
+		if (String(category._id) === String(selectedCategory._id)) return 0;
+		if (String(category.parentId ?? "") === String(selectedCategory._id)) return 0;
+		if (String(selectedCategory.parentId ?? "") === String(category.parentId ?? "")) return 1;
+		return 2;
+	};
 	const catalogProducts = [...props.filteredProducts].sort((a, b) => {
 		const aRoot = rootCategoryForProduct(a);
 		const bRoot = rootCategoryForProduct(b);
-		return categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
+		const rankDelta = productCategoryRank(a) - productCategoryRank(b);
+		return rankDelta || categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
 	});
 	const bestSellerRank = new Map((props.bestSellers ?? []).map((item) => [String(item.productId), Number(item.totalSold)]));
 	const recentRank = new Map((props.recentProductIds ?? []).map((id, index) => [String(id), Math.max(1, 8 - index)]));
