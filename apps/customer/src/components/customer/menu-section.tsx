@@ -10,7 +10,7 @@ import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { chipClassName } from "./shared-components";
 import { deterministicRecommendationScore } from "@/lib/recommendation-engine";
-import { recordRecommendationEvent } from "@/lib/recommendation-events";
+import { recordRecommendationEvent, recommendationFatiguePenalty } from "@/lib/recommendation-events";
 
 
 function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
@@ -154,7 +154,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 		const month = periodRank("month");
 		const allTime = periodRank("all");
 		const makeCandidates = (kind: "recent" | "today" | "month" | "all") => catalogProducts.filter((product) => !cartIds.has(String(product._id))).filter((product) => kind === "recent" ? recentIds.has(String(product._id)) : (kind === "today" ? today.has(String(product._id)) : kind === "month" ? month.has(String(product._id)) : allTime.has(String(product._id)))).sort((a, b) => {
-			const rank = (product: typeof a) => deterministicRecommendationScore({ recentScore: kind === "recent" ? (recentRank.get(String(product._id)) ?? 0) : 0, periodScore: kind === "recent" ? 0 : (kind === "today" ? (today.get(String(product._id)) ?? 0) : kind === "month" ? (month.get(String(product._id)) ?? 0) : (allTime.get(String(product._id)) ?? 0)) });
+			const rank = (product: typeof a) => deterministicRecommendationScore({ recentScore: kind === "recent" ? (recentRank.get(String(product._id)) ?? 0) : 0, periodScore: kind === "recent" ? 0 : (kind === "today" ? (today.get(String(product._id)) ?? 0) : kind === "month" ? (month.get(String(product._id)) ?? 0) : (allTime.get(String(product._id)) ?? 0)), diversityPenalty: recommendationFatiguePenalty(String(product._id)) });
 			return rank(b) - rank(a);
 		}).slice(0, 2);
 		const definitions = [
