@@ -23,7 +23,7 @@ export async function recordRecommendationEvent(input: {
       p_strategy: input.strategy,
       p_placement: input.placement ?? "inline_menu",
       p_customer_source_id: input.customerSourceId ?? null,
-      p_session_id: null,
+      p_session_id: getRecommendationSessionKey(),
       p_metadata: input.metadata ?? {},
     });
   } catch {
