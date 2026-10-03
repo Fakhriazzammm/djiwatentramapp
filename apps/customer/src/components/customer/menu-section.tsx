@@ -9,7 +9,7 @@ import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { chipClassName } from "./shared-components";
-import { deterministicRecommendationScore } from "@/lib/recommendation-engine";
+import { deterministicRecommendationScore, trendLiftScore } from "@/lib/recommendation-engine";
 import { recordRecommendationEvent, recommendationFatiguePenalty } from "@/lib/recommendation-events";
 
 
@@ -68,7 +68,7 @@ export interface MenuSectionProps {
 	discounts: Doc<"discounts">[] | undefined;
 	filteredProducts: Doc<"products">[];
 	freeRefillCharge: number;
-	bestSellers?: Array<{ productId: string; totalSold: number; period?: "today" | "month" | "all" }> | undefined;
+	bestSellers?: Array<{ productId: string; totalSold: number; period?: "today" | "week" | "previous_week" | "month" | "all" }> | undefined;
 	recentProductIds?: string[];
 	handleProductSelect: (product: Doc<"products">) => void;
 	isMenuError: boolean;
@@ -129,15 +129,17 @@ export function renderMenuSection(props: MenuSectionProps) {
 	const inlineRecommendations = catalogProducts.filter((product) => !props.cart.some((item) => String(item.productId) === String(product._id))).filter((product) => bestSellerRank.has(String(product._id)) || recentRank.has(String(product._id))).sort((a, b) => ((recentRank.get(String(b._id)) ?? 0) * 1000 + (bestSellerRank.get(String(b._id)) ?? 0)) - ((recentRank.get(String(a._id)) ?? 0) * 1000 + (bestSellerRank.get(String(a._id)) ?? 0))).slice(0, 2);
 	const recommendationTitle = (props.recentProductIds ?? []).length > 0 ? "Rekomendasi untuk kamu" : "Paling sering dipesan";
 	const recommendationSubtitle = (props.recentProductIds ?? []).length > 0 ? "Pesanan terakhir dan favoritmu" : "Favorit pelanggan Djiwa Tentram";
-	const periodRank = (period: "today" | "month" | "all") => new Map((props.bestSellers ?? []).filter((item) => (item.period ?? "all") === period).map((item) => [String(item.productId), Number(item.totalSold)]));
+	const periodRank = (period: "today" | "week" | "previous_week" | "month" | "all") => new Map((props.bestSellers ?? []).filter((item) => (item.period ?? "all") === period).map((item) => [String(item.productId), Number(item.totalSold)]));
 	const recommendationBlocks = (() => {
 		const cartIds = new Set(props.cart.map((item) => String(item.productId)));
 		const recentIds = new Set((props.recentProductIds ?? []).map(String));
 		const today = periodRank("today");
+		const week = periodRank("week");
+		const previousWeek = periodRank("previous_week");
 		const month = periodRank("month");
 		const allTime = periodRank("all");
-		const makeCandidates = (kind: "recent" | "today" | "month" | "all") => catalogProducts.filter((product) => !cartIds.has(String(product._id))).filter((product) => kind === "recent" ? recentIds.has(String(product._id)) : (kind === "today" ? today.has(String(product._id)) : kind === "month" ? month.has(String(product._id)) : allTime.has(String(product._id)))).sort((a, b) => {
-			const rank = (product: typeof a) => deterministicRecommendationScore({ recentScore: kind === "recent" ? (recentRank.get(String(product._id)) ?? 0) : 0, periodScore: kind === "recent" ? 0 : (kind === "today" ? (today.get(String(product._id)) ?? 0) : kind === "month" ? (month.get(String(product._id)) ?? 0) : (allTime.get(String(product._id)) ?? 0)), diversityPenalty: recommendationFatiguePenalty(String(product._id)) });
+		const makeCandidates = (kind: "recent" | "today" | "week" | "month" | "all") => catalogProducts.filter((product) => !cartIds.has(String(product._id))).filter((product) => kind === "recent" ? recentIds.has(String(product._id)) : (kind === "today" ? today.has(String(product._id)) : kind === "week" ? week.has(String(product._id)) : kind === "month" ? month.has(String(product._id)) : allTime.has(String(product._id)))).sort((a, b) => {
+			const rank = (product: typeof a) => deterministicRecommendationScore({ recentScore: kind === "recent" ? (recentRank.get(String(product._id)) ?? 0) : 0, periodScore: kind === "recent" ? 0 : (kind === "today" ? (today.get(String(product._id)) ?? 0) : kind === "week" ? (week.get(String(product._id)) ?? 0) : kind === "month" ? (month.get(String(product._id)) ?? 0) : (allTime.get(String(product._id)) ?? 0)), pairingScore: kind === "week" ? trendLiftScore(week.get(String(product._id)) ?? 0, previousWeek.get(String(product._id)) ?? 0) : 0, diversityPenalty: recommendationFatiguePenalty(String(product._id)) });
 			return rank(b) - rank(a);
 		});
 		const diversifyCandidates = (products: typeof catalogProducts) => {
@@ -156,6 +158,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 		const definitions = [
 			{ kind: "recent" as const, title: "Pesanan sebelumnya", subtitle: "Pesan lagi menu yang pernah kamu pilih", strategy: "recent_history" },
 			{ kind: "today" as const, title: "Best seller hari ini", subtitle: "Paling banyak dipesan hari ini", strategy: "bestseller_today" },
+			{ kind: "week" as const, title: "Sedang naik minggu ini", subtitle: "Menu dengan tren pesanan yang meningkat", strategy: "trending_week" },
 			{ kind: "month" as const, title: "Favorit bulan ini", subtitle: "Menu favorit pelanggan bulan ini", strategy: "bestseller_month" },
 			{ kind: "all" as const, title: "Favorit pelanggan", subtitle: "Pilihan populer di Djiwa Tentram", strategy: "bestseller_all" },
 		];

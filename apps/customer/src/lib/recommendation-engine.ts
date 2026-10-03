@@ -25,3 +25,12 @@ export function recencyDecay(ageDays: number): number {
   if (days <= 30) return 0.35;
   return 0.1;
 }
+
+
+export function trendLiftScore(currentScore: number, previousScore: number): number {
+  const current = Math.max(0, Number(currentScore ?? 0));
+  const previous = Math.max(0, Number(previousScore ?? 0));
+  if (current <= 0) return 0;
+  if (previous <= 0) return Math.min(100, current);
+  return Math.max(-100, Math.min(100, ((current - previous) / previous) * 100));
+}

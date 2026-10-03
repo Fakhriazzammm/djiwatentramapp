@@ -49,7 +49,7 @@ type BestSellerRecord = {
 	productName: string;
 	totalSold: number;
 	orderCount: number;
-	period?: "today" | "month" | "all";
+	period?: "today" | "week" | "previous_week" | "month" | "all";
 };
 type InventoryRecord = Record<string, any>;
 type ShiftReportRecord = {
@@ -632,7 +632,7 @@ async function fetchBestSellers() {
 
 	if (error) throw error;
 	return (data ?? []).map((row: any) => ({
-		period: String(row.period_key ?? "all") as "today" | "month" | "all",
+		period: String(row.period_key ?? "all") as "today" | "week" | "previous_week" | "month" | "all",
 		productId: String(row.product_id ?? ""),
 		productName: String(row.product_name ?? ""),
 		totalSold: Number(row.total_sold ?? 0),
