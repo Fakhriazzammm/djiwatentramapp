@@ -626,7 +626,15 @@ function OrderPage() {
 			}
 			const visible = entries
 				.filter((entry) => entry.isIntersecting)
-				.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+				.sort((a, b) => {
+					const topDelta = a.boundingClientRect.top - b.boundingClientRect.top;
+					if (Math.abs(topDelta) > 8) return topDelta;
+					// Root and subcategory headings share nearly the same top edge.
+					// Prefer the more specific subcategory so Bubur is highlighted.
+					const aSpecific = a.target.getAttribute("data-category-section-level") === "subcategory" ? 0 : 1;
+					const bSpecific = b.target.getAttribute("data-category-section-level") === "subcategory" ? 0 : 1;
+					return aSpecific - bSpecific;
+				})[0];
 			if (!visible) return;
 			const categoryId = visible.target.getAttribute("data-category-section");
 			if (categoryId && categoryId !== String(activeCategoryId ?? "")) setActiveCategoryId(categoryId as Id<"categories">);
