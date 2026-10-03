@@ -9,6 +9,7 @@ import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem, MenuMode } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { chipClassName } from "./shared-components";
+import { recordRecommendationEvent } from "@/lib/recommendation-events";
 
 
 function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
@@ -67,6 +68,7 @@ export interface MenuSectionProps {
 	filteredProducts: Doc<"products">[];
 	freeRefillCharge: number;
 	bestSellers?: Array<{ productId: string; totalSold: number }> | undefined;
+	recentProductIds?: string[];
 	handleProductSelect: (product: Doc<"products">) => void;
 	isMenuError: boolean;
 	isMenuLoading: boolean;
@@ -122,7 +124,10 @@ export function renderMenuSection(props: MenuSectionProps) {
 		return categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
 	});
 	const bestSellerRank = new Map((props.bestSellers ?? []).map((item) => [String(item.productId), Number(item.totalSold)]));
-	const inlineRecommendations = catalogProducts.filter((product) => bestSellerRank.has(String(product._id))).filter((product) => !props.cart.some((item) => String(item.productId) === String(product._id))).sort((a, b) => (bestSellerRank.get(String(b._id)) ?? 0) - (bestSellerRank.get(String(a._id)) ?? 0)).slice(0, 2);
+	const recentRank = new Map((props.recentProductIds ?? []).map((id, index) => [String(id), Math.max(1, 8 - index)]));
+	const inlineRecommendations = catalogProducts.filter((product) => !props.cart.some((item) => String(item.productId) === String(product._id))).filter((product) => bestSellerRank.has(String(product._id)) || recentRank.has(String(product._id))).sort((a, b) => ((recentRank.get(String(b._id)) ?? 0) * 1000 + (bestSellerRank.get(String(b._id)) ?? 0)) - ((recentRank.get(String(a._id)) ?? 0) * 1000 + (bestSellerRank.get(String(a._id)) ?? 0))).slice(0, 2);
+	const recommendationTitle = (props.recentProductIds ?? []).length > 0 ? "Rekomendasi untuk kamu" : "Paling sering dipesan";
+	const recommendationSubtitle = (props.recentProductIds ?? []).length > 0 ? "Pesanan terakhir dan favoritmu" : "Favorit pelanggan Djiwa Tentram";
 	const firstProductIndexByRootCategory = new Map<string, number>();
 	const firstProductIndexByCategory = new Map<string, number>();
 	catalogProducts.forEach((product, index) => {
@@ -280,7 +285,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 											</div>
 										</div>
 									</article>
-									{index === 2 && inlineRecommendations.length > 0 ? <section className="col-span-2 rounded-2xl border border-primary/15 bg-primary/5 p-2.5" aria-label="Paling sering dipesan"><div className="mb-2"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Paling sering dipesan</p><p className="mt-0.5 text-[11px] text-muted-foreground">Favorit pelanggan Djiwa Tentram</p></div><div className="grid grid-cols-2 gap-2">{inlineRecommendations.map((recommendation) => <button type="button" key={recommendation._id} onClick={() => props.handleProductSelect(recommendation)} className="flex min-h-16 items-center gap-2 rounded-xl border border-border bg-card p-2 text-left shadow-sm"><span className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">{recommendation.image ? <img src={recommendation.image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</span><span className="min-w-0"><span className="block line-clamp-2 text-xs font-black leading-tight">{recommendation.name}</span><span className="mt-1 block text-[10px] font-bold text-primary">{currency(Number(recommendation.price ?? 0))}</span></span></button>)}</div></section> : null}
+									{index === 2 && inlineRecommendations.length > 0 ? <section className="col-span-2 rounded-2xl border border-primary/15 bg-primary/5 p-2.5" aria-label="Paling sering dipesan"><div className="mb-2"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">{recommendationTitle}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{recommendationSubtitle}</p></div><div className="grid grid-cols-2 gap-2">{inlineRecommendations.map((recommendation) => <button type="button" key={recommendation._id} onClick={() => { void recordRecommendationEvent({ eventType: "click", recommendedProductSourceId: String(recommendation._id), strategy: (props.recentProductIds ?? []).length > 0 ? "recent_plus_bestseller" : "bestseller" }); props.handleProductSelect(recommendation); }} className="flex min-h-16 items-center gap-2 rounded-xl border border-border bg-card p-2 text-left shadow-sm"><span className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">{recommendation.image ? <img src={recommendation.image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</span><span className="min-w-0"><span className="block line-clamp-2 text-xs font-black leading-tight">{recommendation.name}</span><span className="mt-1 block text-[10px] font-bold text-primary">{currency(Number(recommendation.price ?? 0))}</span></span></button>)}</div></section> : null}
 									</div>
 								);
 							})}
