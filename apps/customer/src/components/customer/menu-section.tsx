@@ -121,6 +121,16 @@ export function renderMenuSection(props: MenuSectionProps) {
 	const selectedCategory = props.activeCategoryId
 		? categoryById.get(String(props.activeCategoryId)) ?? null
 		: null;
+	const subcategoryDisplayPriority = (category: Doc<"categories"> | null) => {
+		const name = String(category?.name ?? "").trim().toLowerCase();
+		// Vertical catalog order is intentionally different from the horizontal
+		// chip order: Bubur must be the first food section after Semua Makanan.
+		if (name.includes("bubur")) return 0;
+		if (name.includes("nasi")) return 1;
+		if (name.includes("mie") || name.includes("mi ")) return 2;
+		if (name.includes("cemilan") || name.includes("snack")) return 3;
+		return 4;
+	};
 	const productCategoryRank = (product: Doc<"products">) => {
 		if (!selectedCategory) return 1;
 		const category = categoryById.get(String(product.categoryId));
@@ -136,7 +146,10 @@ export function renderMenuSection(props: MenuSectionProps) {
 		const aRoot = rootCategoryForProduct(a);
 		const bRoot = rootCategoryForProduct(b);
 		const rankDelta = productCategoryRank(a) - productCategoryRank(b);
-		return rankDelta || categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
+		const aCategory = categoryById.get(String(a.categoryId));
+		const bCategory = categoryById.get(String(b.categoryId));
+		const subcategoryDelta = subcategoryDisplayPriority(aCategory) - subcategoryDisplayPriority(bCategory);
+		return rankDelta || subcategoryDelta || categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
 	});
 	const bestSellerRank = new Map((props.bestSellers ?? []).map((item) => [String(item.productId), Number(item.totalSold)]));
 	const recentRank = new Map((props.recentProductIds ?? []).map((id, index) => [String(id), Math.max(1, 8 - index)]));
