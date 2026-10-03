@@ -447,7 +447,11 @@ function OrderPage() {
 			const productCategory = categoryById.get(String(product.categoryId));
 			return String(productCategory?._id ?? "") === String(selectedCategory._id) || String(productCategory?.parentId ?? "") === String(selectedCategory._id) || String(selectedCategory.parentId ?? "") === String(productCategory?._id ?? "");
 		};
-		return orderedProducts.filter((product) => matchesCategory(product) && (!query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query)));
+		// Customer catalog follows the reference anchor pattern: category chips
+		// scroll to sections while the full catalog remains one vertical flow.
+		// Category filtering remains scoped to POS; customer should not hit a
+		// dead-end after the selected section.
+		return orderedProducts.filter((product) => (!query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query)));
 	}, [activeCategoryId, catalogQuery, orderedCategories, orderedProducts]);
 	const menuNumberIndex = useMemo(() => {
 		const lookup = new Map<string, (typeof orderedProducts)[number]>();
