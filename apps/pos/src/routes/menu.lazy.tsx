@@ -1140,6 +1140,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		(index: number) => {
 			setFocusedCategoryIndex(index);
 			scrollCategoryIntoView(index);
+			mainScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 			if (index === 0) {
 				setActiveCategoryId(null);
 			} else {
@@ -2352,7 +2353,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					)}
 				</div>
 
-				<div className="pb-28">
+				<div className="pb-[calc(14rem+env(safe-area-inset-bottom))] md:pb-28">
 					<div
 						ref={productGridRef}
 						className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 p-2"
@@ -2529,6 +2530,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							Array.from({ length: 4 }).map((_, index) => (
 								<MenuProductCardSkeleton key={`load-more-${index}`} />
 							))
+						)}
+						{!isLoading && filteredProductsLength > 0 && !hasMoreProducts && (
+							<div className="col-span-full px-3 py-4 text-center text-[11px] font-semibold text-muted-foreground/70">
+								Semua menu di kategori ini sudah ditampilkan
+							</div>
 						)}
 					</div>
 				</div>
