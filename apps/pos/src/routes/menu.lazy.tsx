@@ -939,7 +939,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 	// Filtered products based on search
 	const filteredProducts = useMemo(() => {
-		if (!searchQuery.trim()) return allProducts ?? products;
+		if (!searchQuery.trim()) return products ?? allProducts;
 		if (!allProducts) return [];
 		
 		const query = searchQuery.toLowerCase();
@@ -1192,6 +1192,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					setIsLoadingMoreProducts(false);
 					isLoadingMoreRef.current = false;
 					timeoutId = undefined;
+					observer.unobserve(trigger);
+					requestAnimationFrame(() => { if (trigger.isConnected) observer.observe(trigger); });
 				}, LOAD_MORE_DELAY_MS);
 			},
 			{
