@@ -59,6 +59,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkOperations } from "../../components/admin/bulk-operations";
 import { withSaveToast } from "@/lib/with-save-toast";
+import { ProductReviewModeration } from "@/components/admin/product-review-moderation";
 
 interface VariationOption {
 	name: string;
@@ -87,7 +88,7 @@ function AdminProductsPage() {
 	const categories = useHybridCategories();
 	const variationPresets = useHybridVariationPresets();
 
-	const [activeTab, setActiveTab] = useState<"products" | "settings">("products");
+	const [activeTab, setActiveTab] = useState<"products" | "reviews" | "settings">("products");
 
 	return (
 		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-3 duration-500 md:gap-6">
@@ -95,6 +96,7 @@ function AdminProductsPage() {
 				<Tabs onValueChange={(value) => setActiveTab(value as typeof activeTab)} value={activeTab}>
 					<TabsList variant="line">
 						<TabsTrigger value="products">Produk</TabsTrigger>
+						<TabsTrigger value="reviews">Moderasi ulasan</TabsTrigger>
 						<TabsTrigger value="settings">Pengaturan</TabsTrigger>
 					</TabsList>
 				</Tabs>
@@ -116,6 +118,13 @@ function AdminProductsPage() {
 									variationPresets={variationPresets}
 								recipes={recipes}
 								/>
+							</motion.div>
+						);
+					}
+					if (activeTab === "reviews") {
+						return (
+							<motion.div animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} initial={{ opacity: 0, y: 10 }} key="reviews-tab">
+								<ProductReviewModeration />
 							</motion.div>
 						);
 					}
