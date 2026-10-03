@@ -67,7 +67,7 @@ export interface MenuSectionProps {
 	discounts: Doc<"discounts">[] | undefined;
 	filteredProducts: Doc<"products">[];
 	freeRefillCharge: number;
-	bestSellers?: Array<{ productId: string; totalSold: number }> | undefined;
+	bestSellers?: Array<{ productId: string; totalSold: number; period?: "today" | "month" | "all" }> | undefined;
 	recentProductIds?: string[];
 	handleProductSelect: (product: Doc<"products">) => void;
 	isMenuError: boolean;
@@ -145,6 +145,28 @@ export function renderMenuSection(props: MenuSectionProps) {
 	const inlineRecommendations = catalogProducts.filter((product) => !props.cart.some((item) => String(item.productId) === String(product._id))).filter((product) => bestSellerRank.has(String(product._id)) || recentRank.has(String(product._id))).sort((a, b) => ((recentRank.get(String(b._id)) ?? 0) * 1000 + (bestSellerRank.get(String(b._id)) ?? 0)) - ((recentRank.get(String(a._id)) ?? 0) * 1000 + (bestSellerRank.get(String(a._id)) ?? 0))).slice(0, 2);
 	const recommendationTitle = (props.recentProductIds ?? []).length > 0 ? "Rekomendasi untuk kamu" : "Paling sering dipesan";
 	const recommendationSubtitle = (props.recentProductIds ?? []).length > 0 ? "Pesanan terakhir dan favoritmu" : "Favorit pelanggan Djiwa Tentram";
+	const periodRank = (period: "today" | "month" | "all") => new Map((props.bestSellers ?? []).filter((item) => (item.period ?? "all") === period).map((item) => [String(item.productId), Number(item.totalSold)]));
+	const recommendationBlocks = (() => {
+		const cartIds = new Set(props.cart.map((item) => String(item.productId)));
+		const recentIds = new Set((props.recentProductIds ?? []).map(String));
+		const today = periodRank("today");
+		const month = periodRank("month");
+		const allTime = periodRank("all");
+		const makeCandidates = (kind: "recent" | "today" | "month" | "all") => catalogProducts.filter((product) => !cartIds.has(String(product._id))).filter((product) => kind === "recent" ? recentIds.has(String(product._id)) : (kind === "today" ? today.has(String(product._id)) : kind === "month" ? month.has(String(product._id)) : allTime.has(String(product._id)))).sort((a, b) => {
+			const rank = (product: typeof a) => kind === "recent" ? (recentRank.get(String(product._id)) ?? 0) : kind === "today" ? (today.get(String(product._id)) ?? 0) : kind === "month" ? (month.get(String(product._id)) ?? 0) : (allTime.get(String(product._id)) ?? 0);
+			return rank(b) - rank(a);
+		}).slice(0, 2);
+		const definitions = [
+			{ kind: "recent" as const, title: "Pesanan sebelumnya", subtitle: "Pesan lagi menu yang pernah kamu pilih", strategy: "recent_history" },
+			{ kind: "today" as const, title: "Best seller hari ini", subtitle: "Paling banyak dipesan hari ini", strategy: "bestseller_today" },
+			{ kind: "month" as const, title: "Favorit bulan ini", subtitle: "Menu favorit pelanggan bulan ini", strategy: "bestseller_month" },
+			{ kind: "all" as const, title: "Favorit pelanggan", subtitle: "Pilihan populer di Djiwa Tentram", strategy: "bestseller_all" },
+		];
+		return definitions.map((definition) => ({ ...definition, products: makeCandidates(definition.kind) })).filter((block) => block.products.length > 0);
+	})();
+	const recommendationPositions = [2, 6, 11, 17].map((position, index) => ({ position, sort: (catalogProducts.length * 31 + index * 17) % 101 })).sort((a, b) => a.sort - b.sort).map((entry) => entry.position).filter((position) => position < catalogProducts.length);
+	const recommendationBlocksByIndex = new Map(recommendationBlocks.slice(0, recommendationPositions.length).map((block, index) => [recommendationPositions[index], block]));
+	const renderRecommendationBlock = (block: (typeof recommendationBlocks)[number]) => <section className="col-span-2 mt-3 rounded-2xl border border-primary/15 bg-primary/5 p-2.5" aria-label={block.title}><div className="mb-2"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">{block.title}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{block.subtitle}</p></div><div className="grid grid-cols-2 gap-2">{block.products.map((recommendation) => <button type="button" key={`${block.strategy}-${recommendation._id}`} onClick={() => { void recordRecommendationEvent({ eventType: "click", recommendedProductSourceId: String(recommendation._id), strategy: block.strategy }); props.handleProductSelect(recommendation); }} className="flex min-h-16 items-center gap-2 rounded-xl border border-border bg-card p-2 text-left shadow-sm"><span className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">{recommendation.image ? <img src={recommendation.image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</span><span className="min-w-0"><span className="block line-clamp-2 text-xs font-black leading-tight">{recommendation.name}</span><span className="mt-1 block text-[10px] font-bold text-primary">{currency(Number(recommendation.price ?? 0))}</span></span></button>)}</div></section>;
 	const firstProductIndexByRootCategory = new Map<string, number>();
 	const firstProductIndexByCategory = new Map<string, number>();
 	catalogProducts.forEach((product, index) => {
@@ -306,7 +328,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 											</div>
 										</div>
 									</article>
-									{index === 2 && inlineRecommendations.length > 0 ? <section className="col-span-2 mt-3 rounded-2xl border border-primary/15 bg-primary/5 p-2.5" aria-label="Paling sering dipesan"><div className="mb-2"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">{recommendationTitle}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{recommendationSubtitle}</p></div><div className="grid grid-cols-2 gap-2">{inlineRecommendations.map((recommendation) => <button type="button" key={recommendation._id} onClick={() => { void recordRecommendationEvent({ eventType: "click", recommendedProductSourceId: String(recommendation._id), strategy: (props.recentProductIds ?? []).length > 0 ? "recent_plus_bestseller" : "bestseller" }); props.handleProductSelect(recommendation); }} className="flex min-h-16 items-center gap-2 rounded-xl border border-border bg-card p-2 text-left shadow-sm"><span className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">{recommendation.image ? <img src={recommendation.image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</span><span className="min-w-0"><span className="block line-clamp-2 text-xs font-black leading-tight">{recommendation.name}</span><span className="mt-1 block text-[10px] font-bold text-primary">{currency(Number(recommendation.price ?? 0))}</span></span></button>)}</div></section> : null}
+									{recommendationBlocksByIndex.has(index) ? renderRecommendationBlock(recommendationBlocksByIndex.get(index)!) : null}
 									</div>
 								);
 							})}
