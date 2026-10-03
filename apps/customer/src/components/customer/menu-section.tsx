@@ -220,7 +220,8 @@ export function renderMenuSection(props: MenuSectionProps) {
 					</div>
 					<div data-category-catalog className="sticky top-0 z-40 isolate self-start -mx-1 w-full rounded-lg border border-border bg-card p-1 shadow-[0_6px_16px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-card/95" style={{ position: "sticky", top: 0, zIndex: 40 }}>
 						<div className="relative">
-							<div aria-label="Kategori menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+							<p className="mb-1 px-1 text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground">Kategori utama</p>
+							<div aria-label="Kategori utama menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null, true)} onClick={() => scrollToCategory(null)}>Semua</button>
 								{rootCategories.map((category) => {
 									const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
@@ -241,7 +242,8 @@ export function renderMenuSection(props: MenuSectionProps) {
 								: [];
 							if (!subcategories.length) return null;
 							return (
-								<div className="mt-0.5 rounded-md bg-muted/40 p-0.5">
+								<div className="mt-1 rounded-md bg-muted/40 p-1">
+									<p className="mb-1 px-1 text-[9px] font-black uppercase tracking-[0.14em] text-primary/80">Subkategori {activeRoot.name} · navigasi menu</p>
 									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id, true)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
 										{subcategories.map((subcategory) => (
