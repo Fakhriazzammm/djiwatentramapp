@@ -30,3 +30,28 @@ export async function recordRecommendationEvent(input: {
     // Analytics must never block menu or cart interactions.
   }
 }
+
+export function getRecommendationSessionKey(): string {
+  const storageKey = "djiwa-recommendation-session";
+  try {
+    const existing = window.sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const value = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.sessionStorage.setItem(storageKey, value);
+    return value;
+  } catch {
+    return `volatile-${Date.now()}`;
+  }
+}
+
+export async function assignRecommendationExperiment(experimentKey: string): Promise<string | null> {
+  try {
+    const { data } = await createClient().rpc("assign_product_recommendation_experiment", {
+      p_experiment_key: experimentKey,
+      p_subject_key: getRecommendationSessionKey(),
+    });
+    return typeof data === "string" && data.length > 0 ? data : null;
+  } catch {
+    return null;
+  }
+}
