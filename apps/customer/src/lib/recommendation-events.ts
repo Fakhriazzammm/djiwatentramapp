@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/client";
 
-export type RecommendationEventType = "impression" | "click" | "add_to_cart";
+export type RecommendationEventType = "impression" | "click" | "add_to_cart" | "purchase" | "dismiss" | "not_interested";
 
 export async function recordRecommendationEvent(input: {
   eventType: RecommendationEventType;
