@@ -235,7 +235,9 @@ export function renderMenuSection(props: MenuSectionProps) {
 								props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId)
 							);
 							const subcategories = activeRoot
-								? props.orderedCategories.filter((category) => category.parentId === activeRoot._id && category.track !== "hidden")
+								? props.orderedCategories
+									.filter((category) => category.parentId === activeRoot._id && category.track !== "hidden")
+									.sort((a, b) => subcategoryDisplayPriority(a) - subcategoryDisplayPriority(b))
 								: [];
 							if (!subcategories.length) return null;
 							return (
