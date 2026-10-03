@@ -54,7 +54,7 @@ import { renderReceiptSection } from "@/components/customer/receipt-section";
 import { UpsellSheet } from "@/components/customer/upsell-sheet";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
-import { recordRecommendationEvent } from "@/lib/recommendation-events";
+import { assignRecommendationExperiment, recordRecommendationEvent } from "@/lib/recommendation-events";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
@@ -192,6 +192,10 @@ function OrderPage() {
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
 	const { isAuthenticated, customer, login, register, resetPassword, logout, signInWithGoogle, refreshCustomer, isLoading: authLoading, registrationNeedsEmailConfirm } = useCustomerAuth();
+	useEffect(() => {
+		if (step !== "menu") return;
+		void assignRecommendationExperiment("customer_recommendation_blocks_v1");
+	}, [step]);
 	useEffect(() => {
 		if (step !== "menu" || !bestSellers?.length) return;
 		for (const item of bestSellers.slice(0, 2)) void recordRecommendationEvent({ eventType: "impression", recommendedProductSourceId: item.productId, strategy: recentProductIds.length > 0 ? "recent_plus_bestseller" : "bestseller", customerSourceId: customer?.sourceId ?? null });
