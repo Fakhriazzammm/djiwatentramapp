@@ -203,7 +203,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 								: [];
 							if (!subcategories.length) return null;
 							return (
-								<div className="mt-0.5 rounded-md bg-muted/40 p-0.5">
+								<div className="mt-0.5 mb-2 rounded-md bg-muted/40 p-0.5">
 									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id, true)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
 										{subcategories.map((subcategory) => (
