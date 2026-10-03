@@ -73,7 +73,6 @@ function OrderPage() {
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
 	const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0);
 	const menuScrollRef = useRef<HTMLElement | null>(null);
-	const categorySelectionLockRef = useRef(0);
 	const checkoutRequestKeyRef = useRef<string | null>(null);
 	const activityProductAppliedRef = useRef<string | null>(null);
 
@@ -143,7 +142,7 @@ function OrderPage() {
 		addToCart,
 		updateCartQuantity,
 	} = useOrderContext();
-	const selectMenuCategory = (value: Id<"categories"> | null) => { categorySelectionLockRef.current = Date.now() + 900; setActiveCategoryId(value); };
+	const selectMenuCategory = (value: Id<"categories"> | null) => { setActiveCategoryId(value); };
 	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
 	const [orderModeConfirmed, setOrderModeConfirmed] = useState(false);
 	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("grab");
@@ -613,36 +612,8 @@ function OrderPage() {
 		}
 	}, [step, tableNumber, orderMode, deliveryAddress]);
 
-	useEffect(() => {
-		if (step !== "menu" || menuMode !== "catalog" || typeof document === "undefined") return;
-		const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-category-section]"));
-		if (!sections.length) return;
-		const observer = new IntersectionObserver((entries) => {
-			if (Date.now() < categorySelectionLockRef.current) return;
-			const scrollRoot = menuScrollRef.current;
-			if (scrollRoot && scrollRoot.scrollTop <= 48) {
-				if (activeCategoryId !== null) setActiveCategoryId(null);
-				return;
-			}
-			const visible = entries
-				.filter((entry) => entry.isIntersecting)
-				.sort((a, b) => {
-					const topDelta = a.boundingClientRect.top - b.boundingClientRect.top;
-					if (Math.abs(topDelta) > 8) return topDelta;
-					// Root and subcategory headings share nearly the same top edge.
-					// Prefer the more specific subcategory so Bubur is highlighted.
-					const aSpecific = a.target.getAttribute("data-category-section-level") === "subcategory" ? 0 : 1;
-					const bSpecific = b.target.getAttribute("data-category-section-level") === "subcategory" ? 0 : 1;
-					return aSpecific - bSpecific;
-				})[0];
-			if (!visible) return;
-			const categoryId = visible.target.getAttribute("data-category-section");
-			if (categoryId && categoryId !== String(activeCategoryId ?? "")) setActiveCategoryId(categoryId as Id<"categories">);
-		}, { root: menuScrollRef.current, rootMargin: "-96px 0px -55% 0px", threshold: 0.01 });
-		sections.forEach((section) => observer.observe(section));
-		return () => observer.disconnect();
-	}, [activeCategoryId, menuMode, setActiveCategoryId, step]);
-
+	// Category state changes only from an explicit horizontal-chip tap.
+	// Vertical scrolling must not rewrite or auto-scroll the horizontal subcategory bar.
 	useEffect(() => {
 		if (step !== "menu" || menuMode !== "catalog" || !activeCategoryId || typeof document === "undefined") return;
 		const chip = Array.from(document.querySelectorAll<HTMLElement>("[data-category-chip]"))
