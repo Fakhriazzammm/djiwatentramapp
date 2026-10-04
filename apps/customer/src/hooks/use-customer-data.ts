@@ -120,7 +120,7 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ orderIds: references.map((item) => item.orderId) }),
+					body: JSON.stringify({ orders: references.map((item) => ({ orderId: item.orderId, accessToken: item.accessToken })) }),
 				});
 				if (!response.ok) throw new Error(`Guest orders HTTP ${response.status}`);
 				const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };

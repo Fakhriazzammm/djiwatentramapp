@@ -42,7 +42,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { ShippingSection } from "@/components/customer/shipping-section";
-import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode } from "@/components/customer/types";
+import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
 import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
@@ -693,6 +693,7 @@ function OrderPage() {
 		try {
 			const orderCustomerName = shippingReceiverName.trim();
 			const normalizedNotes = notes.trim() || undefined;
+			const guestAccessToken = !isAuthenticated && typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : null;
 			const payload = {
 				items: cart.map((item) => ({
 					productId: item.productId,
@@ -738,6 +739,7 @@ function OrderPage() {
 					},
 				},
 				customerSourceId: customer?.sourceId,
+				guestAccessToken,
 			};
 
 			if (paymentChoice === "wallet") {
@@ -749,6 +751,7 @@ function OrderPage() {
 					isOpenBill: true,
 				});
 				persistMerchandiseOrderAccessKey(orderId, checkoutRequestKeyRef.current);
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				let walletHoldId: string | null = null;
 				let walletCaptured = false;
 				try {
@@ -797,6 +800,7 @@ function OrderPage() {
 					isOpenBill: true,
 				});
 				persistMerchandiseOrderAccessKey(orderId, checkoutRequestKeyRef.current);
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				const redirectUrl =
 					typeof window !== "undefined"
 						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(String(orderId))}`

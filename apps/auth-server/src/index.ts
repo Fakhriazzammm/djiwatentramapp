@@ -781,17 +781,24 @@ app.post("/api/customer/push/status", async (c) => {
 });
 
 app.post("/api/customer/guest-orders", async (c) => {
-  const body = await c.req.json().catch(() => ({})) as { orderIds?: unknown };
-  const orderIds = Array.isArray(body.orderIds)
-    ? Array.from(new Set(body.orderIds.filter((value): value is string =>
-        typeof value === "string" && /^order_[a-f0-9]{24}$/.test(value),
-      ))).slice(0, 20)
+  const body = await c.req.json().catch(() => ({})) as { orders?: unknown };
+  const references = Array.isArray(body.orders)
+    ? body.orders.map((value) => {
+        const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+        return { orderId: String(item.orderId ?? ""), accessToken: String(item.accessToken ?? "") };
+      }).filter((item) => /^order_[a-f0-9]{24}$/.test(item.orderId) && item.accessToken.length >= 20).slice(0, 20)
     : [];
-  if (orderIds.length === 0) return privateJson({ success: true, orders: [] });
+  if (references.length === 0) return privateJson({ success: true, orders: [] });
 
   const result = await pool.query(
-    customerOrderTrackingSelect('WHERE o."_id" = ANY($1::text[])'),
-    [orderIds],
+    customerOrderTrackingSelect(`WHERE EXISTS (
+      SELECT 1 FROM pos.orders raw
+      JOIN json_to_recordset($1::json) AS guest_ref("orderId" text, "accessToken" text)
+        ON guest_ref."orderId" = raw.source_id
+       AND guest_ref."accessToken" = raw.guest_access_token
+      WHERE raw.source_id = o."_id"
+    )`),
+    [JSON.stringify(references)],
   );
   return privateJson({ success: true, orders: result.rows });
 });

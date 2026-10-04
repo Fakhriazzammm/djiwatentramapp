@@ -2578,6 +2578,7 @@ const orderRow = {
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
 					customer_source_id: args?.customerSourceId ?? null,
+					guest_access_token: args?.guestAccessToken ?? null,
 					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
 				};
 

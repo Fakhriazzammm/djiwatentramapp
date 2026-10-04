@@ -956,6 +956,7 @@ function OrderPage() {
 			const normalizedTableNumber = orderMode === "dine_in" ? (tableNumber.trim() || undefined) : undefined;
 			const normalizedDeliveryAddress = orderMode === "delivery" ? deliveryAddress : undefined;
 			const normalizedNotes = notes.trim() || undefined;
+			const guestAccessToken = !isAuthenticated && typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : null;
 			const payload = {
 				items: cart.map((item) => {
 					const masterProduct = products?.find((product) => product._id === item.productId);
@@ -1013,6 +1014,7 @@ function OrderPage() {
 					} : {}),
 				},
 				customerSourceId: customer?.sourceId || guestCustomerSourceId,
+				guestAccessToken,
 			};
 
 			if (paymentChoice === "wallet") {
@@ -1056,7 +1058,7 @@ function OrderPage() {
 					if (runReservation) {
 						await finalizeDjiwaRunCheckoutReward({ customerSourceId: customer.sourceId, customerEmail: customer.email, rewardId: runReservation.rewardId, orderId: String(orderId), reservationId: runReservation.reservationId, idempotencyKey: `${checkoutRequestKeyRef.current}:run-finalize` });
 					}
-					if (!isAuthenticated) rememberGuestOrder(String(orderId));
+					if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, dessertLater, cartSnapshot: cart });
 				} catch (error) {
 					if (walletHoldId && !walletCaptured) {
@@ -1081,7 +1083,7 @@ function OrderPage() {
 					paymentReceiptKind: "gateway_pending",
 					isOpenBill: true,
 				});
-				if (!isAuthenticated) rememberGuestOrder(String(orderId));
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				const redirectUrl =
 					typeof window !== "undefined"
 						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
@@ -1154,7 +1156,7 @@ function OrderPage() {
 					paymentReceiptKind: "cashier_pending",
 					isOpenBill: true,
 				});
-				if (!isAuthenticated) rememberGuestOrder(String(orderId));
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				setReceipt({
 					orderId,
 					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
