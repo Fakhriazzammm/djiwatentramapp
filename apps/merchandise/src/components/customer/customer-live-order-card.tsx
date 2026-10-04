@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Clock3, PackageCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, PackageCheck, X } from "lucide-react";
 import type { CustomerOrder } from "@/hooks/use-customer-data";
 
 type Props = { order: CustomerOrder; onOpen: () => void };
@@ -24,24 +25,31 @@ function etaText(value?: string | null) {
 }
 
 export function CustomerLiveOrderCard({ order, onOpen }: Props) {
+  const [dismissed, setDismissed] = useState(false);
   const status = order.trackingStatus || (order.status === "pending" ? "pending_payment" : order.status);
   const label = LABELS[status] || "Pesanan sedang diproses";
   const total = Math.max(0, order.trackingGroupCount || 0);
   const finished = Math.min(total, Math.max(0, order.trackingFinishedGroupCount || 0));
   const progress = total > 0 ? Math.max(8, Math.round((finished / total) * 100)) : status === "completed" ? 100 : 18;
   const terminal = status === "completed" || status === "cancelled";
+  if (dismissed) return null;
 
   return (
-    <motion.button
-      type="button"
+    <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       whileTap={{ scale: 0.985 }}
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className="fixed bottom-[calc(5.75rem+var(--safe-area-bottom))] left-1/2 z-30 w-[240px] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-primary/20 bg-card p-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.16)]"
+      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}
+      className="relative fixed bottom-[calc(5.75rem+var(--safe-area-bottom))] left-1/2 z-30 w-[240px] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-primary/20 bg-card p-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.16)]"
       aria-label={`Lihat status pesanan ${order.orderNumber}`}
     >
-      <div className="flex items-start gap-2">
+      <button type="button" aria-label="Sembunyikan tracking pesanan" onClick={(event) => { event.stopPropagation(); setDismissed(true); }} className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+        <X className="h-3 w-3" aria-hidden="true" />
+      </button>
+      <div className="flex items-start gap-2 pr-4">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
           {terminal ? <CheckCircle2 className="h-3.5 w-3.5" /> : <PackageCheck className="h-3.5 w-3.5" />}
         </span>
@@ -61,6 +69,6 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
         <span>{total > 0 ? `${finished}/${total} bagian siap` : "Pembaruan otomatis"}</span>
         <span className="text-primary">Detail pesanan</span>
       </span>
-    </motion.button>
+    </motion.div>
   );
 }
