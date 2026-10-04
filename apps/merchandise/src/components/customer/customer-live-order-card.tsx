@@ -38,7 +38,7 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
       animate={{ opacity: 1, y: 0 }}
       whileTap={{ scale: 0.985 }}
       onClick={onOpen}
-      className="w-full rounded-[22px] border border-primary/15 bg-card p-4 text-left shadow-sm"
+      className="fixed inset-x-3 bottom-[calc(5.75rem+var(--safe-area-bottom))] z-30 mx-auto w-[calc(100%-1.5rem)] max-w-md rounded-[22px] border border-primary/20 bg-card p-4 text-left shadow-[0_14px_38px_rgba(15,23,42,0.18)]"
       aria-label={`Lihat status pesanan ${order.orderNumber}`}
     >
       <div className="flex items-start gap-3">
