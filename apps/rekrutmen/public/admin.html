@@ -38,7 +38,7 @@ async function loginWithGoogle(){
 async function completeGoogleLogin(){
   const r=await fetch('https://api.yumme.id/v1/auth/recruitment-session',{credentials:'include'});
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.success||!d.token) throw Error('Akun Google tidak terdaftar sebagai karyawan aktif');
+  if(d.pending||d.error==='HRD_PENDING') throw Error('Pendaftaran berhasil. Menunggu aktivasi admin di Data Karyawan.'); if(!r.ok||!d.success||!d.token) throw Error('Akun Google belum diaktifkan sebagai HRD');
   S.token=d.token;localStorage.setItem('rekrutmen_hrd_session',S.token);history.replaceState({},'',location.pathname);$('#login').classList.add('hide');load();
 }
 $('#googleLogin').onclick=async()=>{try{await loginWithGoogle()}catch(x){$('#loginError').textContent=x.message}};document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>{S.view=b.dataset.view;render()});$('#refresh').onclick=load;$('#logout').onclick=()=>{localStorage.removeItem('rekrutmen_hrd_session');location.reload()};$('#search').oninput=candidates;$('#status').onchange=candidates;$('#content').onclick=e=>{const select=e.target.closest('[data-status-id]');if(select)return saveStatus(select.dataset.statusId);const b=e.target.closest('[data-detail]');if(b)detail(b.dataset.detail)};$('#drawer').onchange=e=>{const select=e.target.closest('[data-drawer-status]');if(select)saveDrawerStatus(select.dataset.drawerStatus)};$('#backdrop').onclick=closeDetail;document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>exportData(b.dataset.export));if(new URLSearchParams(location.search).get('google')==='complete'){completeGoogleLogin().catch(e=>{$('#loginError').textContent=e.message})}else if(S.token){$('#login').classList.add('hide');load()}

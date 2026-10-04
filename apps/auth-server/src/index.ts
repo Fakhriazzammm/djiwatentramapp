@@ -68,8 +68,17 @@ app.get("/api/auth/recruitment-session", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   const email = session?.user?.email?.trim().toLowerCase();
   if (!session?.user?.id || !email || !RECRUITMENT_BRIDGE_SECRET) return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
-  const employee = await pool.query(`SELECT source_id FROM public.yumi_users WHERE is_active = true AND lower(btrim(email)) = $1 LIMIT 1`, [email]);
-  if (!employee.rows[0]) return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  let employee = await pool.query(`SELECT source_id, is_active FROM public.yumi_users WHERE lower(btrim(email)) = $1 LIMIT 1`, [email]);
+  if (!employee.rows[0]) {
+    const role = await pool.query(`SELECT source_id FROM public.yumi_roles WHERE lower(btrim(name)) = 'hrd' LIMIT 1`);
+    const roleId = role.rows[0]?.source_id || "role_hrd";
+    if (!role.rows[0]) await pool.query(`INSERT INTO public.yumi_roles (source_id, name, permissions, raw) VALUES ($1, 'HRD', '[]'::jsonb, jsonb_build_object('source', 'recruitment_google')) ON CONFLICT DO NOTHING`, [roleId]);
+    const sourceId = `hrd_${crypto.randomUUID().replace(/-/g, "")}`;
+    const username = `google_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
+    await pool.query(`INSERT INTO public.yumi_users (source_id, username, name, role_source_id, is_active, auth_user_id, email, slug, raw) VALUES ($1, $2, $3, $4, false, $5, $6, $2, jsonb_build_object('registrationStatus', 'pending', 'registrationSource', 'recruitment_google'))`, [sourceId, username, session.user.name || email, roleId, session.user.id, email]);
+    employee = await pool.query(`SELECT source_id, is_active FROM public.yumi_users WHERE source_id = $1`, [sourceId]);
+  }
+  if (!employee.rows[0]?.is_active) return c.json({ success: false, error: "HRD_PENDING", pending: true }, 403);
   const payload = Buffer.from(JSON.stringify({ sub: session.user.id, role: "HRD", exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
   const signature = createHmac("sha256", RECRUITMENT_BRIDGE_SECRET).update(payload).digest("base64url");
   return c.json({ success: true, token: `${payload}.${signature}`, role: "HRD" });
