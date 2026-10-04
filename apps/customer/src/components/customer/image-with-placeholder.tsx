@@ -60,7 +60,7 @@ export function ImageWithPlaceholder({
         }}
         className={cn(
           "relative block h-full w-full object-cover transition-[filter,opacity] duration-500 ease-out",
-          state === "loaded" ? "opacity-100 blur-0" : "opacity-60 blur-md",
+          state === "loaded" ? "opacity-100" : "opacity-80",
           className,
         )}
       />
