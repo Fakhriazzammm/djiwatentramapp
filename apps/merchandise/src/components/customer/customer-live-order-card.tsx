@@ -38,26 +38,26 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
       animate={{ opacity: 1, y: 0 }}
       whileTap={{ scale: 0.985 }}
       onClick={onOpen}
-      className="fixed inset-x-3 bottom-[calc(5.75rem+var(--safe-area-bottom))] z-30 mx-auto w-[calc(100%-1.5rem)] max-w-md rounded-[22px] border border-primary/20 bg-card p-4 text-left shadow-[0_14px_38px_rgba(15,23,42,0.18)]"
+      className="fixed bottom-[calc(5.75rem+var(--safe-area-bottom))] left-1/2 z-30 w-[240px] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-primary/20 bg-card p-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.16)]"
       aria-label={`Lihat status pesanan ${order.orderNumber}`}
     >
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          {terminal ? <CheckCircle2 className="h-5 w-5" /> : <PackageCheck className="h-5 w-5" />}
+      <div className="flex items-start gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          {terminal ? <CheckCircle2 className="h-3.5 w-3.5" /> : <PackageCheck className="h-3.5 w-3.5" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center justify-between gap-2">
-            <span className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">Pesanan aktif · #{order.orderNumber}</span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-muted-foreground">Pesanan aktif · #{order.orderNumber}</span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary" />
           </span>
-          <span className="mt-1 block text-base font-black text-foreground">{label}</span>
-          <span className="mt-1 flex items-center gap-1 text-[11px] font-bold text-muted-foreground"><Clock3 className="h-3 w-3" />{terminal ? "Status final" : etaText(order.estimatedReadyAt)}</span>
+          <span className="mt-0.5 block truncate text-[11px] font-black text-foreground">{label}</span>
+          <span className="mt-0.5 flex items-center gap-1 text-[9px] font-bold text-muted-foreground"><Clock3 className="h-3 w-3" />{terminal ? "Status final" : etaText(order.estimatedReadyAt)}</span>
         </span>
       </div>
-      <span className="mt-3 block h-2 overflow-hidden rounded-full bg-muted" aria-label={`Progress ${progress}%`}>
+      <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-muted" aria-label={`Progress ${progress}%`}>
         <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.45 }} />
       </span>
-      <span className="mt-2 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+      <span className="mt-1.5 flex items-center justify-between text-[9px] font-bold text-muted-foreground">
         <span>{total > 0 ? `${finished}/${total} bagian siap` : "Pembaruan otomatis"}</span>
         <span className="text-primary">Detail pesanan</span>
       </span>
