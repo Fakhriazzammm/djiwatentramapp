@@ -250,6 +250,18 @@ export function useHybridPublicUsers() {
 	return supabaseData as any;
 }
 
+async function fetchAllPublicUsers() {
+	const supabase = createClient();
+	const { data, error } = await supabase.from("pos_users_public").select("*").order("name", { ascending: true });
+	if (error) throw error;
+	return (data ?? []).map((row: any) => ({ _id: row._id, name: row.name, slug: row.slug || String(row.username || "").split("@")[0] || "", username: row.username || "", initial: row.initial || String(row.name || "").charAt(0).toUpperCase(), hasFace: Boolean(row.hasFace), roleId: row.roleId ?? null, roleName: row.roleName ?? "Team", isActive: row.isActive !== false, photoUrl: row.photoUrl ?? null, raw: row.raw ?? null }));
+}
+
+export function useHybridAllPublicUsers() {
+	const supabaseData = useSupabaseValue("attendance-all-public-users", fetchAllPublicUsers, []);
+	return supabaseData as any;
+}
+
 
 export function useHybridCurrentlyInStore(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue(

@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useHybridPublicUsers } from "@/hooks/use-hybrid-attendance-data";
+import { useHybridAllPublicUsers } from "@/hooks/use-hybrid-attendance-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -171,7 +171,7 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 
 export function DataKaryawanPage() {
 	const navigate = useNavigate();
-	const allStaff = useHybridPublicUsers();
+	const allStaff = useHybridAllPublicUsers();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [roleFilter, setRoleFilter] = useState("");
 	const [statusFilter, setStatusFilter] = useState("");
