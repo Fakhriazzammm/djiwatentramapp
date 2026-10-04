@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { readGuestOrderReferences } from "@/components/customer/types";
 
 const CUSTOMER_ORDER_API = "https://api.yumme.id/v1/customer";
 
@@ -21,11 +22,12 @@ function resolveMayarConfig() {
 }
 
 async function fetchOrderById(id: string) {
+	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
 	const response = await fetch(`${CUSTOMER_ORDER_API}/guest-orders`, {
 		method: "POST",
 		credentials: "include",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ orderIds: [id] }),
+		body: JSON.stringify({ orders: accessToken ? [{ orderId: id, accessToken }] : [] }),
 	});
 	if (!response.ok) throw new Error(`Order fetch HTTP ${response.status}`);
 	const payload = (await response.json()) as { success?: boolean; orders?: unknown[] };
