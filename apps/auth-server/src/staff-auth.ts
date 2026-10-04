@@ -4,9 +4,11 @@ import { pool } from "./auth.js";
 // Staff auth remains isolated from customer/KOL sessions by endpoint and cookie prefix.
 export const staffAuth = betterAuth({
   database: pool,
+  basePath: '/api/staff-auth',
   baseURL: "https://djiwatentram.yumme.id",
   trustedOrigins: [
     "https://karyawan.yumme.id",
+    "https://rekrutmen.yumme.id",
     "http://localhost:5173",
     "http://localhost:5174",
   ],
@@ -19,4 +21,10 @@ export const staffAuth = betterAuth({
     },
   },
   emailAndPassword: { enabled: true },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
 });

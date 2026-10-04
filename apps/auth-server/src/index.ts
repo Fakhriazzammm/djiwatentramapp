@@ -8,6 +8,7 @@ import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { createHmac } from "node:crypto";
 
 const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.yumme.id/functions/v1/mayar-proxy";
@@ -152,8 +153,10 @@ app.post("/api/kol/claim", async (c) => {
 registerKolPortalRoutes(app, auth, pool);
 
 // ── Better Auth KARYAWAN (staff) ──────────────────────────────────
+const RECRUITMENT_BRIDGE_SECRET = process.env.REKRUTMEN_AUTH_BRIDGE_SECRET || "";
 const staffOrigins = [
   "https://karyawan.yumme.id",
+  "https://rekrutmen.yumme.id",
   "http://localhost:5173",
   "http://localhost:5174",
 ];
@@ -167,6 +170,23 @@ app.use(
     credentials: true,
   }),
 );
+
+app.get("/api/staff-auth/recruitment-session", async (c) => {
+  const session = await staffAuth.api.getSession({ headers: c.req.raw.headers });
+  const email = session?.user?.email?.trim().toLowerCase();
+  if (!session?.user?.id || !email || !RECRUITMENT_BRIDGE_SECRET) {
+    return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  }
+  const employee = await pool.query(
+    `SELECT source_id FROM public.yumi_users
+      WHERE is_active = true AND lower(btrim(email)) = $1 LIMIT 1`,
+    [email],
+  );
+  if (!employee.rows[0]) return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  const payload = Buffer.from(JSON.stringify({ sub: session.user.id, role: "HRD", exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = createHmac("sha256", RECRUITMENT_BRIDGE_SECRET).update(payload).digest("base64url");
+  return c.json({ success: true, token: `${payload}.${signature}`, role: "HRD" });
+});
 
 app.on(["POST", "GET"], "/api/staff-auth/*", (c) => {
   return staffAuth.handler(c.req.raw);

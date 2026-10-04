@@ -29,6 +29,9 @@ const SUPABASE_SKEY = SUP.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERV
 const CV_BUCKET = "recruitment-cv";
 const OUTSOURCING_AUTH_FILE = path.join(__dirname, ".outsourcing-auth.json");
 const OUTSOURCING_SESSION_SECRET_FILE = path.join(__dirname, ".outsourcing-session-secret");
+const HRD_BRIDGE_SECRET_FILE = process.env.REKRUTMEN_AUTH_BRIDGE_SECRET_FILE || "/etc/djiwatentramapp/recruitment-auth-bridge.secret";
+function loadHrdBridgeSecret() { try { return process.env.REKRUTMEN_AUTH_BRIDGE_SECRET || fs.readFileSync(HRD_BRIDGE_SECRET_FILE, "utf8").trim(); } catch { return ""; } }
+const HRD_BRIDGE_SECRET = loadHrdBridgeSecret();
 function loadOutsourcingSessionSecret() {
   const configured = process.env.REKRUTMEN_OUTSOURCING_SESSION_SECRET;
   if (configured) return configured;
@@ -60,6 +63,16 @@ function signOutsourcingSession(mustChange = false) {
   const payload = Buffer.from(JSON.stringify({ role: "outsourcing_readonly", mustChange, exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
   const signature = crypto.createHmac("sha256", OUTSOURCING_SESSION_SECRET).update(payload).digest("base64url");
   return `${payload}.${signature}`;
+}
+
+function verifyHrdBridgeSession(token) {
+  try {
+    const [payload, signature] = String(token || "").split(".");
+    if (!HRD_BRIDGE_SECRET || !payload || !signature) return null;
+    const expected = crypto.createHmac("sha256", HRD_BRIDGE_SECRET).update(payload).digest("base64url");
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return safeEqualText(signature, expected) && data.role === "HRD" && Number(data.exp) > Date.now() ? data : null;
+  } catch { return null; }
 }
 
 function verifyOutsourcingSession(token) {
@@ -136,6 +149,12 @@ function psql(sql) {
 }
 
 async function validateRecruitmentAdmin(req, res, next) {
+  const hrdSession = verifyHrdBridgeSession(req.get("x-rekrutmen-hrd-session"));
+  if (hrdSession) {
+    res.locals.recruitmentAdmin = { role: "HRD", userId: hrdSession.sub };
+    res.locals.readOnly = true;
+    return next();
+  }
   const outsourcingSession = verifyOutsourcingSession(req.get("x-rekrutmen-outsourcing-session"));
   if (outsourcingSession) {
     const candidateStatusPatch = req.method === "PATCH" && /^\/api\/table\/Candidates\/[0-9a-f-]+$/i.test(req.path);
