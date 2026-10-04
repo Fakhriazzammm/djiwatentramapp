@@ -28,6 +28,10 @@ export type CustomerOrder = {
 	createdAt: number;
 	trackingStatus?: string | null;
 	estimatedReadyAt?: string | null;
+	slaStartedAt?: string | null;
+	slaDeadlineAt?: string | null;
+	isLate?: boolean;
+	lateMinutes?: number;
 	trackingGroupCount?: number;
 	trackingFinishedGroupCount?: number;
 	trackingGroups?: Array<{ groupType: string; status: string; completedAt?: string | null; updatedAt?: string | null }>;
@@ -89,6 +93,10 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 				}))
 			: [],
 		createdAt: Number(row.createdAt ?? row._creationTime ?? 0),
+		slaStartedAt: (row.slaStartedAt ?? row.sla_started_at) as string | null | undefined,
+		slaDeadlineAt: (row.slaDeadlineAt ?? row.sla_deadline_at) as string | null | undefined,
+		isLate: Boolean(row.isLate ?? row.is_late ?? false),
+		lateMinutes: Number(row.lateMinutes ?? row.late_minutes ?? 0),
 	};
 }
 

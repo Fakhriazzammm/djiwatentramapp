@@ -23,6 +23,10 @@ export type CustomerOrder = {
 	createdAt: number;
 	trackingStatus?: string | null;
 	estimatedReadyAt?: string | null;
+	slaStartedAt?: string | null;
+	slaDeadlineAt?: string | null;
+	isLate?: boolean;
+	lateMinutes?: number;
 	trackingGroupCount?: number;
 	trackingFinishedGroupCount?: number;
 	trackingGroups?: Array<{ groupType: string; status: string; completedAt?: string | null; updatedAt?: string | null }>;
@@ -79,6 +83,10 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 		createdAt: Number(row.createdAt ?? row.created_at ?? row._creationTime ?? 0),
 		trackingStatus: (row.trackingStatus ?? row.tracking_status) as string | null | undefined,
 		estimatedReadyAt: (row.estimatedReadyAt ?? row.estimated_ready_at) as string | null | undefined,
+		slaStartedAt: (row.slaStartedAt ?? row.sla_started_at) as string | null | undefined,
+		slaDeadlineAt: (row.slaDeadlineAt ?? row.sla_deadline_at) as string | null | undefined,
+		isLate: Boolean(row.isLate ?? row.is_late ?? false),
+		lateMinutes: Number(row.lateMinutes ?? row.late_minutes ?? 0),
 		trackingGroupCount: Number(row.trackingGroupCount ?? row.tracking_group_count ?? 0),
 		trackingFinishedGroupCount: Number(row.trackingFinishedGroupCount ?? row.tracking_finished_group_count ?? 0),
 		trackingGroups: Array.isArray(row.trackingGroups ?? row.tracking_groups) ? (row.trackingGroups ?? row.tracking_groups) as CustomerOrder["trackingGroups"] : [],

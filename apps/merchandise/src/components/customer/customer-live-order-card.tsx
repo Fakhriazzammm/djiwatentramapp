@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Clock3, PackageCheck, X } from "lucide-react";
 import type { CustomerOrder } from "@/hooks/use-customer-data";
@@ -18,20 +18,33 @@ const LABELS: Record<string, string> = {
 };
 
 function etaText(value?: string | null) {
-  if (!value) return "ETA belum tersedia";
+  if (!value) return "Estimasi maksimal 30 menit";
   const remaining = Math.ceil((new Date(value).getTime() - Date.now()) / 60000);
-  if (!Number.isFinite(remaining) || remaining <= 0) return "Sedang diproses";
-  return `Siap sekitar ${remaining} menit lagi`;
+  if (!Number.isFinite(remaining) || remaining <= 0) return "Melewati estimasi";
+  return `Estimasi maksimal ${remaining} menit lagi`;
+}
+
+function lateText(deadline?: string | null) {
+  if (!deadline) return "";
+  const minutes = Math.max(1, Math.floor((Date.now() - new Date(deadline).getTime()) / 60000));
+  return `Maaf, pesananmu mengalami keterlambatan · Terlambat ${minutes} menit`;
 }
 
 export function CustomerLiveOrderCard({ order, onOpen }: Props) {
   const [dismissed, setDismissed] = useState(false);
+  const [, refreshClock] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => refreshClock((value) => value + 1), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
   const status = order.trackingStatus || (order.status === "pending" ? "pending_payment" : order.status);
   const label = LABELS[status] || "Pesanan sedang diproses";
   const total = Math.max(0, order.trackingGroupCount || 0);
   const finished = Math.min(total, Math.max(0, order.trackingFinishedGroupCount || 0));
   const progress = total > 0 ? Math.max(8, Math.round((finished / total) * 100)) : status === "completed" ? 100 : 18;
   const terminal = status === "completed" || status === "cancelled";
+  const deadlinePassed = Boolean(order.slaDeadlineAt && new Date(order.slaDeadlineAt).getTime() <= Date.now());
+  const late = !terminal && deadlinePassed && (total === 0 || finished < total);
   if (dismissed) return null;
 
   return (
@@ -59,7 +72,7 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
             <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary" />
           </span>
           <span className="mt-0.5 block truncate text-[11px] font-black text-foreground">{label}</span>
-          <span className="mt-0.5 flex items-center gap-1 text-[9px] font-bold text-muted-foreground"><Clock3 className="h-3 w-3" />{terminal ? "Status final" : etaText(order.estimatedReadyAt)}</span>
+          <span className={`mt-0.5 flex items-center gap-1 text-[9px] font-bold ${late ? "text-destructive" : "text-muted-foreground"}`}><Clock3 className="h-3 w-3" />{terminal ? "Status final" : late ? lateText(order.slaDeadlineAt) : etaText(order.estimatedReadyAt || order.slaDeadlineAt)}</span>
         </span>
       </div>
       <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-muted" aria-label={`Progress ${progress}%`}>

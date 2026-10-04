@@ -669,6 +669,17 @@ function customerOrderTrackingSelect(whereSql: string) {
       COALESCE(groups.total_groups, 0)::int AS "trackingGroupCount",
       COALESCE(groups.finished_groups, 0)::int AS "trackingFinishedGroupCount",
       COALESCE(est.estimated_ready_at, NULL) AS "estimatedReadyAt",
+      sla.sla_started_at AS "slaStartedAt",
+      sla.sla_deadline_at AS "slaDeadlineAt",
+      (sla.sla_deadline_at IS NOT NULL AND sla.sla_deadline_at < now()
+        AND o.status NOT IN ('completed', 'cancelled')
+        AND NOT (COALESCE(groups.total_groups, 0) > 0
+          AND COALESCE(groups.finished_groups, 0) = COALESCE(groups.total_groups, 0))) AS "isLate",
+      CASE WHEN sla.sla_deadline_at IS NOT NULL AND sla.sla_deadline_at < now()
+        AND o.status NOT IN ('completed', 'cancelled')
+        AND NOT (COALESCE(groups.total_groups, 0) > 0
+          AND COALESCE(groups.finished_groups, 0) = COALESCE(groups.total_groups, 0))
+        THEN floor(extract(epoch from (now() - sla.sla_deadline_at)) / 60)::int ELSE 0 END AS "lateMinutes",
       CASE
         WHEN o.status = 'cancelled' THEN 'cancelled'
         WHEN o.status NOT IN ('paid', 'completed') THEN 'pending_payment'
@@ -697,6 +708,31 @@ function customerOrderTrackingSelect(whereSql: string) {
     ) groups ON groups.order_no = o."orderNumber"
     LEFT JOIN pos.order_tracking_estimates est
       ON est.order_source_id = o."_id"
+    LEFT JOIN LATERAL (
+      SELECT
+        coalesce(paid.occurred_at, to_timestamp(o."createdAt" / 1000.0)) AS sla_started_at,
+        coalesce(paid.occurred_at, to_timestamp(o."createdAt" / 1000.0)) + (coalesce(policy.sla_minutes, 30) * interval '1 minute') AS sla_deadline_at
+      FROM (SELECT 1) seed
+      LEFT JOIN LATERAL (
+        SELECT occurred_at
+        FROM pos.order_tracking_events
+        WHERE order_source_id = o."_id"
+          AND event_type = 'order_lifecycle'
+          AND to_status = 'paid'
+        ORDER BY occurred_at ASC
+        LIMIT 1
+      ) paid ON true
+      LEFT JOIN LATERAL (
+        SELECT sla_minutes
+        FROM pos.order_tracking_sla_policies
+        WHERE active
+          AND (effective_from IS NULL OR effective_from <= now())
+          AND (effective_until IS NULL OR effective_until > now())
+          AND (order_type = '*' OR order_type = lower(coalesce(o."orderType", '*')))
+        ORDER BY (order_type <> '*') DESC, effective_from DESC
+        LIMIT 1
+      ) policy ON true
+    ) sla ON o.status IN ('paid', 'completed')
     ${whereSql}
     ORDER BY o."createdAt" DESC NULLS LAST
     LIMIT 50
