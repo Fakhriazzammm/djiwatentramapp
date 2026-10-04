@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search, Star, X, ZoomIn, ZoomOut } from "lucide-react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { chipClassName } from "./shared-components";
 import { deterministicRecommendationScore, trendLiftScore } from "@/lib/recommendation-engine";
 import { markRecommendationNotInterested, recommendationFatiguePenalty, recommendationFeedbackPenalty, recordRecommendationEvent } from "@/lib/recommendation-events";
+import { useProductReviewSummary } from "@/hooks/use-product-reviews";
 
 
 function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
@@ -25,6 +26,21 @@ function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
 			fallback={<PackageSearch className="h-7 w-7" strokeWidth={1.8} />}
 		/>
 	);
+}
+
+function ProductReviewSignal({ productSourceId }: { productSourceId: string }) {
+	const anchorRef = useRef<HTMLDivElement | null>(null);
+	const [enabled, setEnabled] = useState(false);
+	useEffect(() => {
+		const node = anchorRef.current;
+		if (!node || typeof IntersectionObserver === "undefined") { setEnabled(true); return; }
+		const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setEnabled(true); observer.disconnect(); } }, { rootMargin: "160px" });
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, []);
+	const { summary, isLoading } = useProductReviewSummary(productSourceId, enabled);
+	if (!enabled || isLoading || !summary || summary.publishedCount < 1 || summary.ratingAverage == null) return <span ref={anchorRef} className="block min-h-3" aria-hidden="true" />;
+	return <span ref={anchorRef} className="flex min-w-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground" aria-label={`Rating ${summary.ratingAverage.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dari 5, ${summary.publishedCount} ulasan`}><Star className="h-3 w-3 shrink-0 text-amber-500" fill="currentColor" />{summary.ratingAverage.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span aria-hidden="true">·</span><span className="truncate">{summary.publishedCount} ulasan</span></span>;
 }
 
 function ProductImageButton({ src, alt, isSold }: { src?: string | null; alt: string; isSold: boolean }) {
@@ -70,7 +86,8 @@ export interface MenuSectionProps {
 	freeRefillCharge: number;
 	bestSellers?: Array<{ productId: string; totalSold: number; period?: "today" | "week" | "previous_week" | "month" | "all" }> | undefined;
 	recentProductIds?: string[];
-	handleProductSelect: (product: Doc<"products">) => void;
+	handleProductSelect: (product: Doc<"products">) => boolean;
+	onRecommendationAdded?: (product: Doc<"products">, origin: DOMRect) => void;
 	isMenuError: boolean;
 	isMenuLoading: boolean;
 	onRetryMenu: () => void;
@@ -183,7 +200,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 	})();
 	const recommendationPositions = [2, 6, 11, 17].map((position, index) => ({ position, sort: (catalogProducts.length * 31 + index * 17) % 101 })).sort((a, b) => a.sort - b.sort).map((entry) => entry.position).filter((position) => position < catalogProducts.length);
 	const recommendationBlocksByIndex = new Map(recommendationBlocks.slice(0, recommendationPositions.length).map((block, index) => [recommendationPositions[index], block]));
-	const renderRecommendationBlock = (block: (typeof recommendationBlocks)[number]) => <section className="col-span-2 mt-3 rounded-2xl border border-primary/15 bg-primary/5 p-2.5" aria-label={block.title}><div className="mb-2"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">{block.title}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{block.subtitle}</p></div><div className="grid grid-cols-2 gap-2">{block.products.map((recommendation) => <div key={`${block.strategy}-${recommendation._id}`} className="relative min-w-0"><button type="button" onClick={() => { void recordRecommendationEvent({ eventType: "click", recommendedProductSourceId: String(recommendation._id), strategy: block.strategy }); props.handleProductSelect(recommendation); }} className="flex min-h-16 w-full items-center gap-2 rounded-xl border border-border bg-card p-2 pr-9 text-left shadow-sm"><span className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">{recommendation.image ? <img src={recommendation.image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</span><span className="min-w-0"><span className="block line-clamp-2 text-xs font-black leading-tight">{recommendation.name}</span><span className="mt-1 block text-[10px] font-bold text-primary">{currency(Number(recommendation.price ?? 0))}</span></span></button><button type="button" aria-label={`Tidak tertarik dengan ${recommendation.name}`} title="Tidak tertarik" className="absolute right-1 top-1 z-10 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" onClick={() => { markRecommendationNotInterested(String(recommendation._id)); void recordRecommendationEvent({ eventType: "not_interested", recommendedProductSourceId: String(recommendation._id), strategy: block.strategy }); }}><X className="h-4 w-4" strokeWidth={2} aria-hidden="true" /></button></div>)}</div></section>;
+	const renderRecommendationBlock = (block: (typeof recommendationBlocks)[number]) => <section className="col-span-2 mt-3 rounded-2xl border border-primary/15 bg-primary/5 p-2.5" aria-label={block.title}><div className="mb-2"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">{block.title}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{block.subtitle}</p></div><div className="grid grid-cols-2 gap-2">{block.products.map((recommendation) => <div key={`${block.strategy}-${recommendation._id}`} className="relative min-w-0"><button type="button" onClick={(event) => { void recordRecommendationEvent({ eventType: "click", recommendedProductSourceId: String(recommendation._id), strategy: block.strategy }); const added = props.handleProductSelect(recommendation); if (added) props.onRecommendationAdded?.(recommendation, event.currentTarget.getBoundingClientRect()); }} className="flex min-h-16 w-full items-center gap-2 rounded-xl border border-border bg-card p-2 pr-9 text-left shadow-sm"><span className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">{recommendation.image ? <img src={recommendation.image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</span><span className="min-w-0"><span className="block line-clamp-2 text-xs font-black leading-tight">{recommendation.name}</span><span className="mt-1 block text-[10px] font-bold text-primary">{currency(Number(recommendation.price ?? 0))}</span></span></button><button type="button" aria-label={`Tidak tertarik dengan ${recommendation.name}`} title="Tidak tertarik" className="absolute right-1 top-1 z-10 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" onClick={() => { markRecommendationNotInterested(String(recommendation._id)); void recordRecommendationEvent({ eventType: "not_interested", recommendedProductSourceId: String(recommendation._id), strategy: block.strategy }); }}><X className="h-4 w-4" strokeWidth={2} aria-hidden="true" /></button></div>)}</div></section>;
 	const firstProductIndexByRootCategory = new Map<string, number>();
 	const firstProductIndexByCategory = new Map<string, number>();
 	catalogProducts.forEach((product, index) => {
@@ -332,6 +349,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 												</div>
 												<p className="break-words text-[13px] font-black leading-tight">{product.name}</p>
 												{product.description ? <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{product.description}</p> : <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Siap dipesan di meja Anda.</p>}
+												<ProductReviewSignal productSourceId={String(product._id)} />
 												{hasNutritionValues ? <div className="mt-1 flex items-center gap-3 border-y border-primary/10 py-1"><p className="shrink-0 text-[10px] font-black text-primary">Gizi</p><div className="grid min-w-0 flex-1 grid-cols-5 gap-1">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbo", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`], ["Gula", `${nutrition.sugarG ?? "-"} g`]].map(([label, value]) => <div key={label} className="min-w-0"><p className="truncate text-[9px] leading-tight text-muted-foreground">{label}</p><p className="truncate text-[10px] font-black leading-tight text-foreground">{value}</p></div>)}</div></div> : null}
 											</div>
 											<div className="flex items-center justify-between gap-2">

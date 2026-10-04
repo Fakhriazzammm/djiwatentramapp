@@ -11,7 +11,7 @@ import {
 	X,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
@@ -354,6 +354,7 @@ function OrderPage() {
 	const [pendingNumberProduct, setPendingNumberProduct] = useState<Doc<"products"> | null>(null);
 	const [pendingNumberQuantity, setPendingNumberQuantity] = useState(1);
 	const [upsellMainItem, setUpsellMainItem] = useState<CartItem | null>(null);
+	const [recommendationFlight, setRecommendationFlight] = useState<{ image?: string | null; name: string; left: number; top: number } | null>(null);
 	const [upsellSourceProductId, setUpsellSourceProductId] = useState<string | null>(null);
 	const upsellRecommendations = useProductUpsellRecommendations(upsellSourceProductId, menuRefreshTrigger);
 
@@ -772,15 +773,15 @@ function OrderPage() {
 		setUpsellSourceProductId(String(item.productId));
 	};
 
-	const handleProductSelect = (product: (typeof orderedProducts)[number]) => {
+	const handleProductSelect = (product: (typeof orderedProducts)[number]): boolean => {
 		if (product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0)) {
 			toast.info(`${product.name} sedang SOLD`);
-			return;
+			return false;
 		}
 		const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 		if (hasVariations) {
 			setProductSheet(product);
-			return;
+			return false;
 		}
 		const pricing = calculateEffectivePrice(
 			{ _id: product._id, price: product.price, categoryId: product.categoryId },
@@ -797,6 +798,7 @@ function OrderPage() {
 			categoryId: product.categoryId,
 			menuNumber: product.menuNumber,
 		});
+		return true;
 	};
 
 	const approvePendingNumberProduct = () => {
@@ -1382,7 +1384,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ onRecommendationAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
@@ -1400,6 +1402,10 @@ function OrderPage() {
 						setReceipt((previous) => previous ? { ...previous, mode: "cashier_expired" } : previous);
 					}, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
+
+				<AnimatePresence>
+					{recommendationFlight ? <motion.div key={recommendationFlight.name} aria-hidden="true" className="pointer-events-none fixed z-[1200] h-11 w-11 overflow-hidden rounded-full border-2 border-white bg-primary shadow-[0_8px_24px_rgba(15,23,42,0.28)]" initial={{ left: recommendationFlight.left, top: recommendationFlight.top, scale: 1, opacity: 1 }} animate={{ left: "calc(50% - 22px)", top: "calc(100% - 92px)", scale: 0.35, opacity: 0.15, rotate: 18 }} exit={{ opacity: 0, scale: 0.2 }} transition={{ duration: 0.62, ease: [0.22, 0.8, 0.35, 1] }}>{recommendationFlight.image ? <img src={recommendationFlight.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-lg font-black text-white">+</span>}</motion.div> : null}
+				</AnimatePresence>
 
 				{/* ── Bottom bar ──────────────────────────────────── */}
 				{step !== "table" && step !== "address" && step !== "party" && step !== "refill" && step !== "shipping" && step !== "review" && step !== "payment" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
