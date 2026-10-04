@@ -355,6 +355,7 @@ function OrderPage() {
 	const [pendingNumberQuantity, setPendingNumberQuantity] = useState(1);
 	const [upsellMainItem, setUpsellMainItem] = useState<CartItem | null>(null);
 	const [recommendationFlight, setRecommendationFlight] = useState<{ image?: string | null; name: string; left: number; top: number } | null>(null);
+	const [pendingProductOrigin, setPendingProductOrigin] = useState<DOMRect | null>(null);
 	const [upsellSourceProductId, setUpsellSourceProductId] = useState<string | null>(null);
 	const upsellRecommendations = useProductUpsellRecommendations(upsellSourceProductId, menuRefreshTrigger);
 
@@ -1384,7 +1385,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
@@ -1469,7 +1470,7 @@ function OrderPage() {
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
 				<SheetContent side="bottom" showCloseButton={false} className="z-[2000] h-auto max-h-[calc(100dvh-0.75rem)] overflow-hidden rounded-t-3xl p-0">
 					<Suspense fallback={<div className="p-6 text-center text-xs text-muted-foreground">Menyiapkan detail menu...</div>}>
-						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => setProductSheet(null)} onAdd={(item) => { addItemAndOfferUpsells(item); setProductSheet(null); }} />
+						<ProductSheet product={productSheet} discounts={memberDiscounts ?? []} onClose={() => { setPendingProductOrigin(null); setProductSheet(null); }} onAdd={(item) => { addItemAndOfferUpsells(item); if (pendingProductOrigin) { setRecommendationFlight({ image: item.image, name: item.name, left: pendingProductOrigin.left + pendingProductOrigin.width / 2 - 22, top: pendingProductOrigin.top + pendingProductOrigin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); } setPendingProductOrigin(null); setProductSheet(null); }} />
 					</Suspense>
 				</SheetContent>
 			</Sheet>
