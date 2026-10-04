@@ -21,6 +21,11 @@ export type CustomerOrder = {
 	tableNumber: string | null;
 	items: CustomerOrderItem[];
 	createdAt: number;
+	trackingStatus?: string | null;
+	estimatedReadyAt?: string | null;
+	trackingGroupCount?: number;
+	trackingFinishedGroupCount?: number;
+	trackingGroups?: Array<{ groupType: string; status: string; completedAt?: string | null; updatedAt?: string | null }>;
 };
 
 export type CustomerOrderItem = {
@@ -30,6 +35,7 @@ export type CustomerOrderItem = {
 	price: number;
 	originalPrice?: number;
 	variant?: string | null;
+	status?: string | null;
 };
 
 export type CustomerPointEntry = {
@@ -67,9 +73,15 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 					price: Number(item.price ?? 0),
 					originalPrice: item.originalPrice == null ? undefined : Number(item.originalPrice),
 					variant: (item.variant as string | null | undefined) ?? null,
+					status: (item.status as string | null | undefined) ?? null,
 				}))
 			: [],
 		createdAt: Number(row.createdAt ?? row.created_at ?? row._creationTime ?? 0),
+		trackingStatus: (row.trackingStatus ?? row.tracking_status) as string | null | undefined,
+		estimatedReadyAt: (row.estimatedReadyAt ?? row.estimated_ready_at) as string | null | undefined,
+		trackingGroupCount: Number(row.trackingGroupCount ?? row.tracking_group_count ?? 0),
+		trackingFinishedGroupCount: Number(row.trackingFinishedGroupCount ?? row.tracking_finished_group_count ?? 0),
+		trackingGroups: Array.isArray(row.trackingGroups ?? row.tracking_groups) ? (row.trackingGroups ?? row.tracking_groups) as CustomerOrder["trackingGroups"] : [],
 	};
 }
 

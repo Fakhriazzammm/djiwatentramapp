@@ -17,6 +17,7 @@ import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
 import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
+import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 
 type GuestData = {
 	name: string;
@@ -264,6 +265,8 @@ function MemberHomePage() {
 					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
 						<B2BPromoBanner href={b2bChannelHref} />
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
+						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
+						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
 						<CustomerHomeServiceGrid

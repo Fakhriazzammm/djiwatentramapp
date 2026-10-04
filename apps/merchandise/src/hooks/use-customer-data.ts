@@ -26,6 +26,11 @@ export type CustomerOrder = {
 	tableNumber: string | null;
 	items: CustomerOrderItem[];
 	createdAt: number;
+	trackingStatus?: string | null;
+	estimatedReadyAt?: string | null;
+	trackingGroupCount?: number;
+	trackingFinishedGroupCount?: number;
+	trackingGroups?: Array<{ groupType: string; status: string; completedAt?: string | null; updatedAt?: string | null }>;
 };
 
 export type CustomerOrderItem = {
@@ -36,6 +41,7 @@ export type CustomerOrderItem = {
 	originalPrice?: number;
 	image?: string | null;
 	variant?: string | null;
+	status?: string | null;
 };
 
 export type CustomerPointEntry = {
@@ -79,6 +85,7 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 					originalPrice: item.originalPrice == null ? undefined : Number(item.originalPrice),
 					image: (item.image ?? item.imageUrl ?? item.image_url ?? null) as string | null,
 					variant: (item.variant as string | null | undefined) ?? null,
+					status: (item.status as string | null | undefined) ?? null,
 				}))
 			: [],
 		createdAt: Number(row.createdAt ?? row._creationTime ?? 0),

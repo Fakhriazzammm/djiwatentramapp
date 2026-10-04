@@ -661,12 +661,54 @@ app.get("/api/customer/profile", async (c) => {
   return privateJson({ success: true, customer: result.rows[0] ?? null });
 });
 
+
+function customerOrderTrackingSelect(whereSql: string) {
+  return `
+    SELECT o.*,
+      COALESCE(groups.groups, '[]'::json) AS "trackingGroups",
+      COALESCE(groups.total_groups, 0)::int AS "trackingGroupCount",
+      COALESCE(groups.finished_groups, 0)::int AS "trackingFinishedGroupCount",
+      COALESCE(est.estimated_ready_at, NULL) AS "estimatedReadyAt",
+      CASE
+        WHEN o.status = 'cancelled' THEN 'cancelled'
+        WHEN o.status NOT IN ('paid', 'completed') THEN 'pending_payment'
+        WHEN o.status = 'completed' AND COALESCE(groups.total_groups, 0) = 0 THEN 'completed'
+        WHEN COALESCE(groups.total_groups, 0) > 0
+          AND COALESCE(groups.finished_groups, 0) = COALESCE(groups.total_groups, 0)
+          THEN CASE WHEN lower(COALESCE(o."orderType", '')) IN ('dine_in', 'dine-in', 'dinein')
+                    THEN 'ready_for_table' ELSE 'ready_for_pickup' END
+        WHEN COALESCE(groups.preparing_groups, 0) > 0 THEN 'preparing'
+        ELSE 'received'
+      END AS "trackingStatus"
+    FROM public.pos_orders o
+    LEFT JOIN (
+      SELECT order_no,
+        json_agg(json_build_object(
+          'groupType', group_type,
+          'status', status,
+          'completedAt', selesai_at,
+          'updatedAt', updated_at
+        ) ORDER BY group_type) AS groups,
+        count(*)::int AS total_groups,
+        count(*) FILTER (WHERE status = 'selesai')::int AS finished_groups,
+        count(*) FILTER (WHERE status = 'dibuat')::int AS preparing_groups
+      FROM pos.order_status
+      GROUP BY order_no
+    ) groups ON groups.order_no = o."orderNumber"
+    LEFT JOIN pos.order_tracking_estimates est
+      ON est.order_source_id = o."_id"
+    ${whereSql}
+    ORDER BY o."createdAt" DESC NULLS LAST
+    LIMIT 50
+  `;
+}
+
 app.get("/api/customer/orders", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
 
   const result = await pool.query(
-    'SELECT * FROM public.pos_orders WHERE "customerSourceId" = $1 ORDER BY "createdAt" DESC NULLS LAST LIMIT 50',
+    customerOrderTrackingSelect('WHERE o."customerSourceId" = $1'),
     [session.user.id],
   );
   return privateJson({ success: true, orders: result.rows });
@@ -748,7 +790,7 @@ app.post("/api/customer/guest-orders", async (c) => {
   if (orderIds.length === 0) return privateJson({ success: true, orders: [] });
 
   const result = await pool.query(
-    'SELECT * FROM public.pos_orders WHERE "_id" = ANY($1::text[]) ORDER BY "createdAt" DESC NULLS LAST',
+    customerOrderTrackingSelect('WHERE o."_id" = ANY($1::text[])'),
     [orderIds],
   );
   return privateJson({ success: true, orders: result.rows });

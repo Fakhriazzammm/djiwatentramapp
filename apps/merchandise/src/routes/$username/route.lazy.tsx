@@ -13,6 +13,8 @@ import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/custo
 import { CustomerHomeActions, CustomerHomeHeader, CustomerGreeting, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { MARKETPLACE_BRAND_NAME } from "@/lib/marketplace-config";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
+import { useCustomerOrders } from "@/hooks/use-customer-data";
+import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 
 type GuestData = {
 	name: string;
@@ -50,6 +52,7 @@ function MemberHomePage() {
 	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, logout, refreshCustomer } = useCustomerAuth();
 	const { setCart } = useOrderContext();
+	const { orders: customerOrders } = useCustomerOrders();
 	const siteSettings = useHybridSiteSettings();
 	const [showMemberOnboarding, setShowMemberOnboarding] = useState(false);
 	const [showProfileCompletion, setShowProfileCompletion] = useState(false);
@@ -186,6 +189,7 @@ function MemberHomePage() {
 						<CustomerGreeting name={guestData.name} />
 						<MerchandisePromoBanner />
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Temukan koleksi merchandise pilihan.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
+						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
 						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
 						<CustomerHomeActions onHistory={() => window.location.assign(djiwaHistoryHref)} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
@@ -221,6 +225,7 @@ function MemberHomePage() {
 						<CustomerGreeting name={displayName} />
 						<MerchandisePromoBanner />
 						<CustomerWalletSummary customer={customer} onTopup={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`)} />
+						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
 						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 						<DjiwaPayOfferCard isMember onAction={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`)} />
 						<CustomerHomeActions onHistory={() => window.location.assign(djiwaHistoryHref)} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
