@@ -1,7 +1,7 @@
 {
-  "version": "0.2.134",
-  "commitHash": "f61c643",
-  "message": "feat(customer): match merch profile member card in apps/customer",
-  "buildDate": "2026-09-04",
-  "generatedAt": "2026-09-04T05:56:05.302Z"
+  "version": "0.2.410",
+  "commitHash": "e4b4b2c",
+  "message": "feat(order-tracking): secure guest ownership tokens",
+  "buildDate": "2026-10-04",
+  "generatedAt": "2026-10-04T07:10:39.485Z"
 }

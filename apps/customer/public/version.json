@@ -1,7 +1,7 @@
 {
-  "version": "0.2.403",
-  "commitHash": "aa930f6",
-  "message": "feat(customer): include delivery shipping in checkout payment",
-  "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T16:50:54.515Z"
+  "version": "0.2.409",
+  "commitHash": "e4b4b2c",
+  "message": "feat(order-tracking): secure guest ownership tokens",
+  "buildDate": "2026-10-04",
+  "generatedAt": "2026-10-04T07:10:14.392Z"
 }
