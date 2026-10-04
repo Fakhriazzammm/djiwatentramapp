@@ -23,6 +23,7 @@ export const auth = betterAuth({
     "https://ordermieyamin.yumme.id",
     "https://500kopitasik.yumme.id",
     "https://kolmarketing.yumme.id",
+    "https://rekrutmen.yumme.id",
     "http://localhost:5173",
     "http://localhost:3010",
   ],

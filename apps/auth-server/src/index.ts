@@ -23,6 +23,7 @@ const customerOrigins = [
   "https://ordermieyamin.yumme.id",
   "https://500kopitasik.yumme.id",
   "https://kolmarketing.yumme.id",
+  "https://rekrutmen.yumme.id",
   "http://localhost:5173",
   "http://localhost:3010",
 ];
@@ -61,6 +62,18 @@ app.use(
     credentials: true,
   }),
 );
+
+// Recruitment uses the same Google/customer OAuth client and callback.
+app.get("/api/auth/recruitment-session", async (c) => {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  const email = session?.user?.email?.trim().toLowerCase();
+  if (!session?.user?.id || !email || !RECRUITMENT_BRIDGE_SECRET) return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  const employee = await pool.query(`SELECT source_id FROM public.yumi_users WHERE is_active = true AND lower(btrim(email)) = $1 LIMIT 1`, [email]);
+  if (!employee.rows[0]) return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  const payload = Buffer.from(JSON.stringify({ sub: session.user.id, role: "HRD", exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = createHmac("sha256", RECRUITMENT_BRIDGE_SECRET).update(payload).digest("base64url");
+  return c.json({ success: true, token: `${payload}.${signature}`, role: "HRD" });
+});
 
 // Better Auth handler (customer)
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
