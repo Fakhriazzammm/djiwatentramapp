@@ -1,4 +1,4 @@
-import { Download, X } from "lucide-react";
+import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useEffect, useState } from "react";
 
 type BeforeInstallPromptEvent = Event & {
@@ -16,6 +16,29 @@ function isIos() {
 
 function isMobile() {
   return window.matchMedia("(max-width: 900px)").matches || /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+const INSTALL_PROMPT_SEEN_KEY = "djiwa-pwa-install-prompt-seen-date";
+
+function localDateKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function wasInstallPromptSeenToday() {
+  try {
+    return localStorage.getItem(INSTALL_PROMPT_SEEN_KEY) === localDateKey();
+  } catch {
+    return false;
+  }
+}
+
+function markInstallPromptSeenToday() {
+  try {
+    localStorage.setItem(INSTALL_PROMPT_SEEN_KEY, localDateKey());
+  } catch {
+    // Prompt tetap boleh dipakai jika storage browser diblokir.
+  }
 }
 
 type InstallGuide = {
@@ -60,12 +83,13 @@ export function PwaInstallPrompt() {
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
-    if (!isMobile() || isStandalone()) return;
+    if (!isMobile() || isStandalone() || wasInstallPromptSeenToday()) return;
 
     const showIosGuide = isIos();
     if (showIosGuide) {
       const timer = window.setTimeout(() => {
         setIos(true);
+        markInstallPromptSeenToday();
         setVisible(true);
       }, 1800);
       return () => window.clearTimeout(timer);
@@ -74,7 +98,10 @@ export function PwaInstallPrompt() {
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
-      window.setTimeout(() => setVisible(true), 900);
+      window.setTimeout(() => {
+        markInstallPromptSeenToday();
+        setVisible(true);
+      }, 900);
     };
     const handleInstalled = () => {
       setVisible(false);
@@ -92,6 +119,7 @@ export function PwaInstallPrompt() {
   if (!visible || isStandalone()) return null;
 
   const close = () => {
+    markInstallPromptSeenToday();
     setVisible(false);
   };
 
@@ -109,17 +137,18 @@ export function PwaInstallPrompt() {
   const guide = installGuide(ios);
 
   return (
-    <aside className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-[270px] rounded-[12px] border border-primary/15 bg-card/95 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.16)] backdrop-blur-xl" role="dialog" aria-label="Download Djiwa App">
-      <button type="button" onClick={close} aria-label="Tutup popup download untuk kunjungan ini" className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"><X className="h-3 w-3" /></button>
-      <div className="flex items-start gap-2 pr-6">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Download className="h-3.5 w-3.5" /></div>
-        <div className="min-w-0">
-          <p className="text-[11px] font-black">Download Djiwa App</p>
-          <p className="mt-0.5 text-[9px] font-bold leading-snug text-primary">{guide.title}</p>
+    <aside className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-[310px] rounded-2xl border border-primary/15 bg-card/95 p-3 shadow-[0_12px_32px_rgba(15,23,42,0.16)] backdrop-blur-xl" role="dialog" aria-label="Install Djiwa App">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+          <Djiwa3DIcon name="customer-benefit-promo" size="sm" alt="" className="h-10 w-10 object-contain" />
         </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black tracking-tight">Install Djiwa App</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Akses lebih cepat dari layar utama.</p>
+        </div>
+        <button type="button" onClick={close} aria-label="Tutup popup install" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">×</button>
       </div>
-      <div className="mt-1.5 rounded-lg bg-primary/5 px-2 py-1.5 text-[9px] leading-snug text-muted-foreground"><ol className="space-y-0.5">{guide.steps.map((step, index) => <li key={step}><span className="font-black text-foreground">{index + 1}.</span> {step}</li>)}</ol><p className="mt-1 border-t border-primary/10 pt-1 text-[8px] leading-snug text-muted-foreground">{guide.note}</p></div>
-      {!ios ? <button type="button" onClick={() => void install()} disabled={installing} className="mt-2 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-2 py-1.5 text-[11px] font-black text-primary-foreground disabled:opacity-60"><Download className="h-3.5 w-3.5" /> {installing ? "Menyiapkan..." : "Download sekarang"}</button> : null}
+      {ios ? <p className="mt-3 rounded-xl bg-primary/5 px-3 py-2 text-[10px] leading-relaxed text-muted-foreground">Safari: tekan <strong className="text-foreground">Share</strong> → <strong className="text-foreground">Add to Home Screen</strong> → <strong className="text-foreground">Add</strong>.</p> : <button type="button" onClick={() => void install()} disabled={installing} className="mt-3 flex min-h-10 w-full items-center justify-center rounded-xl bg-primary px-3 text-xs font-black text-primary-foreground transition active:scale-[.98] disabled:opacity-60">{installing ? "Menyiapkan..." : "Install Djiwa App"}</button>}
     </aside>
   );
 }
