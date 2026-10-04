@@ -67,7 +67,7 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
       </span>
       <span className="mt-1.5 flex items-center justify-between text-[9px] font-bold text-muted-foreground">
         <span>{total > 0 ? `${finished}/${total} bagian siap` : "Pembaruan otomatis"}</span>
-        <span className="text-primary">Detail pesanan</span>
+        <span className="rounded-full bg-primary px-2 py-1 text-[9px] font-black text-primary-foreground">Detail</span>
       </span>
     </motion.div>
   );
