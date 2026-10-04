@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.409",
+	semantic: "0.2.413",
 	// Git/deploy commit hash (short)
-	commitHash: "e4b4b2c",
-	message: "feat(order-tracking): secure guest ownership tokens",
+	commitHash: "11f6f57",
+	message: "fix(order-tracking): use guest token for receipt reads",
 	// Commit subject for the update prompt
-	commitMessage: "feat(order-tracking): secure guest ownership tokens",
+	commitMessage: "fix(order-tracking): use guest token for receipt reads",
 	// Build timestamp
 	buildDate: "2026-10-04",
 	// Full version string for display
