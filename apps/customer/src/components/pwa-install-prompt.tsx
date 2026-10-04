@@ -86,6 +86,12 @@ export function PwaInstallPrompt() {
     if (!isMobile() || isStandalone() || wasInstallPromptSeenToday()) return;
 
     const showIosGuide = isIos();
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const hideIfStandalone = () => {
+      if (!isStandalone()) return;
+      setVisible(false);
+      setDeferredPrompt(null);
+    };
     if (showIosGuide) {
       const timer = window.setTimeout(() => {
         setIos(true);
@@ -104,15 +110,23 @@ export function PwaInstallPrompt() {
       }, 900);
     };
     const handleInstalled = () => {
+      markInstallPromptSeenToday();
+      hideIfStandalone();
       setVisible(false);
       setDeferredPrompt(null);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
     window.addEventListener("appinstalled", handleInstalled);
+    displayMode.addEventListener?.("change", hideIfStandalone);
+    document.addEventListener("visibilitychange", hideIfStandalone);
+    window.addEventListener("pageshow", hideIfStandalone);
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
       window.removeEventListener("appinstalled", handleInstalled);
+      displayMode.removeEventListener?.("change", hideIfStandalone);
+      document.removeEventListener("visibilitychange", hideIfStandalone);
+      window.removeEventListener("pageshow", hideIfStandalone);
     };
   }, []);
 
