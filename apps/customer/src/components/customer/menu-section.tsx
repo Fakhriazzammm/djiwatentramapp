@@ -39,8 +39,9 @@ function ProductReviewSignal({ productSourceId }: { productSourceId: string }) {
 		return () => observer.disconnect();
 	}, []);
 	const { summary, isLoading } = useProductReviewSummary(productSourceId, enabled);
-	if (!enabled || isLoading || !summary || summary.publishedCount < 1 || summary.ratingAverage == null) return <span ref={anchorRef} className="block min-h-3" aria-hidden="true" />;
-	return <span ref={anchorRef} className="flex min-w-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground" aria-label={`Rating ${summary.ratingAverage.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dari 5, ${summary.publishedCount} ulasan`}><Star className="h-3 w-3 shrink-0 text-amber-500" fill="currentColor" />{summary.ratingAverage.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span aria-hidden="true">·</span><span className="truncate">{summary.publishedCount} ulasan</span></span>;
+	const hasRating = Boolean(summary && summary.publishedCount > 0 && summary.ratingAverage != null);
+	const ratingLabel = hasRating ? `Rating ${summary!.ratingAverage!.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dari 5, ${summary!.publishedCount} ulasan` : "Belum ada rating publik";
+	return <span ref={anchorRef} className="flex min-h-4 min-w-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground" aria-label={ratingLabel}>{hasRating ? <><Star className="h-3 w-3 shrink-0 text-amber-500" fill="currentColor" />{summary!.ratingAverage!.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span aria-hidden="true">·</span><span className="truncate">{summary!.publishedCount} ulasan</span></> : <><Star className="h-3 w-3 shrink-0 text-muted-foreground/60" />{isLoading ? "Memuat rating…" : "Belum ada rating"}</>}</span>;
 }
 
 function ProductImageButton({ src, alt, isSold }: { src?: string | null; alt: string; isSold: boolean }) {
