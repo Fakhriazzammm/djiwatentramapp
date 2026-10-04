@@ -43,7 +43,7 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}
-      className="relative fixed inset-x-3 bottom-[calc(4.125rem+max(1.25rem,var(--safe-area-bottom)))] z-30 mx-auto w-[calc(100%-1.5rem)] max-w-md rounded-2xl border border-primary/20 bg-card p-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.16)]"
+      className="fixed inset-x-3 bottom-[calc(4.125rem+max(1.25rem,var(--safe-area-bottom)))] z-30 mx-auto w-[calc(100%-1.5rem)] max-w-md rounded-2xl border border-primary/20 bg-card p-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.16)]"
       aria-label={`Lihat status pesanan ${order.orderNumber}`}
     >
       <button type="button" aria-label="Sembunyikan tracking pesanan" onClick={(event) => { event.stopPropagation(); setDismissed(true); }} className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
