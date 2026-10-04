@@ -155,6 +155,7 @@ async function validateRecruitmentAdmin(req, res, next) {
     res.locals.readOnly = true;
     return next();
   }
+  if (!req.get("x-yumi-session") && !req.get("authorization")) return res.status(401).json({ error: "HRD Google authentication diperlukan" });
   const outsourcingSession = verifyOutsourcingSession(req.get("x-rekrutmen-outsourcing-session"));
   if (outsourcingSession) {
     const candidateStatusPatch = req.method === "PATCH" && /^\/api\/table\/Candidates\/[0-9a-f-]+$/i.test(req.path);
