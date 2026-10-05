@@ -669,7 +669,7 @@ export function DataKaryawanPage() {
 								const isExpanded = expandedId === row._id;
 								return (
 									<React.Fragment key={row._id}>
-										<tr className={`border-b border-border/20 hover:bg-muted/10 transition-colors cursor-pointer focus-within:bg-muted/10 ${isExpanded ? "bg-primary/[0.02]" : ""} ${selectedIds.has(row._id) ? "bg-primary/[0.03]" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
+										<tr className={`border-b border-border/20 hover:bg-muted/10 transition-colors focus-within:bg-muted/10 ${isExpanded ? "bg-primary/[0.02]" : ""} ${selectedIds.has(row._id) ? "bg-primary/[0.03]" : ""}`}>
 											<td className="px-1 py-1 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(row._id); }}>
 												<input
 													type="checkbox"
@@ -695,10 +695,21 @@ export function DataKaryawanPage() {
 													) : (
 														<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ring-1 ring-border/50 ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
 													)}
-													<div className="min-w-0">
+													<div className="min-w-0 flex-1">
 														<p className="max-w-full truncate text-[13px] font-bold" title={row.name}>{row.name}</p>
 														<p className="max-w-full truncate text-[11px] text-muted-foreground" title={row.username || row.slug}>@{row.username || row.slug}</p>
 													</div>
+													{row.slug && (
+														<button
+															type="button"
+															title="Lihat profil karyawan"
+															aria-label={`Lihat profil ${row.name}`}
+															className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+															onClick={(e) => { e.stopPropagation(); navigate({ to: `/karyawan/${row.slug}` as any }); }}
+														>
+															<User className="h-3.5 w-3.5" />
+														</button>
+													)}
 												</div>
 											</td>
 											<td className="px-1.5 py-1" onClick={(e) => e.stopPropagation()}>
