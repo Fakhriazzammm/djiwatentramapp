@@ -17,14 +17,14 @@ const TOPUP_PENDING_KEY = "djiwa-topup-pending";
 const TOPUP_VERIFY_WINDOW_MS = 10 * 60_000;
 
 const WALLET_ACTIONS = [
-  { key: "topup", label: "Isi Saldo", asset: "/assets/djiwa-pay-actions/topup.webp?v=imagen-20260925", supported: true },
-  { key: "send", label: "Kirim", asset: "/assets/djiwa-pay-actions/send.webp?v=imagen-20260925", supported: false },
-  { key: "receive", label: "Terima", asset: "/assets/djiwa-pay-actions/receive.webp?v=imagen-20260925", supported: false },
-  { key: "scan", label: "Scan QR", asset: "/assets/djiwa-pay-actions/scan-qr.webp?v=imagen-20260925", supported: false },
-  { key: "history", label: "Riwayat", asset: "/assets/djiwa-pay-actions/bills.webp?v=imagen-20260925", supported: true },
-  { key: "card", label: "Kartu", asset: "/assets/djiwa-pay-actions/card.webp?v=imagen-20260925", supported: false },
-  { key: "withdraw", label: "Tarik Dana", asset: "/assets/djiwa-pay-actions/withdraw.webp?v=imagen-20260925", supported: false },
-  { key: "help", label: "Bantuan", asset: "/assets/djiwa-pay-actions/help.webp?v=imagen-20260925", supported: true }
+  { key: "topup", label: "Isi Saldo", asset: "/assets/djiwa-pay-actions/topup.webp", supported: true },
+  { key: "send", label: "Kirim", asset: "/assets/djiwa-pay-actions/send.webp", supported: false },
+  { key: "receive", label: "Terima", asset: "/assets/djiwa-pay-actions/receive.webp", supported: false },
+  { key: "scan", label: "Scan QR", asset: "/assets/djiwa-pay-actions/scan-qr.webp", supported: false },
+  { key: "history", label: "Riwayat", asset: "/assets/djiwa-pay-actions/history.webp", supported: true },
+  { key: "card", label: "Kartu", asset: "/assets/djiwa-pay-actions/card.webp", supported: false },
+  { key: "withdraw", label: "Tarik Dana", asset: "/assets/djiwa-pay-actions/withdraw.webp", supported: false },
+  { key: "help", label: "Bantuan", asset: "/assets/djiwa-pay-actions/help.webp", supported: true }
 ] as const;
 
 const LABELS: Record<string, string> = {
