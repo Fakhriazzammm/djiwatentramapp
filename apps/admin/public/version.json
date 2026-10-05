@@ -1,7 +1,7 @@
 {
-  "version": "0.2.449",
-  "commitHash": "1328fdd",
-  "message": "feat(admin): compact employee table and role editor",
+  "version": "0.2.450",
+  "commitHash": "608aafa",
+  "message": "fix(admin): show service worker update prompt",
   "buildDate": "2026-10-05",
-  "generatedAt": "2026-10-05T05:36:02.393Z"
+  "generatedAt": "2026-10-05T10:08:22.557Z"
 }
