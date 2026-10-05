@@ -213,7 +213,7 @@ export function AppUpdatePrompt() {
 						<div className="space-y-3 text-sm">
 							<div className="flex items-start justify-between gap-4">
 								<span className="text-muted-foreground">Versi app :</span>
-								<span className="font-semibold tabular-nums text-foreground">{updateInfo.latestVersion || "0.2.510"}</span>
+								<span className="font-semibold tabular-nums text-foreground">{updateInfo.updateReason === "service-worker" ? "Build baru siap dipasang" : updateInfo.latestVersion}</span>
 							</div>
 							<div className="flex items-start justify-between gap-4">
 								<span className="text-muted-foreground">Commit :</span>

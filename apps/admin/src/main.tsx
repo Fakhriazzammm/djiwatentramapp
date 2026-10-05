@@ -8,7 +8,8 @@ import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppUpdatePrompt } from "@/components/app-update-prompt";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
-import { startAppUpdatePolling, checkForAppUpdate, setPwaUpdateHandler } from "@/lib/app-update";
+import { startAppUpdatePolling, checkForAppUpdate, notifyAppUpdateAvailable, setPwaUpdateHandler } from "@/lib/app-update";
+import { APP_VERSION } from "@/lib/version";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 import { installNumberInputBehavior } from "@yumipos/web-shared";
@@ -36,9 +37,17 @@ const rootElement = document.getElementById("root")!;
 const updateSW = registerSW({
 	immediate: true,
 	onNeedRefresh() {
-		// SW bisa mendeteksi perubahan byte/cache walaupun release metadata
-		// masih sama. Checker versi menentukan apakah update benar-benar baru.
-		void checkForAppUpdate();
+		// A waiting service worker is itself proof of an installable update.
+		// Prefer release metadata, but do not silently drop SW-only updates.
+		void checkForAppUpdate().then((info) => {
+			if (info) return;
+			notifyAppUpdateAvailable({
+				latestVersion: APP_VERSION.semantic,
+				latestCommit: APP_VERSION.commitHash,
+				latestMessage: "Build baru siap dipasang.",
+				updateReason: "service-worker",
+			});
+		});
 	},
 });
 setPwaUpdateHandler(updateSW);

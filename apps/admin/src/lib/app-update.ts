@@ -11,6 +11,7 @@ export type AppUpdateInfo = {
 	latestCommit: string;
 	latestMessage?: string;
 	buildDate?: string;
+	updateReason?: "release" | "service-worker";
 };
 
 let latestUpdateInfo: AppUpdateInfo | null = null;
@@ -44,6 +45,7 @@ export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 		latestCommit: info?.latestCommit || latestUpdateInfo?.latestCommit || APP_VERSION.commitHash,
 		latestMessage: info?.latestMessage || latestUpdateInfo?.latestMessage,
 		buildDate: info?.buildDate || latestUpdateInfo?.buildDate,
+		updateReason: info?.updateReason ?? "release",
 	};
 
 	window.dispatchEvent(new CustomEvent<AppUpdateInfo>(APP_UPDATE_EVENT, { detail: latestUpdateInfo }));
@@ -100,6 +102,7 @@ export async function checkForAppUpdate() {
 			latestCommit: normalizeVersionValue(payload.commitHash ?? payload.commit) || APP_VERSION.commitHash,
 			latestMessage: normalizeVersionValue(payload.message ?? payload.commitMessage) || undefined,
 			buildDate: normalizeVersionValue(payload.buildDate) || undefined,
+			updateReason: "release",
 		};
 
 		notifyAppUpdateAvailable(updateInfo);
@@ -132,7 +135,8 @@ export async function applyAppUpdate() {
 	// Jika versi sama — update palsu (misal commit-only rebuild di Vercel).
 	// Set inflight flag biar polling skip 1x, reset state, dan close dialog.
 	// JANGAN reload — tidak ada update baru.
-	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion &&
+	if (latestUpdateInfo && latestUpdateInfo.updateReason !== "service-worker" &&
+		latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion &&
 		latestUpdateInfo.currentCommit === latestUpdateInfo.latestCommit) {
 		sessionStorage.setItem("__app_update_inflight__", "1");
 		if ("serviceWorker" in navigator) {
