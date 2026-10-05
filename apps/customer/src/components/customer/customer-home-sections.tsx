@@ -1,5 +1,4 @@
 import { BadgePercent, ChevronRight, Loader2, Wallet } from "lucide-react";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import type { ReactNode } from "react";
 import type { CustomerUser } from "@/hooks/use-customer-auth";
 import { currency } from "@/components/customer/types";
@@ -74,15 +73,15 @@ export function CustomerHomeServiceGrid({
   onBooking: () => void;
   onDjiwaRun: () => void;
 }) {
-  const items: Array<{ label: string; badge?: string; icon?: Djiwa3DIconName; assetSrc?: string; onClick: () => void }> = [
-    { label: "Pesan Menu", badge: "Favorit", icon: "customer-food-ordering", onClick: onOrder },
-    { label: "Promo", badge: "50%", icon: "promo-voucher", onClick: onPromo },
-    { label: "Djiwa Pay", badge: "+Rp1.000", icon: "payment-wallet", onClick: onWallet },
-    { label: "Riwayat", icon: "navigation-history", onClick: onHistory },
-    { label: "Komunitas", icon: "navigation-community", onClick: onCommunity },
-    { label: "Merchandise", badge: "Baru", assetSrc: "/assets/djiwa-3d-merchandise-v1.webp", onClick: onMerchandise },
-    { label: "Booking", badge: "Acara", icon: "restaurant-cafe", onClick: onBooking },
-    { label: "Djiwa Run", badge: "Baru", icon: "djiwa-run", onClick: onDjiwaRun },
+  const items: Array<{ label: string; badge?: string; badgeClass: string; assetSrc: string; onClick: () => void }> = [
+    { label: "Pesan Menu", badge: "Favorit", badgeClass: "bg-emerald-500", assetSrc: "/assets/djiwa-services/menu.webp", onClick: onOrder },
+    { label: "Promo", badge: "50%", badgeClass: "bg-rose-500", assetSrc: "/assets/djiwa-services/promo.webp", onClick: onPromo },
+    { label: "Djiwa Pay", badge: "+Rp1.000", badgeClass: "bg-violet-500", assetSrc: "/assets/djiwa-services/pay.webp", onClick: onWallet },
+    { label: "Riwayat", badgeClass: "bg-slate-500", assetSrc: "/assets/djiwa-services/history.webp", onClick: onHistory },
+    { label: "Komunitas", badgeClass: "bg-pink-500", assetSrc: "/assets/djiwa-services/community.webp", onClick: onCommunity },
+    { label: "Merchandise", badge: "Baru", badgeClass: "bg-indigo-500", assetSrc: "/assets/djiwa-services/merchandise.webp", onClick: onMerchandise },
+    { label: "Booking", badge: "Acara", badgeClass: "bg-orange-500", assetSrc: "/assets/djiwa-services/booking.webp", onClick: onBooking },
+    { label: "Djiwa Run", badge: "Baru", badgeClass: "bg-lime-600", assetSrc: "/assets/djiwa-services/run.webp", onClick: onDjiwaRun },
   ];
 
   return (
@@ -103,9 +102,9 @@ export function CustomerHomeServiceGrid({
             className="group relative flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[16px] px-0.5 py-1.5 transition-transform duration-[180ms] active:scale-[.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             aria-label={item.label}
           >
-            {item.badge ? <span className="absolute left-0.5 top-0.5 z-10 max-w-[calc(100%-4px)] truncate rounded-full bg-[#0d2d54] px-1.5 py-0.5 text-[8px] font-black leading-tight text-white shadow-sm">{item.badge}</span> : null}
-            <span className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-primary/5 transition-transform duration-[180ms] group-active:scale-95">
-              {item.assetSrc ? <img src={item.assetSrc} alt="" className="h-10 w-10 object-contain" loading="lazy" /> : item.icon ? <Djiwa3DIcon name={item.icon} size="sm" alt="" className="h-10 w-10 object-contain" /> : null}
+            {item.badge ? <span className={`absolute left-0.5 top-0.5 z-10 max-w-[calc(100%-4px)] truncate rounded-full px-1.5 py-0.5 text-[8px] font-black leading-tight text-white shadow-sm ${item.badgeClass}`}>{item.badge}</span> : null}
+            <span className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-white transition-transform duration-[180ms] group-active:scale-95">
+              <img src={item.assetSrc} alt="" className="h-11 w-11 object-contain" loading="lazy" />
             </span>
             <span className="max-w-full truncate text-center text-[10px] font-bold leading-tight text-foreground">{item.label}</span>
           </button>
