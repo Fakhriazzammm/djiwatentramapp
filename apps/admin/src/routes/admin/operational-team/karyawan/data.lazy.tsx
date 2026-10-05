@@ -1,6 +1,8 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useHybridPublicUsers } from "@/hooks/use-hybrid-attendance-data";
+import { useHybridAllPublicUsers } from "@/hooks/use-hybrid-attendance-data";
+import { useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
+import { useHybridUpdateUser } from "@/hooks/use-hybrid-write-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,7 +99,7 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 	if (!expanded) return null;
 	return (
 		<tr className="border-b border-border/20 bg-muted/10">
-			<td colSpan={16} className="p-0">
+			<td colSpan={17} className="p-0">
 				<div className="px-3 py-3">
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
@@ -119,6 +121,16 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 								<div className="flex justify-between text-[10px]">
 									<span className="text-muted-foreground">Alamat</span>
 									<span className="font-medium text-right max-w-[200px] truncate">{r.address || "\u2014"}</span>
+								</div>
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">No HP</span><span className="font-medium">{r.phone || "—"}</span>
+								</div>
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">Tipe kerja</span><span className="font-medium">{r.employmentType || "—"}</span>
+								</div>
+								<div className="flex justify-between text-[10px]">
+									<span className="text-muted-foreground">Wajah / CV</span>
+									<span className="font-medium">{row.hasFace ? "Wajah ✓" : "Wajah —"} · {r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Buka CV</a> : "CV —"}</span>
 								</div>
 							</div>
 						</div>
@@ -171,7 +183,12 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 
 export function DataKaryawanPage() {
 	const navigate = useNavigate();
-	const allStaff = useHybridPublicUsers();
+	const [usersRefreshTrigger, setUsersRefreshTrigger] = useState(0);
+	const allStaff = useHybridAllPublicUsers(usersRefreshTrigger);
+	const staffRoles = useHybridStaffRoles() ?? [];
+	const updateUserRole = useHybridUpdateUser();
+	const [savingRoleIds, setSavingRoleIds] = useState<Set<string>>(new Set());
+	const [bulkRoleId, setBulkRoleId] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [roleFilter, setRoleFilter] = useState("");
 	const [statusFilter, setStatusFilter] = useState("");
@@ -374,18 +391,19 @@ export function DataKaryawanPage() {
 	}
 
 	function handleBulkDelete() {
-		if (selectedIds.size === 0) return;
+		const targets = filtered.filter((row: any) => selectedIds.has(row._id));
+		if (targets.length === 0) return;
 		setConfirmModal({
 			isOpen: true,
-			title: `Hapus ${selectedIds.size} Karyawan?`,
-			message: `${selectedIds.size} data karyawan akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.`,
+			title: `Hapus ${targets.length} Karyawan?`,
+			message: `${targets.length} data karyawan yang terlihat dan dipilih akan dihapus permanen dari onboarding, kontrak, dan daftar karyawan.`,
 			confirmText: "Ya, Hapus Semua",
 			variant: "danger",
 			loading: false,
 			onConfirm: async () => {
 				setIsBulkDeleting(true);
 				try {
-					const ids = Array.from(selectedIds);
+					const ids = targets.map((row: any) => row._id);
 					await cascadeDeleteUsers(ids);
 					setSelectedIds(new Set());
 					toast.success(`${ids.length} karyawan dihapus`);
@@ -400,6 +418,52 @@ export function DataKaryawanPage() {
 		});
 	}
 
+	async function handleRoleChange(row: any, roleId: string) {
+		if (!roleId || roleId === row.roleId || savingRoleIds.has(row._id)) return;
+		setSavingRoleIds((prev) => new Set(prev).add(row._id));
+		try {
+			await updateUserRole({ id: row._id, roleId });
+			setUsersRefreshTrigger((value) => value + 1);
+			toast.success(`Role ${row.name} diperbarui`);
+		} catch (error: any) {
+			toast.error(error?.message || `Gagal mengubah role ${row.name}`);
+		} finally {
+			setSavingRoleIds((prev) => { const next = new Set(prev); next.delete(row._id); return next; });
+		}
+	}
+
+	function handleBulkRoleChange() {
+		const targets = filtered.filter((row: any) => selectedIds.has(row._id));
+		const selectedRole = staffRoles.find((role: any) => String(role._id) === bulkRoleId);
+		if (!targets.length || !selectedRole) return;
+		setConfirmModal({
+			isOpen: true,
+			title: `Ubah role ${targets.length} karyawan?`,
+			subtitle: `Role baru: ${selectedRole.name}`,
+			message: `Akses akun ${targets.length} karyawan terpilih akan mengikuti role ${selectedRole.name}.`,
+			confirmText: `Ubah ${targets.length} role`,
+			variant: "warning",
+			loading: false,
+			onConfirm: async () => {
+				setIsBulkDeleting(true);
+				setConfirmModal((prev) => ({ ...prev, loading: true }));
+				try {
+					const results = await Promise.allSettled(targets.map((row: any) => updateUserRole({ id: row._id, roleId: bulkRoleId })));
+					const succeeded = results.filter((result) => result.status === "fulfilled").length;
+					const failed = results.length - succeeded;
+					setUsersRefreshTrigger((value) => value + 1);
+					setSelectedIds(new Set());
+					setBulkRoleId("");
+					if (failed) toast.error(`${succeeded} berhasil, ${failed} gagal. Periksa kembali role karyawan.`);
+					else toast.success(`Role ${succeeded} karyawan diperbarui ke ${selectedRole.name}`);
+				} finally {
+					setIsBulkDeleting(false);
+					setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+				}
+			},
+		});
+	}
+
 	const toggleSelect = (id: string) => {
 		setSelectedIds((prev) => {
 			const n = new Set(prev);
@@ -409,8 +473,15 @@ export function DataKaryawanPage() {
 	};
 
 	const toggleSelectAll = () => {
-		if (selectedIds.size === filtered.length) { setSelectedIds(new Set()); }
-		else { setSelectedIds(new Set(filtered.map((row: any) => row._id))); }
+		const allVisibleSelected = filtered.length > 0 && filtered.every((row: any) => selectedIds.has(row._id));
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			for (const row of filtered as any[]) {
+				if (allVisibleSelected) next.delete(row._id);
+				else next.add(row._id);
+			}
+			return next;
+		});
 	};
 
 	const ThButton = ({ col, children, className = "" }: { col: string; children: React.ReactNode; className?: string }) => (
@@ -521,10 +592,15 @@ export function DataKaryawanPage() {
 				</div>
 			</div>
 
-			{/* Bulk Delete Bar */}
-			{selectedIds.size > 0 && (
-				<div className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
-					<span className="text-[10px] font-medium text-muted-foreground">{selectedIds.size} dipilih</span>
+			{/* Bulk Actions */}
+			{filtered.some((row: any) => selectedIds.has(row._id)) && (
+				<div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.03] px-3 py-2">
+					<span className="text-[10px] font-medium text-muted-foreground">{filtered.filter((row: any) => selectedIds.has(row._id)).length} dipilih dari {filtered.length} terlihat</span>
+					<select aria-label="Role baru untuk karyawan terpilih" value={bulkRoleId} onChange={(e) => setBulkRoleId(e.target.value)} className="h-8 min-w-40 rounded-md border border-input bg-background px-2 text-[11px]" disabled={isBulkDeleting}>
+						<option value="">Pilih role baru</option>
+						{staffRoles.map((role: any) => <option key={role._id} value={role._id}>{role.name}</option>)}
+					</select>
+					<Button size="sm" className="h-8 text-[10px]" disabled={!bulkRoleId || !filtered.some((row: any) => selectedIds.has(row._id)) || isBulkDeleting} onClick={handleBulkRoleChange}>Terapkan role</Button>
 					<Button
 						variant="destructive"
 						size="sm"
@@ -537,13 +613,13 @@ export function DataKaryawanPage() {
 						) : (
 							<Trash2 className="h-3 w-3 mr-1" />
 						)}
-						Hapus {selectedIds.size}
+						Hapus {filtered.filter((row: any) => selectedIds.has(row._id)).length}
 					</Button>
 				</div>
 			)}
 
 			{/* Table */}
-			<div className="overflow-x-auto rounded-xl border bg-card">
+			<div className="overflow-hidden rounded-xl border bg-card">
 				{isLoading ? (
 					<div className="p-6 space-y-3">
 						{[1,2,3,4,5,6].map((i) => <Skeleton key={i} className="h-7 w-full rounded-lg" />)}
@@ -555,30 +631,30 @@ export function DataKaryawanPage() {
 						<p className="text-[11px] text-muted-foreground/60 mt-1">Karyawan akan muncul setelah registrasi dan disetujui.</p>
 					</div>
 				) : (
-					<table id="karyawan-data-table" className="w-full border-collapse text-[11px]">
+					<table id="karyawan-data-table" className="w-full table-fixed border-collapse text-[10px] [&_th]:overflow-hidden [&_td]:overflow-hidden [&_th]:text-ellipsis [&_td]:text-ellipsis [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
 						<thead className="sticky top-0 z-10">
 							<tr className="border-b bg-muted/40">
 								<th className="w-8 px-1 py-2 text-center">
 									<input
 										type="checkbox"
 										className="h-3 w-3 rounded cursor-pointer"
-										checked={filtered.length > 0 && selectedIds.size === filtered.length}
+										checked={filtered.length > 0 && filtered.every((row: any) => selectedIds.has(row._id))}
 										onChange={toggleSelectAll}
 									/>
 								</th>
 								<th className="w-8 px-1 py-2 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[10px] text-muted-foreground/40">#</span></th>
-								<th className="px-2.5 py-2 text-left min-w-[140px]"><ThButton col="name">Nama</ThButton></th>
-								<th className="px-2.5 py-2 text-left min-w-[90px]"><ThButton col="role">Role</ThButton></th>
-								<th className="px-2.5 py-2 text-left min-w-[100px] hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
+								<th className="px-1 py-1.5 text-left"><ThButton col="name">Nama</ThButton></th>
+								<th className="px-1 py-1.5 text-left"><ThButton col="role">Role</ThButton></th>
+								<th className="px-1 py-1.5 text-left hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
 								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">No Identitas</th>
 								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden lg:table-cell">TTL</th>
 								<th className="px-2.5 py-2 text-left hidden lg:table-cell">Alamat</th>
 								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">Tgl Mulai</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap min-w-[80px] hidden sm:table-cell">Status Kerja</th>
+								<th className="px-1 py-1.5 text-left whitespace-nowrap hidden sm:table-cell">Status Kerja</th>
 								<th className="px-2.5 py-2 text-right hidden md:table-cell">Gaji</th>
 								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Lokasi</th>
 								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Kontak Darurat</th>
-								<th className="px-2.5 py-2 text-center min-w-[50px]"><ThButton col="status">Status</ThButton></th>
+								<th className="px-1 py-1.5 text-center"><ThButton col="status">Status</ThButton></th>
 								<th className="px-2.5 py-2 text-center hidden lg:table-cell">Wajah</th>
 								<th className="px-2.5 py-2 text-center hidden lg:table-cell">CV</th>
 								<th className="w-10 px-1 py-2 text-center"><X className="mx-auto h-3 w-3 text-muted-foreground/40" aria-hidden="true" /></th>
@@ -586,7 +662,7 @@ export function DataKaryawanPage() {
 						</thead>
 						<tbody>
 							{filtered.length === 0 ? (
-								<tr><td colSpan={16} className="px-4 py-8 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
+								<tr><td colSpan={17} className="px-4 py-8 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
 							) : filtered.map((row: any, idx: number) => {
 								const r = (row as any).raw ?? {};
 								const isActive = row.isActive !== false;
@@ -620,9 +696,12 @@ export function DataKaryawanPage() {
 													</div>
 												</div>
 											</td>
-											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
-												<span className="inline-flex rounded-md bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary uppercase tracking-wider">{row.roleName || "—"}</span>
-											</td>
+											<td className="px-1 py-1.5" onClick={(e) => e.stopPropagation()}>
+									<select aria-label={`Role ${row.name}`} value={row.roleId || ""} onChange={(e) => void handleRoleChange(row, e.target.value)} disabled={savingRoleIds.has(row._id) || staffRoles.length === 0} className="h-7 w-full min-w-0 rounded-md border border-input bg-background px-1 text-[10px] font-semibold text-primary disabled:opacity-60">
+										<option value="" disabled>{row.roleName || "Tanpa role"}</option>
+										{staffRoles.map((role: any) => <option key={role._id} value={role._id}>{role.name}</option>)}
+									</select>
+								</td>
 											<td className="px-2.5 py-2 font-medium hidden sm:table-cell">{r.phone || <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-muted-foreground hidden md:table-cell">{r.identityNumber || <span className="text-muted-foreground/40">—</span>}</td>
 											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden lg:table-cell">{r.placeOfBirth ? `${r.placeOfBirth}, ` : ""}{fmtDate(r.birthDate)}</td>
