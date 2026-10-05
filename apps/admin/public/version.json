@@ -1,7 +1,7 @@
 {
-  "version": "0.2.379",
-  "commitHash": "5be9a5b",
-  "message": "fix(admin): portal notification overlays above dashboard",
-  "buildDate": "2026-09-30",
-  "generatedAt": "2026-09-30T04:49:19.300Z"
+  "version": "0.2.449",
+  "commitHash": "1328fdd",
+  "message": "feat(admin): compact employee table and role editor",
+  "buildDate": "2026-10-05",
+  "generatedAt": "2026-10-05T05:36:02.393Z"
 }
