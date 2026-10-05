@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.449",
+	semantic: "0.2.450",
 	// Git/deploy commit hash (short)
-	commitHash: "1328fdd",
-	message: "feat(admin): compact employee table and role editor",
+	commitHash: "2ebc3bf",
+	message: "fix(admin): make employee table readable",
 	// Commit subject for the update prompt
-	commitMessage: "feat(admin): compact employee table and role editor",
+	commitMessage: "fix(admin): make employee table readable",
 	// Build timestamp
 	buildDate: "2026-10-05",
 	// Full version string for display
