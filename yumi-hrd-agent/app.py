@@ -109,14 +109,67 @@ async def _mark_channel_dm_delivery(channel_id: int, message_id: int, telegram_u
     )
 
 
+# Only roles explicitly classified as human employees are eligible for employee
+# broadcasts. Unknown/system/demo/admin roles fail closed; update this set when
+# HR adds a new operational role to the role catalog.
+_HUMAN_EMPLOYEE_BROADCAST_ROLES = frozenset({
+    "barista", "chef", "kasir", "manager", "waiters", "waiter", "waitress",
+    "kitchen", "supervisor", "hrd", "staff",
+})
+
+
+async def _fetch_profile_broadcast_recipients() -> list[dict]:
+    # Read both sides independently and intersect by canonical employee ID.
+    # If either read fails, _fetch raises and the handler sends nothing (fail closed).
+    staff_rows = await _fetch(
+        "pos_staff_users",
+        "select=_id,name,roleName,isActive&isActive=eq.true&limit=1000",
+    )
+    active_links = await _fetch(
+        "employee_telegram_links",
+        "select=telegram_user_id,employee_user_id&is_active=eq.true&limit=1000",
+    )
+
+    eligible_staff: dict[str, str] = {}
+    excluded_roles: dict[str, int] = {}
+    for staff in staff_rows:
+        employee_id = str(staff.get("_id") or "").strip()
+        role_name = " ".join(str(staff.get("roleName") or "").strip().lower().split())
+        if not employee_id:
+            continue
+        if not staff.get("isActive") or role_name not in _HUMAN_EMPLOYEE_BROADCAST_ROLES:
+            excluded_roles[role_name or "(missing)"] = excluded_roles.get(role_name or "(missing)", 0) + 1
+            continue
+        eligible_staff[employee_id] = str(staff.get("name") or "Karyawan")
+
+    recipients: dict[int, dict] = {}
+    for link in active_links:
+        employee_id = str(link.get("employee_user_id") or "").strip()
+        if employee_id not in eligible_staff:
+            continue
+        try:
+            telegram_user_id = int(link.get("telegram_user_id") or 0)
+        except (TypeError, ValueError):
+            continue
+        if telegram_user_id <= 0 or telegram_user_id in recipients:
+            continue
+        recipients[telegram_user_id] = {
+            "telegram_user_id": telegram_user_id,
+            "employee_name": eligible_staff[employee_id],
+        }
+
+    logger.info(
+        "Profile broadcast recipient selection: active_staff=%s eligible_staff=%s active_links=%s recipients=%s excluded_roles=%s",
+        len(staff_rows), len(eligible_staff), len(active_links), len(recipients), excluded_roles,
+    )
+    return list(recipients.values())
+
+
 async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     post = update.channel_post
     if not post or post.chat.id != CHANNEL_ID:
         return
-    recipients = await _fetch(
-        "employee_telegram_links",
-        "select=telegram_user_id,employee_name&is_active=eq.true&limit=500",
-    )
+    recipients = await _fetch_profile_broadcast_recipients()
     sent = 0
     skipped = 0
     failed = 0

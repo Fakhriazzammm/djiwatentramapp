@@ -409,6 +409,8 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 			: undefined
 	);
 
+
+	const privateProfileState = privateData as any;
 	const settings = useHybridSiteSettings() as any;
 	const storeName = settings?.storeName || "TENTREM KOFFIE";
 	const storeAddress = settings?.storeAddress || "";
@@ -994,6 +996,8 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								</div>
 							</div>
 
+			<div aria-live="polite">{privateProfileState?.isLoading && <div className="rounded-xl border bg-muted/40 p-3 text-[11px] text-muted-foreground">Memuat profil pribadi…</div>}{privateProfileState?.error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-[11px] text-destructive">Gagal memuat profil pribadi: {privateProfileState.error}</div>}</div>
+
 							{/* Incomplete data badge */}
 							{isUnlocked && privateData?.raw && (
 								(() => {
@@ -1101,15 +1105,15 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 												<p className="text-[10px] font-black text-primary uppercase">Pekerjaan</p>
 												<div className="flex justify-between items-center text-[10px]">
 													<span className="text-muted-foreground">Mulai</span>
-													<span className="font-bold">{privateData?.raw?.startDate || "---"}</span>
+													<span className="font-bold">{privateData?.employment?.startDate || "---"}</span>
 												</div>
 												<div className="flex justify-between items-center text-[10px]">
 													<span className="text-muted-foreground">Status</span>
-													<span className="font-bold">{privateData?.raw?.employmentType === "probation" ? "Probation" : privateData?.raw?.employmentType || "---"}</span>
+													<span className="font-bold">{privateData?.employment?.employmentType === "probation" ? "Probation" : privateData?.employment?.employmentType || "---"}</span>
 												</div>
 												<div className="flex justify-between items-center text-[10px]">
 													<span className="text-muted-foreground">Lokasi</span>
-													<span className="font-bold">{privateData?.raw?.location || "---"}</span>
+													<span className="font-bold">{privateData?.employment?.location || "---"}</span>
 												</div>
 											</div>
 										</div>
@@ -1145,6 +1149,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
 													await updateProfileMutation({
 														token,
+														sourceId: staff._id,
 														name: editName !== staff?.name ? editName : undefined,
 														username: editUsername !== privateData?.username ? editUsername : undefined,
 														slug: editSlug !== staff?.slug ? editSlug : undefined,
@@ -1164,13 +1169,8 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 													if (editEmail && editEmail !== privateData?.email && editEmail !== privateData?.username) {
 														const supabase = createClient();
 														// Cek apakah user sudah punya Supabase Auth account
-														const { data: yumiUser } = await supabase
-															.from("yumi_users")
-															.select("auth_user_id, email")
-															.eq("source_id", staff._id)
-															.maybeSingle();
-														const hasAuthUser = Boolean(yumiUser?.auth_user_id);
-														const existingEmail = yumiUser?.email || privateData?.email || privateData?.username;
+														const hasAuthUser = Boolean(privateData?.hasAuthUser);
+														const existingEmail = privateData?.email || privateData?.username;
 														if (!hasAuthUser) {
 															// First time: create Supabase Auth user
 															const authPassword = editNewPassword || Array.from({ length: 16 }, () =>
@@ -1179,6 +1179,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 															const { error: createError } = await supabase.functions.invoke("yumi-auth", {
 																body: {
 																	action: "createAuthUser",
+																	token,
 																	sourceId: staff._id,
 																	email: editEmail,
 																	password: authPassword,
@@ -1190,7 +1191,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 															// Already has auth
 															if (editEmail !== existingEmail) {
 																const { error: emailError } = await supabase.functions.invoke("yumi-auth", {
-																	body: { action: "updateEmail", userId: staff._id, newEmail: editEmail },
+																	body: { action: "updateEmail", token, userId: staff._id, newEmail: editEmail },
 																});
 																if (emailError) throw new Error(emailError.message || "Gagal update email");
 															}

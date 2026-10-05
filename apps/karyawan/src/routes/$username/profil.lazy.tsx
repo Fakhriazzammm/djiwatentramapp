@@ -74,6 +74,8 @@ function ProfilPage() {
 
 	// Fetch data
 	const privateData = useHybridPrivateStaffData(isUnlocked && staff ? { slug: username, token } : undefined);
+
+	const privateProfileState = privateData as any;
 	const settings = useHybridSiteSettings() as any;
 	const storeName = settings?.storeName || "TENTREM KOFFIE";
 
@@ -183,6 +185,8 @@ function ProfilPage() {
 
 	return (
 		<div className="space-y-4">
+			<div aria-live="polite">{privateProfileState?.isLoading && <div className="rounded-xl border bg-muted/40 p-3 text-[11px] text-muted-foreground">Memuat profil pribadi…</div>}{privateProfileState?.error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-[11px] text-destructive">Gagal memuat profil pribadi: {privateProfileState.error}</div>}</div>
+
 			{/* Incomplete data badge */}
 			{privateData?.raw && (() => {
 				const r = privateData.raw as any;
@@ -270,15 +274,15 @@ function ProfilPage() {
 								<p className="text-[10px] font-black text-primary uppercase">Pekerjaan</p>
 								<div className="flex justify-between items-center text-[10px]">
 									<span className="text-muted-foreground">Mulai</span>
-									<span className="font-bold">{privateData?.raw?.startDate || "---"}</span>
+									<span className="font-bold">{privateData?.employment?.startDate || "---"}</span>
 								</div>
 								<div className="flex justify-between items-center text-[10px]">
 									<span className="text-muted-foreground">Status</span>
-									<span className="font-bold">{privateData?.raw?.employmentType === "probation" ? "Probation" : privateData?.raw?.employmentType || "---"}</span>
+									<span className="font-bold">{privateData?.employment?.employmentType === "probation" ? "Probation" : privateData?.employment?.employmentType || "---"}</span>
 								</div>
 								<div className="flex justify-between items-center text-[10px]">
 									<span className="text-muted-foreground">Lokasi</span>
-									<span className="font-bold">{privateData?.raw?.location || "---"}</span>
+									<span className="font-bold">{privateData?.employment?.location || "---"}</span>
 								</div>
 							</div>
 						</div>
@@ -320,13 +324,8 @@ function ProfilPage() {
 								if (editEmail && editEmail !== privateData?.email && editEmail !== privateData?.username) {
 									const supabase = createClient();
 									// Cek apakah user sudah punya Supabase Auth account
-									const { data: yumiUser } = await supabase
-										.from("yumi_users")
-										.select("auth_user_id, email")
-										.eq("source_id", staff._id)
-										.maybeSingle();
-									const hasAuthUser = Boolean(yumiUser?.auth_user_id);
-									const existingEmail = yumiUser?.email || privateData?.email || privateData?.username;
+									const hasAuthUser = Boolean(privateData?.hasAuthUser);
+									const existingEmail = privateData?.email || privateData?.username;
 									if (!hasAuthUser) {
 										// First time: create Supabase Auth user
 										const authPassword = editNewPassword || Array.from({ length: 16 }, () =>
@@ -335,6 +334,7 @@ function ProfilPage() {
 										const { error: createError } = await supabase.functions.invoke("yumi-auth", {
 											body: {
 												action: "createAuthUser",
+												token,
 												sourceId: staff._id,
 												email: editEmail,
 												password: authPassword,
@@ -346,7 +346,7 @@ function ProfilPage() {
 										// Already has auth
 										if (editEmail !== existingEmail) {
 											const { error: emailError } = await supabase.functions.invoke("yumi-auth", {
-												body: { action: "updateEmail", userId: staff._id, newEmail: editEmail },
+												body: { action: "updateEmail", token, newEmail: editEmail },
 											});
 											if (emailError) throw new Error(emailError.message || "Gagal update email");
 										}

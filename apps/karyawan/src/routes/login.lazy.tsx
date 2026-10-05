@@ -13,7 +13,8 @@ export const Route = createLazyFileRoute("/login")({
 
 function KaryawanLoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useYumiAuth();
+  const { login, isAuthenticated, user } = useYumiAuth();
+  const profileReturnRequested = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("next") === "profile";
   const [users, setUsers] = useState<YumiPublicUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -30,10 +31,15 @@ function KaryawanLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: "/" as any, replace: true });
+      const ownHandle = user?.slug || user?._id;
+      navigate({
+        to: profileReturnRequested && ownHandle ? "/$username/profil" : "/",
+        ...(profileReturnRequested && ownHandle ? { params: { username: ownHandle } } : {}),
+        replace: true,
+      } as any);
       return;
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, profileReturnRequested, navigate]);
 
   useEffect(() => {
     let active = true;
@@ -192,7 +198,7 @@ function KaryawanLoginPage() {
       // ter-encode dengan benar.
       const handle = result.user.slug || result.user._id;
       navigate({
-        to: "/$username",
+        to: profileReturnRequested ? "/$username/profil" : "/$username",
         params: { username: handle },
         replace: true,
       } as any);

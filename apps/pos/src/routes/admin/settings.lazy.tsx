@@ -44,6 +44,7 @@ import {
 import { FaceRecognition } from "@/components/auth/FaceRecognition";
 import { Copy, Download, FileJson, FileSpreadsheet, FileText, Share2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useYumiAuth } from "@yumipos/web-shared";
 import { toast } from "sonner";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,6 +70,7 @@ import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
 import {
 	useHybridAdminAttendanceLogs,
 	useHybridPayrollReport,
+	useHybridAdminProfileCompleteness,
 } from "@/hooks/use-hybrid-attendance-data";
 import {
 	useHybridAdminBulkDeleteAttendanceLogs,
@@ -327,6 +329,9 @@ export function SettingsPage({
 	const siteSettings = useHybridSiteSettings();
 	const users = useHybridStaffUsers(refreshTrigger);
 	const roles = useHybridStaffRoles(refreshTrigger);
+	const { token } = useYumiAuth();
+	const profileCompleteness = useHybridAdminProfileCompleteness({ token, enabled: Boolean(token) });
+	const completenessById = useMemo(() => new Map(profileCompleteness.profiles.map((profile) => [profile.sourceId, profile])), [profileCompleteness.profiles]);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const _createUser = useHybridCreateUser();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -4526,6 +4531,7 @@ export function SettingsPage({
 													<th className="px-4 py-3">Staf</th>
 													<th className="px-4 py-3">Role</th>
 													<th className="px-4 py-3">Status</th>
+									<th className="px-4 py-3">Profil</th>
 													<th className="px-4 py-3">Keamanan</th>
 													<th className="px-4 py-3 text-right">Aksi</th>
 												</tr>
@@ -4533,10 +4539,10 @@ export function SettingsPage({
 											<tbody className="divide-y divide-border/50">
 												{!users ? (
 													Array.from({ length: 5 }).map((_, i) => (
-														<tr key={i}><td colSpan={6} className="px-4 py-4"><Skeleton className="h-10 w-full" /></td></tr>
+														<tr key={i}><td colSpan={7} className="px-4 py-4"><Skeleton className="h-10 w-full" /></td></tr>
 													))
 												) : users.length === 0 ? (
-													<tr><td colSpan={6} className="py-12 text-center text-muted-foreground italic">Belum ada staf terdaftar.</td></tr>
+													<tr><td colSpan={7} className="py-12 text-center text-muted-foreground italic">Belum ada staf terdaftar.</td></tr>
 												) : (
 													users.map((user: any) => (
 														<tr key={user._id} className="hover:bg-muted/30 transition-colors group">
@@ -4554,7 +4560,7 @@ export function SettingsPage({
 											</div>
 										</div>
 									</td>
-															<td className="px-4 py-3">
+<td className="px-4 py-3">
 																<span className="text-[11px] font-medium text-muted-foreground">{user.roleName || "Tanpa Role"}</span>
 															</td>
 															<td className="px-4 py-3">
@@ -4562,6 +4568,7 @@ export function SettingsPage({
 																	{user.isActive ? "AKTIF" : "NONAKTIF"}
 																</span>
 															</td>
+																										{(() => { const completeness = completenessById.get(user._id); return <td className="px-4 py-3">{profileCompleteness.loading ? <span className="text-[10px] text-muted-foreground">Memuat…</span> : profileCompleteness.error ? <span className="text-[10px] text-destructive" title={profileCompleteness.error}>Gagal</span> : completeness ? <div className="min-w-[112px]"><div className="flex items-center justify-between text-[10px] font-bold"><span>{completeness.completionPercent}%</span><span className={completeness.missingFields.length ? "text-amber-600" : "text-emerald-600"}>{completeness.missingFields.length ? "Belum lengkap" : "Lengkap"}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className={completeness.missingFields.length ? "h-full bg-amber-500" : "h-full bg-emerald-500"} style={{ width: `${Math.max(0, Math.min(100, completeness.completionPercent))}%` }} /></div>{completeness.missingFields.length > 0 && <p className="mt-1 truncate text-[9px] text-muted-foreground" title={completeness.missingFields.join(", ")}>Kurang: {completeness.missingFields.join(", ")}</p>}</div> : <span className="text-[10px] text-muted-foreground">—</span>}</td>; })()}
 															<td className="px-4 py-3">
 																<div className="flex gap-1.5 flex-wrap">
 																	{user.faceDescriptor && <span title="Wajah terdaftar" className="p-1 rounded bg-emerald-100 text-emerald-700"><Camera className="h-3 w-3" /></span>}

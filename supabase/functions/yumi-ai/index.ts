@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems" | "submitEmployeeApplication" | "parseAttendanceSchedule" | "importAttendanceSchedule";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "insertInventory" | "classifyTransactionItems" | "submitEmployeeApplication" | "parseAttendanceSchedule" | "importAttendanceSchedule";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -636,17 +636,6 @@ async function classifyTransactionItems(payload: JsonRecord): Promise<{ ok: bool
 	};
 }
 
-async function executeSql(payload: JsonRecord): Promise<{ ok: boolean; error?: string; result?: unknown }> {
-	const sql = String(payload.sql ?? "").trim();
-	if (!sql) return { ok: false, error: "sql is required" };
-	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-	const supabase = createClient(supabaseUrl, supabaseKey);
-	const { error } = await supabase.rpc("exec_sql", { sql });
-	if (error) return { ok: false, error: error.message };
-	return { ok: true, result: "SQL executed successfully" };
-}
-
 async function insertInventory(payload: JsonRecord): Promise<{ ok: boolean; error?: string; sourceId?: string }> {
 	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -1250,11 +1239,6 @@ Deno.serve(async (req) => {
 			case "classifyTransactionItems": {
 				const result = await classifyTransactionItems(body);
 				if (!result.ok) return fail("REQUEST_FAILED", result.error || "Gagal", 400);
-				return jsonOk(result);
-			}
-			case "executeSql": {
-				const result = await executeSql(body);
-				if (!result.ok) return fail("REQUEST_FAILED", result.error || "SQL failed", 400);
 				return jsonOk(result);
 			}
 			case "insertInventory": {

@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.onboarding-admin]
 verify_jwt = false
 
+[functions.employee-onboarding-api]
+verify_jwt = false
+
 [functions.leave-admin]
 verify_jwt = false
 

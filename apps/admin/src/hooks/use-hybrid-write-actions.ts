@@ -159,121 +159,29 @@ function euclideanDistance(a: number[], b: number[]): number {
  * At least one of pinCode or faceDescriptor must pass for the identity to be verified.
  * Throws if verification fails.
  */
-async function verifyAttendanceIdentity(args: {
+async function verifyAttendanceIdentity(_args: {
 	userId: string;
 	pinCode?: string;
 	faceDescriptor?: number[];
 }): Promise<void> {
-	const { userId, pinCode, faceDescriptor } = args;
-	if (!pinCode && (!faceDescriptor || faceDescriptor.length === 0)) {
-		throw new Error("Verifikasi identitas diperlukan: PIN atau wajah");
-	}
+	unavailableYumiAuthAction("verifyAttendanceIdentity");
+}
 
-	// Fast path: face-only → cek cache dulu, skip Supabase kalau cocok
-	if (!pinCode && faceDescriptor && faceDescriptor.length > 0) {
-		try {
-			const { verifyFaceFromCache } = await import("@/lib/face-cache");
-			const result = verifyFaceFromCache(faceDescriptor, userId);
-			if (result.match) return; // ✅ cached face match — no DB needed
-		} catch { /* cache unavailable — fall through */ }
-	}
 
-	const supabase = createClient();
-	const { data: user, error } = await supabase
-		.from("yumi_users")
-		.select("source_id, is_active, home_pin_fingerprint, raw")
-		.eq("source_id", userId)
-		.maybeSingle();
-
-	if (error) throw error;
-	if (!user || user.is_active === false) {
-		throw new Error("User tidak ditemukan atau tidak aktif");
-	}
-
-	// Verify PIN via SHA-256
-	let pinVerified = !pinCode;
-	if (pinCode) {
-		const fingerprint = await sha256Hex(pinCode.trim());
-		if (user.home_pin_fingerprint && fingerprint !== user.home_pin_fingerprint) {
-			pinVerified = false;
-		} else if (!user.home_pin_fingerprint) {
-			pinVerified = false;
-		} else {
-			pinVerified = true;
-		}
-	}
-
-	// Verify face via euclidean distance + cache update
-	let faceVerified = !faceDescriptor || faceDescriptor.length === 0;
-	if (faceDescriptor && faceDescriptor.length > 0) {
-		const raw = user.raw as Record<string, any> | null;
-		const storedDescriptor = raw?.faceDescriptor as number[] | undefined;
-		if (!storedDescriptor || storedDescriptor.length === 0) {
-			faceVerified = false;
-		} else {
-			const distance = euclideanDistance(faceDescriptor, storedDescriptor);
-			faceVerified = distance <= 0.6;
-			// Update cache dengan descriptor terverifikasi dari DB
-			if (faceVerified) {
-				try {
-					const { cacheFaceDescriptor } = await import("@/lib/face-cache");
-					cacheFaceDescriptor(userId, faceDescriptor);
-				} catch { /* silent */ }
-			}
-		}
-	}
-
-	if (!pinVerified && !faceVerified) {
-		throw new Error("Verifikasi identitas gagal: PIN atau wajah tidak cocok");
-	}
+function unavailableYumiAuthAction(action: string): never {
+	throw new Error(`[yumi-auth] BLOCKED: backend action "${action}" is required for this operation`);
 }
 
 const LOCAL_TOKEN_PREFIX = "local_yumi_session:";
 
 async function getSessionUserByToken(token: string) {
-	// Handle local session tokens (fallback login — stored in localStorage, not in DB)
-	if (token.startsWith(LOCAL_TOKEN_PREFIX)) {
-		try {
-			const encoded = token.slice(LOCAL_TOKEN_PREFIX.length);
-			const binary = atob(encoded);
-			const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-			const json = new TextDecoder().decode(bytes);
-			const session = JSON.parse(json);
-			if (Date.now() > session.expiresAt) return null;
-
-			const supabase = createClient();
-			const { data: user, error: userError } = await supabase
-				.from("yumi_users")
-				.select("*")
-				.eq("source_id", session.user._id)
-				.maybeSingle();
-			if (userError) throw userError;
-			return user ?? null;
-		} catch (error) {
-			console.warn("[getSessionUserByToken] Failed to decode local session:", error);
-			return null;
-		}
-	}
-
-	const supabase = createClient();
-	const nowIso = new Date().toISOString();
-	const { data: session, error: sessionError } = await supabase
-		.from("yumi_sessions")
-		.select("user_source_id, expires_at")
-		.eq("token", token)
-		.gt("expires_at", nowIso)
-		.maybeSingle();
-	if (sessionError) throw sessionError;
-	if (!session) return null;
-
-	const { data: user, error: userError } = await supabase
-		.from("yumi_users")
-		.select("*")
-		.eq("source_id", session.user_source_id)
-		.maybeSingle();
-	if (userError) throw userError;
-	return user ?? null;
+	const result = await invokeEdgeFunction<any>("yumi-auth", {
+		action: "validateSession",
+		token,
+	});
+	return result?.session?.user ?? null;
 }
+
 
 async function insertMirrorDocument(args: {
 	tableName: string;
@@ -5002,61 +4910,7 @@ export function useHybridClockIn() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const userId = String(args?.userId ?? "");
-				if (!userId) throw new Error("userId wajib");
-
-				// Bug #11: Validate geofence server-side
-				await validateGeofence(args?.location ?? null);
-
-				const { data: user, error: userError } = await createClient()
-					.from("yumi_users")
-					.select("source_id,is_active,home_pin_fingerprint")
-					.eq("source_id", userId)
-					.maybeSingle();
-				if (userError) throw userError;
-				if (!user || user.is_active === false) {
-					throw new Error("User not found or inactive");
-				}
-				if (args?.pinCode) {
-					const pinFingerprint = await sha256Hex(String(args.pinCode).trim());
-					if (
-						user.home_pin_fingerprint &&
-						pinFingerprint !== user.home_pin_fingerprint
-					) {
-						throw new Error("PIN tidak valid");
-					}
-				}
-				const id = makeSourceId("attendance");
-				const timestamp = Date.now();
-				await insertMirrorDocument({
-					tableName: "attendance",
-					documentId: id,
-					creationTime: timestamp,
-					document: {
-						userId,
-						type: "check_in",
-						timestamp,
-						photoUrl: args?.photoUrl ?? null,
-						location: args?.location ?? null,
-						notes: args?.notes ?? null,
-						shiftName: args?.shiftName ?? null,
-						shiftOpenTimeSnapshot: args?.shiftOpenTimeSnapshot ?? null,
-					},
-				});
-				// Cache face descriptor saat clock-in untuk mempercepat clock-out berikutnya
-				try {
-					const desc = args?.faceDescriptor;
-					if (desc && Array.isArray(desc) && desc.length > 0) {
-						const { cacheFaceDescriptor } = require("@/lib/face-cache");
-						cacheFaceDescriptor(userId, desc);
-					}
-				} catch { /* silent */ }
-				return id;
-			} catch (error) {
-				console.error("[supabase-hybrid:write-clock-in] fallback disabled", error);
-				throw error;
-			}
+			unavailableYumiAuthAction("clockIn");
 		},
 		[fallback]
 	);
@@ -5110,47 +4964,7 @@ export function useHybridVerifyHomePin() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const pin = String(args?.pinCode ?? "").trim();
-				if (!/^\d{6}$/.test(pin)) {
-					throw new Error("PIN harus terdiri dari 6 digit angka");
-				}
-				const userId = String(args?.userId ?? "").trim();
-				const pinFingerprint = await sha256Hex(pin);
-				const supabase = createClient();
-
-				// Fix: filter by BOTH source_id AND pin fingerprint
-				// karena multiple users bisa share PIN default (696969)
-				let query = supabase
-					.from("yumi_users")
-					.select("source_id, name, role_source_id, is_active, home_pin_fingerprint")
-					.eq("home_pin_fingerprint", pinFingerprint);
-
-				if (userId) {
-					query = query.eq("source_id", userId);
-				}
-
-				const { data: user, error } = await query.maybeSingle();
-				if (error) throw error;
-				if (!user || user.is_active === false) {
-					throw new Error("PIN tidak valid atau pengguna tidak aktif");
-				}
-				const { data: role, error: roleError } = await supabase
-					.from("yumi_roles")
-					.select("name")
-					.eq("source_id", user.role_source_id)
-					.maybeSingle();
-				if (roleError) throw roleError;
-
-				return {
-					userId: user.source_id,
-					name: user.name,
-					role: role?.name || "user",
-				};
-			} catch (error) {
-				console.error("[supabase-hybrid:write-verify-home-pin] fallback disabled", error);
-				throw error;
-			}
+			unavailableYumiAuthAction("verifyHomePin");
 		},
 		[fallback]
 	);
@@ -5161,85 +4975,7 @@ export function useHybridEnrollFace() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-			const userId = String(args?.userId ?? "");
-			const pin = String(args?.pin ?? "").trim();
-			const faceDescriptor = Array.isArray(args?.faceDescriptor)
-				? args.faceDescriptor
-				: [];
-			const skipPinVerification = Boolean(args?.skipPinVerification);
-
-			// Validasi data
-			if (!userId || faceDescriptor.length === 0) {
-				throw new Error("Data pendaftaran wajah tidak valid");
-			}
-
-			const supabase = createClient();
-
-			if (!skipPinVerification) {
-				// Branch A: dengan validasi PIN
-				if (!/^\d{6}$/.test(pin)) {
-					throw new Error("Data pendaftaran wajah tidak valid");
-				}
-
-				const pinFingerprint = await sha256Hex(pin);
-				const { data: user, error: userError } = await supabase
-					.from("yumi_users")
-					.select("source_id, home_pin_fingerprint, is_active, raw")
-					.eq("source_id", userId)
-					.maybeSingle();
-				if (userError) throw userError;
-				if (!user || user.is_active === false) {
-					throw new Error("User tidak ditemukan");
-				}
-				if (
-					user.home_pin_fingerprint &&
-					user.home_pin_fingerprint !== pinFingerprint
-				) {
-					throw new Error("PIN salah. Pendaftaran wajah dibatalkan.");
-				}
-
-				const { error: patchError } = await supabase
-					.from("yumi_users")
-					.update({
-						face_descriptor: faceDescriptor,
-						raw: {
-							...(user.raw ?? {}),
-							faceDescriptor,
-						},
-					})
-					.eq("source_id", userId);
-				if (patchError) throw patchError;
-			} else {
-				// Branch B: skip PIN verification — verifikasi user exist + update raw juga
-				const { data: user, error: userError } = await supabase
-					.from("yumi_users")
-					.select("source_id, is_active, raw")
-					.eq("source_id", userId)
-					.maybeSingle();
-				if (userError) throw userError;
-				if (!user || user.is_active === false) {
-					throw new Error("User tidak ditemukan");
-				}
-
-				const { error: patchError } = await supabase
-					.from("yumi_users")
-					.update({
-						face_descriptor: faceDescriptor,
-						raw: {
-							...(user.raw ?? {}),
-							faceDescriptor,
-						},
-					})
-					.eq("source_id", userId);
-				if (patchError) throw patchError;
-			}
-
-			return { success: true };
-			} catch (error) {
-				console.error("[supabase-hybrid:write-enroll-face] fallback disabled", error);
-				throw error;
-			}
+			unavailableYumiAuthAction("enrollFace");
 		},
 		[fallback]
 	);
@@ -5250,44 +4986,15 @@ export function useHybridUpdateUserPin() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const token = String(args?.token ?? "");
-				const newPin = String(args?.newPin ?? "").trim();
-				const oldPin = args?.oldPin ? String(args.oldPin).trim() : undefined;
-				if (!token) throw new Error("Sesi tidak valid atau telah berakhir");
-				if (!/^\d{6}$/.test(newPin)) {
-					throw new Error("PIN baru harus 6 digit angka");
-				}
-				const user = await getSessionUserByToken(token);
-				if (!user) throw new Error("Sesi tidak valid atau telah berakhir");
-
-				if (oldPin) {
-					const oldFingerprint = await sha256Hex(oldPin);
-					if (
-						user.home_pin_fingerprint &&
-						user.home_pin_fingerprint !== oldFingerprint
-					) {
-						throw new Error("PIN lama salah");
-					}
-				}
-				const nextFingerprint = await sha256Hex(newPin);
-				const raw =
-					user.raw && typeof user.raw === "object" && !Array.isArray(user.raw)
-						? { ...user.raw, requiresPinChange: false }
-						: { requiresPinChange: false };
-				const { error } = await createClient()
-					.from("yumi_users")
-					.update({
-						home_pin_fingerprint: nextFingerprint,
-						raw,
-					})
-					.eq("source_id", user.source_id);
-				if (error) throw error;
-				return { success: true };
-			} catch (error) {
-				console.error("[supabase-hybrid:write-update-user-pin] fallback disabled", error);
-				throw error;
-			}
+			const token = String(args?.token ?? "");
+			const newPin = String(args?.newPin ?? "").trim();
+			if (!token) throw new Error("Sesi tidak valid atau telah berakhir");
+			return invokeEdgeFunction("yumi-auth", {
+				action: "changePin",
+				token,
+				newPin,
+				oldPin: args?.oldPin,
+			});
 		},
 		[fallback]
 	);
@@ -5301,46 +5008,29 @@ export function useHybridUpdateUserProfile() {
 			try {
 				const token = String(args?.token ?? "");
 				if (!token) throw new Error("Sesi tidak valid atau telah berakhir");
-				const user = await getSessionUserByToken(token);
-				if (!user) throw new Error("Sesi tidak valid atau telah berakhir");
-
-				const updates: Record<string, unknown> = {};
-				if (args?.name !== undefined) updates.name = String(args.name).trim();
-				if (args?.username !== undefined)
-					updates.username = String(args.username).trim().toLowerCase();
-				if (args?.slug !== undefined) updates.slug = String(args.slug).trim();
-				// Unified raw JSON merge — preserve existing data, handle null
-				const existingRaw = (user.raw as Record<string, unknown>) ?? {};
-				let rawNeedsUpdate = false;
-				const rawUpdates: Record<string, unknown> = { ...existingRaw };
-				if (args?.password !== undefined) { rawUpdates.password = String(args.password); rawNeedsUpdate = true; }
-				if (args?.phone !== undefined) { rawUpdates.phone = args.phone; rawNeedsUpdate = true; }
-				if (args?.identityNumber !== undefined) { rawUpdates.identityNumber = args.identityNumber; rawNeedsUpdate = true; }
-				if (args?.address !== undefined) { rawUpdates.address = args.address; rawNeedsUpdate = true; }
-				if (args?.birthDate !== undefined) { rawUpdates.birthDate = args.birthDate; rawNeedsUpdate = true; }
-				if (args?.placeOfBirth !== undefined) { rawUpdates.placeOfBirth = args.placeOfBirth; rawNeedsUpdate = true; }
-				if (args?.emergencyContactName !== undefined) { rawUpdates.emergencyContactName = args.emergencyContactName; rawNeedsUpdate = true; }
-				if (args?.emergencyContactPhone !== undefined) { rawUpdates.emergencyContactPhone = args.emergencyContactPhone; rawNeedsUpdate = true; }
-				if (args?.bankName !== undefined) { rawUpdates.bankName = args.bankName; rawNeedsUpdate = true; }
-				if (args?.bankAccount !== undefined) { rawUpdates.bankAccount = args.bankAccount; rawNeedsUpdate = true; }
-				if (args?.startDate !== undefined) { rawUpdates.startDate = args.startDate; rawNeedsUpdate = true; }
-				if (args?.employmentType !== undefined) { rawUpdates.employmentType = args.employmentType; rawNeedsUpdate = true; }
-				if (args?.location !== undefined) { rawUpdates.location = args.location; rawNeedsUpdate = true; }
-				if (args?.photoUrl !== undefined) { updates.photo_url = args.photoUrl; }
-				if (rawNeedsUpdate) updates.raw = rawUpdates;
-				if (Object.keys(updates).length === 0) return { success: true };
-
-				const { error } = await createClient()
-					.from("yumi_users")
-					.update(updates)
-					.eq("source_id", user.source_id);
-				if (error) throw error;
-				return { success: true };
+				const { photoUrl } = await invokeEdgeFunction<{ photoUrl: string | null }>("yumi-auth", {
+					action: "updateProfile",
+					token,
+					sourceId: args?.sourceId,
+					name: args?.name,
+					username: args?.username !== undefined ? String(args.username).trim().toLowerCase() : undefined,
+					slug: args?.slug,
+					phone: args?.phone,
+					identityNumber: args?.identityNumber,
+					address: args?.address,
+					birthDate: args?.birthDate,
+					placeOfBirth: args?.placeOfBirth,
+					emergencyContactName: args?.emergencyContactName,
+					emergencyContactPhone: args?.emergencyContactPhone,
+					bankName: args?.bankName,
+					bankAccount: args?.bankAccount,
+					photoUrl: args?.photoUrl,
+					photoBase64: args?.photoBase64,
+					photoContentType: args?.photoContentType,
+				});
+				return { success: true, photoUrl };
 			} catch (error) {
-				console.warn(
-					"[supabase-hybrid:write-update-user-profile]",
-					error
-				);
+				console.warn("[supabase-hybrid:write-update-user-profile]", error);
 				throw error;
 			}
 		},
@@ -5557,67 +5247,7 @@ export function useHybridCreateUser() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const username = String(args?.username ?? "").trim().toLowerCase();
-				const roleId = String(args?.roleId ?? "");
-				const name = String(args?.name ?? "").trim();
-				if (!username || !roleId || !name) throw new Error("Data user tidak lengkap");
-				const sourceId = makeSourceId("user");
-				const homePin = args?.homePin ? String(args.homePin).trim() : "";
-				const homePinFingerprint = /^\d{6}$/.test(homePin)
-					? await sha256Hex(homePin)
-					: null;
-				const slug =
-					args?.slug !== undefined && String(args.slug).trim() !== ""
-						? String(args.slug).trim()
-						: username.split("@")[0];
-				const { homePin: _rawHomePin, ...safeRawArgs } = args ?? {};
-				const raw = {
-					...safeRawArgs,
-					requiresPinChange: Boolean(args?.requiresPinChange),
-				};
-				const { error } = await createClient().from("yumi_users").insert({
-					source_id: sourceId,
-					username,
-					name,
-					role_source_id: roleId,
-					is_active: true,
-					receive_report_emails: Boolean(args?.receiveReportEmails ?? false),
-					auth_user_id: args?.authUserId ?? null,
-					slug,
-					home_pin_fingerprint: homePinFingerprint,
-					raw,
-				});
-				if (error) throw error;
-
-				// Auto-create Supabase Auth user
-				try {
-					const email = String(args?.email || username).includes('@')
-						? (args?.email || username)
-						: `${username}@djiwa.internal`;
-					const password = args?.password || crypto.randomUUID().slice(0, 12);
-
-					const authData = await invokeEdgeFunction("yumi-auth", {
-						action: "createAuthUser",
-						sourceId,
-						email,
-						password,
-						name,
-					});
-
-					if (authData?.authUserId) {
-						await createClient().from("yumi_users").update({ auth_user_id: authData.authUserId }).eq("source_id", sourceId);
-					}
-				} catch (authUserErr) {
-					console.warn("[createUser] failed to create auth user:", authUserErr);
-					// Non-fatal — user tetap bisa login via custom session
-				}
-
-				return sourceId;
-			} catch (error) {
-				console.error("[supabase-hybrid:write-create-user] fallback disabled", error);
-				throw error;
-			}
+			unavailableYumiAuthAction("createUser");
 		},
 		[fallback]
 	);
@@ -5628,53 +5258,7 @@ export function useHybridUpdateUser() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const id = String(args?.id ?? "");
-				if (!id) throw new Error("id user wajib");
-				const supabase = createClient();
-				const { data: existing, error: existingError } = await supabase
-					.from("yumi_users")
-					.select("raw")
-					.eq("source_id", id)
-					.maybeSingle();
-				if (existingError) throw existingError;
-				const updates: Record<string, unknown> = {};
-				if (args?.username !== undefined)
-					updates.username = String(args.username).trim().toLowerCase();
-				if (args?.name !== undefined) updates.name = String(args.name).trim();
-				if (args?.roleId !== undefined) updates.role_source_id = args.roleId ?? null;
-				if (args?.isActive !== undefined) updates.is_active = Boolean(args.isActive);
-				if (args?.receiveReportEmails !== undefined) {
-					updates.receive_report_emails = Boolean(args.receiveReportEmails);
-				}
-				if (args?.authUserId !== undefined) updates.auth_user_id = args.authUserId ?? null;
-				if (args?.slug !== undefined) updates.slug = String(args.slug ?? "").trim() || null;
-				if (args?.faceDescriptor !== undefined) {
-					updates.face_descriptor = Array.isArray(args.faceDescriptor)
-						? args.faceDescriptor
-						: null;
-				}
-				if (args?.homePin !== undefined) {
-					const homePin = String(args.homePin ?? "").trim();
-					updates.home_pin_fingerprint =
-						homePin && /^\d{6}$/.test(homePin) ? await sha256Hex(homePin) : null;
-				}
-				updates.raw = {
-					...(existing?.raw ?? {}),
-					...Object.fromEntries(
-						Object.entries(args ?? {}).filter(([key]) => key !== "homePin")
-					),
-				};
-				const { error } = await supabase
-					.from("yumi_users")
-					.update(updates)
-					.eq("source_id", id);
-				if (error) throw error;
-				return id;
-			} catch (error) {
-				console.error("[supabase-hybrid:write-update-user] fallback disabled", error);
-				throw error;
-			}
+			unavailableYumiAuthAction("updateUser");
 		},
 		[fallback]
 	);
@@ -5685,19 +5269,7 @@ export function useHybridDeleteUser() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const id = String(args?.id ?? "");
-				if (!id) throw new Error("id user wajib");
-				const { error } = await createClient()
-					.from("yumi_users")
-					.delete()
-					.eq("source_id", id);
-				if (error) throw error;
-				return id;
-			} catch (error) {
-				console.error("[supabase-hybrid:write-delete-user] fallback disabled", error);
-				throw error;
-			}
+			unavailableYumiAuthAction("deleteUser");
 		},
 		[fallback]
 	);
@@ -5761,27 +5333,7 @@ export function useHybridDeleteRole() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const id = String(args?.id ?? "");
-				if (!id) throw new Error("id role wajib");
-				const { data: usedUser, error: usedError } = await createClient()
-					.from("yumi_users")
-					.select("source_id")
-					.eq("role_source_id", id)
-					.limit(1)
-					.maybeSingle();
-				if (usedError) throw usedError;
-				if (usedUser) throw new Error("Cannot delete role assigned to users");
-				const { error } = await createClient()
-					.from("yumi_roles")
-					.delete()
-					.eq("source_id", id);
-				if (error) throw error;
-				return id;
-			} catch (error) {
-				console.error("[supabase-hybrid:write-delete-role] fallback disabled", error);
-				throw error;
-			}
+			unavailableYumiAuthAction("deleteRoleWithUserCheck");
 		},
 		[fallback]
 	);
@@ -5792,76 +5344,7 @@ export function useHybridBindUserProfile() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				const authUserId = String(args?.authUserId ?? "").trim();
-				const email = String(args?.email ?? "").trim().toLowerCase();
-				const name = String(args?.name ?? "").trim();
-				if (!authUserId || !email || !name) {
-					throw new Error("Data profil tidak lengkap");
-				}
-
-				const supabase = createClient();
-				const { data: existingByAuth, error: byAuthError } = await supabase
-					.from("yumi_users")
-					.select("source_id")
-					.eq("auth_user_id", authUserId)
-					.maybeSingle();
-				if (byAuthError) throw byAuthError;
-				if (existingByAuth?.source_id) return existingByAuth.source_id;
-
-				const { data: existingByEmail, error: byEmailError } = await supabase
-					.from("yumi_users")
-					.select("source_id")
-					.eq("username", email)
-					.maybeSingle();
-				if (byEmailError) throw byEmailError;
-				if (existingByEmail?.source_id) {
-					const { error: updateError } = await supabase
-						.from("yumi_users")
-						.update({ auth_user_id: authUserId })
-						.eq("source_id", existingByEmail.source_id);
-					if (updateError) throw updateError;
-					return existingByEmail.source_id;
-				}
-
-				let roleId = args?.roleId ? String(args.roleId) : "";
-				if (!roleId) {
-					const ownerEmail = "fakhriazzamm@gmail.com";
-					const preferredRole = email === ownerEmail ? "admin" : "staff";
-					const { data: role, error: roleError } = await supabase
-						.from("yumi_roles")
-						.select("source_id")
-						.ilike("name", preferredRole)
-						.maybeSingle();
-					if (roleError) throw roleError;
-					roleId = String(role?.source_id ?? "");
-				}
-				if (!roleId) throw new Error("No default role found");
-
-				const sourceId = makeSourceId("user");
-				const { error: createError } = await supabase.from("yumi_users").insert({
-					source_id: sourceId,
-					username: email,
-					name,
-					role_source_id: roleId,
-					auth_user_id: authUserId,
-					is_active: true,
-					receive_report_emails: false,
-					raw: {
-						authUserId,
-						username: email,
-						name,
-					},
-				});
-				if (createError) throw createError;
-				return sourceId;
-			} catch (error) {
-				console.warn(
-					"[supabase-hybrid:write-bind-user-profile]",
-					error
-				);
-				throw error;
-			}
+			unavailableYumiAuthAction("bindUserProfile");
 		},
 		[fallback]
 	);

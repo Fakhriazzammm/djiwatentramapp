@@ -320,29 +320,36 @@ export function useHybridStaffStatsToday(userId?: string, refreshTrigger?: numbe
 	return supabaseData as any;
 }
 
-async function fetchPrivateStaffData(args: {
-	slug: string;
-	pin?: string;
-	token?: string | null;
-}) {
-	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_users_public")
-		.select("*")
-		.eq("slug", args.slug)
-		.maybeSingle();
-	if (error) throw error;
-	if (!data) return null;
+type PrivateProfileResponse = {
+	profile?: {
+		_id: string;
+		name: string;
+		slug: string;
+		username: string;
+		email?: string | null;
+		hasAuthUser?: boolean;
+		employeeNip?: string | null;
+		roleName?: string | null;
+		raw?: Record<string, unknown> | null;
+		employment?: Record<string, unknown> | null;
+		applicationStatus?: string | null;
+	};
+};
+
+async function fetchPrivateStaffData(args: { slug: string; token: string }) {
+	const result = await invokeEdgeFunction<PrivateProfileResponse>("yumi-auth", {
+		action: "getPrivateProfile",
+		token: args.token,
+		slug: args.slug,
+	});
+	const profile = result.profile;
+	if (!profile) return null;
 	return {
-		_id: data._id,
-		name: data.name,
-		slug: data.slug,
-		username: data.username ?? "",
-		roleId: data.roleId ?? null,
-		roleName: data.roleName ?? "Team",
-		hasFace: Boolean(data.hasFace),
-		isActive: Boolean(data.isActive),
-		raw: (data as any).raw ?? null,
+		...profile,
+		roleName: profile.roleName ?? "Team",
+		raw: profile.raw ?? null,
+		employment: profile.employment ?? null,
+		applicationStatus: profile.applicationStatus ?? null,
 	};
 }
 
@@ -456,21 +463,39 @@ export function useHybridPayrollReport(args: { month: number; year: number }) {
 	) as any;
 }
 
-export function useHybridPrivateStaffData(args?: {
-	slug?: string;
-	pin?: string;
-	token?: string | null;
-}) {
-	return useSupabaseValue(
-		`attendance-private-staff:${args?.slug ?? "skip"}`,
-		() =>
-			args?.slug
-				? fetchPrivateStaffData({
-						slug: args.slug,
-						pin: args.pin,
-						token: args.token ?? null,
-				  })
-				: Promise.resolve(null),
-		[args?.slug, args?.pin, args?.token]
-	) as any;
+export function useHybridPrivateStaffData(args?: { slug?: string; token?: string | null }) {
+	const [state, setState] = useState<{ data: any; loading: boolean; error: string | null }>({ data: null, loading: false, error: null });
+	const [reloadKey, setReloadKey] = useState(0);
+	useEffect(() => {
+		let active = true;
+		if (!args?.slug || !args.token) {
+			setState({ data: null, loading: false, error: null });
+			return () => { active = false; };
+		}
+		setState((current) => ({ ...current, loading: true, error: null }));
+		void fetchPrivateStaffData({ slug: args.slug, token: args.token }).then(
+			(data) => { if (active) setState({ data, loading: false, error: null }); },
+			(error) => { if (active) setState({ data: null, loading: false, error: error instanceof Error ? error.message : "Gagal memuat profil pribadi" }); }
+		);
+		return () => { active = false; };
+	}, [args?.slug, args?.token, reloadKey]);
+	return { ...(state.data ?? {}), isLoading: state.loading, error: state.error, reload: () => setReloadKey((key) => key + 1) } as any;
+}
+
+type AdminProfileCompleteness = { sourceId: string; name: string; slug: string; completionPercent: number; missingFields: string[] };
+
+export function useHybridAdminProfileCompleteness(args?: { token?: string | null; enabled?: boolean }) {
+	const [state, setState] = useState<{ profiles: AdminProfileCompleteness[]; loading: boolean; error: string | null }>({ profiles: [], loading: false, error: null });
+	const [reloadKey, setReloadKey] = useState(0);
+	useEffect(() => {
+		let active = true;
+		if (!args?.token || args.enabled === false) { setState({ profiles: [], loading: false, error: null }); return () => { active = false; }; }
+		setState((current) => ({ ...current, loading: true, error: null }));
+		void invokeEdgeFunction<{ profiles?: Array<AdminProfileCompleteness & { _id?: string; percent?: number }> }>("yumi-auth", { action: "getProfileCompleteness", token: args.token }).then(
+			(result) => { if (active) setState({ profiles: (result.profiles ?? []).map((profile) => ({ sourceId: profile.sourceId ?? profile._id ?? "", name: profile.name, slug: profile.slug, completionPercent: profile.completionPercent ?? profile.percent ?? 0, missingFields: profile.missingFields ?? [] })), loading: false, error: null }); },
+			(error) => { if (active) setState({ profiles: [], loading: false, error: error instanceof Error ? error.message : "Gagal memuat kelengkapan profil" }); }
+		);
+		return () => { active = false; };
+	}, [args?.token, args?.enabled, reloadKey]);
+	return { ...state, reload: () => setReloadKey((key) => key + 1) };
 }
