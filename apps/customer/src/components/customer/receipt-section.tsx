@@ -205,7 +205,6 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 							);
 						})}
 					</div>
-					<p className="mt-2.5 flex items-center justify-center gap-1 text-center text-[10px] text-muted-foreground/70"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Pembaruan otomatis dari status webhook Biteship.</p>
 				</div>
 			) : null}
 			{isCashierTicket ? <CashierPaymentTimer createdAt={props.currentOrder?.createdAt} onExpire={() => props.onCashierPaymentExpired?.()} /> : props.receipt.mode === "cashier_expired" ? <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-red-950"><p className="text-[10px] font-black uppercase tracking-[0.14em]">Pembayaran kedaluwarsa</p><p className="mt-0.5 text-[10px] leading-tight">Order dibatalkan karena tidak dibayar dalam 5 menit. Silakan gunakan Pesan lagi.</p></div> : null}
