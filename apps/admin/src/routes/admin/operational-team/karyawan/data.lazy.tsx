@@ -12,8 +12,6 @@ import {
 	FileText,
 	FileSpreadsheet,
 	User,
-	Camera,
-	Eye,
 	Loader2,
 	ChevronUp,
 	ChevronDown,
@@ -99,79 +97,79 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 	if (!expanded) return null;
 	return (
 		<tr className="border-b border-border/20 bg-muted/10">
-			<td colSpan={17} className="p-0">
-				<div className="px-3 py-3">
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
-							<div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
+			<td colSpan={8} className="p-0">
+				<div className="px-3 py-2">
+					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+						<div className="rounded-lg border border-border/40 p-2 space-y-1">
+							<div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-primary">
 								<IdCard className="h-3 w-3" />
 								Identitas
 							</div>
 							<div className="space-y-1">
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">No Identitas</span>
 									<span className="font-medium">{r.identityNumber || "\u2014"}</span>
 								</div>
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">TTL</span>
 									<span className="font-medium text-right">
 										{r.placeOfBirth ? `${r.placeOfBirth}, ` : ""}{fmtDate(r.birthDate)}
 									</span>
 								</div>
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">Alamat</span>
 									<span className="font-medium text-right max-w-[200px] truncate">{r.address || "\u2014"}</span>
 								</div>
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">No HP</span><span className="font-medium">{r.phone || "—"}</span>
 								</div>
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">Tipe kerja</span><span className="font-medium">{r.employmentType || "—"}</span>
 								</div>
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">Wajah / CV</span>
 									<span className="font-medium">{row.hasFace ? "Wajah ✓" : "Wajah —"} · {r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Buka CV</a> : "CV —"}</span>
 								</div>
 							</div>
 						</div>
-						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
-							<div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
+						<div className="rounded-lg border border-border/40 p-2 space-y-1">
+							<div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-primary">
 								<Building2 className="h-3 w-3" />
 								Pekerjaan
 							</div>
 							<div className="space-y-1">
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">Tgl Mulai</span>
 									<span className="font-medium">{fmtDate(r.startDate)}</span>
 								</div>
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">Gaji Pokok</span>
 									<span className="font-medium">{fmtCurrency(r.monthlySalary)}</span>
 								</div>
-								<div className="flex justify-between text-[10px]">
+								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">Lokasi</span>
 									<span className="font-medium">{r.location || "\u2014"}</span>
 								</div>
 							</div>
 						</div>
-						<div className="rounded-lg border border-border/40 p-2.5 space-y-1.5">
-							<div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-primary">
+						<div className="rounded-lg border border-border/40 p-2 space-y-1">
+							<div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-primary">
 								<PhoneCall className="h-3 w-3" />
 								Kontak Darurat
 							</div>
 							{r.emergencyContactName ? (
 								<div className="space-y-1">
-									<div className="flex justify-between text-[10px]">
+									<div className="flex justify-between text-[11px]">
 										<span className="text-muted-foreground">Nama</span>
 										<span className="font-medium">{r.emergencyContactName}</span>
 									</div>
-									<div className="flex justify-between text-[10px]">
+									<div className="flex justify-between text-[11px]">
 										<span className="text-muted-foreground">No HP</span>
 										<span className="font-medium">{r.emergencyContactPhone || "\u2014"}</span>
 									</div>
 								</div>
 							) : (
-								<p className="text-[10px] text-muted-foreground italic">Tidak ada data</p>
+								<p className="text-[11px] text-muted-foreground italic">Tidak ada data</p>
 							)}
 						</div>
 					</div>
@@ -486,7 +484,7 @@ export function DataKaryawanPage() {
 
 	const ThButton = ({ col, children, className = "" }: { col: string; children: React.ReactNode; className?: string }) => (
 		<button
-			className={`flex items-center gap-0.5 whitespace-nowrap font-bold text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors ${className}`}
+			className={`flex items-center gap-0.5 whitespace-nowrap font-bold text-[11px] uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors ${className}`}
 			onClick={() => handleSort(col)}
 		>
 			{children}
@@ -631,108 +629,107 @@ export function DataKaryawanPage() {
 						<p className="text-[11px] text-muted-foreground/60 mt-1">Karyawan akan muncul setelah registrasi dan disetujui.</p>
 					</div>
 				) : (
-					<table id="karyawan-data-table" className="w-full table-fixed border-collapse text-[10px] [&_th]:overflow-hidden [&_td]:overflow-hidden [&_th]:text-ellipsis [&_td]:text-ellipsis [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
+					<table id="karyawan-data-table" className="w-full table-fixed border-collapse text-xs [&_th]:overflow-hidden [&_td]:overflow-hidden [&_th]:text-ellipsis [&_td]:text-ellipsis [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
+						<colgroup>
+							<col className="w-[4%]" />
+							<col className="w-[4%]" />
+							<col className="w-[27%]" />
+							<col className="w-[18%]" />
+							<col className="w-[17%]" />
+							<col className="w-[14%]" />
+							<col className="w-[12%]" />
+							<col className="w-[4%]" />
+						</colgroup>
 						<thead className="sticky top-0 z-10">
 							<tr className="border-b bg-muted/40">
-								<th className="w-8 px-1 py-2 text-center">
+								<th className="px-1 py-1.5 text-center">
 									<input
 										type="checkbox"
-										className="h-3 w-3 rounded cursor-pointer"
+										aria-label="Pilih semua karyawan yang terlihat"
+										className="h-3.5 w-3.5 rounded cursor-pointer"
 										checked={filtered.length > 0 && filtered.every((row: any) => selectedIds.has(row._id))}
 										onChange={toggleSelectAll}
 									/>
 								</th>
-								<th className="w-8 px-1 py-2 text-center"><span className="inline-flex items-center justify-center h-4 w-4 rounded text-[10px] text-muted-foreground/40">#</span></th>
-								<th className="px-1 py-1.5 text-left"><ThButton col="name">Nama</ThButton></th>
-								<th className="px-1 py-1.5 text-left"><ThButton col="role">Role</ThButton></th>
-								<th className="px-1 py-1.5 text-left hidden sm:table-cell"><ThButton col="phone">No HP</ThButton></th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">No Identitas</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden lg:table-cell">TTL</th>
-								<th className="px-2.5 py-2 text-left hidden lg:table-cell">Alamat</th>
-								<th className="px-2.5 py-2 text-left whitespace-nowrap hidden md:table-cell">Tgl Mulai</th>
-								<th className="px-1 py-1.5 text-left whitespace-nowrap hidden sm:table-cell">Status Kerja</th>
-								<th className="px-2.5 py-2 text-right hidden md:table-cell">Gaji</th>
-								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Lokasi</th>
-								<th className="px-2.5 py-2 text-left hidden xl:table-cell">Kontak Darurat</th>
-								<th className="px-1 py-1.5 text-center"><ThButton col="status">Status</ThButton></th>
-								<th className="px-2.5 py-2 text-center hidden lg:table-cell">Wajah</th>
-								<th className="px-2.5 py-2 text-center hidden lg:table-cell">CV</th>
-								<th className="w-10 px-1 py-2 text-center"><X className="mx-auto h-3 w-3 text-muted-foreground/40" aria-hidden="true" /></th>
+								<th className="px-1 py-1.5 text-center"><span className="sr-only">Detail</span></th>
+								<th className="px-1.5 py-1.5 text-left"><ThButton col="name">Nama</ThButton></th>
+								<th className="px-1.5 py-1.5 text-left"><ThButton col="role">Role</ThButton></th>
+								<th className="px-1.5 py-1.5 text-left"><ThButton col="phone">No HP</ThButton></th>
+								<th className="px-1.5 py-1.5 text-left">Tipe kerja</th>
+								<th className="px-1.5 py-1.5 text-center"><ThButton col="status">Status</ThButton></th>
+								<th className="px-1 py-1.5 text-center"><span className="sr-only">Aksi</span></th>
 							</tr>
 						</thead>
 						<tbody>
 							{filtered.length === 0 ? (
-								<tr><td colSpan={17} className="px-4 py-8 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
-							) : filtered.map((row: any, idx: number) => {
+								<tr><td colSpan={8} className="px-3 py-6 text-center text-xs text-muted-foreground">Tidak ada karyawan yang cocok dengan filter.</td></tr>
+							) : filtered.map((row: any) => {
 								const r = (row as any).raw ?? {};
 								const isActive = row.isActive !== false;
 								const isExpanded = expandedId === row._id;
 								return (
 									<React.Fragment key={row._id}>
 										<tr className={`border-b border-border/20 hover:bg-muted/10 transition-colors cursor-pointer focus-within:bg-muted/10 ${isExpanded ? "bg-primary/[0.02]" : ""} ${selectedIds.has(row._id) ? "bg-primary/[0.03]" : ""}`} onClick={() => navigate({ to: `/karyawan/${row.slug}` as any })}>
-											<td className="px-1 py-2 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(row._id); }}>
+											<td className="px-1 py-1 text-center" onClick={(e) => { e.stopPropagation(); toggleSelect(row._id); }}>
 												<input
 													type="checkbox"
-													className="h-3 w-3 rounded cursor-pointer"
+													aria-label={`Pilih ${row.name}`}
+													className="h-3.5 w-3.5 rounded cursor-pointer"
 													checked={selectedIds.has(row._id)}
 													onChange={() => toggleSelect(row._id)}
 												/>
 											</td>
-											<td className="px-1 py-2 text-center text-[10px] text-muted-foreground/40 font-mono" onClick={(e) => toggleExpand(row._id, e)}>
-												<button className="inline-flex items-center justify-center h-4 w-4 rounded hover:bg-muted transition-colors">
-													<ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+											<td className="px-1 py-1 text-center" onClick={(e) => toggleExpand(row._id, e)}>
+												<button
+													aria-label={`${isExpanded ? "Tutup" : "Buka"} detail ${row.name}`}
+													aria-expanded={isExpanded}
+													className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-muted transition-colors"
+												>
+													<ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
 												</button>
 											</td>
-											<td className="px-2.5 py-2" onClick={(e) => toggleExpand(row._id, e)}>
-												<div className="flex items-center gap-2">
+											<td className="px-1.5 py-1" onClick={(e) => toggleExpand(row._id, e)}>
+												<div className="flex min-w-0 items-center gap-2">
 													{row.photoUrl ? (
 														<img src={row.photoUrl} alt={row.name || ""} className="h-6 w-6 shrink-0 rounded-lg object-cover ring-1 ring-border" />
 													) : (
 														<div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ring-1 ring-border/50 ${isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{(row.name || "?").charAt(0)}</div>
 													)}
 													<div className="min-w-0">
-														<p className="font-bold text-xs truncate max-w-[120px]">{row.name}</p>
-														<p className="text-[11px] text-muted-foreground truncate max-w-[120px]">@{row.username || row.slug}</p>
+														<p className="max-w-full truncate text-[13px] font-bold" title={row.name}>{row.name}</p>
+														<p className="max-w-full truncate text-[11px] text-muted-foreground" title={row.username || row.slug}>@{row.username || row.slug}</p>
 													</div>
 												</div>
 											</td>
-											<td className="px-1 py-1.5" onClick={(e) => e.stopPropagation()}>
-									<select aria-label={`Role ${row.name}`} value={row.roleId || ""} onChange={(e) => void handleRoleChange(row, e.target.value)} disabled={savingRoleIds.has(row._id) || staffRoles.length === 0} className="h-7 w-full min-w-0 rounded-md border border-input bg-background px-1 text-[10px] font-semibold text-primary disabled:opacity-60">
-										<option value="" disabled>{row.roleName || "Tanpa role"}</option>
-										{staffRoles.map((role: any) => <option key={role._id} value={role._id}>{role.name}</option>)}
-									</select>
-								</td>
-											<td className="px-2.5 py-2 font-medium hidden sm:table-cell">{r.phone || <span className="text-muted-foreground/40">—</span>}</td>
-											<td className="px-2.5 py-2 text-muted-foreground hidden md:table-cell">{r.identityNumber || <span className="text-muted-foreground/40">—</span>}</td>
-											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden lg:table-cell">{r.placeOfBirth ? `${r.placeOfBirth}, ` : ""}{fmtDate(r.birthDate)}</td>
-											<td className="px-2.5 py-2 text-muted-foreground max-w-[120px] truncate hidden lg:table-cell">{r.address || <span className="text-muted-foreground/40">—</span>}</td>
-											<td className="px-2.5 py-2 text-muted-foreground text-[10px] hidden md:table-cell">{fmtDate(r.startDate)}</td>
-											<td className="px-2.5 py-2 hidden sm:table-cell">
-												<span className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${r.employmentType === "permanent" ? "bg-emerald-100 text-emerald-700" : r.employmentType === "probation" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "—"}</span>
+											<td className="px-1.5 py-1" onClick={(e) => e.stopPropagation()}>
+												<select aria-label={`Role ${row.name}`} value={row.roleId || ""} onChange={(e) => void handleRoleChange(row, e.target.value)} disabled={savingRoleIds.has(row._id) || staffRoles.length === 0} className="h-8 w-full min-w-0 rounded-md border border-input bg-background px-1.5 text-[11px] font-semibold text-primary disabled:opacity-60">
+													<option value="" disabled>{row.roleName || "Tanpa role"}</option>
+													{staffRoles.map((role: any) => <option key={role._id} value={role._id}>{role.name}</option>)}
+												</select>
 											</td>
-											<td className="px-2.5 py-2 text-right font-medium hidden md:table-cell">{fmtCurrency(r.monthlySalary)}</td>
-											<td className="px-2.5 py-2 text-muted-foreground hidden xl:table-cell">{r.location || <span className="text-muted-foreground/40">—</span>}</td>
-											<td className="px-2.5 py-2 text-[10px] hidden xl:table-cell">{r.emergencyContactName ? <div><p className="font-medium">{r.emergencyContactName}</p><p className="text-muted-foreground">{r.emergencyContactPhone || "—"}</p></div> : <span className="text-muted-foreground/40">—</span>}</td>
-											<td className="px-2.5 py-2 text-center">
-												<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.14em] ${isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-muted text-muted-foreground border border-border"}`}>
-													<span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+											<td className="px-1.5 py-1 text-xs font-medium">
+												{r.phone ? <span className="block truncate" title={r.phone}>{r.phone}</span> : <span className="text-muted-foreground/50">—</span>}
+											</td>
+											<td className="px-1.5 py-1">
+												<span title={r.employmentType || "Tipe kerja belum diisi"} className={`inline-block max-w-full truncate rounded-md px-1.5 py-1 text-[11px] font-bold ${r.employmentType === "permanent" ? "bg-emerald-100 text-emerald-700" : r.employmentType === "probation" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>
+													{r.employmentType === "permanent" ? "Tetap" : r.employmentType === "probation" ? "Probation" : r.employmentType || "—"}
+												</span>
+											</td>
+											<td className="px-1 py-1 text-center">
+												<span className={`inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-1 text-[11px] font-bold uppercase tracking-normal ${isActive ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-border bg-muted text-muted-foreground"}`}>
+													<span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
 													{isActive ? "Aktif" : "Nonaktif"}
 												</span>
 											</td>
-											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{row.hasFace ? <Camera className="inline h-3.5 w-3.5 text-primary" /> : <span className="text-muted-foreground/20">—</span>}</td>
-											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">—</span>}</td>
-											<td className="px-1 py-2 text-center">
+											<td className="px-1 py-1 text-center">
 												<button
 													title="Hapus"
+													aria-label={`Hapus ${row.name}`}
 													className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1 text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
 													onClick={(e) => { e.stopPropagation(); handleSingleDelete(row); }}
 													disabled={deletingIds.has(row._id)}
 												>
-													{deletingIds.has(row._id) ? (
-														<Loader2 className="h-3 w-3 animate-spin" />
-													) : (
-														<Trash2 className="h-3 w-3" />
-													)}
+													{deletingIds.has(row._id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
 												</button>
 											</td>
 										</tr>
