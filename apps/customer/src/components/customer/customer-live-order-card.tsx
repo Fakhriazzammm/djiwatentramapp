@@ -45,7 +45,8 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
   const terminal = status === "completed" || status === "cancelled";
   const deadlinePassed = Boolean(order.slaDeadlineAt && new Date(order.slaDeadlineAt).getTime() <= Date.now());
   const late = !terminal && deadlinePassed && (total === 0 || finished < total);
-  if (dismissed) return null;
+  const trackingExpired = Boolean(order.slaDeadlineAt && Date.now() >= new Date(order.slaDeadlineAt).getTime() + 10 * 60 * 1000);
+  if (dismissed || trackingExpired) return null;
 
   return (
     <motion.div
