@@ -3,6 +3,7 @@ import { CAMPAIGN_STATUSES, KOL_PLATFORMS, SUBMISSION_STATUSES, VISIT_ACTIVE_STA
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { INQUIRY_STATUSES, isInquiryHoneypotFilled, validatePublicInquiry } from "./kol-inquiry-contract";
 
 describe("KOL Creator Portal contracts", () => {
   it("normalizes public slugs deterministically", () => {
@@ -28,6 +29,25 @@ describe("KOL Creator Portal contracts", () => {
     const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20260923000003_kol_creator_portal_foundation.sql"), "utf8");
     expect(migration).toContain("idx_kol_visit_one_active_per_day");
     expect(migration).toContain("where status in ('requested','confirmed','completed')");
+  });
+
+  it("defines shared visit booking, explicit consent, and admin audit protections", () => {
+    const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20261006000100_kol_shared_visit_admin.sql"), "utf8");
+    const foundation = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20260923000003_kol_creator_portal_foundation.sql"), "utf8");
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    expect(foundation).toContain("idx_kol_visit_one_active_per_day");
+    expect(migration).toContain("booking_time time");
+    expect(migration).toContain("consent_terms boolean");
+    expect(migration).toContain("consent_attendance boolean");
+    expect(migration).toContain("kol_request_shared_visit_booking");
+    expect(migration).toContain("booking_eligibility_changed");
+    expect(source).toContain("/api/kol/admin/session");
+    expect(source).toContain("/api/kol/admin/creators");
+    expect(source).toContain("/api/kol/admin/visits");
+    expect(source).toContain("kol_request_shared_visit_booking");
+    expect(source).toContain("current.kol.visit_booking_eligible !== true");
+    expect(source).toContain("kolAdminContext(c, auth, pool)");
+    expect(source).not.toContain("body.kolId");
   });
 
   it("defines the additive public timeline security boundary", () => {
@@ -72,7 +92,7 @@ describe("KOL Creator Portal contracts", () => {
     for (const route of ["/api/kol/invites/:token", "/api/kol/invite/open", "/api/kol/invites/:token/claim", "/api/kol/invites/:token/booking"]) expect(source).toContain(route);
     for (const error of ["UNAUTHORIZED", "EMAIL_MATCH_NOT_FOUND", "AMBIGUOUS_EMAIL_MATCH", "ALREADY_LINKED", "INVITE_NOT_FOUND", "INVITE_NOT_LINKED", "DATE_ALREADY_BOOKED"]) expect(source).toContain(error);
     expect(source).toContain("where source_id = $2 and auth_user_id is null");
-    expect(source).toContain("pos.kol_request_visit_booking");
+    expect(source).toContain("pos.kol_request_invited_visit_booking_v2");
     expect(source).toContain("invite.source_id");
     expect(source).not.toContain("body.kolId");
   });
@@ -87,4 +107,30 @@ describe("KOL Creator Portal contracts", () => {
     expect(safe).not.toContain("application_data");
     expect(safe).not.toContain("manager_");
   });
+
+  it("validates public collaboration inquiries and honeypot submissions", () => {
+    expect(INQUIRY_STATUSES).toEqual(["new", "reviewing", "contacted", "declined", "closed"]);
+    expect(validatePublicInquiry({ businessName: "Brand Co", contactName: "Ayu", contactEmail: " AYU@EXAMPLE.COM ", contactPhone: "", brief: "Kami ingin membahas kerja sama konten untuk campaign bulan depan.", preferredContact: "email" })).toEqual({ ok: true, value: { businessName: "Brand Co", contactName: "Ayu", contactEmail: "ayu@example.com", contactPhone: null, brief: "Kami ingin membahas kerja sama konten untuk campaign bulan depan.", preferredContact: "email" } });
+    expect(validatePublicInquiry({ businessName: "B", contactName: "A", brief: "short" })).toMatchObject({ ok: false });
+    expect(isInquiryHoneypotFilled({ website: "https://spam.test" })).toBe(true);
+    expect(isInquiryHoneypotFilled({ website: "" })).toBe(false);
+  });
+
+  it("keeps inquiry writes private and profiles visibility-gated", () => {
+    const api = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20261006000000_kol_collaboration_inquiries.sql"), "utf8");
+    const publicViewMigration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20260924000000_kol_public_timeline.sql"), "utf8");
+    expect(api).toContain("/api/kol/public/:username/inquiries");
+    expect(api).toContain("validatePublicInquiry(body)");
+    expect(api).toContain("isInquiryRateLimited(limiterKey)");
+    expect(api).toContain("from public.pos_kol_public_profiles where lower(username)=lower($1)");
+    expect(api).toContain('"coalesce(p.is_public,false)=true"');
+    expect(api).toContain("p.is_public=true and c.status <> 'Rejected'");
+    expect(migration).toContain("enable row level security");
+    expect(migration).toContain("revoke all on pos.kol_collaboration_inquiries from anon, authenticated");
+    expect(migration).not.toContain("grant select on pos.kol_collaboration_inquiries to anon");
+    expect(publicViewMigration).toContain("coalesce(p.is_public, false) = true");
+    expect(publicViewMigration).toContain("pi.review_status = 'approved' and pi.is_public = true");
+  });
+
 });

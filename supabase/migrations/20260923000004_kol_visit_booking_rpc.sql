@@ -15,8 +15,8 @@ begin
   end if;
 
   if exists (
-    select 1 from pos.kol_visit_bookings
-    where kol_id = p_kol_id and status in ('requested','confirmed')
+    select 1 from pos.kol_visit_bookings v
+    where v.kol_id = p_kol_id and v.status in ('requested','confirmed')
   ) then
     raise exception using errcode = '23505', message = 'creator already has an active visit booking';
   end if;
