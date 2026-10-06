@@ -150,8 +150,10 @@ function CommunityPage() {
   const matches = useMatches();
   const isPostDetail = matches.some((match) => match.routeId === "/$username/komunitas/$postId");
   const { isAuthenticated, isLoading: authLoading, customer } = useCustomerAuth();
+  const currentSavedFeedOwner = isAuthenticated ? customer?.sourceId ?? null : null;
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [savedPosts, setSavedPosts] = useState<CommunityPost[]>([]);
+  const [savedPostsOwner, setSavedPostsOwner] = useState<string | null>(null);
   const [activities, setActivities] = useState<CommunityPurchaseActivity[]>([]);
   const [activityCursor, setActivityCursor] = useState<string | null>(null);
   const [activityLoading, setActivityLoading] = useState(true);
@@ -174,6 +176,11 @@ function CommunityPage() {
   const [savedLoading, setSavedLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const savedFeedOwnerRef = useRef<string | null>(currentSavedFeedOwner);
+  const savedPostsLoadedForRef = useRef<string | null>(null);
+  const savedPostsRequestIdRef = useRef(0);
+  const savedPostsRequestForRef = useRef<{ ownerId: string; requestId: number } | null>(null);
+  const visibleSavedPosts = savedPostsOwner === currentSavedFeedOwner ? savedPosts : null;
 
   const load = useCallback(async (nextCursor?: string, signal?: AbortSignal) => {
     const page = await communityClient.list(nextCursor, signal);
@@ -206,10 +213,41 @@ function CommunityPage() {
   };
 
   useEffect(() => {
-    if (feedFilter !== "saved" || !isAuthenticated || savedLoading) return;
+    if (savedFeedOwnerRef.current === currentSavedFeedOwner) return;
+    savedFeedOwnerRef.current = currentSavedFeedOwner;
+    savedPostsRequestIdRef.current += 1;
+    savedPostsLoadedForRef.current = null;
+    savedPostsRequestForRef.current = null;
+    setSavedPosts([]);
+    setSavedPostsOwner(null);
+    setSavedLoading(false);
+  }, [currentSavedFeedOwner]);
+
+  useEffect(() => {
+    const customerSourceId = currentSavedFeedOwner;
+    if (feedFilter !== "saved" || !customerSourceId || savedFeedOwnerRef.current !== customerSourceId) return;
+    if (savedPostsLoadedForRef.current === customerSourceId) return;
+    if (savedPostsRequestForRef.current?.ownerId === customerSourceId && savedPostsRequestForRef.current.requestId === savedPostsRequestIdRef.current) return;
+
+    const requestId = ++savedPostsRequestIdRef.current;
+    savedPostsRequestForRef.current = { ownerId: customerSourceId, requestId };
     setSavedLoading(true);
-    void communityClient.listSaved().then((page) => setSavedPosts(page.data)).catch((reason) => setNotice(reason instanceof Error ? reason.message : "Postingan tersimpan belum dapat dimuat.")).finally(() => setSavedLoading(false));
-  }, [feedFilter, isAuthenticated, savedLoading]);
+    void communityClient.listSaved()
+      .then((page) => {
+        if (savedFeedOwnerRef.current !== customerSourceId || savedPostsRequestIdRef.current !== requestId) return;
+        setSavedPosts(page.data);
+        setSavedPostsOwner(customerSourceId);
+        savedPostsLoadedForRef.current = customerSourceId;
+      })
+      .catch((reason) => {
+        if (savedFeedOwnerRef.current !== customerSourceId || savedPostsRequestIdRef.current !== requestId) return;
+        setNotice(reason instanceof Error ? reason.message : "Postingan tersimpan belum dapat dimuat.");
+      })
+      .finally(() => {
+        if (savedPostsRequestForRef.current?.requestId === requestId) savedPostsRequestForRef.current = null;
+        if (savedFeedOwnerRef.current === customerSourceId && savedPostsRequestIdRef.current === requestId) setSavedLoading(false);
+      });
+  }, [feedFilter, currentSavedFeedOwner]);
 
   useEffect(() => {
     if (!isAuthenticated) { setActivityLoading(false); return; }
@@ -286,10 +324,10 @@ function CommunityPage() {
   const timelineItems = useMemo(() => {
     const items = [
       ...(feedFilter === "activity" ? groupedActivities : feedFilter === "for-you" ? groupedActivities.slice(0, 3) : []).map((item) => ({ kind: "activity" as const, at: item.orderSettledAt, item })),
-      ...(feedFilter === "saved" ? savedPosts.map((item) => ({ kind: "post" as const, at: item.createdAt, item })) : feedFilter !== "activity" ? posts.map((item) => ({ kind: "post" as const, at: item.createdAt, item })) : []),
+      ...(feedFilter === "saved" ? (visibleSavedPosts ?? []).map((item) => ({ kind: "post" as const, at: item.createdAt, item })) : feedFilter !== "activity" ? posts.map((item) => ({ kind: "post" as const, at: item.createdAt, item })) : []),
     ];
     return items.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  }, [feedFilter, groupedActivities, posts]);
+  }, [feedFilter, groupedActivities, posts, visibleSavedPosts]);
 
   if (isPostDetail) return <Outlet />;
   if (authLoading) return <CustomerSectionSkeleton label="Menyiapkan Komunitas Djiwa" />;
@@ -304,5 +342,5 @@ function CommunityPage() {
         <span className="flex-1 text-xs text-muted-foreground">Apa yang ingin kamu bagikan?</span><Plus className="h-4 w-4 text-[#3156a3]" />
       </button>
     )}
-    <section className="mt-0" aria-label="Feed Komunitas">{(feedFilter === "for-you" || feedFilter === "activity") && groupedActivities.length > 0 ? <div className="flex items-center justify-between px-5 pb-2 pt-3 sm:px-8"><p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#667085]">{feedFilter === "activity" ? "Aktivitas Teman Djiwa" : "Yang sedang dicoba teman"}</p>{feedFilter === "for-you" ? <button type="button" className="text-[11px] font-bold text-[#3156a3]" onClick={() => setFeedFilter("activity")}>Lihat semua</button> : null}</div> : null}{timelineItems.slice(0, 20).map((entry) => entry.kind === "activity" ? <PurchaseActivityCard key={`activity-${entry.item.id}`} activity={entry.item} onOpenProduct={(item) => { window.location.assign(`/${encodeURIComponent(username)}/order?step=table&product_source_id=${encodeURIComponent(item.productSourceId)}`); }} /> : <PostCard key={`post-${entry.item.id}`} post={entry.item} currentSourceId={customer.sourceId} onDelete={deletePost} onReport={reportPost} onOpen={(post) => navigate({ to: "/$username/komunitas/$postId", params: { username, postId: post.id } })} />)}{loading || savedLoading ? <CustomerSectionSkeleton label="Memuat postingan Komunitas" /> : error ? <CustomerErrorState message={error} onRetry={() => { setLoading(true); void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Gagal memuat.")).finally(() => setLoading(false)); }} /> : timelineItems.length === 0 ? <div className="rounded-[22px] border border-dashed border-border p-6 text-center"><p className="text-sm font-black">Belum ada cerita di Komunitas Djiwa</p><p className="mt-1 text-xs text-muted-foreground">Jadilah yang pertama berbagi dengan Teman Djiwa.</p></div> : null}</section><div className="flex flex-wrap justify-center gap-2 px-3 py-3">{cursor && feedFilter !== "activity" && feedFilter !== "saved" && !loading ? <button type="button" disabled={loadingMore} className="flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-black" onClick={() => { setLoadingMore(true); void load(cursor).finally(() => setLoadingMore(false)); }}>{loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Muat postingan berikutnya</button> : null}{activityCursor && feedFilter !== "posts" ? <button type="button" disabled={activityLoading} className="flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-black" onClick={() => { setActivityLoading(true); void loadActivities(activityCursor).finally(() => setActivityLoading(false)); }}>{activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Muat aktivitas berikutnya</button> : null}</div><CustomerBottomNav items={navItems} /></main>;
+    <section className="mt-0" aria-label="Feed Komunitas">{(feedFilter === "for-you" || feedFilter === "activity") && groupedActivities.length > 0 ? <div className="flex items-center justify-between px-5 pb-2 pt-3 sm:px-8"><p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#667085]">{feedFilter === "activity" ? "Aktivitas Teman Djiwa" : "Yang sedang dicoba teman"}</p>{feedFilter === "for-you" ? <button type="button" className="text-[11px] font-bold text-[#3156a3]" onClick={() => setFeedFilter("activity")}>Lihat semua</button> : null}</div> : null}{timelineItems.slice(0, 20).map((entry) => entry.kind === "activity" ? <PurchaseActivityCard key={`activity-${entry.item.id}`} activity={entry.item} onOpenProduct={(item) => { window.location.assign(`/${encodeURIComponent(username)}/order?step=table&product_source_id=${encodeURIComponent(item.productSourceId)}`); }} /> : <PostCard key={`post-${entry.item.id}`} post={entry.item} currentSourceId={customer.sourceId} onDelete={deletePost} onReport={reportPost} onOpen={(post) => navigate({ to: "/$username/komunitas/$postId", params: { username, postId: post.id } })} />)}{loading || (feedFilter === "saved" && savedLoading) ? <CustomerSectionSkeleton label="Memuat postingan Komunitas" /> : error ? <CustomerErrorState message={error} onRetry={() => { setLoading(true); void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Gagal memuat.")).finally(() => setLoading(false)); }} /> : timelineItems.length === 0 ? <div className="rounded-[22px] border border-dashed border-border p-6 text-center"><p className="text-sm font-black">Belum ada cerita di Komunitas Djiwa</p><p className="mt-1 text-xs text-muted-foreground">Jadilah yang pertama berbagi dengan Teman Djiwa.</p></div> : null}</section><div className="flex flex-wrap justify-center gap-2 px-3 py-3">{cursor && feedFilter !== "activity" && feedFilter !== "saved" && !loading ? <button type="button" disabled={loadingMore} className="flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-black" onClick={() => { setLoadingMore(true); void load(cursor).finally(() => setLoadingMore(false)); }}>{loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Muat postingan berikutnya</button> : null}{activityCursor && feedFilter !== "posts" ? <button type="button" disabled={activityLoading} className="flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-black" onClick={() => { setActivityLoading(true); void loadActivities(activityCursor).finally(() => setActivityLoading(false)); }}>{activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Muat aktivitas berikutnya</button> : null}</div><CustomerBottomNav items={navItems} /></main>;
 }
