@@ -1,7 +1,7 @@
 {
-  "version": "0.2.302",
-  "commitHash": "e543286",
-  "message": "style(pos): tidy notification field layout",
-  "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T09:41:40.514Z"
+  "version": "0.2.459",
+  "commitHash": "5d82cc3",
+  "message": "fix(customer): guard saved community feed ownership",
+  "buildDate": "2026-10-06",
+  "generatedAt": "2026-10-06T14:08:49.438Z"
 }
