@@ -12,6 +12,17 @@ This folder contains migration SQL and data transformation scripts for the Supab
 3. Run transform scripts to populate runtime tables and views.
 4. Verify counts and critical queries.
 
+## KOL Portal Migrations
+
+KOL inquiry and shared-visit schema migrations live in `migrations/` and are applied atomically through the backend package runner:
+
+```bash
+cd packages/backend
+bun run supabase:migrate:kol-portal
+```
+
+Set `SUPABASE_DB_URL` in the runtime environment first. The SQL is idempotent; the runner wraps both files in one transaction and rolls back on failure.
+
 ## Import Command
 Use the backend package script:
 

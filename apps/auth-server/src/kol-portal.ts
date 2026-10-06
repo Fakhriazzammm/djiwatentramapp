@@ -145,22 +145,33 @@ function timelineQuery(where: string, orderCursor: string, typeClause: string) {
 }
 
 
-async function kolAdminContext(c: any, auth: AuthApi, pool: DbPool) {
+export async function kolAdminContext(c: any, auth: AuthApi, pool: Pick<DbPool, "query">) {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  const userId = session?.user?.id;
-  if (!userId) return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
+  const email = typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "";
+  if (!session?.user?.id || !email || session.user.emailVerified !== true) {
+    return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
+  }
+
+  // Better Auth and Supabase Auth use different user IDs. Bridge only through
+  // the same verified email, then resolve the canonical active Yumi staff row.
   const result = await pool.query(
-    `select u.name as display_name, r.name as role_name
-       from public.yumi_users u
-       join public.yumi_roles r on r.source_id=u.role_source_id
-      where u.auth_user_id=$1 and u.is_active=true limit 1`, [userId],
+    `select u.source_id, u.name as display_name, r.name as role_name
+       from auth.users au
+       join public.yumi_users u on u.auth_user_id = au.id::text and u.is_active = true
+       join public.yumi_roles r on r.source_id = u.role_source_id
+      where lower(au.email) = $1
+        and au.email_confirmed_at is not null
+      limit 2`, [email],
   );
-  const role = String(result.rows[0]?.role_name ?? "").trim().toLowerCase();
-  if (!role) return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
+  if (result.rows.length !== 1) {
+    return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
+  }
+  const staff = result.rows[0];
+  const role = String(staff.role_name ?? "").trim().toLowerCase();
   if (!["admin","administrator","owner","superadmin","super admin"].includes(role)) {
     return { error: json(c, { success: false, error: "FORBIDDEN" }, 403) };
   }
-  return { userId, name: result.rows[0].display_name as string, role };
+  return { userId: staff.source_id as string, name: staff.display_name as string, role };
 }
 
 export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPool) {

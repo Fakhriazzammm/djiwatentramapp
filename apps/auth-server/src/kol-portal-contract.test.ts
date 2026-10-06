@@ -32,7 +32,7 @@ describe("KOL Creator Portal contracts", () => {
   });
 
   it("defines shared visit booking, explicit consent, and admin audit protections", () => {
-    const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20261006000100_kol_shared_visit_admin.sql"), "utf8");
+    const migration = readFileSync(resolve(process.cwd(), "../../packages/backend/supabase/migrations/20261006000100_kol_shared_visit_admin.sql"), "utf8");
     const foundation = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20260923000003_kol_creator_portal_foundation.sql"), "utf8");
     const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
     expect(foundation).toContain("idx_kol_visit_one_active_per_day");
@@ -47,6 +47,11 @@ describe("KOL Creator Portal contracts", () => {
     expect(source).toContain("kol_request_shared_visit_booking");
     expect(source).toContain("current.kol.visit_booking_eligible !== true");
     expect(source).toContain("kolAdminContext(c, auth, pool)");
+    expect(source).toContain("session.user.emailVerified !== true");
+    expect(source).toContain("from auth.users au");
+    expect(source).toContain("u.auth_user_id = au.id::text");
+    expect(source).toContain("au.email_confirmed_at is not null");
+    expect(source).not.toContain("where u.auth_user_id=$1");
     expect(source).not.toContain("body.kolId");
   });
 
@@ -118,7 +123,7 @@ describe("KOL Creator Portal contracts", () => {
 
   it("keeps inquiry writes private and profiles visibility-gated", () => {
     const api = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
-    const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20261006000000_kol_collaboration_inquiries.sql"), "utf8");
+    const migration = readFileSync(resolve(process.cwd(), "../../packages/backend/supabase/migrations/20261006000000_kol_collaboration_inquiries.sql"), "utf8");
     const publicViewMigration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20260924000000_kol_public_timeline.sql"), "utf8");
     expect(api).toContain("/api/kol/public/:username/inquiries");
     expect(api).toContain("validatePublicInquiry(body)");
