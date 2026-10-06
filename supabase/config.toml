@@ -78,3 +78,7 @@ verify_jwt = false
 [functions.biteship-rates]
 enabled = true
 verify_jwt = false
+# Public reads; writes validate Yumi sessions or Auth JWTs inside the function.
+[functions.product-reviews]
+enabled = true
+verify_jwt = false

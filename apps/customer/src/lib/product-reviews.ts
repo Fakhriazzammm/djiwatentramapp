@@ -32,6 +32,21 @@ type RawSummary = Partial<ProductReviewSummary> & Record<string, unknown>;
 type SummaryResponse = { summary?: RawSummary | null; product?: RawSummary | null };
 type ListResponse = { reviews?: Array<Record<string, unknown>>; items?: Array<Record<string, unknown>>; hasMore?: boolean; nextCursor?: string | null };
 type CreateResponse = { review?: Record<string, unknown> | null; pending?: boolean; status?: string };
+const CUSTOMER_REVIEW_API = "https://api.yumme.id/v1/customer/product-reviews";
+
+async function postCustomerReview<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(`${CUSTOMER_REVIEW_API}${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok || payload.success === false) {
+    throw new Error(typeof payload.message === "string" ? payload.message : "Permintaan ulasan tidak dapat diproses.");
+  }
+  return payload as T;
+}
 
 function numberOrNull(value: unknown): number | null {
   return value == null || value === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
@@ -75,6 +90,10 @@ export async function listProductReviews(productSourceId: string, cursor?: strin
 
 export async function createProductReview(input: CreateProductReviewInput): Promise<{ review: ProductReview | null; status: string }> {
   const comment = input.comment?.trim() || undefined;
-  const response = await invokeEdgeFunction<CreateResponse>("product-reviews", { action: "create", productSourceId: input.productSourceId, orderSourceId: input.orderSourceId, rating: input.rating, ...(comment ? { comment } : {}) });
-  return { review: response.review ? mapReview(response.review, input.productSourceId) : null, status: String(response.status ?? (response.pending === false ? "published" : "pending")) };
+  const response = await postCustomerReview<CreateResponse>("", { productSourceId: input.productSourceId, orderSourceId: input.orderSourceId, rating: input.rating, ...(comment ? { comment } : {}) });
+  return { review: response.review ? mapReview(response.review, input.productSourceId) : null, status: String(response.review?.status ?? response.status ?? (response.pending === false ? "published" : "pending")) };
+}
+
+export async function reportProductReview(reviewId: string, reason?: string): Promise<void> {
+  await postCustomerReview<{ reported: boolean }>("/report", { reviewId, ...(reason?.trim() ? { reason: reason.trim().slice(0, 240) } : {}) });
 }
