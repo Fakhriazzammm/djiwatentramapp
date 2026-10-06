@@ -400,7 +400,7 @@ app.delete("/api/table/Candidates/:id", validateRecruitmentAdmin, async (req, re
 // Interviews has no backing table in the current schema; never present it as an
 // empty dataset. Onboarding is a read-only projection of the real application
 // table used by the onboarding flow.
-app.get("/api/table/Onboarding", validateRecruitmentAdmin, (req, res) => {
+app.get(["/api/table/Onboarding", "/api/rekrutmen/table/Onboarding"], validateRecruitmentAdmin, (req, res) => {
   try {
     const sql = `SELECT json_build_object('id', id, 'created_at', created_at, 'updated_at', updated_at, 'status', status, 'full_name', full_name, 'email', email, 'phone', phone, 'employment', employment, 'raw', raw, 'review_notes', review_notes, 'reviewed_at', reviewed_at)::text FROM public.employee_onboarding_applications ORDER BY created_at DESC`;
     const raw = execSync(

@@ -42,7 +42,25 @@ export const recruitmentApi = {
   candidate: (id: string, token?: string) => recruitmentRequest<RecruitmentCandidate>(`/candidates/${encodeURIComponent(id)}`, {}, token),
   positions: (token?: string) => recruitmentRequest<RecruitmentPosition[] | RecruitmentEnvelope<RecruitmentPosition[]>>("/positions", {}, token),
   updatePosition: (id: string, payload: Partial<Pick<RecruitmentPosition, "title" | "icon" | "summary" | "types" | "tags">> & { isOpen?: boolean; sortOrder?: number }, token?: string) => recruitmentRequest<RecruitmentPosition>(`/positions/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) }, token),
-  interviews: (token?: string) => recruitmentRequest<RecruitmentInterview[] | RecruitmentEnvelope<RecruitmentInterview[]>>("/interviews", {}, token),
-  onboarding: (token?: string) => recruitmentRequest<RecruitmentOnboardingItem[] | RecruitmentEnvelope<RecruitmentOnboardingItem[]>>("/onboarding", {}, token),
+  interviews: (token?: string) => recruitmentRequest<RecruitmentInterview[] | RecruitmentEnvelope<RecruitmentInterview[]>>("/interviews?page=1&pageSize=500", {}, token),
+  onboarding: async (token?: string) => {
+    const response = await recruitmentRequest<{ records?: Array<{ id: string; createdTime?: string; fields?: Record<string, unknown> }> }>("/table/Onboarding", {}, token);
+    return (response.records || []).map((record) => {
+      const fields = record.fields || {};
+      return {
+        id: record.id,
+        full_name: String(fields.Employee || ""),
+        email: String(fields.Email || ""),
+        phone: String(fields["Nomor Telepon/HP"] || ""),
+        status: String(fields["Training Completion Status"] || "pending"),
+        review_notes: String(fields.Notes || ""),
+        created_at: record.createdTime || "",
+        updated_at: String(fields["Reviewed At"] || record.createdTime || ""),
+        start_date: String(fields["Start Date"] || ""),
+        probation_end_date: String(fields["Probation End Date"] || ""),
+        training_schedule: String(fields["Training Schedule"] || ""),
+      } satisfies RecruitmentOnboardingItem;
+    });
+  },
   reports: (token?: string) => recruitmentRequest<RecruitmentReport>("/reports", {}, token),
 };
