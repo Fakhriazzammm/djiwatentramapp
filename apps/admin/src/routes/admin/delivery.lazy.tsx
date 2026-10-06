@@ -1,18 +1,12 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { Check, Circle, MapPin, RefreshCw, Search, Trash2, Truck } from "lucide-react";
-import { toast } from "sonner";
-import { useMemo, useState } from "react";
-import { useHybridDeleteOrder } from "@/hooks/use-hybrid-write-actions";
-import { useHybridOrders, useGlobalRefreshTrigger, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
+import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { Check, Circle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Button } from "@/components/ui/button";
-import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-
-export const Route = createLazyFileRoute("/admin/delivery")({
-  component: AdminCustomerDelivery,
-});
-
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { deliveryApi } from "@yumipos/web-shared/lib/customer-delivery";
+export const Route = createLazyFileRoute("/admin/delivery")({ component: AdminCustomerDelivery });
 const DELIVERY_STATUSES = [
   { value: "confirmed", label: "Dikonfirmasi" },
   { value: "allocated", label: "Kurir ditugaskan" },
@@ -23,7 +17,7 @@ const DELIVERY_STATUSES = [
   { value: "cancelled", label: "Dibatalkan" },
 ] as const;
 
-type DeliveryStatus = (typeof DELIVERY_STATUSES)[number]["value"];
+
 
 type CustomerDeliveryOrder = Record<string, any> & {
   _id: string;
@@ -113,146 +107,34 @@ function DeliveryTimeline({ status }: { status: string }) {
 }
 
 function AdminCustomerDelivery() {
-  const orders = useHybridOrders() as CustomerDeliveryOrder[] | undefined;
-  const refreshTrigger = useGlobalRefreshTrigger();
+  const { token } = useYumiAuth();
+  const requestVersion = useRef(0);
+  const [orders, setOrders] = useState<CustomerDeliveryOrder[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [deleteConfirmation, setDeleteConfirmation] = useState<string[] | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const deleteOrder = useHybridDeleteOrder();
-
-  const deliveryOrders = useMemo(() => {
-    const search = query.trim().toLowerCase();
-    return (orders ?? [])
-      .filter((order) => {
-        const source = String(order.source ?? order.sourceApp ?? order.source_app ?? "").toLowerCase();
-        const orderType = String(order.orderType ?? order.order_type ?? "").toLowerCase();
-        return source === "customer_self_service" && orderType === "delivery";
-      })
-      .filter((order) => {
-        const status = normalizeStatus(order);
-        const statusMatches = statusFilter === "all" || (statusFilter === "active" ? !TERMINAL_STATUSES.has(status) : status === statusFilter);
-        const haystack = [order.orderNumber, order.customerName, order.deliveryContactName, order.deliveryContactPhone, order.deliveryAddress, order.deliveryTrackingId, order.deliveryWaybillId].join(" ").toLowerCase();
-        return statusMatches && (!search || haystack.includes(search));
-      })
-      .sort((left, right) => Number(right.createdAt ?? 0) - Number(left.createdAt ?? 0));
-  }, [orders, query, statusFilter]);
-
-  const counts = useMemo(() => {
-    const all = (orders ?? []).filter((order) => String(order.source ?? order.sourceApp ?? order.source_app ?? "").toLowerCase() === "customer_self_service" && String(order.orderType ?? order.order_type ?? "").toLowerCase() === "delivery");
-    return { active: all.filter((order) => !TERMINAL_STATUSES.has(normalizeStatus(order))).length, delivered: all.filter((order) => normalizeStatus(order) === "delivered").length, cancelled: all.filter((order) => normalizeStatus(order) === "cancelled").length };
-  }, [orders]);
-
-  const allVisibleSelected = deliveryOrders.length > 0 && deliveryOrders.every((order) => selectedIds.includes(String(order._id)));
-
-  const toggleSelected = (id: string) => {
-    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-  };
-
-  const toggleAllVisible = () => {
-    const visibleIds = deliveryOrders.map((order) => String(order._id));
-    setSelectedIds((current) => allVisibleSelected
-      ? current.filter((id) => !visibleIds.includes(id))
-      : Array.from(new Set([...current, ...visibleIds])));
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteConfirmation?.length || isDeleting) return;
-    setIsDeleting(true);
+  const [selected, setSelected] = useState<CustomerDeliveryOrder | null>(null);
+  const refresh = useCallback(async () => {
+    const version = ++requestVersion.current;
+    setLoading(true); setError(null); setSelected(null); setOrders([]);
     try {
-      for (const id of deleteConfirmation) await deleteOrder({ id });
-      setSelectedIds((current) => current.filter((id) => !deleteConfirmation.includes(id)));
-      setDeleteConfirmation(null);
-      triggerHybridRefresh();
-      toast.success(`${deleteConfirmation.length} order delivery berhasil dihapus.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Sebagian order gagal dihapus.");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const selectedCount = selectedIds.length;
-
-  if (!orders) {
-    return (
-      <div className="space-y-3 p-3 md:p-4">
-        <Skeleton className="h-7 w-56" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
-    );
-  }
-
-  return (
-    <main className="flex min-h-full flex-col gap-2 p-3 pb-20 md:h-full md:min-h-0 md:gap-2 md:p-3 md:pb-3">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border pb-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Truck className="h-4 w-4 shrink-0 text-primary" />
-            <h1 className="truncate text-lg font-black tracking-tight md:text-xl">Delivery Customer</h1>
-            <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary sm:inline-flex">Biteship</span>
-          </div>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">Pantau pengiriman order delivery customer.</p>
-        </div>
-        <Button className="h-8 shrink-0 px-2.5 text-xs" onClick={() => triggerHybridRefresh()} size="sm" variant="outline">
-          <RefreshCw className="mr-1.5 h-3.5 w-3.5" />Segarkan
-        </Button>
-      </header>
-
-      <section className="grid shrink-0 grid-cols-3 gap-1.5 sm:max-w-md" aria-label="Ringkasan delivery">
-        <div className="rounded-lg border border-border bg-card px-2.5 py-1.5"><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Aktif</p><p className="text-lg font-black leading-tight tabular-nums">{counts.active}</p></div>
-        <div className="rounded-lg border border-border bg-card px-2.5 py-1.5"><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Terkirim</p><p className="text-lg font-black leading-tight text-emerald-600 tabular-nums">{counts.delivered}</p></div>
-        <div className="rounded-lg border border-border bg-card px-2.5 py-1.5"><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Dibatalkan</p><p className="text-lg font-black leading-tight text-red-600 tabular-nums">{counts.cancelled}</p></div>
-      </section>
-
-      <section className="sticky top-0 z-10 grid shrink-0 gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 backdrop-blur md:grid-cols-[minmax(0,1fr)_170px]" aria-label="Filter delivery">
-        <div className="relative min-w-0"><Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" /><Input className="h-8 min-w-0 pl-8 text-xs" onChange={(event) => setQuery(event.target.value)} placeholder="Cari order, customer, alamat, resi..." value={query} /></div>
-        <select className="h-8 min-w-0 rounded-md border border-input bg-background px-2.5 text-xs" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="active">Aktif</option><option value="all">Semua status</option>{DELIVERY_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</select>
-      </section>
-
-      <div className="flex shrink-0 items-center justify-between gap-2 text-[10px] text-muted-foreground"><span>{deliveryOrders.length} order ditampilkan</span><div className="flex items-center gap-2"><span>Pembaruan #{refreshTrigger}</span>{selectedCount > 0 ? <Button className="h-7 px-2 text-[10px]" disabled={isDeleting} onClick={() => setDeleteConfirmation([...selectedIds])} size="sm" variant="destructive"><Trash2 className="mr-1 h-3 w-3" />Hapus {selectedCount}</Button> : null}</div></div>
-
-      <div className="hidden min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card md:block">
-        <table className="w-full min-w-[1120px] table-fixed text-left text-[11px]">
-          <thead className="sticky top-0 z-[1] bg-muted/95 text-[9px] uppercase tracking-wider text-muted-foreground backdrop-blur"><tr><th className="w-10 px-2 py-1.5 text-center"><input aria-label="Pilih semua order yang terlihat" checked={allVisibleSelected} onChange={toggleAllVisible} type="checkbox" className="h-3.5 w-3.5 accent-primary" /></th><th className="w-[14%] px-2 py-1.5">Order / customer</th><th className="w-[27%] px-2 py-1.5">Timeline Biteship</th><th className="w-[18%] px-2 py-1.5">Kurir & tujuan</th><th className="w-[16%] px-2 py-1.5">Tracking</th><th className="w-[10%] px-2 py-1.5 text-right">Biaya / total</th><th className="w-[11%] px-2 py-1.5">Payment / order</th></tr></thead>
-          <tbody className="divide-y divide-border">
-            {deliveryOrders.map((order) => { const status = normalizeStatus(order); return (
-              <tr className="align-middle transition-colors hover:bg-muted/30" key={order._id}>
-                <td className="px-2 py-1.5 text-center align-top"><input aria-label={`Pilih order ${order.orderNumber || order._id}`} checked={selectedIds.includes(String(order._id))} onChange={() => toggleSelected(String(order._id))} type="checkbox" className="mt-0.5 h-3.5 w-3.5 accent-primary" /></td>
-                <td className="px-2 py-1.5 align-top"><p className="truncate font-bold" title={order.orderNumber || order._id}>#{order.orderNumber || order._id}</p><p className="truncate text-[10px]">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[9px] text-muted-foreground">{formatDate(order.createdAt)}</p></td>
-                <td className="px-2 py-1.5"><span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span><div className="mt-1.5 overflow-x-auto"><DeliveryTimeline status={status} /></div></td>
-                <td className="max-w-0 px-2 py-1.5 align-top"><p className="flex items-center gap-1 truncate font-bold"><Truck className="h-3 w-3 shrink-0" />{courierLabel(order)}</p><p className="mt-0.5 flex max-w-full gap-1 truncate text-[10px] text-muted-foreground" title={order.deliveryAddress || "Alamat belum tersedia"}><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p></td>
-                <td className="px-2 py-1.5 align-top text-[10px]"><p className="truncate" title={order.deliveryWaybillId || "-"}>Waybill: <span className="font-semibold">{order.deliveryWaybillId || "-"}</span></p><p className="truncate" title={order.deliveryTrackingId || "-"}>Tracking: <span className="font-semibold">{order.deliveryTrackingId || "-"}</span></p><p className="truncate text-[9px] text-muted-foreground" title={order.deliveryProviderOrderId || "-"}>Provider: {order.deliveryProviderOrderId || "-"}</p></td>
-                <td className="px-2 py-1.5 text-right align-top text-[10px]"><p>Ongkir <span className="font-semibold">{formatRupiah(order.shippingFeeAmount)}</span></p><p className="mt-0.5 font-bold">{formatRupiah(order.totalAmount)}</p></td>
-                <td className="px-2 py-1.5 align-top text-[10px]"><p>{paymentLabel(order.paymentMethod)}</p><p className="mt-0.5 truncate text-muted-foreground">{order.status || "-"}</p></td>
-              </tr>
-            ); })}
-          </tbody>
-        </table>
-        {deliveryOrders.length === 0 ? <div className="p-8 text-center text-xs text-muted-foreground">Belum ada order delivery customer sesuai filter.</div> : null}
-      </div>
-
-      <div className="space-y-2 md:hidden">
-        {deliveryOrders.map((order) => { const status = normalizeStatus(order); return (
-          <article className={`rounded-xl border bg-card p-3 ${selectedIds.includes(String(order._id)) ? "border-primary ring-1 ring-primary/20" : "border-border"}`} key={order._id}>
-            <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-start gap-2"><input aria-label={`Pilih order ${order.orderNumber || order._id}`} checked={selectedIds.includes(String(order._id))} onChange={() => toggleSelected(String(order._id))} type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" /><div className="min-w-0"><p className="truncate font-black">#{order.orderNumber || order._id}</p><p className="truncate text-xs">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[10px] text-muted-foreground">{formatDate(order.createdAt)}</p></div><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span></div></div>
-            <div className="mt-2 overflow-x-auto"><DeliveryTimeline status={status} /></div>
-            <div className="mt-2 space-y-1.5 border-t border-border pt-2 text-[11px]"><p className="flex gap-1.5"><Truck className="h-3.5 w-3.5 shrink-0" />{courierLabel(order)}</p><p className="flex gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p><p className="truncate">Waybill: <strong>{order.deliveryWaybillId || "-"}</strong> · Tracking: <strong>{order.deliveryTrackingId || "-"}</strong></p><div className="flex justify-between gap-2"><span>{paymentLabel(order.paymentMethod)} · {order.status || "-"}</span><strong>{formatRupiah(order.totalAmount)}</strong></div><p className="text-muted-foreground">Ongkir {formatRupiah(order.shippingFeeAmount)}</p></div>
-          </article>
-        ); })}
-        {deliveryOrders.length === 0 ? <div className="rounded-xl border border-dashed border-border py-10 text-center text-xs text-muted-foreground">Belum ada order delivery customer sesuai filter.</div> : null}
-      </div>
-      <ConfirmationModal
-        confirmText={isDeleting ? "Menghapus..." : "Hapus"}
-        isOpen={Boolean(deleteConfirmation?.length)}
-        loading={isDeleting}
-        message={`Hapus ${deleteConfirmation?.length ?? 0} order delivery terpilih? Data order, item, transaksi, dan status terkait akan dihapus.`}
-        onClose={() => { if (!isDeleting) setDeleteConfirmation(null); }}
-        onConfirm={confirmDelete}
-        title="Konfirmasi Hapus Order"
-      />
-    </main>
-  );
+      const data = await deliveryApi<{ orders: Record<string, any>[] }>("delivery-admin", { action: "list_orders", staffToken: token });
+      if (version !== requestVersion.current) return;
+      setOrders(data.orders.map((o) => ({ _id: o.source_id, orderNumber: o.order_number, customerName: o.customer_name, status: o.status, paymentMethod: o.payment_method, deliveryStatus: o.delivery_status, deliveryProvider: o.delivery_provider, deliveryContactName: o.delivery_contact_name, deliveryContactPhone: o.delivery_contact_phone, deliveryAddress: o.delivery_address, deliveryProviderOrderId: o.delivery_provider_order_id, deliveryTrackingId: o.delivery_tracking_id, deliveryWaybillId: o.delivery_waybill_id, shippingFeeAmount: o.shipping_fee_amount, totalAmount: o.total_amount, createdAt: o.created_at })));
+    } catch { if (version !== requestVersion.current) return; setOrders([]); setError("Daftar delivery tidak dapat dimuat. Periksa sesi dan akses Anda."); }
+    finally { if (version === requestVersion.current) setLoading(false); }
+  }, [token]);
+  useEffect(() => { void refresh(); return () => { requestVersion.current++; }; }, [refresh]);
+  const filtered = useMemo(() => orders.filter((o) => (statusFilter === "all" || (statusFilter === "active" ? !TERMINAL_STATUSES.has(normalizeStatus(o)) : normalizeStatus(o) === statusFilter)) && [o.orderNumber, o.customerName, o.deliveryContactName, o.deliveryTrackingId, o.deliveryWaybillId].join(" ").toLowerCase().includes(query.trim().toLowerCase())), [orders, query, statusFilter]);
+  return <main className="space-y-3 p-3 pb-20 md:p-4">
+    <header className="flex flex-wrap items-center justify-between gap-2"><div><h1 className="text-xl font-black">Delivery Customer</h1><p className="text-xs text-muted-foreground">100 order terbaru · status diperbarui oleh webhook.</p></div><div className="flex gap-2"><Link to="/admin/delivery/settings" className="text-sm underline">Pengaturan</Link><Button variant="outline" disabled={loading} onClick={() => void refresh()}>{loading ? "Memuat…" : "Segarkan"}</Button></div></header>
+    <section className="grid grid-cols-3 gap-2" aria-label="Ringkasan 100 order terbaru">{[["Aktif", orders.filter((o) => !TERMINAL_STATUSES.has(normalizeStatus(o))).length], ["Terkirim", orders.filter((o) => normalizeStatus(o) === "delivered").length], ["Dibatalkan", orders.filter((o) => normalizeStatus(o) === "cancelled").length]].map(([label, count]) => <div key={label} className="rounded-lg border p-2 text-xs">{label}<strong className="block text-xl">{count}</strong></div>)}</section>
+    <div className="flex gap-2"><Input aria-label="Cari order" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari order, customer, tracking…"/><select aria-label="Status pengiriman" className="rounded border bg-background px-2 text-xs" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="active">Aktif</option><option value="all">Semua</option>{DELIVERY_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select></div>
+    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+    <div className="hidden overflow-auto rounded-lg border md:block"><table className="w-full text-left text-xs"><thead className="bg-muted"><tr>{["Order / customer", "Status", "Kurir", "Tracking", "Ongkir / total", "Pembayaran", ""].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}</tr></thead><tbody>{filtered.map((o) => <tr key={o._id} className="border-t"><td className="p-2 font-semibold">#{o.orderNumber}<p className="font-normal">{o.deliveryContactName || o.customerName}</p><p className="text-muted-foreground">{formatDate(o.createdAt)}</p></td><td className="p-2"><span className={`rounded px-2 py-1 ${statusClass(normalizeStatus(o))}`}>{labelForStatus(normalizeStatus(o))}</span></td><td className="p-2">{courierLabel(o)}</td><td className="p-2">{o.deliveryWaybillId || o.deliveryTrackingId || "-"}</td><td className="p-2">{formatRupiah(o.shippingFeeAmount)}<p className="font-bold">{formatRupiah(o.totalAmount)}</p></td><td className="p-2">{paymentLabel(o.paymentMethod)}<p>{o.status}</p></td><td className="p-2"><Button variant="ghost" size="sm" onClick={() => setSelected(o)}>Detail</Button></td></tr>)}</tbody></table></div>
+    <div className="space-y-2 md:hidden">{filtered.map((o) => <article key={o._id} className="rounded-lg border p-3 text-xs"><strong>#{o.orderNumber} · {o.deliveryContactName || o.customerName}</strong><p>{labelForStatus(normalizeStatus(o))} · {courierLabel(o)}</p><p>{formatRupiah(o.totalAmount)} · {paymentLabel(o.paymentMethod)}</p><Button variant="ghost" onClick={() => setSelected(o)}>Detail</Button></article>)}</div>
+    {!loading && !error && filtered.length === 0 ? <p className="text-sm text-muted-foreground">Belum ada order sesuai filter.</p> : null}
+    <Sheet open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}><SheetContent className="overflow-y-auto"><SheetHeader><SheetTitle>Detail delivery #{selected?.orderNumber}</SheetTitle><SheetDescription>Status pengiriman dari webhook</SheetDescription></SheetHeader>{selected ? <div className="space-y-3 p-4 text-sm"><p>{selected.deliveryContactName || selected.customerName}</p><p>{selected.deliveryContactPhone || "-"}</p><p className="whitespace-pre-wrap">{selected.deliveryAddress || "-"}</p><p>{labelForStatus(normalizeStatus(selected))} · {courierLabel(selected)}</p><DeliveryTimeline status={normalizeStatus(selected)}/><p>Waybill: {selected.deliveryWaybillId || "-"}</p><p>Tracking: {selected.deliveryTrackingId || "-"}</p><p>Provider order: {selected.deliveryProviderOrderId || "-"}</p><p>Ongkir {formatRupiah(selected.shippingFeeAmount)} · Total {formatRupiah(selected.totalAmount)}</p><p>{paymentLabel(selected.paymentMethod)} · {selected.status}</p></div> : null}</SheetContent></Sheet>
+  </main>;
 }

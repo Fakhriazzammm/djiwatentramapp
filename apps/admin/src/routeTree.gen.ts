@@ -51,6 +51,7 @@ import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting
 import { Route as AdminDjiwaRunRouteImport } from './routes/admin/djiwa-run'
 import { Route as AdminDjiwaAppRouteImport } from './routes/admin/djiwa-app'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
+import { Route as AdminDeliverySettingsRouteImport } from './routes/admin/delivery_.settings'
 import { Route as AdminDeliveryRouteImport } from './routes/admin/delivery'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
@@ -381,6 +382,7 @@ const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/discounts.lazy').then((d) => d.Route),
 )
+const AdminDeliverySettingsRoute = AdminDeliverySettingsRouteImport.update({ id: '/delivery_/settings', path: '/delivery/settings', getParentRoute: () => AdminRouteRoute } as any).lazy(() => import('./routes/admin/delivery_.settings.lazy').then((d) => d.Route))
 const AdminDeliveryRoute = AdminDeliveryRouteImport.update({
   id: '/delivery',
   path: '/delivery',
@@ -965,6 +967,7 @@ export interface FileRoutesByFullPath {
   '/admin/community': typeof AdminCommunityRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/delivery/settings': typeof AdminDeliverySettingsRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
@@ -1076,6 +1079,7 @@ export interface FileRoutesByTo {
   '/admin/community': typeof AdminCommunityRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/delivery/settings': typeof AdminDeliverySettingsRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
@@ -1181,6 +1185,7 @@ export interface FileRoutesById {
   '/admin/community': typeof AdminCommunityRoute
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/delivery_/settings': typeof AdminDeliverySettingsRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
@@ -1298,6 +1303,7 @@ export interface FileRouteTypes {
     | '/admin/community'
     | '/admin/customer-service'
     | '/admin/customers'
+    | '/admin/delivery/settings'
     | '/admin/delivery'
     | '/admin/discounts'
     | '/admin/djiwa-app'
@@ -1409,6 +1415,7 @@ export interface FileRouteTypes {
     | '/admin/community'
     | '/admin/customer-service'
     | '/admin/customers'
+    | '/admin/delivery/settings'
     | '/admin/delivery'
     | '/admin/discounts'
     | '/admin/djiwa-app'
@@ -1513,6 +1520,7 @@ export interface FileRouteTypes {
     | '/admin/community'
     | '/admin/customer-service'
     | '/admin/customers'
+    | '/admin/delivery_/settings'
     | '/admin/delivery'
     | '/admin/discounts'
     | '/admin/djiwa-app'
@@ -1914,6 +1922,13 @@ declare module '@tanstack/react-router' {
       path: '/discounts'
       fullPath: '/admin/discounts'
       preLoaderRoute: typeof AdminDiscountsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/delivery_/settings': {
+      id: '/admin/delivery_/settings'
+      path: '/delivery/settings'
+      fullPath: '/admin/delivery/settings'
+      preLoaderRoute: typeof AdminDeliverySettingsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/delivery': {
@@ -2766,6 +2781,7 @@ interface AdminRouteRouteChildren {
   AdminCommunityRoute: typeof AdminCommunityRoute
   AdminCustomerServiceRoute: typeof AdminCustomerServiceRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminDeliverySettingsRoute: typeof AdminDeliverySettingsRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminDjiwaAppRoute: typeof AdminDjiwaAppRoute
@@ -2803,6 +2819,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCommunityRoute: AdminCommunityRoute,
   AdminCustomerServiceRoute: AdminCustomerServiceRoute,
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminDeliverySettingsRoute: AdminDeliverySettingsRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminDjiwaAppRoute: AdminDjiwaAppRoute,

@@ -78,3 +78,7 @@ verify_jwt = false
 [functions.biteship-rates]
 enabled = true
 verify_jwt = false
+
+[functions.delivery-admin]
+enabled = true
+verify_jwt = false
