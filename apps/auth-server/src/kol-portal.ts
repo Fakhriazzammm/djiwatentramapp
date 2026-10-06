@@ -36,7 +36,7 @@ async function context(c: any, auth: AuthApi, pool: DbPool) {
   const email = session?.user?.email?.trim().toLowerCase();
   if (!userId || !email) return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
   const result = await pool.query(
-    `select c.source_id, c.name, c.username, c.avatar_url, c.location, c.category, c.status, c.public_reason, c.application_data,
+    `select c.source_id, c.name, c.username, c.avatar_url, c.location, c.category, c.status, c.public_reason, c.application_data, c.visit_booking_eligible,
             p.display_name, p.slug, p.bio, p.is_public, p.public_availability, p.availability_label
        from pos.kol_creators c
        left join pos.kol_profiles p on p.kol_id = c.source_id
@@ -129,6 +129,25 @@ function timelineQuery(where: string, orderCursor: string, typeClause: string) {
     order by pp.published_at desc, pp.id desc limit $LIMIT`;
 }
 
+
+async function kolAdminContext(c: any, auth: AuthApi, pool: DbPool) {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  const userId = session?.user?.id;
+  if (!userId) return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
+  const result = await pool.query(
+    `select u.name as display_name, r.name as role_name
+       from public.yumi_users u
+       join public.yumi_roles r on r.source_id=u.role_source_id
+      where u.auth_user_id=$1 and u.is_active=true limit 1`, [userId],
+  );
+  const role = String(result.rows[0]?.role_name ?? "").trim().toLowerCase();
+  if (!role) return { error: json(c, { success: false, error: "UNAUTHORIZED" }, 401) };
+  if (!["admin","administrator","owner","superadmin","super admin"].includes(role)) {
+    return { error: json(c, { success: false, error: "FORBIDDEN" }, 403) };
+  }
+  return { userId, name: result.rows[0].display_name as string, role };
+}
+
 export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPool) {
   // Invite routes deliberately select only public creator fields. Raw invite tokens never enter SQL.
   const inviteLookup = async (rawToken: string, db = pool) => {
@@ -216,16 +235,18 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const body = await c.req.json().catch(() => ({}));
     const token = inviteToken(body.token || c.req.param("token"));
     const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
+    const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
     if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
     const invite = await inviteLookup(token);
     if (!invite) return json(c, { success: false, error: "INVITE_NOT_FOUND" }, 404);
     if (invite.source_id !== current.kol.source_id) return json(c, { success: false, error: "INVITE_NOT_LINKED" }, 403);
-    const result = await pool.query(`select * from pos.kol_request_invited_visit_booking($1,$2,$3,$4)`, [invite.invite_id, date, typeof body.visitNote === "string" ? body.visitNote.trim().slice(0, 500) : null, current.userId]).catch((error: any) => ({ error }));
+    const result = await pool.query(`select * from pos.kol_request_invited_visit_booking_v2($1,$2,$3,$4::time,$5,$6,$7)`, [invite.invite_id, current.kol.source_id, date, time, true, true, current.userId]).catch((error: any) => ({ error }));
     if ((result as any).error) {
       const error = (result as any).error;
-      if (error?.code === "23505") return json(c, { success: false, error: error?.message === "creator already has an active visit booking" ? "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" : "DATE_ALREADY_BOOKED" }, 409);
-      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","INVITATION_NOT_VALID"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" ? 409 : 400);
+      if (error?.code === "23505" || error?.message === "DATE_ALREADY_BOOKED") return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
+      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","INVITATION_NOT_VALID","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : 400);
       throw error;
     }
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
@@ -471,24 +492,109 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   });
 
   app.get("/api/kol/portal/visit-calendar", async (c) => {
-    const result = await pool.query(`select booking_date, status, creator_name, username from public.pos_kol_visit_calendar where booking_date >= ((now() at time zone 'Asia/Jakarta')::date) order by booking_date asc limit 120`);
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const result = await pool.query(`select booking_date, booking_time, status, (kol_id = $1) as own from pos.kol_visit_bookings where booking_date >= ((now() at time zone 'Asia/Jakarta')::date) and status in ('requested','confirmed','completed') order by booking_date asc limit 120`, [current.kol.source_id]);
     return json(c, { success: true, data: result.rows });
   });
 
   app.post("/api/kol/portal/visit-calendar", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;
+    if (current.kol.visit_booking_eligible !== true) return json(c, { success: false, error: "VISIT_NOT_ELIGIBLE" }, 403);
     const body = await c.req.json().catch(() => ({}));
     const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
-    const result = await pool.query(`select * from pos.kol_request_visit_booking($1,$2,$3)`, [current.kol.source_id, date, typeof body.visitNote === "string" ? body.visitNote.trim().slice(0, 500) : null]).catch((error: any) => ({ error }));
+    const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
+    const result = await pool.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [current.kol.source_id, date, time, true, true, current.userId]).catch((error: any) => ({ error }));
     if ((result as any).error) {
       const error = (result as any).error;
-      if (error?.code === "23505") return json(c, { success: false, error: error?.message === "creator already has an active visit booking" ? "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" : "DATE_ALREADY_BOOKED" }, 409);
-      if (error?.code === "22023") return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+      if (error?.code === "23505" || error?.message === "DATE_ALREADY_BOOKED") return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
+      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","VISIT_NOT_ELIGIBLE","KOL_PROFILE_NOT_FOUND","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : error.message === "VISIT_NOT_ELIGIBLE" ? 403 : 400);
       throw error;
     }
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
+  });
+
+
+  app.get("/api/kol/admin/session", async (c) => {
+    const result = await kolAdminContext(c, auth, pool);
+    if (result.error) return result.error;
+    return json(c, { success: true, data: { name: result.name, role: result.role } });
+  });
+
+  app.get("/api/kol/admin/creators", async (c) => {
+    const admin = await kolAdminContext(c, auth, pool);
+    if (admin.error) return admin.error;
+    const result = await pool.query(`
+      select c.source_id, c.name, c.username, c.location, c.category, c.status, c.public_reason,
+             c.application_data, c.visit_booking_eligible, c.visit_booking_eligible_at,
+             c.visit_booking_eligibility_note, c.created_at, c.updated_at,
+             p.platform, p.profile_url, p.followers,
+             pc.email, pc.whatsapp
+        from pos.kol_creators c
+        left join lateral (select platform, profile_url, followers from pos.kol_platforms where kol_id=c.source_id order by followers desc limit 1) p on true
+        left join lateral (select email, whatsapp from pos.kol_private_contacts where kol_id=c.source_id order by created_at desc limit 1) pc on true
+       order by c.created_at desc limit 500`);
+    return json(c, { success: true, data: result.rows });
+  });
+
+  app.patch("/api/kol/admin/creators/:id/eligibility", async (c) => {
+    const admin = await kolAdminContext(c, auth, pool);
+    if (admin.error) return admin.error;
+    const kolId = c.req.param("id");
+    const body = await c.req.json().catch(() => ({}));
+    if (!kolId || typeof body.eligible !== "boolean") return json(c, { success: false, error: "INVALID_ELIGIBILITY" }, 400);
+    const note = typeof body.note === "string" ? body.note.trim().slice(0, 1000) : "";
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const prior = await client.query(`select source_id, visit_booking_eligible, status from pos.kol_creators where source_id=$1 for update`, [kolId]);
+      if (!prior.rows[0]) { await client.query("rollback"); return json(c, { success: false, error: "CREATOR_NOT_FOUND" }, 404); }
+      if (body.eligible && prior.rows[0].status === "Rejected") { await client.query("rollback"); return json(c, { success: false, error: "REJECTED_CREATOR_CANNOT_BOOK" }, 409); }
+      const updated = await client.query(`update pos.kol_creators set visit_booking_eligible=$2, visit_booking_eligible_by=$3, visit_booking_eligible_at=now(), visit_booking_eligibility_note=nullif($4,''), updated_at=now() where source_id=$1 returning source_id,visit_booking_eligible,visit_booking_eligible_by,visit_booking_eligible_at,visit_booking_eligibility_note`, [kolId, body.eligible, admin.userId, note]);
+      await client.query(`insert into pos.kol_visit_booking_events(kol_id,event_type,actor_type,actor_id,payload) values($1,'booking_eligibility_changed','admin',$2,$3::jsonb)`, [kolId, admin.userId, JSON.stringify({ from: prior.rows[0].visit_booking_eligible, to: body.eligible, note })]);
+      await client.query("commit");
+      return json(c, { success: true, data: updated.rows[0] });
+    } catch (error) { await client.query("rollback"); throw error; }
+    finally { client.release(); }
+  });
+
+  app.get("/api/kol/admin/visits", async (c) => {
+    const admin = await kolAdminContext(c, auth, pool);
+    if (admin.error) return admin.error;
+    const result = await pool.query(`
+      select b.id,b.kol_id,b.booking_date,b.booking_time,b.status,b.visit_note,b.admin_note,
+             b.consent_terms,b.consent_attendance,b.consent_version,b.consented_at,
+             c.name,c.username,pc.email,pc.whatsapp
+        from pos.kol_visit_bookings b join pos.kol_creators c on c.source_id=b.kol_id
+        left join lateral (select email,whatsapp from pos.kol_private_contacts where kol_id=c.source_id order by created_at desc limit 1) pc on true
+       order by b.booking_date desc,b.booking_time desc limit 500`);
+    return json(c, { success: true, data: result.rows });
+  });
+
+  app.patch("/api/kol/admin/visits/:id", async (c) => {
+    const admin = await kolAdminContext(c, auth, pool);
+    if (admin.error) return admin.error;
+    const id = Number(c.req.param("id"));
+    const body = await c.req.json().catch(() => ({}));
+    const status = typeof body.status === "string" ? body.status : "";
+    const note = typeof body.note === "string" ? body.note.trim().slice(0, 1000) : "";
+    if (!Number.isSafeInteger(id) || id < 1 || !["confirmed","cancelled","completed","no_show"].includes(status)) return json(c, { success: false, error: "INVALID_BOOKING_UPDATE" }, 400);
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const current = await client.query(`select id,kol_id,status from pos.kol_visit_bookings where id=$1 for update`, [id]);
+      if (!current.rows[0]) { await client.query("rollback"); return json(c, { success: false, error: "BOOKING_NOT_FOUND" }, 404); }
+      const transitions: Record<string,string[]> = { requested:["confirmed","cancelled"], confirmed:["cancelled","completed","no_show"] };
+      if (!transitions[current.rows[0].status]?.includes(status)) { await client.query("rollback"); return json(c, { success: false, error: "INVALID_STATUS_TRANSITION" }, 409); }
+      const updated = await client.query(`update pos.kol_visit_bookings set status=$2,admin_note=nullif($3,''),confirmed_at=case when $2='confirmed' then coalesce(confirmed_at,now()) else confirmed_at end,cancelled_at=case when $2='cancelled' then now() else cancelled_at end,updated_at=now() where id=$1 returning id,kol_id,booking_date,booking_time,status,admin_note,consent_terms,consent_attendance,consent_version,consented_at`, [id,status,note]);
+      await client.query(`insert into pos.kol_visit_booking_events(booking_id,kol_id,event_type,actor_type,actor_id,payload) values($1,$2,'booking_status_changed','admin',$3,$4::jsonb)`, [id,current.rows[0].kol_id,admin.userId,JSON.stringify({from:current.rows[0].status,to:status,note})]);
+      await client.query("commit");
+      return json(c, { success: true, data: updated.rows[0] });
+    } catch (error) { await client.query("rollback"); throw error; }
+    finally { client.release(); }
   });
 
   app.get("/api/kol/public/creators", async (c) => creatorDiscovery(c, pool, false));

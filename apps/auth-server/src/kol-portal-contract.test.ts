@@ -30,6 +30,25 @@ describe("KOL Creator Portal contracts", () => {
     expect(migration).toContain("where status in ('requested','confirmed','completed')");
   });
 
+  it("defines shared visit booking, explicit consent, and admin audit protections", () => {
+    const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20261006000100_kol_shared_visit_admin.sql"), "utf8");
+    const foundation = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20260923000003_kol_creator_portal_foundation.sql"), "utf8");
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    expect(foundation).toContain("idx_kol_visit_one_active_per_day");
+    expect(migration).toContain("booking_time time");
+    expect(migration).toContain("consent_terms boolean");
+    expect(migration).toContain("consent_attendance boolean");
+    expect(migration).toContain("kol_request_shared_visit_booking");
+    expect(migration).toContain("booking_eligibility_changed");
+    expect(source).toContain("/api/kol/admin/session");
+    expect(source).toContain("/api/kol/admin/creators");
+    expect(source).toContain("/api/kol/admin/visits");
+    expect(source).toContain("kol_request_shared_visit_booking");
+    expect(source).toContain("current.kol.visit_booking_eligible !== true");
+    expect(source).toContain("kolAdminContext(c, auth, pool)");
+    expect(source).not.toContain("body.kolId");
+  });
+
   it("defines the additive public timeline security boundary", () => {
     const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20260924000000_kol_public_timeline.sql"), "utf8");
     expect(migration).toContain("create table if not exists pos.kol_public_posts");
@@ -72,7 +91,7 @@ describe("KOL Creator Portal contracts", () => {
     for (const route of ["/api/kol/invites/:token", "/api/kol/invite/open", "/api/kol/invites/:token/claim", "/api/kol/invites/:token/booking"]) expect(source).toContain(route);
     for (const error of ["UNAUTHORIZED", "EMAIL_MATCH_NOT_FOUND", "AMBIGUOUS_EMAIL_MATCH", "ALREADY_LINKED", "INVITE_NOT_FOUND", "INVITE_NOT_LINKED", "DATE_ALREADY_BOOKED"]) expect(source).toContain(error);
     expect(source).toContain("where source_id = $2 and auth_user_id is null");
-    expect(source).toContain("pos.kol_request_visit_booking");
+    expect(source).toContain("pos.kol_request_invited_visit_booking_v2");
     expect(source).toContain("invite.source_id");
     expect(source).not.toContain("body.kolId");
   });
