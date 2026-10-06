@@ -70,6 +70,10 @@ export interface RecruitmentOnboardingItem {
   email?: string | null;
   status?: string | null;
   review_notes?: string | null;
+  phone?: string | null;
+  start_date?: string | null;
+  probation_end_date?: string | null;
+  training_schedule?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   tasks?: Array<{ id: string; label: string; task_key?: string | null; status: string; due_date?: string | null }>;
