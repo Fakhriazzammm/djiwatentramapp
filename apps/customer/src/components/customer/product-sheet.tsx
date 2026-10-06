@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
-import { Check, Info, Minus, PackageSearch, Plus, ShoppingCart, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Flag, Info, Minus, PackageSearch, Plus, ShoppingCart, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import { ImageWithPlaceholder } from "./image-with-placeholder";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem } from "./types";
 import { currency } from "./types";
+import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { useCustomerOrders } from "@/hooks/use-customer-data";
+import { useCreateProductReview, useProductReviews } from "@/hooks/use-product-reviews";
+import { reportProductReview } from "@/lib/product-reviews";
+import { toast } from "sonner";
 
 export function ProductSheet({
 	discounts,
@@ -20,6 +25,55 @@ export function ProductSheet({
 }) {
 	const [quantity, setQuantity] = useState(1);
 	const [variants, setVariants] = useState<Record<string, string>>({});
+	const { isAuthenticated } = useCustomerAuth();
+	const { orders: customerOrders } = useCustomerOrders();
+	const productSourceId = product ? String(product._id) : null;
+	const reviewList = useProductReviews(productSourceId);
+	const reviewSubmission = useCreateProductReview();
+	const [reviewRating, setReviewRating] = useState(5);
+	const [reviewComment, setReviewComment] = useState("");
+	const [reviewOrderId, setReviewOrderId] = useState("");
+	const [reviewFeedback, setReviewFeedback] = useState<string | null>(null);
+	const [reportConfirmationId, setReportConfirmationId] = useState<string | null>(null);
+	const [reportedReviewIds, setReportedReviewIds] = useState<string[]>([]);
+	const eligibleOrders = useMemo(() => customerOrders
+		.filter((order) => ["paid", "completed", "settled"].includes(String(order.status).toLowerCase()))
+		.filter((order) => order.items.some((item) => String(item.productId) === productSourceId && Number(item.quantity) > 0 && !["cancelled", "canceled"].includes(String(item.status ?? "").toLowerCase())))
+		.sort((a, b) => b.createdAt - a.createdAt), [customerOrders, productSourceId]);
+	useEffect(() => {
+		setReviewRating(5);
+		setReviewComment("");
+		setReviewOrderId("");
+		setReviewFeedback(null);
+		setReportConfirmationId(null);
+		setReportedReviewIds([]);
+		if (productSourceId) void reviewList.load();
+	}, [productSourceId]);
+	useEffect(() => {
+		if (eligibleOrders.length && !eligibleOrders.some((order) => order.id === reviewOrderId)) setReviewOrderId(eligibleOrders[0].id);
+	}, [eligibleOrders, reviewOrderId]);
+	const submitReview = async () => {
+		if (!productSourceId || !reviewOrderId || !isAuthenticated) return;
+		try {
+			await reviewSubmission.submit({ productSourceId, orderSourceId: reviewOrderId, rating: reviewRating, comment: reviewComment });
+			setReviewFeedback("Ulasan terkirim dan menunggu moderasi sebelum tampil untuk publik.");
+			setReviewComment("");
+			toast.success("Ulasan terkirim untuk ditinjau.");
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Ulasan belum berhasil dikirim.");
+		}
+	};
+	const reportReview = async (reviewId: string) => {
+		if (reportConfirmationId !== reviewId) { setReportConfirmationId(reviewId); return; }
+		try {
+			await reportProductReview(reviewId);
+			setReportedReviewIds((current) => [...current, reviewId]);
+			setReportConfirmationId(null);
+			toast.success("Ulasan dilaporkan untuk ditinjau.");
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Ulasan belum berhasil dilaporkan.");
+		}
+	};
 	useEffect(() => {
 		setQuantity(1);
 		setVariants({});
@@ -160,6 +214,33 @@ export function ProductSheet({
 						))}
 					</div>
 				) : null}
+			<section className="shrink-0 border-t border-border/70 bg-background px-4 py-4" aria-labelledby="product-reviews-title">
+				<div className="flex items-start justify-between gap-3">
+					<div><h4 id="product-reviews-title" className="text-sm font-black">Ulasan customer</h4><p className="mt-0.5 text-[11px] text-muted-foreground">Pembelian terverifikasi · ulasan baru ditinjau sebelum dipublikasikan</p></div>
+					<button type="button" className="min-h-11 shrink-0 rounded-xl border border-border px-3 text-xs font-bold" onClick={() => void reviewList.load(true)} disabled={reviewList.isLoading}>Muat ulang</button>
+				</div>
+				{reviewList.error ? <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground" role="status">Ulasan belum dapat dimuat. Coba muat ulang.</p> : null}
+				<div className="mt-3 space-y-2">
+					{reviewList.reviews.filter((review) => !reportedReviewIds.includes(review.id)).map((review) => <article key={review.id} className="rounded-xl border border-border/80 bg-card p-3">
+						<div className="flex items-center justify-between gap-2"><div className="flex items-center gap-0.5" aria-label={`Rating ${review.rating} dari 5`}>{[1, 2, 3, 4, 5].map((value) => <Star key={value} className={value <= review.rating ? "h-3.5 w-3.5 text-amber-500" : "h-3.5 w-3.5 text-muted-foreground/30"} fill={value <= review.rating ? "currentColor" : "none"} />)}</div><span className="text-[10px] text-muted-foreground">{review.createdAt ? new Date(review.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : ""}</span></div>
+						<p className="mt-1 text-xs font-bold">{review.customerDisplayName || "Customer"}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{review.comment || "Rating tanpa komentar."}</p>
+						{isAuthenticated ? <div className="mt-2 flex justify-end gap-2">{reportConfirmationId === review.id ? <><button type="button" className="min-h-11 rounded-lg px-3 text-xs font-semibold text-muted-foreground" onClick={() => setReportConfirmationId(null)}>Batal</button><button type="button" className="min-h-11 rounded-lg bg-rose-50 px-3 text-xs font-bold text-rose-700" onClick={() => void reportReview(review.id)}><Flag className="mr-1 inline h-3.5 w-3.5" />Konfirmasi laporan</button></> : <button type="button" className="min-h-11 rounded-lg px-3 text-xs font-semibold text-muted-foreground" onClick={() => void reportReview(review.id)}><Flag className="mr-1 inline h-3.5 w-3.5" />Laporkan</button>}</div> : null}
+					</article>)}
+					{!reviewList.isLoading && reviewList.reviews.length === 0 ? <p className="rounded-xl bg-muted/50 px-3 py-3 text-xs text-muted-foreground">Belum ada ulasan publik untuk menu ini.</p> : null}
+					{reviewList.isLoading && reviewList.reviews.length === 0 ? <p className="rounded-xl bg-muted/50 px-3 py-3 text-xs text-muted-foreground">Memuat ulasan…</p> : null}
+				</div>
+				{reviewList.hasMore ? <button type="button" className="mt-2 min-h-11 w-full rounded-xl border border-border text-xs font-bold" onClick={() => void reviewList.load()} disabled={reviewList.isLoading}>{reviewList.isLoading ? "Memuat…" : "Muat ulasan lainnya"}</button> : null}
+				<div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.035] p-3">
+					<h5 className="text-xs font-black">Tulis ulasan</h5>
+					{!isAuthenticated ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Masuk sebagai customer untuk menulis ulasan berdasarkan pesananmu.</p> : eligibleOrders.length === 0 ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Ulasan tersedia setelah menu ini ada pada pesananmu yang sudah lunas atau selesai.</p> : <div className="mt-2 space-y-2">
+						<label className="block text-[11px] font-semibold" htmlFor="review-order-select">Pesanan terverifikasi</label><select id="review-order-select" value={reviewOrderId} onChange={(event) => setReviewOrderId(event.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-xs"><option value="" disabled>Pilih pesanan</option>{eligibleOrders.map((order) => <option key={order.id} value={order.id}>{order.orderNumber || order.id.slice(0, 8)} · {new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</option>)}</select>
+						<div className="flex items-center gap-1" role="group" aria-label="Pilih rating dari 1 sampai 5">{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" className="flex h-11 w-11 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`${value} dari 5`} aria-pressed={reviewRating === value} onClick={() => setReviewRating(value)}><Star className={value <= reviewRating ? "h-5 w-5 text-amber-500" : "h-5 w-5 text-muted-foreground/40"} fill={value <= reviewRating ? "currentColor" : "none"} /></button>)}</div>
+						<label className="sr-only" htmlFor="product-review-comment">Komentar ulasan</label><textarea id="product-review-comment" value={reviewComment} onChange={(event) => setReviewComment(event.target.value.slice(0, 500))} maxLength={500} rows={3} placeholder="Bagikan pengalamanmu (opsional)" className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-xs outline-none focus:border-primary" /><p className="text-right text-[10px] text-muted-foreground">{reviewComment.length}/500</p>
+						<button type="button" className="min-h-11 w-full rounded-xl bg-primary px-3 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40" onClick={() => void submitReview()} disabled={!reviewOrderId || reviewSubmission.isSaving}>{reviewSubmission.isSaving ? "Mengirim…" : "Kirim ulasan"}</button>
+					</div>}
+					{reviewFeedback ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800" role="status">{reviewFeedback}</p> : null}
+				</div>
+			</section>
 			</div>
 
 			<footer className="shrink-0 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

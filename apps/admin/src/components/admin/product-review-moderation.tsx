@@ -1,5 +1,5 @@
 import { Check, EyeOff, Flag, Loader2, MessageSquare, RefreshCw, Search, ShieldAlert, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { isAdminLevelRole } from "@/lib/admin-access";
@@ -49,6 +49,9 @@ const statusTone: Record<ReviewStatus, string> = {
 export function ProductReviewModeration() {
   const { token, isAdmin, role } = useYumiAuth();
   const canModerate = Boolean(token && (isAdmin || isAdminLevelRole(role?.name)));
+  const session = useRef(token);
+  session.current = token;
+  const request = useRef(0);
   const [status, setStatus] = useState<ReviewStatus | "all">("pending");
   const [query, setQuery] = useState("");
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -59,7 +62,11 @@ export function ProductReviewModeration() {
   const [confirm, setConfirm] = useState<{ review: Review; action: Action } | null>(null);
 
   const load = useCallback(async () => {
+    const version = ++request.current;
     if (!canModerate) {
+      setReviews([]);
+      setSelected(null);
+      setConfirm(null);
       setLoading(false);
       return;
     }
@@ -67,28 +74,34 @@ export function ProductReviewModeration() {
     setError(null);
     try {
       const result = await invokeEdgeFunction<ListResponse>("product-reviews", {
-        action: "list",
+        action: "moderation_list",
         status: status === "all" ? undefined : status,
         search: query.trim() || undefined,
-      });
+      }, { Authorization: `Bearer ${token}` });
+      if (session.current !== token || request.current !== version) return;
       setReviews(result.reviews ?? result.data ?? []);
     } catch (reason) {
+      if (session.current !== token || request.current !== version) return;
       setError(reason instanceof Error ? reason.message : "Gagal memuat moderation queue.");
     } finally {
-      setLoading(false);
+      if (session.current === token && request.current === version) setLoading(false);
     }
-  }, [canModerate, query, status]);
+  }, [canModerate, query, status, token]);
 
   useEffect(() => {
+    setReviews([]);
+    setSelected(null);
+    setConfirm(null);
+    ++request.current;
     const timer = window.setTimeout(() => void load(), query ? 250 : 0);
-    return () => window.clearTimeout(timer);
+    return () => { window.clearTimeout(timer); ++request.current; };
   }, [load, query]);
 
   const visibleReviews = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return reviews;
     return reviews.filter((review) =>
-      `${review.product_name ?? ""} ${review.product_source_id} ${review.comment ?? ""}`.toLowerCase().includes(keyword),
+      `${review.id} ${review.product_name ?? ""} ${review.product_source_id} ${review.comment ?? ""}`.toLowerCase().includes(keyword),
     );
   }, [query, reviews]);
 
@@ -102,7 +115,7 @@ export function ProductReviewModeration() {
         action: "moderate",
         review_id: review.id,
         status: action === "publish" ? "published" : action === "hide" ? "hidden" : "reported",
-      });
+      }, { Authorization: `Bearer ${token}` });
       setReviews((current) => current.map((item) => item.id === review.id ? { ...item, status: action === "publish" ? "published" : action === "hide" ? "hidden" : "reported" } : item));
       setSelected((current) => current?.id === review.id ? { ...current, status: action === "publish" ? "published" : action === "hide" ? "hidden" : "reported" } : current);
       toast.success(action === "publish" ? "Ulasan dipublikasikan." : action === "hide" ? "Ulasan disembunyikan." : "Ulasan ditandai untuk ditinjau.");
@@ -128,7 +141,7 @@ export function ProductReviewModeration() {
       </header>
 
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:flex-row">
-        <label className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-11 rounded-xl pl-10" aria-label="Cari produk atau isi ulasan" placeholder="Cari produk atau isi ulasan…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+        <label className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-11 rounded-xl pl-10" aria-label="Cari produk, isi ulasan, atau ID ulasan" placeholder="Cari produk, isi ulasan, atau ID ulasan…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
         <div className="no-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Filter status ulasan">{FILTERS.map((filter) => <button key={filter.value} type="button" role="tab" aria-selected={status === filter.value} onClick={() => setStatus(filter.value)} className={`min-h-11 shrink-0 rounded-xl border px-3 text-sm font-semibold transition-colors ${status === filter.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}>{filter.label}</button>)}</div>
       </div>
 

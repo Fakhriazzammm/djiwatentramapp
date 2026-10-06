@@ -52,6 +52,17 @@ app.use(
   }),
 );
 
+// Customer data endpoints also use the Better Auth cross-subdomain session cookie.
+app.use(
+  "/api/customer/*",
+  cors({
+    origin: customerOrigins,
+    allowHeaders: ["Accept", "Content-Type", "Authorization"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    credentials: true,
+  }),
+);
+
 // CORS — passport data is requested from the 500 Kopi subdomain.
 app.use(
   "/api/coffee-passport/*",
@@ -691,6 +702,89 @@ function privateJson(body: Record<string, unknown>, status = 200) {
     },
   });
 }
+
+const CUSTOMER_REVIEW_ORDER_STATUSES = new Set(["paid", "completed", "settled"]);
+
+app.post("/api/customer/product-reviews", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { productSourceId?: unknown; orderSourceId?: unknown; rating?: unknown; comment?: unknown };
+  const productId = typeof body.productSourceId === "string" ? body.productSourceId.trim() : "";
+  const orderId = typeof body.orderSourceId === "string" ? body.orderSourceId.trim() : "";
+  const rating = Number(body.rating);
+  const comment = typeof body.comment === "string" ? body.comment.trim() : "";
+  if (!productId || productId.length > 160 || !orderId || orderId.length > 160 || !Number.isInteger(rating) || rating < 1 || rating > 5 || comment.length > 500) {
+    return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const order = await client.query<{ customer_source_id: string | null; status: string | null }>(
+      "SELECT customer_source_id, status FROM pos.orders WHERE source_id = $1 FOR SHARE",
+      [orderId],
+    );
+    const eligibleOrder = order.rows[0];
+    if (!eligibleOrder || eligibleOrder.customer_source_id !== session.user.id || !CUSTOMER_REVIEW_ORDER_STATUSES.has(String(eligibleOrder.status ?? "").toLowerCase())) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, error: "ORDER_NOT_ELIGIBLE", message: "Review hanya dapat dibuat untuk order milik customer yang sudah selesai atau lunas." }, 403);
+    }
+    const product = await client.query("SELECT 1 FROM pos.products WHERE source_id = $1 LIMIT 1", [productId]);
+    if (!product.rows[0]) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, error: "PRODUCT_NOT_FOUND" }, 404);
+    }
+    const item = await client.query(
+      "SELECT 1 FROM pos.order_items WHERE order_source_id = $1 AND product_source_id = $2 AND quantity > 0 AND (status IS NULL OR status NOT IN ('cancelled', 'canceled')) LIMIT 1",
+      [orderId, productId],
+    );
+    if (!item.rows[0]) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, error: "PRODUCT_NOT_IN_ORDER", message: "Produk tidak terdapat pada order tersebut." }, 403);
+    }
+    const displayName = String(session.user.name ?? "Customer").trim().split(/\s+/)[0]?.slice(0, 80) || "Customer";
+    const inserted = await client.query(
+      `INSERT INTO pos.product_reviews (product_source_id, order_source_id, customer_user_id, customer_display_name, rating, comment, status, verified_purchase)
+       VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), 'pending', true)
+       RETURNING id, product_source_id, rating, comment, customer_display_name, created_at, status`,
+      [productId, orderId, session.user.id, displayName, rating, comment],
+    );
+    await client.query("COMMIT");
+    return privateJson({ success: true, review: inserted.rows[0], message: "Ulasan dikirim untuk ditinjau." });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    if ((error as { code?: string }).code === "23505") return privateJson({ success: false, error: "DUPLICATE_REVIEW", message: "Produk pada order ini sudah pernah diulas." }, 409);
+    console.error("Customer product review write failed", (error as Error).message);
+    return privateJson({ success: false, error: "REQUEST_FAILED" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/api/customer/product-reviews/report", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { reviewId?: unknown; reason?: unknown };
+  const reviewId = typeof body.reviewId === "string" ? body.reviewId.trim() : "";
+  const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 240) : "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(reviewId)) {
+    return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  }
+  const review = await pool.query<{ id: string; status: string; customer_user_id: string | null }>(
+    "SELECT id, status, customer_user_id FROM pos.product_reviews WHERE id = $1::uuid LIMIT 1",
+    [reviewId],
+  );
+  const row = review.rows[0];
+  if (!row || !(row.status === "published" || (row.status === "pending" && row.customer_user_id === session.user.id))) {
+    return privateJson({ success: false, error: "REVIEW_NOT_FOUND" }, 404);
+  }
+  const updated = await pool.query(
+    "UPDATE pos.product_reviews SET status = 'reported', moderation_note = $2, moderated_by = $3, moderated_at = now() WHERE id = $1::uuid AND status = $4 RETURNING id",
+    [reviewId, reason || "Dilaporkan customer", `customer:${session.user.id}`, row.status],
+  );
+  if (!updated.rows[0]) return privateJson({ success: false, error: "REVIEW_ALREADY_CHANGED" }, 409);
+  return privateJson({ success: true, reviewId, reported: true });
+});
 
 app.get("/api/customer/profile", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);
