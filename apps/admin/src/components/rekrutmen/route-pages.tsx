@@ -8,6 +8,7 @@ import { exportRecruitmentCsv, exportRecruitmentPdf, exportRecruitmentSpreadshee
 type ApiCandidate = RecruitmentCandidate & { name?: string; phone?: string; position?: string; workType?: string; applicationDate?: string; cvUrl?: string; createdAt?: string; gender?: string; birthDate?: string; socialMedia?: string; airtableId?: string };
 type ApiPosition = RecruitmentPosition & { isOpen?: boolean; sortOrder?: number };
 const value = (row: Record<string, unknown>, ...keys: string[]) => keys.map((key) => row[key]).find((item) => item !== undefined && item !== null && item !== "") as string | number | undefined;
+const BULK_STATUS_OPTIONS = ["Application Received", "Screening", "Interview Completed", "Offer", "Hired", "Onboarding", "Selesai", "Rejected", "Withdrawn"];
 
 function normalizeCandidate(row: ApiCandidate): RecruitmentCandidate {
   return { ...row, airtable_id: String(value(row, "airtable_id", "airtableId") ?? ""), jenis_kelamin: String(value(row, "jenis_kelamin", "gender") ?? ""), tanggal_lahir: String(value(row, "tanggal_lahir", "birthDate") ?? ""), sosial_media: String(value(row, "sosial_media", "socialMedia") ?? ""), nama_lengkap: String(value(row, "nama_lengkap", "name") ?? ""), email: String(value(row, "email") ?? ""), nomor_telepon: String(value(row, "nomor_telepon", "phone") ?? ""), posisi_dilamar: String(value(row, "posisi_dilamar", "position") ?? ""), tipe_kerja: String(value(row, "tipe_kerja", "workType") ?? ""), application_date: String(value(row, "application_date", "applicationDate") ?? ""), cv_url: String(value(row, "cv_url", "cvUrl") ?? ""), created_at: String(value(row, "created_at", "createdAt") ?? "") };
@@ -65,6 +66,11 @@ export function CandidatesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("");
+  const [workTypeFilter, setWorkTypeFilter] = useState("");
+  const [cvFilter, setCvFilter] = useState("");
+  const [applicationFrom, setApplicationFrom] = useState("");
+  const [applicationTo, setApplicationTo] = useState("");
   const [sortBy, setSortBy] = useState("applicationDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selected, setSelected] = useState<RecruitmentCandidate | null>(null);
@@ -75,27 +81,42 @@ export function CandidatesPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmBulkStatus, setConfirmBulkStatus] = useState(false);
   const allCandidates = useMemo(() => listData<ApiCandidate>(query.data).map(normalizeCandidate), [query.data]);
-  const statuses = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.status).filter(Boolean))).sort(), [allCandidates]);
-  const positions = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.posisi_dilamar).filter(Boolean))).sort(), [allCandidates]);
+  const statuses = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.status).filter((status): status is string => Boolean(status)))).sort(), [allCandidates]);
+  const positions = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.posisi_dilamar).filter((position): position is string => Boolean(position)))).sort(), [allCandidates]);
+  const genders = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.jenis_kelamin).filter((gender): gender is string => Boolean(gender)))).sort(), [allCandidates]);
+  const workTypes = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.tipe_kerja).filter((workType): workType is string => Boolean(workType)))).sort(), [allCandidates]);
   const candidates = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     return [...allCandidates].filter((candidate) => {
-      const haystack = `${candidate.nama_lengkap} ${candidate.email ?? ""} ${candidate.posisi_dilamar ?? ""}`.toLowerCase();
-      return (!keyword || haystack.includes(keyword)) && (!statusFilter || candidate.status === statusFilter) && (!positionFilter || candidate.posisi_dilamar === positionFilter);
+      const haystack = `${candidate.nama_lengkap} ${candidate.email ?? ""} ${candidate.posisi_dilamar ?? ""} ${candidate.nomor_telepon ?? ""} ${candidate.sosial_media ?? ""} ${candidate.notes ?? ""}`.toLowerCase();
+      const applied = (candidate.application_date || "").slice(0, 10);
+      const hasCv = Boolean(candidate.cv_url);
+      return (!keyword || haystack.includes(keyword))
+        && (!statusFilter || candidate.status === statusFilter)
+        && (!positionFilter || candidate.posisi_dilamar === positionFilter)
+        && (!genderFilter || candidate.jenis_kelamin === genderFilter)
+        && (!workTypeFilter || candidate.tipe_kerja === workTypeFilter)
+        && (!cvFilter || (cvFilter === "available" ? hasCv : !hasCv))
+        && (!applicationFrom || (applied && applied >= applicationFrom))
+        && (!applicationTo || (applied && applied <= applicationTo));
     }).sort((a, b) => {
       const values: Record<string, (candidate: RecruitmentCandidate) => string> = {
         name: (candidate) => candidate.nama_lengkap || "",
+        gender: (candidate) => candidate.jenis_kelamin || "",
+        birthDate: (candidate) => candidate.tanggal_lahir || "",
         position: (candidate) => candidate.posisi_dilamar || "",
         status: (candidate) => candidate.status || "",
         phone: (candidate) => candidate.nomor_telepon || "",
+        cv: (candidate) => candidate.cv_url ? "1" : "0",
         applicationDate: (candidate) => candidate.application_date || "",
       };
       const left = values[sortBy]?.(a) ?? "";
       const right = values[sortBy]?.(b) ?? "";
       return left.localeCompare(right, "id", { numeric: true }) * (sortDirection === "asc" ? 1 : -1);
     });
-  }, [allCandidates, positionFilter, search, sortBy, sortDirection, statusFilter]);
+  }, [allCandidates, applicationFrom, applicationTo, cvFilter, genderFilter, positionFilter, search, sortBy, sortDirection, statusFilter, workTypeFilter]);
   const handleSort = (key: string) => { if (sortBy === key) setSortDirection((value) => value === "asc" ? "desc" : "asc"); else { setSortBy(key); setSortDirection("asc"); } };
   const handleStatusChange = async (candidate: RecruitmentCandidate, status: string) => {
     await mutate(`/candidates/${encodeURIComponent(candidate.id)}`, { method: "PATCH", body: JSON.stringify({ status }) });
@@ -106,12 +127,12 @@ export function CandidatesPage() {
     setBulkBusy(true); setBulkError(null);
     try {
       await mutate("/candidates/bulk", { method: "POST", body: JSON.stringify({ action, ids: selectedIds, ...(action === "status" ? { status: bulkStatus } : {}) }) });
-      setSelectedIds([]); setBulkStatus(""); setConfirmDelete(false); await query.reload();
+      setSelectedIds([]); setBulkStatus(""); setConfirmDelete(false); setConfirmBulkStatus(false); await query.reload();
     } catch (reason) { setBulkError(reason instanceof Error ? reason.message : "Aksi bulk gagal diproses"); }
     finally { setBulkBusy(false); }
   };
-  const toggleAll = (checked: boolean) => setSelectedIds(checked ? candidates.map((candidate) => candidate.id) : []);
-  const toggleCandidate = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const toggleAll = (checked: boolean) => setSelectedIds(checked ? candidates.slice(0, 200).map((candidate) => candidate.id) : []);
+  const toggleCandidate = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : current.length < 200 ? [...current, id] : current);
   const runExport = async (kind: "csv" | "xlsx" | "pdf") => {
     if (!candidates.length) return;
     setExporting(kind); setExportError(null);
@@ -120,14 +141,20 @@ export function CandidatesPage() {
     finally { setExporting(null); }
   };
   return <RecruitmentShell title="Kandidat" description="Review kandidat dari endpoint recruitment yang terproteksi." actions={<RefreshButton onClick={query.reload} loading={query.loading || Boolean(exporting) || bulkBusy} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}><RecruitmentToolbar search={search} onSearch={setSearch}>
-    {selectedIds.length > 0 && <><span className="mr-1 text-xs font-semibold text-blue-700">{selectedIds.length} dipilih</span><select aria-label="Status bulk kandidat" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" disabled={bulkBusy} onChange={(event) => setBulkStatus(event.target.value)} value={bulkStatus}><option value="">Pilih status...</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select><button type="button" disabled={!bulkStatus || bulkBusy} onClick={() => void runBulk("status")} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Ubah status</button><button type="button" disabled={bulkBusy} onClick={() => setConfirmDelete(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"><Trash2 className="h-4 w-4" />Hapus</button><button type="button" disabled={bulkBusy} onClick={() => setSelectedIds([])} className="h-10 rounded-xl px-3 text-sm font-medium text-slate-600 hover:bg-slate-100">Batal pilih</button></>}
+    {selectedIds.length > 0 && <><span className="mr-1 text-xs font-semibold text-blue-700">{selectedIds.length} dipilih</span><select aria-label="Status bulk kandidat" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" disabled={bulkBusy} onChange={(event) => setBulkStatus(event.target.value)} value={bulkStatus}><option value="">Pilih status...</option>{BULK_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select><button type="button" disabled={!bulkStatus || bulkBusy} onClick={() => setConfirmBulkStatus(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Ubah status</button><button type="button" disabled={bulkBusy} onClick={() => setConfirmDelete(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"><Trash2 className="h-4 w-4" />Hapus</button><button type="button" disabled={bulkBusy} onClick={() => setSelectedIds([])} className="h-10 rounded-xl px-3 text-sm font-medium text-slate-600 hover:bg-slate-100">Batal pilih</button></>}
     <button type="button" disabled={!candidates.length || Boolean(exporting) || bulkBusy} onClick={() => runExport("xlsx")} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50" title="Spreadsheet Excel"><FileSpreadsheet className="h-4 w-4" />Excel</button>
     <button type="button" disabled={!candidates.length || Boolean(exporting)} onClick={() => runExport("csv")} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" title="CSV kompatibel Excel"><Download className="h-4 w-4" />CSV</button>
     <button type="button" disabled={!candidates.length || Boolean(exporting)} onClick={() => runExport("pdf")} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" title="PDF untuk dibagikan atau dicetak"><FileText className="h-4 w-4" />PDF</button>
     <select aria-label="Filter status" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="">Semua status</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
     <select aria-label="Filter posisi" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setPositionFilter(event.target.value)} value={positionFilter}><option value="">Semua posisi</option>{positions.map((position) => <option key={position} value={position}>{position}</option>)}</select>
+    <select aria-label="Filter jenis kelamin" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setGenderFilter(event.target.value)} value={genderFilter}><option value="">Semua gender</option>{genders.map((gender) => <option key={gender} value={gender}>{gender}</option>)}</select>
+    <select aria-label="Filter tipe kerja" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setWorkTypeFilter(event.target.value)} value={workTypeFilter}><option value="">Semua tipe kerja</option>{workTypes.map((workType) => <option key={workType} value={workType}>{workType}</option>)}</select>
+    <select aria-label="Filter CV" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setCvFilter(event.target.value)} value={cvFilter}><option value="">Semua CV</option><option value="available">Ada CV</option><option value="missing">Belum ada CV</option></select>
+    <input aria-label="Dari tanggal melamar" type="date" value={applicationFrom} onChange={(event) => setApplicationFrom(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-2 text-sm" />
+    <input aria-label="Sampai tanggal melamar" type="date" value={applicationTo} onChange={(event) => setApplicationTo(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-2 text-sm" />
+    <button type="button" onClick={() => { setStatusFilter(""); setPositionFilter(""); setGenderFilter(""); setWorkTypeFilter(""); setCvFilter(""); setApplicationFrom(""); setApplicationTo(""); setSearch(""); }} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50">Reset filter</button>
     <span className="text-xs text-slate-500">{candidates.length} dari {allCandidates.length} kandidat</span>
-  </RecruitmentToolbar>{(exportError || bulkError) && <p className="text-sm text-rose-600" role="alert">{exportError || bulkError}</p>}<CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} onStatusChange={handleStatusChange} selectedIds={selectedIds} onToggle={toggleCandidate} onToggleAll={toggleAll} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /><ConfirmActionDialog open={confirmDelete} title={`Hapus ${selectedIds.length} kandidat terpilih?`} description="Data kandidat dan data workflow terkait akan dihapus. Tindakan ini tidak dapat dipulihkan." onCancel={() => setConfirmDelete(false)} onConfirm={() => void runBulk("delete")} /></PageState></RecruitmentShell>;
+  </RecruitmentToolbar>{(exportError || bulkError) && <p className="text-sm text-rose-600" role="alert">{exportError || bulkError}</p>}<CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} onStatusChange={handleStatusChange} selectedIds={selectedIds} onToggle={toggleCandidate} onToggleAll={toggleAll} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /><ConfirmActionDialog open={confirmBulkStatus} title={`Ubah status ${selectedIds.length} kandidat?`} description={`Semua kandidat terpilih akan diubah ke status ${bulkStatus}. Perubahan akan tercatat di riwayat kandidat.`} onCancel={() => setConfirmBulkStatus(false)} onConfirm={() => void runBulk("status")} /><ConfirmActionDialog open={confirmDelete} title={`Hapus ${selectedIds.length} kandidat terpilih?`} description="Data kandidat dan data workflow terkait akan dihapus. Tindakan ini tidak dapat dipulihkan." onCancel={() => setConfirmDelete(false)} onConfirm={() => void runBulk("delete")} /></PageState></RecruitmentShell>;
 }
 
 function DataTable({ children, headers }: { children: ReactNode; headers: string[] }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="w-full min-w-[640px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div>; }
