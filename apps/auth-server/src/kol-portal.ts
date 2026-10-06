@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 
 import { createHash } from "node:crypto";
+import { isInquiryHoneypotFilled, validatePublicInquiry } from "./kol-inquiry-contract.js";
 
 type DbPool = { connect: () => Promise<any>; query: (text: string, values?: unknown[]) => Promise<any> };
 type AuthApi = { api: { getSession: (input: { headers: Headers }) => Promise<any> } };
@@ -95,6 +96,20 @@ function timelineType(value: string | undefined) {
   return !value || value === "all" ? null : TIMELINE_TYPES.includes(value as TimelineType) ? value : undefined;
 }
 const publicUsername = (value: unknown) => String(value ?? "").trim().replace(/^@+/, "");
+const inquiryRateBuckets = new Map<string, number[]>();
+function isInquiryRateLimited(key: string, now = Date.now()) {
+  const windowMs = 15 * 60 * 1000;
+  const recent = (inquiryRateBuckets.get(key) ?? []).filter((timestamp) => now - timestamp < windowMs);
+  if (recent.length >= 5) { inquiryRateBuckets.set(key, recent); return true; }
+  recent.push(now);
+  inquiryRateBuckets.set(key, recent);
+  if (inquiryRateBuckets.size > 10_000) {
+    for (const [bucket, timestamps] of inquiryRateBuckets) {
+      if (!timestamps.some((timestamp) => now - timestamp < windowMs)) inquiryRateBuckets.delete(bucket);
+    }
+  }
+  return false;
+}
 function safeTimelineItem(row: any) {
   return {
     id: Number(row.id), type: row.post_type, title: row.title, body: row.body || "",
@@ -494,16 +509,76 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   app.get("/api/kol/public/creators", async (c) => creatorDiscovery(c, pool, false));
 
   app.get("/api/kol/public/:username", async (c) => {
-    const username = c.req.param("username").trim().toLowerCase().replace(/^@/, "");
+    const username = publicUsername(c.req.param("username")).toLowerCase();
     const result = await pool.query(`select * from public.pos_kol_public_profiles where lower(username)=lower($1) limit 1`, [username]);
-    let row = result.rows[0];
-    if (!row) {
-      const fallback = await pool.query(`select source_id as id,name,username,avatar_url,location,category,null::text as bio from pos.kol_creators where status <> 'Rejected' and lower(regexp_replace(username,'^@',''))=lower($1) limit 1`, [username]);
-      row = fallback.rows[0];
-    }
+    const row = result.rows[0];
     if (!row) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
     const payload = row.data && typeof row.data === "object" ? row.data : {};
-    return json(c, { success: true, data: { id: row.id, name: row.name, username: publicUsername(row.username), avatar_url: row.avatar_url, location: row.location, category: row.category, bio: row.bio, public_availability: row.public_availability ?? "not_set", availability_label: row.availability_label ?? null, platforms: Array.isArray(payload.platforms) ? payload.platforms.map((p: any) => ({ ...p, profile_url: p.profileUrl })) : [], portfolio: Array.isArray(payload.portfolio) ? payload.portfolio.map((p: any) => ({ ...p, content_url: p.contentUrl, thumbnail_url: p.thumbnailUrl, published_at: p.publishedAt })) : [], badges: payload.badges ?? [], badge_names: Array.isArray(payload.badges) ? payload.badges.map((b: any) => b.name) : [] } });
+    const platforms = Array.isArray(payload.platforms) ? payload.platforms.map((platform: any) => ({
+      platform: platform.platform,
+      username: publicUsername(platform.username),
+      profile_url: platform.profileUrl ?? null,
+      followers: Number.isFinite(Number(platform.followers)) ? Number(platform.followers) : null,
+    })) : [];
+    const portfolio = Array.isArray(payload.portfolio) ? payload.portfolio.map((item: any) => ({
+      id: item.id,
+      platform: item.platform,
+      title: item.title,
+      content_url: item.contentUrl,
+      thumbnail_url: item.thumbnailUrl ?? null,
+      description: item.description ?? null,
+      published_at: item.publishedAt ?? null,
+      pinned_order: item.pinnedOrder ?? null,
+    })) : [];
+    const badges = Array.isArray(payload.badges) ? payload.badges.map((badge: any) => ({ code: badge.code, name: badge.name, description: badge.description, icon: badge.icon ?? null })) : [];
+    return json(c, { success: true, data: {
+      id: row.id,
+      name: row.name,
+      display_name: row.name,
+      username: publicUsername(row.username),
+      avatar_url: row.avatar_url ?? null,
+      location: row.location ?? null,
+      category: row.category ?? null,
+      bio: row.bio ?? null,
+      public_availability: row.public_availability ?? "not_set",
+      availability_label: row.availability_label ?? null,
+      platforms,
+      portfolio,
+      badges,
+      badge_names: badges.map((badge: any) => badge.name),
+    } });
+  });
+
+  app.post("/api/kol/public/:username/inquiries", async (c) => {
+    const origin = c.req.header("origin");
+    if (origin && origin !== "https://kolmarketing.yumme.id" && !/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
+      return json(c, { success: false, error: "ORIGIN_NOT_ALLOWED" }, 403);
+    }
+    const declaredLength = Number(c.req.header("content-length") || 0);
+    if (declaredLength > 8192) return json(c, { success: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+    let body: any;
+    try {
+      const raw = await c.req.text();
+      if (new TextEncoder().encode(raw).byteLength > 8192) return json(c, { success: false, error: "PAYLOAD_TOO_LARGE" }, 413);
+      body = JSON.parse(raw);
+    } catch {
+      return json(c, { success: false, error: "INVALID_INQUIRY" }, 400);
+    }
+    if (isInquiryHoneypotFilled(body)) return json(c, { success: true, data: { received: true } }, 201);
+    const validated = validatePublicInquiry(body);
+    if (!validated.ok) return json(c, { success: false, error: validated.error }, 400);
+    const username = publicUsername(c.req.param("username")).toLowerCase();
+    const profile = await pool.query(`select id from public.pos_kol_public_profiles where lower(username)=lower($1) limit 1`, [username]);
+    if (!profile.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
+    const ip = c.req.header("cf-connecting-ip") || c.req.header("x-real-ip") || c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const limiterKey = createHash("sha256").update(ip === "unknown" ? `${ip}:${validated.value.contactEmail || validated.value.contactPhone}` : ip).digest("hex");
+    if (isInquiryRateLimited(limiterKey)) return json(c, { success: false, error: "TOO_MANY_REQUESTS" }, 429);
+    await pool.query(
+      `insert into pos.kol_collaboration_inquiries(kol_id,business_name,contact_name,contact_email,contact_phone,brief,preferred_contact)
+       values($1,$2,$3,$4,$5,$6,$7)`,
+      [profile.rows[0].id, validated.value.businessName, validated.value.contactName, validated.value.contactEmail, validated.value.contactPhone, validated.value.brief, validated.value.preferredContact],
+    );
+    return json(c, { success: true, data: { received: true } }, 201);
   });
 
   app.get("/api/kol/portal/timeline", async (c) => {
@@ -530,7 +605,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
     if (type === undefined) return json(c, { success: false, error: "INVALID_TYPE" }, 400);
     if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
-    const profile = await pool.query(`select c.source_id from pos.kol_creators c join pos.kol_profiles p on p.kol_id=c.source_id where lower(coalesce(p.slug,c.username))=lower($1) and p.is_public=true limit 1`, [username]);
+    const profile = await pool.query(`select c.source_id from pos.kol_creators c join pos.kol_profiles p on p.kol_id=c.source_id where lower(coalesce(p.slug,c.username))=lower($1) and p.is_public=true and c.status <> 'Rejected' limit 1`, [username]);
     if (!profile.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);
     const values: unknown[] = [profile.rows[0].source_id]; const filters = ["and pp.kol_id=$1"];
     if (cursor) { values.push(cursor.publishedAt, cursor.id); filters.push(`and (pp.published_at,pp.id) < ($${values.length - 1},$${values.length})`); }
@@ -547,7 +622,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   async function creatorDiscovery(c: any, db: DbPool, authenticated: boolean) {
     const limit = boundedLimit(c.req.query("limit")); if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
     const cursor = decodeTimelineCursor(c.req.query("before")); if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
-    const values: unknown[] = []; const filters = ["c.status <> 'Rejected'"];
+    const values: unknown[] = []; const filters = authenticated ? ["c.status <> 'Rejected'"] : ["c.status <> 'Rejected'", "coalesce(p.is_public,false)=true"];
     const category = c.req.query("category"), location = c.req.query("location"), availability = c.req.query("availability"), q = c.req.query("q");
     if (category) { values.push(category.slice(0, 80)); filters.push(`c.category=$${values.length}`); }
     if (location) { values.push(`%${location.slice(0, 80)}%`); filters.push(`c.location ilike $${values.length}`); }
