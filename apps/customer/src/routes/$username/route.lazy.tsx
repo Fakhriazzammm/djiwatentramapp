@@ -65,6 +65,7 @@ function MemberHomePage() {
 	const [showProfileCompletion, setShowProfileCompletion] = useState(false);
 	const [confirmedProfileSourceId, setConfirmedProfileSourceId] = useState<string | null>(null);
 	const [consentPromptSaving, setConsentPromptSaving] = useState(false);
+	const [confirmedConsentSourceId, setConfirmedConsentSourceId] = useState<string | null>(null);
 	const [notificationSeenAt, setNotificationSeenAt] = useState<number>(() => {
 		try {
 			const stored = Number(localStorage.getItem("djiwa-customer-notif-seen"));
@@ -163,6 +164,10 @@ function MemberHomePage() {
 		setShowProfileCompletion(!isComplete);
 	}, [customer, isAuthenticated, confirmedProfileSourceId]);
 
+	useEffect(() => {
+		setConfirmedConsentSourceId(null);
+	}, [customer?.sourceId]);
+
 	const dismissMemberOnboarding = () => {
 		if (customer) {
 			try {
@@ -201,9 +206,10 @@ function MemberHomePage() {
 				throw new Error("Consent update was not confirmed");
 			}
 
+			await refreshCustomer();
 			confirmCustomerConsent(customer.sourceId);
+			setConfirmedConsentSourceId(customer.sourceId);
 			toast.success("Persetujuan berhasil disimpan.");
-			void refreshCustomer();
 		} catch {
 			toast.error("Persetujuan belum berhasil disimpan. Silakan coba lagi.");
 		} finally {
@@ -273,7 +279,7 @@ function MemberHomePage() {
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
 				{authModal}
-				{customer && !customer.sharePurchaseActivity ? <ExistingConsentPrompt saving={consentPromptSaving} onAccept={acceptExistingConsent} onOpenProfile={() => navigate({ to: "/$username/profile", params: { username } })} /> : null}
+				{customer && !customer.sharePurchaseActivity && confirmedConsentSourceId !== customer.sourceId ? <ExistingConsentPrompt saving={consentPromptSaving} onAccept={acceptExistingConsent} onOpenProfile={() => navigate({ to: "/$username/profile", params: { username } })} /> : null}
 				{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={customer.name || customer.username || "Member"} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
 			</>
 		);
@@ -378,7 +384,7 @@ function MemberHomePage() {
 			</div>
 			<CustomerBottomNav items={customerNav} />
 			{authModal}
-			{customer && !customer.sharePurchaseActivity ? <ExistingConsentPrompt saving={consentPromptSaving} onAccept={acceptExistingConsent} onOpenProfile={() => navigate({ to: "/$username/profile", params: { username } })} /> : null}
+			{customer && !customer.sharePurchaseActivity && confirmedConsentSourceId !== customer.sourceId ? <ExistingConsentPrompt saving={consentPromptSaving} onAccept={acceptExistingConsent} onOpenProfile={() => navigate({ to: "/$username/profile", params: { username } })} /> : null}
 			{showProfileCompletion && customer ? <ProfileCompletionOnboarding name={displayName} email={customer.email ?? ""} phone={customer.phone ?? ""} onSave={saveProfileCompletion} /> : null}
 			{!showProfileCompletion && showMemberOnboarding && customer ? <MemberOnboarding name={displayName} onDismiss={dismissMemberOnboarding} onStartOrdering={() => { dismissMemberOnboarding(); navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }); }} /> : null}
 		</>
