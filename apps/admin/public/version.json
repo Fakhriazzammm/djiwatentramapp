@@ -1,7 +1,7 @@
 {
-  "version": "0.2.450",
-  "commitHash": "2ebc3bf",
-  "message": "fix(admin): make employee table readable",
-  "buildDate": "2026-10-05",
-  "generatedAt": "2026-10-05T06:14:03.538Z"
+  "version": "0.2.455",
+  "commitHash": "eaf56db",
+  "message": "fix(admin): bound dashboard stats to calendar months",
+  "buildDate": "2026-10-07",
+  "generatedAt": "2026-10-07T12:32:46.535Z"
 }
