@@ -1,7 +1,7 @@
 {
-  "version": "0.2.450",
-  "commitHash": "2ebc3bf",
-  "message": "fix(admin): make employee table readable",
-  "buildDate": "2026-10-05",
-  "generatedAt": "2026-10-05T06:14:03.538Z"
+  "version": "0.2.456",
+  "commitHash": "752776c",
+  "message": "fix(admin): paginate month comparison orders",
+  "buildDate": "2026-10-07",
+  "generatedAt": "2026-10-07T12:36:52.724Z"
 }
