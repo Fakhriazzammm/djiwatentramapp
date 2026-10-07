@@ -1,5 +1,6 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { LogIn, ShieldCheck } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
@@ -54,7 +55,7 @@ function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer, confirmCustomerConsent } = useCustomerAuth();
 	const { setCart } = useOrderContext();
 	const { orders: customerOrders } = useCustomerOrders();
 	const siteSettings = useHybridSiteSettings();
@@ -174,10 +175,20 @@ function MemberHomePage() {
 	};
 
 	const acceptExistingConsent = async () => {
-		if (!customer?.email || consentPromptSaving) return;
+		if (consentPromptSaving) return;
+		if (!customer?.email) {
+			toast.error("Email akun belum tersedia. Silakan keluar dan masuk kembali sebelum menyetujui.");
+			return;
+		}
+
 		setConsentPromptSaving(true);
 		try {
-			await invokeEdgeFunction("customer-sync", {
+			const result = await invokeEdgeFunction<{
+				customer?: {
+					marketing_consent?: boolean;
+					share_purchase_activity?: boolean;
+				} | null;
+			}>("customer-sync", {
 				action: "updateProfile",
 				sourceId: customer.sourceId,
 				email: customer.email,
@@ -186,12 +197,19 @@ function MemberHomePage() {
 				sharePurchaseActivity: true,
 				purchaseActivityNameMode: "first_name",
 			});
-			await refreshCustomer();
+			if (result.customer?.marketing_consent !== true || result.customer?.share_purchase_activity !== true) {
+				throw new Error("Consent update was not confirmed");
+			}
+
+			confirmCustomerConsent(customer.sourceId);
+			toast.success("Persetujuan berhasil disimpan.");
+			void refreshCustomer();
+		} catch {
+			toast.error("Persetujuan belum berhasil disimpan. Silakan coba lagi.");
 		} finally {
 			setConsentPromptSaving(false);
 		}
 	};
-
 	const saveProfileCompletion = async (phone: string) => {
 		if (!customer?.email) throw new Error("Email akun belum tersedia. Silakan keluar dan masuk kembali.");
 		await invokeEdgeFunction("customer-sync", {

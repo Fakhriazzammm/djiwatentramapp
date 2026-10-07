@@ -66,6 +66,7 @@ interface CustomerAuthContextType {
   resetPassword: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   refreshCustomer: () => Promise<void>;
+  confirmCustomerConsent: (sourceId: string) => void;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -358,6 +359,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [betterSession?.user]);
 
+  const confirmCustomerConsent = useCallback((sourceId: string) => {
+    setCustomer((current) => current?.sourceId === sourceId
+      ? {
+          ...current,
+          marketingConsent: true,
+          sharePurchaseActivity: true,
+          purchaseActivityNameMode: "first_name",
+        }
+      : current,
+    );
+  }, []);
+
   // ── resetPassword ────────────────────────────────────────────
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await (authClient as any).forgetPassword({ email });
@@ -383,6 +396,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         resetPassword,
         signInWithGoogle,
         refreshCustomer,
+        confirmCustomerConsent,
       }}
     >
       {children}
