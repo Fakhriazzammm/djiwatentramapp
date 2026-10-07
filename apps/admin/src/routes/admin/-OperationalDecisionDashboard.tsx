@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrencyIDR } from "@/lib/export-utils";
-import { formatTimeWIB, getWibDayRange } from "@/lib/wib-utils";
+import { DAY_MS, WIB_OFFSET_MS, formatDateWIB, formatTimeWIB, getWibDayRange } from "@/lib/wib-utils";
 import HourlyTransactionAnalysis from "@/routes/admin/-HourlyTransactionAnalysis";
 import { triggerHybridRefresh, useHybridDashboardStats, useHybridOrders, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
 
@@ -34,7 +34,7 @@ function paymentDisplayLabel(order: any) {
 }
 function CompactSkeleton() { return <div className="space-y-3"><Skeleton className="h-12 rounded-2xl" /><Skeleton className="h-24 rounded-2xl" /><div className="grid grid-cols-2 gap-2"><Skeleton className="h-28 rounded-2xl" /><Skeleton className="h-28 rounded-2xl" /></div></div>; }
 function Delta({ value }: { value: string }) { const positive = value.startsWith("+"); const negative = value.startsWith("-"); return <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${positive ? "bg-[#eaf8ef] text-[#248a3d]" : negative ? "bg-[#fff0ef] text-[#d70015]" : "bg-[#f2f2f7] text-[#6e6e73]"}`}>{positive && <ArrowUpRight className="h-3 w-3" />}{negative && <ArrowDownRight className="h-3 w-3" />}{value}</span>; }
-function PeriodTile({ label, data, previous, emphasis, hidden }: { label: string; data: { orders: number; revenue: number }; previous?: { orders: number; revenue: number }; emphasis?: boolean; hidden?: boolean }) { return <div className={`rounded-[16px] border p-2.5 ${emphasis ? "border-[#007aff]/20 bg-[#f0f6ff]" : "border-black/[0.08] bg-white"}`}><div className="flex items-center justify-between gap-2"><p className="truncate text-[11px] font-semibold text-[#6e6e73]">{label}</p><span className="text-[10px] text-[#8e8e93]">{hidden ? "***" : `${data.orders} order`}</span></div><p className="mt-1 truncate text-[15px] font-bold tracking-[-0.02em] text-[#1d1d1f] tabular-nums">{hidden ? "***" : money(data.revenue)}</p>{previous && !hidden && <Delta value={delta(data.revenue, previous.revenue)} />}</div>; }
+function PeriodTile({ label, dateLabel, data, previous, emphasis, hidden }: { label: string; dateLabel: string; data: { orders: number; revenue: number }; previous?: { orders: number; revenue: number }; emphasis?: boolean; hidden?: boolean }) { return <div className={`rounded-[16px] border p-2.5 ${emphasis ? "border-[#007aff]/20 bg-[#f0f6ff]" : "border-black/[0.08] bg-white"}`}><div className="flex items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-[11px] font-semibold text-[#6e6e73]">{label}</p><p className="truncate text-[10px] text-[#8e8e93]">{hidden ? "***" : dateLabel}</p></div><span className="shrink-0 text-[10px] text-[#8e8e93]">{hidden ? "***" : `${data.orders} order`}</span></div><p className="mt-1 truncate text-[15px] font-bold tracking-[-0.02em] text-[#1d1d1f] tabular-nums">{hidden ? "***" : money(data.revenue)}</p>{previous && !hidden && <Delta value={delta(data.revenue, previous.revenue)} />}</div>; }
 function Stat({ label, value, sub, icon: Icon, tone = "blue", hidden }: { label: string; value: string; sub: string; icon: typeof ShoppingBag; tone?: string; hidden?: boolean }) { return <div className="rounded-[17px] border border-black/[0.08] bg-white p-2.5 shadow-[0_4px_16px_rgba(0,0,0,.045)]"><div className="flex items-center justify-between"><span className={`flex h-7 w-7 items-center justify-center rounded-[10px] ${tone}`}><Icon className="h-3.5 w-3.5" /></span><span className="max-w-[90px] truncate text-[10px] text-[#8e8e93]">{hidden ? "***" : sub}</span></div><p className="mt-2 text-[11px] font-medium text-[#6e6e73]">{label}</p><p className="mt-0.5 truncate text-[19px] font-bold tracking-[-.04em] tabular-nums">{hidden ? "***" : value}</p></div>; }
 function Row({ children, href }: { children: React.ReactNode; href?: string }) { const className = "flex min-h-9 items-center gap-2 rounded-xl px-2 py-1.5 text-[11px] hover:bg-[#f5f5f7]"; return href ? <Link className={className} to={href}>{children}</Link> : <div className={className}>{children}</div>; }
 function TooltipContent({ active, payload, label }: any) { if (!active || !payload?.length) return null; return <div className="rounded-xl border border-black/[.06] bg-white px-3 py-2 text-xs shadow-lg"><p className="text-[#6e6e73]">{label}</p><p className="mt-0.5 font-bold text-[#007aff]">{money(payload[0].value)}</p></div>; }
@@ -74,6 +74,29 @@ export default function OperationalDecisionDashboard() {
   const openShifts = shifts.filter((shift: any) => !shift.endTime).length;
   const alertCount = stats.anomalies.length + stats.paymentReconciliation.pendingNonCashCount + stats.lowStockCount;
   const chartData = stats.revenueLast7Days.map((day) => ({ ...day, label: day.date.split(",")[0] }));
+  const periodDateLabels = useMemo(() => {
+    const now = Date.now();
+    const today = getWibDayRange(now);
+    const wibNow = new Date(now + WIB_OFFSET_MS);
+    const mondayOffset = (wibNow.getUTCDay() + 6) % 7;
+    const thisWeekStart = today.start - mondayOffset * DAY_MS;
+    const monthStart = Date.UTC(wibNow.getUTCFullYear(), wibNow.getUTCMonth(), 1) - WIB_OFFSET_MS;
+    const lastMonthStart = Date.UTC(wibNow.getUTCFullYear(), wibNow.getUTCMonth() - 1, 1) - WIB_OFFSET_MS;
+    const ranges: Record<PeriodKey, { start: number; end: number }> = {
+      today: { start: today.start, end: today.end },
+      yesterday: { start: today.start - DAY_MS, end: today.start - 1 },
+      thisWeek: { start: thisWeekStart, end: today.end },
+      lastWeek: { start: thisWeekStart - 7 * DAY_MS, end: thisWeekStart - 1 },
+      thisMonth: { start: monthStart, end: today.end },
+      lastMonth: { start: lastMonthStart, end: monthStart - 1 },
+    };
+    return Object.fromEntries(periodItems.map(([key]) => {
+      const range = ranges[key];
+      const start = formatDateWIB(range.start);
+      const end = formatDateWIB(range.end);
+      return [key, key === "today" || key === "yesterday" ? start : `Dari ${start} sampai ${end}`];
+    })) as Record<PeriodKey, string>;
+  }, []);
   const maxPayment = Math.max(...topPayments.map((item) => item.amount), 1);
   const averageOrder = p.today.orders ? p.today.revenue / p.today.orders : 0;
 
@@ -83,7 +106,7 @@ export default function OperationalDecisionDashboard() {
     <div>
       <div className="space-y-3">
 
-    <section aria-label="Perbandingan periode" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"><PeriodTile data={p.today} emphasis hidden={isDataHidden} label="Hari ini" previous={p.yesterday} />{periodItems.slice(1).map(([key, label]) => <PeriodTile data={p[key as PeriodKey]} hidden={isDataHidden} key={key} label={label} />)}</section>
+    <section aria-label="Perbandingan periode" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"><PeriodTile data={p.today} dateLabel={periodDateLabels.today} emphasis hidden={isDataHidden} label="Hari ini" previous={p.yesterday} />{periodItems.slice(1).map(([key, label]) => <PeriodTile data={p[key as PeriodKey]} dateLabel={periodDateLabels[key]} hidden={isDataHidden} key={key} label={label} />)}</section>
 
     <section className="grid gap-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]"><div className="rounded-[20px] border border-black/[.08] bg-white p-3 shadow-[0_4px_16px_rgba(0,0,0,.045)]"><div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><h2 className="text-sm font-bold">Pendapatan 7 hari</h2><span className="rounded-full bg-[#eaf3ff] px-2 py-0.5 text-[10px] font-semibold text-[#007aff]">settled</span></div><p className="mt-0.5 text-[11px] text-[#8e8e93]">Order paid/completed · klik titik untuk nilai harian</p></div><Link className="text-[11px] font-semibold text-[#007aff]" to="/admin/finance/reports">Detail</Link></div><div className="mt-2 h-[132px]"><ResponsiveContainer height="100%" width="100%"><AreaChart data={chartData} margin={{ top: 8, right: 4, bottom: 0, left: -24 }}><defs><linearGradient id="decisionRevenue" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#007aff" stopOpacity={.24} /><stop offset="100%" stopColor="#007aff" stopOpacity={.02} /></linearGradient></defs><XAxis axisLine={false} dataKey="label" tick={{ fill: "#8e8e93", fontSize: 10 }} tickLine={false} /><YAxis axisLine={false} hide /><Tooltip content={<TooltipContent />} /><Area dataKey="revenue" fill="url(#decisionRevenue)" stroke="#007aff" strokeWidth={2.5} type="monotone" /></AreaChart></ResponsiveContainer></div></div><div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2"><Stat hidden={isDataHidden} icon={ShoppingBag} label="Order hari ini" sub={`${p.today.orders} settled`} tone="bg-[#eaf3ff] text-[#007aff]" value={String(stats.todayOrders)} /><Stat hidden={isDataHidden} icon={CircleDollarSign} label="Rata-rata order" sub="hari ini" tone="bg-[#eaf8ef] text-[#248a3d]" value={money(averageOrder)} /><Stat hidden={isDataHidden} icon={WalletCards} label="Kas bersih" sub={`${money(stats.todayIncome)} masuk`} tone="bg-[#f1ecff] text-[#6e44c5]" value={money(stats.netBalance)} /><Stat hidden={isDataHidden} icon={AlertTriangle} label="Perlu perhatian" sub={`${stats.lowStockCount} stok kritis`} tone={alertCount ? "bg-[#fff4e5] text-[#b45f06]" : "bg-[#eaf8ef] text-[#248a3d]"} value={String(alertCount)} /></div></section>
 
