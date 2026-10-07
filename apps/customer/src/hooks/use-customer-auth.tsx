@@ -67,6 +67,7 @@ interface CustomerAuthContextType {
   signInWithGoogle: () => Promise<void>;
   refreshCustomer: () => Promise<void>;
   confirmCustomerConsent: (sourceId: string) => void;
+  updateCustomerPhone: (sourceId: string, phone: string) => void;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -353,7 +354,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     try {
       const fresh = await fetchCustomer(user.id, user.email);
-      setCustomer(fresh ?? buildFallbackCustomer(user.id, user.email, user.name));
+      if (fresh) setCustomer(fresh);
     } catch (err) {
       console.error("[customer-auth] refreshCustomer failed:", err);
     }
@@ -369,6 +370,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         }
       : current,
     );
+  }, []);
+
+  const updateCustomerPhone = useCallback((sourceId: string, phone: string) => {
+    setCustomer((current) => current?.sourceId === sourceId ? { ...current, phone } : current);
   }, []);
 
   // ── resetPassword ────────────────────────────────────────────
@@ -397,6 +402,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle,
         refreshCustomer,
         confirmCustomerConsent,
+        updateCustomerPhone,
       }}
     >
       {children}
