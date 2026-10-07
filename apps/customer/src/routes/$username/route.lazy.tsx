@@ -77,7 +77,7 @@ function MemberHomePage() {
 	const { username } = Route.useParams();
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer, confirmCustomerConsent } = useCustomerAuth();
+	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer, confirmCustomerConsent, updateCustomerPhone } = useCustomerAuth();
 	const { setCart } = useOrderContext();
 	const { orders: customerOrders } = useCustomerOrders();
 	const siteSettings = useHybridSiteSettings();
@@ -259,6 +259,7 @@ function MemberHomePage() {
 		if (savedPhone !== normalizedPhone) {
 			throw new Error("Nomor WhatsApp belum terkonfirmasi tersimpan. Silakan coba lagi.");
 		}
+		updateCustomerPhone(customer.sourceId, phone.trim());
 		setConfirmedProfileSourceId(customer.sourceId);
 		setShowProfileCompletion(false);
 		await refreshCustomer();
