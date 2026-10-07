@@ -39,6 +39,28 @@ function loadGuestData(): GuestData | null {
 	}
 }
 
+const CONSENT_DISMISSED_PREFIX = "djiwa-consent-dismissed:";
+
+function consentDismissalKey(sourceId: string): string {
+	return `${CONSENT_DISMISSED_PREFIX}${sourceId}`;
+}
+
+function loadConsentDismissal(sourceId: string): boolean {
+	try {
+		return sessionStorage.getItem(consentDismissalKey(sourceId)) === "done";
+	} catch {
+		return false;
+	}
+}
+
+function saveConsentDismissal(sourceId: string): void {
+	try {
+		sessionStorage.setItem(consentDismissalKey(sourceId), "done");
+	} catch {
+		// In-memory state still dismisses the prompt for this render.
+	}
+}
+
 function greetingWord(): string {
 	const hour = new Date().getHours();
 	if (hour < 11) return "Selamat pagi";
@@ -165,7 +187,11 @@ function MemberHomePage() {
 	}, [customer, isAuthenticated, confirmedProfileSourceId]);
 
 	useEffect(() => {
-		setConfirmedConsentSourceId(null);
+		if (!customer?.sourceId) {
+			setConfirmedConsentSourceId(null);
+			return;
+		}
+		setConfirmedConsentSourceId(loadConsentDismissal(customer.sourceId) ? customer.sourceId : null);
 	}, [customer?.sourceId]);
 
 	const dismissMemberOnboarding = () => {
@@ -208,6 +234,7 @@ function MemberHomePage() {
 
 			await refreshCustomer();
 			confirmCustomerConsent(customer.sourceId);
+			saveConsentDismissal(customer.sourceId);
 			setConfirmedConsentSourceId(customer.sourceId);
 			toast.success("Persetujuan berhasil disimpan.");
 		} catch {
