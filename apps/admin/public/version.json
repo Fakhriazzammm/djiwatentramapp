@@ -1,7 +1,7 @@
 {
-  "version": "0.2.450",
-  "commitHash": "2ebc3bf",
-  "message": "fix(admin): make employee table readable",
-  "buildDate": "2026-10-05",
-  "generatedAt": "2026-10-05T06:14:03.538Z"
+  "version": "0.2.457",
+  "commitHash": "3fc423d",
+  "message": "feat(admin): show period date ranges on stat cards",
+  "buildDate": "2026-10-07",
+  "generatedAt": "2026-10-07T13:56:19.284Z"
 }
