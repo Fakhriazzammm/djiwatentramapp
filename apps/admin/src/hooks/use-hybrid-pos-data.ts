@@ -757,34 +757,51 @@ async function fetchOrders(options?: {
 	limit?: number;
 	createdAtGte?: number;
 	createdAtLt?: number;
+	paginate?: boolean;
 }) {
 	const supabase = createClient();
-	let query = supabase
-		.from("pos_orders")
-		.select("*")
-		.order("createdAt", { ascending: false });
+	const pageSize = 1000;
+	const rows: any[] = [];
+	const fetchPage = async (from?: number, to?: number) => {
+		let query = supabase
+			.from("pos_orders")
+			.select("*")
+			.order("createdAt", { ascending: false });
 
-	if (options?.status) {
-		query = query.eq("status", options.status);
+		if (options?.status) {
+			query = query.eq("status", options.status);
+		}
+
+		if (options?.createdAtGte !== undefined) {
+			query = query.gte("createdAt", options.createdAtGte);
+		}
+
+		if (options?.createdAtLt !== undefined) {
+			query = query.lt("createdAt", options.createdAtLt);
+		}
+
+		if (from !== undefined && to !== undefined) {
+			query = query.range(from, to);
+		} else if (options?.limit) {
+			query = query.limit(options.limit);
+		}
+
+		const { data, error } = await query;
+		if (error) throw error;
+		return data ?? [];
+	};
+
+	if (options?.paginate) {
+		for (let from = 0; ; from += pageSize) {
+			const page = await fetchPage(from, from + pageSize - 1);
+			rows.push(...page);
+			if (page.length < pageSize) break;
+		}
+	} else {
+		rows.push(...(await fetchPage()));
 	}
 
-	if (options?.createdAtGte !== undefined) {
-		query = query.gte("createdAt", options.createdAtGte);
-	}
-
-	if (options?.createdAtLt !== undefined) {
-		query = query.lt("createdAt", options.createdAtLt);
-	}
-
-	if (options?.limit) {
-		query = query.limit(options.limit);
-	}
-
-	const { data, error } = await query;
-
-	if (error) throw error;
-
-	return (data ?? []).map((row: any) => ({
+	return rows.map((row: any) => ({
 			_id: String(row._id ?? ""),
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		orderNumber: row.orderNumber ?? "",
@@ -1855,7 +1872,7 @@ async function fetchDashboardStats() {
 	] = await Promise.all([
 		// The dashboard compares the current and previous calendar months. Bound the
 		// query so PostgREST's default 1,000-row cap cannot truncate last month's data.
-		fetchOrders({ createdAtGte: previousMonthStart, createdAtLt: todayRange.end + 1 }),
+		fetchOrders({ createdAtGte: previousMonthStart, createdAtLt: todayRange.end + 1, paginate: true }),
 		fetchBookingOrders(),
 		fetchAllProducts(),
 		fetchInventory(),
