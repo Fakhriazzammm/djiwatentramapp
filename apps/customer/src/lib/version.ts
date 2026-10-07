@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.460",
+	semantic: "0.2.461",
 	// Git/deploy commit hash (short)
-	commitHash: "2595883",
-	message: "chore(release): sync customer and admin build metadata",
+	commitHash: "5358aee",
+	message: "fix(customer): keep product variation groups independent",
 	// Commit subject for the update prompt
-	commitMessage: "chore(release): sync customer and admin build metadata",
+	commitMessage: "fix(customer): keep product variation groups independent",
 	// Build timestamp
 	buildDate: "2026-10-07",
 	// Full version string for display
