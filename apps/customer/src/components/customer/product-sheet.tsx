@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Flag, Info, Minus, PackageSearch, Plus, ShoppingCart, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
+import {
+	calculateProductVariationPrice,
+	getProductVariationGroupKey,
+	type ProductVariationGroup,
+} from "@/lib/product-variations";
 import { ImageWithPlaceholder } from "./image-with-placeholder";
 import type { Doc, Id } from "@/types/backend-compat";
 import type { CartItem } from "./types";
@@ -81,20 +86,13 @@ export function ProductSheet({
 	if (!product) return null;
 
 	const groups = Array.isArray(product.variations)
-		? (product.variations as Array<{
-				type: string;
-				options: Array<{ name: string; price: number }>;
-		  }>)
+		? (product.variations as ProductVariationGroup[])
 		: [];
 	const pricing = calculateEffectivePrice(
 		{ _id: product._id, price: product.price, categoryId: product.categoryId },
 		discounts,
 	);
-	const variantPrice = Object.entries(variants).reduce((sum, [groupName, optionName]) => {
-		const group = groups.find((entry) => entry.type === groupName);
-		const option = group?.options.find((entry) => entry.name === optionName);
-		return sum + (option?.price ?? 0);
-	}, 0);
+	const variantPrice = calculateProductVariationPrice(groups, variants);
 	const nutrition = product.nutrition && typeof product.nutrition === "object" && product.nutrition.status !== "rejected"
 		? product.nutrition as {
 				caloriesKcal: number;
@@ -181,15 +179,19 @@ export function ProductSheet({
 
 				{groups.length > 0 ? (
 					<div className="mt-3 space-y-3">
-						{groups.map((group) => (
-							<section key={group.type} aria-labelledby={`variant-${group.type}`} className="space-y-1.5">
+						{groups.map((group, groupIndex) => {
+							const groupKey = getProductVariationGroupKey(group, groupIndex);
+							const groupLabel = group.name?.trim() || group.type?.trim() || `Pilihan ${groupIndex + 1}`;
+							const headingId = `variant-${groupIndex}`;
+							return (
+							<section key={groupKey} aria-labelledby={headingId} className="space-y-1.5">
 								<div className="flex items-center justify-between gap-2">
-									<h4 id={`variant-${group.type}`} className="text-sm font-black">{group.type}</h4>
+									<h4 id={headingId} className="text-sm font-black">{groupLabel}</h4>
 									<span className="text-[11px] font-semibold text-muted-foreground">Pilihan</span>
 								</div>
 								<div className="grid grid-cols-2 gap-1.5">
 									{group.options.map((option) => {
-										const isSelected = variants[group.type] === option.name;
+										const isSelected = variants[groupKey] === option.name;
 										return (
 											<button
 												type="button"
@@ -199,7 +201,7 @@ export function ProductSheet({
 													"flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-[13px] font-bold transition-all duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
 													isSelected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background hover:border-primary/40",
 												)}
-												onClick={() => setVariants((value) => ({ ...value, [group.type]: option.name }))}
+												onClick={() => setVariants((value) => ({ ...value, [groupKey]: option.name }))}
 											>
 												<span className="min-w-0 break-words leading-tight">{option.name}</span>
 												<span className="flex shrink-0 items-center gap-1 text-xs">
@@ -211,7 +213,8 @@ export function ProductSheet({
 									})}
 								</div>
 							</section>
-						))}
+							);
+						})}
 					</div>
 				) : null}
 			<details className="mt-3 rounded-xl border border-border/70 bg-muted/15">
