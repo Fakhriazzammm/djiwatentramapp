@@ -117,7 +117,7 @@ export function ProductSheet({
 			<div className="flex justify-center bg-muted/90 pb-1.5 pt-2" aria-hidden="true">
 				<div className="h-1 w-10 rounded-full bg-foreground/20" />
 			</div>
-			<div className="relative h-40 shrink-0 bg-muted sm:h-44">
+			<div className="relative h-24 shrink-0 bg-muted sm:h-28">
 				<ImageWithPlaceholder
 					src={productImage}
 					alt={product.name}
@@ -144,11 +144,11 @@ export function ProductSheet({
 				{pricing.isPromo ? <span className="absolute bottom-3 right-3 rounded-full bg-[#2563eb] px-2.5 py-1 text-[11px] font-black text-white shadow">Promo aktif</span> : null}
 			</div>
 
-			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 overscroll-contain">
+			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-2.5 overscroll-contain">
 				<div className="min-w-0">
-					<h3 className="font-display text-xl font-black leading-tight tracking-tight">{product.name}</h3>
-						{product.description ? <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{product.description}</p> : null}
-						<section className="mt-3 rounded-2xl border border-border/80 bg-muted/25 p-3" aria-labelledby="product-nutrition-title">
+					<h3 className="font-display text-lg font-black leading-tight tracking-tight">{product.name}</h3>
+						{product.description ? <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{product.description}</p> : null}
+						<section className="mt-2 rounded-xl border border-border/70 bg-muted/20 px-2.5 py-2" aria-labelledby="product-nutrition-title">
 							<div className="flex items-center justify-between gap-2">
 								<div className="flex min-w-0 items-center gap-1.5">
 									<Info className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
@@ -158,8 +158,8 @@ export function ProductSheet({
 							</div>
 							{nutrition && nutritionValues ? (
 								<>
-									<p className="mt-1 text-[10px] text-muted-foreground">Per porsi · {nutrition.servingSize}</p>
-									<div className="mt-2 grid grid-cols-5 gap-1.5">
+									<p className="mt-0.5 text-[10px] text-muted-foreground">Per porsi · {nutrition.servingSize}</p>
+									<div className="mt-1.5 grid grid-cols-5 gap-1">
 										{[
 											["Kalori", `${nutrition.caloriesKcal} kkal`],
 											["Protein", `${nutrition.proteinG} g`],
@@ -167,9 +167,9 @@ export function ProductSheet({
 											["Lemak", `${nutrition.fatG} g`],
 											["Gula", `${nutrition.sugarG ?? "-"} g`],
 										].map(([label, value]) => (
-												<div key={label} className="rounded-xl bg-background px-2.5 py-2">
-													<p className="text-[11px] text-muted-foreground">{label}</p>
-													<p className="mt-0.5 text-xs font-black text-foreground">{value}</p>
+												<div key={label} className="rounded-lg bg-background px-1.5 py-1.5">
+													<p className="text-[9px] leading-tight text-muted-foreground">{label}</p>
+													<p className="mt-0.5 text-[11px] font-black leading-tight text-foreground">{value}</p>
 												</div>
 											))}
 									</div>
@@ -180,14 +180,14 @@ export function ProductSheet({
 					</div>
 
 				{groups.length > 0 ? (
-					<div className="mt-5 space-y-4">
+					<div className="mt-3 space-y-3">
 						{groups.map((group) => (
-							<section key={group.type} aria-labelledby={`variant-${group.type}`} className="space-y-2">
+							<section key={group.type} aria-labelledby={`variant-${group.type}`} className="space-y-1.5">
 								<div className="flex items-center justify-between gap-2">
 									<h4 id={`variant-${group.type}`} className="text-sm font-black">{group.type}</h4>
 									<span className="text-[11px] font-semibold text-muted-foreground">Pilihan</span>
 								</div>
-								<div className="grid grid-cols-2 gap-2">
+								<div className="grid grid-cols-2 gap-1.5">
 									{group.options.map((option) => {
 										const isSelected = variants[group.type] === option.name;
 										return (
@@ -196,7 +196,7 @@ export function ProductSheet({
 												aria-pressed={isSelected}
 												key={option.name}
 												className={cn(
-													"flex min-h-12 items-center justify-between gap-2 rounded-[14px] border px-3 py-2.5 text-left text-sm font-bold transition-all duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+													"flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-[13px] font-bold transition-all duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)] active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
 													isSelected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background hover:border-primary/40",
 												)}
 												onClick={() => setVariants((value) => ({ ...value, [group.type]: option.name }))}
@@ -214,7 +214,11 @@ export function ProductSheet({
 						))}
 					</div>
 				) : null}
-			<section className="shrink-0 border-t border-border/70 bg-background px-4 py-4" aria-labelledby="product-reviews-title">
+			<details className="mt-3 rounded-xl border border-border/70 bg-muted/15">
+				<summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-black [&::-webkit-details-marker]:hidden">
+					<span>Ulasan customer</span><span className="text-[11px] font-semibold text-muted-foreground">{reviewList.reviews.length ? `${reviewList.reviews.length} ulasan` : "Lihat ulasan"}</span>
+				</summary>
+				<section className="border-t border-border/60 px-3 py-3" aria-labelledby="product-reviews-title">
 				<div className="flex items-start justify-between gap-3">
 					<div><h4 id="product-reviews-title" className="text-sm font-black">Ulasan customer</h4><p className="mt-0.5 text-[11px] text-muted-foreground">Pembelian terverifikasi · ulasan baru ditinjau sebelum dipublikasikan</p></div>
 					<button type="button" className="min-h-11 shrink-0 rounded-xl border border-border px-3 text-xs font-bold" onClick={() => void reviewList.load(true)} disabled={reviewList.isLoading}>Muat ulang</button>
@@ -240,10 +244,11 @@ export function ProductSheet({
 					</div>}
 					{reviewFeedback ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800" role="status">{reviewFeedback}</p> : null}
 				</div>
-			</section>
+				</section>
+			</details>
 			</div>
 
-			<footer className="shrink-0 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+			<footer className="shrink-0 border-t border-border bg-background px-4 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
 				<div className="flex items-center gap-2.5">
 					<div className="min-w-0 flex-1">
 						<p className="text-xl font-black leading-none text-primary" aria-live="polite">{currency(unitPrice)}</p>
