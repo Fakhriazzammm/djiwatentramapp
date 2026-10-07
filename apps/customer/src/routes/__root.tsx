@@ -1,4 +1,5 @@
 import { Outlet, createRootRoute, useLocation } from "@tanstack/react-router";
+import { Toaster } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { YumiAuthProvider } from "@/hooks/useYumiAuth";
 import { CustomerAuthProvider } from "@/hooks/use-customer-auth";
@@ -31,6 +32,7 @@ export const Route = createRootRoute({
 						<div className="mobile-shell">
 							<div className="min-h-app bg-background font-sans text-foreground antialiased">
 								<Outlet />
+								<Toaster position="top-center" richColors closeButton />
 								{visible && <RouteTransitionSplash />}
 								<OwnerFooter compact twoLine className="mb-[calc(5.5rem+env(safe-area-inset-bottom))]" />
 							</div>
