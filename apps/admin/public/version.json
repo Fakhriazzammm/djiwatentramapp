@@ -1,7 +1,7 @@
 {
-  "version": "0.2.302",
-  "commitHash": "e543286",
-  "message": "style(pos): tidy notification field layout",
-  "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T09:41:40.514Z"
+  "version": "0.2.459",
+  "commitHash": "1fb2647",
+  "message": "feat(admin): simplify mobile quick menu",
+  "buildDate": "2026-10-07",
+  "generatedAt": "2026-10-07T14:11:14.644Z"
 }
