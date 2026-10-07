@@ -2940,6 +2940,40 @@ export function useHybridUpdateB2BDeliveryStatus() {
 	}, []);
 }
 
+export type CustomerDeliveryStatus =
+	| "confirmed"
+	| "allocated"
+	| "picking_up"
+	| "picked"
+	| "dropping_off"
+	| "delivered"
+	| "cancelled";
+
+/** Update only customer self-service delivery orders in the canonical POS table. */
+export function useHybridUpdateCustomerDeliveryStatus() {
+	const [isLoading, setIsLoading] = useState(false);
+
+	return useCallback(async ({ id, deliveryStatus }: { id: string; deliveryStatus: CustomerDeliveryStatus }) => {
+		if (!id || !deliveryStatus) throw new Error("Order dan status pengiriman wajib diisi");
+		if (!hasSupabaseConfig) throw new Error("Update delivery customer membutuhkan koneksi Supabase");
+
+		setIsLoading(true);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase
+				.schema("pos")
+				.from("orders")
+				.update({ delivery_status: deliveryStatus })
+				.eq("source_id", id)
+				.eq("source", "customer_self_service")
+				.eq("order_type", "delivery");
+			if (error) throw error;
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
+}
+
 export function useHybridUpdateOrderStatus() {
 	const fallback = useMutation(api.orders.updateOrderStatus);
 	const deductInventory = useHybridDeductOrderInventory();

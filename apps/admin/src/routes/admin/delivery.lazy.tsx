@@ -2,7 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { Check, Circle, MapPin, RefreshCw, Search, Trash2, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
-import { useHybridDeleteOrder } from "@/hooks/use-hybrid-write-actions";
+import { useHybridDeleteOrder, useHybridUpdateCustomerDeliveryStatus, type CustomerDeliveryStatus } from "@/hooks/use-hybrid-write-actions";
 import { useHybridOrders, useGlobalRefreshTrigger, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { Button } from "@/components/ui/button";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
@@ -45,8 +45,10 @@ type CustomerDeliveryOrder = Record<string, any> & {
 
 const TERMINAL_STATUSES = new Set(["delivered", "cancelled"]);
 
-function normalizeStatus(order: CustomerDeliveryOrder): string {
-  return String(order.deliveryStatus ?? order.delivery_status ?? "").trim().toLowerCase();
+function normalizeStatus(order: CustomerDeliveryOrder): DeliveryStatus | "" {
+  const raw = String(order.deliveryStatus ?? order.delivery_status ?? "").trim().toLowerCase();
+  if (raw === "paid" || raw === "") return "confirmed";
+  return DELIVERY_STATUSES.some((item) => item.value === raw) ? raw as DeliveryStatus : "";
 }
 
 function labelForStatus(status: string) {
@@ -121,6 +123,8 @@ function AdminCustomerDelivery() {
   const [deleteConfirmation, setDeleteConfirmation] = useState<string[] | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const deleteOrder = useHybridDeleteOrder();
+  const updateDeliveryStatus = useHybridUpdateCustomerDeliveryStatus();
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const deliveryOrders = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -175,6 +179,20 @@ function AdminCustomerDelivery() {
 
   const selectedCount = selectedIds.length;
 
+  const updateStatus = async (order: CustomerDeliveryOrder, nextStatus: CustomerDeliveryStatus) => {
+    const id = String(order._id);
+    setUpdatingId(id);
+    try {
+      await updateDeliveryStatus({ id, deliveryStatus: nextStatus });
+      triggerHybridRefresh();
+      toast.success("Status pengiriman diperbarui.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Status pengiriman gagal diperbarui.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   if (!orders) {
     return (
       <div className="space-y-3 p-3 md:p-4">
@@ -216,7 +234,7 @@ function AdminCustomerDelivery() {
 
       <div className="hidden min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card md:block">
         <table className="w-full min-w-[1120px] table-fixed text-left text-[11px]">
-          <thead className="sticky top-0 z-[1] bg-muted/95 text-[9px] uppercase tracking-wider text-muted-foreground backdrop-blur"><tr><th className="w-10 px-2 py-1.5 text-center"><input aria-label="Pilih semua order yang terlihat" checked={allVisibleSelected} onChange={toggleAllVisible} type="checkbox" className="h-3.5 w-3.5 accent-primary" /></th><th className="w-[14%] px-2 py-1.5">Order / customer</th><th className="w-[27%] px-2 py-1.5">Timeline Biteship</th><th className="w-[18%] px-2 py-1.5">Kurir & tujuan</th><th className="w-[16%] px-2 py-1.5">Tracking</th><th className="w-[10%] px-2 py-1.5 text-right">Biaya / total</th><th className="w-[11%] px-2 py-1.5">Payment / order</th></tr></thead>
+          <thead className="sticky top-0 z-[1] bg-muted/95 text-[9px] uppercase tracking-wider text-muted-foreground backdrop-blur"><tr><th className="w-10 px-2 py-1.5 text-center"><input aria-label="Pilih semua order yang terlihat" checked={allVisibleSelected} onChange={toggleAllVisible} type="checkbox" className="h-3.5 w-3.5 accent-primary" /></th><th className="w-[14%] px-2 py-1.5">Order / customer</th><th className="w-[27%] px-2 py-1.5">Timeline Biteship</th><th className="w-[18%] px-2 py-1.5">Kurir & tujuan</th><th className="w-[16%] px-2 py-1.5">Tracking</th><th className="w-[10%] px-2 py-1.5 text-right">Biaya / total</th><th className="w-[11%] px-2 py-1.5">Payment / order</th><th className="w-[14%] px-2 py-1.5">Update status</th></tr></thead>
           <tbody className="divide-y divide-border">
             {deliveryOrders.map((order) => { const status = normalizeStatus(order); return (
               <tr className="align-middle transition-colors hover:bg-muted/30" key={order._id}>
@@ -227,6 +245,7 @@ function AdminCustomerDelivery() {
                 <td className="px-2 py-1.5 align-top text-[10px]"><p className="truncate" title={order.deliveryWaybillId || "-"}>Waybill: <span className="font-semibold">{order.deliveryWaybillId || "-"}</span></p><p className="truncate" title={order.deliveryTrackingId || "-"}>Tracking: <span className="font-semibold">{order.deliveryTrackingId || "-"}</span></p><p className="truncate text-[9px] text-muted-foreground" title={order.deliveryProviderOrderId || "-"}>Provider: {order.deliveryProviderOrderId || "-"}</p></td>
                 <td className="px-2 py-1.5 text-right align-top text-[10px]"><p>Ongkir <span className="font-semibold">{formatRupiah(order.shippingFeeAmount)}</span></p><p className="mt-0.5 font-bold">{formatRupiah(order.totalAmount)}</p></td>
                 <td className="px-2 py-1.5 align-top text-[10px]"><p>{paymentLabel(order.paymentMethod)}</p><p className="mt-0.5 truncate text-muted-foreground">{order.status || "-"}</p></td>
+                <td className="px-2 py-1.5 align-top"><select aria-label={`Update status ${order.orderNumber || order._id}`} className="h-7 w-full rounded-md border border-input bg-background px-1.5 text-[10px]" disabled={updatingId === String(order._id)} onChange={(event) => { const value = event.target.value as CustomerDeliveryStatus; void updateStatus(order, value); }} value={status || "confirmed"}>{DELIVERY_STATUSES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></td>
               </tr>
             ); })}
           </tbody>
@@ -239,6 +258,7 @@ function AdminCustomerDelivery() {
           <article className={`rounded-xl border bg-card p-3 ${selectedIds.includes(String(order._id)) ? "border-primary ring-1 ring-primary/20" : "border-border"}`} key={order._id}>
             <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-start gap-2"><input aria-label={`Pilih order ${order.orderNumber || order._id}`} checked={selectedIds.includes(String(order._id))} onChange={() => toggleSelected(String(order._id))} type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" /><div className="min-w-0"><p className="truncate font-black">#{order.orderNumber || order._id}</p><p className="truncate text-xs">{order.deliveryContactName || order.customerName || "Customer"}</p><p className="text-[10px] text-muted-foreground">{formatDate(order.createdAt)}</p></div><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${statusClass(status)}`}>{labelForStatus(status)}</span></div></div>
             <div className="mt-2 overflow-x-auto"><DeliveryTimeline status={status} /></div>
+            <select aria-label={`Update status ${order.orderNumber || order._id}`} className="mt-2 h-8 w-full rounded-md border border-input bg-background px-2 text-[11px]" disabled={updatingId === String(order._id)} onChange={(event) => { const value = event.target.value as CustomerDeliveryStatus; void updateStatus(order, value); }} value={status || "confirmed"}>{DELIVERY_STATUSES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
             <div className="mt-2 space-y-1.5 border-t border-border pt-2 text-[11px]"><p className="flex gap-1.5"><Truck className="h-3.5 w-3.5 shrink-0" />{courierLabel(order)}</p><p className="flex gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0" />{order.deliveryAddress || "Alamat belum tersedia"}</p><p className="truncate">Waybill: <strong>{order.deliveryWaybillId || "-"}</strong> · Tracking: <strong>{order.deliveryTrackingId || "-"}</strong></p><div className="flex justify-between gap-2"><span>{paymentLabel(order.paymentMethod)} · {order.status || "-"}</span><strong>{formatRupiah(order.totalAmount)}</strong></div><p className="text-muted-foreground">Ongkir {formatRupiah(order.shippingFeeAmount)}</p></div>
           </article>
         ); })}
