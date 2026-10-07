@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrencyIDR } from "@/lib/export-utils";
-import { formatTimeWIB } from "@/lib/wib-utils";
+import { DAY_MS, formatDateWIB, formatTimeWIB, getWibDayRange, WIB_OFFSET_MS } from "@/lib/wib-utils";
 import { triggerHybridRefresh, useHybridDashboardStats, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
 
 const periodItems = [
@@ -44,8 +44,9 @@ function MetricTile({ label, value, hint, icon: Icon, tone = "blue" }: { label: 
   return <div className="rounded-[18px] border border-black/[0.04] bg-white p-3 shadow-[0_2px_12px_rgba(0,0,0,0.035)]"><div className="flex items-center justify-between gap-2"><span className={`flex h-7 w-7 items-center justify-center rounded-[10px] ${toneClass}`}><Icon className="h-3.5 w-3.5" /></span>{hint && <span className="text-[10px] font-medium text-[#8e8e93]">{hint}</span>}</div><p className="mt-2 text-[11px] font-medium text-[#6e6e73]">{label}</p><p className="mt-0.5 truncate text-[20px] font-bold tracking-[-0.04em] text-[#1d1d1f] tabular-nums">{value}</p></div>;
 }
 
-function PeriodTile({ label, data, emphasis }: { label: string; data: { orders: number; revenue: number }; emphasis?: boolean }) {
-  return <div className={`rounded-[16px] border p-3 ${emphasis ? "border-[#007aff]/20 bg-[#f0f6ff]" : "border-black/[0.05] bg-white"}`}><div className="flex items-center justify-between gap-2"><p className="truncate text-[11px] font-semibold text-[#6e6e73]">{label}</p><span className="text-[10px] text-[#8e8e93]">{data.orders} order</span></div><p className="mt-1 truncate text-[15px] font-bold tracking-[-0.02em] text-[#1d1d1f] tabular-nums">{formatCurrencyIDR(data.revenue)}</p></div>;
+function PeriodTile({ label, data, range, emphasis }: { label: string; data: { orders: number; revenue: number }; range: [number, number]; emphasis?: boolean }) {
+  const [rangeStart, rangeEnd] = range;
+  return <div className={`rounded-[16px] border p-3 ${emphasis ? "border-[#007aff]/20 bg-[#f0f6ff]" : "border-black/[0.05] bg-white"}`}><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-[11px] font-semibold text-[#6e6e73]">{label}</p><p className="mt-0.5 truncate text-[10px] text-[#8e8e93]" title={`${formatDateWIB(rangeStart)} – ${formatDateWIB(rangeEnd)}`}>Dari {formatDateWIB(rangeStart)} sampai {formatDateWIB(rangeEnd)}</p></div><span className="shrink-0 text-[10px] text-[#8e8e93]">{data.orders} order</span></div><p className="mt-1 truncate text-[15px] font-bold tracking-[-0.02em] text-[#1d1d1f] tabular-nums">{formatCurrencyIDR(data.revenue)}</p></div>;
 }
 
 function StatusRow({ label, count, total, tone }: { label: string; count: number; total: number; tone: string }) {
@@ -70,6 +71,23 @@ export default function OperationalDashboardCompact() {
 
   if (!stats || !shiftStatus) return <CompactSkeleton />;
   const periodStats = stats.periodComparisons;
+  const periodRanges = useMemo(() => {
+    const now = Date.now();
+    const today = getWibDayRange(now);
+    const shiftedNow = new Date(now + WIB_OFFSET_MS);
+    const weekdayFromMonday = (shiftedNow.getUTCDay() + 6) % 7;
+    const thisWeekStart = today.start - weekdayFromMonday * DAY_MS;
+    const monthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), 1) - WIB_OFFSET_MS;
+    const previousMonthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth() - 1, 1) - WIB_OFFSET_MS;
+    return {
+      today: [today.start, today.end] as [number, number],
+      yesterday: [today.start - DAY_MS, today.start - 1] as [number, number],
+      thisWeek: [thisWeekStart, today.end] as [number, number],
+      lastWeek: [thisWeekStart - 7 * DAY_MS, thisWeekStart - 1] as [number, number],
+      thisMonth: [monthStart, today.end] as [number, number],
+      lastMonth: [previousMonthStart, monthStart - 1] as [number, number],
+    };
+  }, [stats]);
   const totalOrders = stats.orderStatusBreakdown.pending + stats.orderStatusBreakdown.paid + stats.orderStatusBreakdown.completed + stats.orderStatusBreakdown.cancelled;
   const openShifts = shifts.filter((shift: any) => !shift.endTime).length;
   const chartData = stats.revenueLast7Days.map((day) => ({ ...day, label: day.date.split(",")[0] }));
@@ -78,7 +96,7 @@ export default function OperationalDashboardCompact() {
   return <main className="min-h-full bg-white px-3 py-3 text-[#1d1d1f] sm:px-5 sm:py-4"><div className="mx-auto max-w-[1440px] space-y-3">
     <header className="flex min-h-11 items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#0b2342] text-white"><BarChart3 className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-bold tracking-[-0.025em] sm:text-lg">Pusat Pantau Operasional</h1><Badge className="hidden rounded-full bg-[#eaf8ef] px-2 py-0.5 text-[10px] font-semibold text-[#248a3d] sm:inline-flex">LIVE</Badge></div><p className="truncate text-[11px] text-[#6e6e73]">Djiwa Tentram Cafe &amp; Resto</p></div></div><Button className="h-9 shrink-0 rounded-xl bg-white px-3 text-xs text-[#1d1d1f] shadow-sm hover:bg-white/80" onClick={() => triggerHybridRefresh()} type="button" variant="outline"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Refresh</Button></header>
 
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Perbandingan periode"><PeriodTile data={periodStats.today} emphasis label="Hari ini" />{periodItems.slice(1).map(([key, label]) => <PeriodTile data={periodStats[key as PeriodKey]} key={key} label={label} />)}</section>
+    <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Perbandingan periode"><PeriodTile data={periodStats.today} emphasis label="Hari ini" range={periodRanges.today} />{periodItems.slice(1).map(([key, label]) => <PeriodTile data={periodStats[key as PeriodKey]} key={key} label={label} range={periodRanges[key as PeriodKey]} />)}</section>
 
     <section className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.8fr)]"><div className="rounded-[20px] border border-black/[0.04] bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.035)]"><div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><h2 className="text-sm font-bold">Pendapatan 7 hari</h2><span className="rounded-full bg-[#eaf3ff] px-2 py-0.5 text-[10px] font-semibold text-[#007aff]">{formatCurrencyIDR(stats.revenueLast7Days.reduce((sum, day) => sum + day.revenue, 0))}</span></div><p className="mt-0.5 text-[11px] text-[#8e8e93]">Hanya order settled: paid/completed</p></div><Link className="text-[11px] font-semibold text-[#007aff]" to="/admin/finance/reports">Detail</Link></div><div className="mt-2 h-[154px] w-full"><ResponsiveContainer height="100%" width="100%"><AreaChart data={chartData} margin={{ top: 8, right: 4, bottom: 0, left: -24 }}><defs><linearGradient id="opsRevenueFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#007aff" stopOpacity={0.24} /><stop offset="100%" stopColor="#007aff" stopOpacity={0.02} /></linearGradient></defs><XAxis axisLine={false} dataKey="label" tick={{ fill: "#8e8e93", fontSize: 10 }} tickLine={false} /><YAxis axisLine={false} hide tickLine={false} /><Tooltip content={<RevenueTooltip />} cursor={{ stroke: "#d1d1d6", strokeDasharray: "3 3" }} /><Area dataKey="revenue" fill="url(#opsRevenueFill)" stroke="#007aff" strokeWidth={2.5} type="monotone" /></AreaChart></ResponsiveContainer></div></div><div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2"><MetricTile hint="settled + pending" icon={ShoppingBag} label="Order hari ini" tone="blue" value={String(stats.todayOrders)} /><MetricTile hint={`${stats.totalProducts} total`} icon={Package} label="Produk aktif" tone="green" value={String(stats.activeProducts)} /><MetricTile hint={`${openShifts} terbuka`} icon={WalletCards} label="Kas bersih" tone={stats.netBalance >= 0 ? "green" : "orange"} value={formatCurrencyIDR(stats.netBalance)} /><MetricTile hint="perlu review" icon={AlertTriangle} label="Perhatian" tone={alertCount ? "orange" : "violet"} value={String(alertCount)} /></div></section>
 
