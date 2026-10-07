@@ -53,9 +53,8 @@ const ACCOUNT_TYPES = [
 	{ value: "expense", label: "Beban", icon: TrendingDown },
 ] as const;
 
-const supabase = createClient();
-
 export function AccountingManager() {
+	const supabase = createClient();
 	const navigate = useNavigate();
 	const [accounts, setAccounts] = useState<COAAccount[]>([]);
 	const [loading, setLoading] = useState(true);
