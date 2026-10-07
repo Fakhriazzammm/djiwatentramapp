@@ -212,13 +212,20 @@ function MemberHomePage() {
 	};
 	const saveProfileCompletion = async (phone: string) => {
 		if (!customer?.email) throw new Error("Email akun belum tersedia. Silakan keluar dan masuk kembali.");
-		await invokeEdgeFunction("customer-sync", {
+		const normalizedPhone = phone.replace(/[^\d]/g, "");
+		const result = await invokeEdgeFunction<{
+			customer?: { phone?: string | null } | null;
+		}>("customer-sync", {
 			action: "updateProfile",
 			sourceId: customer.sourceId,
 			email: customer.email,
 			name: customer.name ?? "",
 			phone: phone.trim(),
 		});
+		const savedPhone = result.customer?.phone?.replace(/[^\d]/g, "") ?? "";
+		if (savedPhone !== normalizedPhone) {
+			throw new Error("Nomor WhatsApp belum terkonfirmasi tersimpan. Silakan coba lagi.");
+		}
 		setConfirmedProfileSourceId(customer.sourceId);
 		setShowProfileCompletion(false);
 		await refreshCustomer();
