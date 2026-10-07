@@ -752,7 +752,12 @@ async function fetchAllDiscounts() {
 	})) as DiscountRecord[];
 }
 
-async function fetchOrders(options?: { status?: string; limit?: number }) {
+async function fetchOrders(options?: {
+	status?: string;
+	limit?: number;
+	createdAtGte?: number;
+	createdAtLt?: number;
+}) {
 	const supabase = createClient();
 	let query = supabase
 		.from("pos_orders")
@@ -761,6 +766,14 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 
 	if (options?.status) {
 		query = query.eq("status", options.status);
+	}
+
+	if (options?.createdAtGte !== undefined) {
+		query = query.gte("createdAt", options.createdAtGte);
+	}
+
+	if (options?.createdAtLt !== undefined) {
+		query = query.lt("createdAt", options.createdAtLt);
 	}
 
 	if (options?.limit) {
@@ -1826,6 +1839,12 @@ function getBookingFinancialSnapshot(booking: BookingOrderRecord) {
 }
 
 async function fetchDashboardStats() {
+	const now = Date.now();
+	const todayRange = getWibDayRange(now);
+	const shiftedNow = new Date(now + WIB_OFFSET_MS);
+	const monthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), 1) - WIB_OFFSET_MS;
+	const previousMonthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth() - 1, 1) - WIB_OFFSET_MS;
+
 	const [
 		orders,
 		bookings,
@@ -1834,16 +1853,15 @@ async function fetchDashboardStats() {
 		detailedShifts,
 		financialTransactions,
 	] = await Promise.all([
-		fetchOrders(),
+		// The dashboard compares the current and previous calendar months. Bound the
+		// query so PostgREST's default 1,000-row cap cannot truncate last month's data.
+		fetchOrders({ createdAtGte: previousMonthStart, createdAtLt: todayRange.end + 1 }),
 		fetchBookingOrders(),
 		fetchAllProducts(),
 		fetchInventory(),
 		fetchDetailedShifts(),
 		fetchFinancialTransactions(),
 	]);
-
-	const now = Date.now();
-	const todayRange = getWibDayRange(now);
 	const todayOrders = orders.filter(
 		(order) => order.createdAt >= todayRange.start && order.createdAt <= todayRange.end
 	);
@@ -1973,13 +1991,10 @@ async function fetchDashboardStats() {
 				validBookings.reduce((sum, booking) => sum + getBookingFinancialSnapshot(booking).finalCollected, 0),
 		};
 	};
-	const shiftedNow = new Date(now + WIB_OFFSET_MS);
 	const weekdayFromMonday = (shiftedNow.getUTCDay() + 6) % 7;
 	const todayStart = todayRange.start;
 	const thisWeekStart = todayStart - weekdayFromMonday * DAY_MS;
 	const previousWeekStart = thisWeekStart - 7 * DAY_MS;
-	const monthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), 1) - WIB_OFFSET_MS;
-	const previousMonthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth() - 1, 1) - WIB_OFFSET_MS;
 	const periodComparisons = {
 		today: periodRange(todayRange.start, todayRange.end),
 		yesterday: periodRange(todayRange.start - DAY_MS, todayRange.start - 1),
