@@ -110,7 +110,6 @@ async function supabaseGet(path: string) {
   const response = await fetchMayar(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
       apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       "Accept-Profile": "pos",
     },
   });
@@ -125,7 +124,6 @@ async function supabasePatch(path: string, body: Record<string, unknown>) {
     method: "PATCH",
     headers: {
       apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       "Content-Type": "application/json",
       "Content-Profile": "pos",
       Prefer: "return=representation",
@@ -143,7 +141,6 @@ async function supabaseRpc(name: string, payload: Record<string, unknown>) {
     method: "POST",
     headers: {
       apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       "Content-Type": "application/json",
       "Content-Profile": "pos",
       Accept: "application/json",
