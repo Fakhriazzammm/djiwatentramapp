@@ -273,16 +273,34 @@ async function settleWalletTopup(topupId: string, transaction: Record<string, un
 
 async function reconcilePendingWalletTopups() {
   const response = await fetchWithTimeout(
-    `${SUPABASE_URL}/rest/v1/customer_wallet_topups?select=topup_id,transaction_id,invoice_id,status&status=eq.pending&transaction_id=not.is.null&order=created_at.asc&limit=100`,
+    `${SUPABASE_URL}/rest/v1/customer_wallet_topups?select=topup_id,transaction_id,invoice_id,status,amount&status=eq.pending&invoice_id=not.is.null&order=created_at.asc&limit=100`,
     { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
   );
   if (!response.ok) throw new Error(`Pending wallet topup lookup failed (${response.status})`);
   const topups = await response.json() as Array<Record<string, unknown>>;
   const settled: Array<Record<string, unknown>> = [];
   for (const topup of topups) {
-    const transactionId = String(topup.transaction_id || "");
+    let transactionId = String(topup.transaction_id || "").trim();
+    if (!transactionId) {
+      const invoiceId = String(topup.invoice_id || "").trim();
+      if (!invoiceId) continue;
+      const invoiceResponse = await fetchWithTimeout(
+        `${MAYAR_API_BASE}/invoices/${encodeURIComponent(invoiceId)}`,
+        { headers: { Authorization: `Bearer ${MAYAR_API_KEY}` } },
+      );
+      const invoiceBody = await invoiceResponse.json().catch(() => ({})) as Record<string, unknown>;
+      if (!invoiceResponse.ok || invoiceBody.statusCode !== 200) continue;
+      const invoiceData = invoiceBody.data;
+      if (!invoiceData || typeof invoiceData !== "object" || Array.isArray(invoiceData)) continue;
+      const invoice = invoiceData as Record<string, unknown>;
+      transactionId = String(invoice.transactionId || invoice.transaction_id || "").trim();
+      if (!transactionId) continue;
+    }
     const transaction = await verifyTransaction(transactionId);
     if (!transaction) continue;
+    const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
+    const topupAmount = Number(topup.amount ?? NaN);
+    if (!Number.isFinite(providerAmount) || !Number.isFinite(topupAmount) || providerAmount <= 0 || providerAmount !== topupAmount) continue;
     const result = await settleWalletTopup(String(topup.topup_id || ""), transaction);
     settled.push({ topupId: topup.topup_id, ...((result && typeof result === "object") ? result : {}) });
   }
