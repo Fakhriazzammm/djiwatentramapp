@@ -122,6 +122,7 @@ case "$APP" in
 		deploy_app "admin" "admindjiwatentram.yumme.id"
 		;;
 	all|*)
+		node scripts/verify-public-env.mjs --all
 		deploy_app "pos" "pos.yumme.id"
 		deploy_app "karyawan" "karyawan.yumme.id"
 		deploy_app "customer" "djiwatentram.yumme.id"

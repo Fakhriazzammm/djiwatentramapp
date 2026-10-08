@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "node ../../scripts/update-version.mjs && node ../../scripts/write-version-manifest.mjs && vite build",
+    "build": "node ../../scripts/verify-public-env.mjs admin && node ../../scripts/update-version.mjs && node ../../scripts/write-version-manifest.mjs && vite build",
     "serve": "vite preview",
     "start": "vite",
     "check-types": "tsc --noEmit",
